@@ -80,7 +80,7 @@ when defineSsl:
 
 when defined(posix):
   from posix import SIGPIPE
-  from posix_utils import ignoreSignals
+  from posix_utils import nil
 
 # Note: The enumerations are mapped to Window's constants.
 
@@ -1060,8 +1060,8 @@ proc close*(socket: Socket) =
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
         if SSL_in_init(socket.sslHandle) == 0 and not socket.sslInhibitShutdown:
-          when defined(posix):
-            ignoreSignals(SIGPIPE): doSSLShutdown()
+          when defined(posix) and declared(posix_utils.ignoreSignals):
+            posix_utils.ignoreSignals(SIGPIPE): doSSLShutdown()
           else:
             doSSLShutdown()
   finally:

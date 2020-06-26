@@ -153,29 +153,33 @@ template ignoreSignalsImpl(sigmask, sigs, body: untyped): untyped =
       if sigmask(SIG_UNBLOCK, watchSet, oldSet) == -1:
         raiseOSError(osLastError(), "Couldn't restore the signal mask")
 
-macro ignoreSignals*(signals: varargs[cint], body: untyped): untyped =
-  ## Ignore the specified ``signals`` until the end of the code block.
-  ##
-  ## It's not guaranteed that synchronous signals (``SIGSEGV``, ``SIGFPE``,
-  ## ``SIGILL`` and ``SIGBUS``) can be ignored in all cases. It's recommended
-  ## that a signal handler should be installed and used instead of this
-  ## template to handle those signals reliably.
-  ##
-  ## Only signals targeting the calling thread will be ignored.
-  runnableExamples:
-    import posix
+when defined(linux) or defined(netbsd) or defined(freebsd):
+  macro ignoreSignals*(signals: varargs[cint], body: untyped): untyped =
+    ## Ignore the specified ``signals`` until the end of the code block.
+    ##
+    ## It's not guaranteed that synchronous signals (``SIGSEGV``, ``SIGFPE``,
+    ## ``SIGILL`` and ``SIGBUS``) can be ignored in all cases. It's recommended
+    ## that a signal handler should be installed and used instead of this
+    ## template to handle those signals reliably.
+    ##
+    ## Only signals targeting the calling thread will be ignored.
+    ##
+    ## This macro is not supported by all POSIX systems, check for existance
+    ## with ``system.declared``.
+    runnableExamples:
+      import posix
 
-    ignoreSignals(SIGTERM, SIGINT, SIGPIPE):
-      discard posix.raise(SIGTERM)
-      discard posix.raise(SIGINT)
-      discard posix.raise(SIGPIPE)
+      ignoreSignals(SIGTERM, SIGINT, SIGPIPE):
+        discard posix.raise(SIGTERM)
+        discard posix.raise(SIGINT)
+        discard posix.raise(SIGPIPE)
 
-  let sigmask =
-    when compileOption("threads"):
-      bindSym"pthread_sigmask"
-    else:
-      bindSym"sigprocmask"
+    let sigmask =
+      when compileOption("threads"):
+        bindSym"pthread_sigmask"
+      else:
+        bindSym"sigprocmask"
 
-  # Implemented as a template for auto bindSym support. This helper macro
-  # serves more or less as a way to support `varargs`.
-  result = getAst ignoreSignalsImpl(sigmask, signals, body)
+    # Implemented as a template for auto bindSym support. This helper macro
+    # serves more or less as a way to support `varargs`.
+    result = getAst ignoreSignalsImpl(sigmask, signals, body)
