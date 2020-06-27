@@ -83,6 +83,7 @@ type
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    unbatchable*: bool
     useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
@@ -147,7 +148,6 @@ proc addLine*(self: var string; a,b: string) =
 
 proc initSpec*(filename: string): TSpec =
   result.file = filename
-
 
 proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
   if testamentData.testamentNumBatch != 0:
@@ -220,6 +220,8 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+      of "batchable":
+        result.unbatchable = not parseCfgBool(e.value)
       of "joinable":
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
@@ -315,6 +317,6 @@ proc parseSpec*(filename: string): TSpec =
   if skips.anyIt(it in result.file):
     result.err = reDisabled
 
-  result.inCurrentBatch = isCurrentBatch(testamentData0, filename)
+  result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:
     result.err = reDisabled

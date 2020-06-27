@@ -273,13 +273,14 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             expected = expected,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  template disp(msg) =
+    maybeStyledEcho styleDim, fgYellow, msg & " ", styleBright, fgCyan, name
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
-    if test.spec.inCurrentBatch:
-      maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
-  elif success == reJoined:
-    maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
+    if test.spec.inCurrentBatch: disp("SKIP:")
+    else: disp("NOTINBATCH:")
+  elif success == reJoined: disp("JOINED:")
   else:
     maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""

@@ -6,7 +6,8 @@ joinable: false
 joinable: false
 because it'd need cleanup up stdout
 
-see also: tests/osproc/*.nim
+see also: tests/osproc/*.nim; consider merging those into a single test here
+(easier to factor and test more things as a single self contained test)
 ]#
 
 when defined(case_testfile): # compiled test file for child process
