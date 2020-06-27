@@ -5,6 +5,8 @@ joinable: false
 #[
 joinable: false
 because it'd need cleanup up stdout
+
+see also: tests/osproc/*.nim
 ]#
 
 when defined(case_testfile): # compiled test file for child process
