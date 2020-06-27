@@ -97,13 +97,15 @@ block: # test valKind
   var myval = 3
   enumMapCustom(valKind="var"):
     type Foo = enum
-      k0 = 0
-      k1 = myval*2
-      k2 = 2
+      k0 = (0,)
+      k1 = (myval*2,)
+      k2 = (2,)
   doAssert k1.ord == 1
-  doAssert k1.val == myval*2
-  k1.val = -3
-  doAssert k1.val == -3
+  doAssert k1.val[0] == myval*2
+  k1.val[0] = -3
+  doAssert k1.val[0] == -3
+  k1.val = (-4,)
+  doAssert k1.val == (-4,)
 
 block: # shows we can use a CT map defined by some function
   var count {.compileTime.}: int
