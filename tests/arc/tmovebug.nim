@@ -247,7 +247,7 @@ iterator combinations[T](s: openarray[T], k: int): seq[T] =
       break
 
 type
-  UndefEx = object of Exception
+  UndefEx = object of ValueError
 
 proc main2 =
   var delayedSyms = @[1, 2, 3]

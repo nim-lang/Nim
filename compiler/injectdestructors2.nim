@@ -38,7 +38,8 @@ type
 
   SinkFlag = enum
     isDefinition,
-    sinkArg
+    sinkArg,
+    sourceArg  # much like 'sinkArg' but direct *source* of an assignment
   SinkFlags = set[SinkFlag]
 
 proc rememberParent(parent: var Scope; inner: Scope) {.inline.} =
@@ -302,11 +303,11 @@ proc genCopyNoCheck(c: Con; dest, src: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = genOp(c, t, attachedAsgn, dest, src)
 
-proc genCopy(c: var Con; dest, src: PNode): PNode =
+proc genCopy(c: var Con; dest, src, origSrc: PNode): PNode =
   let t = dest.typ
   if tfHasOwned in t.flags and src.kind != nkNilLit:
     # try to improve the error message here:
-    if c.otherRead == nil: discard isLastRead(src, c)
+    if c.otherRead == nil: discard isLastRead(origSrc, c)
     checkForErrorPragma(c, t, src, "=")
   result = genCopyNoCheck(c, dest, src)
 
@@ -321,12 +322,12 @@ proc isCapturedVar(n: PNode): bool =
   let root = getRoot(n)
   if root != nil: result = root.name.s[0] == ':'
 
-proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
+proc passCopyToSink(n, orig: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, s, n.typ, n.info)
   if hasDestructor(n.typ):
     result.add genWasMoved(tmp, c)
-    result.add genCopy(c, tmp, n)
+    result.add genCopy(c, tmp, n, orig)
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
@@ -358,7 +359,7 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc genMoveOrCopy(dest, src: PNode; c: var Con, s: var Scope; flags: SinkFlags): PNode =
+proc genMoveOrCopy(dest, src, origSrc: PNode; c: var Con, s: var Scope; flags: SinkFlags): PNode =
   case src.kind
   of nkCallKinds:
     result = genSink(c, dest, src, flags)
@@ -366,23 +367,23 @@ proc genMoveOrCopy(dest, src: PNode; c: var Con, s: var Scope; flags: SinkFlags)
     if isUnpackedTuple(src[0]):
       # unpacking of tuple: take over the elements
       result = genSink(c, dest, src, flags)
-    elif isAnalysableFieldAccess(src, c.owner) and isLastRead(src, c) and
+    elif isAnalysableFieldAccess(origSrc, c.owner) and isLastRead(origSrc, c) and
         not aliases(dest, src):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       let snk = genSink(c, dest, src, flags)
       result = newTree(nkStmtList, snk, genWasMoved(src, c))
     else:
-      result = genCopy(c, dest, src)
+      result = genCopy(c, dest, src, origSrc)
   of nkBracket:
     # array constructor
     if src.len > 0 and isDangerousSeq(src.typ):
-      result = genCopy(c, dest, src)
+      result = genCopy(c, dest, src, origSrc)
     else:
       result = genSink(c, dest, src, flags)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = genSink(c, dest, src, flags)
   of nkSym:
-    if isSinkParam(src.sym) and isLastRead(src, c):
+    if isSinkParam(src.sym) and isLastRead(origSrc, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       let snk = genSink(c, dest, src, flags)
       result = newTree(nkStmtList, snk, genWasMoved(src, c))
@@ -392,19 +393,19 @@ proc genMoveOrCopy(dest, src: PNode; c: var Con, s: var Scope; flags: SinkFlags)
       let snk = genSink(c, dest, src, flags)
       result = newTree(nkStmtList, snk, genWasMoved(src, c))
     else:
-      result = genCopy(c, dest, src)
+      result = genCopy(c, dest, src, origSrc)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
     result = genSink(c, dest, src, flags)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     result = genSink(c, dest, src, flags)
   else:
-    if isAnalysableFieldAccess(src, c.owner) and isLastRead(src, c) and
+    if isAnalysableFieldAccess(src, c.owner) and isLastRead(origSrc, c) and
         canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       result = genSink(c, dest, src, flags)
       s.wasMoved.add genWasMoved(src, c)
     else:
-      result = genCopy(c, dest, src)
+      result = genCopy(c, dest, src, origSrc)
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
@@ -424,7 +425,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   # It handles a statement and can create a new scope.
   case n.kind
   of nkSym:
-    if sinkArg in flags and hasDestructor(n.typ):
+    if {sinkArg, sourceArg} * flags == {sinkArg} and hasDestructor(n.typ):
       if isSinkParam(n.sym) and isLastRead(n, c):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         result = n
@@ -434,21 +435,21 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         result = n
         s.wasMoved.add genWasMoved(result, c)
       else:
-        result = passCopyToSink(n, c, s)
+        result = passCopyToSink(n, n, c, s)
     else:
       result = n
   of nkBracketExpr, nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
       result[i] = st(n[i], c, s, {})
-    if sinkArg in flags and hasDestructor(n.typ):
+    if {sinkArg, sourceArg} * flags == {sinkArg} and hasDestructor(n.typ):
       if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
         # consider 'a[(g; destroy(g); 3)]', we want to say 'wasMoved(a[3])'
         # without the junk, hence 'genWasMoved(n, c)'
         # and not 'genWasMoved(result, c)':
         s.wasMoved.add genWasMoved(n, c)
       else:
-        result = passCopyToSink(result, c, s)
+        result = passCopyToSink(result, n, c, s)
   of nkCast:
     # dest = cast[T](x)
     result = shallowCopy(n)
@@ -470,11 +471,11 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     result[0] = st(n[0], c, s, {})
     for i in 1 ..< n.len:
       result[i] = n[i]
-    if sinkArg in flags and hasDestructor(n.typ):
+    if {sinkArg, sourceArg} * flags == {sinkArg} and hasDestructor(n.typ):
       if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
         s.wasMoved.add genWasMoved(n, c)
       else:
-        result = passCopyToSink(result, c, s)
+        result = passCopyToSink(result, n, c, s)
 
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     # we have an "ownership invariance" for all constructors C(x).
@@ -606,8 +607,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
           cycleCheck(n, c)
         let dest = st(n[0], c, s, {})
-        let src = st(n[1], c, s, {sinkArg})
-        result = genMoveOrCopy(dest, src, c, s, {})
+        let src = st(n[1], c, s, {sinkArg, sourceArg})
+        result = genMoveOrCopy(dest, src, n[1], c, s, {})
     elif isDiscriminantField(n[0]):
       result = genDiscriminantAsgn(c, s, n)
     else:
@@ -665,7 +666,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     # so then we have no choice but to use 'sinkArg'.
     let isRefConstr = n.kind == nkObjConstr and n.typ.skipTypes(abstractInst).kind == tyRef
     let argflags = if isRefConstr: {sinkArg}
-                   else: flags
+                   else: flags*{sinkArg}
 
     result = copyTree(n)
     for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
@@ -679,7 +680,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         # const sequences are not mutable and so we need to pass a copy to the
         # sink parameter (bug #11524). Note that the string implementation is
         # different and can deal with 'const string sunk into var'.
-        result = passCopyToSink(result, c, s)
+        result = passCopyToSink(result, n, c, s)
     elif n.typ != nil and hasDestructor(n.typ) and isRefConstr:
       result = ensureDestruction(result, c, s)
 
@@ -698,9 +699,12 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
           var identDefs = copyNode(it)
 
           let v = it[j]
-          if v.kind == nkSym and {sfCompileTime, sfGlobal, sfThread} * v.sym.flags == {} and
+          if v.kind == nkSym and {sfCompileTime, sfThread} * v.sym.flags == {} and
               hasDestructor(v.typ) and not isCursor(it[j]):
-            s.final.add genDestroy(c, v)
+            if sfGlobal in v.sym.flags or c.owner.kind == skModule:
+              c.graph.globalDestructors.add genDestroy(c, v)
+            else:
+              s.final.add genDestroy(c, v)
           identDefs.add it[j]
           identDefs.add it[it.len-2] # type
 
