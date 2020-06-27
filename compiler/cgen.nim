@@ -1796,7 +1796,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.typeInfoMarker = initTable[SigHash, Rope]()
   result.sigConflicts = initCountTable[SigHash]()
   result.initProc = newProc(nil, result)
-  result.initProc.incl nimErrorFlagDisabled
+  result.initProc.flags.incl nimErrorFlagDisabled
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newProc(nil, result)
   result.preInitProc.flags.incl nimErrorFlagDisabled
