@@ -548,7 +548,12 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
+    #[
+    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
+    ]#
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
