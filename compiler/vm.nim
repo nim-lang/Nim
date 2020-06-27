@@ -16,7 +16,7 @@ import
   strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes, int128, times
+  modulegraphs, sighashes, int128, times, std/private/miscdollars
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -535,34 +535,40 @@ type
 
 proc dumpProfile(c: PCtx) =
   if optProfileVM in c.config.globalOptions:
-    echo "VM profiler:"
+    echo "\nprof:     µs     count  location"
     var profile = c.profile
     for i in 0..<32:
       var tMax: float
-      var flMax: FileLine
-      for fl, t in profile:
-        if t > tMax:
-          tMax = t
+      var infoMax: ProfileInfo
+      var flMax: TLineInfo
+      for fl, info in profile:
+        if info.time > infoMax.time:
+          infoMax = info
           flMax = fl
-
-      echo "  ", align($int(tMax * 1e6), 10), " µs: ", c.config.toMsgFilename(flMax.fileIndex), ":", flMax.line
+      if infoMax.count == 0:
+        break
+      var msg = "  " & align($int(infoMax.time * 1e6), 10) &
+                       align($int(infoMax.count), 10) & "  "
+      toLocation(msg, c.config.toMsgFilename(flMax.fileIndex), flMax.line.int, 0)
+      echo msg
       profile.del flMax
 
-proc enter(prof: var Profiler, c: PCtx, tos: PStackFrame) =
+proc enter(prof: var Profiler, c: PCtx, tos: PStackFrame) {.inline.} =
   if optProfileVM in c.config.globalOptions:
     prof.tEnter = cpuTime()
     prof.tos = tos
 
-proc leave(prof: var Profiler, c: PCtx) =
+proc leave(prof: var Profiler, c: PCtx) {.inline.} =
   if optProfileVM in c.config.globalOptions:
     let tLeave = cpuTime()
     var tos = prof.tos
     while tos != nil:
       if tos.prc != nil:
-        let profFl = FileLine(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
+        let profFl = TLineInfo(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
         if profFl notin c.profile:
-          c.profile[profFl] = 0.0
-        c.profile[profFl] += tLeave - prof.tEnter
+          c.profile[profFl] = ProfileInfo()
+        c.profile[profFl].time += tLeave - prof.tEnter
+        inc c.profile[profFl].count
       tos = tos.next
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =

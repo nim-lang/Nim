@@ -263,20 +263,18 @@ type
     oldErrorCount*: int
     profile*: Profile
 
-  FileLine* = object
-    fileIndex*: FileIndex
-    line*: uint16
+  ProfileInfo* = object
+    time*: float
+    count*: int
 
-  Profile* = Table[FileLine, float]
+  Profile* = Table[TLineInfo, ProfileInfo]
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc hash*(f: FileLine): Hash =
-  result = result !& f.line.int
-  result = result !& f.fileIndex.int
-  result = !$ result
+proc hash*(i: TLineInfo): Hash =
+  result = !$(i.line.int !& i.col.int !& i.fileIndex.int)
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
