@@ -2076,7 +2076,6 @@ proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
-  c.profiler.dump(c)
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   if sym.kind in routineKinds:
@@ -2099,7 +2098,6 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
         putIntoReg(tos.slots[i], args[i-1])
 
       result = rawExecute(c, start, tos).regToNode
-      c.profiler.dump(c)
   else:
     localError(c.config, sym.info,
       "NimScript: attempt to call non-routine: " & sym.name.s)
@@ -2174,7 +2172,6 @@ proc evalConstExprAux(module: PSym;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
-  c.profiler.dump(c)
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
@@ -2293,4 +2290,3 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   dec(g.config.evalMacroCounter)
   c.callsite = nil
   c.mode = oldMode
-  c.profiler.dump(c)

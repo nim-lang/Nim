@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths
+  prefixmatches, pathutils, nimpaths, tables
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -218,6 +218,13 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
+  ProfileInfo* = object
+    time*: float
+    count*: int
+
+  ProfileData* = ref object
+    data*: TableRef[TLineInfo, ProfileInfo]
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -315,6 +322,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    vmProfileData*: ProfileData
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -391,6 +399,9 @@ template newPackageCache*(): untyped =
                  else:
                    modeCaseSensitive)
 
+proc newProfileData(): ProfileData =
+  ProfileData(data: newTable[TLineInfo, ProfileInfo]())
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -443,6 +454,7 @@ proc newConfigRef*(): ConfigRef =
     arguments: "",
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
+    vmProfileData: newProfileData(),
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals

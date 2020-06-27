@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, idents, options, modulegraphs, lineinfos, tables, hashes
+import ast, idents, options, modulegraphs, lineinfos
 
 type TInstrType* = uint64
 
@@ -273,21 +273,13 @@ type
     safePoints*: seq[int]      # used for exception handling
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
-  ProfileInfo* = object
-    time*: float
-    count*: int
-
   Profiler* = object
     tEnter*: float
     tos*: PStackFrame
-    data*: Table[TLineInfo, ProfileInfo]
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
-
-proc hash*(i: TLineInfo): Hash =
-  hash (i.line.int, i.col.int, i.fileIndex.int)
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
