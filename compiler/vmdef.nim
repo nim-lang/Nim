@@ -261,13 +261,26 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
-    profile*: Profile
+    profiler*: Profiler
 
+  PStackFrame* = ref TStackFrame
+  TStackFrame* = object
+    prc*: PSym                 # current prc; proc that is evaluated
+    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
+                              # parameters come first
+    next*: PStackFrame         # for stacking
+    comesFrom*: int
+    safePoints*: seq[int]      # used for exception handling
+                              # XXX 'break' should perform cleanup actions
+                              # What does the C backend do for it?
   ProfileInfo* = object
     time*: float
     count*: int
 
-  Profile* = Table[TLineInfo, ProfileInfo]
+  Profiler* = object
+    tEnter*: float
+    tos*: PStackFrame
+    data*: Table[TLineInfo, ProfileInfo]
 
   TPosition* = distinct int
 

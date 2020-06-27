@@ -27,17 +27,6 @@ const
 when hasFFI:
   import evalffi
 
-type
-  PStackFrame* = ref TStackFrame
-  TStackFrame* = object
-    prc: PSym                 # current prc; proc that is evaluated
-    slots: seq[TFullReg]      # parameters passed to the proc + locals;
-                              # parameters come first
-    next: PStackFrame         # for stacking
-    comesFrom: int
-    safePoints: seq[int]      # used for exception handling
-                              # XXX 'break' should perform cleanup actions
-                              # What does the C backend do for it?
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -528,20 +517,15 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
-type
-  Profiler = object
-    tEnter: float
-    tos: PStackFrame
-
-proc dumpProfile(c: PCtx) =
+proc dump(p: var Profiler, c: PCtx) =
   if optProfileVM in c.config.globalOptions:
     echo "\nprof:     µs     count  location"
-    var profile = c.profile
+    var data = c.profiler.data
     for i in 0..<32:
       var tMax: float
       var infoMax: ProfileInfo
       var flMax: TLineInfo
-      for fl, info in profile:
+      for fl, info in data:
         if info.time > infoMax.time:
           infoMax = info
           flMax = fl
@@ -551,7 +535,7 @@ proc dumpProfile(c: PCtx) =
                        align($int(infoMax.count), 10) & "  "
       toLocation(msg, c.config.toMsgFilename(flMax.fileIndex), flMax.line.int, 0)
       echo msg
-      profile.del flMax
+      data.del flMax
 
 proc enter(prof: var Profiler, c: PCtx, tos: PStackFrame) {.inline.} =
   if optProfileVM in c.config.globalOptions:
@@ -564,11 +548,11 @@ proc leave(prof: var Profiler, c: PCtx) {.inline.} =
     var tos = prof.tos
     while tos != nil:
       if tos.prc != nil:
-        let profFl = TLineInfo(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
-        if profFl notin c.profile:
-          c.profile[profFl] = ProfileInfo()
-        c.profile[profFl].time += tLeave - prof.tEnter
-        inc c.profile[profFl].count
+        let li = TLineInfo(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
+        if li notin c.profiler.data:
+          c.profiler.data[li] = ProfileInfo()
+        c.profiler.data[li].time += tLeave - prof.tEnter
+        inc c.profiler.data[li].count
       tos = tos.next
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
@@ -578,7 +562,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var savedPC = -1
   var savedFrame: PStackFrame
   var regs: seq[TFullReg] # alias to tos.slots for performance
-  var profiler: Profiler
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
   while true:
@@ -596,7 +579,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
 
-    profiler.enter(c, tos)
+    c.profiler.enter(c, tos)
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -2123,7 +2106,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
-    profiler.leave(c)
+    c.profiler.leave(c)
 
     inc pc
 
@@ -2131,7 +2114,7 @@ proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
-  c.dumpProfile()
+  c.profiler.dump(c)
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   if sym.kind in routineKinds:
@@ -2154,7 +2137,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
         putIntoReg(tos.slots[i], args[i-1])
 
       result = rawExecute(c, start, tos).regToNode
-      c.dumpProfile()
+      c.profiler.dump(c)
   else:
     localError(c.config, sym.info,
       "NimScript: attempt to call non-routine: " & sym.name.s)
@@ -2229,7 +2212,7 @@ proc evalConstExprAux(module: PSym;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
-  c.dumpProfile()
+  c.profiler.dump(c)
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
@@ -2348,4 +2331,4 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   dec(g.config.evalMacroCounter)
   c.callsite = nil
   c.mode = oldMode
-  c.dumpProfile()
+  c.profiler.dump(c)
