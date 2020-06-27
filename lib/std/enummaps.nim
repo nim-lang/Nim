@@ -1,30 +1,24 @@
 ##[
-This module implements enum maps, which are syntax sugar for compile time
+This module implements enum maps, which are syntax sugar for compiletime or runtime
 mapping from enum members to a value type. This can be used as a type safe
 generalization of enum with holes, or any application where you have a
-compile time collection of values.
+collection of values.
 
 Note: experimental module, unstable API
 ]##
 
 #[
 ## TODO
-* suport implicit consecutives when `=` not specified eg:
-enumMap:
-  type Foo = enum
-    k1 = 10
-    k2 # assumes equal to 11
+* pending https://github.com/nim-lang/RFCs/issues/150 or https://github.com/nim-lang/Nim/pull/8903,
+reattach doc comments to enum members (+ show enummap attached values)
 
-* support:
-type Foo = object
-  name: string
-  baz: int
-
-enumMap(Foo):
-  type Bar* = enum
-    bar1 = (name = "", baz = 2)
-
-* support `when` which would reduce need for https://github.com/nim-lang/RFCs/issues/190
+* pending #13830, you'll be able to write instead:
+```nim
+  type MyHoly {.enumMap.} = enum
+    k1 = 1
+    k2 = 4
+```
+so docs for this will need to be updated
 ]#
 
 import macros
@@ -43,7 +37,7 @@ runnableExamples:
       k2 = 4 ## hole
       k3 = 1 ## repeated and out of order is ok
   doAssert k2.ord == 2
-  doAssert k2.val == 4 
+  doAssert k2.val == 4
   doAssert k2 == MyHoly.k2
   static: doAssert MyHoly.byVal(4) == k2 # works at CT
   doAssert MyHoly.byVal(1) == k1 # finds 1st occurrence
@@ -60,6 +54,15 @@ runnableExamples:
     doAssert cBlack.val.name == "black"
     doAssert Color.findByIt(it.val.name == "green") == cGreen
 
+  ## runtime values are possible:
+  var myval = 10
+  enumMapCustom(valKind="var"):
+    type Foo = enum
+      k0 = myval
+  doAssert k0.val == myval
+  k0.val = 11
+  doAssert k0.val == 11
+
 proc lastSon(n: NimNode): NimNode =
   if n.len == 0: n
   else: n[^1]
@@ -68,7 +71,7 @@ proc maybeExport(n: NimNode, doExport: bool): NimNode =
   if doExport: newTree(nnkPostfix, ident"*", n)
   else: n
 
-macro enumMap*(body): untyped =
+proc enumMapImpl(valKind: string, body: NimNode): NimNode =
   ## builds an enum with a map enum => val, allowing library implementation
   ## of enum with holes. This lifts restrictions on enum values, so that
   ## arbitrary types can be used as values, including non ordinal, repeated, or
@@ -87,17 +90,49 @@ macro enumMap*(body): untyped =
     if i>0:
       elems[i] = ai[0]
       v.add newTree(nnkExprColonExpr, elems[i], ai[^1])
+      # this won't work: v.add newCommentStmtNode "..."
   let vals = ident"vals".maybeExport(isExported)
   let val = ident"val".maybeExport(isExported)
-  let nimHasArrayEnumIndex2 = newLit nimHasArrayEnumIndex
-  result = quote do:
-    `body2`
-    const varr = `v`
-    template `vals`(t: type `name`): untyped = varr
-    when `nimHasArrayEnumIndex2`:
-      template `val`(a: `name`): untyped = varr[a]
-    else:
-      template `val`(a: `name`): untyped = varr[a.ord]
+
+  result = newStmtList()
+  result.add body2
+
+  var varr: NimNode
+  case valKind
+  of "let":
+    varr = genSym(nskLet, "varr")
+    result.add quote do:
+      let `varr` = `v`
+  of "var":
+    varr = genSym(nskVar, "varr")
+    result.add quote do:
+      var `varr` = `v`
+  of "const":
+    varr = genSym(nskConst, "varr")
+    result.add quote do:
+      const `varr` = `v`
+  else: error("invalid valKind: " & valKind)
+
+  result.add quote do:
+    template `vals`(t: type `name`): untyped = `varr`
+  if nimHasArrayEnumIndex:
+    result.add quote do:
+      template `val`(a: `name`): untyped = `varr`[a]
+  else:
+    result.add quote do:
+      template `val`(a: `name`): untyped = `varr`[a.ord]
+
+  if valKind == "var":
+    let val2 = newTree(nnkAccQuoted, ident"val", ident"=").maybeExport(isExported)
+    result.add quote do:
+      template `val2`(a: `name`, b) = `varr`[a] = b
+
+macro enumMap*(body: untyped): untyped =
+  result = enumMapImpl(valKind = "const", body)
+
+macro enumMapCustom*(valKind: static string, body: untyped): untyped =
+  # pending #14346, merge with `enumMap`
+  result = enumMapImpl(valKind = valKind, body)
 
 when false:
   # broken pending https://github.com/nim-lang/Nim/issues/13747

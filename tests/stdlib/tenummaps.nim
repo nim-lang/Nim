@@ -44,11 +44,11 @@ block:
   # example that could be used in compiler code
   block: # simplest apporach: val = string
     enumMap:
-      type TCallingConvention = enum
+      type TCallingConvention2 = enum
         ccDefault = ""   # proc has no explicit calling convention
         ccStdCall  = "stdcall" # procedure is stdcall
 
-    template name(a: TCallingConvention): string = a.val
+    template name(a: TCallingConvention2): string = a.val
     doAssert $ccStdCall == "ccStdCall"
     doAssert ccStdCall.val == "stdcall"
     doAssert ccStdCall.name == "stdcall"
@@ -57,11 +57,11 @@ block:
     # more future proof approach: val = tuple[name: string]
     # this allows adding fields without beaking client code
     enumMap:
-      type TCallingConvention = enum
+      type TCallingConvention2 = enum
         ccDefault = (name: "", doc: "proc has no explicit calling convention")
         ccStdCall  = ("stdcall", "procedure is stdcall")
 
-    template name(a: TCallingConvention): string = a.val.name
+    template name(a: TCallingConvention2): string = a.val.name
     doAssert $ccStdCall == "ccStdCall"
     doAssert ccStdCall.val.name == "stdcall"
     doAssert ccStdCall.name == "stdcall"
@@ -83,6 +83,40 @@ block:
 
   # checks that we can't mutate values
   doAssert not compiles(k1.val[0] = 5.2)
+
+block: # test valKind
+  type Bar = object
+    name: string
+  enumMap:
+    type Foo = enum
+      k0 = Bar()
+      k1 = Bar(name: "myk1")
+  doAssert k1.val == Bar(name: "myk1")
+
+block: # test valKind
+  var myval = 3
+  enumMapCustom(valKind="var"):
+    type Foo = enum
+      k0 = 0
+      k1 = myval*2
+      k2 = 2
+  doAssert k1.ord == 1
+  doAssert k1.val == myval*2
+  k1.val = -3
+  doAssert k1.val == -3
+
+block: # shows we can use a CT map defined by some function
+  var count {.compileTime.}: int
+  proc fun(): int =
+    result = count
+    count+=2
+
+  enumMap:
+    type Foo = enum
+      k0 = fun()
+      k1 = fun()
+      k2 = fun()
+  doAssert Foo.vals.static == [0,2,4]
 
 import menummaps
 
