@@ -853,6 +853,60 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
     else:
       raise newException(IOError, "Couldn't resolve address: " & address)
 
+proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
+               address: FutureVar[string], port: FutureVar[Port],
+               flags = {SocketFlag.SafeDisconn}): owned(Future[int])
+              {.async, since: (1, 3).} =
+  ## Receives a datagram data from ``socket`` into ``data``, which must be at
+  ## least of size ``size``. The address and port of datagram's sender will be
+  ## stored into ``address`` and ``port``, respectively. Returned future will
+  ## complete once one datagram has been received, and will return size of
+  ## packet received.
+  ##
+  ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  ## 
+  ## **Notes**
+  ## * ``data`` must be initialized to the length of ``size``.
+  ## * ``address`` must be initialized to 46 in length.
+  template adaptRecvFromToDomain(domain: Domain) =
+    var lAddr = sizeof(sAddr).SockLen
+    
+    result = await recvFromInto(AsyncFD(getFd(socket)), cstring(data.mget()), size,
+                                cast[ptr SockAddr](addr sAddr), addr lAddr,
+                                flags)
+    
+    data.mget().setLen(result)
+    data.complete()
+
+    getAddrString(cast[ptr SockAddr](addr sAddr), address.mget())
+    
+    address.complete()
+
+    when domain == AF_INET6:
+      port.complete(ntohs(sAddr.sin6_port).Port)
+    else:
+      port.complete(ntohs(sAddr.sin_port).Port)
+
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")
+  assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
+  assert(size == len(data.mget()),
+         "`date` was not initialized correctly. `size` != `len(data.mget())`")
+  assert(46 == len(address.mget()),
+         "`address` was not initialized correctly. 46 != `len(address.mget())`")
+  
+  case socket.domain
+  of AF_INET6:
+    var sAddr: Sockaddr_in6
+    adaptRecvFromToDomain(AF_INET6)
+  of AF_INET:
+    var sAddr: Sockaddr_in
+    adaptRecvFromToDomain(AF_INET)
+  else:
+    raise newException(ValueError, "Unknown socket address family")
+
 proc recvFrom*(socket: AsyncSocket, size: int,
                flags = {SocketFlag.SafeDisconn}):
               owned(Future[tuple[data: string, address: string, port: Port]])
@@ -865,38 +919,17 @@ proc recvFrom*(socket: AsyncSocket, size: int,
   ## If an error occurs an OSError exception will be raised.
   ## 
   ## This proc is normally used with connectionless sockets (UDP sockets).
-  template adaptRecvFromToDomain(domain: Domain) =
-    var lAddr = sizeof(sAddr).SockLen
-    
-    let fut = await recvFromInto(AsyncFD(getFd(socket)), cstring(data), size,
-                                 cast[ptr SockAddr](addr sAddr), addr lAddr,
-                                 flags)
-    
-    data.setLen(fut)
-    
-    result.data = data
-    result.address = getAddrString(cast[ptr SockAddr](addr sAddr))
-
-    when domain == AF_INET6:
-      result.port = ntohs(sAddr.sin6_port).Port
-    else:
-      result.port = ntohs(sAddr.sin_port).Port
-
-  assert(socket.protocol != IPPROTO_TCP,
-         "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")
-  assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
-
-  var data = newString(size)
+  var
+    data = newFutureVar[string]()
+    address = newFutureVar[string]()
+    port = newFutureVar[Port]()
   
-  case socket.domain
-  of AF_INET6:
-    var sAddr: Sockaddr_in6
-    adaptRecvFromToDomain(AF_INET6)
-  of AF_INET:
-    var sAddr: Sockaddr_in
-    adaptRecvFromToDomain(AF_INET)
-  else:
-    raise newException(ValueError, "Unknown socket address family")
+  data.mget().setLen(size)
+  address.mget().setLen(46)
+  
+  let read = await recvFrom(socket, data, size, address, port, flags)
+
+  result = (data.mget(), address.mget(), port.mget())
 
 when not defined(testing) and isMainModule:
   type
