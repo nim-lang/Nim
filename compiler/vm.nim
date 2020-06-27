@@ -528,20 +528,42 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
-proc dumpProfile(c: PCtx, msg: string) =
-  var profile = c.profile
+type
+  Profiler = object
+    tEnter: float
+    tos: PStackFrame
 
-  echo msg
-  for i in 0..<32:
-    var tMax: float
-    var flMax: FileLine
-    for fl, t in profile:
-      if t > tMax:
-        tMax = t
-        flMax = fl
+proc dumpProfile(c: PCtx) =
+  if optProfileVM in c.config.globalOptions:
+    echo "VM profiler:"
+    var profile = c.profile
+    for i in 0..<32:
+      var tMax: float
+      var flMax: FileLine
+      for fl, t in profile:
+        if t > tMax:
+          tMax = t
+          flMax = fl
 
-    echo "  ", align($int(tMax * 1e6), 10), " µs: ", c.config.toMsgFilename(flMax.fileIndex), ":", flMax.line
-    profile.del flMax
+      echo "  ", align($int(tMax * 1e6), 10), " µs: ", c.config.toMsgFilename(flMax.fileIndex), ":", flMax.line
+      profile.del flMax
+
+proc enter(prof: var Profiler, c: PCtx, tos: PStackFrame) =
+  if optProfileVM in c.config.globalOptions:
+    prof.tEnter = cpuTime()
+    prof.tos = tos
+
+proc leave(prof: var Profiler, c: PCtx) =
+  if optProfileVM in c.config.globalOptions:
+    let tLeave = cpuTime()
+    var tos = prof.tos
+    while tos != nil:
+      if tos.prc != nil:
+        let profFl = FileLine(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
+        if profFl notin c.profile:
+          c.profile[profFl] = 0.0
+        c.profile[profFl] += tLeave - prof.tEnter
+      tos = tos.next
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -550,6 +572,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var savedPC = -1
   var savedFrame: PStackFrame
   var regs: seq[TFullReg] # alias to tos.slots for performance
+  var profiler: Profiler
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
   while true:
@@ -567,8 +590,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
 
-    let profT1 = cpuTime()
-    var profTos = tos
+    profiler.enter(c, tos)
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -2095,14 +2117,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
-    let profT2 = cpuTime()
-    while profTos != nil:
-      if profTos.prc != nil:
-        let profFl = FileLine(fileIndex: profTos.prc.info.fileIndex, line: profTos.prc.info.line)
-        if profFl notin c.profile:
-          c.profile[profFl] = 0.0
-        c.profile[profFl] += profT2 - profT1
-      profTos = profTos.next
+    profiler.leave(c)
 
     inc pc
 
@@ -2110,7 +2125,7 @@ proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
-  c.dumpProfile("execute")
+  c.dumpProfile()
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   if sym.kind in routineKinds:
@@ -2133,7 +2148,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
         putIntoReg(tos.slots[i], args[i-1])
 
       result = rawExecute(c, start, tos).regToNode
-      c.dumpProfile("execProc")
+      c.dumpProfile()
   else:
     localError(c.config, sym.info,
       "NimScript: attempt to call non-routine: " & sym.name.s)
@@ -2208,7 +2223,7 @@ proc evalConstExprAux(module: PSym;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
-  c.dumpProfile("evalConstExprAux")
+  c.dumpProfile()
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
@@ -2327,4 +2342,4 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   dec(g.config.evalMacroCounter)
   c.callsite = nil
   c.mode = oldMode
-  c.dumpProfile("evalMacroCall")
+  c.dumpProfile()

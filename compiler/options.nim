@@ -95,6 +95,7 @@ type                          # please make sure we have under 32 options
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
+    optProfileVM              # enable VM profiler
 
   TGlobalOptions* = set[TGlobalOption]
 
