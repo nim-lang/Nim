@@ -174,17 +174,25 @@ else: # main driver
       s.add line
     doAssert s == @["10"]
 
-  block: # startProcess stdout (replaces old test `tstderr` + `ta_out`)
+  block:
     let output = compileNimProg("-d:case_testfile3", "D20200626T221233")
-    var p = startProcess(output, dir, options={})
-    deferScoped: p.close()
-    do:
-      var x = newStringOfCap(120)
-      var serr, sout: seq[string]
-      while p.errorStream.readLine(x.TaintedString): serr.add x
-      while p.outputStream.readLine(x.TaintedString): sout.add x
-      doAssert serr == @["to stderr", "to stderr"]
-      doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stdout", "to stdout", "end ta_out"]
+    var x = newStringOfCap(120)
+    block: # startProcess stdout poStdErrToStdOut (replaces old test `tstdout` + `ta_out`)
+      var p = startProcess(output, dir, options={poStdErrToStdOut})
+      deferScoped: p.close()
+      do:
+        var sout: seq[string]
+        while p.outputStream.readLine(x.TaintedString): sout.add x
+        doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stderr", "to stderr", "to stdout", "to stdout", "end ta_out"]
+    block: # startProcess stderr (replaces old test `tstderr` + `ta_out`)
+      var p = startProcess(output, dir, options={})
+      deferScoped: p.close()
+      do:
+        var serr, sout: seq[string]
+        while p.errorStream.readLine(x.TaintedString): serr.add x
+        while p.outputStream.readLine(x.TaintedString): sout.add x
+        doAssert serr == @["to stderr", "to stderr"]
+        doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stdout", "to stdout", "end ta_out"]
 
   block: # startProcess exit code (replaces old test `texitcode` + `tafalse`)
     let output = compileNimProg("-d:case_testfile4", "D20200626T224758")
