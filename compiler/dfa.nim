@@ -616,17 +616,21 @@ proc aliases*(obj, field: PNode): bool =
       n = n[1]
     else: break
 
-proc useInstrTargets*(ins: Instr; loc: PNode): bool =
-  assert ins.kind == use
-  result = sameTrees(ins.n, loc) or
-    ins.n.aliases(loc) or loc.aliases(ins.n)
+type InstrTargetKind* = enum
+  None, Full, Partial
+
+proc useInstrTargets*(insloc, loc: PNode): bool =
+  sameTrees(insloc, loc) or insloc.aliases(loc) or loc.aliases(insloc)
   # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # use x.f;  question: does it affect the full 'x'? No.
   # use x; question does it affect 'x.f'? Yes.
 
-proc defInstrTargets*(ins: Instr; loc: PNode): bool =
-  assert ins.kind == def
-  result = sameTrees(ins.n, loc) or ins.n.aliases(loc)
+proc defInstrTargets*(insloc, loc: PNode): InstrTargetKind =
+  if sameTrees(insloc, loc) or insloc.aliases(loc):
+    Full
+  elif loc.aliases(insloc):
+    Partial
+  else: None
   # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # def x.f; question: does it affect the full 'x'? No.
   # def x; question: does it affect the 'x.f'? Yes.

@@ -70,12 +70,16 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
     of def:
-      if defInstrTargets(cfg[pc], location):
+      if defInstrTargets(cfg[pc].n, location) == Full:
         # the path leads to a redefinition of 's' --> abandon it.
         return high(int)
+      elif defInstrTargets(cfg[pc].n, location) == Partial:
+        # only partially writes to 's' --> can't sink 's', so this def reads 's'
+        otherRead = cfg[pc].n
+        return -1
       inc pc
     of use:
-      if useInstrTargets(cfg[pc], location):
+      if useInstrTargets(cfg[pc].n, location):
         otherRead = cfg[pc].n
         return -1
       inc pc
@@ -124,12 +128,12 @@ proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
   while pc < until:
     case cfg[pc].kind
     of def:
-      if defInstrTargets(cfg[pc], location):
+      if defInstrTargets(cfg[pc].n, location) != None:
         # a definition of 's' before ours makes ours not the first write
         return -1
       inc pc
     of use:
-      if useInstrTargets(cfg[pc], location):
+      if useInstrTargets(cfg[pc].n, location):
         return -1
       inc pc
     of goto:
