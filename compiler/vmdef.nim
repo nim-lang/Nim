@@ -287,7 +287,7 @@ type
   PEvalContext* = PCtx
 
 proc hash*(i: TLineInfo): Hash =
-  hash([i.line.int, i.col.int, i.fileIndex.int])
+  hash (i.line.int, i.col.int, i.fileIndex.int)
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
