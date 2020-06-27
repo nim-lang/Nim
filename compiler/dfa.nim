@@ -619,21 +619,14 @@ proc aliases*(obj, field: PNode): bool =
 type InstrTargetKind* = enum
   None, Full, Partial
 
-proc useInstrTargets*(insloc, loc: PNode): bool =
-  sameTrees(insloc, loc) or insloc.aliases(loc) or loc.aliases(insloc)
-  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-  # use x.f;  question: does it affect the full 'x'? No.
-  # use x; question does it affect 'x.f'? Yes.
-
-proc defInstrTargets*(insloc, loc: PNode): InstrTargetKind =
+proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
   if sameTrees(insloc, loc) or insloc.aliases(loc):
     Full
   elif loc.aliases(insloc):
     Partial
   else: None
-  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-  # def x.f; question: does it affect the full 'x'? No.
-  # def x; question: does it affect the 'x.f'? Yes.
+  # def x.f -> x: Partial
+  # def x -> x.f: Full
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
