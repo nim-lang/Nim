@@ -14,7 +14,7 @@ proc leave*(prof: var Profiler, c: PCtx) {.inline.} =
     var tos = prof.tos
     while tos != nil:
       if tos.prc != nil:
-        let li = TLineInfo(fileIndex: tos.prc.info.fileIndex, line: tos.prc.info.line)
+        let li = tos.prc.info
         if li notin c.profiler.data:
           c.profiler.data[li] = ProfileInfo()
         c.profiler.data[li].time += tLeave - prof.tEnter
@@ -35,8 +35,7 @@ proc dump*(p: var Profiler, c: PCtx) =
           flMax = fl
       if infoMax.count == 0:
         break
-      var msg = "  " & align($int(infoMax.time * 1e6), 10) &
-                       align($int(infoMax.count), 10) & "  "
-      toLocation(msg, c.config.toMsgFilename(flMax.fileIndex), flMax.line.int, 0)
-      echo msg
+      echo  "  " & align($int(infoMax.time * 1e6), 10) &
+                   align($int(infoMax.count), 10) & "  " &
+                   c.config.toFileLineCol(flMax)
       data.del flMax
