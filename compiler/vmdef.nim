@@ -274,7 +274,9 @@ type
   PEvalContext* = PCtx
 
 proc hash*(f: FileLine): Hash =
-  f.line.int * 32768 + f.fileIndex.int
+  result = result !& f.line.int
+  result = result !& f.fileIndex.int
+  result = !$ result
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
