@@ -54,11 +54,40 @@ elif defined(case_testfile2):
   let x = stdin.readLine()
   echo x.parseInt + 5
 
+elif defined(case_testfile3):
+  echo "start ta_out"
+  stdout.writeLine("to stdout")
+  stdout.flushFile()
+  stdout.writeLine("to stdout")
+  stdout.flushFile()
+
+  stderr.writeLine("to stderr")
+  stderr.flushFile()
+  stderr.writeLine("to stderr")
+  stderr.flushFile()
+
+  stdout.writeLine("to stdout")
+  stdout.flushFile()
+  stdout.writeLine("to stdout")
+  stdout.flushFile()
+  echo "end ta_out"
+
+elif defined(case_testfile4):
+  import system # we could remove that
+  quit(QuitFailure)
+
 else: # main driver
   import stdtest/[specialpaths, unittest_light]
   import os, osproc, strutils
   const nim = getCurrentCompilerExe()
   const sourcePath = currentSourcePath()
+  let dir = getCurrentDir() / "tests" / "osproc"
+
+  template deferScoped(cleanup, body) =
+    # pending https://github.com/nim-lang/RFCs/issues/236#issuecomment-646855314
+    # xxx move to std/sugar or (preferably) some low level module
+    try: body
+    finally: cleanup
 
   # we're testing `execShellCmd` so don't rely on it to compile test file
   # note: this should be exported in posix.nim
@@ -66,7 +95,7 @@ else: # main driver
 
   proc compileNimProg(opt: string, name: string): string =
     result = buildDir / name.addFileExt(ExeExt)
-    let cmd = "$# c -o:$# $# $#" % [nim.quoteShell, result.quoteShell, opt, sourcePath.quoteShell]
+    let cmd = "$# c -o:$# --hints:off $# $#" % [nim.quoteShell, result.quoteShell, opt, sourcePath.quoteShell]
     doAssert c_system(cmd) == 0, $cmd
     doAssert result.fileExists
 
@@ -134,7 +163,7 @@ else: # main driver
 
   block: # startProcess stdin (replaces old test `tstdin` + `ta_in`)
     let output = compileNimProg("-d:case_testfile2", "D20200626T215919")
-    var p = startProcess(output, getCurrentDir() / "tests" / "osproc") # dir not needed though
+    var p = startProcess(output, dir) # dir not needed though
     p.inputStream.write("5\n")
     p.inputStream.flush()
     var line = ""
@@ -142,6 +171,37 @@ else: # main driver
     while p.outputStream.readLine(line.TaintedString):
       s.add line
     doAssert s == @["10"]
+
+  block: # startProcess stdout (replaces old test `tstderr` + `ta_out`)
+    let output = compileNimProg("-d:case_testfile3", "D20200626T221233")
+    var p = startProcess(output, dir, options={})
+    deferScoped: p.close()
+    do:
+      var x = newStringOfCap(120)
+      var serr, sout: seq[string]
+      while p.errorStream.readLine(x.TaintedString): serr.add x
+      while p.outputStream.readLine(x.TaintedString): sout.add x
+      doAssert serr == @["to stderr", "to stderr"]
+      doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stdout", "to stdout", "end ta_out"]
+
+  block: # startProcess exit code (replaces old test `texitcode` + `tafalse`)
+    let output = compileNimProg("-d:case_testfile4", "D20200626T224758")
+    var p = startProcess(output, dir)
+    doAssert waitForExit(p) == QuitFailure
+    p = startProcess(output, dir)
+    var running = true
+    while running:
+      # xxx: avoid busyloop?
+      running = running(p)
+    doAssert waitForExit(p) == QuitFailure
+
+    # make sure that first call to running() after process exit returns false
+    p = startProcess(output, dir)
+    for j in 0..<30: # refs #13449
+      os.sleep(50)
+      if not running(p): break
+    doAssert not running(p)
+    doAssert waitForExit(p) == QuitFailure # avoid zombies
 
   import std/strtabs
   block execProcessTest:
