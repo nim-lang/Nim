@@ -702,10 +702,6 @@ proc genDef(c: var Con; orig: PNode) =
     c.code.add Instr(n: orig, kind: def)
   elif isAnalysableFieldAccess(orig, c.owner):
     c.code.add Instr(n: orig, kind: def)
-  else:
-    # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
-    # we still need to gather the use information:
-    gen(c, orig)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
