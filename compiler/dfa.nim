@@ -29,7 +29,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, types, intsets, lineinfos, renderer
+import ast, types, intsets, lineinfos, renderer, asciitables
 
 from patterns import sameTrees
 
@@ -82,15 +82,14 @@ proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
       result.add "L"
       result.addInt c[i].dest+i
     result.add("\t#")
-    result.add($c[i].n.info)
+    result.add($c[i].n.info.line)
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
-  # consider calling `asciitables.alignTable`
 
 proc echoCfg*(c: ControlFlowGraph; start = 0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
-  echo codeListing(c, start, last)
+  echo codeListing(c, start, last).alignTable
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
