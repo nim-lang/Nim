@@ -7,8 +7,6 @@ joinable: false
 because it'd need cleanup up stdout
 ]#
 
-import stdtest/[specialpaths, unittest_light]
-
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
   proc c_exit2(code: c_int): void {.importc: "_exit", header: "<unistd.h>".}
@@ -51,22 +49,29 @@ when defined(case_testfile): # compiled test file for child process
       echo args[1]
   main()
 
-else:
+elif defined(case_testfile2):
+  import strutils
+  let x = stdin.readLine()
+  echo x.parseInt + 5
 
+else: # main driver
+  import stdtest/[specialpaths, unittest_light]
   import os, osproc, strutils
   const nim = getCurrentCompilerExe()
+  const sourcePath = currentSourcePath()
+
+  # we're testing `execShellCmd` so don't rely on it to compile test file
+  # note: this should be exported in posix.nim
+  proc c_system(cmd: cstring): cint {.importc: "system", header: "<stdlib.h>".}
+
+  proc compileNimProg(opt: string, name: string): string =
+    result = buildDir / name.addFileExt(ExeExt)
+    let cmd = "$# c -o:$# $# $#" % [nim.quoteShell, result.quoteShell, opt, sourcePath.quoteShell]
+    doAssert c_system(cmd) == 0, $cmd
+    doAssert result.fileExists
 
   block execShellCmdTest:
-    ## first, compile child program
-    const sourcePath = currentSourcePath()
-    let output = buildDir / "D20190111T024543".addFileExt(ExeExt)
-    let cmd = "$# c -o:$# -d:release -d:case_testfile $#" % [nim, output,
-        sourcePath]
-    # we're testing `execShellCmd` so don't rely on it to compile test file
-    # note: this should be exported in posix.nim
-    proc c_system(cmd: cstring): cint {.importc: "system",
-      header: "<stdlib.h>".}
-    assertEquals c_system(cmd), 0
+    let output = compileNimProg("-d:release -d:case_testfile", "D20190111T024543")
 
     ## use it
     template runTest(arg: string, expected: int) =
@@ -79,7 +84,7 @@ else:
     runTest("quit_139", 139)
 
   block execProcessTest:
-    let dir = parentDir(currentSourcePath())
+    let dir = sourcePath.parentDir
     let (_, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
     doAssert err == 0
     let exePath = dir / addFileExt("osproctest", ExeExt)
@@ -101,6 +106,7 @@ else:
       discard
 
   import std/streams
+
   block: # test for startProcess (more tests needed)
     # bugfix: windows stdin.close was a noop and led to blocking reads
     proc startProcessTest(command: string, options: set[ProcessOption] = {
@@ -125,6 +131,17 @@ else:
 
     var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
     doAssert result == ("12\n", 0)
+
+  block: # startProcess stdin (replaces old test `tstdin` + `ta_in`)
+    let output = compileNimProg("-d:case_testfile2", "D20200626T215919")
+    var p = startProcess(output, getCurrentDir() / "tests" / "osproc") # dir not needed though
+    p.inputStream.write("5\n")
+    p.inputStream.flush()
+    var line = ""
+    var s: seq[string]
+    while p.outputStream.readLine(line.TaintedString):
+      s.add line
+    doAssert s == @["10"]
 
   import std/strtabs
   block execProcessTest:
