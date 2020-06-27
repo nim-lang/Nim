@@ -267,7 +267,7 @@ Conventions for multi-line statements and expressions
       EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
                             output: var string)
 
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float
+    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float,
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
 
