@@ -61,10 +61,7 @@ type
     blocks: seq[TBlock]
     owner: PSym
 
-proc debugInfo(info: TLineInfo): string =
-  result = $info.line #info.toFilename & ":" & $info.line
-
-proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
+proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
@@ -85,17 +82,15 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
       result.add "L"
       result.addInt c[i].dest+i
     result.add("\t#")
-    result.add(debugInfo(c[i].n.info))
+    result.add($c[i].n.info)
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
   # consider calling `asciitables.alignTable`
 
-proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
+proc echoCfg*(c: ControlFlowGraph; start = 0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
-  var buf = ""
-  codeListing(c, buf, start, last)
-  echo buf
+  echo codeListing(c, start, last)
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -273,22 +268,20 @@ duplicate the 'join' instructions on breaks and return exits!
 
 ]#
 
-proc genLabel(c: Con): TPosition =
-  result = TPosition(c.code.len)
+proc genLabel(c: Con): TPosition = TPosition(c.code.len)
+
+template checkedDistance(dist): int =
+  doAssert low(int) div 2 + 1 < dist and dist < high(int) div 2
+  dist
 
 proc jmpBack(c: var Con, n: PNode, p = TPosition(0)) =
-  let dist = p.int - c.code.len
-  doAssert(low(int) div 2 + 1 < dist and dist < high(int) div 2)
-  c.code.add Instr(n: n, kind: goto, dest: dist)
+  c.code.add Instr(n: n, kind: goto, dest: checkedDistance(p.int - c.code.len))
 
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
-  let p = p.int
-  let diff = c.code.len - p
-  doAssert(low(int) div 2 + 1 < diff and diff < high(int) div 2)
-  c.code[p].dest = diff
+  c.code[p.int].dest = checkedDistance(c.code.len - p.int)
 
-proc gen(c: var Con; n: PNode) # {.noSideEffect.}
+func gen(c: var Con; n: PNode)
 
 proc popBlock(c: var Con; oldLen: int) =
   var exits: seq[TPosition]
@@ -302,8 +295,8 @@ proc popBlock(c: var Con; oldLen: int) =
     c.patch e
   c.blocks.setLen(oldLen)
 
-template withBlock(labl: PSym; body: untyped) {.dirty.} =
-  var oldLen {.gensym.} = c.blocks.len
+template withBlock(labl: PSym; body: untyped) =
+  let oldLen = c.blocks.len
   c.blocks.add TBlock(isTryBlock: false, label: labl)
   body
   popBlock(c, oldLen)
@@ -366,11 +359,9 @@ when true:
           endings[i] = c.forkI(n)
           c.gen(n[1])
         for i in countdown(endings.high, 0):
-          let endPos = endings[i]
-          c.patch(endPos)
+          c.patch(endings[i])
 
 else:
-
   proc genWhile(c: var Con; n: PNode) =
     # lab1:
     #   cond, tmp
@@ -385,10 +376,9 @@ else:
         c.jmpBack(n, lab1)
       else:
         c.gen(n[0])
-        let lab2 = c.forkI(n)
-        c.gen(n[1])
-        c.jmpBack(n, lab1)
-        c.patch(lab2)
+        forkT(n):
+          c.gen(n[1])
+          c.jmpBack(n, lab1)
 
 template forkT(n, body) =
   let lab1 = c.forkI(n)
@@ -434,16 +424,14 @@ proc genIf(c: var Con, n: PNode) =
   ]#
   var endings: seq[TPosition] = @[]
   for i in 0..<n.len:
-    var it = n[i]
+    let it = n[i]
     c.gen(it[0])
     if it.len == 2:
-      let elsePos = forkI(c, it[1])
-      c.gen(it[1])
-      endings.add(c.gotoI(it[1]))
-      c.patch(elsePos)
+      forkT(it[1]):
+        c.gen(it[1])
+        endings.add c.gotoI(it[1])
   for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
+    c.patch(endings[i])
 
 proc genAndOr(c: var Con; n: PNode) =
   #   asgn dest, a
@@ -473,16 +461,13 @@ proc genCase(c: var Con; n: PNode) =
   c.gen(n[0])
   for i in 1..<n.len:
     let it = n[i]
-    if it.len == 1:
-      c.gen(it[0])
-    elif i == n.len-1 and isExhaustive:
+    if it.len == 1 or (i == n.len-1 and isExhaustive):
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
     else:
-      let elsePos = c.forkI(it.lastSon)
-      c.gen(it.lastSon)
-      endings.add(c.gotoI(it.lastSon))
-      c.patch(elsePos)
+      forkT(it.lastSon):
+        c.gen(it.lastSon)
+        endings.add c.gotoI(it.lastSon)
   for i in countdown(endings.high, 0):
     let endPos = endings[i]
     c.patch(endPos)
@@ -506,7 +491,6 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
 
 proc genBreak(c: var Con; n: PNode) =
   if n[0].kind == nkSym:
-    #echo cast[int](n[0].sym)
     for i in countdown(c.blocks.high, 0):
       if not c.blocks[i].isTryBlock and c.blocks[i].label == n[0].sym:
         genBreakOrRaiseAux(c, i, n)
@@ -525,7 +509,6 @@ proc genTry(c: var Con; n: PNode) =
   c.blocks.add TBlock(isTryBlock: true, finale: if n[^1].kind == nkFinally: n[^1] else: newNode(nkEmpty))
 
   inc c.inTryStmt
-  #let elsePos = c.forkI(n)
   c.gen(n[0])
   dec c.inTryStmt
 
@@ -534,20 +517,14 @@ proc genTry(c: var Con; n: PNode) =
 
   c.blocks.setLen oldLen
 
-  #c.patch(elsePos)
   for i in 1..<n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      let endExcept = c.forkI(it)
-      c.gen(it.lastSon)
-      endings.add(c.gotoI(it))
-      c.patch(endExcept)
+      forkT(it):
+        c.gen(it.lastSon)
+        endings.add c.gotoI(it)
   for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
-
-  # join the 'elsePos' forkI instruction:
-  #c.joinI(c.blocks[^1].forks.pop(), n)
+    c.patch(endings[i])
 
   let fin = lastSon(n)
   if fin.kind == nkFinally:
@@ -648,8 +625,8 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       # bug #14159, we cannot reason about sinkParam[].location as it can
       # still be shared for tyRef.
       n = n[0]
-      return n.kind == nkSym and n.sym.owner == owner and (
-          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
+      return n.kind == nkSym and n.sym.owner == owner and
+         (n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
     else: break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
@@ -681,7 +658,7 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
     else: break
 
 proc genUse(c: var Con; orig: PNode) =
-  var n = c.skipTrivials(orig)
+  let n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use)
@@ -689,7 +666,7 @@ proc genUse(c: var Con; orig: PNode) =
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =
-  var n = c.skipTrivials(orig)
+  let n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: def)
@@ -713,12 +690,11 @@ proc genCall(c: var Con; n: PNode) =
     # goto exceptionHandler (except or finally)
     # lab1:
     # join F1
-    let endGoto = c.forkI(n)
-    for i in countdown(c.blocks.high, 0):
-      if c.blocks[i].isTryBlock:
-        genBreakOrRaiseAux(c, i, n)
-        break
-    c.patch(endGoto)
+    forkT(n):
+      for i in countdown(c.blocks.high, 0):
+        if c.blocks[i].isTryBlock:
+          genBreakOrRaiseAux(c, i, n)
+          break
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
   case m
@@ -741,7 +717,7 @@ proc genVarSection(c: var Con; n: PNode) =
       if a.lastSon.kind != nkEmpty:
         genDef(c, a[0])
 
-proc gen(c: var Con; n: PNode) =
+func gen(c: var Con; n: PNode) =
   case n.kind
   of nkSym: genUse(c, n)
   of nkCallKinds:
