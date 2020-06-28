@@ -643,13 +643,14 @@ $1 define nimRefreshLine(line) #nimRefreshLine2(line)
 
   discard cgsym(p.module, nimFrame)
   p.lastLineInfo.fileIndex = info.fileIndex # CHECKME
-  # var line = 1
+  var line = 0
+
+  # this incurs a small cost and may not be needed since 1st statement will update line:
   # if p.prc != nil and p.prc.ast != nil:
   #   line = p.prc.ast.info.line.int
-  # result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
-  # if p.prc != nil and p.prc.ast != nil:
-  #   genLineDir(p, p.prc.ast.info)
-  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, 0])
+
+  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
+  if line != 0: genLineDir(p, p.prc.ast.info)
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   # TODO: see where this comes from, needs to be updated
