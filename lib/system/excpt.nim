@@ -592,8 +592,9 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
   frameData.tframes[frameData.frameIndex].procname = procname
   frameData.tframes[frameData.frameIndex].filename = filename
   frameData.tframes[frameData.frameIndex].line = line
-  # frameData.tframes[frameData.frameIndex].line = 0
-  # tframes[frameIndex].len = 0 # CHECKME
+  #[
+  could also inspect argument slots here.
+  ]#
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
