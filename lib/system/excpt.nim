@@ -564,17 +564,17 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
+proc nimRefreshLine2(line: int) {.compilerRtl, inl, raises: [].} =
     frameData.tframes[frameData.frameIndex].line = line
-proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+
+proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   #[
   # TODO: compare apples to apples, eg wo nimLine only nimFrame
-  TODO: no need for filename when we have nimFrame, since filename won't change
+  note that filename can change within a function because of templates
   SEE also:
   codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
   __attribute__ ((optimize(1)))
   ]#
-    # c_printf "D20200308T182538\n"
     frameData.tframes[frameData.frameIndex].filename = filename
     frameData.tframes[frameData.frameIndex].line = line
 

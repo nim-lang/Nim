@@ -252,8 +252,12 @@ proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
-  if p.lastLineInfo.line != info.line or
-     p.lastLineInfo.fileIndex != info.fileIndex:
+  if p.lastLineInfo.line != info.line:
+    p.lastLineInfo.line = info.line
+    result = true
+
+proc freshFileInfo(p: BProc; info: TLineInfo): bool =
+  if p.lastLineInfo.fileIndex != info.fileIndex:
     p.lastLineInfo.line = info.line
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
@@ -266,9 +270,10 @@ proc genLineDir(p: BProc, info: TLineInfo) =
   genCLineDir(p.s(cpsStmts), toFullPath(p.config, info), line, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and info.fileIndex != InvalidFileIdx:
-    if freshLineInfo(p, info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              [line, quotedFilename(p.config, info)])
+    if freshFileInfo(p, info):
+      linefmt(p, cpsStmts, "nimRefreshFile($1, $2);$n", [quotedFilename(p.config, info), line])
+    elif freshLineInfo(p, info):
+      linefmt(p, cpsStmts, "nimRefreshLine($1);$n", [line])
 
 template genLineDir(p: BProc, t: PNode) =
   genLineDir(p, t.info)
@@ -617,14 +622,15 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
 
 include ccgcalls, "ccgstmts.nim"
 
-proc initFrame(p: BProc, procname, filename: Rope): Rope =
+const nimFrame = "nimFrame"
+
+proc initFrame(p: BProc, info: TLineInfo, procname, filename: Rope): Rope =
   const frameDefines = """
 $1 define nimfr_(procname, filename, line2) \
   #nimFrame(procname, filename, line2); \
 
-$1 define nimln_(line2, file) \
-  #nimLine2(line2) \
-  // #nimLine(file, line2)
+$1 define nimRefreshFile(file, line) #nimRefreshFile2(file, line)
+$1 define nimRefreshLine(line) #nimRefreshLine2(line)
 """
   #[
   dead code that could be revived one day
@@ -635,7 +641,8 @@ $1 define nimln_(line2, file) \
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
-  discard cgsym(p.module, "nimFrame")
+  discard cgsym(p.module, nimFrame)
+  p.lastLineInfo.fileIndex = info.fileIndex # CHECKME
   # var line = 1
   # if p.prc != nil and p.prc.ast != nil:
   #   line = p.prc.ast.info.line.int
@@ -646,11 +653,11 @@ $1 define nimln_(line2, file) \
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   # TODO: see where this comes from, needs to be updated
-  discard cgsym(p.module, "nimFrame")
+  discard cgsym(p.module, nimFrame)
   p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &
-                      " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
-                      [frame, procname, filename, line])
+                      " $1.line = $4; $1.len = -1; $5(&$1);$n",
+                      [frame, procname, filename, line, nimFrame])
 
 proc deinitFrameNoDebug(p: BProc; frame: Rope): Rope =
   result = ropecg(p.module, "\t#popFrameOfAddr(&$1);$n", [frame])
@@ -1063,7 +1070,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optStackTrace in prc.options:
       generatedProc.add(p.s(cpsLocals))
       var procname = makeCString(prc.name.s)
-      generatedProc.add(initFrame(p, procname, quotedFilename(p.config, prc.info)))
+      generatedProc.add(initFrame(p, prc.info, procname, quotedFilename(p.config, prc.info)))
     else:
       generatedProc.add(p.s(cpsLocals))
     if optProfiler in prc.options:
@@ -1696,7 +1703,7 @@ proc genInitCode(m: BModule) =
       incl m.flags, frameDeclared
       if preventStackTrace notin m.flags:
         var procname = makeCString(m.module.name.s)
-        prc.add(initFrame(m.initProc, procname, quotedFilename(m.config, m.module.info)))
+        prc.add(initFrame(m.initProc, m.module.info, procname, quotedFilename(m.config, m.module.info)))
       else:
         prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
 

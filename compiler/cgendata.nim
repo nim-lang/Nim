@@ -196,6 +196,10 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
   result.sigConflicts = initCountTable[string]()
+  if prc != nil:
+    result.lastLineInfo = prc.info
+  else:
+    result.lastLineInfo = module.module.info
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
