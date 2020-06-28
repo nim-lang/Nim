@@ -17,7 +17,7 @@ proc somethingAsync() {.async.} =
   echo "async done"
   done = true
   
-discard somethingAsync()
+asyncCheck somethingAsync()
 var count = 0
 while not done:
   count += 1
