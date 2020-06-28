@@ -468,7 +468,7 @@ The CellSet data structure
 The GC depends on an extremely efficient datastructure for storing a
 set of pointers - this is called a ``TCellSet`` in the source code.
 Inserting, deleting and searching are done in constant time. However,
-modifying a ``TCellSet`` during traversation leads to undefined behaviour.
+modifying a ``TCellSet`` during traversal leads to undefined behaviour.
 
 .. code-block:: Nim
   type
@@ -558,7 +558,7 @@ This means that a call through a closure generates an ``if`` but the
 interoperability is worth the cost of the ``if``. Thunk generation would be
 possible too, but it's slightly more effort to implement.
 
-Tests with GCC on Amd64 showed that it's really beneficical if the
+Tests with GCC on Amd64 showed that it's really beneficial if the
 'environment' pointer is passed as the last argument, not as the first argument.
 
 Proper thunk generation is harder because the proc that is to wrap
@@ -609,7 +609,7 @@ Beware of nesting:
 
 .. code-block:: nim
   proc add(x: int): proc (y: int): proc (z: int): int {.closure.} {.closure.} =
-    return lamba (y: int): proc (z: int): int {.closure.} =
+    return lambda (y: int): proc (z: int): int {.closure.} =
       return lambda (z: int): int =
         return x + y + z
 

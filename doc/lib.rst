@@ -214,7 +214,7 @@ Generic Operating System Services
   This module implements the ability to access symbols from shared libraries.
 
 * `marshal <marshal.html>`_
-  Contains procs for serialization and deseralization of arbitrary Nim
+  Contains procs for serialization and deserialization of arbitrary Nim
   data structures.
 
 * `memfiles <memfiles.html>`_
@@ -267,7 +267,7 @@ Math libraries
   Statistical analysis
 
 * `std/sums <sums.html>`_
-  Fast sumation functions.
+  Fast summation functions.
 
 
 Internet Protocols and Support
