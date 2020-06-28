@@ -180,9 +180,7 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added the `thiscall` calling convention as specified by Microsoft.
-
-- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
 
