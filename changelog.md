@@ -150,7 +150,7 @@
       deallocShared(x.val)
       x.val = nil
   ```
-- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
