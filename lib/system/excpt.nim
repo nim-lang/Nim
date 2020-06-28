@@ -66,17 +66,14 @@ type FrameIndex = uint
   # maybe use distinct?
 
 type FrameData = object
-  nimFrameGuard: bool
   tframesCap: int
   frameIndex: FrameIndex
     # more efficient than just relying on tframes.len, eg for tframes.setLen(len-1) we don't want to do any checks not call dtor etc
   tframes: ptr UncheckedArray[TFrame]
-  # tframes* array[1000, TFrame]
-  # tframes: seq[TFrame]
 
 var
-  # frameData {.threadvar.}: FrameData
-  frameData {.threadvar, exportc: "c_frameData".}: FrameData
+  frameData {.threadvar.}: FrameData
+  # frameData {.threadvar, exportc: "c_frameData".}: FrameData
 
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers

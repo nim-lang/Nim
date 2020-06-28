@@ -34,7 +34,8 @@ proc toCChar*(c: char; result: var string) =
     result.add c
 
 proc makeCString*(s: string): Rope =
-  const MaxLineLength = 64
+  const MaxLineLength = 128
+    # WAS: 64 ; what's the point of this limit? it results in broken strings (include filenames in cgen files)
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   res.add("\"")
