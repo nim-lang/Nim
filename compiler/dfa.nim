@@ -597,12 +597,10 @@ type InstrTargetKind* = enum
 
 proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
   if sameTrees(insloc, loc) or insloc.aliases(loc):
-    Full
+    Full    # x -> x; x -> x.f
   elif loc.aliases(insloc):
-    Partial
+    Partial # x.f -> x
   else: None
-  # def x.f -> x: Partial
-  # def x -> x.f: Full
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
@@ -668,8 +666,6 @@ proc genDef(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: def)
-  elif isAnalysableFieldAccess(orig, c.owner):
     c.code.add Instr(n: orig, kind: def)
 
 proc genCall(c: var Con; n: PNode) =
@@ -754,13 +750,12 @@ func gen(c: var Con; n: PNode) =
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkYieldStmt:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
-  of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n[0])
+  of nkDiscardStmt, nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
+    gen(c, n[0])
   of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
     gen(c, n[1])
-  of nkStringToCString, nkCStringToString: gen(c, n[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
-  of nkDefer:
-    doAssert false, "dfa construction pass requires the elimination of 'defer'"
+  of nkDefer: doAssert false, "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
