@@ -623,7 +623,8 @@ $1 define nimfr_(procname, filename, line2) \
   #nimFrame(procname, filename, line2); \
 
 $1 define nimln_(line2, file) \
-  #nimLine(file, line2)
+  #nimLine2(line2) \
+  // #nimLine(file, line2)
 """
   #[
   dead code that could be revived one day
@@ -635,12 +636,13 @@ $1 define nimln_(line2, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   discard cgsym(p.module, "nimFrame")
-  var line = 1
-  if p.prc != nil and p.prc.ast != nil:
-    line = p.prc.ast.info.line.int
-  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
-  if p.prc != nil and p.prc.ast != nil:
-    genLineDir(p, p.prc.ast.info)
+  # var line = 1
+  # if p.prc != nil and p.prc.ast != nil:
+  #   line = p.prc.ast.info.line.int
+  # result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
+  # if p.prc != nil and p.prc.ast != nil:
+  #   genLineDir(p, p.prc.ast.info)
+  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, 0])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   # TODO: see where this comes from, needs to be updated

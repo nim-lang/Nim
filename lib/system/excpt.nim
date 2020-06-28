@@ -564,6 +564,8 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
+proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
+    frameData.tframes[frameData.frameIndex].line = line
 proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   #[
   # TODO: compare apples to apples, eg wo nimLine only nimFrame
@@ -596,7 +598,8 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     frameData.tframes[frameData.frameIndex].frameMsgLen = frameData.tframes[frameData.frameIndex-1].frameMsgLen
   frameData.tframes[frameData.frameIndex].procname = procname
   frameData.tframes[frameData.frameIndex].filename = filename
-  frameData.tframes[frameData.frameIndex].line = line
+  # frameData.tframes[frameData.frameIndex].line = line
+  frameData.tframes[frameData.frameIndex].line = 0
   # tframes[frameIndex].len = 0 # CHECKME
   # frameData.nimFrameGuard = false
 
