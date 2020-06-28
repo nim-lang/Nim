@@ -693,7 +693,8 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
-    myself &= " --batch:" & testamentData0.batchArg
+    if testamentData0.batchArg.len > 0:
+      myself &= " --batch:" & testamentData0.batchArg
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
