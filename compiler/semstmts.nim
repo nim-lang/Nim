@@ -586,23 +586,19 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.add a[^2]
         b.add copyTree(def)
         addToVarSection(c, result, n, b)
-        if optOldAst in c.config.options:
-          if def.kind != nkEmpty:
-            v.ast = def
+        # this is needed for the evaluation pass, guard checking
+        #  and custom pragmas:
+        var ast = newNodeI(nkIdentDefs, a.info)
+        if a[j].kind == nkPragmaExpr:
+          var p = newNodeI(nkPragmaExpr, a.info)
+          p.add newSymNode(v)
+          p.add a[j][1].copyTree
+          ast.add p
         else:
-          # this is needed for the evaluation pass, guard checking
-          #  and custom pragmas:
-          var ast = newNodeI(nkIdentDefs, a.info)
-          if a[j].kind == nkPragmaExpr:
-            var p = newNodeI(nkPragmaExpr, a.info)
-            p.add newSymNode(v)
-            p.add a[j][1].copyTree
-            ast.add p
-          else:
-            ast.add newSymNode(v)
-          ast.add a[^2].copyTree
-          ast.add def
-          v.ast = ast
+          ast.add newSymNode(v)
+        ast.add a[^2].copyTree
+        ast.add def
+        v.ast = ast
       else:
         if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
         # bug #7663, for 'nim check' this can be a non-tuple:
