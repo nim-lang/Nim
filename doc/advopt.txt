@@ -78,7 +78,7 @@ Advanced options:
                             if path == @path, will use first matching dir in `--path`
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
-                            if these are nonexistant, will use project path
+                            if these are nonexistent, will use project path
   -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
                             else, runs runnableExamples with given options, eg:

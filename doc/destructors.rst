@@ -225,7 +225,7 @@ A sink parameter
 *may* be consumed once in the proc's body but doesn't have to be consumed at all.
 The reason for this is that signatures
 like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible
-without any further overloads and ``put`` might not take owership of ``k`` if
+without any further overloads and ``put`` might not take ownership of ``k`` if
 ``k`` already exists in the table. Sink parameters enable an affine type system,
 not a linear type system.
 
