@@ -254,17 +254,30 @@ proc auxWriteStackTrace(f: FrameIndex; s: var seq[StackTraceEntry]) =
     it.dec
     dec last
 
-template addFrameEntry(s: var string, f: StackTraceEntry|TFrame) = # TODO: PFrame?
+template alignLoc(s, oldLen) = 
+  for k in 1..max(1, 25-(s.len-oldLen)): s.add ' '
+proc toLocationImpl(s: var string, f: StackTraceEntry) =
   var oldLen = s.len
   s.toLocation(f.filename, f.line, 0)
-  for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-  add(s, f.procname)
+  alignLoc(s, oldLen)
+  s.add f.procname
+
+proc toLocationImpl(s: var string, f: FrameIndex) =
+  var oldLen = s.len
+  let f2 = frameData.tframes[f].addr
+  s.toLocation(f2.filename, f2.line, 0)
+  alignLoc(s, oldLen)
+  s.add f2.procname
+
+template addFrameEntry(s: var string, f: StackTraceEntry|FrameIndex) =
+  s.toLocationImpl(f)
   when NimStackTraceMsgs:
     when type(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
-      var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
-      for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
+      var first = if f>0:frameData.tframes[f-1].frameMsgLen else: 0
+      let last = frameData.tframes[f].frameMsgLen
+      for i in first..<last: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
@@ -317,7 +330,7 @@ when hasSomeStackTrace:
         add(s, $skipped)
         add(s, " calls omitted) ...\n")
       else:
-        addFrameEntry(s, frameData.tframes[tempFrames[j]])
+        addFrameEntry(s, tempFrames[j])
 
   proc stackTraceAvailable*(): bool
 
