@@ -75,7 +75,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   of tyArray:
     let arraySize = lengthOrd(c.p.config, typ[0])
     var i: TLoc
-    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
+    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
     let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
@@ -119,7 +119,7 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
   var i: TLoc
-  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
+  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo, tyInt), i)
   let oldCode = p.s(cpsStmts)
   var a: TLoc
   a.r = accessor

@@ -1,6 +1,4 @@
-
 # Tests unsigned literals and implicit conversion between uints and ints
-# Passes if it compiles
 
 var h8:uint8 = 128
 var h16:uint16 = 32768
@@ -43,3 +41,21 @@ block t4176:
   var yyy: uint8 = 0
   yyy = yyy - 127
   doAssert type(yyy) is uint8
+
+# bug #13661
+
+proc fun(): uint = cast[uint](-1)
+const x0 = fun()
+
+doAssert typeof(x0) is uint
+
+discard $x0
+
+# bug #13671
+
+const x1 = cast[uint](-1)
+discard $(x1,)
+
+# bug #13698
+let n: csize = 1 # xxx should that be csize_t or is that essential here?
+doAssert $n.int32 == "1"

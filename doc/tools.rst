@@ -29,3 +29,11 @@ The standard distribution ships with the following tools:
 - | nimpretty
   | ``nimpretty`` is a Nim source code beautifier,
     to format code according to the official style guide.
+
+- | testament
+  | ``testament`` is an advanced automatic *unittests runner* for Nim tests,
+    is used for the development of Nim itself, offers process isolation for your tests,
+    it can generate statistics about test cases, supports multiple targets (C, JS, etc),
+    `simulated Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
+    has logging, can generate HTML reports, skip tests from a file and more,
+    so can be useful to run your tests, even the most complex ones.

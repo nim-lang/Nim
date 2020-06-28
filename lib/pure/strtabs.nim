@@ -48,16 +48,18 @@ runnableExamples:
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
 
+import std/private/since
 
 import
   hashes, strutils
 
-when defined(js):
+when defined(js) or defined(nimscript):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
   import os
-  include "system/inclrtl"
+
+include "system/inclrtl"
 
 type
   StringTableMode* = enum ## Describes the tables operation mode.
@@ -226,7 +228,7 @@ proc enlarge(t: StringTableRef) =
   var n: KeyValuePairSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].hasValue: rawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].hasValue: rawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*(t: StringTableRef, key, val: string) {.
@@ -297,7 +299,7 @@ proc raiseFormatException(s: string) =
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
-  when defined(js):
+  when defined(js) or defined(nimscript):
     result = ""
   else:
     if useEnvironment in flags: result = os.getEnv(key).string
@@ -417,6 +419,24 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
       add(result, f[i])
       inc(i)
 
+since (1,3,5):
+  proc fromJsonHook*[T](a: var StringTableRef, b: T) =
+    ## for json.fromJson
+    mixin jsonTo
+    var mode = jsonTo(b["mode"], StringTableMode)
+    a = newStringTable(mode)
+    let b2 = b["table"]
+    for k,v in b2: a[k] = jsonTo(v, string)
+
+  proc toJsonHook*[](a: StringTableRef): auto =
+    ## for json.toJson
+    mixin newJObject
+    mixin toJson
+    result = newJObject()
+    result["mode"] = toJson($a.mode)
+    let t = newJObject()
+    for k,v in a: t[k] = toJson(v)
+    result["table"] = t
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable

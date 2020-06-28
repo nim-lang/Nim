@@ -571,7 +571,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
         try:
           len = parseBiggestUInt(result.literal, iNumber)
         except ValueError:
-          raise newException(OverflowError, "number out of range: " & $result.literal)
+          raise newException(OverflowDefect, "number out of range: " & $result.literal)
         if len != result.literal.len:
           raise newException(ValueError, "invalid integer: " & $result.literal)
         result.iNumber = cast[int64](iNumber)
@@ -581,7 +581,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
         try:
           len = parseBiggestInt(result.literal, iNumber)
         except ValueError:
-          raise newException(OverflowError, "number out of range: " & $result.literal)
+          raise newException(OverflowDefect, "number out of range: " & $result.literal)
         if len != result.literal.len:
           raise newException(ValueError, "invalid integer: " & $result.literal)
         result.iNumber = iNumber
@@ -607,7 +607,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
 
   except ValueError:
     lexMessageLitNum(L, "invalid number: '$1'", startpos)
-  except OverflowError, RangeError:
+  except OverflowDefect, RangeDefect:
     lexMessageLitNum(L, "number out of range: '$1'", startpos)
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
@@ -684,12 +684,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if L.config.oldNewlines:
-      if tok.tokType == tkCharLit:
-        lexMessage(L, errGenerated, "\\n not allowed in character literal")
-      tok.literal.add(L.config.target.tnl)
-    else:
-      tok.literal.add('\L')
+    tok.literal.add('\L')
     inc(L.bufpos)
   of 'p', 'P':
     if tok.tokType == tkCharLit:
@@ -967,7 +962,7 @@ proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs: result = 5
+  of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs, tkFrom: result = 5
   of tkDotDot: result = 6
   of tkAnd: result = 4
   of tkOr, tkXor, tkPtr, tkRef: result = 3

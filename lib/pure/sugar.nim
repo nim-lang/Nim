@@ -10,17 +10,26 @@
 ## This module implements nice syntactic sugar based on Nim's
 ## macro system.
 
-include system/inclrtl
+import std/private/since
+import macros, typetraits
 
-import macros
+proc checkPragma(ex, prag: var NimNode) =
+  since (1, 3):
+    if ex.kind == nnkPragmaExpr:
+      prag = ex[1]
+      if ex[0].kind == nnkPar and ex[0].len == 1:
+        ex = ex[0][0]
+      else:
+        ex = ex[0]
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
-  #echo treeRepr(p)
-  #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
-  var formalParams = newNimNode(nnkFormalParams)
+  var
+    formalParams = newNimNode(nnkFormalParams).add(b)
+    p = p
+    prag = newEmptyNode()
 
-  formalParams.add b
+  checkPragma(p, prag)
 
   case p.kind
   of nnkPar, nnkTupleConstr:
@@ -44,9 +53,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
     formalParams.add identDefs
 
   result.add formalParams
-  result.add newEmptyNode()
-  #echo(treeRepr(result))
-  #echo(result.toStrLit())
+  result.add prag
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
@@ -58,56 +65,75 @@ macro `=>`*(p, b: untyped): untyped =
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
 
-  #echo treeRepr(p)
-  #echo(treeRepr(b))
-  var params: seq[NimNode] = @[newIdentNode("auto")]
+  var
+    params = @[ident"auto"]
+    name = newEmptyNode()
+    kind = nnkLambda
+    pragma = newEmptyNode()
+    p = p
+
+  checkPragma(p, pragma)
+
+  if p.kind == nnkInfix and p[0].kind == nnkIdent and p[0].eqIdent"->":
+    params[0] = p[2]
+    p = p[1]
+
+  checkPragma(p, pragma) # check again after -> transform
+
+  since (1, 3):
+    if p.kind == nnkCall:
+      # foo(x, y) => x + y
+      kind = nnkProcDef
+      name = p[0]
+      let newP = newNimNode(nnkPar)
+      for i in 1..<p.len:
+        newP.add(p[i])
+      p = newP
 
   case p.kind
   of nnkPar, nnkTupleConstr:
-    for c in children(p):
+    var untypedBeforeColon = 0
+    for i, c in p:
       var identDefs = newNimNode(nnkIdentDefs)
       case c.kind
       of nnkExprColonExpr:
+        let t = c[1]
+        since (1, 3):
+          # + 1 here because of return type in params
+          for j in (i - untypedBeforeColon + 1) .. i:
+            params[j][1] = t
+        untypedBeforeColon = 0
         identDefs.add(c[0])
-        identDefs.add(c[1])
+        identDefs.add(t)
         identDefs.add(newEmptyNode())
       of nnkIdent:
         identDefs.add(c)
         identDefs.add(newIdentNode("auto"))
         identDefs.add(newEmptyNode())
+        inc untypedBeforeColon
       of nnkInfix:
-        if c[0].kind == nnkIdent and c[0].ident == !"->":
+        if c[0].kind == nnkIdent and c[0].eqIdent"->":
           var procTy = createProcType(c[1], c[2])
           params[0] = procTy[0][0]
           for i in 1 ..< procTy[0].len:
             params.add(procTy[0][i])
         else:
-          error("Expected proc type (->) got (" & $c[0].ident & ").")
+          error("Expected proc type (->) got (" & c[0].strVal & ").", c)
         break
       else:
-        echo treeRepr c
-        error("Incorrect procedure parameter list.")
+        error("Incorrect procedure parameter list.", c)
       params.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add(p)
-    identDefs.add(newIdentNode("auto"))
+    identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)
-  of nnkInfix:
-    if p[0].kind == nnkIdent and p[0].ident == !"->":
-      var procTy = createProcType(p[1], p[2])
-      params[0] = procTy[0][0]
-      for i in 1 ..< procTy[0].len:
-        params.add(procTy[0][i])
-    else:
-      error("Expected proc type (->) got (" & $p[0].ident & ").")
   else:
-    error("Incorrect procedure parameter list.")
-  result = newProc(params = params, body = b, procType = nnkLambda)
-  #echo(result.treeRepr)
-  #echo(result.toStrLit())
-  #return result # TODO: Bug?
+    error("Incorrect procedure parameter list.", p)
+  result = newProc(body = b, params = params,
+                   pragmas = pragma, name = name,
+                   procType = kind)
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
@@ -124,7 +150,7 @@ macro `->`*(p, b: untyped): untyped =
 
   result = createProcType(p, b)
 
-macro dump*(x: typed): untyped =
+macro dump*(x: untyped): untyped =
   ## Dumps the content of an expression, useful for debugging.
   ## It accepts any expression and prints a textual representation
   ## of the tree representing the expression - as it would appear in
@@ -160,29 +186,11 @@ proc freshIdentNodes(ast: NimNode): NimNode =
         result.add inspect(child)
   result = inspect(ast)
 
-macro distinctBase*(T: typedesc): untyped =
+template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase from typetraits instead".} =
   ## reverses ``type T = distinct A``; works recursively.
-  runnableExamples:
-    type T = distinct int
-    doAssert distinctBase(T) is int
-    doAssert: not compiles(distinctBase(int))
-    type T2 = distinct T
-    doAssert distinctBase(T2) is int
+  typetraits.distinctBase(T)
 
-  let typeNode = getTypeImpl(T)
-  expectKind(typeNode, nnkBracketExpr)
-  if typeNode[0].typeKind != ntyTypeDesc:
-    error "expected typeDesc, got " & $typeNode[0]
-  var typeSym = typeNode[1]
-  typeSym = getTypeImpl(typeSym)
-  if typeSym.typeKind != ntyDistinct:
-    error "type is not distinct"
-  typeSym = typeSym[0]
-  while typeSym.typeKind == ntyDistinct:
-    typeSym = getTypeImpl(typeSym)[0]
-  typeSym.freshIdentNodes
-
-macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1).} =
+macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
   ##
@@ -192,152 +200,157 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   ##   for i in 5..7:
   ##     for j in 7..9:
   ##       if i * j == 42:
-  ##         capture [i, j]:
+  ##         capture i, j:
   ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
   ##   myClosure() # output: 6 * 7 == 42
   ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
-  ##   var l = m.mapIt(capture([it], proc (s: string): string = it(s)))
+  ##   var l = m.mapIt(capture(it, proc (s: string): string = it(s)))
   ##   let r = l.mapIt(it("be"))
   ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
   var params = @[newIdentNode("auto")]
+  let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
+               else: locals
   for arg in locals:
-    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeImpl arg))
+    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-when (NimMajor, NimMinor) >= (1, 1):
-  macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T =
+since (1, 1):
+  import std / private / underscored_calls
+
+  macro dup*[T](arg: T, calls: varargs[untyped]): T =
     ## Turns an `in-place`:idx: algorithm into one that works on
-    ## a copy and returns this copy. The second parameter is the
-    ## index of the calling expression that is replaced by a copy
-    ## of this expression.
+    ## a copy and returns this copy.
     ## **Since**: Version 1.2.
     runnableExamples:
       import algorithm
 
       var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert a.outplace(sort()) == sorted(a)
-      #Chaining:
+      doAssert a.dup(sort) == sorted(a)
+      # Chaining:
       var aCopy = a
       aCopy.insert(10)
 
-      doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+      doAssert a.dup(insert(10), sort) == sorted(aCopy)
 
-    expectKind call, nnkCallKinds
-    let tmp = genSym(nskVar, "outplaceResult")
-    var callsons = call[0..^1]
-    callsons.insert(tmp, inplaceArgPosition)
-    result = newTree(nnkStmtListExpr,
-      newVarStmt(tmp, arg),
-      copyNimNode(call).add callsons,
-      tmp)
+      var s1 = "abc"
+      var s2 = "xyz"
+      doAssert s1 & s2 == s1.dup(&= s2)
 
-  proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
-    # Looks for the last statement of the last statement, etc...
-    case n.kind
-    of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
-      result[0] = copyNimTree(n)
-      result[1] = copyNimTree(n)
-      result[2] = copyNimTree(n)
-      for i in ord(n.kind == nnkCaseStmt)..<n.len:
-        (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
-    of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
-        nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
-      result[0] = copyNimTree(n)
-      result[1] = copyNimTree(n)
-      result[2] = copyNimTree(n)
-      if n.len >= 1:
-        (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
-    of nnkTableConstr:
-      result[1] = n[0][0]
-      result[2] = n[0][1]
-      if bracketExpr.len == 1:
-        bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
-            bindSym"typeof", newEmptyNode())])
-      template adder(res, k, v) = res[k] = v
-      result[0] = getAst(adder(res, n[0][0], n[0][1]))
-    of nnkCurly:
-      result[2] = n[0]
-      if bracketExpr.len == 1:
-        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
-      template adder(res, v) = res.incl(v)
-      result[0] = getAst(adder(res, n[0]))
-    else:
-      result[2] = n
-      if bracketExpr.len == 1:
-        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
-      template adder(res, v) = res.add(v)
-      result[0] = getAst(adder(res, n))
+    result = newNimNode(nnkStmtListExpr, arg)
+    let tmp = genSym(nskVar, "dupResult")
+    result.add newVarStmt(tmp, arg)
+    underscoredCalls(result, calls, tmp)
+    result.add tmp
 
-  macro collect*(init, body: untyped): untyped =
-    ## Comprehension for seq/set/table collections. ``init`` is
-    ## the init call, and so custom collections are supported.
-    ##
-    ## The last statement of ``body`` has special syntax that specifies
-    ## the collection's add operation. Use ``{e}`` for set's ``incl``,
-    ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
-    ##
-    ## The ``init`` proc can be called with any number of arguments,
-    ## i.e. ``initTable(initialSize)``.
-    runnableExamples:
-      import sets, tables
-      let data = @["bird", "word"]
-      ## seq:
-      let k = collect(newSeq):
-        for i, d in data.pairs:
-          if i mod 2 == 0: d
 
-      assert k == @["bird"]
-      ## seq with initialSize:
-      let x = collect(newSeqOfCap(4)):
-        for i, d in data.pairs:
-          if i mod 2 == 0: d
+proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+  # Looks for the last statement of the last statement, etc...
+  case n.kind
+  of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
+    result[0] = copyNimTree(n)
+    result[1] = copyNimTree(n)
+    result[2] = copyNimTree(n)
+    for i in ord(n.kind == nnkCaseStmt)..<n.len:
+      (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
+  of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
+      nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
+    result[0] = copyNimTree(n)
+    result[1] = copyNimTree(n)
+    result[2] = copyNimTree(n)
+    if n.len >= 1:
+      (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
+  of nnkTableConstr:
+    result[1] = n[0][0]
+    result[2] = n[0][1]
+    if bracketExpr.len == 1:
+      bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
+          bindSym"typeof", newEmptyNode())])
+    template adder(res, k, v) = res[k] = v
+    result[0] = getAst(adder(res, n[0][0], n[0][1]))
+  of nnkCurly:
+    result[2] = n[0]
+    if bracketExpr.len == 1:
+      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+    template adder(res, v) = res.incl(v)
+    result[0] = getAst(adder(res, n[0]))
+  else:
+    result[2] = n
+    if bracketExpr.len == 1:
+      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+    template adder(res, v) = res.add(v)
+    result[0] = getAst(adder(res, n))
 
-      assert x == @["bird"]
-      ## HashSet:
-      let y = initHashSet.collect:
-        for d in data.items: {d}
+macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
+  ## Comprehension for seq/set/table collections. ``init`` is
+  ## the init call, and so custom collections are supported.
+  ##
+  ## The last statement of ``body`` has special syntax that specifies
+  ## the collection's add operation. Use ``{e}`` for set's ``incl``,
+  ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
+  ##
+  ## The ``init`` proc can be called with any number of arguments,
+  ## i.e. ``initTable(initialSize)``.
+  runnableExamples:
+    import sets, tables
+    let data = @["bird", "word"]
+    ## seq:
+    let k = collect(newSeq):
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
 
-      assert y == data.toHashSet
-      ## Table:
-      let z = collect(initTable(2)):
-        for i, d in data.pairs: {i: d}
+    assert k == @["bird"]
+    ## seq with initialSize:
+    let x = collect(newSeqOfCap(4)):
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
 
-      assert z == {1: "word", 0: "bird"}.toTable
-    # analyse the body, find the deepest expression 'it' and replace it via
-    # 'result.add it'
-    let res = genSym(nskVar, "collectResult")
-    expectKind init, {nnkCall, nnkIdent, nnkSym}
-    let bracketExpr = newTree(nnkBracketExpr,
-      if init.kind == nnkCall: init[0] else: init)
-    let (resBody, keyType, valueType) = transLastStmt(body, res, bracketExpr)
-    if bracketExpr.len == 3:
-      bracketExpr[1][1] = keyType
-      bracketExpr[2][1] = valueType
-    else:
-      bracketExpr[1][1] = valueType
-    let call = newTree(nnkCall, bracketExpr)
-    if init.kind == nnkCall:
-      for i in 1 ..< init.len:
-        call.add init[i]
-    result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+    assert x == @["bird"]
+    ## HashSet:
+    let y = initHashSet.collect:
+      for d in data.items: {d}
 
-  when isMainModule:
+    assert y == data.toHashSet
+    ## Table:
+    let z = collect(initTable(2)):
+      for i, d in data.pairs: {i: d}
+
+    assert z == {0: "bird", 1: "word"}.toTable
+  # analyse the body, find the deepest expression 'it' and replace it via
+  # 'result.add it'
+  let res = genSym(nskVar, "collectResult")
+  expectKind init, {nnkCall, nnkIdent, nnkSym}
+  let bracketExpr = newTree(nnkBracketExpr,
+    if init.kind == nnkCall: init[0] else: init)
+  let (resBody, keyType, valueType) = transLastStmt(body, res, bracketExpr)
+  if bracketExpr.len == 3:
+    bracketExpr[1][1] = keyType
+    bracketExpr[2][1] = valueType
+  else:
+    bracketExpr[1][1] = valueType
+  let call = newTree(nnkCall, bracketExpr)
+  if init.kind == nnkCall:
+    for i in 1 ..< init.len:
+      call.add init[i]
+  result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+
+when isMainModule:
+  since (1, 1):
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert outplace(a, sort()) == sorted(a)
-    doAssert a.outplace(sort()) == sorted(a)
+    doAssert dup(a, sort(_)) == sorted(a)
+    doAssert a.dup(sort) == sorted(a)
     #Chaining:
     var aCopy = a
     aCopy.insert(10)
-    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
 
     import random
 
     const b = @[0, 1, 2]
-    let c = b.outplace shuffle()
+    let c = b.dup shuffle()
     doAssert c[0] == 1
     doAssert c[1] == 0
 
@@ -346,8 +359,8 @@ when (NimMajor, NimMinor) >= (1, 1):
 
     let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
     assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {1: "word",
-          0: "bird"}.toTable
+    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
+          1: "word"}.toTable
     assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
 
     let x = collect(newSeqOfCap(4)):

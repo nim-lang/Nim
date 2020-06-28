@@ -395,20 +395,29 @@ Since counting up occurs so often in programs, Nim also has a `..
 <system.html#...i,T,T>`_ iterator that does the same:
 
 .. code-block:: nim
-  for i in 1..10:
+  for i in 1 .. 10:
     ...
 
-Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less than the higher index:
+Zero-indexed counting has two shortcuts ``..<`` and ``.. ^1``
+(`backwards index operator <system.html#^.t%2Cint>`_) to simplify
+counting to one less than the higher index:
 
 .. code-block:: nim
-  for i in 0..<10:
-    ...  # 0..9
+  for i in 0 ..< 10:
+    ...  # 0 .. 9
 
 or
 
 .. code-block:: nim
   var s = "some string"
-  for i in 0..<s.len:
+  for i in 0 ..< s.len:
+    ...
+
+or
+
+.. code-block:: nim
+  var s = "some string"
+  for idx, c in s[0 .. ^1]:
     ...
 
 Other useful iterators for collections (like arrays and sequences) are
@@ -645,7 +654,7 @@ is possible, and actually an idiom:
     :test: "nim c $1"
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
-    for i in 0 .. <nprinted:
+    for i in 0 ..< nprinted:
       echo s[i]
 
 If the procedure needs to modify the argument for the
@@ -743,13 +752,19 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
-  proc toString(x: int): string = ...
-  proc toString(x: bool): string =
-    if x: result = "true"
-    else: result = "false"
+  proc toString(x: int): string =
+    result =
+      if x < 0: "negative"
+      elif x > 0: "positive"
+      else: "zero"
 
-  echo toString(13)   # calls the toString(x: int) proc
-  echo toString(true) # calls the toString(x: bool) proc
+  proc toString(x: bool): string =
+    result =
+      if x: "yep"
+      else: "nope"
+
+  assert toString(13) == "positive" # calls the toString(x: int) proc
+  assert toString(true) == "yep"    # calls the toString(x: bool) proc
 
 (Note that ``toString`` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``
@@ -1393,11 +1408,11 @@ define operators which accept Slice objects to define ranges.
     :test: "nim c $1"
 
   var
-    a = "Nim is a progamming language"
+    a = "Nim is a programming language"
     b = "Slices are useless."
 
-  echo a[7..12] # --> 'a prog'
-  b[11..^2] = "useful"
+  echo a[7 .. 12] # --> 'a prog'
+  b[11 .. ^2] = "useful"
   echo b # --> 'Slices are useful.'
 
 In the previous example slices are used to modify a part of a string. The
@@ -1419,17 +1434,22 @@ indices are
    0         11    17   using indices
   ^19        ^8    ^2   using ^ syntax
 
-where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it
-can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``.
+where ``b[0 .. ^1]`` is equivalent to ``b[0 .. b.len-1]`` and ``b[0 ..< b.len]``, and it
+can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``. See
+the `backwards index operator <system.html#^.t%2Cint>`_.
 
 In the above example, because the string ends in a period, to get the portion of the
 string that is "useless" and replace it with "useful".
 
-``b[11..^2]`` is the portion "useless", and ``b[11..^2] = "useful"`` replaces the
+``b[11 .. ^2]`` is the portion "useless", and ``b[11 .. ^2] = "useful"`` replaces the
 "useless" portion with "useful", giving the result "Slices are useful."
 
-Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or
-as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"``.
+Note 1: alternate ways of writing this are ``b[^8 .. ^2] = "useful"`` or
+as ``b[11 .. b.len-2] = "useful"`` or as ``b[11 ..< b.len-1] = "useful"``.
+
+Note 2: As the ``^`` template returns a `distinct int <manual.html#types-distinct-type>`_
+of type ``BackwardsIndex``, we can have a ``lastIndex`` constant defined as ``const lastIndex = ^1``,
+and later used as ``b[0 .. lastIndex]``.
 
 Objects
 -------

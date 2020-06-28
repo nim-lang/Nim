@@ -48,7 +48,3 @@ when defined(nimlocks):
   {.pragma: benign, gcsafe, locks: 0.}
 else:
   {.pragma: benign, gcsafe.}
-
-template since(version, body: untyped) {.dirty.} =
-  when version <= (NimMajor, NimMinor):
-    body

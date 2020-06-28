@@ -18,8 +18,6 @@ type
 
 when defined(nimv2):
 
-  import system / allocators
-
   type
     WideCString* = ptr UncheckedArray[Utf16Char]
 
@@ -29,8 +27,7 @@ when defined(nimv2):
 
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
-      let alor = getLocalAllocator()
-      alor.dealloc(alor, a.data, a.bytes)
+      deallocShared(a.data)
       a.data = nil
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
@@ -41,11 +38,10 @@ when defined(nimv2):
 
   proc createWide(a: var WideCStringObj; bytes: int) =
     a.bytes = bytes
-    let alor = getLocalAllocator()
-    a.data = cast[typeof(a.data)](alor.alloc(alor, bytes))
+    a.data = cast[typeof(a.data)](allocShared0(bytes))
 
-  template `[]`(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
-  template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
+  template `[]`*(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
+  template `[]=`*(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
 
   template nullWide(): untyped = WideCStringObj(bytes: 0, data: nil)
 
@@ -60,13 +56,14 @@ else:
     WideCStringObj* = WideCString
 
   template createWide(a; L) =
-    unsafeNew(a, L * 4 + 2)
+    unsafeNew(a, L)
 
 proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
+  result = 0
   while int16(w[result]) != 0'i16: inc result
 
 const
@@ -141,8 +138,7 @@ iterator runes(s: cstring, L: int): int =
     yield result
 
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
-  createWide(result, L * 4 + 2)
-  #result = cast[wideCString](alloc(L * 4 + 2))
+  createWide(result, L * 2 + 2)
   var d = 0
   for ch in runes(source, L):
 

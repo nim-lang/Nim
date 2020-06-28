@@ -13,7 +13,17 @@
 import ropes, tables, pathutils
 
 const
-  explanationsBaseUrl* = "https://nim-lang.org/docs"
+  explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
+    # was: "https://nim-lang.org/docs" but we're now usually showing devel docs
+    # instead of latest release docs.
+
+proc createDocLink*(urlSuffix: string): string =
+  # os.`/` is not appropriate for urls.
+  result = explanationsBaseUrl
+  if urlSuffix.len > 0 and urlSuffix[0] == '/':
+    result.add urlSuffix
+  else:
+    result.add "/" & urlSuffix
 
 type
   TMsgKind* = enum
@@ -23,6 +33,7 @@ type
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errProveInit, # deadcode
     errGenerated,
     errUser,
     warnCannotOpenFile,
@@ -34,10 +45,16 @@ type
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
     warnUnusedImportX,
+    warnInheritFromException,
     warnEachIdentIsTuple,
-    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
+    warnUnsafeSetLen,
+    warnUnsafeDefault,
+    warnProveInit, warnProveField, warnProveIndex, warnUnreachableElse,
+    warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
+    warnObservableStores,
+    warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
@@ -48,7 +65,8 @@ type
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
-    hintExtendedContext
+    hintExtendedContext,
+    hintMsgOrigin, # since 1.3.5
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -61,6 +79,7 @@ const
     errGeneralParseError: "general parse error",
     errNewSectionExpected: "new section expected",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
@@ -81,13 +100,20 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnUnusedImportX: "imported and not used: '$1'",
+    warnInheritFromException: "inherit from a more precise exception type like ValueError, " &
+      "IOError or OSError. If these don't suit, inherit from CatchableError or Defect.",
     warnEachIdentIsTuple: "each identifier is a tuple",
+    warnUnsafeSetLen: "setLen can potentially expand the sequence, " &
+                      "but the element type '$1' doesn't have a valid default value",
+    warnUnsafeDefault: "The '$1' type doesn't have a valid default value",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
+    warnUnreachableElse: "unreachable else, all cases are already covered",
+    warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized",
+    warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
     warnLockLevel: "$1",
@@ -95,10 +121,12 @@ const
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnCycleCreated: "$1",
+    warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
-    hintCC: "CC: \'$1\'", # unused
+    # keep in sync with `testament.isSuccess`
+    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
+    hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -115,7 +143,7 @@ const
     hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
-    hintLinking: "",
+    hintLinking: "$1",
     hintDependency: "$1",
     hintSource: "$1",
     hintPerformance: "$1",
@@ -126,6 +154,7 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
+    hintMsgOrigin: "$1",
   ]
 
 const
@@ -137,10 +166,14 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
-    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
+    "UnsafeCode", "UnusedImport", "InheritFromException",
+    "EachIdentIsTuple",
+    "UnsafeSetLen", "UnsafeDefault",
+    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse",
+    "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "CycleCreated", "User"]
+    "Spacing", "CaseTransition", "CycleCreated",
+    "ObservableStores", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
@@ -149,7 +182,7 @@ const
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
-    "User", "UserRaw", "ExtendedContext",
+    "User", "UserRaw", "ExtendedContext", "MsgOrigin",
   ]
 
 const
@@ -161,6 +194,12 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
+
+proc msgToStr*(msg: TMsgKind): string =
+  case msg
+  of warnMin..warnMax: WarningsToStr[ord(msg) - ord(warnMin)]
+  of hintMin..hintMax: HintsToStr[ord(msg) - ord(hintMin)]
+  else: "" # we could at least do $msg - prefix `err`
 
 static:
   doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
@@ -175,7 +214,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats}
+    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
@@ -226,7 +265,7 @@ type
   TErrorOutputs* = set[TErrorOutput]
 
   ERecoverableError* = object of ValueError
-  ESuggestDone* = object of Exception
+  ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
@@ -235,11 +274,7 @@ proc raiseRecoverableError*(msg: string) {.noinline.} =
 
 const
   InvalidFileIdx* = FileIndex(-1)
-
-proc unknownLineInfo*(): TLineInfo =
-  result.line = uint16(0)
-  result.col = int16(-1)
-  result.fileIndex = InvalidFileIdx
+  unknownLineInfo* = TLineInfo(line: 0, col: -1, fileIndex: InvalidFileIdx)
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
@@ -266,7 +301,7 @@ type
 
 proc initMsgConfig*(): MsgConfig =
   result.msgContext = @[]
-  result.lastError = unknownLineInfo()
+  result.lastError = unknownLineInfo
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}

@@ -1,13 +1,13 @@
 discard """
   output: '''Welcome to LoopTesterApp, Nim edition
 Constructing Simple CFG...
-15000 dummy loops
+5000 dummy loops
 Constructing CFG...
 Performing Loop Recognition
 1 Iteration
-Another 5 iterations...
-.....
-Found 1 loops (including artificial root node) (5)'''
+Another 3 iterations...
+...
+Found 1 loops (including artificial root node) (3)'''
 """
 
 # bug #3184
@@ -384,9 +384,9 @@ proc run(self: var LoopTesterApp) =
   discard self.cfg.createNode(1)
   self.buildConnect(0, 2)
 
-  echo "15000 dummy loops"
+  echo "5000 dummy loops"
 
-  for i in 1..15000:
+  for i in 1..5000:
     withScratchRegion:
       var h = newHavlakLoopFinder(self.cfg, newLsg())
       discard h.findLoops
@@ -394,7 +394,7 @@ proc run(self: var LoopTesterApp) =
   echo "Constructing CFG..."
   var n = 2
 
-  when not defined(gcOrc):
+  when true: # not defined(gcOrc):
     # currently cycle detection is so slow that we disable this part
     for parlooptrees in 1..10:
       discard self.cfg.createNode(n + 1)
@@ -414,10 +414,10 @@ proc run(self: var LoopTesterApp) =
   var h = newHavlakLoopFinder(self.cfg, newLsg())
   var loops = h.findLoops
 
-  echo "Another 5 iterations..."
+  echo "Another 3 iterations..."
 
   var sum = 0
-  for i in 1..5:
+  for i in 1..3:
     withScratchRegion:
       write stdout, "."
       flushFile(stdout)
@@ -437,4 +437,5 @@ proc main =
 let mem = getOccupiedMem()
 main()
 when defined(gcOrc):
+  GC_fullCollect()
   doAssert getOccupiedMem() == mem

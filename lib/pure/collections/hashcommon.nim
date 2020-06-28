@@ -29,9 +29,18 @@ proc isFilled(hcode: Hash): bool {.inline.} =
 proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
+proc mustRehash[T](t: T): bool {.inline.} =
+  assert(t.dataLen > t.counter)
+  result = (t.dataLen * 2 < t.counter * 3) or (t.dataLen - t.counter < 4)
+
+proc rightSize*(count: Natural): int {.inline.} =
+  ## Return the value of ``initialSize`` to support ``count`` items.
+  ##
+  ## If more items are expected to be added, simply add that
+  ## expected extra amount to the parameter before calling this.
+  #
+  # Make sure to synchronize with `mustRehash`
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:

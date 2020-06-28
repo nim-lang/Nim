@@ -24,7 +24,7 @@ when defined(nimfix):
   import nimfix/prettybase
 
 when not defined(leanCompiler):
-  import spawn, semparallel
+  import spawn
 
 # implementation
 
@@ -53,6 +53,8 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 proc semStaticExpr(c: PContext, n: PNode): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
+proc computeRequiresInit(c: PContext, t: PType): bool
+proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
@@ -181,7 +183,7 @@ proc endsInNoReturn(n: PNode): bool =
   var it = n
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
     it = it.lastSon
-  result = it.kind == nkRaiseStmt or
+  result = it.kind in nkLastBlockStmts or
     it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc commonType*(x: PType, y: PNode): PType =
@@ -195,15 +197,13 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
     suggestDecl(c, n, result)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
-  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
-
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
     if result.kind notin {kind, skTemp}:
-      localError(c.config, n.info, "cannot use symbol of kind '" &
-                 $result.kind & "' as a '" & $kind & "'")
+      localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
+        [result.kind.toHumanStr, kind.toHumanStr])
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
@@ -231,13 +231,15 @@ proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKi
                       flags: TTypeAllowedFlags = {}) =
   let t = typeAllowed(typ, kind, flags)
   if t != nil:
+    var err: string
     if t == typ:
-      localError(conf, info, "invalid type: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' for $2" % [typeToString(typ), toHumanStr(kind)]
+      if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
+        err &= ". Did you mean to call the $1 with '()'?" % [toHumanStr(typ.owner.kind)]
     else:
-      localError(conf, info, "invalid type: '" & typeToString(t) &
-        "' in this context: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
+              typeToString(typ), toHumanStr(kind)]
+    localError(conf, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c.config, typ.n.info, typ, skProc)
@@ -321,7 +323,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   let oldErrorOutputs = c.config.m.errorOutputs
 
   c.config.m.errorOutputs = {}
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   try:
     result = evalConstExpr(c.module, c.graph, e)
@@ -375,6 +377,9 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 include hlo, seminst, semcall
 
 when false:
@@ -395,7 +400,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if c.config.evalTemplateCounter > evalTemplateLimit:
     globalError(c.config, s.info, "template instantiation too nested")
   c.friendModules.add(s.owner.getModule)
-
+  idSynchronizationPoint(5000)
   result = macroResult
   excl(result.flags, nfSem)
   #resetSemFlag n
@@ -416,7 +421,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # More restrictive version.
       result = semExprWithType(c, result, flags)
     of tyTypeDesc:
-      if result.kind == nkStmtList: result.kind = nkStmtListType
+      if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
       if typ == nil:
         localError(c.config, result.info, "expression has no type: " &
@@ -479,15 +484,10 @@ proc forceBool(c: PContext, n: PNode): PNode =
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
-  let nn = semExprWithType(c, n)
-  result = fitNode(c, getSysType(c.graph, n.info, tyBool), nn, nn.info)
-  if result == nil:
+  result = forceBool(c, semConstExpr(c, n))
+  if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
-    return nn
-  result = getConstExpr(c.module, result, c.graph)
-  if result == nil:
-    localError(c.config, n.info, errConstExprExpected)
-    result = nn
+
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
@@ -504,13 +504,14 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
   c.semTryConstExpr = tryConstExpr
+  c.computeRequiresInit = computeRequiresInit
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
@@ -518,6 +519,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
+  c.hasUnresolvedArgs = hasUnresolvedArgs
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
@@ -583,7 +585,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  trackTopLevelStmt(c, c.module, result)
+  trackStmt(c, c.module, result, isTopLevel = true)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
@@ -593,7 +595,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode =
+proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:

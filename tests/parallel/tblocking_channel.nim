@@ -25,11 +25,11 @@ proc emitter() =
 
 spawn emitter()
 # At this point emitter should be stuck in `send`
-sleep(100) # Sleep a bit to ensure that it is still stuck
+sleep(50) # Sleep a bit to ensure that it is still stuck
 doAssert(not msgSent)
 
 spawn receiver()
-sleep(100) # Sleep a bit to let receicer consume the messages
+sleep(50) # Sleep a bit to let receicer consume the messages
 doAssert(msgSent) # Sender should be unblocked
 
 doAssert(chan.trySend(4))

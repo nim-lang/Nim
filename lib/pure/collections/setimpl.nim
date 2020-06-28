@@ -48,7 +48,7 @@ template inclImpl() {.dirty.} =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -62,7 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)

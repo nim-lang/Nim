@@ -35,4 +35,6 @@ type
     children: ptr MyType9
 
   MyType9 = tuple
-    children: MyType0
+    children: MyType10
+
+  MyType10 = distinct seq[MyType0]

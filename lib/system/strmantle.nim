@@ -94,7 +94,7 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buffer: array[65, char]
+    var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
@@ -115,6 +115,9 @@ const
               1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
               1e20, 1e21, 1e22]
 
+when defined(nimHasInvariant):
+  {.push staticBoundChecks: off.}
+
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
@@ -128,8 +131,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     i = start
     sign = 1.0
     kdigits, fdigits = 0
-    exponent: int
-    integer: uint64
+    exponent = 0
+    integer = uint64(0)
     fracExponent = 0
     expSign = 1
     firstDigit = -1
@@ -236,7 +239,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     # if exponent is greater try to fit extra exponent above 22 by multiplying
     # integer part is there is space left.
     let slop = 15 - kdigits - fdigits
-    if  absExponent <= 22 + slop and not expNegative:
+    if absExponent <= 22 + slop and not expNegative:
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
@@ -273,6 +276,9 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     number = c_strtod(addr t, nil)
   else:
     number = c_strtod(t, nil)
+
+when defined(nimHasInvariant):
+  {.pop.} # staticBoundChecks
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

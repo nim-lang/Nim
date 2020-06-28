@@ -69,7 +69,7 @@ type
     tyAnythingHidden,
     tyStaticHidden,
     tyFromExprHidden,
-    tyOpt,
+    tyOptDeprecated,
     tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
@@ -90,6 +90,7 @@ type
     when defined(gcHooks):
       head*: pointer
     size*: int
+    align*: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
     base*: ptr TNimType

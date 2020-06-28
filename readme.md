@@ -1,4 +1,6 @@
-# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci] [![builds.sr.ht freebsd status](https://builds.sr.ht/~araq/nim/freebsd.yml.svg)](https://builds.sr.ht/~araq/nim/freebsd.yml?)
+# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim
+
+[![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
@@ -76,6 +78,8 @@ Next run the appropriate build shell script for your platform:
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
 should add the ``bin`` directory to your PATH.
+
+See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
 
 ## Koch
 
@@ -188,17 +192,16 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2019 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
 [nim-issues]: https://github.com/nim-lang/Nim/issues
 [nim-issues-easy]: https://github.com/nim-lang/Nim/labels/Easy
 [nim-irc]: https://webchat.freenode.net/?channels=nim
-[nim-travisci]: https://travis-ci.org/nim-lang/Nim
 [nim-twitter]: https://twitter.com/nim_lang
-[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
-[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
+[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
+[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim

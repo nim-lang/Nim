@@ -24,7 +24,8 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils
 
-include nodejs
+from std/browsers import openDefaultBrowser
+from nodejs import findNodeJs
 
 when hasTinyCBackend:
   import tccgen
@@ -32,20 +33,6 @@ when hasTinyCBackend:
 when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
-
-proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
-  when defined(unix):
-    if os.isAbsolute(f.string): result = f
-    else: result = AbsoluteFile("./" & f.string)
-  else:
-    result = f
-
-proc addCmdPrefix*(result: var string, kind: CmdLineKind) =
-  # consider moving this to std/parseopt
-  case kind
-  of cmdLongOption: result.add "--"
-  of cmdShortOption: result.add "-"
-  of cmdArgument, cmdEnd: discard
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
@@ -66,7 +53,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.commandLine.add ':'
         config.commandLine.add p.val.quoteShell
 
-      if p.key == " ":
+      if p.key == "": # `-` was passed to indicate main project is stdin
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
@@ -77,7 +64,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
+        config.arguments.len > 0 and config.command.normalize notin ["run", "e", "r"]:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
@@ -93,18 +80,30 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   if not self.loadConfigsAndRunMainCommand(cache, conf): return
-  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
     if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
+      tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
-    var ex = quoteShell conf.absOutFile
-    if conf.cmd == cmdCompileToJS:
-      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
+    let output = conf.absOutFile
+    case conf.cmd
+    of cmdCompileToBackend:
+      var cmdPrefix = ""
+      case conf.backend
+      of backendC, backendCpp, backendObjc: discard
+      of backendJs: cmdPrefix = findNodeJs() & " "
+      else: doAssert false, $conf.backend
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+    of cmdDoc, cmdRst2html:
+      if conf.arguments.len > 0:
+        # reserved for future use
+        rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
+      openDefaultBrowser($output)
     else:
-      execExternalProgram(conf, ex & ' ' & conf.arguments)
+      # support as needed
+      rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000

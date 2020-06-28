@@ -27,6 +27,9 @@
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
+import "$lib/../compiler/nimpaths"
+import "$lib/../compiler/pathutils"
+import ../../std/private/since
 
 const
   HtmlExt = "html"
@@ -55,7 +58,9 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    filename*: string
+    outDir*: AbsoluteDir      ## output directory, initialized by docgen.nim
+    destFile*: AbsoluteFile   ## output (HTML) file, initialized by docgen.nim
+    filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
@@ -77,6 +82,9 @@ type
     filename: string
     testCmd: string
     status: int
+
+proc prettyLink*(file: string): string =
+  changeFileExt(file, "").replace(dotdotMangle, "..")
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -574,7 +582,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   var chunks: seq[string] = @[]
   for name in modules:
-    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+    chunks.add("<a href=\"$1.html\">$2</a>" % [name, name.prettyLink])
 
   result.add(chunks.join(", ") & ".<br/>")
 
@@ -750,7 +758,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
+  let
+    htmlFileRelPath = if d.outDir.isEmpty():
+                        # /foo/bar/zoo.nim -> zoo.html
+                        changeFileExt(extractFilename(d.filename), HtmlExt)
+                      else: # d is initialized in docgen.nim
+                        # outDir   = /foo              -\
+                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+                        d.destFile.relativeTo(d.outDir, '/').string
+  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
@@ -865,7 +881,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "nim c -r $1"
+      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
     else:
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
@@ -1115,10 +1131,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
-    if d.target != outLatex:
+    if d.target != outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
   of rnRawLatex:
-    if d.target == outLatex:
+    if d.target == outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
 
   of rnImage, rnFigure: renderImage(d, n, result)
@@ -1327,6 +1343,16 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
+
+
+proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
+  ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
+  runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
+  if rstSource.len == 0: return
+  var option: bool
+  var rstGenera: RstGenerator
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
 
 
 when isMainModule:

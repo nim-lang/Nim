@@ -18,6 +18,15 @@ end
 1
 2
 7
+9002
+9004
+9006
+9008
+9010
+9012
+9014
+9016
+9018
 '''
 """
 
@@ -213,3 +222,21 @@ block t2023_objiter:
 
   var o = init()
   echo(o.iter())
+
+
+block:
+  # issue #13739
+  iterator myIter(arg: openarray[int]): int =
+    var tmp = 0
+    let len = arg.len
+    while tmp < len:
+      yield arg[tmp] * 2
+      inc tmp
+
+  proc someProc() =
+    var data = [4501,4502,4503,4504,4505,4506,4507,4508,4509]
+    # StmtListExpr should not get special treatment.
+    for x in myIter((discard;data)):
+      echo x
+
+  someProc()

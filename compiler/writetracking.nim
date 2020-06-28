@@ -85,7 +85,7 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
           assert(typ.n[i].kind == nkSym)
           let paramType = typ.n[i]
           if paramType.typ.isCompileTimeOnly: continue
-          if sfEscapes in paramType.sym.flags or paramType.typ.kind == tyVar:
+          if sfEscapes in paramType.sym.flags or paramType.typ.kind in {tyVar}:
             allRoots(it, result, info)
         else:
           allRoots(it, result, info)
@@ -164,7 +164,7 @@ proc depsArgs(w: var W; n: PNode) =
       let paramType = typ.n[i]
       if paramType.typ.isCompileTimeOnly: continue
       var destInfo: set[RootInfo] = {}
-      if sfWrittenTo in paramType.sym.flags or paramType.typ.kind == tyVar:
+      if sfWrittenTo in paramType.sym.flags or paramType.typ.kind in {tyVar}:
         # p(f(x, y), X, g(h, z))
         destInfo.incl markAsWrittenTo
       if sfEscapes in paramType.sym.flags:
@@ -247,7 +247,7 @@ proc markWriteOrEscape(w: var W; conf: ConfigRef) =
       for p in a.dest:
         if p.kind == skParam and p.owner == w.owner:
           incl(p.flags, sfWrittenTo)
-          if w.owner.kind == skFunc and p.typ.kind != tyVar:
+          if w.owner.kind == skFunc and p.typ.kind notin {tyVar}:
             localError(conf, a.info, "write access to non-var parameter: " & p.name.s)
 
     if {rootIsResultOrParam, rootIsHeapAccess, markAsEscaping}*a.destInfo != {}:

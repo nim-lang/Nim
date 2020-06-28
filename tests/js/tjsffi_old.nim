@@ -35,7 +35,7 @@ true
 ## same as tjsffi, but this test uses the old names: importc and
 ## importcpp. This test is for backwards compatibility.
 
-import macros, jsffi, jsconsole
+import jsffi, jsconsole
 
 # Tests for JsObject
 # Test JsObject []= and []
@@ -299,7 +299,6 @@ block:
 
   test()
 
-import macros
 
 block:
   {.emit:

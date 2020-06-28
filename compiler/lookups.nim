@@ -100,16 +100,15 @@ proc searchInScopes*(c: PContext, s: PIdent): PSym =
     if result != nil: return
   result = nil
 
-when declared(echo):
-  proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
-    var i = 0
-    for scope in walkScopes(c.currentScope):
-      echo "scope ", i
-      for h in 0..high(scope.symbols.data):
-        if scope.symbols.data[h] != nil:
-          echo scope.symbols.data[h].name.s
-      if i == limit: break
-      inc i
+proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
+  var i = 0
+  for scope in walkScopes(c.currentScope):
+    echo "scope ", i
+    for h in 0..high(scope.symbols.data):
+      if scope.symbols.data[h] != nil:
+        echo scope.symbols.data[h].name.s
+    if i == limit: break
+    inc i
 
 proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
   for scope in walkScopes(c.currentScope):

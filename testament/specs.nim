@@ -8,6 +8,15 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg
+from hashes import hash
+
+type TestamentData* = ref object
+  # better to group globals under 1 object; could group the other ones here too
+  batchArg*: string
+  testamentNumBatch*: int
+  testamentBatch*: int
+
+let testamentData0* = TestamentData()
 
 var compilerPrefix* = findExe("nim")
 
@@ -68,10 +77,13 @@ type
     ccodeCheck*: string
     maxCodeSize*: int
     err*: TResultEnum
+    inCurrentBatch*: bool
     targets*: set[TTarget]
+    matrix*: seq[string]
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    unbatchable*: bool
     useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
@@ -85,6 +97,13 @@ proc getCmd*(s: TSpec): string =
 const
   targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
+
+proc defaultOptions*(a: TTarget): string =
+  case a
+  of targetJS: "-d:nodejs"
+    # once we start testing for `nim js -d:nimbrowser` (eg selenium or similar),
+    # we can adapt this logic; or a given js test can override with `-u:nodejs`.
+  else: ""
 
 when not declared(parseCfgBool):
   # candidate for the stdlib:
@@ -129,6 +148,12 @@ proc addLine*(self: var string; a,b: string) =
 
 proc initSpec*(filename: string): TSpec =
   result.file = filename
+
+proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
+  if testamentData.testamentNumBatch != 0:
+    hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
+  else:
+    true
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
@@ -195,6 +220,8 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+      of "batchable":
+        result.unbatchable = not parseCfgBool(e.value)
       of "joinable":
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
@@ -234,6 +261,14 @@ proc parseSpec*(filename: string): TSpec =
             result.err = reDisabled
         of "freebsd":
           when defined(freebsd): result.err = reDisabled
+        of "arm64":
+          when defined(arm64): result.err = reDisabled
+        of "i386":
+          when defined(i386): result.err = reDisabled
+        of "openbsd":
+          when defined(openbsd): result.err = reDisabled
+        of "netbsd":
+          when defined(netbsd): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
@@ -263,6 +298,9 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "matrix":
+        for v in e.value.split(';'):
+          result.matrix.add(v.strip)
       else:
         result.parseErrors.addLine "invalid key for test spec: ", e.key
 
@@ -277,4 +315,8 @@ proc parseSpec*(filename: string): TSpec =
   close(p)
 
   if skips.anyIt(it in result.file):
+    result.err = reDisabled
+
+  result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
+  if not result.inCurrentBatch:
     result.err = reDisabled

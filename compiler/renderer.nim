@@ -20,7 +20,7 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TTokType
@@ -309,8 +309,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
-                          tyOrdinal, tyAlias, tySink}:
+    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
+                          tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
 
   let typ = n.typ.skip
@@ -437,7 +437,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = lsons(g, n) + len("()") + n.len - 1
+    if n.len > 0: result += lsub(g, n[0])
   of nkTupleTy: result = lcomma(g, n) + len("tuple[]")
   of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(g, n) + 1
@@ -529,10 +529,12 @@ proc lsub(g: TSrcGen; n: PNode): int =
     if n[0].kind != nkEmpty: result = result + lsub(g, n[0]) + 2
   of nkExceptBranch:
     result = lcomma(g, n, 0, -2) + lsub(g, lastSon(n)) + len("except_:_")
+  of nkObjectTy:
+    result = len("object_")
   else: result = MaxLineLen + 1
 
 proc fits(g: TSrcGen, x: int): bool =
-  result = x + g.lineLen <= MaxLineLen
+  result = x <= MaxLineLen
 
 type
   TSubFlag = enum
@@ -572,7 +574,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
   for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
-    if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
+    if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
     gsub(g, n[i])
     if c:
@@ -872,12 +874,23 @@ proc gsub(g: var TSrcGen; n: PNode; i: int) =
   else:
     put(g, tkOpr, "<<" & $i & "th child missing for " & $n.kind & " >>")
 
-proc isBracket*(n: PNode): bool =
-  case n.kind
-  of nkClosedSymChoice, nkOpenSymChoice:
-    if n.len > 0: result = isBracket(n[0])
-  of nkSym: result = n.sym.name.s == "[]"
-  else: result = false
+type
+  BracketKind = enum
+    bkNone, bkBracket, bkBracketAsgn, bkCurly, bkCurlyAsgn
+
+proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
+  if renderIds notin g.flags:
+    case n.kind
+    of nkClosedSymChoice, nkOpenSymChoice:
+      if n.len > 0: result = bracketKind(g, n[0])
+    of nkSym:
+      result = case n.sym.name.s
+        of "[]": bkBracket
+        of "[]=": bkBracketAsgn
+        of "{}": bkCurly
+        of "{}=": bkCurlyAsgn
+        else: bkNone
+    else: result = bkNone
 
 proc skipHiddenNodes(n: PNode): PNode =
   result = n
@@ -890,10 +903,11 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
+  const backticksNeeded = OpChars + {'[', '{'}
   if n == nil: return
   let isOperator =
-    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in OpChars: true
-    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in OpChars: true
+    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
+    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticksNeeded: true
     else: false
 
   if isOperator:
@@ -952,12 +966,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if renderIds notin g.flags and n.len > 0 and isBracket(n[0]):
-      gsub(g, n, 1)
-      put(g, tkBracketLe, "[")
-      gcomma(g, n, 2)
-      put(g, tkBracketRi, "]")
-    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+    if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
       accentedName(g, n[0])
       if n.len > 2:
         put(g, tkParLe, "(")
@@ -965,10 +974,41 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
+    elif n.len >= 1:
+      case bracketKind(g, n[0])
+      of bkBracket:
+        gsub(g, n, 1)
+        put(g, tkBracketLe, "[")
+        gcomma(g, n, 2)
+        put(g, tkBracketRi, "]")
+      of bkBracketAsgn:
+        gsub(g, n, 1)
+        put(g, tkBracketLe, "[")
+        gcomma(g, n, 2, -2)
+        put(g, tkBracketRi, "]")
+        put(g, tkSpaces, Space)
+        putWithSpace(g, tkEquals, "=")
+        gsub(g, n, n.len - 1)
+      of bkCurly:
+        gsub(g, n, 1)
+        put(g, tkCurlyLe, "{")
+        gcomma(g, n, 2)
+        put(g, tkCurlyRi, "}")
+      of bkCurlyAsgn:
+        gsub(g, n, 1)
+        put(g, tkCurlyLe, "{")
+        gcomma(g, n, 2, -2)
+        put(g, tkCurlyRi, "}")
+        put(g, tkSpaces, Space)
+        putWithSpace(g, tkEquals, "=")
+        gsub(g, n, n.len - 1)
+      of bkNone:
+        accentedName(g, n[0])
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1)
+        put(g, tkParRi, ")")
     else:
-      if n.len >= 1: accentedName(g, n[0])
       put(g, tkParLe, "(")
-      gcomma(g, n, 1)
       put(g, tkParRi, ")")
   of nkCallStrLit:
     if n.len > 0: accentedName(g, n[0])
@@ -1139,10 +1179,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkInfix:
+    let oldLineLen = g.lineLen # we cache this because lineLen gets updated below
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    if n.len == 3 and not fits(g, lsub(g, n[2]) + lsub(g, n[0]) + 1):
+    # eg: `n1 == n2` decompses as following sum:
+    if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:
       put(g, tkSpaces, Space)
@@ -1595,9 +1637,9 @@ proc quoteExpr*(a: string): string {.inline.} =
   ## can be used for quoting expressions in error msgs.
   "'" & a & "'"
 
-proc genFieldError*(field: PSym, disc: PSym): string =
+proc genFieldDefect*(field: PSym, disc: PSym): string =
   ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
-  ## provide this error msg FieldError; msgs would be better but it does not
+  ## provide this error msg FieldDefect; msgs would be better but it does not
   ## import ast
   result = field.name.s.quoteExpr & " is not accessible using discriminant " &
     disc.name.s.quoteExpr & " of type " &

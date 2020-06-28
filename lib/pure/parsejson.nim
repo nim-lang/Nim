@@ -27,7 +27,7 @@ type
     jsonObjectStart,    ## start of an object: the ``{`` token
     jsonObjectEnd,      ## end of an object: the ``}`` token
     jsonArrayStart,     ## start of an array: the ``[`` token
-    jsonArrayEnd        ## start of an array: the ``]`` token
+    jsonArrayEnd        ## end of an array: the ``]`` token
 
   TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,

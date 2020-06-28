@@ -1,6 +1,3 @@
-discard """
-  output: "ha/home/a1xyz/usr/bin"
-"""
 # test the new strutils module
 
 import
@@ -11,11 +8,11 @@ import macros
 template rejectParse(e) =
   try:
     discard e
-    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+    raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
 
 proc testStrip() =
-  write(stdout, strip("  ha  "))
+  doAssert strip("  ha  ") == "ha"
 
 proc testRemoveSuffix =
   var s = "hello\n\r"
@@ -143,8 +140,9 @@ proc main() =
   testStrip()
   testRemoveSuffix()
   testRemovePrefix()
-  for p in split("/home/a1:xyz:/usr/bin", {':'}):
-    write(stdout, p)
+  var ret: seq[string] # or use `toSeq`
+  for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
+  doAssert ret == @["/home/a1", "xyz", "/usr/bin"]
 
 proc testDelete =
   var s = "0123456789ABCDEFGH"
@@ -348,3 +346,90 @@ when true:
 
 main()
 #OUT ha/home/a1xyz/usr/bin
+
+
+# `parseEnum`, ref issue #14030
+# check enum defined at top level
+type
+  Foo = enum
+    A = -10
+    B = "bb"
+    C = (-5, "ccc")
+    D = 15
+    E = "ee" # check that we count enum fields correctly
+
+block:
+  let a = parseEnum[Foo]("A")
+  let b = parseEnum[Foo]("bb")
+  let c = parseEnum[Foo]("ccc")
+  let d = parseEnum[Foo]("D")
+  let e = parseEnum[Foo]("ee")
+  doAssert a == A
+  doAssert b == B
+  doAssert c == C
+  doAssert d == D
+  doAssert e == E
+  try:
+    let f = parseEnum[Foo]("Bar")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Foo]("Bar", A)
+  doAssert g == A
+
+block:
+  # check enum defined in block
+  type
+    Bar = enum
+      V
+      W = "ww"
+      X = (3, "xx")
+      Y = 10
+      Z = "zz" # check that we count enum fields correctly
+
+  let a = parseEnum[Bar]("V")
+  let b = parseEnum[Bar]("ww")
+  let c = parseEnum[Bar]("xx")
+  let d = parseEnum[Bar]("Y")
+  let e = parseEnum[Bar]("zz")
+  doAssert a == V
+  doAssert b == W
+  doAssert c == X
+  doAssert d == Y
+  doAssert e == Z
+  try:
+    let f = parseEnum[Bar]("Baz")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Bar]("Baz", V)
+  doAssert g == V
+
+block:
+  # check ambiguous enum fails to parse
+  type
+    Ambig = enum
+      f1 = "A"
+      f2 = "B"
+      f3 = "A"
+
+  doAssert not compiles((let a = parseEnum[Ambig]("A")))
+
+block:
+  # check almost ambiguous enum
+  type
+    AlmostAmbig = enum
+      f1 = "someA"
+      f2 = "someB"
+      f3 = "SomeA"
+
+  let a = parseEnum[AlmostAmbig]("someA")
+  let b = parseEnum[AlmostAmbig]("someB")
+  let c = parseEnum[AlmostAmbig]("SomeA")
+  doAssert a == f1
+  doAssert b == f2
+  doAssert c == f3

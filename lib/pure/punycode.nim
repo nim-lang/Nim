@@ -171,6 +171,43 @@ proc decode*(encoded: string): string {.raises: [PunyError].} =
     insert(result, $Rune(n), i)
     inc i
 
+
+runnableExamples:
+  static:
+    block:
+      doAssert encode("") == ""
+      doAssert encode("a") == "a-"
+      doAssert encode("A") == "A-"
+      doAssert encode("3") == "3-"
+      doAssert encode("-") == "--"
+      doAssert encode("--") == "---"
+      doAssert encode("abc") == "abc-"
+      doAssert encode("London") == "London-"
+      doAssert encode("Lloyd-Atkinson") == "Lloyd-Atkinson-"
+      doAssert encode("This has spaces") == "This has spaces-"
+      doAssert encode("ü") == "tda"
+      doAssert encode("München") == "Mnchen-3ya"
+      doAssert encode("Mnchen-3ya") == "Mnchen-3ya-"
+      doAssert encode("München-Ost") == "Mnchen-Ost-9db"
+      doAssert encode("Bahnhof München-Ost") == "Bahnhof Mnchen-Ost-u6b"
+    block:
+      doAssert decode("") == ""
+      doAssert decode("a-") ==  "a"
+      doAssert decode("A-") == "A"
+      doAssert decode("3-") == "3"
+      doAssert decode("--") == "-"
+      doAssert decode("---") == "--"
+      doAssert decode("abc-") == "abc"
+      doAssert decode("London-") == "London"
+      doAssert decode("Lloyd-Atkinson-") == "Lloyd-Atkinson"
+      doAssert decode("This has spaces-") == "This has spaces"
+      doAssert decode("tda") == "ü"
+      doAssert decode("Mnchen-3ya") == "München"
+      doAssert decode("Mnchen-3ya-") == "Mnchen-3ya"
+      doAssert decode("Mnchen-Ost-9db") == "München-Ost"
+      doAssert decode("Bahnhof Mnchen-Ost-u6b") == "Bahnhof München-Ost"
+
+
 when isMainModule:
   assert(decode(encode("", "bücher")) == "bücher")
   assert(decode(encode("münchen")) == "münchen")

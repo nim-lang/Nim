@@ -15,10 +15,8 @@ iterator myParentDirs(p: string): string =
     if current.len == 0: break
     yield current
 
-proc resetPackageCache*(conf: ConfigRef) =
-  conf.packageCache = newPackageCache()
-
-proc getPackageName*(conf: ConfigRef; path: string): string =
+proc getNimbleFile*(conf: ConfigRef; path: string): string =
+  ## returns absolute path to nimble file, eg: /pathto/cligen.nimble
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -27,7 +25,7 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
         return conf.packageCache[d]
       inc parents
       for file in walkFiles(d / "*.nimble"):
-        result = file.splitFile.name
+        result = file
         break packageSearch
   # we also store if we didn't find anything:
   when not defined(nimNoNilSeqs):
@@ -37,6 +35,11 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     conf.packageCache[d] = result
     dec parents
     if parents <= 0: break
+
+proc getPackageName*(conf: ConfigRef; path: string): string =
+  ## returns nimble package name, eg: `cligen`
+  let path = getNimbleFile(conf, path)
+  result = path.splitFile.name
 
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
   # Convert `path` so that 2 modules with same name

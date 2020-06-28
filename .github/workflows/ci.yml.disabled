@@ -1,0 +1,122 @@
+name: Continous Integration
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        cpu: [amd64, i386]
+        cpp: ['false', 'true']
+        pkg: ['false', 'true']
+        exclude:
+          - os: ubuntu-18.04
+            cpp: 'true'
+          - os: ubuntu-18.04
+            pkg: 'true'
+          - os: macos-10.15
+            cpu: i386
+          - os: macos-10.15
+            pkg: 'true'
+          - os: windows-2019
+            cpu: i386
+          - os: windows-2019
+            cpp: 'true'
+    name: '${{ matrix.os }} (${{ matrix.cpu }}, cpp: ${{ matrix.cpp }}, pkg: ${{ matrix.pkg }})'
+    runs-on: ${{ matrix.os }}
+    env:
+      NIM_COMPILE_TO_CPP: ${{ matrix.cpp }}
+      NIM_TEST_PACKAGES: ${{ matrix.pkg }}
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+      - name: 'Checkout csources'
+        uses: actions/checkout@v2
+        with:
+          repository: nim-lang/csources
+          path: csources
+
+      - name: 'Install node.js 8.x'
+        uses: actions/setup-node@v1
+        with:
+          node-version: '8.x'
+      - name: 'Install dependencies (Linux amd64)'
+        if: runner.os == 'Linux' && matrix.cpu == 'amd64'
+        run: |
+          sudo apt-fast update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            sudo apt-fast install --no-install-recommends -yq \
+              libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
+              valgrind libc6-dbg
+      - name: 'Install dependencies (Linux i386)'
+        if: runner.os == 'Linux' && matrix.cpu == 'i386'
+        run: |
+          sudo dpkg --add-architecture i386
+
+          sudo apt-fast update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+              g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+              libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 \
+              libffi-dev:i386
+
+          cat << EOF > bin/gcc
+          #!/bin/bash
+
+          exec $(which gcc) -m32 "\$@"
+          EOF
+          cat << EOF > bin/g++
+          #!/bin/bash
+
+          exec $(which g++) -m32 "\$@"
+          EOF
+
+          chmod 755 bin/gcc
+          chmod 755 bin/g++
+      - name: 'Install dependencies (macOS)'
+        if: runner.os == 'macOS'
+        run: brew install boehmgc make sfml
+      - name: 'Install dependencies (Windows)'
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir dist
+          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+          7z x dist/mingw64.7z -odist
+          7z x dist/dlls.zip -obin
+          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "::add-path::${{ github.workspace }}/bin"
+
+      - name: 'Build csources'
+        shell: bash
+        run: |
+          ncpu=
+          case '${{ runner.os }}' in
+          'Linux')
+            ncpu=$(nproc)
+            ;;
+          'macOS')
+            ncpu=$(sysctl -n hw.ncpu)
+            ;;
+          'Windows')
+            ncpu=$NUMBER_OF_PROCESSORS
+            ;;
+          esac
+          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+
+          make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
+      - name: 'Build koch'
+        shell: bash
+        run: nim c koch
+      - name: 'Run CI'
+        shell: bash
+        run: ./koch runCI
+
+      - name: 'Show failed tests'
+        if: failure()
+        shell: bash
+        run: nim c -r tools/ci_testresults.nim

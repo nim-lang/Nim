@@ -97,9 +97,6 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
 
-type
-  EUnexpectedCommand = object of Exception
-
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
@@ -528,8 +525,7 @@ proc mainCommand(graph: ModuleGraph) =
 
   add(conf.searchPaths, conf.libpath)
 
-  # do not stop after the first error:
-  conf.errorMax = high(int)
+  conf.setErrorMaxHighMaybe # honor --errorMax even if it may not make sense here
   # do not print errors, but log them
   conf.writelnHook = myLog
   conf.structuredErrorHook = nil
@@ -677,8 +673,7 @@ else:
 
       add(conf.searchPaths, conf.libpath)
 
-      # do not stop after the first error:
-      conf.errorMax = high(int)
+      conf.setErrorMaxHighMaybe
       # do not print errors, but log them
       conf.writelnHook = myLog
       conf.structuredErrorHook = nil

@@ -1,9 +1,9 @@
 discard """
 cmd: "nim check $file"
-errormsg: "cannot assign template 'z' to 'y'. Did you mean to call the template with '()'?"
+errormsg: "invalid type: 'template (args: varargs[string])' for var. Did you mean to call the template with '()'?"
 nimout: '''
-t12844.nim(11, 11) Error: cannot assign template 'z' to 'x'. Did you mean to call the template with '()'?
-t12844.nim(12, 9) Error: cannot assign template 'z' to 'y'. Did you mean to call the template with '()'?'''
+t12844.nim(11, 7) Error: invalid type: 'template (args: varargs[string])' for const. Did you mean to call the template with '()'?
+t12844.nim(12, 5) Error: invalid type: 'template (args: varargs[string])' for var. Did you mean to call the template with '()'?'''
 """
 
 template z*(args: varargs[string, `$`]) =

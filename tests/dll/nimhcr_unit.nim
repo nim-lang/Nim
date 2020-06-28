@@ -1,4 +1,5 @@
 discard """
+disabled: "openbsd"
 output: '''
 fastcall_proc implementation #1 10
 11

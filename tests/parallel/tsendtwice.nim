@@ -17,9 +17,9 @@ import tables
 type
   Base* = ref object of RootObj
     someSeq: seq[int]
-    baseData: array[400000, byte]
+    baseData: array[40000, byte]
   Derived* = ref object of Base
-    data: array[400000, byte]
+    data: array[40000, byte]
 
 type
   ThreadPool = ref object

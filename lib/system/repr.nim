@@ -102,6 +102,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   of 4: u = cast[ptr uint32](p)[]
   of 8: u = cast[ptr uint64](p)[]
   else:
+    u = uint64(0)
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
       if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
@@ -172,7 +173,7 @@ when not defined(useNimRtl):
 
     template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
   else:
-    const payloadOffset = GenericSeqSize
+    const payloadOffset = GenericSeqSize ## the payload offset always depends on the alignment of the member type.
     template payloadPtr(x: untyped): untyped = x
 
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
@@ -185,7 +186,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
               typ.base, cl)
     add result, "]"
 

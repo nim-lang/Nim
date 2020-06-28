@@ -25,17 +25,38 @@
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
 ## may return undefined and/or platform dependent value if given invalid input.
 
+import macros
+import std/private/since
+
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
 
-proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
-  ## Computes the `bitwise and` of numbers `x` and `y`.
+func internalBitand[T: SomeInteger](x, y: T): T {.magic: "BitandI".}
 
-proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
-  ## Computes the `bitwise or` of numbers `x` and `y`.
+func internalBitor[T: SomeInteger](x, y: T): T {.magic: "BitorI".}
 
-proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
-  ## Computes the `bitwise xor` of numbers `x` and `y`.
+func internalBitxor[T: SomeInteger](x, y: T): T {.magic: "BitxorI".}
+
+macro bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise and` of all arguments collectively.
+  let fn = bindSym("internalBitand")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
+
+macro bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise or` of all arguments collectively.
+  let fn = bindSym("internalBitor")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
+
+macro bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise xor` of all arguments collectively.
+  let fn = bindSym("internalBitxor")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
@@ -64,59 +85,294 @@ template forwardImpl(impl, arg) {.dirty.} =
       impl(x.uint64)
 
 when defined(nimHasalignOf):
-
-  import macros
-
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
-    ## Returns a range with all bit positions for type ``T``
+    ## A range with all bit positions for type ``T``
 
-  proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
-    v = v or mask
+  func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Returns an extracted (and shifted) slice of bits from ``v``.
+    runnableExamples:
+      doAssert 0b10111.bitsliced(2 .. 4) == 0b101
+      doAssert 0b11100.bitsliced(0 .. 2) == 0b100
+      doAssert 0b11100.bitsliced(0 ..< 3) == 0b100
 
-  proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
-    v = v and not mask
+    let
+      upmost = sizeof(T) * 8 - 1
+      uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
-  proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
-    v = v xor mask
+  proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``.
+    runnableExamples:
+      var x = 0b101110
+      x.bitslice(2 .. 4)
+      doAssert x == 0b011
 
-  proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` set to 1
+    let
+      upmost = sizeof(T) * 8 - 1
+      uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    v = (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+
+  func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Creates a bitmask based on a slice of bits.
+    runnableExamples:
+      doAssert toMask[int32](1 .. 3) == 0b1110'i32
+      doAssert toMask[int32](0 .. 3) == 0b1111'i32
+
+    let
+      upmost = sizeof(T) * 8 - 1
+      bitmask = when T is SomeUnsignedInt:
+                  bitnot(0.T)
+                else:
+                  bitnot(0.T).toUnsigned
+    (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
+
+  proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
+    ## ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.masked(0b0000_1010'u8) == 0b0000_0010'u8
+
+    bitand(v, mask)
+
+  func masked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
+    ## matching those of ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
+    runnableExamples:
+      var v = 0b0000_1011'u8
+      doAssert v.masked(1 .. 3) == 0b0000_1010'u8
+
+    bitand(v, toMask[T](slice))
+
+  proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with only the ``1`` bits from ``mask`` matching those of
+    ## ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.mask(0b0000_1010'u8)
+      doAssert v == 0b0000_0010'u8
+
+    v = bitand(v, mask)
+
+  proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
+    ## matching those of ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
+    runnableExamples:
+      var v = 0b0000_1011'u8
+      v.mask(1 .. 3)
+      doAssert v == 0b0000_1010'u8
+
+    v = bitand(v, toMask[T](slice))
+
+  func setMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.setMasked(0b0000_1010'u8) == 0b0000_1011'u8
+
+    bitor(v, mask)
+
+  func setMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.setMasked(2 .. 3) == 0b0000_1111'u8
+
+    bitor(v, toMask[T](slice))
+
+  proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.setMask(0b0000_1010'u8)
+      doAssert v == 0b0000_1011'u8
+
+    v = bitor(v, mask)
+
+  proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.setMask(2 .. 3)
+      doAssert v == 0b0000_1111'u8
+
+    v = bitor(v, toMask[T](slice))
+
+  func clearMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.clearMasked(0b0000_1010'u8) == 0b0000_0001'u8
+
+    bitand(v, bitnot(mask))
+
+  func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.clearMasked(1 .. 3) == 0b0000_0001'u8
+
+    bitand(v, bitnot(toMask[T](slice)))
+
+  proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.clearMask(0b0000_1010'u8)
+      doAssert v == 0b0000_0001'u8
+
+    v = bitand(v, bitnot(mask))
+
+  proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.clearMask(1 .. 3)
+      doAssert v == 0b0000_0001'u8
+
+    v = bitand(v, bitnot(toMask[T](slice)))
+
+  func flipMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.flipMasked(0b0000_1010'u8) == 0b0000_1001'u8
+
+    bitxor(v, mask)
+
+  func flipMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.flipMasked(1 .. 3) == 0b0000_1101'u8
+
+    bitxor(v, toMask[T](slice))
+
+  proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.flipMask(0b0000_1010'u8)
+      doAssert v == 0b0000_1001'u8
+
+    v = bitxor(v, mask)
+
+  proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.flipMask(1 .. 3)
+      doAssert v == 0b0000_1101'u8
+
+    v = bitxor(v, toMask[T](slice))
+
+  proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+    ## Mutates ``v``, with the bit at position ``bit`` set to 1
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.setBit(5'u8)
+      doAssert v == 0b0010_0011'u8
+
     v.setMask(1.T shl bit)
 
-  proc clearBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` set to 0
+  proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+    ## Mutates ``v``, with the bit at position ``bit`` set to 0
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.clearBit(1'u8)
+      doAssert v == 0b0000_0001'u8
+
     v.clearMask(1.T shl bit)
 
-  proc flipBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` flipped
+  proc flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+    ## Mutates ``v``, with the bit at position ``bit`` flipped
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.flipBit(1'u8)
+      doAssert v == 0b0000_0001'u8
+
+      v = 0b0000_0011'u8
+      v.flipBit(2'u8)
+      doAssert v == 0b0000_0111'u8
+
     v.flipMask(1.T shl bit)
 
-  macro setBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 1
+  macro setBits*(v: typed; bits: varargs[typed]): untyped =
+    ## Mutates ``v``, with the bits at positions ``bits`` set to 1
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.setBits(3, 5, 7)
+      doAssert v == 0b1010_1011'u8
+
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("setBit", v, bit)
 
-  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+  macro clearBits*(v: typed; bits: varargs[typed]): untyped =
+    ## Mutates ``v``, with the bits at positions ``bits`` set to 0
+    runnableExamples:
+      var v = 0b1111_1111'u8
+      v.clearBits(1, 3, 5, 7)
+      doAssert v == 0b0101_0101'u8
+
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("clearBit", v, bit)
 
-  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+  macro flipBits*(v: typed; bits: varargs[typed]): untyped =
+    ## Mutates ``v``, with the bits at positions ``bits`` set to 0
+    runnableExamples:
+      var v = 0b0000_1111'u8
+      v.flipBits(1, 3, 5, 7)
+      doAssert v == 0b1010_0101'u8
+
     bits.expectKind(nnkBracket)
     result = newStmtList()
     for bit in bits:
       result.add newCall("flipBit", v, bit)
 
-  proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
+
+  proc testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
+    runnableExamples:
+      var v = 0b0000_1111'u8
+      doAssert v.testBit(0)
+      doAssert not v.testBit(7)
+
     let mask = 1.T shl bit
     return (v and mask) == mask
 
@@ -139,6 +395,8 @@ proc firstSetBitNim(x: uint64): int {.inline, noSideEffect.} =
   if k == 0:
     k = uint32(v shr 32'u32) and 0xFFFFFFFF'u32
     result = 32
+  else:
+    result = 0
   result += firstSetBitNim(k)
 
 proc fastlog2Nim(x: uint32): int {.inline, noSideEffect.} =
@@ -272,6 +530,10 @@ elif useICC_builtins:
 
 proc countSetBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
+  runnableExamples:
+    doAssert countSetBits(0b0000_0011'u8) == 2
+    doAssert countSetBits(0b1010_1010'u8) == 4
+
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when x is SomeSignedInt:
@@ -298,12 +560,18 @@ proc countSetBits*(x: SomeInteger): int {.inline, noSideEffect.} =
       else: result = countSetBitsNim(x.uint64)
 
 proc popcount*(x: SomeInteger): int {.inline, noSideEffect.} =
-  ## Alias for for countSetBits (Hamming weight.)
+  ## Alias for for `countSetBits <#countSetBits,SomeInteger>`_. (Hamming weight.)
   result = countSetBits(x)
 
 proc parityBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.
+  runnableExamples:
+    doAssert parityBits(0b0000_0000'u8) == 0
+    doAssert parityBits(0b0101_0001'u8) == 1
+    doAssert parityBits(0b0110_1001'u8) == 0
+    doAssert parityBits(0b0111_1111'u8) == 1
+
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when x is SomeSignedInt:
@@ -322,6 +590,13 @@ proc firstSetBit*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the 1-based index of the least significant set bit of x.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
+  runnableExamples:
+    doAssert firstSetBit(0b0000_0001'u8) == 1
+    doAssert firstSetBit(0b0000_0010'u8) == 2
+    doAssert firstSetBit(0b0000_0100'u8) == 3
+    doAssert firstSetBit(0b0000_1000'u8) == 4
+    doAssert firstSetBit(0b0000_1111'u8) == 1
+
   # GCC builtin 'builtin_ffs' already handle zero input.
   when x is SomeSignedInt:
     let x = x.toUnsigned
@@ -359,6 +634,13 @@ proc fastLog2*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Quickly find the log base 2 of an integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
   ## otherwise result is undefined.
+  runnableExamples:
+    doAssert fastLog2(0b0000_0001'u8) == 0
+    doAssert fastLog2(0b0000_0010'u8) == 1
+    doAssert fastLog2(0b0000_0100'u8) == 2
+    doAssert fastLog2(0b0000_1000'u8) == 3
+    doAssert fastLog2(0b0000_1111'u8) == 3
+
   when x is SomeSignedInt:
     let x = x.toUnsigned
   when noUndefined:
@@ -392,6 +674,16 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the number of leading zero bits in integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
+  ##
+  ## See also:
+  ## * `countTrailingZeroBits proc <#countTrailingZeroBits,SomeInteger>`_
+  runnableExamples:
+    doAssert countLeadingZeroBits(0b0000_0001'u8) == 7
+    doAssert countLeadingZeroBits(0b0000_0010'u8) == 6
+    doAssert countLeadingZeroBits(0b0000_0100'u8) == 5
+    doAssert countLeadingZeroBits(0b0000_1000'u8) == 4
+    doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
+
   when x is SomeSignedInt:
     let x = x.toUnsigned
   when noUndefined:
@@ -411,6 +703,16 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the number of trailing zeros in integer.
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
+  ##
+  ## See also:
+  ## * `countLeadingZeroBits proc <#countLeadingZeroBits,SomeInteger>`_
+  runnableExamples:
+    doAssert countTrailingZeroBits(0b0000_0001'u8) == 0
+    doAssert countTrailingZeroBits(0b0000_0010'u8) == 1
+    doAssert countTrailingZeroBits(0b0000_0100'u8) == 2
+    doAssert countTrailingZeroBits(0b0000_1000'u8) == 3
+    doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
+
   when x is SomeSignedInt:
     let x = x.toUnsigned
   when noUndefined:
@@ -429,6 +731,12 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
 proc rotateLeftBits*(value: uint8;
            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 8-bits value.
+  runnableExamples:
+    doAssert rotateLeftBits(0b0000_0001'u8, 1) == 0b0000_0010'u8
+    doAssert rotateLeftBits(0b0000_0001'u8, 2) == 0b0000_0100'u8
+    doAssert rotateLeftBits(0b0100_0001'u8, 1) == 0b1000_0010'u8
+    doAssert rotateLeftBits(0b0100_0001'u8, 2) == 0b0000_0101'u8
+
   # using this form instead of the one below should handle any value
   # out of range as well as negative values.
   # result = (value shl amount) or (value shr (8 - amount))
@@ -439,18 +747,27 @@ proc rotateLeftBits*(value: uint8;
 proc rotateLeftBits*(value: uint16;
            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 16-bits value.
+  ##
+  ## See also:
+  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
   let amount = amount and 15
   result = (value shl amount) or (value shr ( (-amount) and 15))
 
 proc rotateLeftBits*(value: uint32;
            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 32-bits value.
+  ##
+  ## See also:
+  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
   let amount = amount and 31
   result = (value shl amount) or (value shr ( (-amount) and 31))
 
 proc rotateLeftBits*(value: uint64;
            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 64-bits value.
+  ##
+  ## See also:
+  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
   let amount = amount and 63
   result = (value shl amount) or (value shr ( (-amount) and 63))
 
@@ -458,24 +775,39 @@ proc rotateLeftBits*(value: uint64;
 proc rotateRightBits*(value: uint8;
             amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
+  runnableExamples:
+    doAssert rotateRightBits(0b0000_0001'u8, 1) == 0b1000_0000'u8
+    doAssert rotateRightBits(0b0000_0001'u8, 2) == 0b0100_0000'u8
+    doAssert rotateRightBits(0b0100_0001'u8, 1) == 0b1010_0000'u8
+    doAssert rotateRightBits(0b0100_0001'u8, 2) == 0b0101_0000'u8
+
   let amount = amount and 7
   result = (value shr amount) or (value shl ( (-amount) and 7))
 
 proc rotateRightBits*(value: uint16;
             amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 16-bits value.
+  ##
+  ## See also:
+  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
   let amount = amount and 15
   result = (value shr amount) or (value shl ( (-amount) and 15))
 
 proc rotateRightBits*(value: uint32;
             amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 32-bits value.
+  ##
+  ## See also:
+  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
   let amount = amount and 31
   result = (value shr amount) or (value shl ( (-amount) and 31))
 
 proc rotateRightBits*(value: uint64;
             amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
+  ##
+  ## See also:
+  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
   let amount = amount and 63
   result = (value shr amount) or (value shl ( (-amount) and 63))
 

@@ -48,7 +48,7 @@ when defined(windows):
     {.warning: "ucontext coroutine backend is not available on windows, defaulting to fibers.".}
   when defined(nimCoroutinesSetjmp):
     {.warning: "setjmp coroutine backend is not available on windows, defaulting to fibers.".}
-elif defined(haiku):
+elif defined(haiku) or defined(openbsd):
   const coroBackend = CORO_BACKEND_SETJMP
   when defined(nimCoroutinesUcontext):
     {.warning: "ucontext coroutine backend is not available on haiku, defaulting to setjmp".}

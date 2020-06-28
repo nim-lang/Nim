@@ -1,10 +1,9 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  errormsg: "'=' is not available for type <owned Button>; requires a copy because it's not the last read of ':envAlt.b1'; another read is done here: tuse_ownedref_after_move.nim(53, 4)"
-  line: 49
+  errormsg: "'=' is not available for type <owned Button>; requires a copy because it's not the last read of ':envAlt.b1'; another read is done here: tuse_ownedref_after_move.nim(52, 4)"
+  line: 48
 """
 
-import system / allocators
 import system / ansi_c
 
 type
@@ -56,5 +55,3 @@ proc main =
 
 main()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  new: %ld\n", a, d, allocs)

@@ -93,8 +93,8 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyBool: result = atomicType("bool", mBool)
   of tyChar: result = atomicType("char", mChar)
   of tyNil: result = atomicType("nil", mNil)
-  of tyUntyped: result = atomicType("expr", mExpr)
-  of tyTyped: result = atomicType("stmt", mStmt)
+  of tyUntyped: result = atomicType("untyped", mExpr)
+  of tyTyped: result = atomicType("typed", mStmt)
   of tyVoid: result = atomicType("void", mVoid)
   of tyEmpty: result = atomicType("empty", mNone)
   of tyUncheckedArray:
@@ -159,10 +159,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
-      if t.sym.ast != nil:
-        result.add t.sym.ast[2][0].copyTree  # copy object pragmas
-      else:
-        result.add newNodeI(nkEmpty, info)
+      var objectDef = t.sym.ast[2]
+      if objectDef.kind == nkRefTy:
+        objectDef = objectDef[0]
+      result.add objectDef[0].copyTree  # copy object pragmas
       if t[0] == nil:
         result.add newNodeI(nkEmpty, info)
       else:  # handle parent object
@@ -224,7 +224,6 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
-  of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
@@ -298,6 +297,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if t.n != nil:
         result.add t.n.copyTree
   of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
+  of tyOptDeprecated: doAssert false
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(cache, t, info, inst=false, allowRecursionX=true)

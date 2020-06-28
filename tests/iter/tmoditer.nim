@@ -4,7 +4,7 @@ discard """
 
 iterator modPairs(a: var array[0..4,string]): tuple[key: int, val: var string] =
   for i in 0..a.high:
-    yield (i, a[i])
+    yield (key: i, val: a[i])
 
 iterator modItems*[T](a: var array[0..4,T]): var T =
   for i in 0..a.high:
@@ -49,7 +49,7 @@ iterator lentItems[T](a: openarray[T]): lent T =
 
 iterator lentPairs[T](a: array[0..1, T]): tuple[key: int, val: lent T] =
   for i in 0..a.high:
-    yield (i, a[i])
+    yield (key: i, val: a[i])
 
 
 let arr1 = [1, 2, 3]

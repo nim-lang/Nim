@@ -64,9 +64,11 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
-{.deadCodeElim: on.} # dce option deprecated
-import nativesockets, os, strutils, parseutils, times, sets, options,
-  std/monotimes
+import std/private/since
+
+import nativesockets, os, strutils, times, sets, options, std/monotimes
+from ssl_certs import scanSSLCertificates
+import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -80,10 +82,12 @@ when defineSsl:
 
 when defineSsl:
   type
-    SslError* = object of Exception
+    Certificate* = string ## DER encoded certificate
+
+    SslError* = object of CatchableError
 
     SslCVerifyMode* = enum
-      CVerifyNone, CVerifyPeer
+      CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
 
     SslProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
@@ -143,7 +147,7 @@ type
   ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  TimeoutError* = object of Exception
+  TimeoutError* = object of CatchableError
 
   SocketFlag* {.pure.} = enum
     Peek,
@@ -177,11 +181,16 @@ proc isDisconnectionError*(flags: set[SocketFlag],
   ## if flags contains ``SafeDisconn``.
   when useWinVersion:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
-                          WSAEDISCON, ERROR_NETNAME_DELETED}
+      (lastError.int32 == WSAECONNRESET or
+       lastError.int32 == WSAECONNABORTED or
+       lastError.int32 == WSAENETRESET or
+       lastError.int32 == WSAEDISCON or
+       lastError.int32 == ERROR_NETNAME_DELETED)
   else:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {ECONNRESET, EPIPE, ENETRESET}
+      (lastError.int32 == ECONNRESET or
+       lastError.int32 == EPIPE or
+       lastError.int32 == ENETRESET)
 
 proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
   ## Converts the flags into the underlying OS representation.
@@ -209,22 +218,32 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
   when defined(macosx) and not defined(nimdoc):
     setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
-proc newSocket*(domain, sockType, protocol: cint, buffered = true): owned(Socket) =
+proc newSocket*(domain, sockType, protocol: cint, buffered = true,
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
+  ## The SocketHandle associated with the resulting Socket will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
                      buffered)
 
 proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
+                protocol: Protocol = IPPROTO_TCP, buffered = true,
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
+  ## The SocketHandle associated with the resulting Socket will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
@@ -444,7 +463,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
-  ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
+  ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
@@ -461,8 +480,6 @@ when defineSsl:
     let err = ERR_peek_last_error()
     if err == 0:
       raise newException(SslError, "No error reported.")
-    if err == -1:
-      raiseOSError(osLastError())
     var errStr = $ERR_error_string(err, nil)
     case err
     of 336032814, 336032784:
@@ -475,7 +492,7 @@ when defineSsl:
   proc getExtraData*(ctx: SslContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SslContext.
     if index notin ctx.referencedData:
-      raise newException(IndexError, "No data with that index.")
+      raise newException(IndexDefect, "No data with that index.")
     let res = ctx.context.SSL_CTX_get_ex_data(index.cint)
     if cast[int](res) == 0:
       raiseSSLError()
@@ -517,17 +534,30 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-      certFile = "", keyFile = "", cipherList = "ALL"): SslContext =
+                   certFile = "", keyFile = "", cipherList = CiphersIntermediate,
+                   caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
     ## are available with the addition of ``protSSLv23`` which allows for
     ## compatibility with all of them.
     ##
-    ## There are currently only two options for verify mode;
-    ## one is ``CVerifyNone`` and with it certificates will not be verified
-    ## the other is ``CVerifyPeer`` and certificates will be verified for
-    ## it, ``CVerifyPeer`` is the safest choice.
+    ## There are three options for verify mode:
+    ## ``CVerifyNone``: certificates are not verified;
+    ## ``CVerifyPeer``: certificates are verified;
+    ## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+    ## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+    ## locate certificates
+    ##
+    ## The `nimDisableCertificateValidation` define overrides verifyMode and
+    ## disables certificate verification globally!
+    ##
+    ## CA certificates will be loaded, in the following order, from:
+    ##
+    ##  - caFile, caDir, parameters, if set
+    ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
+    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
+    ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.
@@ -550,18 +580,55 @@ when defineSsl:
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
-    case verifyMode
-    of CVerifyPeer:
-      newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
-    of CVerifyNone:
+    when not defined(openssl10) and not defined(libressl):
+      let sslVersion = getOpenSSLVersion()
+      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+        # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
+        # this API.
+        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+          raiseSSLError()
+    # Automatically the best ECDH curve for client exchange. Without this, ECDH
+    # ciphers will be ignored by the server.
+    #
+    # From OpenSSL >= 1.1.0, this setting is set by default and can't be
+    # overriden.
+    if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
+      raiseSSLError()
+
+    when defined(nimDisableCertificateValidation) or defined(windows):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+    else:
+      case verifyMode
+      of CVerifyPeer, CVerifyPeerUseEnvVars:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
+      of CVerifyNone:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+
     if newCTX == nil:
       raiseSSLError()
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SslContext(context: newCTX, referencedData: initSet[int](),
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      if verifyMode != CVerifyNone:
+        # Use the caDir and caFile parameters if set
+        if caDir != "" or caFile != "":
+          if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
+            raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
+
+        else:
+          # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+          # the SSL_CERT_FILE and SSL_CERT_DIR env vars
+          var found = false
+          for fn in scanSSLCertificates():
+            if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
+              found = true
+              break
+          if not found:
+            raise newException(IOError, "No SSL/TLS CA certificates found.")
+
+    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
@@ -645,6 +712,7 @@ when defineSsl:
     ## This must be called on an unconnected socket; an SSL session will
     ## be started when the socket is connected.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
 
@@ -660,7 +728,25 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
+  proc checkCertName(socket: Socket, hostname: string) =
+    ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
+    ## Wildcards match only in the left-most label.
+    ## When name starts with a dot it will be matched by a certificate valid for any subdomain
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      assert socket.isSSL
+      let certificate = socket.sslHandle.SSL_get_peer_certificate()
+      if certificate.isNil:
+        raiseSSLError("No SSL certificate found.")
+
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      const size = 1024
+      var peername: string = newString(size)
+      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+      if match != 1:
+        raiseSSLError("SSL Certificate check failed.")
+
+  proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
@@ -671,6 +757,7 @@ when defineSsl:
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
     wrapSocket(ctx, socket)
@@ -680,11 +767,46 @@ when defineSsl:
         # Discard result in case OpenSSL version doesn't support SNI, or we're
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if hostname.len > 0 and not isIpAddress(hostname):
+          socket.checkCertName(hostname)
     of handshakeAsServer:
+      ErrClearError()
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
+
+  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the OpenSSL connection represented by ``sslHandle``.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    result = newSeq[Certificate]()
+    if SSL_get_verify_result(sslHandle) != X509_V_OK:
+      return
+    let stack = SSL_get0_verified_chain(sslHandle)
+    if stack == nil:
+      return
+    let length = OPENSSL_sk_num(stack)
+    if length == 0:
+      return
+    for i in 0 .. length - 1:
+      let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
+      result.add(i2d_X509(x509))
+
+  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
@@ -780,7 +902,8 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
-                 flags = {SocketFlag.SafeDisconn}) {.
+                 flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
@@ -790,19 +913,23 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
   ##
+  ## The SocketHandle associated with the resulting client will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   if client.isNil:
     new(client)
-  let ret = accept(server.fd)
+  let ret = accept(server.fd, inheritable)
   let sock = ret[0]
 
   if sock == osInvalidSocket:
     let err = osLastError()
     if flags.isDisconnectionError(err):
-      acceptAddr(server, client, address, flags)
+      acceptAddr(server, client, address, flags, inheritable)
     raiseOSError(err)
   else:
     address = ret[1]
@@ -816,6 +943,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
         # We must wrap the client sock in a ssl context.
 
         server.sslContext.wrapSocket(client)
+        ErrClearError()
         let ret = SSL_accept(client.sslHandle)
         socketError(client, ret, false)
 
@@ -845,6 +973,7 @@ when false: #defineSsl:
 
           if not client.isSsl or client.sslHandle == nil:
             server.sslContext.wrapSocket(client)
+          ErrClearError()
           let ret = SSL_accept(client.sslHandle)
           while ret <= 0:
             let err = SSL_get_error(client.sslHandle, ret)
@@ -872,9 +1001,15 @@ when false: #defineSsl:
         doHandshake()
 
 proc accept*(server: Socket, client: var owned(Socket),
-             flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
+             flags = {SocketFlag.SafeDisconn},
+             inheritable = defined(nimInheritHandles))
+            {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
+  ##
+  ## The SocketHandle associated with the resulting client will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
   ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
@@ -888,16 +1023,20 @@ proc close*(socket: Socket) =
   try:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
-        ErrClearError()
-        # As we are closing the underlying socket immediately afterwards,
-        # it is valid, under the TLS standard, to perform a unidirectional
-        # shutdown i.e not wait for the peers "close notify" alert with a second
-        # call to SSL_shutdown
-        let res = SSL_shutdown(socket.sslHandle)
-        if res == 0:
-          discard
-        elif res != 1:
-          socketError(socket, res)
+        # Don't call SSL_shutdown if the connection has not been fully
+        # established, see:
+        # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
+        if SSL_in_init(socket.sslHandle) == 0:
+          # As we are closing the underlying socket immediately afterwards,
+          # it is valid, under the TLS standard, to perform a unidirectional
+          # shutdown i.e not wait for the peers "close notify" alert with a second
+          # call to SSL_shutdown
+          ErrClearError()
+          let res = SSL_shutdown(socket.sslHandle)
+          if res == 0:
+            discard
+          elif res != 1:
+            socketError(socket, res)
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
@@ -1015,6 +1154,7 @@ proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
   assert(not socket.isClosed, "Cannot `recv` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_read(socket.sslHandle, buffer, size)
 
   return recv(socket.fd, buffer, size, flags)
@@ -1312,21 +1452,33 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## so when ``socket`` is buffered the non-buffered implementation will be
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
+  template adaptRecvFromToDomain(domain: Domain) =
+    var addrLen = sizeof(sockAddress).SockLen
+    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+                      cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+    
+    if result != -1:
+      data.setLen(result)
+      address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
+      when domain == AF_INET6:
+        port = ntohs(sockAddress.sin6_port).Port
+      else:
+        port = ntohs(sockAddress.sin_port).Port
+    else:
+      raiseOSError(osLastError())
 
   assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
-  var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).SockLen
-  result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
-                    cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-
-  if result != -1:
-    data.setLen(result)
-    address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
-    port = ntohs(sockAddress.sin_port).Port
+  case socket.domain
+  of AF_INET6:
+    var sockAddress: Sockaddr_in6
+    adaptRecvFromToDomain(AF_INET6)
+  of AF_INET:
+    var sockAddress: Sockaddr_in
+    adaptRecvFromToDomain(AF_INET)
   else:
-    raiseOSError(osLastError())
+    raise newException(ValueError, "Unknown socket address family")
 
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
@@ -1352,6 +1504,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_write(socket.sslHandle, cast[cstring](data), size)
 
   when useWinVersion or defined(macosx):
@@ -1636,8 +1789,12 @@ proc connect*(socket: Socket, address: string,
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if not isIpAddress(address):
+          socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =

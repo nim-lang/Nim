@@ -8,6 +8,7 @@
 #
 
 include "system/inclrtl"
+import std/private/since
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -105,7 +106,7 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyOptDeprecated, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
@@ -461,10 +462,12 @@ proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
 
 {.pop.}
 
-proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect, compilerproc.}
+proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
 
+proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+  ## Create a new ident node from a string.
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -478,7 +481,7 @@ type
 
 proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
-  ## Ceates a node that binds `ident` to a symbol node. The bound symbol
+  ## Creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
   ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
   ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is
@@ -532,9 +535,7 @@ proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffe
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
   ## Returns ``LineInfo`` of ``n``, using absolute path for ``filename``.
-  result.filename = n.getFile
-  result.line = n.getLine
-  result.column = n.getColumn
+  result = LineInfo(filename: n.getFile, line: n.getLine, column: n.getColumn)
 
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
   ## Return line info in the form `filepath(line, column)`.
@@ -612,20 +613,20 @@ proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## Checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children", n)
+  if n.len < min: error("Expected a node with at least " & $min & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## Checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children", n)
+  if n.len != len: error("Expected a node with " & $len & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   ## Checks that `n` has a number of children in the range ``min..max``.
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
-    error("macro expects a node with " & $min & ".." & $max & " children", n)
+    error("Expected a node with " & $min & ".." & $max & " children, got " & $n.len, n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -757,7 +758,7 @@ proc newLit*(arg: enum): NimNode {.compileTime.} =
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
 proc newLit*[T](s: set[T]): NimNode {.compileTime.}
-proc newLit*(arg: tuple): NimNode {.compileTime.}
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
@@ -792,11 +793,24 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
   result = nnkCurly.newTree
   for x in s:
     result.add newLit(x)
+  if result.len == 0:
+    # add type cast for empty set
+    var typ = getTypeInst(typeof(s))[1]
+    result = newCall(typ,result)
 
-proc newLit*(arg: tuple): NimNode {.compileTime.} =
-  result = nnkPar.newTree
-  for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## See `typetraits.isNamedTuple`
+
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
+  ## use -d:nimHasWorkaround14720 to restore behavior prior to PR, forcing
+  ## a named tuple even when `arg` is unnamed.
+  result = nnkTupleConstr.newTree
+  when defined(nimHasWorkaround14720) or isNamedTuple(T):
+    for a, b in arg.fieldPairs:
+      result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+  else:
+    for b in arg.fields:
+      result.add newLit(b)
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
@@ -862,12 +876,14 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
 proc lispRepr*(n: NimNode; indented = false): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to a human-readable lisp-like string.
   ##
   ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
+  result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
@@ -989,12 +1005,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##
   ## Also see ``dumpTree`` and ``dumpLisp``.
 
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated. Use `dumpTree` instead.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated. Use `dumpLisp` instead.
-
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node.
   result = newNimNode(nnkEmpty)
@@ -1085,7 +1095,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
 
 const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
-                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -1278,9 +1288,6 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   else:
     badNodeKind node, "$"
 
-proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
-  ## Create a new ident node from a string.
-
 iterator items*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
   for i in 0 ..< n.len:
@@ -1328,8 +1335,9 @@ proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
 proc basename*(a: NimNode): NimNode =
   ## Pull an identifier from prefix/postfix expressions.
   case a.kind
-  of nnkIdent: return a
-  of nnkPostfix, nnkPrefix: return a[1]
+  of nnkIdent: result = a
+  of nnkPostfix, nnkPrefix: result = a[1]
+  of nnkPragmaExpr: result = basename(a[0])
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
@@ -1340,6 +1348,7 @@ proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
     a.strVal = val
   of nnkPostfix, nnkPrefix:
     a[1] = ident(val)
+  of nnkPragmaExpr: `basename=`(a[0], val)
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
@@ -1431,6 +1440,13 @@ else:
     else:
       result = false
 
+proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
+  ## Check that ``eqIdent(n,name)`` holds true. If this is not the
+  ## case, compilation aborts with an error message. This is useful
+  ## for writing macros that check the AST that is passed to them.
+  if not eqIdent(n, name):
+    error("Expected identifier to be `" & name & "` here", n)
+
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
@@ -1456,7 +1472,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when defined(nimMacrosGetNodeId):
-  proc nodeID*(n: NimNode): int {.magic: NodeId.}
+  proc nodeID*(n: NimNode): int {.magic: "NodeId".}
     ## Returns the id of ``n``, when the compiler has been compiled
     ## with the flag ``-d:useNodeids``, otherwise returns ``-1``. This
     ## proc is for the purpose to debug the compiler only.
@@ -1469,7 +1485,7 @@ macro expandMacros*(body: typed): untyped =
   ## For instance,
   ##
   ## .. code-block:: nim
-  ##   import future, macros
+  ##   import sugar, macros
   ##
   ##   let
   ##     x = 10
@@ -1595,6 +1611,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
+  result = nil
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:

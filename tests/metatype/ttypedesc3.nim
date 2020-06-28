@@ -6,6 +6,7 @@ method Base
 yield Base
 yield Child
 12
+1
 '''
 """
 
@@ -41,3 +42,11 @@ type
   MyRefType = ref MyType
 
 echo sizeof(default(MyRefType)[])
+
+type
+  Foo[T] = object
+    val: T
+
+var x: Foo[int].val
+inc(x)
+echo x

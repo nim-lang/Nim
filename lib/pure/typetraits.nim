@@ -12,8 +12,8 @@
 ##
 ## Unstable API.
 
+import std/private/since
 export system.`$` # for backward compatibility
-
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
@@ -47,7 +47,7 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## .. code-block:: nim
   ##   type
   ##     Functor[A] = concept f
-  ##       type MatchedGenericType = genericHead(f.type)
+  ##       type MatchedGenericType = genericHead(typeof(f))
   ##         # `f` will be a value of a type such as `Option[T]`
   ##         # `MatchedGenericType` will become the `Option` type
 
@@ -58,25 +58,97 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true iff the type ``t`` is safe to use for
+  ## This trait returns true if the type ``t`` is safe to use for
   ## `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
 
-proc isNamedTuple*(T: typedesc): bool =
+proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".}
   ## Return true for named tuples, false for any other type.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    # empty tuple should be un-named,
-    # see https://github.com/nim-lang/Nim/issues/8861#issue-356631191
-    return false
 
+proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
+  ## Returns base type for distinct types, works only for distinct types.
+  ## compile time error otherwise
+
+since (1, 1):
+  template distinctBase*[T](a: T): untyped =
+    ## overload for values
+    runnableExamples:
+      type MyInt = distinct int
+      doAssert 12.MyInt.distinctBase == 12
+    distinctBase(type(a))(a)
+
+  proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait".}
+    ## Return number of elements of `T`
+
+  template tupleLen*(t: tuple): int =
+    ## Return number of elements of `t`
+    tupleLen(type(t))
+
+  template get*(T: typedesc[tuple], i: static int): untyped =
+    ## Return `i`\th element of `T`
+    # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
+    type(default(T)[i])
+
+  type StaticParam*[value: static type] = object
+    ## used to wrap a static value in `genericParams`
+
+since (1, 3, 5):
+  template elementType*(a: untyped): typedesc =
+    ## return element type of `a`, which can be any iterable (over which you
+    ## can iterate)
+    runnableExamples:
+      iterator myiter(n: int): auto =
+        for i in 0..<n: yield i
+      doAssert elementType(@[1,2]) is int
+      doAssert elementType("asdf") is char
+      doAssert elementType(myiter(3)) is int
+    typeof(block: (for ai in a: ai))
+
+import std/macros
+
+macro genericParamsImpl(T: typedesc): untyped =
+  # auxiliary macro needed, can't do it directly in `genericParams`
+  result = newNimNode(nnkTupleConstr)
+  var impl = getTypeImpl(T)
+  expectKind(impl, nnkBracketExpr)
+  impl = impl[1]
+  while true:
+    case impl.kind
+      of nnkSym:
+        impl = impl.getImpl
+        continue
+      of nnkTypeDef:
+        impl = impl[2]
+        continue
+      of nnkBracketExpr:
+        for i in 1..<impl.len:
+          let ai = impl[i]
+          var ret: NimNode = nil
+          case ai.typeKind
+          of ntyTypeDesc:
+            ret = ai
+          of ntyStatic: doAssert false
+          else:
+            since (1, 1):
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+          result.add ret
+        break
+      else:
+        error "wrong kind: " & $impl.kind, impl
+
+since (1, 1):
+  template genericParams*(T: typedesc): untyped =
+    ## return tuple of generic params for generic `T`
+    runnableExamples:
+      type Foo[T1, T2]=object
+      doAssert genericParams(Foo[float, string]) is (float, string)
+      type Bar[N: static float, T] = object
+      doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+      doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
+
+    type T2 = T
+    genericParamsImpl(T2)
 
 when isMainModule:
   static:

@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -34,7 +32,12 @@ type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
 type
-  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct (
+    when defined(nimUse64BitCTime):
+      int64
+    else:
+      clong
+  )
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
@@ -564,6 +567,9 @@ when defined(linux) or defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
+when defined(linux) or defined(bsd):
+  var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
+
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
   # Instead we should use SO_NOSIGPIPE in setsockopt
@@ -599,11 +605,11 @@ when hasSpawnH:
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Exit code, iff WIFEXITED(s)
+  ## Exit code, if WIFEXITED(s)
 proc WTERMSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Termination signal, iff WIFSIGNALED(s)
+  ## Termination signal, if WIFSIGNALED(s)
 proc WSTOPSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Stop signal, iff WIFSTOPPED(s)
+  ## Stop signal, if WIFSTOPPED(s)
 proc WIFEXITED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child exited normally.
 proc WIFSIGNALED*(s: cint): bool {.importc, header: "<sys/wait.h>".}

@@ -55,8 +55,8 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
   m.s[cfsData].addf("static $4 struct {$n" &
-       "  NI cap; void* allocator; NIM_CHAR data[$2+1];$n" &
-       "} $1 = { $2, NIM_NIL, $3 };$n",
+       "  NI cap; NIM_CHAR data[$2+1];$n" &
+       "} $1 = { $2 | NIM_STRLIT_FLAG, $3 };$n",
        [result, rope(s.len), makeCString(s),
        rope(if isConst: "const" else: "")])
 

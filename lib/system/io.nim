@@ -7,7 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
+## This is a part of ``system.nim``, you should not manually import it.
+
+
 include inclrtl
+import std/private/since
 import formatfloat
 
 # ----------------- IO Part ------------------------------------------------
@@ -35,12 +39,18 @@ type
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
+  # duplicated between io and ansi_c
+  const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
+  const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
+  const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
+  const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
+
   var
-    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+    stdin* {.importc: stdinName, header: "<stdio.h>".}: File
       ## The standard input stream.
-    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+    stdout* {.importc: stdoutName, header: "<stdio.h>".}: File
       ## The standard output stream.
-    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+    stderr* {.importc: stderrName, header: "<stdio.h>".}: File
       ## The standard error stream.
 
 when defined(useStdoutAsStdmsg):
@@ -115,8 +125,8 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-## When running nim in android app, stdout goes nowhere, so echo gets ignored
-## To redirect echo to the android logcat, use -d:androidNDK
+# When running nim in android app, stdout goes nowhere, so echo gets ignored
+# To redirect echo to the android logcat, use -d:androidNDK
 when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
@@ -136,6 +146,7 @@ proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 when not defined(NimScript):
   var
     errno {.importc, header: "<errno.h>".}: cint ## error variable
+    EINTR {.importc: "EINTR", header: "<errno.h>".}: cint
 
 proc checkErr(f: File) =
   when not defined(NimScript):
@@ -249,6 +260,31 @@ else:
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
     IONBF {.importc: "_IONBF", nodecl.}: cint
 
+const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
+                              not defined(nimscript)
+when SupportIoctlInheritCtl:
+  var
+    FIOCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+    FIONCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+
+  proc c_ioctl(fd: cint, request: cint): cint {.
+    importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
+elif defined(posix) and not defined(nimscript):
+  var
+    F_GETFD {.importc, header: "<fcntl.h>".}: cint
+    F_SETFD {.importc, header: "<fcntl.h>".}: cint
+    FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
+
+  proc c_fcntl(fd: cint, cmd: cint): cint {.
+    importc: "fcntl", header: "<fcntl.h>", varargs.}
+elif defined(windows):
+  const HANDLE_FLAG_INHERIT = culong 0x1
+  proc getOsfhandle(fd: cint): int {.
+    importc: "_get_osfhandle", header: "<io.h>".}
+
+  proc setHandleInformation(handle: int, mask, flags: culong): cint {.
+    importc: "SetHandleInformation", header: "<handleapi.h>".}
+
 const
   BufSize = 4000
 
@@ -282,11 +318,28 @@ proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
   when defined(windows):
-    proc getOsfhandle(fd: cint): FileHandle {.
-      importc: "_get_osfhandle", header: "<io.h>".}
-    result = getOsfhandle(getFileHandle(f))
+    result = FileHandle getOsfhandle(cint getFileHandle(f))
   else:
     result = c_fileno(f)
+
+when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
+  proc setInheritable*(f: FileHandle, inheritable: bool): bool =
+    ## control whether a file handle can be inherited by child processes. Returns
+    ## ``true`` on success. This requires the OS file handle, which can be
+    ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
+    ##
+    ## This procedure is not guaranteed to be available for all platforms. Test for
+    ## availability with `declared() <system.html#declared,untyped>`.
+    when SupportIoctlInheritCtl:
+      result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
+    elif defined(posix):
+      var flags = c_fcntl(f, F_GETFD)
+      if flags == -1:
+        return false
+      flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
+      result = c_fcntl(f, F_SETFD, flags) != -1
+    else:
+      result = setHandleInformation(f.int, HANDLE_FLAG_INHERIT, culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -310,8 +363,20 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     # fgets doesn't append an \L
     for i in 0..<sp: line.string[pos+i] = '\L'
 
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
-    if not fgetsSuccess: checkErr(f)
+    var fgetsSuccess: bool
+    while true:
+      # fixes #9634; this pattern may need to be abstracted as a template if reused;
+      # likely other io procs need this for correctness.
+      fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
+      if fgetsSuccess: break
+      when not defined(NimScript):
+        if errno == EINTR:
+          errno = 0
+          c_clearerr(f)
+          continue
+      checkErr(f)
+      break
+
     let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
@@ -359,12 +424,12 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   else: write(f, "false")
 
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
@@ -396,7 +461,7 @@ proc rawFileSize(file: File): int64 =
   discard c_fseek(file, oldPos, 0)
 
 proc endOfFile*(f: File): bool {.tags: [], benign.} =
-  ## Returns true iff `f` is at the end.
+  ## Returns true if `f` is at the end.
   var c = c_fgetc(f)
   discard c_ungetc(c, f)
   return c < 0'i32
@@ -436,11 +501,6 @@ proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
   else:
     result = readAllBuffer(file).TaintedString
 
-proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x):
-    write(f, i)
-  write(f, "\n")
-
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
   ## writes the values `x` to `f` and then writes "\\n".
@@ -479,7 +539,21 @@ else:
     importc: "freopen", nodecl.}
 
 const
-  FormatOpen: array[FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
+  NoInheritFlag =
+    # Platform specific flag for creating a File without inheritance.
+    when not defined(nimInheritHandles):
+      when defined(windows):
+        "N"
+      elif defined(linux) or defined(bsd):
+        "e"
+      else:
+        ""
+    else:
+      ""
+  FormatOpen: array[FileMode, string] = [
+    "rb" & NoInheritFlag, "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
+    "r+b" & NoInheritFlag, "ab" & NoInheritFlag
+  ]
     #"rt", "wt", "w+t", "r+t", "at"
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
@@ -517,22 +591,30 @@ when defined(posix) and not defined(nimscript):
 
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool  {.tags: [], raises: [], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
-  ## Default mode is readonly. Returns true iff the file could be opened.
+  ## Default mode is readonly. Returns true if the file could be opened.
   ## This throws no exception if the file could not be opened.
-  var p: pointer = fopen(filename, FormatOpen[mode])
+  ##
+  ## The file handle associated with the resulting ``File`` is not inheritable.
+  var p = fopen(filename, FormatOpen[mode])
   if p != nil:
+    var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
-      var f2 = cast[File](p)
-      var res: Stat
+      var res {.noinit.}: Stat
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
+    when not defined(nimInheritHandles) and declared(setInheritable) and
+         NoInheritFlag.len == 0:
+      if not setInheritable(getOsFileHandle(f2), false):
+        close(f2)
+        return false
+
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
@@ -546,16 +628,28 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## is often used to redirect the `stdin`, `stdout` or `stderr`
   ## file variables.
   ##
-  ## Default mode is readonly. Returns true iff the file could be reopened.
-  var p: pointer = freopen(filename, FormatOpen[mode], f)
-  result = p != nil
+  ## Default mode is readonly. Returns true if the file could be reopened.
+  ##
+  ## The file handle associated with `f` won't be inheritable.
+  if freopen(filename, FormatOpen[mode], f) != nil:
+    when not defined(nimInheritHandles) and declared(setInheritable) and
+         NoInheritFlag.len == 0:
+      if not setInheritable(getOsFileHandle(f), false):
+        close(f)
+        return false
+    result = true
 
 proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
   ## Creates a ``File`` from a `filehandle` with given `mode`.
   ##
-  ## Default mode is readonly. Returns true iff the file could be opened.
-
+  ## Default mode is readonly. Returns true if the file could be opened.
+  ##
+  ## The passed file handle will no longer be inheritable.
+  when not defined(nimInheritHandles) and declared(setInheritable):
+    let oshandle = when defined(windows): FileHandle getOsfhandle(filehandle) else: filehandle
+    if not setInheritable(oshandle, false):
+      return false
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
@@ -565,6 +659,8 @@ proc open*(filename: string,
   ##
   ## Default mode is readonly. Raises an ``IOError`` if the file
   ## could not be opened.
+  ##
+  ## The file handle associated with the resulting ``File`` is not inheritable.
   if not open(result, filename, mode, bufSize):
     sysFatal(IOError, "cannot open: " & filename)
 
@@ -582,7 +678,7 @@ proc getFilePos*(f: File): int64 {.benign.} =
 
 proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
   ## retrieves the file size (in bytes) of `f`.
-  var oldPos = getFilePos(f)
+  let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
@@ -612,7 +708,7 @@ when declared(stdout):
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
       # flockfile deadlocks some versions of Android 5.x.x
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
@@ -626,20 +722,20 @@ when declared(stdout):
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock
 
 
-when defined(windows) and not defined(nimscript):
+when defined(windows) and not defined(nimscript) and not defined(js):
   # work-around C's sucking abstraction:
   # BUGFIX: stdin and stdout should be binary files!
   proc c_setmode(handle, mode: cint) {.
     importc: when defined(bcc): "setmode" else: "_setmode",
     header: "<io.h>".}
   var
-    O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
+    O_BINARY {.importc: "_O_BINARY", header: "<fcntl.h>".}: cint
 
   # we use binary mode on Windows:
   c_setmode(c_fileno(stdin), O_BINARY)
@@ -663,7 +759,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
   ## <system.html#staticRead,string>`_.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = readAll(f)
@@ -676,7 +772,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.write(content)
@@ -689,7 +785,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.writeBuffer(unsafeAddr content[0], content.len)
@@ -698,12 +794,12 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
+proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = newSeq[TaintedString](n)
@@ -715,6 +811,8 @@ proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+template readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+  readLines(filename, 1)
 
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
@@ -731,9 +829,11 @@ iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ##       buffer.add(line.replace("a", "0") & '\x0A')
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
-  defer: close(f)
-  var res = TaintedString(newStringOfCap(80))
-  while f.readLine(res): yield res
+  try:
+    var res = TaintedString(newStringOfCap(80))
+    while f.readLine(res): yield res
+  finally:
+    close(f)
 
 iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.

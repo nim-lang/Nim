@@ -12,31 +12,29 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##
 ##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##    var outp: seq[string]
 ##
 ##    for log in logs:
 ##      var res: string
 ##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
-##        echo res & " - " & captureBetween(log, ' ', '_')
-##        # => 2019-01-10 - OK
+##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
+##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##    from strutils import Digits, parseInt
 ##
-##    let userInput1 = "2019 school start"
-##    let userInput2 = "3 years back"
-##
-##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
-##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
-##
-##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
-##
+##    let
+##      input1 = "2019 school start"
+##      input2 = "3 years back"
+##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
+##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
+##      examYear = parseInt(startYear) + parseInt(yearsBack)
+##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
@@ -46,9 +44,6 @@
 ## * `parseopt module<parseopt.html>`_ for a command line parser
 ## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
-
-
-{.deadCodeElim: on.} # dce option deprecated
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
@@ -254,6 +249,7 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
     doAssert skipWhitespace(" Hello World", 0) == 1
     doAssert skipWhitespace("Hello World", 5) == 1
     doAssert skipWhitespace("Hello  World", 5) == 2
+  result = 0
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
@@ -265,6 +261,7 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
     doAssert skip("2019-01-22", "19", 2) == 2
     doAssert skip("CAPlow", "CAP", 0) == 3
     doAssert skip("CAPlow", "cap", 0) == 0
+  result = 0
   while start+result < s.len and result < token.len and
       s[result+start] == token[result]:
     inc(result)
@@ -275,6 +272,7 @@ proc skipIgnoreCase*(s, token: string, start = 0): int =
   runnableExamples:
     doAssert skipIgnoreCase("CAPlow", "CAP", 0) == 3
     doAssert skipIgnoreCase("CAPlow", "cap", 0) == 3
+  result = 0
   while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
@@ -287,6 +285,7 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
     doAssert skipUntil("Hello World", {'W', 'e'}, 0) == 1
     doAssert skipUntil("Hello World", {'W'}, 0) == 6
     doAssert skipUntil("Hello World", {'W', 'd'}, 0) == 6
+  result = 0
   while start+result < s.len and s[result+start] notin until: inc(result)
 
 proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
@@ -298,6 +297,7 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
     doAssert skipUntil("Hello World", 'o', 4) == 0
     doAssert skipUntil("Hello World", 'W', 0) == 6
     doAssert skipUntil("Hello World", 'w', 0) == 11
+  result = 0
   while start+result < s.len and s[result+start] != until: inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
@@ -307,6 +307,7 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
     doAssert skipWhile("Hello World", {'H', 'e'}) == 2
     doAssert skipWhile("Hello World", {'e'}) == 0
     doAssert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
+  result = 0
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
 proc parseUntil*(s: string, token: var string, until: set[char],
@@ -356,12 +357,13 @@ proc parseUntil*(s: string, token: var string, until: string,
     doAssert myToken == "Hello "
     doAssert parseUntil("Hello World", myToken, "Wor", 2) == 4
     doAssert myToken == "llo "
-  if until.len == 0:
-    token.setLen(0)
-    return 0
+  when (NimMajor, NimMinor) <= (1, 0):
+    if until.len == 0:
+      token.setLen(0)
+      return 0
   var i = start
   while i < s.len:
-    if s[i] == until[0]:
+    if until.len > 0 and s[i] == until[0]:
       var u = 1
       while i+u < s.len and u < until.len and s[i+u] == until[u]:
         inc u
@@ -441,7 +443,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
     var res: BiggestInt
     doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
     doAssert res == 9223372036854775807
-  var res: BiggestInt
+  var res = BiggestInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseInt(s, res, start)
@@ -459,7 +461,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
     doAssert res == 2019
     doAssert parseInt("2019", res, 2) == 2
     doAssert res == 19
-  var res: BiggestInt
+  var res = BiggestInt(0)
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
     if res < low(int) or res > high(int):
@@ -522,7 +524,7 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
     doAssert res == 12
     doAssert parseBiggestUInt("1111111111111111111", res, 0) == 19
     doAssert res == 1111111111111111111'u64
-  var res: BiggestUInt
+  var res = BiggestUInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseUInt(s, res, start)
@@ -540,7 +542,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
     doAssert res == 3450
     doAssert parseUInt("3450", res, 2) == 2
     doAssert res == 50
-  var res: BiggestUInt
+  var res = BiggestUInt(0)
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
@@ -567,7 +569,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
     doAssert res == 32.57
     doAssert parseFloat("32.57", res, 3) == 2
     doAssert res == 57.00
-  var bf: BiggestFloat
+  var bf = BiggestFloat(0.0)
   result = parseBiggestFloat(s, bf, start)
   if result != 0:
     number = bf
@@ -585,21 +587,17 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
-  ##     echo "(", k, ", \"", v, "\")"
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##   (ikString, "  ")
-  ##   (ikExpr, "this")
-  ##   (ikString, " is ")
-  ##   (ikExpr, "an  example")
-  ##   (ikString, "  ")
-  ##   (ikDollar, "$")
+  runnableExamples:
+    var outp: seq[tuple[kind: InterpolatedKind, value: string]]
+    for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
+      outp.add (k, v)
+    doAssert outp == @[(ikStr, "  "),
+                       (ikVar, "this"),
+                       (ikStr, " is "),
+                       (ikExpr, "an  example"),
+                       (ikStr, "  "),
+                       (ikDollar, "$")]
+
   var i = 0
   var kind: InterpolatedKind
   while true:

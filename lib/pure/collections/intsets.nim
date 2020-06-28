@@ -50,26 +50,32 @@ type
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
+proc mustRehash[T](t: T): bool {.inline.} =
+  let length = t.max + 1
+  assert length > t.counter
+  result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  const PERTURB_SHIFT = 5
+  var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
+  perturb = cast[Hash](perturb2)
+  result = ((5*h) + 1 + perturb) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   result = nil
 
 proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
+  var perturb = desc.key
   while data[h] != nil:
     assert(data[h] != desc)
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   assert(data[h] == nil)
   data[h] = desc
 
@@ -84,14 +90,16 @@ proc intSetEnlarge(t: var IntSet) =
 
 proc intSetPut(t: var IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
-  if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
+    h = nextTry(h, t.max, perturb)
+  if mustRehash(t): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
+  perturb = key
+  while t.data[h] != nil: h = nextTry(h, t.max, perturb)
   assert(t.data[h] == nil)
   new(result)
   result.next = t.head
@@ -100,6 +108,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc bitincl(s: var IntSet, key: int) {.inline.} =
+  var ret: PTrunk
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -317,6 +326,15 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
+proc len*(s: IntSet): int {.inline.} =
+  ## Returns the number of elements in `s`.
+  if s.elems < s.a.len:
+    result = s.elems
+  else:
+    result = 0
+    for _ in s:
+      inc(result)
+
 proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
@@ -335,9 +353,9 @@ proc missingOrExcl*(s: var IntSet, key: int): bool =
     assert a.missingOrExcl(5) == false
     assert a.missingOrExcl(5) == true
 
-  var count = s.elems
+  var count = s.len
   exclImpl(s, key)
-  result = count == s.elems
+  result = count == s.len
 
 proc clear*(result: var IntSet) =
   ## Clears the IntSet back to an empty state.
@@ -393,7 +411,8 @@ proc assign*(dest: var IntSet, src: IntSet) =
     var it = src.head
     while it != nil:
       var h = it.key and dest.max
-      while dest.data[h] != nil: h = nextTry(h, dest.max)
+      var perturb = it.key
+      while dest.data[h] != nil: h = nextTry(h, dest.max, perturb)
       assert(dest.data[h] == nil)
       var n: PTrunk
       new(n)
@@ -499,15 +518,6 @@ proc disjoint*(s1, s2: IntSet): bool =
     if contains(s2, item):
       return false
   return true
-
-proc len*(s: IntSet): int {.inline.} =
-  ## Returns the number of elements in `s`.
-  if s.elems < s.a.len:
-    result = s.elems
-  else:
-    result = 0
-    for _ in s:
-      inc(result)
 
 proc card*(s: IntSet): int {.inline.} =
   ## Alias for `len() <#len,IntSet>`_.
