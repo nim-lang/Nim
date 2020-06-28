@@ -581,10 +581,6 @@ proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [
 proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   # TODO: how to ensure no GC used here? `noSideEffect and nogc` don't work for that
   frameData.frameIndex.inc
-  # if frameData.nimFrameGuard:
-  #   c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
-  #   return
-  # frameData.nimFrameGuard = true
   if frameData.frameIndex == nimCallDepthLimit: callDepthLimitReached()
   if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
     const sz = sizeof(TFrame)
