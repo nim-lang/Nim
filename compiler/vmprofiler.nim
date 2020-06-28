@@ -19,7 +19,8 @@ proc leave*(prof: var Profiler, c: PCtx) {.inline.} =
         if li notin data:
           data[li] = ProfileInfo()
         data[li].time += tLeave - prof.tEnter
-        inc data[li].count
+        if tos == prof.tos:
+          inc data[li].count
       tos = tos.next
 
 proc dump*(conf: ConfigRef, pd: ProfileData): string =
