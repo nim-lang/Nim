@@ -452,7 +452,7 @@ proc parseColor*(name: string): Color =
     assert parseColor(b) == Color(0x01_79_fc)
     doAssertRaises(ValueError): discard parseColor(c)
 
-  if name[0] == '#':
+  if name.len > 0 and name[0] == '#':
     result = Color(parseHexInt(name))
   else:
     var idx = binarySearch(colorNames, name, colorNameCmp)
@@ -472,6 +472,7 @@ proc isColor*(name: string): bool =
     assert b.isColor
     assert not c.isColor
 
+  if name.len == 0: return false
   if name[0] == '#':
     for i in 1 .. name.len-1:
       if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
