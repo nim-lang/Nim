@@ -1658,8 +1658,8 @@ proc genInitCode(m: BModule) =
 
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
     m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
-    m.initProc.blocks[0].sections[cpsInit].add m.preInitProc.s(cpsInit)
-    m.initProc.blocks[0].sections[cpsStmts].add m.preInitProc.s(cpsStmts)
+    m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)
+    m.initProc.blocks[0].sections[cpsStmts].prepend m.preInitProc.s(cpsStmts)
 
   # add new scope for following code, because old vcc compiler need variable
   # be defined at the top of the block
