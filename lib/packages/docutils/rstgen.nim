@@ -26,7 +26,7 @@
 ## **Note:** Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils
+  algorithm, parseutils, json
 import "$lib/../compiler/nimpaths"
 import "$lib/../compiler/pathutils"
 import ../../std/private/since
@@ -38,7 +38,8 @@ const
 type
   OutputTarget* = enum ## which document type to generate
     outHtml,            # output is HTML
-    outLatex            # output is Latex
+    outLatex,           # output is Latex
+    outJson             # output is JSON
 
   TocEntry = object
     n*: PRstNode
@@ -199,15 +200,20 @@ proc addTexChar(dest: var string, c: char) =
   of '`': add(dest, "\\symbol{96}")
   else: add(dest, c)
 
+proc addJsonChar(dest: var string, c: char) =
+  add(dest, escapeJsonUnquoted($c))
+
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   case target
   of outHtml:  addXmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
+  of outJson: addJsonChar(dest, c)
 
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
   case target
   of outHtml: add(dest, "<wbr />")
   of outLatex: add(dest, "\\-")
+  of outJson: add(dest, "\", {\"kind\": \"splitter\"}, \"")
 
 proc nextSplitPoint*(s: string, start: int): int =
   result = start
@@ -239,19 +245,25 @@ proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
     for i in countup(0, len(s) - 1): escChar(target, result, s[i])
 
 
-proc disp(target: OutputTarget, xml, tex: string): string =
-  if target != outLatex: result = xml
-  else: result = tex
+proc disp(target: OutputTarget, xml, tex, json: string): string =
+  case target:
+  of outHtml: result = xml
+  of outLatex: result = tex
+  of outJson: result = json
 
-proc dispF(target: OutputTarget, xml, tex: string,
+proc dispF(target: OutputTarget, xml, tex, json: string,
            args: varargs[string]): string =
-  if target != outLatex: result = xml % args
-  else: result = tex % args
+  case target:
+  of outHtml: result = xml % args
+  of outLatex: result = tex % args
+  of outJson: result = json % args
 
 proc dispA(target: OutputTarget, dest: var string,
-           xml, tex: string, args: varargs[string]) =
-  if target != outLatex: addf(dest, xml, args)
-  else: addf(dest, tex, args)
+           xml, tex, json: string, args: varargs[string]) =
+  case target:
+  of outHtml: addf(dest, xml, args)
+  of outLatex: addf(dest, tex, args)
+  of outJson: addf(dest, json, args)
 
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
@@ -273,13 +285,20 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
+proc renderAux(d: PDoc, n: PRstNode, xml, tex, json: string, result: var string) =
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
-  if d.target != outLatex:
-    result.addf(frmtA, [tmp])
-  else:
-    result.addf(frmtB, [tmp])
+  case d.target:
+  of outHtml: result.addf(xml, [tmp])
+  of outLatex: result.addf(tex, [tmp])
+  of outJson:
+    try:
+      echo "Trying to parse: ", tmp
+      discard parseJson("[" & tmp & "]")
+      result.addf(json, [tmp])
+    except:
+      echo "Failed: ", getCurrentExceptionMsg()
+      result.addf(json, ["\"" & tmp & "\""])
 
 # ---------------- index handling --------------------------------------------
 
@@ -374,8 +393,10 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   var term = ""
   renderAux(d, n, term)
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
-  dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}",
-        [id, term])
+  dispA(d.target, result, "<span id=\"$1\">$2</span>",
+                          "$2\\label{$1}",
+                          "{\"kind\":\"indexterm\", \"id\":\"$1\", \"content\":$2},",
+                          [id, term])
 
 type
   IndexEntry = object
@@ -747,13 +768,17 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
 
-    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
-      "id=\"$2\" href=\"#$2\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
+    dispA(d.target, result,
+      "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2\">$3</a></h$1>",
+      "\\rsth$4{$3}\\label{$2}\n",
+      "{\"kind\":\"headline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
       [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
-    dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>",
-                            "\\rsth$4{$3}\\label{$2}\n", [
-        $n.level, refname, tmp,
+    dispA(d.target, result,
+    "\n<h$1 id=\"$2\">$3</h$1>",
+        "\\rsth$4{$3}\\label{$2}\n",
+        "{\"kind\":\"headline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
+        [$n.level, refname, tmp,
         $chr(n.level - 1 + ord('A'))])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
@@ -782,15 +807,20 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
-    dispA(d.target, result, "<h$1 id=\"$2\"><center>$3</center></h$1>",
-                   "\\rstov$4{$3}\\label{$2}\n", [$n.level,
+    dispA(d.target, result,
+        "<h$1 id=\"$2\"><center>$3</center></h$1>",
+        "\\rstov$4{$3}\\label{$2}\n",
+        "{\"kind\":\"overline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
+        [$n.level,
         rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
 
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
-    "\\item\\label{$1_toc} $2\\ref{$1}\n", [e.refname, e.header])
+    "\\item\\label{$1_toc} $2\\ref{$1}\n",
+    "{\"kind\":\"tocentry\", \"id\":\"$1_toc\", \"content\":\"$2\"},",
+    [e.refname, e.header])
 
 proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
                        result: var string) =
@@ -805,8 +835,11 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
     else:
       break
   if lvl > 1:
-    dispA(d.target, result, "<ul class=\"simple\">$1</ul>",
-                            "\\begin{enumerate}$1\\end{enumerate}", [tmp])
+    dispA(d.target, result,
+      "<ul class=\"simple\">$1</ul>",
+      "\\begin{enumerate}$1\\end{enumerate}",
+      "{\"kind\":\"toc\", \"content\":[$1]},",
+      [tmp])
   else:
     result.add(tmp)
 
@@ -818,25 +851,25 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   var s = esc(d.target, getFieldValue(n, "scale").strip())
   if s.len > 0:
-    dispA(d.target, options, " scale=\"$1\"", " scale=$1", [s])
+    dispA(d.target, options, " scale=\"$1\"", " scale=$1", "\"scale\": $1,", [s])
 
   s = esc(d.target, getFieldValue(n, "height").strip())
   if s.len > 0:
-    dispA(d.target, options, " height=\"$1\"", " height=$1", [s])
+    dispA(d.target, options, " height=\"$1\"", " height=$1", "\"height\": $1,", [s])
 
   s = esc(d.target, getFieldValue(n, "width").strip())
   if s.len > 0:
-    dispA(d.target, options, " width=\"$1\"", " width=$1", [s])
+    dispA(d.target, options, " width=\"$1\"", " width=$1", "\"width\": $1,", [s])
 
   s = esc(d.target, getFieldValue(n, "alt").strip())
   if s.len > 0:
-    dispA(d.target, options, " alt=\"$1\"", "", [s])
+    dispA(d.target, options, " alt=\"$1\"", "", "\"alt\":\"$1\",", [s])
 
   s = esc(d.target, getFieldValue(n, "align").strip())
   if s.len > 0:
-    dispA(d.target, options, " align=\"$1\"", "", [s])
+    dispA(d.target, options, " align=\"$1\"", "", "\"align\":\"$1\",", [s])
 
-  if options.len > 0: options = dispF(d.target, "$1", "[$1]", [options])
+  if options.len > 0: options = dispF(d.target, "$1", "[$1]", "$1", [options])
 
   var htmlOut = ""
   if arg.endsWith(".mp4") or arg.endsWith(".ogg") or
@@ -848,8 +881,11 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     """
   else:
     htmlOut = "<img src=\"$1\"$2/>"
-  dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
-        [esc(d.target, arg), options])
+  dispA(d.target, result,
+    htmlOut,
+    "\\includegraphics$2{$1}",
+    "{\"kind\":\"image\", \"content\":[$1], \"options\": {$2}},",
+    [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
@@ -857,6 +893,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
     """<img src="$1" width="15"
         height="17" hspace="2" vspace="2" class="smiley" />""",
     "\\includegraphics{$1}",
+    "{\"kind\":\"smiley\", \"content\": \"$1\"},",
     [d.config.getOrDefault"doc.smiley_format" % n.text])
 
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
@@ -966,7 +1003,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
 
   let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
 
-  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", "{\"kind\":\"codeblock\", \"content\":[", [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
@@ -981,25 +1018,30 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
       of gtNone, gtWhitespace:
         add(result, substr(m.text, g.start, g.length + g.start - 1))
       else:
-        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
+        dispA(d.target, result,
+          "<span class=\"$2\">$1</span>",
+          "\\span$2{$1}",
+          "{\"kind\":\"codeentry\", \"tokenClass\":\"$2\", \"content\":\"$1\"},", [
           esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n", "]},")
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
   renderRstToOut(d, n.sons[2], tmp)
   var arg = esc(d.target, strip(getArgument(n)))
   if arg == "":
-    dispA(d.target, result, "<div>$1</div>", "$1", [tmp])
+    dispA(d.target, result, "<div>$1</div>", "$1", "$1", [tmp])
   else:
-    dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
+    dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2",
+      "{\"kind\": \"class\", \"class\": \"$1\", \"content\": \"$2\"}", [arg, tmp])
 
 proc texColumns(n: PRstNode): string =
   result = ""
   for i in countup(1, len(n)): add(result, "|X")
 
+# TODO: Look into case/of implementation
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
   if d.target == outLatex:
@@ -1015,30 +1057,36 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
         d.meta[metaVersion] = fieldval
         b = true
   if not b:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    renderAux(d, n, "<tr>$1</tr>\n", "$1", "$1", result)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
+  echo n.kind
   case n.kind
-  of rnInner: renderAux(d, n, result)
+  of rnInner: renderAux(d, n, "$1", "$1", "$1", result)
   of rnHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", result)
-  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", result)
+  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", "{\"kind\": \"hrule\"},", result)
+  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", "{\"kind\": \"paragraph\", \"content\": \"$1\"},", result)
   of rnBulletList:
     renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",
-                    "\\begin{itemize}$1\\end{itemize}\n", result)
+                    "\\begin{itemize}$1\\end{itemize}\n",
+                    "{\"kind\": \"bulletlist\", \"content\": [$1]},", result)
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
+    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n",
+                    "{\"kind\": \"listitem\", \"content\": \"$1\"},", result)
   of rnEnumList:
     renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",
-                    "\\begin{enumerate}$1\\end{enumerate}\n", result)
+                    "\\begin{enumerate}$1\\end{enumerate}\n",
+                    "{\"kind\": \"enumlist\", \"content\": [$1]},", result)
   of rnDefList:
     renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
-                       "\\begin{description}$1\\end{description}\n", result)
+                    "\\begin{description}$1\\end{description}\n",
+                    "{\"kind\": \"deflist\", \"content\": [$1]},", result)
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ", result)
-  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", result)
+  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ",
+                    "{\"kind\": \"defitem\", \"description\": \"$1\", ", result)
+  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", "\"content\": \"$1\"},", result)
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
@@ -1051,60 +1099,89 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "<tbody valign=\"top\">$1" &
           "</tbody></table>",
           "\\begin{description}$1\\end{description}\n",
+          "{\"kind\": \"fieldlist\", \"content\": \"$1\"},",
           [tmp])
   of rnField: renderField(d, n, result)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
-                    "\\item[$1:]", result)
+                    "\\item[$1:]",
+                    "{\"kind\": \"fieldname\", \"content\": \"$1\"},",
+                    result)
   of rnFieldBody:
-    renderAux(d, n, "<td>$1</td>", " $1\n", result)
+    renderAux(d, n, "<td>$1</td>",
+                    " $1\n",
+                    "{\"kind\": \"fieldbody\", \"content\": \"$1\"},",
+                    result)
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
     renderAux(d, n, "<table frame=\"void\">$1</table>",
-      "\\begin{description}\n$1\\end{description}\n", result)
+      "\\begin{description}\n$1\\end{description}\n",
+      "{\"kind\": \"optionlist\", \"content\": \"$1\"},",
+      result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    renderAux(d, n, "<tr>$1</tr>\n",
+                    "$1",
+                    "{\"kind\": \"optionlistitem\", \"content\": \"$1\"},",
+                    result)
   of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", result)
+    renderAux(d, n, "<th align=\"left\">$1</th>",
+                    "\\item[$1]",
+                    "{\"kind\": \"optiongroup\", \"content\": \"$1\"},",
+                    result)
   of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", result)
+    renderAux(d, n, "<td align=\"left\">$1</td>\n",
+                    " $1\n",
+                    "{\"kind\": \"description\", \"content\": \"$1\"},",
+                    result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre>$1</pre>\n",
-                    "\\begin{rstpre}\n$1\n\\end{rstpre}\n", result)
+                    "\\begin{rstpre}\n$1\n\\end{rstpre}\n",
+                    "{\"kind\":\"literalblock\", \"content\":$1},",
+                    result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", result)
+    renderAux(d, n, "<p>$1</p>", "$1\n\n",
+      "{\"kind\":\"lineblock\", \"content\":[$1]},", result)
   of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", result)
+    renderAux(d, n, "$1<br />", "$1\\\\\n",
+      "{\"kind\":\"lineblockitem\", \"content\":\"$1\"},", result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
-                    "\\begin{quote}$1\\end{quote}\n", result)
+                    "\\begin{quote}$1\\end{quote}\n",
+                    "{\"kind\":\"blockquote\", \"content\":\"$1\"},", result)
   of rnTable, rnGridTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
-        texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}", result)
+        texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}",
+      "{\"kind\":\"table\", \"content\":[$1]},", result)
   of rnTableRow:
     if len(n) >= 1:
-      if d.target == outLatex:
-        #var tmp = ""
+      case d.target:
+      of outLatex:
         renderRstToOut(d, n.sons[0], result)
         for i in countup(1, len(n) - 1):
           result.add(" & ")
           renderRstToOut(d, n.sons[i], result)
         result.add("\\\\\n\\hline\n")
-      else:
+      of outHtml:
         result.add("<tr>")
         renderAux(d, n, result)
         result.add("</tr>\n")
+      of outJson:
+        result.add("{\"kind\":\"tablerow\", \"content\":[")
+        renderAux(d, n, result)
+        result.add("]},")
   of rnTableDataCell:
-    renderAux(d, n, "<td>$1</td>", "$1", result)
+    renderAux(d, n, "<td>$1</td>", "$1",
+      "{\"kind\":\"tabledatacell\", \"content\":\"$1\"},", result)
   of rnTableHeaderCell:
-    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", result)
+    renderAux(d, n, "<th>$1</th>", "\\textbf{$1}",
+      "{\"kind\":\"tableheadercell\", \"content\":\"$1\"},", result)
   of rnLabel:
     doAssert false, "renderRstToOut" # used for footnotes and other
   of rnFootnote:
@@ -1116,11 +1193,15 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, tmp)
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"#$2\">$1</a>",
-      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
+      "$1\\ref{$2}",
+      "{\"kind\":\"reference\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      [tmp, rstnodeToRefname(n)])
   of rnStandaloneHyperlink:
     renderAux(d, n,
       "<a class=\"reference external\" href=\"$1\">$1</a>",
-      "\\href{$1}{$1}", result)
+      "\\href{$1}{$1}",
+      "{\"kind\":\"standalonelink\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      result)
   of rnHyperlink:
     var tmp0 = ""
     var tmp1 = ""
@@ -1128,7 +1209,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n.sons[1], tmp1)
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [tmp0, tmp1])
+      "\\href{$2}{$1}",
+      "{\"kind\":\"hyperlink\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex and not lastSon(n).isNil:
@@ -1141,32 +1224,58 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnCodeBlock: renderCodeBlock(d, n, result)
   of rnContainer: renderContainer(d, n, result)
   of rnSubstitutionReferences, rnSubstitutionDef:
-    renderAux(d, n, "|$1|", "|$1|", result)
+    renderAux(d, n, "|$1|", "|$1|", "{\"kind\":\"substitution\", \"content\":\"$1\"},", result)
   of rnDirective:
-    renderAux(d, n, "", "", result)
+    renderAux(d, n, "", "", "", result)
   of rnGeneralRole:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+    dispA(d.target, result,
+      "<span class=\"$2\">$1</span>",
+      "\\span$2{$1}",
+      "{\"kind\":\"generalrole\", \"content\":\"$1\", \"role\":\"$2\"},",
           [tmp0, tmp1])
-  of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", result)
-  of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", result)
-  of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", result)
+  of rnSub: renderAux(d, n,
+    "<sub>$1</sub>",
+    "\\rstsub{$1}",
+    "{\"kind\":\"subscript\", \"content\":\"$1\"},",
+    result)
+  of rnSup: renderAux(d, n,
+    "<sup>$1</sup>",
+    "\\rstsup{$1}",
+    "{\"kind\":\"superscript\", \"content\":\"$1\"},",
+    result)
+  of rnEmphasis: renderAux(d, n,
+    "<em>$1</em>",
+    "\\emph{$1}",
+    "{\"kind\":\"emphasis\", \"content\":\"$1\"},",
+    result)
   of rnStrongEmphasis:
-    renderAux(d, n, "<strong>$1</strong>", "\\textbf{$1}", result)
+    renderAux(d, n,
+      "<strong>$1</strong>",
+      "\\textbf{$1}",
+      "{\"kind\":\"strongemphasis\", \"content\":\"$1\"},",
+      result)
   of rnTripleEmphasis:
-    renderAux(d, n, "<strong><em>$1</em></strong>",
-                    "\\textbf{emph{$1}}", result)
+    renderAux(d, n,
+      "<strong><em>$1</em></strong>",
+      "\\textbf{emph{$1}}",
+      "{\"kind\":\"tripleemphasis\", \"content\":\"$1\"},",
+      result)
   of rnIdx:
     renderIndexTerm(d, n, result)
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
-      "\\texttt{$1}", result)
+      "\\texttt{$1}",
+      "{\"kind\":\"literal\", \"content\":$1},",
+      result)
   of rnSmiley: renderSmiley(d, n, result)
-  of rnLeaf: result.add(esc(d.target, n.text))
+  of rnLeaf:
+    echo "rnLeaf: ", n.text
+    result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
   of rnTitle:
     d.meta[metaTitle] = ""

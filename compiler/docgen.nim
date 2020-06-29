@@ -168,7 +168,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir
-  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outJson else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
 
