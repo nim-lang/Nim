@@ -180,8 +180,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # Extract the documentation comment from the original procedure declaration.
   # Note that we're not removing it from the body in order not to make this
   # transformation even more complex.
-  if prc.body.len > 1 and prc.body[0].kind == nnkCommentStmt:
-    outerProcBody.add(prc.body[0])
+  let body2 = extractDocCommentsAndRunnables(prc.body)
 
   # -> var retFuture = newFuture[T]()
   var retFutureSym = genSym(nskVar, "retFuture")
@@ -276,9 +275,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       (cast[type(f)](internalTmpFuture)).read()
 
   if procBody.kind != nnkEmpty:
-    result.body = quote:
-      `awaitDefinition`
-      `outerProcBody`
+    for ai in awaitDefinition: body2.add ai
+    for ai in outerProcBody: body2.add ai
+    result.body = body2
 
   #echo(treeRepr(result))
   #if prcName == "recvLineInto":
