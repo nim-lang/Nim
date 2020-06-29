@@ -221,8 +221,8 @@ is a suitable place for implementing a program loop capable of calling
 
 Please note that reloading won't be possible when any of the type definitions
 in the program has been changed. When closure iterators are used (directly or
-through async code), the reloaded refinitions will affect only newly created
-instances. Existing iterator instancess will execute their original code to
+through async code), the reloaded definitions will affect only newly created
+instances. Existing iterator instances will execute their original code to
 completion.
 
 JavaScript target

@@ -11,7 +11,7 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 # packages A-M
 pkg1 "alea", true
 pkg1 "argparse"
-# pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
+pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
 pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "asyncmysql", true
 pkg1 "awk", true
@@ -42,7 +42,7 @@ pkg1 "elvis"
 pkg1 "fidget", true
 pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
-pkg1 "ggplotnim", true, "nim c -d:noCairo -r -d:nimWorkaround14447 -d:nimHasWorkaround14720 tests/tests.nim"
+pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim"
 # pkg1 "gittyup", true, "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "glob"
 pkg1 "gnuplot"

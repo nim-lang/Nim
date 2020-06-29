@@ -679,8 +679,9 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     quit 1
   else:
     echo "megatest output OK"
-    removeFile(outputGottenFile)
-    removeFile(megatestFile)
+    when false: # no point removing those, always good for debugging
+      removeFile(outputGottenFile)
+      removeFile(megatestFile) # keep it around
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------

@@ -26,6 +26,37 @@ proc typeToString*(t: typedesc, prefer = "preferTypeName"): string {.magic: "Typ
   ## prefer = "preferResolved" will resolve type aliases recursively.
   # Move to typetraits.nim once api stabilized.
 
+block: # name, `$`
+  static:
+    doAssert $type(42) == "int"
+    doAssert int.name == "int"
+
+  const a1 = name(int)
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a1 == "int"
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a1 = name(t)
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a1 == "int"
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
+
+  doAssert $(int,) == "(int,)"
+  doAssert $(1,) == "(1,)" # just for comparison to make sure it has same structure
+  doAssert $tuple[] == "tuple[]"
+  doAssert $(int,) == "(int,)"
+  doAssert $(int, float) == "(int, float)"
+  doAssert $((int), tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float)) == "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], tuple of (int,), tuple of (int, float))"
+  # xxx this is inconsistent, it should be:
+  # "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float))"
+  # which matches how you write it, is consistent with `$(int,)`, and is un-ambiguous.
+
 block: # typeToString
   type MyInt = int
   type

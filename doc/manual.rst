@@ -843,7 +843,10 @@ language features:
 * closure iterators
 * the ``cast`` operator
 * reference (pointer) types
-* the FFI
+* FFI
+
+The use of wrappers that use FFI and/or ``cast`` is also disallowed. Note that
+these wrappers include the ones in the standard libraries.
 
 Some or all of these restrictions are likely to be lifted over time.
 
@@ -6452,7 +6455,7 @@ Align pragma
 The `align`:idx: pragma is for variables and object field members. It
 modifies the alignment requirement of the entity being declared. The
 argument must be a constant power of 2. Valid non-zero
-alignments that are weaker than nother align pragmas on the same
+alignments that are weaker than other align pragmas on the same
 declaration are ignored. Alignments that are weaker that the
 alignment requirement of the type are ignored.
 

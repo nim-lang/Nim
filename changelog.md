@@ -115,6 +115,7 @@
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
+- `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
@@ -150,7 +151,7 @@
       deallocShared(x.val)
       x.val = nil
   ```
-- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
@@ -180,9 +181,7 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added the `thiscall` calling convention as specified by Microsoft.
-
-- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
 

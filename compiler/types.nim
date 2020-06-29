@@ -634,13 +634,14 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           if i < t.n.len - 1: result.add(", ")
         result.add(']')
       elif t.len == 0:
-        result = "tuple"
+        result = "tuple[]"
       else:
         if prefer == preferTypeName: result = "("
         else: result = "tuple of ("
         for i in 0..<t.len:
           result.add(typeToString(t[i]))
           if i < t.len - 1: result.add(", ")
+          elif t.len == 1: result.add(",")
         result.add(')')
     of tyPtr, tyRef, tyVar, tyLent:
       result = typeToStr[t.kind]

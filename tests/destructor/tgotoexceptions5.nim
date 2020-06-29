@@ -5,7 +5,7 @@ swallowed
 before
 swallowed B
 '''
-  cmd: "nim c --gc:arc --exceptions:goto $file"
+  cmd: "nim c --gc:arc --exceptions:goto -d:ssl $file"
 """
 
 # bug #13599
@@ -37,3 +37,9 @@ try:
   mainB()
 except:
   echo "swallowed B"
+
+# bug #14647
+import httpclient
+
+newAsyncHttpClient().close()
+

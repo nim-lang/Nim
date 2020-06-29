@@ -65,40 +65,43 @@ template dbg(body) =
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode
 
-proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
+proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc, until: int): int =
   var pc = pc
-  while pc < c.g.len and pc < until:
-    case c.g[pc].kind
+  while pc < cfg.len and pc < until:
+    case cfg[pc].kind
     of def:
-      if defInstrTargets(c.g[pc], location):
+      if instrTargets(cfg[pc].n, location) == Full:
         # the path leads to a redefinition of 's' --> abandon it.
         return high(int)
+      elif instrTargets(cfg[pc].n, location) == Partial:
+        # only partially writes to 's' --> can't sink 's', so this def reads 's'
+        otherRead = cfg[pc].n
+        return -1
       inc pc
     of use:
-      if useInstrTargets(c.g[pc], location):
-        c.otherRead = c.g[pc].n
+      if instrTargets(cfg[pc].n, location) != None:
+        otherRead = cfg[pc].n
         return -1
       inc pc
     of goto:
-      pc = pc + c.g[pc].dest
+      pc = pc + cfg[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
       var variantA = pc + 1
-      var variantB = pc + c.g[pc].dest
+      var variantB = pc + cfg[pc].dest
       while variantA != variantB:
         if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) >= c.g.len or min(variantA, variantB) >= until:
+        if max(variantA, variantB) >= cfg.len or min(variantA, variantB) >= until:
           break
         if variantA < variantB:
-          variantA = isLastRead(location, c, variantA, min(variantB, until))
+          variantA = isLastRead(location, cfg, otherRead, variantA, min(variantB, until))
         else:
-          variantB = isLastRead(location, c, variantB, min(variantA, until))
+          variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
       pc = min(variantA, variantB)
   return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
-  c.otherRead = nil
   var instr = -1
   let m = dfa.skipConvDfa(n)
 
@@ -116,36 +119,37 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
 
-  result = isLastRead(n, c, instr+1, int.high) >= 0
+  c.otherRead = nil
+  result = isLastRead(n, c.g, c.otherRead, instr+1, int.high) >= 0
   dbg: echo "ugh ", c.otherRead.isNil, " ", result
 
-proc isFirstWrite(location: PNode; c: var Con; pc, until: int): int =
+proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
   var pc = pc
   while pc < until:
-    case c.g[pc].kind
+    case cfg[pc].kind
     of def:
-      if defInstrTargets(c.g[pc], location):
+      if instrTargets(cfg[pc].n, location) != None:
         # a definition of 's' before ours makes ours not the first write
         return -1
       inc pc
     of use:
-      if useInstrTargets(c.g[pc], location):
+      if instrTargets(cfg[pc].n, location) != None:
         return -1
       inc pc
     of goto:
-      pc = pc + c.g[pc].dest
+      pc = pc + cfg[pc].dest
     of fork:
       # every branch must not contain a def/use of our location:
       var variantA = pc + 1
-      var variantB = pc + c.g[pc].dest
+      var variantB = pc + cfg[pc].dest
       while variantA != variantB:
         if min(variantA, variantB) < 0: return -1
         if max(variantA, variantB) > until:
           break
         if variantA < variantB:
-          variantA = isFirstWrite(location, c, variantA, min(variantB, until))
+          variantA = isFirstWrite(location, cfg, variantA, min(variantB, until))
         else:
-          variantB = isFirstWrite(location, c, variantB, min(variantA, until))
+          variantB = isFirstWrite(location, cfg, variantB, min(variantA, until))
       pc = min(variantA, variantB)
   return pc
 
@@ -165,7 +169,7 @@ proc isFirstWrite(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'def/use X' instruction.
   if instr == 0: return true
 
-  result = isFirstWrite(n, c, 0, instr) >= 0
+  result = isFirstWrite(n, c.g, 0, instr) >= 0
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; until: int): int =
