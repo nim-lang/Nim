@@ -591,7 +591,7 @@ when defineSsl:
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
-          if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
+          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != 0:
             raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
         else:
