@@ -1561,7 +1561,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   if sfSystemModule in m.module.flags:
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
       g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
       g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
 
   if m.s[cfsInitProc].len > 0:

@@ -2067,7 +2067,9 @@ proc skipAddr(n: PNode): PNode =
 proc genWasMoved(p: BProc; n: PNode) =
   var a: TLoc
   let n1 = n[1].skipAddr
-  if not notYetAlive(n1):
+  if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
+    discard
+  else:
     initLocExpr(p, n1, a)
     resetLoc(p, a)
     #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
