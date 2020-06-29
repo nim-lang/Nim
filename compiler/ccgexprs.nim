@@ -2066,10 +2066,12 @@ proc skipAddr(n: PNode): PNode =
 
 proc genWasMoved(p: BProc; n: PNode) =
   var a: TLoc
-  initLocExpr(p, n[1].skipAddr, a)
-  resetLoc(p, a)
-  #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-  #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
+  let n1 = n[1].skipAddr
+  if not notYetAlive(n1):
+    initLocExpr(p, n1, a)
+    resetLoc(p, a)
+    #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+    #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   var a: TLoc

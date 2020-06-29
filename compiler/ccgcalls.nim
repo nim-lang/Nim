@@ -644,10 +644,10 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(~"];$n")
     line(p, cpsStmts, pl)
 
-proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
-  proc notYetAlive(n: PNode): bool {.inline.} =
-    n.kind == nkSym and n.sym.loc.lode == nil
+proc notYetAlive(n: PNode): bool {.inline.} =
+  n.kind == nkSym and n.sym.loc.lode == nil
 
+proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   #[ Consider this example.
 
     var :tmpD_3281815
