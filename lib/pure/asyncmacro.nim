@@ -275,8 +275,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       (cast[type(f)](internalTmpFuture)).read()
 
   if procBody.kind != nnkEmpty:
-    for ai in awaitDefinition: body2.add ai
-    for ai in outerProcBody: body2.add ai
+    body2.add quote do:
+      `awaitDefinition`
+      `outerProcBody`
     result.body = body2
 
   #echo(treeRepr(result))
