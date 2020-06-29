@@ -690,7 +690,9 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     result = newNodeI(nkStmtList, n.info)
     for it in n:
       var ri = it[^1]
-      if it.kind == nkVarTuple and hasDestructor(ri.typ):
+      if it.kind == nkVarTuple:
+        # and hasDestructor(ri.typ):
+        # Watch out, destructors can occur everywhere in 'ri' anyhow
         let x = lowerTupleUnpacking(c.graph, it, c.owner)
         result.add st(x, c, s, {})
       else:
