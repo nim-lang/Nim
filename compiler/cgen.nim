@@ -1706,7 +1706,7 @@ proc genInitCode(m: BModule) =
         var procname = makeCString(m.module.name.s)
         prc.add(initFrame(m.initProc, m.module.info, procname, quotedFilename(m.config, m.module.info)))
       else:
-        prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+        prc.add(~"\tTFrame FR_; FR_.len = 0;$N") # PRTEMP
 
     writeSection(initProc, cpsInit, m.hcrOn)
     writeSection(initProc, cpsStmts)

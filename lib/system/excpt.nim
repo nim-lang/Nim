@@ -94,7 +94,10 @@ proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
   excHandler = state.excHandler
   currException = state.currException
 
-proc getFrame*(): FrameIndex {.compilerRtl, inl.} = frameData.frameIndex
+proc getFrame*(): FrameIndex {.compilerRtl, inl.} = frameData.frameIndex # RENAME
+template getCurrentFrameIndexInternal*(): PFrame = frameData.frameIndex
+template getCurrentFrameInternal*(): PFrame = frameData.tframes[frameData.frameIndex].addr
+  ## re-exported in std/stackframes
 
 proc popFrame {.compilerRtl, inl.} =
   frameData.frameIndex.dec

@@ -8,23 +8,20 @@ template procName*(): string =
     {.emit: "`name` = __func__;".}
     $name
 
-template getPFrame*(): PFrame =
-  ## avoids a function call (unlike `getFrame()`)
-  block:
-    when NimStackTrace:
-      var framePtr {.inject, noinit.}: PFrame
-      {.emit: "`framePtr` = &FR_;".}
-      framePtr
+template getCurrentFrameIndex*(): untyped = getCurrentFrameIndexInternal()
+template getCurrentFrame*(): PFrame =
+  # make this this doesn't create a function call
+  getCurrentFrameInternal()
 
 template setFrameMsg*(msg: string, prefix = " ") =
   ## attach a msg to current `PFrame`. This can be called multiple times
   ## in a given PFrame. Noop unless passing --stacktraceMsgs and --stacktrace
   when NimStackTrace and NimStackTraceMsgs:
     block:
-      var fr {.inject, noinit.}: PFrame
-      {.emit: "`fr` = &FR_;".}
+      let msg2 = msg # BUGFIX!! TODO: shallow?
+      var fr = getCurrentFrame()
       # consider setting a custom upper limit on size (analog to stack overflow)
       frameMsgBuf.setLen fr.frameMsgLen
       frameMsgBuf.add prefix
-      frameMsgBuf.add msg
-      fr.frameMsgLen += prefix.len + msg.len
+      frameMsgBuf.add msg2
+      fr.frameMsgLen += prefix.len + msg2.len
