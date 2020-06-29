@@ -244,15 +244,16 @@ proc auxWriteStackTrace(f: FrameIndex; s: var seq[StackTraceEntry]) =
       s.setLen(last+1)
   it = f
   while it != 0:
-    s[last] = StackTraceEntry(procname: frameData.tframes[it].procname,
-                              line: frameData.tframes[it].line,
-                              filename: frameData.tframes[it].filename)
+    let fr = frameData.tframes[it].addr
+    s[last] = StackTraceEntry(procname: fr.procname,
+                              line: fr.line,
+                              filename: fr.filename)
     when NimStackTraceMsgs:
       let first = frameData.tframes[it-1].frameMsgLen
-      if frameData.tframes[it].frameMsgLen > first:
-        s[last].frameMsg.setLen(frameData.tframes[it].frameMsgLen - first)
+      if fr.frameMsgLen > first:
+        s[last].frameMsg.setLen(fr.frameMsgLen - first)
         # somehow string slicing not available here
-        for i in first .. frameData.tframes[it].frameMsgLen-1:
+        for i in first .. fr.frameMsgLen-1:
           s[last].frameMsg[i-first] = frameMsgBuf[i]
     it.dec
     dec last
@@ -591,6 +592,10 @@ proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [
     frameData.tframes[frameData.frameIndex].filename = filename
     frameData.tframes[frameData.frameIndex].line = line
 
+#[
+TODO: instead, split in 2 (nimFramePush + setValues) and make nimFramePush return a PFrame
+]#
+# proc nimFramePush(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
 proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   # TODO: how to ensure no GC used here? `noSideEffect and nogc` don't work for that
   frameData.frameIndex.inc
@@ -603,11 +608,12 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
     # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
     frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
+  let fr = frameData.tframes[frameData.frameIndex].addr
   when NimStackTraceMsgs:
-    frameData.tframes[frameData.frameIndex].frameMsgLen = frameData.tframes[frameData.frameIndex-1].frameMsgLen
-  frameData.tframes[frameData.frameIndex].procname = procname
-  frameData.tframes[frameData.frameIndex].filename = filename
-  frameData.tframes[frameData.frameIndex].line = line
+    fr.frameMsgLen = frameData.tframes[frameData.frameIndex-1].frameMsgLen
+  fr.procname = procname
+  fr.filename = filename
+  fr.line = line
   #[
   could also inspect argument slots here.
   ]#
