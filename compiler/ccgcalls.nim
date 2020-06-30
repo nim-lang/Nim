@@ -645,7 +645,8 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc notYetAlive(n: PNode): bool {.inline.} =
-  n.kind == nkSym and n.sym.loc.lode == nil
+  let r = getRoot(n)
+  result = r != nil and r.loc.lode == nil
 
 proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   #[ Consider this example.
