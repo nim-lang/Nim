@@ -552,8 +552,18 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
 
         var subexpr = ""
         while i < f.len and f[i] != closeChar and f[i] != ':':
-          subexpr.add f[i]
-          inc i
+          if f[i] == '=':
+            let start = i
+            inc i
+            i += f.skipWhitespace(i)
+            if f[i] == closeChar or f[i] == ':':
+              result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
+            else:
+              subexpr.add f[start ..< i]
+          else:
+            subexpr.add f[i]
+            inc i
+
         var x: NimNode
         try:
           x = parseExpr(subexpr)
