@@ -117,6 +117,8 @@
 - Add `typetraits.elementType` to get element type of an iterable.
 - `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
 
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.
