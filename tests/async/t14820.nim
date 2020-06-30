@@ -19,7 +19,9 @@ proc somethingAsync() {.async.} =
   
 asyncCheck somethingAsync()
 var count = 0
+let s0 = now()
 while not done:
   count += 1
   drain 100
   echo "iteration: ", count 
+  echo "ms: ", (now() - s0).inMilliseconds
