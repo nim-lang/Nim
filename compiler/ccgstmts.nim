@@ -864,10 +864,10 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
-  for i in 0..<b.len-1:
+  for it in b:
     # last son is block
-    if (b[i].kind == nkRange) and
-        b[i][1].intVal - b[i][0].intVal > RangeExpandLimit:
+    if (it.kind == nkRange) and
+        it[1].intVal - it[0].intVal > RangeExpandLimit:
       return true
 
 proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
@@ -991,9 +991,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
 
-  startBlock(p, "try {$n")
-  expr(p, t[0], d)
-  endBlock(p)
+  if t.kind == nkHiddenTryStmt:
+    lineCg(p, cpsStmts, "try {$n", [])
+    expr(p, t[0], d)
+    lineCg(p, cpsStmts, "}$n", [])
+  else:
+    startBlock(p, "try {$n")
+    expr(p, t[0], d)
+    endBlock(p)
 
   # First pass: handle Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
