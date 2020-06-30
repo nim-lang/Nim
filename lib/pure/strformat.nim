@@ -83,7 +83,7 @@ Formatting floats
 Debugging strings
 =================
 
-``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the exprssion, 
+``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the expression, 
 an equal sign and the results of evaluated expression.
 
 .. code-block:: nim
