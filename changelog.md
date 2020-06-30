@@ -185,6 +185,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
 
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
