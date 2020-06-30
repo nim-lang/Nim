@@ -1,7 +1,5 @@
 discard """
-  exitcode: 0
   disabled: "windows"
-  output: "Matched"
 """
 import asyncdispatch, strutils
 
@@ -143,7 +141,4 @@ for i in 0 ..< resLines.len:
     echo resLines[i]
     ok = false
 
-if ok:
-  echo("Matched")
-else:
-  quit(QuitFailure)
+doAssert ok

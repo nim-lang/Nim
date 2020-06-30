@@ -251,13 +251,20 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
   genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
-proc freshLineInfo(p: BProc; info: TLineInfo): bool =
-  if p.lastLineInfo.line != info.line:
-    p.lastLineInfo.line = info.line
-    result = true
+when false:
+  proc freshLineInfo(p: BProc; info: TLineInfo): bool =
+    if p.lastLineInfo.line != info.line:
+      p.lastLineInfo.line = info.line
+      result = true
 
-proc freshFileInfo(p: BProc; info: TLineInfo): bool =
-  if p.lastLineInfo.fileIndex != info.fileIndex:
+  proc freshFileInfo(p: BProc; info: TLineInfo): bool =
+    if p.lastLineInfo.fileIndex != info.fileIndex:
+      p.lastLineInfo.line = info.line
+      p.lastLineInfo.fileIndex = info.fileIndex
+      result = true
+
+proc freshInfo(p: BProc; info: TLineInfo): bool =
+  if p.lastLineInfo.fileIndex != info.fileIndex or p.lastLineInfo.line != info.line:
     p.lastLineInfo.line = info.line
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
@@ -270,10 +277,15 @@ proc genLineDir(p: BProc, info: TLineInfo) =
   genCLineDir(p.s(cpsStmts), toFullPath(p.config, info), line, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and info.fileIndex != InvalidFileIdx:
-    if freshFileInfo(p, info):
+    if freshInfo(p, info):
       linefmt(p, cpsStmts, "nimRefreshFile($1, $2);$n", [quotedFilename(p.config, info), line])
-    elif freshLineInfo(p, info):
-      linefmt(p, cpsStmts, "nimRefreshLine($1);$n", [line])
+    when false:
+      # this fails with `tests/async/tasync_traceback.nim`; maybe there's a way to improve
+      # or detect when we're in async code
+      if freshFileInfo(p, info):
+        linefmt(p, cpsStmts, "nimRefreshFile($1, $2);$n", [quotedFilename(p.config, info), line])
+      elif freshLineInfo(p, info):
+        linefmt(p, cpsStmts, "nimRefreshLine($1);$n", [line])
 
 template genLineDir(p: BProc, t: PNode) =
   genLineDir(p, t.info)
