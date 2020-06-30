@@ -309,6 +309,7 @@ block:
   doAssert &"name: {name    =}\nage: {  age  =: >7}\nhobby: {   hobby=  : 8}" == 
         "name: name    =hello\nage:   age  =     21\nhobby:    hobby=  swim    "
   doAssert fmt"{age  ==  12}" == "false"
+  doAssert fmt"{name.toUpperAscii() = }" == "name.toUpperAscii() = HELLO"
   doAssert fmt"{name.toUpperAscii( ) =  }" == "name.toUpperAscii( ) =  HELLO"
   doAssert fmt"{  toUpperAscii(  s  =  name  )  =   }" == "  toUpperAscii(  s  =  name  )  =   HELLO"
   doAssert fmt"{  strutils.toUpperAscii(  s  =  name  )  =   }" == "  strutils.toUpperAscii(  s  =  name  )  =   HELLO"
@@ -355,6 +356,11 @@ block:
   doAssert fmt"{hello(x, y) =}" == "hello(x, y) =12"
   doAssert fmt"{hello(x, y)= }" == "hello(x, y)= 12"
   doAssert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
+
+  doAssert fmt"{hello x, y=}" == "hello x, y=12"
+  doAssert fmt"{hello x, y =}" == "hello x, y =12"
+  doAssert fmt"{hello x, y= }" == "hello x, y= 12"
+  doAssert fmt"{hello x, y = }" == "hello x, y = 12"
 
   doAssert fmt"{x.hello(y)=}" == "x.hello(y)=12"
   doAssert fmt"{x.hello(y) =}" == "x.hello(y) =12"

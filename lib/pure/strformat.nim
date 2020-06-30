@@ -83,7 +83,7 @@ Formatting floats
 Debugging strings
 =================
 
-``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the exprssion, 
+``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the expression, 
 an equal sign and the results of evaluated expression.
 
 .. code-block:: nim
@@ -100,6 +100,14 @@ an equal sign and the results of evaluated expression.
     doAssert fmt"{y=:.2f}" == fmt"y={y:.2f}"
     doAssert fmt"{y=}" == fmt"y={y}"
     doAssert fmt"{y = : <8}" == fmt"y = 3.14159 "
+
+    proc hello(a: string, b: float): int = 12
+    let a = "hello"
+    let b = 3.1415926
+    doAssert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
+    doAssert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
+    doAssert fmt"{hello x, y = }" == "hello x, y = 12"
+
 
 Note that it is space sensitive:
 
