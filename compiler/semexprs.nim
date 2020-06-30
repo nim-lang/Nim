@@ -934,19 +934,23 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
+proc dotTransformation(c: PContext, n: PNode): PNode
+
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = nil
   checkMinSonsLen(n, 1, c.config)
   var prc = n[0]
   if n[0].kind == nkDotExpr:
     checkSonsLen(n[0], 2, c.config)
+    let oldN0 = copyTree(n[0])
     let n0 = semFieldAccess(c, n[0])
     if n0.kind == nkDotCall:
       # it is a static call!
-      result = n0
+      result = dotTransformation(c, oldN0) #TODO: Reuse n0
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
+
       return semExpr(c, result, flags)
     else:
       n[0] = n0
