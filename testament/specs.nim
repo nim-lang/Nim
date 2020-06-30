@@ -84,6 +84,9 @@ type
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
+      # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
+      # few tests are not batchable; the ones that are not could be turned batchable
+      # by making the dependencies explicit
     useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
