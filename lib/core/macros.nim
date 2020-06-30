@@ -1693,7 +1693,7 @@ when defined(nimMacrosSizealignof):
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.
 
-proc extractDocCommentsAndRunnables*(n: NimNode): NimNode {.since: (1,3,5).} =
+proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
   ## returns a `nnkStmtList` containing the top-level doc comments and
   ## runnableExamples in `a`, stopping at the first child that is neither.
   ## Example:
