@@ -183,7 +183,7 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
-
+- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
 
 ## Compiler changes
 
