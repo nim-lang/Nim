@@ -185,6 +185,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
 
+- Remove `sets.isValid`, `sets.toSet`, `sets.initSet`, was deprecated since `0.20`, Sets are initialized by default.
+
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
