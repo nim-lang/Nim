@@ -117,6 +117,8 @@
 - Add `typetraits.elementType` to get element type of an iterable.
 - `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
 
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.
@@ -184,6 +186,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 - Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
 - Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
 
 ## Compiler changes
