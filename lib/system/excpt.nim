@@ -581,6 +581,8 @@ proc callDepthLimitReached() {.noinline.} =
 # these might need to have their counterpart in `system/embedded`
 
 proc nimRefreshLine2(line: int) {.compilerRtl, inl, raises: [].} =
+  when defined(linux):
+    if frameData.frameIndex == 0: return
   let fr = getCurrentFrameInternal(frameData.frameIndex)
   fr.line = line
 
@@ -592,9 +594,27 @@ proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [
   codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
   __attribute__ ((optimize(1)))
   ]#
-    let fr = getCurrentFrameInternal(frameData.frameIndex)
-    fr.filename = filename
-    fr.line = line
+  when defined(linux):
+    #[
+    PRTEMP:
+    otherwise this fails:
+    nim c --stacktrace:on --gc:arc --exceptions:goto -d:ssl -r tests/destructor/tgotoexceptions5.nim
+    in:
+    (gdb) bt
+#0  0x000055555556c0f1 in nimRefreshFile2 ()
+#1  0x000055555556d5bc in stdlib_opensslInit000 ()
+#2  0x000055555557ab5f in PreMainInner ()
+#3  0x000055555557abb9 in PreMain ()
+#4  0x000055555557abf8 in NimMain ()
+#5  0x000055555557ac63 in main ()
+
+    TODO: insetad, use a dummy 1st frame and fill it out, and take better care of `Init` in cgen
+    ]#
+    if frameData.frameIndex == 0:
+      return
+  let fr = getCurrentFrameInternal(frameData.frameIndex)
+  fr.filename = filename
+  fr.line = line
 
 #[
 TODO: instead, split in 2 (nimFramePush + setValues) and make nimFramePush return a PFrame
