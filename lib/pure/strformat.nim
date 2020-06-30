@@ -63,7 +63,6 @@ Formatting floats
 .. code-block:: nim
 
     import strformat
-
     doAssert fmt"{-12345:08}" == "-0012345"
     doAssert fmt"{-1:3}" == " -1"
     doAssert fmt"{-1:03}" == "-01"
@@ -79,6 +78,44 @@ Formatting floats
     doAssert fmt"{123.456:e}" == "1.234560e+02"
     doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
     doAssert fmt"{123.456:13e}" == " 1.234560e+02"
+
+
+Debugging strings
+=================
+
+``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the exprssion, 
+an equal sign and the results of evaluated expression.
+
+.. code-block:: nim
+
+    import strformat
+    doAssert fmt"{123.456=}" == "123.456=123.456"
+    doAssert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
+
+    let x = "hello"
+    doAssert fmt"{x=}" == "x=hello" 
+    doAssert fmt"{x =}" == "x =hello"
+
+    let y = 3.1415926
+    doAssert fmt"{y=:.2f}" == fmt"y={y:.2f}"
+    doAssert fmt"{y=}" == fmt"y={y}"
+    doAssert fmt"{y = : <8}" == fmt"y = 3.14159 "
+
+Note that it is space sensitive:
+
+.. code-block:: nim
+
+    import strformat
+    let x = "12"
+    doAssert fmt"{x=}" == "x=12"
+    doAssert fmt"{x =:}" == "x =12"
+    doAssert fmt"{x =}" == "x =12"
+    doAssert fmt"{x= :}" == "x= 12"
+    doAssert fmt"{x= }" == "x= 12"
+    doAssert fmt"{x = :}" == "x = 12"
+    doAssert fmt"{x = }" == "x = 12"
+    doAssert fmt"{x   =  :}" == "x   =  12"
+    doAssert fmt"{x   =  }" == "x   =  12"
 
 
 Implementation details
