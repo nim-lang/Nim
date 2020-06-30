@@ -1415,7 +1415,7 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc captureEvents*(w: Window, eventMask: int) {.deprecated.}
+
 proc clearInterval*(w: Window, interval: ref Interval)
 proc clearTimeout*(w: Window, timeout: ref TimeOut)
 proc close*(w: Window)
@@ -1435,7 +1435,7 @@ proc open*(w: Window, uri, windowname: cstring,
            properties: cstring = nil): Window
 proc print*(w: Window)
 proc prompt*(w: Window, text, default: cstring): cstring
-proc releaseEvents*(w: Window, eventMask: int) {.deprecated.}
+
 proc resizeBy*(w: Window, x, y: int)
 proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
@@ -1469,7 +1469,7 @@ proc querySelector*(n: Node, selectors: cstring): Element
 proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
 
 # Document "methods"
-proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
+
 proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
@@ -1477,7 +1477,7 @@ proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
 proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
-proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
+
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
