@@ -15,8 +15,10 @@ proc chckRange(i, a, b: int): int {.inline, compilerproc.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc.}
 proc chckNil(p: pointer) {.inline, compilerproc.}
 
-proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} = discard
+proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} = discard
 proc popFrame {.compilerRtl, inl.} = discard
+proc nimRefreshLine2(line: int) {.compilerRtl, inl, raises: [].} = discard
+proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} = discard
 
 proc setFrame(s: PFrame) {.compilerRtl, inl.} = discard
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} = discard

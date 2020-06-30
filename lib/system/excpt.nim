@@ -96,7 +96,7 @@ proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
 
 proc getFrame*(): FrameIndex {.compilerRtl, inl.} = frameData.frameIndex # RENAME
 template getCurrentFrameIndexInternal*(): PFrame = frameData.frameIndex
-template getCurrentFrameInternal*(): PFrame = frameData.tframes[frameData.frameIndex].addr
+template getCurrentFrameInternal*(index: FrameIndex = frameData.frameIndex): PFrame = frameData.tframes[index].addr
   ## re-exported in std/stackframes
 
 proc popFrame {.compilerRtl, inl.} =
@@ -244,12 +244,12 @@ proc auxWriteStackTrace(f: FrameIndex; s: var seq[StackTraceEntry]) =
       s.setLen(last+1)
   it = f
   while it != 0:
-    let fr = frameData.tframes[it].addr
+    let fr = it.getCurrentFrameInternal
     s[last] = StackTraceEntry(procname: fr.procname,
                               line: fr.line,
                               filename: fr.filename)
     when NimStackTraceMsgs:
-      let first = frameData.tframes[it-1].frameMsgLen
+      let first = getCurrentFrameInternal(it-1).frameMsgLen
       if fr.frameMsgLen > first:
         s[last].frameMsg.setLen(fr.frameMsgLen - first)
         # somehow string slicing not available here
@@ -268,7 +268,7 @@ proc toLocationImpl(s: var string, f: StackTraceEntry) =
 
 proc toLocationImpl(s: var string, f: FrameIndex) =
   var oldLen = s.len
-  let f2 = frameData.tframes[f].addr
+  let f2 = f.getCurrentFrameInternal
   s.toLocation(f2.filename, f2.line, 0)
   alignLoc(s, oldLen)
   s.add f2.procname
@@ -279,8 +279,8 @@ template addFrameEntry(s: var string, f: StackTraceEntry|FrameIndex) =
     when type(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
-      var first = if f>0:frameData.tframes[f-1].frameMsgLen else: 0
-      let last = frameData.tframes[f].frameMsgLen
+      var first = if f>0: getCurrentFrameInternal(f-1).frameMsgLen else: 0
+      let last = f.getCurrentFrameInternal.frameMsgLen
       for i in first..<last: add(s, frameMsgBuf[i])
   add(s, "\n")
 
@@ -578,8 +578,11 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
+# these might need to have their counterpart in `system/embedded`
+
 proc nimRefreshLine2(line: int) {.compilerRtl, inl, raises: [].} =
-    frameData.tframes[frameData.frameIndex].line = line
+  let fr = getCurrentFrameInternal(frameData.frameIndex)
+  fr.line = line
 
 proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   #[
@@ -589,8 +592,9 @@ proc nimRefreshFile2(filename: cstring, line: int) {.compilerRtl, inl, raises: [
   codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
   __attribute__ ((optimize(1)))
   ]#
-    frameData.tframes[frameData.frameIndex].filename = filename
-    frameData.tframes[frameData.frameIndex].line = line
+    let fr = getCurrentFrameInternal(frameData.frameIndex)
+    fr.filename = filename
+    fr.line = line
 
 #[
 TODO: instead, split in 2 (nimFramePush + setValues) and make nimFramePush return a PFrame
@@ -608,9 +612,9 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
     # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
     frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
-  let fr = frameData.tframes[frameData.frameIndex].addr
+  let fr = getCurrentFrameInternal(frameData.frameIndex)
   when NimStackTraceMsgs:
-    fr.frameMsgLen = frameData.tframes[frameData.frameIndex-1].frameMsgLen
+    fr.frameMsgLen = getCurrentFrameInternal(frameData.frameIndex-1).frameMsgLen
   fr.procname = procname
   fr.filename = filename
   fr.line = line

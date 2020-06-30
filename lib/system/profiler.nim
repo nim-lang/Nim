@@ -29,35 +29,37 @@ type
 
 proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
-proc captureStackTrace(f: PFrame, st: var StackTrace) =
+proc captureStackTrace(f: FrameIndex, st: var StackTrace) =
   const
     firstCalls = 5
   var
     it = f
     i = 0
     total = 0
-  while it != nil and i <= high(st.lines)-(firstCalls-1):
+  while it != 0 and i <= high(st.lines)-(firstCalls-1):
+    let fr = it.getCurrentFrameInternal
     # the (-1) is for the "..." entry
-    st.lines[i] = it.procname
-    st.files[i] = it.filename
+    st.lines[i] = fr.procname
+    st.files[i] = fr.filename
     inc(i)
     inc(total)
-    it = it.prev
+    it.dec
   var b = it
-  while it != nil:
+  while it != 0:
     inc(total)
-    it = it.prev
+    it.dec
   for j in 1..total-i-(firstCalls-1):
-    if b != nil: b = b.prev
+    if b != 0: b.dec
   if total != i:
     st.lines[i] = "..."
     st.files[i] = "..."
     inc(i)
-  while b != nil and i <= high(st.lines):
-    st.lines[i] = b.procname
-    st.files[i] = b.filename
+  while b != 0 and i <= high(st.lines):
+    let fr = b.getCurrentFrameInternal
+    st.lines[i] = fr.procname
+    st.files[i] = fr.filename
     inc(i)
-    b = b.prev
+    b.dec
 
 var
   profilingRequestedHook*: proc (): bool {.nimcall, locks: 0, gcsafe.}
@@ -75,7 +77,7 @@ when defined(memProfiler):
 
   proc callProfilerHook(hook: MemProfilerHook, requestedSize: int) =
     var st: StackTrace
-    captureStackTrace(framePtr, st)
+    captureStackTrace(frameData.frameIndex, st)
     hook(st, requestedSize)
 
   proc nimProfile(requestedSize: int) =
@@ -92,7 +94,7 @@ else:
     # in the common case.
     when not defined(nimdoc):
       var st: StackTrace
-      captureStackTrace(framePtr, st)
+      captureStackTrace(frameData.frameIndex, st)
       hook(st)
 
   proc nimProfile() =
