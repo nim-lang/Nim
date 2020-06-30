@@ -768,28 +768,6 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.
-    deprecated: "use strformat module instead".} =
-  ## Decimal rounding on a binary floating point number.
-  ##
-  ## This function is NOT reliable. Floating point numbers cannot hold
-  ## non integer decimals precisely. If ``places`` is 0 (or omitted),
-  ## round to the nearest integral value following normal mathematical
-  ## rounding rules (e.g.  ``round(54.5) -> 55.0``). If ``places`` is
-  ## greater than 0, round to the given number of decimal places,
-  ## e.g. ``round(54.346, 2) -> 54.350000000000001421…``. If ``places`` is negative, round
-  ## to the left of the decimal place, e.g. ``round(537.345, -1) ->
-  ## 540.0``
-  ##
-  ## .. code-block:: Nim
-  ##  echo round(PI, 2) ## 3.14
-  ##  echo round(PI, 4) ## 3.1416
-  if places == 0:
-    result = round(x)
-  else:
-    var mult = pow(10.0, places.T)
-    result = round(x*mult)/mult
-
 proc floorDiv*[T: SomeInteger](x, y: T): T =
   ## Floor division is conceptually defined as ``floor(x / y)``.
   ##
