@@ -557,11 +557,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
             inc i
             i += f.skipWhitespace(i)
             if f[i] == closeChar or f[i] == ':':
-              try:
-                discard parseExpr(subexpr)
-                result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
-              except ValueError:
-                subexpr.add f[start ..< i]
+              result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
               subexpr.add f[start ..< i]
           else:
