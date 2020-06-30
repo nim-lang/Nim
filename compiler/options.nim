@@ -40,7 +40,6 @@ type                          # please make sure we have under 32 options
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
     optNilSeqs,
-    optOldAst,
     optSinkInference          # 'sink T' inference
 
 
