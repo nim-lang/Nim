@@ -17,7 +17,6 @@ import important_packages
 const
   specialCategories = [
     "assert",
-    "async",
     "debugger",
     "dll",
     "examples",

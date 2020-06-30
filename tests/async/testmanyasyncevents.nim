@@ -1,9 +1,16 @@
 discard """
 output: '''
 hasPendingOperations: false
-triggerCount: 100 
+triggerCount: 100
 '''
+joinable:false
 """
+
+#[
+joinable:false otherwise:
+Error: unhandled exception: tpendingcheck.nim(7, 9) `not hasPendingOperations()`  [AssertionDefect]
+see tests/async/tpendingcheck.nim
+]#
 
 import asyncDispatch
 

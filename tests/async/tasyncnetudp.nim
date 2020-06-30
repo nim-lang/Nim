@@ -1,5 +1,5 @@
 # It is a reproduction of the 'tnewasyncudp' test code, but using a high level
-# of asynchronous procedures. Output: "5000"
+# of asynchronous procedures.
 import asyncdispatch, asyncnet, nativesockets, net, strutils
 
 var msgCount = 0
@@ -84,7 +84,5 @@ while true:
   if recvCount == swarmSize * messagesToSend:
     break
 
-assert msgCount == swarmSize * messagesToSend
-assert sendports == recvports
-
-echo msgCount
+doAssert msgCount == swarmSize * messagesToSend
+doAssert sendports == recvports

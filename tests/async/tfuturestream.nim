@@ -9,7 +9,15 @@ output: '''
 Done
 Finished
 '''
+joinable:false
 """
+
+#[
+joinable:false
+otherwise doesn't print the remaining output; seems like a bug, perhaps similar to
+tests/async/tpendingcheck.nim
+]#
+
 import asyncdispatch
 
 var fs = newFutureStream[int]()

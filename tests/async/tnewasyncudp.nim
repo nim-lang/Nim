@@ -1,6 +1,13 @@
 discard """
   output: "5000"
+  joinable:false
 """
+
+#[
+joinable:false:
+Address already in use
+]#
+
 import asyncdispatch, nativesockets, net, strutils, os
 
 when defined(windows):

@@ -6,7 +6,14 @@ discard """
 3
 5
 '''
+  joinable:false
 """
+
+#[
+joinable:false
+see tests/async/tpendingcheck.nim
+]#
+
 import asyncfutures
 
 let f1: Future[int] = newFuture[int]()

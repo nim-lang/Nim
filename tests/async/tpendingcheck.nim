@@ -1,6 +1,12 @@
 discard """
   output: ""
+  joinable:false
 """
+#[
+joinable:false otherwise:
+Error: unhandled exception: tpendingcheck.nim(7, 9) `not hasPendingOperations()`  [AssertionDefect]
+xxx seems like a bug
+]#
 
 import asyncdispatch
 

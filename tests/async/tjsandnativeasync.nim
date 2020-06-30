@@ -1,7 +1,13 @@
 discard """
   output: '''hi
 bye'''
+  joinable:false
 """
+
+#[
+joinable:false:
+tpendingcheck.nim(7, 9) `not hasPendingOperations()`  [AssertionDefect]
+]#
 
 import async, times
 when defined(js):
