@@ -612,6 +612,15 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
     # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
     frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
+    when NimStackTraceMsgs:
+      if frameData.frameIndex == 1:
+        # throw-away frame to avoid edge cases
+        let fr0 = getCurrentFrameInternal(0)
+        fr0.frameMsgLen = 0
+        fr0.procname = nil
+        fr0.filename = nil
+        fr0.line = 0
+
   let fr = getCurrentFrameInternal(frameData.frameIndex)
   when NimStackTraceMsgs:
     fr.frameMsgLen = getCurrentFrameInternal(frameData.frameIndex-1).frameMsgLen

@@ -18,10 +18,10 @@ template setFrameMsg*(msg: string, prefix = " ") =
   ## in a given PFrame. Noop unless passing --stacktraceMsgs and --stacktrace
   when NimStackTrace and NimStackTraceMsgs:
     block:
-      let msg2 = msg # BUGFIX!! TODO: shallow?
+      let msg2 = msg # in case it changes the frame, or invalidates due to realloc; TODO: shallow?
       var fr = getCurrentFrame()
       # consider setting a custom upper limit on size (analog to stack overflow)
       frameMsgBuf.setLen fr.frameMsgLen
       frameMsgBuf.add prefix
       frameMsgBuf.add msg2
-      fr.frameMsgLen += prefix.len + msg2.len
+      fr.frameMsgLen = frameMsgBuf.len
