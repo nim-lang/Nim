@@ -1343,13 +1343,13 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
-    startBlock(p, "if ($1.status == 0) {$n", [safePoint])
+    lineCg(p, cpsStmts, "if ($1.status == 0) {$n", [safePoint])
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, quirkyExceptions, 0.Natural))
   expr(p, t[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
-    endBlock(p)
+    lineCg(p, cpsStmts, "}$n", [])
     startBlock(p, "else {$n")
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
     genRestoreFrameAfterException(p)

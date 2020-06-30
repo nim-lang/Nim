@@ -723,8 +723,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         result.add call
       else:
         let tmp = getTemp(c, s, n[0].typ, n.info)
-        var m = genCopyNoCheck(c, tmp, n[0])
-        m.add st(n[0], c, s, {})
+        let b = st(n[0], c, s, {})
+        var m = genCopyNoCheck(c, tmp, b)
         result = newTree(nkStmtList, genWasMoved(tmp, c), m)
         var toDisarm = n[0]
         if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
