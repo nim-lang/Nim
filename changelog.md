@@ -220,6 +220,7 @@ proc mydiv(a, b): int {.raises: [].} =
   See [docgen](docgen.html#introduction-quick-start) for details.
 - Removed the `--oldNewlines` switch.
 - Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
+- Removed the `--oldast` switch.
 - `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is now "typed" instead of "stmt"
 
 
