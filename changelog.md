@@ -141,6 +141,8 @@
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
 
 
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+- Add `decls.byLent` to turn an argument into a let param, useful for overload resolution.
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field

@@ -1,6 +1,6 @@
 import std/decls
 
-block:
+block: # byaddr
   var s = @[10,11,12]
   var a {.byaddr.} = s[0]
   a+=100
@@ -34,23 +34,9 @@ block:
   doAssert compiles(block:
     var b2 {.byaddr.}: int = s[2])
 
-## We can define custom pragmas in user code
-template byUnsafeAddr(lhs, typ, expr) =
-  when typ is type(nil):
-    let tmp = unsafeAddr(expr)
-  else:
-    let tmp: ptr typ = unsafeAddr(expr)
-  template lhs: untyped = tmp[]
-
-block:
-  let s = @["foo", "bar"]
-  let a {.byUnsafeAddr.} = s[0]
-  doAssert a == "foo"
-  doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
-
-block: # nkAccQuoted
-  # shows using a keyword, which requires nkAccQuoted
-  template `cast`(lhs, typ, expr) =
+block: # custom var pragmas
+  ## We can define custom pragmas in user code
+  template byUnsafeAddr(lhs, typ, expr) =
     when typ is type(nil):
       let tmp = unsafeAddr(expr)
     else:
@@ -59,12 +45,34 @@ block: # nkAccQuoted
 
   block:
     let s = @["foo", "bar"]
-    let a {.`byUnsafeAddr`.} = s[0]
+    let a {.byUnsafeAddr.} = s[0]
     doAssert a == "foo"
     doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
 
-  block:
-    let s = @["foo", "bar"]
-    let a {.`cast`.} = s[0]
-    doAssert a == "foo"
-    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+  block: # nkAccQuoted
+    # shows using a keyword, which requires nkAccQuoted
+    template `cast`(lhs, typ, expr) =
+      when typ is type(nil):
+        let tmp = unsafeAddr(expr)
+      else:
+        let tmp: ptr typ = unsafeAddr(expr)
+      template lhs: untyped = tmp[]
+
+    block:
+      let s = @["foo", "bar"]
+      let a {.`byUnsafeAddr`.} = s[0]
+      doAssert a == "foo"
+      doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+    block:
+      let s = @["foo", "bar"]
+      let a {.`cast`.} = s[0]
+      doAssert a == "foo"
+      doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+block: # byLent
+  proc fn(a: int): int = result = a*2
+  proc fn(a: var int) = a = a*5
+  var x = 3
+  x = fn(x.byLent)
+  doAssert x == 3*2

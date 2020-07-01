@@ -78,10 +78,11 @@ doAssert(someGlobalPtr[] == 5)
 someGlobalPtr[] = 10
 doAssert(someGlobal == 10)
 
+from std/decls import byLent
+
 block:
   # issue #14576
   # lots of these used to give: Error: internal error: genAddr: 2
-  proc byLent[T](a: T): lent T = a
   proc byPtr[T](a: T): ptr T = a.unsafeAddr
 
   block:
@@ -90,14 +91,10 @@ block:
     doAssert (x,y) == a
 
   block:
-    when defined(c) and defined(release):
-      # bug; pending https://github.com/nim-lang/Nim/issues/14578
-      discard
-    else:
-      let a = 10
-      doAssert byLent(a) == 10
-      let a2 = byLent(a)
-      doAssert a2 == 10
+    let a = 10
+    doAssert byLent(a) == 10
+    let a2 = byLent(a)
+    doAssert a2 == 10
 
   block:
     let a = [11,12]
