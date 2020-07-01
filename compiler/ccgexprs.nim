@@ -2408,8 +2408,12 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
                 [d.rdLoc, a.rdLoc, b.rdLoc])
     else:
       getTemp(p, n.typ, tmp)
-      linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
-              [tmp.rdLoc, a.rdLoc, b.rdLoc])
+      if n[1].typ.kind == tyObject: # closure env is allocated on stack
+        linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = &$3;$n",
+                [tmp.rdLoc, a.rdLoc, b.rdLoc])
+      else:
+        linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
+                [tmp.rdLoc, a.rdLoc, b.rdLoc])
       putLocIntoDest(p, d, tmp)
 
 proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =

@@ -305,6 +305,7 @@ type
     ownerToType: Table[int, PType]
     somethingToDo: bool
     graph: ModuleGraph
+    envOnHeap: bool
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
   result.processed = initIntSet()
@@ -327,9 +328,12 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, owner)
     let obj = createEnvObj(c.graph, owner, info)
-    rawAddSon(result, obj)
+    if c.envOnHeap:
+      result = newType(tyRef, owner)
+      rawAddSon(result, obj)
+    else:
+      result = obj
     c.ownerToType[owner.id] = result
 
 proc asOwnedRef(c: DetectionPass; t: PType): PType =
@@ -355,7 +359,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # This seems to be generally correct but since it's a bit risky it's disabled
   # for now.
   # XXX This is wrong for the 'hamming' test, so remove this logic again.
-  let fieldType = if isDefined(c.graph.config, "nimCycleBreaker"):
+  let fieldType = if not c.envOnHeap or isDefined(c.graph.config, "nimCycleBreaker"):
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
                     c.getEnvTypeForOwner(dep, info)
@@ -412,10 +416,17 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   if cp == nil:
     cp = newSym(skParam, getIdent(c.graph.cache, paramName), fn, fn.info)
     incl(cp.flags, sfFromGeneric)
-    cp.typ = t
+    if c.envOnHeap:
+      cp.typ = t
+    else:
+      assert t.kind == tyObject
+      let pt = newType(tyPtr, owner)
+      pt.add(t)
+      cp.typ = pt
     addHiddenParam(fn, cp)
   elif cp.typ != t and fn.kind != skIterator:
-    localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
+    if not (cp.typ.kind == tyPtr and cp.typ[0] == t):
+      localError(c.graph.config, fn.info, "internal error: inconsistent environment type")
   #echo "adding closure to ", fn.name.s
 
 proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
@@ -595,7 +606,8 @@ proc rawClosureCreation(owner: PSym;
         addVar(v, unowned)
 
     # add 'new' statement:
-    result.add(newCall(getSysSym(d.graph, env.info, "internalNew"), env))
+    if d.envOnHeap:
+      result.add(newCall(getSysSym(d.graph, env.info, "internalNew"), env))
     if optOwnedRefs in d.graph.config.globalOptions:
       let unowned = c.unownedEnvVars[owner.id]
       assert unowned != nil
@@ -608,7 +620,11 @@ proc rawClosureCreation(owner: PSym;
     for i in 1..<owner.typ.n.len:
       let local = owner.typ.n[i].sym
       if local.id in d.capturedVars:
-        let fieldAccess = indirectAccess(env, local, env.info)
+        let fieldAccess = 
+          if d.envOnHeap:
+            indirectAccess(env, local, env.info)
+          else:
+            rawDirectAccess(env.sym, getFieldFromObj(env.typ, local)) 
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
         createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
@@ -619,8 +635,11 @@ proc rawClosureCreation(owner: PSym;
   if upField != nil:
     let up = getUpViaParam(d.graph, owner)
     if up != nil and upField.typ.skipTypes({tyOwned, tyRef, tyPtr}) == up.typ.skipTypes({tyOwned, tyRef, tyPtr}):
-      result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
-                 up, env.info))
+      if not d.envOnHeap:
+        result.add(newAsgnStmt(rawDirectAccess(env.sym, upField), up, env.info))
+      else:
+        result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
+                  up, env.info))
     #elif oldenv != nil and oldenv.typ == upField.typ:
     #  result.add(newAsgnStmt(rawIndirectAccess(env, upField, env.info),
     #             oldenv, env.info))
@@ -656,7 +675,8 @@ proc closureCreationForIter(iter: PNode;
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
     result.add(vs)
-  result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
+  if d.envOnHeap:
+    result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
@@ -677,7 +697,11 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
   let obj = access.typ.skipTypes({tyOwned, tyRef, tyPtr})
   let field = getFieldFromObj(obj, n.sym)
   if field != nil:
-    result = rawIndirectAccess(access, field, n.info)
+    result =
+      if d.envOnHeap:
+        rawIndirectAccess(access, field, n.info)
+      else:
+        rawDirectAccess(access.sym, field) 
   else:
     localError(d.graph.config, n.info, "internal error: not part of closure object type")
     result = n
@@ -706,7 +730,11 @@ proc symToClosure(n: PNode; owner: PSym; d: DetectionPass;
     # ugh: call through some other inner proc;
     var access = newSymNode(available)
     while true:
-      if access.typ == wanted:
+      let sameType = access.typ == wanted or 
+        (wanted.kind == tyPtr and 
+         available.typ.kind == tyPtr and 
+         wanted[0] == available.typ[0])
+      if sameType:
         return makeClosure(d.graph, s, access, n.info)
       let obj = access.typ.skipTypes({tyOwned, tyRef, tyPtr})
       let upField = lookupInRecord(obj.n, getIdent(d.graph.cache, upName))
@@ -794,6 +822,21 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       n[i] = liftCapturedVars(n[i], owner, d, c)
     if inContainer: dec c.inContainer
 
+proc anyInnerProcMightEscape(fn: PSym): bool =
+  proc aux(nodes: TNodeSeq): bool =
+    for node in nodes:
+      if (node.kind == nkSym and 
+          isInnerProc(node.sym) and 
+          sfAddrTaken in node.sym.flags):
+        return true
+      elif node.kind in nkLambdaKinds:
+        # would be better to check if the lambda actually
+        # captures something
+        return true
+      elif node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
+        return true
+  return aux(fn.ast[bodyPos].sons)
+
 # ------------------ old stuff -------------------------------------------
 
 proc semCaptureSym*(s, owner: PSym) =
@@ -841,6 +884,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.transitionRoutineSymKind(skIterator)
   fn.typ.callConv = ccClosure
   d.ownerToType[fn.id] = ptrType
+  d.envOnHeap = anyInnerProcMightEscape(fn)
   detectCapturedVars(body, fn, d)
   result = liftCapturedVars(body, fn, d, c)
   fn.transitionRoutineSymKind(oldKind)
@@ -862,6 +906,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
     tooEarly = true
   else:
     var d = initDetectionPass(g, fn)
+    d.envOnHeap = anyInnerProcMightEscape(fn)
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn, body.info)
