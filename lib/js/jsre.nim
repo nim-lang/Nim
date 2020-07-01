@@ -1,5 +1,17 @@
 ## Regular Expressions for the JavaScript target.
 ## * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
+##
+## Example
+## -------
+##
+## .. code-block:: nim
+##   let jsregex: RegExp = newRegExp(r"\s+".cstring, "i".cstring)
+##   jsregex.compile(r"\w+".cstring, "i".cstring)
+##   doAssert jsregex.test(r"nim javascript".cstring) == true
+##   doAssert jsregex.exec(r"nim javascript".cstring) == @["nim".cstring]
+##   doAssert jsregex.toString() == r"/\w+/i".cstring
+##   jsregex.compile(r"[0-9]".cstring, "i".cstring)
+##   doAssert jsregex.test(r"0123456789abcd".cstring) == true
 
 type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript target.
   flags* {.importjs.}: cstring        ## cstring that contains the flags of the RegExp object.
@@ -31,12 +43,3 @@ func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)".}
 
 func toString*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
-
-runnableExamples "--backend:js -r:off":
-  let jsregex: RegExp = newRegExp(r"\s+".cstring, "i".cstring)
-  jsregex.compile(r"\w+".cstring, "i".cstring)
-  doAssert jsregex.test(r"nim javascript".cstring) == true
-  doAssert jsregex.exec(r"nim javascript".cstring) == @["nim".cstring]
-  doAssert jsregex.toString() == r"/\w+/i".cstring
-  jsregex.compile(r"[0-9]".cstring, "i".cstring)
-  doAssert jsregex.test(r"0123456789abcd".cstring) == true
