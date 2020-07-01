@@ -8,6 +8,30 @@ import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest
 
+suite "Section headers":
+  test "Section header levels":
+    let output = rstToHtml("""
+section
+-------
+
+subsection
+^^^^^^^^^^
+
+subsubsection
+'''''''''''''
+
+paragraph
+.........
+""", {}, defaultConfig())
+
+    assert output == """
+
+<h1 id="section">section</h1>
+<h2 id="subsection">subsection</h2>
+<h3 id="subsubsection">subsubsection</h3>
+<h4 id="paragraph">paragraph</h4>"""
+
+
 suite "YAML syntax highlighting":
   test "Basics":
     let input = """.. code-block:: yaml
@@ -32,27 +56,6 @@ suite "YAML syntax highlighting":
 <span class="Punctuation">?</span> <span class="StringLit">key</span>
 <span class="Punctuation">:</span> <span class="StringLit">value</span>
 <span class="Keyword">...</span></pre>"""
-
-
-  test "Section header levels":
-    assert rstToHtml("""
-section
--------
-
-subsection
-^^^^^^^^^^
-
-subsubsection
-'''''''''''''
-
-paragraph
-.........
-""") == """
-<h1 id="section">section</h1>
-<h2 id="subsection">subsection</h2>
-<h3 id="subsubsection">subsubsection</h3>
-<h4 id="paragraph">paragraph</h4>
-"""
 
   test "Block scalars":
     let input = """.. code-block:: yaml
