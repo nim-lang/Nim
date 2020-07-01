@@ -37,7 +37,7 @@ runnableExamples:
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
   jsregex.compile(r"\w+", r"i")
   doAssert jsregex.test(r"nim javascript")
-  doAssert jsregex.exec(r"nim javascript") == @["nim"]
+  doAssert jsregex.exec(r"nim javascript") == @["nim".cstring]
   doAssert jsregex.toString() == r"/\w+/i"
   jsregex.compile(r"[0-9]", r"i")
   doAssert jsregex.test(r"0123456789abcd")
