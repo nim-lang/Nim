@@ -33,6 +33,27 @@ suite "YAML syntax highlighting":
 <span class="Punctuation">:</span> <span class="StringLit">value</span>
 <span class="Keyword">...</span></pre>"""
 
+
+  test "Section header levels":
+    assert rstToHtml("""
+section
+-------
+
+subsection
+^^^^^^^^^^
+
+subsubsection
+'''''''''''''
+
+paragraph
+.........
+""") == """
+<h1 id="section">section</h1>
+<h2 id="subsection">subsection</h2>
+<h3 id="subsubsection">subsubsection</h3>
+<h4 id="paragraph">paragraph</h4>
+"""
+
   test "Block scalars":
     let input = """.. code-block:: yaml
     a literal block scalar: |

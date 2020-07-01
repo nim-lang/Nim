@@ -322,6 +322,12 @@ proc newSharedState(options: RstParseOptions,
   new(result)
   result.subs = @[]
   result.refs = @[]
+
+  result.underlineToLevel['-'] = 1
+  result.underlineToLevel['^'] = 2
+  result.underlineToLevel['\''] = 3
+  result.underlineToLevel['.'] = 4
+
   result.options = options
   result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
   result.findFile = if not isNil(findFile): findFile else: defaultFindFile
