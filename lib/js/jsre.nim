@@ -17,7 +17,7 @@ type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript targ
   leftContext* {.importjs.}: cstring  ## Ditto.
   rightContext* {.importjs.}: cstring ## Ditto.
 
-func newRegExp*(pattern: cstring; flags: cstring): RegExp {.importjs: "(new RegExp(@))".}
+func newRegExp*(pattern: cstring; flags: cstring): RegExp {.importjs: "new RegExp(@)".}
   ## Creates a new RegExp object.
 
 func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.compile(@)".}
