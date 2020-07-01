@@ -489,14 +489,14 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       # allow conversions from owned to unowned via this little hack:
       let nTyp = n[1].typ
       n[1].typ = n.typ
-      result[1] = st(n[1], c, s, flags)
+      result[1] = st(n[1], c, s, flags*{sinkArg})
       result[1].typ = nTyp
     else:
-      result[1] = st(n[1], c, s, flags)
+      result[1] = st(n[1], c, s, flags*{sinkArg})
 
   of nkObjDownConv, nkObjUpConv:
     result = copyTree(n)
-    result[0] = st(n[0], c, s, flags)
+    result[0] = st(n[0], c, s, flags*{sinkArg})
 
   of nkCaseStmt:
     result = copyNode(n)
