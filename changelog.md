@@ -119,6 +119,10 @@
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 
+- Add `os.fromUnixFilePermission` convenience func to convert Unix-like file permission to `set[FilePermission]`,
+  eg. you type `7,7,7` istead of `{fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}`, etc.
+
+
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.

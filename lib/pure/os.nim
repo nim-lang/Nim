@@ -1687,6 +1687,33 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+template fromUnixImpl(unixPerm: range[0..7]; i: static[int]): set[FilePermission] =
+  var r = fpUserRead
+  var w = fpUserWrite
+  var x = fpUserExec
+  inc r, i
+  inc w, i
+  inc x, i
+  case unixPerm
+  of 0: {}
+  of 1: {x}
+  of 2: {w}
+  of 3: {w, x}
+  of 4: {r}
+  of 5: {r, x}
+  of 6: {r, w}
+  of 7: {r, w, x}
+
+func fromUnixFilePermission*(user: range[0..7]; group: range[0..7]; other: range[0..7]): set[FilePermission] {.inline, since: (1, 3).} =
+  ## Convenience func to convert Unix like file permission to ``set[FilePermission]``.
+  ##
+  ## See also:
+  ## * `getFilePermissions <#getFilePermissions,string>`_
+  ## * `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_
+  runnableExamples:
+    static: doAssert fromUnixFilePermission(7, 7, 7) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
+  result = fromUnixImpl(user, 0) + fromUnixImpl(group, 3) + fromUnixImpl(other, 6)
+
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Copies a file from `source` to `dest`.
