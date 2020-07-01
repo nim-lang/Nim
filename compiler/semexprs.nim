@@ -942,15 +942,13 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var prc = n[0]
   if n[0].kind == nkDotExpr:
     checkSonsLen(n[0], 2, c.config)
-    let oldN0 = copyTree(n[0])
     let n0 = semFieldAccess(c, n[0])
     if n0.kind == nkDotCall:
       # it is a static call!
-      result = dotTransformation(c, oldN0) #TODO: Reuse n0
+      result = n0
       result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
-
       return semExpr(c, result, flags)
     else:
       n[0] = n0
@@ -1465,9 +1463,12 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
+  let oldN = copyTree n
   result = builtinFieldAccess(c, n, flags)
   if result == nil:
     result = dotTransformation(c, n)
+  if result.kind == nkDotCall:
+    result = dotTransformation(c, oldN) #TODO: Warn if we do this
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)

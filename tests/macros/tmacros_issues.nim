@@ -21,6 +21,11 @@ false
 true
 @[i0, i1, i2, i3, i4]
 @[tmp, tmp, tmp, tmp, tmp]
+hey
+hey
+now method:
+hey
+hey
 '''
 
   output: '''
@@ -519,3 +524,19 @@ block double_sem_for_procs:
     result = 10.0
 
   discard exp(5.0)
+
+# bug #14844
+var c {.compileTime.} = 0
+macro echoes: untyped =
+  echo "compTime"
+  result = newLit c
+  inc c
+
+template doubleEval(n): untyped =
+  echo n; echo n;
+
+doubleEval(echoes)
+static: echo "now method:"
+(echoes).doubleEval()
+static: echo "now method command:"
+(echoes).doubleEval #TODO: This is still broken

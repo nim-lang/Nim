@@ -22,3 +22,25 @@ block:
   let a = vec2f(1.0,0.0)
   let b = vec2f(3.0,1.0)
   let c = (a - b).foo() # breaks
+
+# bug #14844
+template bug: untyped =
+  template makeSeq: untyped =
+    var i = 0
+    for _ in 0..<10: # Already fails with 0..<6 which is exactly 10 / 2 + 1
+      assert i in 0..<10 # This assertion fails
+      inc i
+    @[1] # Works with [1]
+
+  template last(s): untyped = s[s.len - 1] # Works with s[^1]
+
+  echo last(makeSeq()) # This works
+  echo makeSeq().last() # This doesn't work
+  echo makeSeq().last # This doesn't work
+
+bug
+
+proc main =
+  bug
+
+main()
