@@ -1691,9 +1691,10 @@ template fromUnixImpl(unixPerm: range[0..7]; i: static[int]): set[FilePermission
   var r = fpUserRead
   var w = fpUserWrite
   var x = fpUserExec
-  inc r, i
-  inc w, i
-  inc x, i
+  when i > 0:
+    inc r, i
+    inc w, i
+    inc x, i
   case unixPerm
   of 0: {}
   of 1: {x}
