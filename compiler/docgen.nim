@@ -168,8 +168,17 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir
-  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outJson else: outLatex),
-                   conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
+  var outFormat =
+    case conf.cmd:
+    of cmdRst2tex: outLatex
+    of cmdRst2html: outHtml
+    else:
+      case conf.command.normalize:
+      of "jsondoc", "jsondoc2": outJson
+      of "doc", "doc2": outHtml
+      else: outHtml
+  initRstGenerator(result[], outFormat, conf.configVars, filename.string,
+                   {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -1300,7 +1309,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     modDesc &= desc
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
-    "moduleDescription": modDesc,
+    "moduleDescription": sanitize(modDesc),
     "entries": d.jArray}
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
