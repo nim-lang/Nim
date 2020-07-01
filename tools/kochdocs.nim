@@ -15,6 +15,8 @@ const
 
 var nimExe*: string
 
+template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
+
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
@@ -256,10 +258,11 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
+    let extra = if isJsOnly(d): " --backend:js " else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
-    commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
-      [nimArgs2, gitUrl, destPath, d]
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
+      [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
