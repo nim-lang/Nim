@@ -4,15 +4,15 @@
 type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript target.
   flags* {.importjs.}: cstring        ## cstring that contains the flags of the RegExp object.
   dotAll* {.importjs.}: bool          ## Whether `.` matches newlines or not.
-  global* {.importjs.}: bool          ## Whether to test the regular expression against all possible matches in a string, or only against the first.
+  global* {.importjs.}: bool          ## Whether to test against all possible matches in a string, or only against the first.
   ignoreCase* {.importjs.}: bool      ## Whether to ignore case while attempting a match in a string.
   multiline* {.importjs.}: bool       ## Whether to search in strings across multiple lines.
   source* {.importjs.}: cstring       ## The text of the pattern.
   sticky* {.importjs.}: bool          ## Whether the search is sticky.
   unicode* {.importjs.}: bool         ## Whether Unicode features are enabled.
-  lastIndex* {.importjs.}: cint       ## The lastIndex is a read/write integer property of regular expression instances that specifies the index at which to start the next match.
-  input* {.importjs.}: cstring        ## The value of the input property is modified whenever the searched string on the regular expression is changed and that string is matching.
-  lastMatch* {.importjs.}: cstring    ## Read-only and modified on successful match.
+  lastIndex* {.importjs.}: cint       ## Index at which to start the next match (read/write property)
+  input* {.importjs.}: cstring        ## Read-only and modified on successful match.
+  lastMatch* {.importjs.}: cstring    ## Ditto.
   lastParen* {.importjs.}: cstring    ## Ditto.
   leftContext* {.importjs.}: cstring  ## Ditto.
   rightContext* {.importjs.}: cstring ## Ditto.
