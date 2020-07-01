@@ -21,8 +21,6 @@ More text.
 
 ]##
 
-# BUG: module link in theindex.html is wrong, see #14434
-
 type
   SomeType* = enum
     enumValueA,
