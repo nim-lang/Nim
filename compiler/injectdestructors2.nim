@@ -67,7 +67,7 @@ proc optimize(s: var Scope) =
   proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
     # remember that it's destroy(addr(x))
     for i in 0 ..< final.len:
-      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved):
+      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved, strictSymEquality = true):
         return i
     return -1
 
