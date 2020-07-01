@@ -32,7 +32,7 @@ func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)".}
 func toString*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
 
-runnableExamples:
+runnableExamples "--backend:js -r:off":
   let jsregex: RegExp = newRegExp(r"\s+".cstring, "i".cstring)
   jsregex.compile(r"\w+".cstring, "i".cstring)
   doAssert jsregex.test(r"nim javascript".cstring) == true
