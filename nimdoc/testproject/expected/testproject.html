@@ -200,6 +200,12 @@ function main() {
     title="low2[T: Ordinal | enum | range](x: T): T"><wbr />low2<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#tripleStrLitTest"
     title="tripleStrLitTest()"><wbr />triple<wbr />Str<wbr />Lit<wbr />Test<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#asyncFun1"
+    title="asyncFun1(): Future[int]"><wbr />async<wbr />Fun1<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#asyncFun2"
+    title="asyncFun2(): owned(Future[void])"><wbr />async<wbr />Fun2<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#asyncFun3"
+    title="asyncFun3(): owned(Future[void])"><wbr />async<wbr />Fun3<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -654,6 +660,29 @@ at indent 0
   &quot;&quot;&quot;</span><span class="Whitespace"> </span><span class="Punctuation">]</span><span class="Whitespace">
 </span><span class="Keyword">discard</span><span class="Whitespace">
 </span><span class="Comment"># should be in</span></pre>
+
+</dd>
+<a id="asyncFun1"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#asyncFun1"><span class="Identifier">asyncFun1</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">int</span><span class="Other">]</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">,</span> <span class="Identifier">ValueError</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+ok1
+
+</dd>
+<a id="asyncFun2"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#asyncFun2"><span class="Identifier">asyncFun2</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+
+
+</dd>
+<a id="asyncFun3"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#asyncFun3"><span class="Identifier">asyncFun3</span></a><span class="Other">(</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">owned</span><span class="Other">(</span><span class="Identifier">Future</span><span class="Other">[</span><span class="Identifier">void</span><span class="Other">]</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">Exception</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Identifier">RootEffect</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span></pre>ok1
 
 </dd>
 

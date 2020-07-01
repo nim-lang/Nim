@@ -343,6 +343,20 @@ when true: # issue #14473
     toSeq([1,2])
   echo doit() # using doAssert or similar to avoid echo would "hide" the original bug
 
+when true: # issue #14846
+  import asyncdispatch
+  proc asyncFun1*(): Future[int] {.async.} =
+    ## ok1
+    result = 1
+  proc asyncFun2*() {.async.} = discard
+  proc asyncFun3*() {.async.} =
+    runnableExamples:
+      discard
+    ## ok1
+    discard
+    ## should be out
+    discard
+
 when true:
   template testNimDocTrailingExample*() =
     # this must be last entry in this file, it checks against a bug (that got fixed)
