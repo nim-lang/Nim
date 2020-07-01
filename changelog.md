@@ -116,6 +116,7 @@
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
 - `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
+- add `macros.extractDocCommentsAndRunnables` helper
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 
