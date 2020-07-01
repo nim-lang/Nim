@@ -369,15 +369,60 @@ block: # foldr tests
   assert concatenation == "nimiscool"
   doAssert toSeq(1..3).foldr(a + b) == 6 # issue #14404
 
-block: # mapIt + applyIt test
+block: # mapIt tests
   counter = 0
   var
     nums = @[1, 2, 3, 4]
     strings = nums.identity.mapIt($(4 * it))
   doAssert counter == 1
-  nums.applyIt(it * 3)
-  assert nums[0] + nums[3] == 15
-  assert strings[2] == "12"
+  doAssert strings == @["4", "8", "12", "16"]
+
+block: # applyIt tests
+  const expected = @[3, 6, 9]
+  block:
+    var a = @[1, 2, 3]
+    a.applyIt(it * 3)
+    doAssert a == expected
+
+  block:
+    var a = @[1,2,3]
+    applyIt a, it*3
+    doAssert a == expected
+
+  block:
+    var count = 0
+    applyIt (var a = @[1,2,3]; count.inc; a), it*3
+    doAssert count == 1
+    doAssert a == expected
+
+  block:
+    proc fn(a: var openArray[int]) =
+      applyIt(a, it*3)
+    var a = @[1,2,3]
+    fn(a)
+    doAssert a == expected
+
+  block:
+    var count = 0
+    proc fn(a: var openArray[int]) =
+      applyIt((count.inc; a), it*3)
+    var a = @[1,2,3]
+    fn(a)
+    doAssert a == expected
+    doAssert count == 1
+
+  block:
+    template bar() =
+      let a = @[1,2,3]
+      applyIt a, it*3
+      doAssert a == expected
+    doAssert not compiles(bar()) # because of `let`
+
+  block:
+    template bar() =
+      proc fn(a: openArray[int]) =
+        applyIt(a, it*3)
+    doAssert not compiles(bar()) # because of `let` param
 
 block: # newSeqWith tests
   var seq2D = newSeqWith(4, newSeq[bool](2))

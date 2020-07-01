@@ -964,26 +964,47 @@ template mapIt*(s: typed, op: untyped): untyped =
               op
     map(s, f)
 
-template applyIt*(varSeq, op: untyped) =
-  ## Convenience template around the mutable ``apply`` proc to reduce typing.
-  ##
-  ## The template injects the ``it`` variable which you can use directly in an
-  ## expression. The expression has to return the same type as the sequence you
-  ## are mutating.
-  ##
-  ## See also:
-  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_
-  ## * `mapIt template<#mapIt.t,typed,untyped>`_
-  ##
+import std/chunks
+
+template evalonceVar(lhs, typ, expr) =
+  ## makes sure `expr` is evaluated once, and no copy is done when using
+  ## lvalues. The only current limitation is when expr is an expression returning
+  ## an openArray and is not a symbol.
   runnableExamples:
-    var nums = @[1, 2, 3, 4]
-    nums.applyIt(it * 3)
-    assert nums[0] + nums[3] == 15
+    let s = @[1,2]
+    let s2 {.evalonce.} = s
+    doAssert s2[0].unsafeAddr == s[0].unsafeAddr
+  # this should eventually be moved to std/decls
 
-  for i in low(varSeq) .. high(varSeq):
-    let it {.inject.} = varSeq[i]
-    varSeq[i] = op
+  # when type(expr) is openArray: # hits https://github.com/nim-lang/Nim/issues/12030
+  type Expr = type(expr)
+  when Expr is openArray:
+    static: doAssert typ is type(nil) # we could support but a bit pointless
+    # caveat: that's the only case that's not sideeffect safe;
+    # it could be made safe either with 1st class openArray, or with a
+    # macro that transforms `expr` aka `(body; last)` into:
+    # `body; let tmp = unsafeAddr(last)`
+    # template lhs: untyped = expr
+    let lhs = toMChunk(expr)
+  else:
+    when typ is type(nil):
+      let tmp = addr(expr)
+    else:
+      let tmp: ptr typ = addr(expr)
+    template lhs: untyped = tmp[]
 
+template applyIt*(varSeq, op: untyped) =
+  #[
+  A better syntax would be: `var s {.evalonce.} = varSeq` but this
+  is blocked by 2 issues:
+  https://github.com/nim-lang/RFCs/issues/220 to allow disinguishing
+  var vs let (vs const)
+  and https://github.com/timotheecour/Nim/issues/89, which allows
+  using pragma macro inside a template
+  ]#
+  evalonceVar(s, nil, varSeq)
+  for it {.inject.} in mitems(s):
+    it = op
 
 template newSeqWith*(len: int, init: untyped): untyped =
   ## Creates a new sequence of length `len`, calling `init` to initialize
