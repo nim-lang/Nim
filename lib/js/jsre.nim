@@ -34,10 +34,10 @@ func toString*(self: RegExp): cstring {.importjs: "#.toString()".}
 
 
 runnableExamples:
-  let jsregex: RegExp = newRegExp(r"\s+".cstring, "i".cstring)
-  jsregex.compile(r"\w+".cstring, "i".cstring)
-  doAssert jsregex.test(r"nim javascript".cstring)
-  doAssert jsregex.exec(r"nim javascript".cstring) == @["nim".cstring]
-  doAssert jsregex.toString() == r"/\w+/i".cstring
-  jsregex.compile(r"[0-9]".cstring, "i".cstring)
-  doAssert jsregex.test(r"0123456789abcd".cstring)
+  let jsregex: RegExp = newRegExp(r"\s+", r"i")
+  jsregex.compile(r"\w+", r"i")
+  doAssert jsregex.test(r"nim javascript")
+  doAssert jsregex.exec(r"nim javascript") == @["nim"]
+  doAssert jsregex.toString() == r"/\w+/i"
+  jsregex.compile(r"[0-9]", r"i")
+  doAssert jsregex.test(r"0123456789abcd")
