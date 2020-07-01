@@ -10,7 +10,7 @@ type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript targ
   source* {.importjs.}: cstring       ## The text of the pattern.
   sticky* {.importjs.}: bool          ## Whether the search is sticky.
   unicode* {.importjs.}: bool         ## Whether Unicode features are enabled.
-  lastIndex* {.importjs.}: cint       ## Index at which to start the next match (read/write property)
+  lastIndex* {.importjs.}: cint       ## Index at which to start the next match (read/write property).
   input* {.importjs.}: cstring        ## Read-only and modified on successful match.
   lastMatch* {.importjs.}: cstring    ## Ditto.
   lastParen* {.importjs.}: cstring    ## Ditto.
