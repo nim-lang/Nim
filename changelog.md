@@ -191,6 +191,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
 - Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
 
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
