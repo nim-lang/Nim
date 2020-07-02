@@ -115,7 +115,10 @@
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
-- `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- add `macros.extractDocCommentsAndRunnables` helper
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 
@@ -189,9 +192,13 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
+- Remove `strutils.isNilOrWhitespace`, was deprecated.
 - Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
 - Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
 - Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+
 
 ## Compiler changes
 
