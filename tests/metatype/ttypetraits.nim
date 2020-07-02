@@ -219,6 +219,23 @@ block genericParams:
     doAssert genericParams(Bar4) is (StaticParam[5.0], string)
     doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
 
+  block typeof:
+    var
+      a: seq[int]
+      b: array[42, float]
+      c: array[char, int]
+      d: array[1..2, char]
+
+    doAssert genericParams(typeof(a)).get(0) is int
+    doAssert genericParams(typeof(b)) is (range[0..41], float)
+    doAssert genericParams(typeof(c)) is (char, int)
+    doAssert genericParams(typeof(d)) is (range[1..2], char)
+
+  block nestedContainers:
+    doAssert genericParams(seq[Foo[string, float]]).get(0) is Foo[string, float]
+    doAssert genericParams(array[10, Foo[Bar[1, int], Bar[2, float]]]) is (StaticParam[10], Foo[Bar[1, int], Bar[2, float]])
+    doAssert genericParams(array[1..9, int]) is (range[1..9], int)
+
 ##############################################
 # bug 13095
 

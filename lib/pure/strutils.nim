@@ -2935,11 +2935,6 @@ proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, rtl,
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
 
-proc isNilOrWhitespace*(s: string): bool {.noSideEffect, rtl,
-    extern: "nsuIsNilOrWhitespace",
-    deprecated: "use isEmptyOrWhitespace instead".} =
-  ## Alias for isEmptyOrWhitespace
-  result = isEmptyOrWhitespace(s)
 
 when isMainModule:
   proc nonStaticTests =

@@ -121,6 +121,9 @@ macro genericParamsImpl(T: typedesc): untyped =
       of nnkTypeDef:
         impl = impl[2]
         continue
+      of nnkTypeOfExpr:
+        impl = getTypeInst(impl[0])
+        continue
       of nnkBracketExpr:
         for i in 1..<impl.len:
           let ai = impl[i]
@@ -130,8 +133,32 @@ macro genericParamsImpl(T: typedesc): untyped =
             ret = ai
           of ntyStatic: doAssert false
           else:
-            since (1, 1):
-              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+            # getType from a resolved symbol might return a typedesc symbol.
+            # If so, use it directly instead of wrapping it in StaticParam.
+            if (ai.kind == nnkSym and ai.symKind == nskType) or
+               (ai.kind == nnkBracketExpr and ai[0].kind == nnkSym and
+                ai[0].symKind == nskType):
+              ret = ai
+            elif ai.kind == nnkInfix and ai[0].kind == nnkIdent and
+                 ai[0].strVal == "..":
+              # For built-in array types, the "2" is translated to "0..1" then
+              # automagically translated to "range[0..1]". However this is not
+              # reflected in the AST, thus requiring manual transformation here.
+              #
+              # We will also be losing some context here:
+              #   var a: array[10, int]
+              # will be translated to:
+              #   var a: array[0..9, int]
+              # after typecheck. This means that we can't get the exact
+              # definition as typed by the user, which will cause confusion for
+              # users expecting:
+              #   genericParams(typeof(a)) is (StaticParam(10), int)
+              # to be true while in fact the result will be:
+              #   genericParams(typeof(a)) is (range[0..9], int)
+              ret = newTree(nnkBracketExpr, @[bindSym"range", ai])
+            else:
+              since (1, 1):
+                ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           result.add ret
         break
       else:
@@ -141,11 +168,20 @@ since (1, 1):
   template genericParams*(T: typedesc): untyped =
     ## return tuple of generic params for generic `T`
     runnableExamples:
-      type Foo[T1, T2]=object
+      type Foo[T1, T2] = object
       doAssert genericParams(Foo[float, string]) is (float, string)
       type Bar[N: static float, T] = object
       doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
       doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
+      doAssert genericParams(seq[Bar[2.0, string]]).get(0) is Bar[2.0, string]
+      var s: seq[Bar[3.0, string]]
+      doAssert genericParams(typeof(s)) is (Bar[3.0, string],)
+
+      # NOTE: For the builtin array type, the index generic param will
+      #       **always** become a range type after it's bound to a variable.
+      doAssert genericParams(array[10, int]) is (StaticParam[10], int)
+      var a: array[10, int]
+      doAssert genericParams(typeof(a)) is (range[0..9], int)
 
     type T2 = T
     genericParamsImpl(T2)

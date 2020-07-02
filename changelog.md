@@ -118,6 +118,9 @@
 - `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
   `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
   `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- add `macros.extractDocCommentsAndRunnables` helper
+
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
@@ -185,6 +188,12 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
+- Remove `strutils.isNilOrWhitespace`, was deprecated.
+- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
+- Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
 
 ## Compiler changes
@@ -222,6 +231,7 @@ proc mydiv(a, b): int {.raises: [].} =
   See [docgen](docgen.html#introduction-quick-start) for details.
 - Removed the `--oldNewlines` switch.
 - Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
+- Removed the `--oldast` switch.
 - `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is now "typed" instead of "stmt"
 
 
