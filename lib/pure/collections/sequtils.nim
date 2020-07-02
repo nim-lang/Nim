@@ -964,7 +964,7 @@ template mapIt*(s: typed, op: untyped): untyped =
               op
     map(s, f)
 
-import std/chunks
+import std/views
 
 template evalonceVar(lhs, typ, expr) =
   ## makes sure `expr` is evaluated once, and no copy is done when using
@@ -985,7 +985,7 @@ template evalonceVar(lhs, typ, expr) =
     # macro that transforms `expr` aka `(body; last)` into:
     # `body; let tmp = unsafeAddr(last)`
     # template lhs: untyped = expr
-    let lhs = toMChunk(expr)
+    let lhs = mview(expr)
   else:
     when typ is type(nil):
       let tmp = addr(expr)

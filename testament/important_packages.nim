@@ -42,7 +42,7 @@ pkg1 "elvis"
 pkg1 "fidget", true
 pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
-pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim"
+# pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim" # pending https://github.com/Vindaar/ginger/pull/22
 # pkg1 "gittyup", true, "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "glob"
 pkg1 "gnuplot"
