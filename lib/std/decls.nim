@@ -32,4 +32,4 @@ proc byLent*[T](a: T): lent T {.inline.} =
     # x = fn(x)  # would give: Error: expression 'fn(x)' has no type (or is ambiguous)
     x = fn(x.byLent) # works
     doAssert x == 3*2
-  a
+  result = a # just `a` hits: bug #14420
