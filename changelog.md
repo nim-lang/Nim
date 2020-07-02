@@ -121,6 +121,7 @@
 - add `macros.extractDocCommentsAndRunnables` helper
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+- deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
