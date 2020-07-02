@@ -52,10 +52,8 @@ block: # name, `$`
   doAssert $tuple[] == "tuple[]"
   doAssert $(int,) == "(int,)"
   doAssert $(int, float) == "(int, float)"
-  doAssert $((int), tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float)) == "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], tuple of (int,), tuple of (int, float))"
-  # xxx this is inconsistent, it should be:
-  # "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float))"
-  # which matches how you write it, is consistent with `$(int,)`, and is un-ambiguous.
+  doAssert $((int), tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float)) ==
+    "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float))"
 
 block: # typeToString
   type MyInt = int
