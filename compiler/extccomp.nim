@@ -281,9 +281,6 @@ const
 
   hExt* = ".h"
 
-proc libNameTmpl(conf: ConfigRef): string {.inline.} =
-  result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
@@ -663,14 +660,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
-    var libname: string
-    if not conf.outFile.isEmpty:
-      libname = conf.outFile.string.expandTilde
-      if not libname.isAbsolute():
-        libname = getCurrentDir() / libname
-    else:
-      libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
