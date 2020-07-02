@@ -77,6 +77,5 @@ block:
 block: # #14142
   discard existsDir("/usr")
   discard dirExists("/usr")
-  discard existsFile("/usr/foo")
   discard fileExists("/usr/foo")
   discard findExe("nim")

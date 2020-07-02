@@ -86,7 +86,7 @@ proc main =
     quit "[Error] no input file."
   if outfile.len == 0:
     outfile = infile
-  if not existsFile(outfile) or not sameFile(infile, outfile):
+  if not fileExists(outfile) or not sameFile(infile, outfile):
     backup = false # no backup needed since won't be over-written
   if backup:
     let infileBackup = infile & ".backup" # works with .nim or .nims
