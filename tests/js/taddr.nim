@@ -131,6 +131,6 @@ block:
     bar(a2).inc
     doAssert a2 == 13
 
-  block: # xxx: bug this doesn't work
+  block: # pending bug #14877
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]
