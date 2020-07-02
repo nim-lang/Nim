@@ -140,7 +140,7 @@ template declareClosures =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
-      if not existsFile(result): result = ""
+      if not fileExists(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,

@@ -25,10 +25,10 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
   let nim = "nim".exe
   result.path = "bin" / nim
   result.ok = true
-  if existsFile(result.path): return
+  if fileExists(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
     result.path = dir / nim
-    if existsFile(result.path): return
+    if fileExists(result.path): return
   # assume there is a symlink to the exe or something:
   return (nim, false)
 
@@ -295,7 +295,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(dest)
       moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
-      if existsFile(changeFileExt(pdf, "toc")):
+      if fileExists(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
