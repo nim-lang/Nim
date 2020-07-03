@@ -129,7 +129,6 @@ type
     emptyNode: PNode
     otherRead: PNode
     inLoop, inSpawn: int
-    declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -564,8 +563,7 @@ proc cycleCheck(n: PNode; c: var Con) =
 
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   # move the variable declaration to the top of the frame:
-  if not containsOrIncl(c.declaredVars, v.sym.id):
-    c.addTopVar s, v
+  c.addTopVar s, v
   if isUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
@@ -582,71 +580,95 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
     res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
 template handleNestedTempl(n: untyped, processCall: untyped) =
+  template maybeVoid(child, s): untyped =
+    if child.typ == nil: p(child, c, s, normal)
+    else: processCall(child, s)
+
   case n.kind
   of nkStmtList, nkStmtListExpr:
+    # a statement list does not open a new scope
     if n.len == 0: return n
     result = copyNode(n)
     for i in 0..<n.len-1:
       result.add p(n[i], c, s, normal)
-    template node: untyped = n[^1]
-    result.add processCall
-  of nkBlockStmt, nkBlockExpr:
-    result = copyNode(n)
-    result.add n[0]
-    template node: untyped = n[1]
-    result.add processCall
-  of nkIfStmt, nkIfExpr:
-    result = copyNode(n)
-    for son in n:
-      var branch = copyNode(son)
-      if son.kind in {nkElifBranch, nkElifExpr}:
-        template node: untyped = son[1]
-        branch.add p(son[0], c, s, normal) #The condition
-        branch.add if node.typ == nil: p(node, c, s, normal) #noreturn
-                   else: processCall
-      else:
-        template node: untyped = son[0]
-        branch.add if node.typ == nil: p(node, c, s, normal) #noreturn
-                   else: processCall
-      result.add branch
+    result.add processCall(n[^1], s)
+
   of nkCaseStmt:
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
     for i in 1..<n.len:
-      var branch: PNode
-      if n[i].kind == nkOfBranch:
-        branch = n[i] # of branch conditions are constants
-        template node: untyped = n[i][^1]
-        branch[^1] = if node.typ == nil: p(node, c, s, normal) #noreturn
-                     else: processCall
-      elif n[i].kind in {nkElifBranch, nkElifExpr}:
-        branch = copyNode(n[i])
-        branch.add p(n[i][0], c, s, normal) #The condition
-        template node: untyped = n[i][1]
-        branch.add if node.typ == nil: p(node, c, s, normal) #noreturn
-                   else: processCall
-      else:
-        branch = copyNode(n[i])
-        template node: untyped = n[i][0]
-        branch.add if node.typ == nil: p(node, c, s, normal) #noreturn
-                   else: processCall
+      let it = n[i]
+      assert it.kind in {nkOfBranch, nkElse}
+
+      var branch = shallowCopy(it)
+      for j in 0 ..< it.len-1:
+        branch[j] = copyTree(it[j])
+      var ofScope: Scope
+      let ofResult = maybeVoid(it[^1], ofScope)
+      branch[^1] = toTree(ofScope, ofResult)
       result.add branch
-  of nkWhen: # This should be a "when nimvm" node.
-    result = copyTree(n)
-    template node: untyped = n[1][0]
-    result[1][0] = processCall
+      rememberParent(s, ofScope)
+
   of nkWhileStmt:
     inc c.inLoop
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
-    result.add p(n[1], c, s, normal)
+    var bodyScope: Scope
+    let bodyResult = p(n[1], c, bodyScope, normal)
+    result.add toTree(bodyScope, bodyResult)
+    rememberParent(s, bodyScope)
     dec c.inLoop
+
+  of nkBlockStmt, nkBlockExpr:
+    result = copyNode(n)
+    result.add n[0]
+    var bodyScope: Scope
+    let bodyResult = processCall(n[1], bodyScope)
+    result.add toTree(bodyScope, bodyResult)
+    rememberParent(s, bodyScope)
+
+  of nkIfStmt, nkIfExpr:
+    result = copyNode(n)
+    for i in 0..<n.len:
+      let it = n[i]
+      var branch = shallowCopy(it)
+      var branchScope: Scope
+      if it.kind in {nkElifBranch, nkElifExpr}:
+        let cond = p(it[0], c, branchScope, normal)
+        branch[0] = toTree(branchScope, cond, onlyCareAboutVars = true)
+
+      var branchResult = processCall(it[^1], branchScope)
+      branch[^1] = toTree(branchScope, branchResult)
+      result.add branch
+      rememberParent(s, branchScope)
+
+  of nkTryStmt:
+    result = copyNode(n)
+    var tryScope: Scope
+    var tryResult = maybeVoid(n[0], tryScope)
+    result.add toTree(tryScope, tryResult)
+    rememberParent(s, tryScope)
+
+    for i in 1..<n.len:
+      let it = n[i]
+      var branch = copyTree(it)
+      var branchScope: Scope
+      var branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
+                         else: processCall(it[^1], branchScope)
+      branch[^1] = toTree(branchScope, branchResult)
+      result.add branch
+      rememberParent(s, branchScope)
+
+  of nkWhen: # This should be a "when nimvm" node.
+    result = copyTree(n)
+    result[1][0] = processCall(n[1][0], s)
   else: assert(false)
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
-    handleNestedTempl(n): p(node, c, s, mode)
+    template process(child, s): untyped = p(child, c, s, mode)
+    handleNestedTempl(n, process)
   elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
@@ -891,7 +913,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
   of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
     result = genSink(c, s, dest, p(ri, c, s, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
-    handleNestedTempl(ri): moveOrCopy(dest, node, c, s, isDecl)
+    template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+    handleNestedTempl(ri, process)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):
