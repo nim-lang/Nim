@@ -1686,33 +1686,30 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-template fromUnixImpl(unixPerm: range[0..7]; i: static[int]): set[FilePermission] =
-  var r = fpUserRead
-  var w = fpUserWrite
-  var x = fpUserExec
-  when i > 0:
-    inc r, i
-    inc w, i
-    inc x, i
-  case unixPerm
-  of 0: {}
-  of 1: {x}
-  of 2: {w}
-  of 3: {w, x}
-  of 4: {r}
-  of 5: {r, x}
-  of 6: {r, w}
-  of 7: {r, w, x}
-
-func fromUnixFilePermission*(user: range[0..7]; group: range[0..7]; other: range[0..7]): set[FilePermission] {.inline, since: (1, 3).} =
+func fromUnixPerm*(perm: Natural): set[FilePermission] {.inline, since: (1, 3).} =
   ## Convenience func to convert Unix like file permission to ``set[FilePermission]``.
   ##
   ## See also:
   ## * `getFilePermissions <#getFilePermissions,string>`_
   ## * `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_
   runnableExamples:
-    static: doAssert fromUnixFilePermission(7, 7, 7) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
-  result = fromUnixImpl(user, 0) + fromUnixImpl(group, 3) + fromUnixImpl(other, 6)
+    doAssert fromUnixPerm(0o700) == {fpUserExec, fpUserRead, fpUserWrite}
+    doAssert fromUnixPerm(0o070) == {fpGroupExec, fpGroupRead, fpGroupWrite}
+    doAssert fromUnixPerm(0o007) == {fpOthersExec, fpOthersRead, fpOthersWrite}
+    doAssert fromUnixPerm(0o644) == {fpUserWrite, fpUserRead, fpGroupRead, fpOthersRead}
+    doAssert fromUnixPerm(0o777) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
+    doAssert fromUnixPerm(0o000) == {}
+  var perm = uint perm
+  # We might want some form of loop unrolling
+  for permBase in [fpOthersExec, fpGroupExec, fpUserExec]:
+    # Exec
+    if (perm and 1) != 0: result.incl permBase
+    # Read
+    if (perm and 2) != 0: result.incl permBase.succ()
+    # Write
+    if (perm and 4) != 0: result.incl permBase.succ(2)
+    # Shift to next permission group
+    perm = perm shr 3
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =

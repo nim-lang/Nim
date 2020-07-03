@@ -122,8 +122,8 @@
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 
-- Add `os.fromUnixFilePermission` convenience func to convert Unix-like file permission to `set[FilePermission]`,
-  eg. you type `7,7,7` instead of `{fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}`, etc.
+- Add `os.fromUnixPerm` convenience func to convert Unix-like file permission to `set[FilePermission]`,
+  eg. you type `0o777` instead of `{fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}`, etc.
 
 
 ## Language changes
