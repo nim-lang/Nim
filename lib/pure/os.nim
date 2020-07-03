@@ -1686,7 +1686,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-func toFilePerm*(perm: Natural): set[FilePermission] {.inline, since: (1, 3).} =
+func toFilePerm*(perm: Natural): set[FilePermission] {.since: (1, 3).} =
   ## Convenience func to convert Unix like file permission to ``set[FilePermission]``.
   ##
   ## See also:
