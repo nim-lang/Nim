@@ -118,7 +118,7 @@ proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
       for i in countdown(s.final.high, 0): finSection.add s.final[i]
       result.add newTryFinally(ret, finSection)
     else:
-      assert isEmptyType(ret.typ)
+      #assert isEmptyType(ret.typ)
       result.add ret
       for m in s.wasMoved: result.add m
       for i in countdown(s.final.high, 0): result.add s.final[i]
@@ -676,6 +676,30 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     result[1][0] = processCall(n[1][0], s)
   else: assert(false)
 
+proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
+  if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
+    if n[0].kind in nkCallKinds:
+      let call = p(n[0], c, s, normal)
+      result = copyNode(n)
+      result.add call
+    else:
+      let tmp = getTemp(c, s, n[0].typ, n.info)
+      var m = genCopyNoCheck(c, tmp, n[0])
+      m.add p(n[0], c, s, normal)
+      result = newTree(nkStmtList, genWasMoved(tmp, c), m)
+      var toDisarm = n[0]
+      if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
+      if toDisarm.kind == nkSym and toDisarm.sym.owner == c.owner:
+        result.add genWasMoved(toDisarm, c)
+      result.add newTree(nkRaiseStmt, tmp)
+  else:
+    result = copyNode(n)
+    if n[0].kind != nkEmpty:
+      result.add p(n[0], c, s, sinkArg)
+    else:
+      result.add copyNode(n[0])
+  s.needsTry = true
+
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
@@ -832,28 +856,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         result.add p(n[0], c, s, mode)
         result.add p(n[1], c, s, consumed)
     of nkRaiseStmt:
-      if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
-        if n[0].kind in nkCallKinds:
-          let call = p(n[0], c, s, normal)
-          result = copyNode(n)
-          result.add call
-        else:
-          let tmp = getTemp(c, s, n[0].typ, n.info)
-          var m = genCopyNoCheck(c, tmp, n[0])
-          m.add p(n[0], c, s, normal)
-          result = newTree(nkStmtList, genWasMoved(tmp, c), m)
-          var toDisarm = n[0]
-          if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
-          if toDisarm.kind == nkSym and toDisarm.sym.owner == c.owner:
-            result.add genWasMoved(toDisarm, c)
-          result.add newTree(nkRaiseStmt, tmp)
-      else:
-        result = copyNode(n)
-        if n[0].kind != nkEmpty:
-          result.add p(n[0], c, s, sinkArg)
-        else:
-          result.add copyNode(n[0])
-      s.needsTry = true
+      result = pRaiseStmt(n, c, s)
     of nkWhileStmt:
       internalError(c.graph.config, n.info, "nkWhileStmt should have been handled earlier")
       result = n
@@ -927,6 +930,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
     handleNestedTempl(ri, process)
+  of nkRaiseStmt:
+    result = pRaiseStmt(ri, c, s)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):
