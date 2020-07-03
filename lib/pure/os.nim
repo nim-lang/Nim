@@ -1700,16 +1700,11 @@ func fromUnixPerm*(perm: Natural): set[FilePermission] {.inline, since: (1, 3).}
     doAssert fromUnixPerm(0o777) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
     doAssert fromUnixPerm(0o000) == {}
   var perm = uint perm
-  # We might want some form of loop unrolling
   for permBase in [fpOthersExec, fpGroupExec, fpUserExec]:
-    # Exec
-    if (perm and 1) != 0: result.incl permBase
-    # Read
-    if (perm and 2) != 0: result.incl permBase.succ()
-    # Write
-    if (perm and 4) != 0: result.incl permBase.succ(2)
-    # Shift to next permission group
-    perm = perm shr 3
+    if (perm and 1) != 0: result.incl permBase         # Exec
+    if (perm and 2) != 0: result.incl permBase.succ()  # Read
+    if (perm and 4) != 0: result.incl permBase.succ(2) # Write
+    perm = perm shr 3  # Shift to next permission group
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
