@@ -75,7 +75,6 @@ block:
   doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
 
 block: # #14142
-  discard existsDir("/usr")
   discard dirExists("/usr")
   discard fileExists("/usr/foo")
   discard findExe("nim")

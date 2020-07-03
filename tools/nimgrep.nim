@@ -495,7 +495,7 @@ proc styleInsensitive(s: string): string =
     else: addx()
 
 proc walker(pattern; dir: string; counter: var int, errors: var int) =
-  if existsDir(dir):
+  if dirExists(dir):
     for kind, path in walkDir(dir):
       case kind
       of pcFile:
