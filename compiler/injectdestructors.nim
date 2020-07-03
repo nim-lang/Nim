@@ -36,6 +36,10 @@ type
     wasMoved: seq[PNode]
     final: seq[PNode] # finally section
     needsTry: bool
+    parent: ptr Scope
+
+proc nestedScope(parent: var Scope): Scope =
+  Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
 
 proc rememberParent(parent: var Scope; inner: Scope) {.inline.} =
   parent.needsTry = parent.needsTry or inner.needsTry
@@ -103,18 +107,18 @@ proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
       let varSection = newNodeI(nkVarSection, ret.info)
       for tmp in s.vars:
         varSection.add newTree(nkIdentDefs, newSymNode(tmp), newNodeI(nkEmpty, ret.info),
-                                                              newNodeI(nkEmpty, ret.info))
+                                                             newNodeI(nkEmpty, ret.info))
       result.add varSection
     if onlyCareAboutVars:
       result.add ret
       s.vars.setLen 0
     elif s.needsTry:
-      # XXX wasMoved calls should be outside the 'finally' section!
       var finSection = newNodeI(nkStmtList, ret.info)
       for m in s.wasMoved: finSection.add m
       for i in countdown(s.final.high, 0): finSection.add s.final[i]
       result.add newTryFinally(ret, finSection)
     else:
+      assert isEmptyType(ret.typ)
       result.add ret
       for m in s.wasMoved: result.add m
       for i in countdown(s.final.high, 0): result.add s.final[i]
@@ -513,10 +517,16 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
 
-    let tmp = getTemp(c, s, arg.typ, arg.info)
-    result.add genSink(c, s, tmp, arg, isDecl = true)
-    result.add tmp
-    s.final.add genDestroy(c, tmp)
+    if s.parent != nil:
+      let tmp = getTemp(c, s.parent[], arg.typ, arg.info)
+      result.add genSink(c, s, tmp, arg, isDecl = true)
+      result.add tmp
+      s.parent[].final.add genDestroy(c, tmp)
+    else:
+      let tmp = getTemp(c, s, arg.typ, arg.info)
+      result.add genSink(c, s, tmp, arg, isDecl = true)
+      result.add tmp
+      s.final.add genDestroy(c, tmp)
   else:
     result = arg
 
@@ -581,7 +591,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
 
 template handleNestedTempl(n: untyped, processCall: untyped) =
   template maybeVoid(child, s): untyped =
-    if child.typ == nil: p(child, c, s, normal)
+    if isEmptyType(child.typ): p(child, c, s, normal)
     else: processCall(child, s)
 
   case n.kind
@@ -591,7 +601,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     result = copyNode(n)
     for i in 0..<n.len-1:
       result.add p(n[i], c, s, normal)
-    result.add processCall(n[^1], s)
+    result.add maybeVoid(n[^1], s)
 
   of nkCaseStmt:
     result = copyNode(n)
@@ -603,7 +613,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
       var branch = shallowCopy(it)
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
-      var ofScope: Scope
+      var ofScope = nestedScope(s)
       let ofResult = maybeVoid(it[^1], ofScope)
       branch[^1] = toTree(ofScope, ofResult)
       result.add branch
@@ -613,7 +623,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     inc c.inLoop
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
-    var bodyScope: Scope
+    var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
     result.add toTree(bodyScope, bodyResult)
     rememberParent(s, bodyScope)
@@ -622,7 +632,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
     result.add n[0]
-    var bodyScope: Scope
+    var bodyScope = nestedScope(s)
     let bodyResult = processCall(n[1], bodyScope)
     result.add toTree(bodyScope, bodyResult)
     rememberParent(s, bodyScope)
@@ -632,7 +642,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
-      var branchScope: Scope
+      var branchScope = nestedScope(s)
       if it.kind in {nkElifBranch, nkElifExpr}:
         let cond = p(it[0], c, branchScope, normal)
         branch[0] = toTree(branchScope, cond, onlyCareAboutVars = true)
@@ -644,7 +654,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
 
   of nkTryStmt:
     result = copyNode(n)
-    var tryScope: Scope
+    var tryScope = nestedScope(s)
     var tryResult = maybeVoid(n[0], tryScope)
     result.add toTree(tryScope, tryResult)
     rememberParent(s, tryScope)
@@ -652,7 +662,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     for i in 1..<n.len:
       let it = n[i]
       var branch = copyTree(it)
-      var branchScope: Scope
+      var branchScope = nestedScope(s)
       var branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                          else: processCall(it[^1], branchScope)
       branch[^1] = toTree(branchScope, branchResult)
