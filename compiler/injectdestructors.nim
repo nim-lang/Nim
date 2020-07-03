@@ -27,7 +27,6 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors
 
 from trees import exprStructuralEquivalent, getRoot
-from algorithm import reverse
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -113,12 +112,12 @@ proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
       # XXX wasMoved calls should be outside the 'finally' section!
       var finSection = newNodeI(nkStmtList, ret.info)
       for m in s.wasMoved: finSection.add m
-      for f in s.final: finSection.add f
+      for i in countdown(s.final.high, 0): finSection.add s.final[i]
       result.add newTryFinally(ret, finSection)
     else:
       result.add ret
       for m in s.wasMoved: result.add m
-      for f in s.final: result.add f
+      for i in countdown(s.final.high, 0): result.add s.final[i]
 
 type
   Con = object
