@@ -13,6 +13,8 @@
 ## as it breaks incremental compilations.
 ## Instead the API here needs to be used.
 
+{.deprecated: "Deprecated since 0.19; Not supported anymore as it breaks incremental compilation.".}
+
 type
   CacheSeq* = distinct string
   CacheTable* = distinct string
