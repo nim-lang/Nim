@@ -580,7 +580,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif sfThread notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
-    if sfGlobal in v.sym.flags:
+    if sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add genDestroy(c, v)
     else:
       s.final.add genDestroy(c, v)
