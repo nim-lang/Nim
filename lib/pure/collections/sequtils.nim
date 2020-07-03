@@ -1047,10 +1047,8 @@ template applyIt*(varSeq, op: untyped) =
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
 
-  for i in low(varSeq) .. high(varSeq):
-    let it {.inject.} = varSeq[i]
-    varSeq[i] = op
-
+  for it {.inject.} in mitems(varSeq):
+    it = op
 
 template newSeqWith*(len: int, init: untyped): untyped =
   ## Creates a new `seq` of length `len`, calling `init` to initialize

@@ -21,11 +21,16 @@ false
 true
 @[i0, i1, i2, i3, i4]
 @[tmp, tmp, tmp, tmp, tmp]
-hey
-hey
+compTime
+compTime
 now method:
-hey
-hey
+compTime
+compTime
+compTime
+now method command:
+compTime
+compTime
+compTime
 '''
 
   output: '''
@@ -46,6 +51,12 @@ false
 true
 false
 1.0
+0
+1
+3
+4
+6
+7
 '''
 """
 
@@ -539,4 +550,4 @@ doubleEval(echoes)
 static: echo "now method:"
 (echoes).doubleEval()
 static: echo "now method command:"
-(echoes).doubleEval #TODO: This is still broken
+(echoes).doubleEval

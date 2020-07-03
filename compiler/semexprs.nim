@@ -83,6 +83,10 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = errorNode(c, n)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  let n = if n.kind == nkEarlySemArg:
+            n[0]
+          else:
+            n
   result = semExprCheck(c, n, flags)
   if result.typ == nil and efInTypeof in flags:
     result.typ = c.voidType
@@ -873,8 +877,14 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
     let callee = result[0].sym
+
     case callee.kind
-    of skMacro, skTemplate: discard
+    of skMacro, skTemplate:
+      let typ = callee.typ.n
+      #The first argument might be early gensymmed because of the method call syntax
+      if n.len > 1 and n[1].kind == nkEarlySemArg and typ.len > 1 and typ[1].typ != nil and typ[1].typ.kind == tyUntyped:
+        n[1] = n[1][1] # Restore untyped AST
+        #TODO: Warn the user about this extra symming
     else:
       if callee.kind == skIterator and callee.id == c.p.owner.id:
         localError(c.config, n.info, errRecursiveDependencyIteratorX % callee.name.s)
@@ -1463,12 +1473,12 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
-  let oldN = copyTree n
+  let unsemmedN = copyTree n
   result = builtinFieldAccess(c, n, flags)
   if result == nil:
     result = dotTransformation(c, n)
   if result.kind == nkDotCall:
-    result = dotTransformation(c, oldN) #TODO: Warn if we do this
+    result[1] = newTreeI(nkEarlySemArg, result[1].info, result[1], unsemmedN[0])
 
 proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
   result = newNodeI(nkCall, n.info)
@@ -2270,6 +2280,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     result = semQuoteAst(c, n)
   of mAstToStr:
+    if n[1].kind == nkEarlySemArg: n[1] = n[1][0]
     markUsed(c, n.info, s)
     checkSonsLen(n, 2, c.config)
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, c.graph)
@@ -2822,6 +2833,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCharLit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyChar)
   of nkDotExpr:
+    #TODO: Do we need to use shadowscopes here?
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)

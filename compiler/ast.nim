@@ -225,6 +225,7 @@ type
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
+    nkEarlySemArg         # When an argument was semmed early, but we might need the untyped AST later, the semmed AST is the first, the unsemmed the second son
 
   TNodeKinds* = set[TNodeKind]
 
