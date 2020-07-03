@@ -1657,9 +1657,19 @@ proc genInitCode(m: BModule) =
       if addHcrGuards: prc.add("\n\t} // nim_hcr_do_init_\n")
 
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
-    m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
-    m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)
-    m.initProc.blocks[0].sections[cpsStmts].prepend m.preInitProc.s(cpsStmts)
+    # Give this small function its own scope
+    prc.addf("{$N", [])
+    # Keep a bogus frame in case the code needs one
+    prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+
+    writeSection(preInitProc, cpsLocals)
+    writeSection(preInitProc, cpsInit, m.hcrOn)
+    writeSection(preInitProc, cpsStmts)
+    prc.addf("}$N", [])
+    when false:
+      m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
+      m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)
+      m.initProc.blocks[0].sections[cpsStmts].prepend m.preInitProc.s(cpsStmts)
 
   # add new scope for following code, because old vcc compiler need variable
   # be defined at the top of the block
