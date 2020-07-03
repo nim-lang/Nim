@@ -56,7 +56,7 @@ else:
     WideCStringObj* = WideCString
 
   template createWide(a; L) =
-    unsafeNew(a, L * 4 + 2)
+    unsafeNew(a, L)
 
 proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
@@ -138,8 +138,7 @@ iterator runes(s: cstring, L: int): int =
     yield result
 
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
-  createWide(result, L * 4 + 2)
-  #result = cast[wideCString](alloc(L * 4 + 2))
+  createWide(result, L * 2 + 2)
   var d = 0
   for ch in runes(source, L):
 

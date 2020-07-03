@@ -244,7 +244,7 @@ Other Input Formats
 
 The *Nim compiler* also has support for RST (reStructuredText) files with
 the ``rst2html`` and ``rst2tex`` commands. Documents like this one are
-initially written in a dialect of RST which adds support for nim sourcecode
+initially written in a dialect of RST which adds support for nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of C++ and some other c-like languages.
 
@@ -330,7 +330,7 @@ Index (idx) file format
 
 Files with the ``.idx`` extension are generated when you use the `Index
 switch <#related-options-index-switch>`_ along with commands to generate
-documentation from source or text files. You can programatically generate
+documentation from source or text files. You can programmatically generate
 indices with the `setIndexTerm()
 <rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
@@ -375,7 +375,7 @@ exception to this are table of content (TOC) entries. TOC entries are added to
 the index file with their third column having as much prefix spaces as their
 level is in the TOC (at least 1 character). The prefix whitespace helps to
 filter TOC entries from API or text symbols. This is important because the
-amount of spaces is used to replicate the hiearchy for document TOCs in the
+amount of spaces is used to replicate the hierarchy for document TOCs in the
 final index, and TOC entries found in ``.nim`` files are discarded.
 
 

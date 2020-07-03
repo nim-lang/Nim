@@ -8,9 +8,9 @@ which gdb > /dev/null || (echo "gdb not in PATH"; exit 1)
 which readlink > /dev/null || (echo "readlink not in PATH."; exit 1)
 
 if [[ "$(uname -s)" == "Darwin" || "(uname -s)" == *"BSD" ]]; then
-  NIM_SYSROOT=$(dirname $(dirname $($READLINK -f $(which nim))))
+  NIM_SYSROOT=$(dirname $(dirname $(readlink -f $(which nim))))
 else
-  NIM_SYSROOT=$(dirname $(dirname $($READLINK -e $(which nim))))
+  NIM_SYSROOT=$(dirname $(dirname $(readlink -e $(which nim))))
 fi
 
 # Find out where the pretty printer Python module is

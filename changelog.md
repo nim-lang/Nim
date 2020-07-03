@@ -114,6 +114,16 @@
 - Add `os.normalizeExe`, eg: `koch` => `./koch`.
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Add `typetraits.elementType` to get element type of an iterable.
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- add `macros.extractDocCommentsAndRunnables` helper
+
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+
+- Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
@@ -149,7 +159,7 @@
       deallocShared(x.val)
       x.val = nil
   ```
-- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
@@ -179,10 +189,14 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added the `thiscall` calling convention as specified by Microsoft.
-
-- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
+- Remove `strutils.isNilOrWhitespace`, was deprecated.
+- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
+- Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
 
 ## Compiler changes
@@ -218,9 +232,10 @@ proc mydiv(a, b): int {.raises: [].} =
 - `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
   passing `--project` now automatically generates an index and enables search.
   See [docgen](docgen.html#introduction-quick-start) for details.
-- Deprecated `--oldNewlines` and its Deprecated code cleaned out.
-
-- Deprecated `--laxStrings` for mutating the internal zero terminator on strings and its Deprecated code cleaned out.
+- Removed the `--oldNewlines` switch.
+- Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
+- Removed the `--oldast` switch.
+- `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is now "typed" instead of "stmt"
 
 
 ## Tool changes

@@ -9,6 +9,9 @@ proc testRoundtrip[T](t: T, expected: string) =
   let j = t.toJson
   doAssert $j == expected, $j
   doAssert j.jsonTo(T).toJson == j
+  var t2: T
+  t2.fromJson(j)
+  doAssert t2.toJson == j
 
 import tables
 import strtabs
@@ -65,6 +68,56 @@ template fn() =
     let a = [f2: b2, f3: b3, f4: b4]
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
+
+  block: # case object
+    type Foo = object
+      x0: float
+      case t1: bool
+      of true: z1: int8
+      of false: z2: uint16
+      x1: string
+    testRoundtrip(Foo(t1: true, z1: 5, x1: "bar")): """{"x0":0.0,"t1":true,"z1":5,"x1":"bar"}"""
+    testRoundtrip(Foo(x0: 1.5, t1: false, z2: 6)): """{"x0":1.5,"t1":false,"z2":6,"x1":""}"""
+    type PFoo = ref Foo
+    testRoundtrip(PFoo(x0: 1.5, t1: false, z2: 6)): """{"x0":1.5,"t1":false,"z2":6,"x1":""}"""
+
+  block: # ref case object
+    type Foo = ref object
+      x0: float
+      case t1: bool
+      of true: z1: int8
+      of false: z2: uint16
+      x1: string
+    testRoundtrip(Foo(t1: true, z1: 5, x1: "bar")): """{"x0":0.0,"t1":true,"z1":5,"x1":"bar"}"""
+    testRoundtrip(Foo(x0: 1.5, t1: false, z2: 6)): """{"x0":1.5,"t1":false,"z2":6,"x1":""}"""
+
+  block: # generic case object
+    type Foo[T] = ref object
+      x0: float
+      case t1: bool
+      of true: z1: int8
+      of false: z2: uint16
+      x1: string
+    testRoundtrip(Foo[float](t1: true, z1: 5, x1: "bar")): """{"x0":0.0,"t1":true,"z1":5,"x1":"bar"}"""
+    testRoundtrip(Foo[int](x0: 1.5, t1: false, z2: 6)): """{"x0":1.5,"t1":false,"z2":6,"x1":""}"""
+    # sanity check: nesting inside a tuple
+    testRoundtrip((Foo[int](x0: 1.5, t1: false, z2: 6), "foo")): """[{"x0":1.5,"t1":false,"z2":6,"x1":""},"foo"]"""
+
+  block: # case object: 2 discriminants, `when` branch, range discriminant
+    type Foo[T] = object
+      case t1: bool
+      of true:
+        z1: int8
+      of false:
+        z2: uint16
+      when T is float:
+        case t2: range[0..3]
+        of 0: z3: int8
+        of 2,3: z4: uint16
+        else: discard
+    testRoundtrip(Foo[float](t1: true, z1: 5, t2: 3, z4: 12)): """{"t1":true,"z1":5,"t2":3,"z4":12}"""
+    testRoundtrip(Foo[int](t1: false, z2: 7)): """{"t1":false,"z2":7}"""
+    # pending https://github.com/nim-lang/Nim/issues/14698, test with `type Foo[T] = ref object`
 
 static: fn()
 fn()

@@ -1841,7 +1841,8 @@ proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
 proc findUnresolvedStatic*(n: PNode): PNode =
-  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
+  # n.typ == nil: see issue #14802
+  if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
 
   for son in n:

@@ -9,7 +9,7 @@ top-level tests like `tests/tbar.nim`.
 
 Each test can contain a spec in a ``discard """ ... """`` block.
 
-**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L132) in the ``specs`` module for a full and reliable reference**
+**Check out the [``parseSpec`` procedure](https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L158) in the ``specs`` module for a full and reliable reference**
 
 ## action
 

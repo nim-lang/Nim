@@ -1,3 +1,7 @@
+discard """
+joinable: false
+"""
+
 import osproc, streams, strutils, os
 
 const NumberOfProcesses = 13

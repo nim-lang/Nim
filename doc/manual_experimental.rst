@@ -811,7 +811,7 @@ object inheritance syntax involving the ``of`` keyword:
 
 .. code-block:: nim
   type
-    Graph = concept g, type G of EqualyComparable, Copyable
+    Graph = concept g, type G of EquallyComparable, Copyable
       type
         VertexType = G.VertexType
         EdgeType = G.EdgeType
