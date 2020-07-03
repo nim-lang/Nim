@@ -121,6 +121,7 @@
 - add `macros.extractDocCommentsAndRunnables` helper
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+- deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
 
 - Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
 

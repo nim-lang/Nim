@@ -507,7 +507,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
-      if not existsDir(buildPath):
+      if not dirExists(buildPath):
         if useHead:
           let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
           if installStatus != QuitSuccess:
