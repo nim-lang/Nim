@@ -643,10 +643,12 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
       let it = n[i]
       var branch = shallowCopy(it)
       var branchScope = nestedScope(s)
+      branchScope.parent = nil
       if it.kind in {nkElifBranch, nkElifExpr}:
         let cond = p(it[0], c, branchScope, normal)
         branch[0] = toTree(branchScope, cond, onlyCareAboutVars = true)
 
+      branchScope.parent = addr(s)
       var branchResult = processCall(it[^1], branchScope)
       branch[^1] = toTree(branchScope, branchResult)
       result.add branch
