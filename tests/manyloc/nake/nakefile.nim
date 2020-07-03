@@ -86,7 +86,7 @@ task "download", "download game assets":
     client = newHttpClient()
   path.add DirSep
   path.add(extractFilename(GameAssets))
-  if existsFile(path):
+  if fileExists(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
     case stdin.readLine.toLowerAscii

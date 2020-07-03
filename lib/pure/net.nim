@@ -513,10 +513,10 @@ when defineSsl:
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
   proc loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
-    if certFile != "" and not existsFile(certFile):
+    if certFile != "" and not fileExists(certFile):
       raise newException(system.IOError,
           "Certificate file could not be found: " & certFile)
-    if keyFile != "" and not existsFile(keyFile):
+    if keyFile != "" and not fileExists(keyFile):
       raise newException(system.IOError, "Key file could not be found: " & keyFile)
 
     if certFile != "":
