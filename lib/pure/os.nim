@@ -1686,19 +1686,19 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-func fromUnixPerm*(perm: Natural): set[FilePermission] {.inline, since: (1, 3).} =
+func toFilePerm*(perm: Natural): set[FilePermission] {.inline, since: (1, 3).} =
   ## Convenience func to convert Unix like file permission to ``set[FilePermission]``.
   ##
   ## See also:
   ## * `getFilePermissions <#getFilePermissions,string>`_
   ## * `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_
   runnableExamples:
-    doAssert fromUnixPerm(0o700) == {fpUserExec, fpUserRead, fpUserWrite}
-    doAssert fromUnixPerm(0o070) == {fpGroupExec, fpGroupRead, fpGroupWrite}
-    doAssert fromUnixPerm(0o007) == {fpOthersExec, fpOthersRead, fpOthersWrite}
-    doAssert fromUnixPerm(0o644) == {fpUserWrite, fpUserRead, fpGroupRead, fpOthersRead}
-    doAssert fromUnixPerm(0o777) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
-    doAssert fromUnixPerm(0o000) == {}
+    doAssert toFilePerm(0o700) == {fpUserExec, fpUserRead, fpUserWrite}
+    doAssert toFilePerm(0o070) == {fpGroupExec, fpGroupRead, fpGroupWrite}
+    doAssert toFilePerm(0o007) == {fpOthersExec, fpOthersRead, fpOthersWrite}
+    doAssert toFilePerm(0o644) == {fpUserWrite, fpUserRead, fpGroupRead, fpOthersRead}
+    doAssert toFilePerm(0o777) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
+    doAssert toFilePerm(0o000) == {}
   var perm = uint perm
   for permBase in [fpOthersExec, fpGroupExec, fpUserExec]:
     if (perm and 1) != 0: result.incl permBase         # Exec
