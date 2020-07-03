@@ -194,6 +194,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
 
 - Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+- Removed `ospaths` module, was deprecated since `0.19`, use `os` instead.
 
 
 ## Compiler changes
