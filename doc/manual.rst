@@ -3230,7 +3230,7 @@ has lots of advantages:
 Type conversions
 ----------------
 
-Syntactically a `type conversion` is like a procedure call, but a
+Syntactically a *type conversion* is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
@@ -3265,15 +3265,18 @@ conversions too are now *always unchecked*.
 
 Type casts
 ----------
-Example:
+
+Type casts are a crude mechanism to interpret the bit pattern of an expression
+as if it would be of another type. Type casts are only needed for low-level
+programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
 
-Type casts are a crude mechanism to interpret the bit pattern of
-an expression as if it would be of another type. Type casts are
-only needed for low-level programming and are inherently unsafe.
-
+Type casts should not be confused with type conversions, as the underlying bit
+pattern is unchanged (aside from that the size of the target type may differ
+from the source type); they resemble *type punning* in other languages or C++'s
+``reinterpret_cast`` and ``bit_cast``.
 
 The addr operator
 -----------------
