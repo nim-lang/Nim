@@ -344,9 +344,8 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
   initLocExpr(p, ri[0], op)
-
   # getUniqueType() is too expensive here:
-  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
+  var typ = skipTypes(ri[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
 
@@ -369,7 +368,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   initLocExpr(p, ri[0], op)
 
   # getUniqueType() is too expensive here:
-  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
+  var typ = skipTypes(ri[0].typ, abstractInstOwned)
   assert(typ.kind == tyProc)
   assert(typ.len == typ.n.len)
 
