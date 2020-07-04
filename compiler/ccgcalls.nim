@@ -265,51 +265,64 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
-import dfa
-from patterns import sameTrees
+from dfa import instrTargets, InstrTargetKind
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
   for p in potentialWrites:
-    if sameTrees(p, n) or p.aliases(n) or n.aliases(p):
+    if instrTargets(p, n) != None:
       return true
 
 proc skipTrivialIndirections(n: PNode): PNode =
   result = n
   while true:
     case result.kind
-    of {nkBracketExpr, nkDerefExpr, nkHiddenDeref,
-        nkAddr, nkHiddenAddr,
-        nkObjDownConv, nkObjUpConv}:
+    of {nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv}:
       result = result[0]
     of {nkHiddenStdConv, nkHiddenSubConv}:
       result = result[1]
     else: break
 
+proc getPotentialWrites(n: PNode, mutate = false): seq[PNode] =
+  case n.kind:
+  of nkLiterals, nkIdent: discard
+  of nkSym:
+    if mutate: result.add n
+  of nkAsgn, nkFastAsgn:
+    result.add getPotentialWrites(n[0], true)
+    result.add getPotentialWrites(n[1], mutate)
+  of nkAddr, nkHiddenAddr:
+    result.add getPotentialWrites(n[0], true)
+  of nkCallKinds: #TODO: Find out why in f += 1, f is a nkSym and not a nkHiddenAddr
+    for s in n.sons:
+      result.add getPotentialWrites(s, true)
+  else:
+    for s in n.sons:
+      result.add getPotentialWrites(s, mutate)
+
+proc getPotentialReads(n: PNode): seq[PNode] =
+  case n.kind:
+  of nkLiterals, nkIdent: discard
+  of nkSym: result.add n
+  else:
+    for s in n.sons:
+      result.add getPotentialReads(s)
+
 proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
   # We must generate temporaries in cases like #14396
-  # to keep the strict Left-To-Right evaluation, this
-  # is a bit pessimistic currently
+  # to keep the strict Left-To-Right evaluation
   var needTmp = newSeq[bool](ri.len - 1)
   var potentialWrites: seq[PNode]
   for i in countdown(ri.len - 1, 1):
     if ri[i].skipTrivialIndirections.kind == nkSym:
       needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
     else:
-      let cfg = constructCfg(ri[i])
-      var newPotentialWrites: seq[PNode]
-      # Simple linear pass, ignoring forks and gotos
-      for pc in 0..<cfg.len:
-        if cfg[pc].kind in {def, use}:
-          newPotentialWrites.add cfg[pc].n
-          if not needTmp[i - 1] and potentialAlias(cfg[pc].n, potentialWrites):
-            needTmp[i - 1] = true
-
-      potentialWrites.add newPotentialWrites
-
+      for n in getPotentialReads(ri[i]):
+        if not needTmp[i - 1]:
+          needTmp[i - 1] = potentialAlias(n, potentialWrites)
+      potentialWrites.add getPotentialWrites(ri[i])
     if ri[i].kind == nkHiddenAddr:
       # Optimization: don't use a temp, if we would only take the adress anyway
       needTmp[i - 1] = false
-
 
   for i in 1..<ri.len:
     if i < typ.len:

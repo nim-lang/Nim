@@ -59,7 +59,7 @@ template test =
   say g + 1, if false: g
              else: g += 1; g #2,2
 
-  proc `+=+`(x: var int, y: int): int = (inc x; x)
+  proc `+=+`(x: var int, y: int): int = (inc(x, y); x)
 
   var h = 1
   say h, h +=+ 1 # 1,2
