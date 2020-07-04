@@ -768,4 +768,3 @@ proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
     result = c.code # will move
   else:
     shallowCopy(result, c.code)
-
