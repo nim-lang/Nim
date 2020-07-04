@@ -11,14 +11,12 @@ begin true
 if
 end true
 7
+##index 2 not in 0 .. 1##
 '''
   cmd: "nim c --gc:arc -d:danger $file"
-  disabled: "true"
 """
 # we use the -d:danger switch to detect uninitialized stack
 # slots more reliably (there shouldn't be any, of course).
-
-# XXX Enable once scope based destruction works!
 
 type
   Foo = object
@@ -68,12 +66,25 @@ proc run(data: Control) =
   evt.control = data
   if evt.button == 1:
     discard
-  else: 
+  else:
     return
-  
+
   echo data.x
 
 var c = Control(x: 7)
 
 run(c)
 
+proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
+  var buf = newStringOfCap(200)
+  add(buf, "##")
+  add(buf, message)
+  add(buf, "##")
+  echo buf
+
+proc ifexpr(i, a, b: int) {.compilerproc, noinline.} =
+  sysFatal(IndexDefect,
+    if b < a: "index out of bounds, the container is empty"
+    else: "index " & $i & " not in " & $a & " .. " & $b)
+
+ifexpr(2, 0, 1)
