@@ -736,7 +736,7 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
     e[0].sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, e):
+  if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, ri):
     return
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
