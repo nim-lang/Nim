@@ -823,11 +823,22 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     if inContainer: dec c.inContainer
 
 proc anyInnerProcMightEscape(fn: PSym): bool =
+  # go over the ast and check if any procs defined
+  # within are assigned or passed rather than just called
+  # sfAddrTaken should be set on the proc's sym if that's
+  # the case
   proc aux(nodes: TNodeSeq): bool =
     for node in nodes:
       if (node.kind == nkSym and 
           isInnerProc(node.sym) and 
-          sfAddrTaken in node.sym.flags):
+          {sfGenSym, sfAddrTaken} * node.sym.flags != {}):
+        # ^ HACK: checking for sfGenSym should be irrelevant here
+        # but sfAddrTaken is never set for gensym'd procs
+        # so just assume any gensym'd proc might escape
+        return true
+      elif node.kind == nkSym and 
+          node.sym.isIterator and 
+          node.sym.typ.callConv == ccClosure:
         return true
       elif node.kind in nkLambdaKinds:
         # would be better to check if the lambda actually
@@ -835,7 +846,7 @@ proc anyInnerProcMightEscape(fn: PSym): bool =
         return true
       elif node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
         return true
-  return aux(fn.ast[bodyPos].sons)
+  return fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
 
 # ------------------ old stuff -------------------------------------------
 
