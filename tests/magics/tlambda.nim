@@ -249,7 +249,7 @@ proc testArrowWrongSym() =
   iterator myIter[T2](fun: T2): auto =
     yield fun(3)
   template x(a: int): untyped = discard
-    # `x` is a distractory symbol that turns `x` into a symbol inside `bar`
+    # `x` is a distractor symbol that turns `x` into a symbol inside `bar`
   template bar(): untyped = myIter(x~>x*10)
   proc first[T](a: T): auto =
     for ai in a(): return ai
