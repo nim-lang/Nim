@@ -1680,7 +1680,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-func toFilePermissions*(perm: uint): set[FilePermission] {.since: (1, 3).} =
+func toFilePermissions*(perm: Natural): set[FilePermission] {.since: (1, 3).} =
   ## Convenience func to convert Unix like file permission to ``set[FilePermission]``.
   ##
   ## See also:
@@ -1693,7 +1693,7 @@ func toFilePermissions*(perm: uint): set[FilePermission] {.since: (1, 3).} =
     doAssert toFilePermissions(0o644) == {fpUserWrite, fpUserRead, fpGroupRead, fpOthersRead}
     doAssert toFilePermissions(0o777) == {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupWrite, fpGroupRead, fpOthersExec, fpOthersWrite, fpOthersRead}
     doAssert toFilePermissions(0o000) == {}
-  var perm = perm
+  var perm = uint(perm)
   for permBase in [fpOthersExec, fpGroupExec, fpUserExec]:
     if (perm and 1) != 0: result.incl permBase         # Exec
     if (perm and 2) != 0: result.incl permBase.succ()  # Read
