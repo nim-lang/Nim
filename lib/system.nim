@@ -1426,8 +1426,8 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".} 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -2569,12 +2569,14 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ##
   ## `slurp <#slurp,string>`_ is an alias for ``staticRead``.
 
-proc gorge*(command: string, input = "", cache = ""): string {.
+proc staticExecImpl(command, input, cache: string): string {.
   magic: "StaticExec".} = discard
-  ## This is an alias for `staticExec <#staticExec,string,string,string>`_.
 
-proc staticExec*(command: string, input = "", cache = ""): string {.
-  magic: "StaticExec".} = discard
+proc gorge*(command: string, input = "", cache = ""): string {.compileTime.} =
+  ## This is an alias for `staticExec <#staticExec,string,string,string>`_.
+  result = staticExecImpl(command, input, cache)
+
+proc staticExec*(command: string, input = "", cache = ""): string {.compileTime.} =
   ## Executes an external process at compile-time and returns its text output
   ## (stdout + stderr).
   ##
@@ -2599,6 +2601,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##
   ## .. code-block:: Nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
+  result = staticExecImpl(command, input, cache)
 
 proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
                                                               exitCode: int] =
