@@ -2066,10 +2066,14 @@ proc skipAddr(n: PNode): PNode =
 
 proc genWasMoved(p: BProc; n: PNode) =
   var a: TLoc
-  initLocExpr(p, n[1].skipAddr, a)
-  resetLoc(p, a)
-  #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-  #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
+  let n1 = n[1].skipAddr
+  if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
+    discard
+  else:
+    initLocExpr(p, n1, a)
+    resetLoc(p, a)
+    #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+    #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   var a: TLoc
@@ -2593,10 +2597,12 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
-      if sym.loc.r == nil:
-        # we now support undeclared 'skTemp' variables for easier
-        # transformations in other parts of the compiler:
-        assignLocalVar(p, n)
+      when false:
+        # this is more harmful than helpful.
+        if sym.loc.r == nil:
+          # we now support undeclared 'skTemp' variables for easier
+          # transformations in other parts of the compiler:
+          assignLocalVar(p, n)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
