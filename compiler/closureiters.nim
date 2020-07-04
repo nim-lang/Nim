@@ -129,7 +129,7 @@
 #   break :stateLoop
 
 import
-  ast, astalgo, msgs, idents,
+  ast, msgs, idents,
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos
 
 type
