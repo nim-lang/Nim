@@ -623,6 +623,18 @@ However, sometimes one has to optimize. Do it in the following order:
 This section can only help you with the last item.
 
 
+Recommended flags for highest performance and for benchmarking
+--------------------------------------------------------------
+To get the highest runtime performance:
+
+.. code-block::
+  nim c -d:danger -d:nimDisableAssertMsgs main.nim
+  --passc:-flto --passl:-flto # usually helps but can sometimes hurt
+  --gc:arc # usually helps but can sometimes hurt
+  -d:nimDisableAssertMsgs
+    # this can improve performance, and more importantly prevents drawing wrong
+    # conclusions from unrelated changes (see bug #14905)
+
 Optimizing string handling
 --------------------------
 

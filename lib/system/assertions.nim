@@ -22,7 +22,7 @@ when not defined(nimHasSinkInference):
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   sysFatal(AssertionDefect, msg)
 
-proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
+proc failedAssertImpl*(msg: string) {.raises: [], tags: [], noinline.} =
   # trick the compiler to not list ``AssertionDefect`` when called
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
@@ -38,7 +38,10 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
     mixin failedAssertImpl
     {.line: loc.}:
       if not cond:
-        failedAssertImpl(ploc & " `" & expr & "` " & msg)
+        when defined(nimDisableAssertMsgs): # see bug #14905
+          failedAssertImpl("?") # for some reason "?" gives better performance than ""
+        else:
+          failedAssertImpl(ploc & " `" & expr & "` " & msg)
 
 template assert*(cond: untyped, msg = "") =
   ## Raises ``AssertionDefect`` with `msg` if `cond` is false. Note
