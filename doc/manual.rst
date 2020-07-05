@@ -3272,6 +3272,9 @@ programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
+  
+The target type of a cast must be a concrete type, for instance, a target type
+that is a type class (which is non-concrete) would be invalid.
 
 Type casts should not be confused with type conversions, as the underlying bit
 pattern is unchanged (aside from that the size of the target type may differ
