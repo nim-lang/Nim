@@ -126,7 +126,7 @@
 - Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
 - Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
   because negative values will result in a new file being created for each logged line which doesn't make sense.
-- Changed `log` on `logging` to use proper log level on JavaScript target,
+- Changed `log` in `logging` to use proper log level on JavaScript target,
   eg. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
 
 
