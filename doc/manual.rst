@@ -3579,17 +3579,16 @@ procedures:
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code. The `sugar <sugar.html>`_ module contains the `=>` macro
-which enables a more succinct syntax for anonymous procedures resembling
-lambdas as they are in languages like JavaScript, C#, etc.
+executable code.
 
 Lambdas
 -------
 
-The `lambdas <lambdas.html>`_ module contains `~>` which enables anonymous
-templates, avoiding some limitations of anonymous procs, in particular, optional
-typing, and offers performance advantage since it enables inlining, unlike
-callbacks which are passed as function pointers.
+Anonymous procedures can be defined via syntax sugar in the form of
+lambda expressions similarly to languages like JavaScript, C#, etc, using
+library code: see `=>` in `sugar <sugar.html>`_ module to define anonymous procs.
+See also `~>` in `lambdas <lambdas.html>`_ to define anonymous templates which
+can be more flexible thanks to optional typing:
 
 .. code-block:: nim
   
@@ -5488,6 +5487,7 @@ An alias declaration creates a symbol that is an alias (alternative name)
 for another symbol and can be used transparently in its place. Any symbol can
 be aliased: templates, modules, types, etc; even overloaded symbols can be
 aliased (see `ast.nkClosedSymChoice`).
+
 The closest equivalent would be D's [alias](https://dlang.org/spec/declaration.html#alias).
 Examples:
 
