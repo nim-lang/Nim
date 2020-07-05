@@ -124,7 +124,7 @@
 - deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
 
 - Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
-- Changed `maxLines` to `Positive` on `logging.newRollingFileLogger`,
+- Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
   because negative values cause 1 new file per line of log, and make no sense whatsoever.
 - Changed `log` on `logging` to use proper log level on JavaScript target,
   eg. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
