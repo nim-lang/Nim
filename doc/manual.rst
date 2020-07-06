@@ -3266,7 +3266,7 @@ conversions too are now *always unchecked*.
 Type casts
 ----------
 
-Type casts are a crude mechanism to interpret the bit pattern of an expression
+*Type casts* are a crude mechanism to interpret the bit pattern of an expression
 as if it would be of another type. Type casts are only needed for low-level
 programming and are inherently unsafe.
 
@@ -3274,12 +3274,17 @@ programming and are inherently unsafe.
   cast[int](x)
   
 The target type of a cast must be a concrete type, for instance, a target type
-that is a type class (which is non-concrete) would be invalid.
+that is a type class (which is non-concrete) would be invalid:
 
-Type casts should not be confused with type conversions, as the underlying bit
-pattern is unchanged (aside from that the size of the target type may differ
-from the source type); they resemble *type punning* in other languages or C++'s
-``reinterpret_cast`` and ``bit_cast``.
+.. code-block:: nim
+  type Foo = int or float
+  var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
+  
+Type casts should not be confused with *type conversions,* as mentioned in the
+prior section. Unlike type conversions, a type cast cannot change the underlying 
+bit pattern of the data being casted (aside from that the size of the target type
+may differ from the source type). Casting resembles *type punning* in other
+languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.
 
 The addr operator
 -----------------
