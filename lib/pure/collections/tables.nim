@@ -2670,14 +2670,14 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     doAssert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): (A, int) =
+proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
   ## See also:
   ## * `largest proc<#largest,CountTableRef[A]>`_
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): (A, int) =
+proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the largest ``val``. Efficiency: O(n)
   ##
   ## See also:
