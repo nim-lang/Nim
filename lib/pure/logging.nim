@@ -364,7 +364,12 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
       let cln: cstring = ln
-      {.emit: "console.log(`cln`);".}
+      case level
+      of lvlDebug: {.emit: "console.debug(`cln`);".}
+      of lvlInfo:  {.emit: "console.info(`cln`);".}
+      of lvlWarn:  {.emit: "console.warn(`cln`);".}
+      of lvlError: {.emit: "console.error(`cln`);".}
+      else:        {.emit: "console.log(`cln`);".}
     else:
       try:
         var handle = stdout
@@ -504,7 +509,6 @@ when not defined(js):
   # ------
 
   proc countLogLines(logger: RollingFileLogger): int =
-    result = 0
     let fp = open(logger.baseName, fmRead)
     for line in fp.lines():
       result.inc()
@@ -531,7 +535,7 @@ when not defined(js):
                             mode: FileMode = fmReadWrite,
                             levelThreshold = lvlAll,
                             fmtStr = defaultFmtStr,
-                            maxLines = 1000,
+                            maxLines: Positive = 1000,
                             bufSize: int = -1): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
