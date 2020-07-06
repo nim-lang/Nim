@@ -508,8 +508,11 @@ when not defined(js):
 
   # ------
 
-  template countLogLines(logger: RollingFileLogger): int =
-    readFile(logger.baseName).countLines()
+  proc countLogLines(logger: RollingFileLogger): int =
+    let fp = open(logger.baseName, fmRead)
+    for line in fp.lines():
+      result.inc()
+    fp.close()
 
   proc countFiles(filename: string): int =
     # Example: file.log.1
