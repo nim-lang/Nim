@@ -182,10 +182,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongOption, cmdShortOption:
+    of cmdLongoption, cmdShortOption:
       case p.key.normalize
       of "help", "h":
-        stdout.writeLine(Usage)
+        stdout.writeline(Usage)
         quit()
       of "project":
         conf.projectName = p.val
@@ -215,7 +215,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   self.initDefinesProg(conf, "nimfind")
 
   if paramCount() == 0:
-    stdout.writeLine(Usage)
+    stdout.writeline(Usage)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -231,4 +231,4 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   discard self.loadConfigsAndRunMainCommand(cache, conf)
 
-handleCmdLine(newIdentCache(), newConfigRef())
+handleCmdline(newIdentCache(), newConfigRef())

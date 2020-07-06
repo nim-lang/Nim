@@ -229,7 +229,7 @@ proc decode*(s: string): string =
     return (size * 3 div 4) + 6
 
   template inputChar(x: untyped) =
-    let x = int decodeTable[ord(s[inputIndex])]
+    let x = int decode_table[ord(s[inputIndex])]
     inc inputIndex
     if x == invalidChar:
       raise newException(ValueError,

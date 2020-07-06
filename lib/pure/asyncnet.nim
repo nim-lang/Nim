@@ -202,7 +202,7 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
 when defineSsl:
   proc getSslError(handle: SslPtr, err: cint): cint =
     assert err < 0
-    var ret = SSL_get_error(handle, err.cint)
+    var ret = SSLGetError(handle, err.cint)
     case ret
     of SSL_ERROR_ZERO_RETURN:
       raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -224,9 +224,9 @@ when defineSsl:
       let read = bioRead(socket.bioOut, addr data[0], len)
       assert read != 0
       if read < 0:
-        raiseSSLError()
+        raiseSslError()
       data.setLen(read)
-      await socket.fd.AsyncFD.send(data, flags)
+      await socket.fd.AsyncFd.send(data, flags)
 
   proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
                   sslError: cint): owned(Future[bool]) {.async.} =
@@ -727,7 +727,7 @@ proc close*(socket: AsyncSocket) =
       if res == 0:
         discard
       elif res != 1:
-        raiseSSLError()
+        raiseSslError()
   socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defineSsl:
@@ -739,12 +739,12 @@ when defineSsl:
     ## prone to security vulnerabilities.
     socket.isSsl = true
     socket.sslContext = ctx
-    socket.sslHandle = SSL_new(socket.sslContext.context)
+    socket.sslHandle = SSLNew(socket.sslContext.context)
     if socket.sslHandle == nil:
-      raiseSSLError()
+      raiseSslError()
 
-    socket.bioIn = bioNew(bioSMem())
-    socket.bioOut = bioNew(bioSMem())
+    socket.bioIn = bioNew(bio_s_mem())
+    socket.bioOut = bioNew(bio_s_mem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
