@@ -124,9 +124,9 @@ template initImpl(result: typed, size: int) =
   when ctAnd(declared(SharedTable), type(result) is SharedTable):
     init(result, size)
   else:
-    assert isPowerOfTwo(size)
+    var correctSize = rightSize(size)
     result.counter = 0
-    newSeq(result.data, size)
+    newSeq(result.data, correctSize)
     when compiles(result.first):
       result.first = -1
       result.last = -1
