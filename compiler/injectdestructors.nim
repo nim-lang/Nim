@@ -706,7 +706,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
-                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
+                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkTryStmt}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process)
   elif mode == sinkArg:
@@ -748,7 +748,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result = passCopyToSink(n, c, s)
   else:
     case n.kind
-    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure:
+    of nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkCurly:
       # Let C(x) be the construction, 'x' the vector of arguments.
       # C(x) either owns 'x' or it doesn't.
       # If C(x) owns its data, we must consume C(x).
@@ -790,7 +790,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
 
       result = shallowCopy(n)
       for i in 1..<n.len:
-        if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
+        if i < L and isCompileTimeOnly(parameters[i]):
+          result[i] = n[i]
+        elif i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
           result[i] = p(n[i], c, s, sinkArg)
         else:
           result[i] = p(n[i], c, s, normal)
@@ -867,8 +869,67 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
       result = n
+
+    of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
+      result = shallowCopy(n)
+      for i in 0 ..< n.len:
+        result[i] = p(n[i], c, s, normal)
+      if n.typ != nil and hasDestructor(n.typ):
+        if mode == normal:
+          result = ensureDestruction(result, c, s)
+
+    of nkHiddenSubConv, nkHiddenStdConv, nkConv:
+      # we have an "ownership invariance" for all constructors C(x).
+      # See the comment for nkBracket construction. If the caller wants
+      # to own 'C(x)', it really wants to own 'x' too. If it doesn't,
+      # we need to destroy 'x' but the function call handling ensures that
+      # already.
+      result = copyTree(n)
+      if n.typ.skipTypes(abstractInst-{tyOwned}).kind != tyOwned and
+          n[1].typ.skipTypes(abstractInst-{tyOwned}).kind == tyOwned:
+        # allow conversions from owned to unowned via this little hack:
+        let nTyp = n[1].typ
+        n[1].typ = n.typ
+        result[1] = p(n[1], c, s, mode)
+        result[1].typ = nTyp
+      else:
+        result[1] = p(n[1], c, s, mode)
+
+    of nkObjDownConv, nkObjUpConv:
+      result = copyTree(n)
+      result[0] = p(n[0], c, s, mode)
+
+    of nkDotExpr:
+      result = shallowCopy(n)
+      result[0] = p(n[0], c, s, normal)
+      for i in 1 ..< n.len:
+        result[i] = n[i]
+      if mode == sinkArg and hasDestructor(n.typ):
+        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
+          s.wasMoved.add genWasMoved(n, c)
+        else:
+          result = passCopyToSink(result, c, s)
+
+    of nkBracketExpr, nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref:
+      result = shallowCopy(n)
+      for i in 0 ..< n.len:
+        result[i] = p(n[i], c, s, normal)
+      if mode == sinkArg and hasDestructor(n.typ):
+        if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
+          # consider 'a[(g; destroy(g); 3)]', we want to say 'wasMoved(a[3])'
+          # without the junk, hence 'genWasMoved(n, c)'
+          # and not 'genWasMoved(result, c)':
+          s.wasMoved.add genWasMoved(n, c)
+        else:
+          result = passCopyToSink(result, c, s)
+
+    of nkDefer, nkRange:
+      result = shallowCopy(n)
+      for i in 0 ..< n.len:
+        result[i] = p(n[i], c, s, normal)
+
     of nkBreakStmt:
       s.needsTry = true
       result = n
@@ -886,10 +947,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result[0] = p(n[0], c, s, mode)
       for i in 1..<n.len:
         result[i] = n[i]
+    of nkGotoState, nkState:
+      result = n
     else:
-      result = shallowCopy(n)
-      for i in 0..<n.len:
-        result[i] = p(n[i], c, s, mode)
+      internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
   case ri.kind
