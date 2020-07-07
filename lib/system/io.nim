@@ -279,10 +279,10 @@ elif defined(posix) and not defined(nimscript):
     importc: "fcntl", header: "<fcntl.h>", varargs.}
 elif defined(windows):
   const HANDLE_FLAG_INHERIT = culong 0x1
-  proc getOsfhandle(fd: cint): FileHandle {.
+  proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  proc setHandleInformation(handle: FileHandle, mask, flags: culong): cint {.
+  proc setHandleInformation(handle: int, mask, flags: culong): cint {.
     importc: "SetHandleInformation", header: "<handleapi.h>".}
 
 const
@@ -318,7 +318,7 @@ proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
   when defined(windows):
-    result = getOsfhandle(getFileHandle(f))
+    result = FileHandle getOsfhandle(cint getFileHandle(f))
   else:
     result = c_fileno(f)
 
@@ -339,7 +339,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(f, HANDLE_FLAG_INHERIT, culong inheritable) != 0
+      result = setHandleInformation(f.int, HANDLE_FLAG_INHERIT, culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -424,12 +424,12 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   else: write(f, "false")
 
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
@@ -500,11 +500,6 @@ proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
     result = readAllFile(file, len).TaintedString
   else:
     result = readAllBuffer(file).TaintedString
-
-proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x):
-    write(f, i)
-  write(f, "\n")
 
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
@@ -596,7 +591,7 @@ when defined(posix) and not defined(nimscript):
 
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool  {.tags: [], raises: [], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
@@ -610,7 +605,7 @@ proc open*(f: var File, filename: string,
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
-      var res: Stat
+      var res {.noinit.}: Stat
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
@@ -652,7 +647,7 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
-    let oshandle = when defined(windows): getOsfhandle(filehandle) else: filehandle
+    let oshandle = when defined(windows): FileHandle getOsfhandle(filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
   f = c_fdopen(filehandle, FormatOpen[mode])
@@ -733,7 +728,7 @@ when declared(stdout):
         releaseSys echoLock
 
 
-when defined(windows) and not defined(nimscript):
+when defined(windows) and not defined(nimscript) and not defined(js):
   # work-around C's sucking abstraction:
   # BUGFIX: stdin and stdout should be binary files!
   proc c_setmode(handle, mode: cint) {.
@@ -764,7 +759,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
   ## <system.html#staticRead,string>`_.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = readAll(f)
@@ -777,7 +772,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.write(content)
@@ -790,7 +785,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.writeBuffer(unsafeAddr content[0], content.len)
@@ -804,7 +799,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = newSeq[TaintedString](n)

@@ -25,12 +25,13 @@ type
     ccInline,                 # proc should be inlined
     ccNoInline,               # proc should not be inlined
     ccFastCall,               # fastcall (pass parameters in registers)
+    ccThisCall,               # thiscall (parameters are pushed right-to-left)
     ccClosure,                # proc has a closure
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
   CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall",
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
 type
@@ -292,6 +293,7 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
 
   TSymFlags* = set[TSymFlag]
 
@@ -432,8 +434,9 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOpt
-      # Builtin optional type
+    tyOptDeprecated
+      # 'out' parameter. Comparable to a 'var' parameter but every
+      # path must assign a value to it before it can be read from.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -656,7 +659,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
     mDefault, mUnown, mAccessEnv, mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -1029,6 +1032,7 @@ const
   nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
@@ -1291,7 +1295,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  of tyBool,tyEnum:
+  of tyBool, tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
@@ -1489,7 +1493,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
+  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
@@ -1502,7 +1506,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl mask
       owner.flags.incl mask
 
@@ -1752,7 +1756,7 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
-           s.kind == skProc and sfCompileTime in s.flags
+           s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
 proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
@@ -1799,12 +1803,12 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType): PType =
+proc toVar*(typ: PType; kind: TTypeKind): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.kind != tyVar:
-    result = newType(tyVar, typ.owner)
+  if typ.kind != kind:
+    result = newType(kind, typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =
@@ -1837,7 +1841,8 @@ proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
 proc findUnresolvedStatic*(n: PNode): PNode =
-  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
+  # n.typ == nil: see issue #14802
+  if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
 
   for son in n:
@@ -1931,3 +1936,6 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n[0] else: n)

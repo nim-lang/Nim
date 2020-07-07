@@ -193,16 +193,16 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c))
 
-proc semVarType(c: PContext, n: PNode, prev: PType): PType =
+proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
-    result = newOrPrevType(tyVar, prev, c)
+    result = newOrPrevType(kind, prev, c)
     var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
     if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
     addSonSkipIntLit(result, base)
   else:
-    result = newConstraint(c, tyVar)
+    result = newConstraint(c, kind)
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
@@ -905,8 +905,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
       t = t.base
     if t.kind == tyVoid:
-      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
-      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
+      localError(c.config, n.info, "type '$1 void' is not allowed" % kind.toHumanStr)
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     var wrapperKind = tyNone
@@ -1291,7 +1290,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     r = semTypeNode(c, n[0], nil)
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
-    # XXX: To implement the propesed change in the warning, just
+    # XXX: To implement the proposed change in the warning, just
     # delete this entire if block. The rest is (at least at time of
     # writing this comment) already implemented.
     let info = n[0].info
@@ -1400,7 +1399,7 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
-                       [s.name.s, ($s.kind).substr(2).toLowerAscii])
+               [s.name.s, s.kind.toHumanStr])
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
@@ -1814,7 +1813,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
         incl result.flags, tfHasAsgn
-    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
       result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
@@ -1917,7 +1915,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
-  of nkVarTy: result = semVarType(c, n, prev)
+  of nkVarTy: result = semVarOutType(c, n, prev, tyVar)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
   of nkIteratorTy:

@@ -225,13 +225,3 @@ proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
 proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deallocShared(t.data)
   deinitLock t.lock
-
-proc initSharedTable*[A, B](initialSize = 64): SharedTable[A, B] {.deprecated:
-  "use 'init' instead".} =
-  ## This is not posix compliant, may introduce undefined behavior.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.dataLen = initialSize
-  result.data = cast[KeyValuePairSeq[A, B]](allocShared0(
-                                     sizeof(KeyValuePair[A, B]) * initialSize))
-  initLock result.lock

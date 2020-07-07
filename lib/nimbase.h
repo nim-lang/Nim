@@ -173,12 +173,14 @@ __AVR__
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
 #  define N_FASTCALL(rettype, name) rettype __fastcall name
+#  define N_THISCALL(rettype, name) rettype __thiscall name
 #  define N_SAFECALL(rettype, name) rettype __stdcall name
 /* function pointers with calling convention: */
 #  define N_CDECL_PTR(rettype, name) rettype (__cdecl *name)
 #  define N_STDCALL_PTR(rettype, name) rettype (__stdcall *name)
 #  define N_SYSCALL_PTR(rettype, name) rettype (__syscall *name)
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
+#  define N_THISCALL_PTR(rettype, name) rettype (__thiscall *name)
 #  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus

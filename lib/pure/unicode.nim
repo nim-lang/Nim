@@ -39,6 +39,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     doAssert a.runeLen == 6
     ## note: a.len == 8
 
+  result = 0
   var i = 0
   while i < len(s):
     if uint(s[i]) <= 127: inc(i)
@@ -1168,88 +1169,6 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
       result.add padStr
   else:
     result = s
-
-# -----------------------------------------------------------------------------
-# deprecated
-
-template runeCaseCheck(s, runeProc, skipNonAlpha) =
-  ## Common code for rune.isLower and rune.isUpper.
-  if len(s) == 0: return false
-  var
-    i = 0
-    rune: Rune
-    hasAtleastOneAlphaRune = false
-  while i < len(s):
-    fastRuneAt(s, i, rune, doInc = true)
-    if skipNonAlpha:
-      var runeIsAlpha = isAlpha(rune)
-      if not hasAtleastOneAlphaRune:
-        hasAtleastOneAlphaRune = runeIsAlpha
-      if runeIsAlpha and (not runeProc(rune)):
-        return false
-    else:
-      if not runeProc(rune):
-        return false
-  return if skipNonAlpha: hasAtleastOneAlphaRune else: true
-
-proc isLower*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether ``s`` is lower case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are lower case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and lower case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isLower, skipNonAlpha)
-
-proc isUpper*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether ``s`` is upper case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are upper case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and upper case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isUpper, skipNonAlpha)
-
-proc isTitle*(s: string): bool {.noSideEffect, rtl, extern: "nuc$1Str",
-    deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether or not ``s`` is a unicode title.
-  ##
-  ## Returns true if the first character in each word inside ``s``
-  ## are upper case and there is at least one character in ``s``.
-  if s.len == 0:
-    return false
-  result = true
-  var
-    i = 0
-    rune: Rune
-  var firstRune = true
-
-  while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc = true)
-    if not rune.isWhiteSpace() and firstRune:
-      result = rune.isUpper() and result
-      firstRune = false
-    elif rune.isWhiteSpace():
-      firstRune = true
-
 
 
 when isMainModule:

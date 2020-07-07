@@ -98,7 +98,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
-    const gitHash = gorge("git log -n 1 --format=%H").strip
+    const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
@@ -320,7 +320,6 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
   of "excessivestacktrace": result = contains(conf.globalOptions, optExcessiveStackTrace)
   of "nilseqs": result = contains(conf.options, optNilSeqs)
-  of "oldast": result = contains(conf.options, optOldAst)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
@@ -440,7 +439,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
   of "docroot":
-    conf.docRoot = if arg.len == 0: "@default" else: arg
+    conf.docRoot = if arg.len == 0: docRootDefault else: arg
   of "backend", "b":
     let backend = parseEnum(arg.normalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
@@ -485,7 +484,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "forcebuild", "f":
     processOnOffSwitchG(conf, {optForceFullMake}, arg, pass, info)
   of "project":
-    processOnOffSwitchG(conf, {optWholeProject}, arg, pass, info)
+    processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
@@ -493,6 +492,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "boehm":
         conf.selectedGC = gcBoehm
         defineSymbol(conf.symbols, "boehmgc")
+        incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
         conf.selectedGC = gcRefc
       of "v2":
@@ -581,19 +581,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       undefSymbol(conf.symbols, "hotcodereloading")
       undefSymbol(conf.symbols, "useNimRtl")
-  of "oldnewlines":
-    case arg.normalize
-    of "", "on":
-      conf.oldNewlines = true
-      defineSymbol(conf.symbols, "nimOldNewlines")
-    of "off":
-      conf.oldNewlines = false
-      undefSymbol(conf.symbols, "nimOldNewlines")
-    else:
-      localError(conf, info, errOnOrOffExpectedButXFound % arg)
-  of "laxstrings": processOnOffSwitch(conf, {optLaxStrings}, arg, pass, info)
   of "nilseqs": processOnOffSwitch(conf, {optNilSeqs}, arg, pass, info)
-  of "oldast": processOnOffSwitch(conf, {optOldAst}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(conf, ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch(conf, {optNaNCheck, optInfCheck}, arg, pass, info)
@@ -911,8 +899,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
-
-template gCmdLineInfo*(): untyped = newLineInfo(commandLineIdx, 1, 1)
 
 proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   var cmd, arg: string

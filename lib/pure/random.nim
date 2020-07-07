@@ -78,7 +78,8 @@
 ##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm #For upperBound
+import algorithm, math
+import std/private/since
 
 include "system/inclrtl"
 {.push debugger: off.}
@@ -205,30 +206,6 @@ proc skipRandomNumbers*(s: var Rand) =
       discard next(s)
   s.a0 = s0
   s.a1 = s1
-
-proc random*(max: int): int {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  while true:
-    let x = next(state)
-    if x < randMax - (randMax mod Ui(max)):
-      return int(x mod uint64(max))
-
-proc random*(max: float): float {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  let x = next(state)
-  when defined(js):
-    result = (float(x) / float(high(uint32))) * max
-  else:
-    let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
-    result = (cast[float](u) - 1.0) * max
-
-proc random*[T](x: HSlice[T, T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  result = T(random(x.b - x.a)) + x.a
-
-proc random*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'sample' instead".} =
-  result = a[random(a.low..a.len)]
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
@@ -362,10 +339,6 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(r, a.low..a.high)]
-
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
@@ -394,10 +367,6 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
     result = rand(state, low(T)..high(T))
   else:
     result = cast[T](state.next)
-
-proc rand*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set ``s`` using the given state.
@@ -548,6 +517,33 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``
+  ## using the given state.
+  # Ratio of uniforms method for normal
+  # http://www2.econ.osaka-u.ac.jp/~tanizaki/class/2013/econome3/13.pdf
+  const K = sqrt(2 / E)
+  var
+    a = 0.0
+    b = 0.0
+  while true:
+    a = rand(r, 1.0)
+    b = (2.0 * rand(r, 1.0) - 1.0) * K
+    if  b * b <= -4.0 * a * a * ln(a): break
+  result = mu + sigma * (b / a)
+
+proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  result = gauss(state, mu, sigma)
+
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand<#Rand>`_ state using the given seed.
   ##
@@ -651,6 +647,8 @@ when not defined(nimscript) and not defined(standalone):
 {.pop.}
 
 when isMainModule:
+  import stats
+
   proc main =
     var occur: array[1000, int]
 
@@ -663,6 +661,17 @@ when isMainModule:
         doAssert false, "too few occurrences of " & $i
       elif oc > 150:
         doAssert false, "too many occurrences of " & $i
+
+    when false:
+      var rs: RunningStat
+      for j in 1..5:
+        for i in 1 .. 1_000:
+          rs.push(gauss())
+        echo("mean: ", rs.mean,
+          " stdDev: ", rs.standardDeviation(),
+          " min: ", rs.min,
+          " max: ", rs.max)
+        rs.clear()
 
     var a = [0, 1]
     shuffle(a)
@@ -687,6 +696,6 @@ when isMainModule:
 
 
     # don't use causes integer overflow
-    doAssert compiles(random[int](low(int) .. high(int)))
+    doAssert compiles(rand[int](low(int) .. high(int)))
 
   main()

@@ -40,7 +40,7 @@
 ##    assert found.isSome and found.get() == 2
 ##
 ## The `get` operation demonstrated above returns the underlying value, or
-## raises `UnpackError` if there is no value. Note that `UnpackError`
+## raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
 ## inherits from `system.Defect`, and should therefore never be caught.
 ## Instead, rely on checking if the option contains a value with
 ## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
@@ -77,7 +77,7 @@ type
   UnpackDefect* = object of Defect
   UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
-proc option*[T](val: T): Option[T] =
+proc option*[T](val: T): Option[T] {.inline.} =
   ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
   ## It converts `nil` to `None`.
   ##
@@ -98,7 +98,7 @@ proc option*[T](val: T): Option[T] =
   when T isnot SomePointer:
     result.has = true
 
-proc some*[T](val: T): Option[T] =
+proc some*[T](val: T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
   ##
   ## See also:
@@ -121,7 +121,7 @@ proc some*[T](val: T): Option[T] =
     result.has = true
     result.val = val
 
-proc none*(T: typedesc): Option[T] =
+proc none*(T: typedesc): Option[T] {.inline.} =
   ## Returns an `Option` for this type that has no value.
   ##
   ## See also:
@@ -136,7 +136,7 @@ proc none*(T: typedesc): Option[T] =
   # the default is the none type
   discard
 
-proc none*[T]: Option[T] =
+proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) proc <#none,typedesc>`_.
   none(T)
 
@@ -167,7 +167,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   else:
     not self.has
 
-proc get*[T](self: Option[T]): T =
+proc get*[T](self: Option[T]): lent T {.inline.} =
   ## Returns contents of an `Option`. If it is `None`, then an exception is
   ## thrown.
   ##
@@ -178,14 +178,14 @@ proc get*[T](self: Option[T]): T =
       a = some(42)
       b = none(string)
     assert a.get == 42
-    doAssertRaises(UnpackError):
+    doAssertRaises(UnpackDefect):
       echo b.get
 
   if self.isNone:
-    raise newException(UnpackError, "Can't obtain a value from a `none`")
-  self.val
+    raise newException(UnpackDefect, "Can't obtain a value from a `none`")
+  result = self.val
 
-proc get*[T](self: Option[T], otherwise: T): T =
+proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the contents of the `Option` or an `otherwise` value if
   ## the `Option` is `None`.
   runnableExamples:
@@ -200,7 +200,7 @@ proc get*[T](self: Option[T], otherwise: T): T =
   else:
     otherwise
 
-proc get*[T](self: var Option[T]): var T =
+proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns contents of the `var Option`. If it is `None`, then an exception
   ## is thrown.
   runnableExamples:
@@ -208,14 +208,14 @@ proc get*[T](self: var Option[T]): var T =
       a = some(42)
       b = none(string)
     assert a.get == 42
-    doAssertRaises(UnpackError):
+    doAssertRaises(UnpackDefect):
       echo b.get
 
   if self.isNone:
-    raise newException(UnpackError, "Can't obtain a value from a `none`")
+    raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   return self.val
 
-proc map*[T](self: Option[T], callback: proc (input: T)) =
+proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
   ## Applies a `callback` function to the value of the `Option`, if it has one.
   ##
   ## See also:
@@ -239,7 +239,7 @@ proc map*[T](self: Option[T], callback: proc (input: T)) =
   if self.isSome:
     callback(self.val)
 
-proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
+proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inline.} =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
@@ -266,7 +266,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
   else:
     none(R)
 
-proc flatten*[A](self: Option[Option[A]]): Option[A] =
+proc flatten*[A](self: Option[Option[A]]): Option[A] {.inline.} =
   ## Remove one level of structure in a nested `Option`.
   runnableExamples:
     let a = some(some(42))
@@ -278,7 +278,7 @@ proc flatten*[A](self: Option[Option[A]]): Option[A] =
     none(A)
 
 proc flatMap*[A, B](self: Option[A],
-                    callback: proc (input: A): Option[B]): Option[B] =
+                    callback: proc (input: A): Option[B]): Option[B] {.inline.} =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
@@ -308,7 +308,7 @@ proc flatMap*[A, B](self: Option[A],
 
   map(self, callback).flatten()
 
-proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
+proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
   ## If the `callback` returns `true`, the option is returned as `Some`.
@@ -333,7 +333,7 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
   else:
     self
 
-proc `==`*(a, b: Option): bool =
+proc `==`*(a, b: Option): bool {.inline.} =
   ## Returns `true` if both `Option`s are `None`,
   ## or if they are both `Some` and have equal values.
   runnableExamples:
@@ -363,7 +363,7 @@ proc `$`*[T](self: Option[T]): string =
   else:
     result = "None[" & name(T) & "]"
 
-proc unsafeGet*[T](self: Option[T]): T =
+proc unsafeGet*[T](self: Option[T]): T {.inline.}=
   ## Returns the value of a `some`. Behavior is undefined for `none`.
   ##
   ## **Note:** Use it only when you are **absolutely sure** the value is present
@@ -411,7 +411,7 @@ when isMainModule:
       check some("a").isSome
 
     test "none":
-      expect UnpackError:
+      expect UnpackDefect:
         discard none(int).get()
       check(none(int).isNone)
       check(not none(string).isSome)
@@ -513,4 +513,3 @@ when isMainModule:
     test "Ref type with overloaded `==`":
       let p = some(RefPerson.new())
       check p.isSome
-

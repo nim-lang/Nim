@@ -447,7 +447,7 @@ proc build_help*(expected: seq[Tparameter_specification] = @[],
 
   # First generate the joined version of input parameters in a list.
   var
-    seen = initSet[string]()
+    seen = initHashSet[string]()
     prefixes: seq[string] = @[]
     helps: seq[string] = @[]
   for key in keys:

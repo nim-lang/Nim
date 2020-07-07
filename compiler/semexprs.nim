@@ -191,6 +191,8 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if skipTypes(dst, abstractInst).kind == tyBuiltInTypeClass:
+    return false
   if conf.selectedGC in {gcArc, gcOrc}:
     let d = skipTypes(dst, abstractInst)
     let s = skipTypes(src, abstractInst)
@@ -712,7 +714,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
     for i in 1..<n.len:
       if i < t.len and t[i] != nil and
-          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
         let it = n[i]
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
@@ -733,7 +735,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       # calls and then they wouldn't be analysed otherwise
       analyseIfAddressTakenInCall(c, n[i])
     if i < t.len and
-        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
       if n[i].kind != nkHiddenAddr:
         n[i] = analyseIfAddressTaken(c, n[i])
 
@@ -1572,12 +1574,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   # return a view into the first argument (if there is one):
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
+    template url: string = "var_t_return.html".createDocLink
     if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
-      localError(c.config, n.info, "'$1' escapes its stack frame; context: '$2'; see $3/var_t_return.html" % [
-        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
+      localError(c.config, n.info, "'$1' escapes its stack frame; context: '$2'; see $3" % [
+        root.name.s, renderTree(n, {renderNoComments}), url])
     elif root.kind == skParam and root.position != 0:
-      localError(c.config, n.info, "'$1' is not the first parameter; context: '$2'; see $3/var_t_return.html" % [
-        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
+      localError(c.config, n.info, "'$1' is not the first parameter; context: '$2'; see $3" % [
+        root.name.s, renderTree(n, {renderNoComments}), url])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkDerefExpr: return n[0]
@@ -1710,8 +1713,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   var le = a.typ
   if le == nil:
     localError(c.config, a.info, "expression has no type")
-  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
-        isAssignable(c, a) == arNone) or
+  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
+        isAssignable(c, a) in {arNone, arLentValue}) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
@@ -2061,6 +2064,10 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
+  when defined(nimsuggest):
+    # Remove the error hook so nimsuggest doesn't report errors there
+    let tempHook = c.graph.config.structuredErrorHook
+    c.graph.config.structuredErrorHook = nil
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
   let oldCompilesId = c.compilesContextId
@@ -2069,8 +2076,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if c.compilesContextId == 0:
     inc c.compilesContextIdGenerator
     c.compilesContextId = c.compilesContextIdGenerator
-  # do not halt after first error:
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   # open a scope for temporary symbol inclusions:
   let oldScope = c.currentScope
@@ -2110,6 +2116,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.config.m.errorOutputs = oldErrorOutputs
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
+  when defined(nimsuggest):
+    # Restore the error hook
+    c.graph.config.structuredErrorHook = tempHook
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:

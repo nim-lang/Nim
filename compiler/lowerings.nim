@@ -59,7 +59,7 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
-proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode = 
+proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result = newNodeI(nkFastAsgn, le.info, 2)
   result[0] = le
   result[1] = newNodeIT(nkCall, ri.info, ri.typ)

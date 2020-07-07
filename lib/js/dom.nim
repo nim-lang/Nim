@@ -19,29 +19,29 @@ const
 type
   EventTarget* = ref EventTargetObj
   EventTargetObj {.importc.} = object of RootObj
-    onabort*: proc (event: Event) {.nimcall.}
-    onblur*: proc (event: Event) {.nimcall.}
-    onchange*: proc (event: Event) {.nimcall.}
-    onclick*: proc (event: Event) {.nimcall.}
-    ondblclick*: proc (event: Event) {.nimcall.}
-    onerror*: proc (event: Event) {.nimcall.}
-    onfocus*: proc (event: Event) {.nimcall.}
-    onkeydown*: proc (event: Event) {.nimcall.}
-    onkeypress*: proc (event: Event) {.nimcall.}
-    onkeyup*: proc (event: Event) {.nimcall.}
-    onload*: proc (event: Event) {.nimcall.}
-    onmousedown*: proc (event: Event) {.nimcall.}
-    onmousemove*: proc (event: Event) {.nimcall.}
-    onmouseout*: proc (event: Event) {.nimcall.}
-    onmouseover*: proc (event: Event) {.nimcall.}
-    onmouseup*: proc (event: Event) {.nimcall.}
-    onreset*: proc (event: Event) {.nimcall.}
-    onselect*: proc (event: Event) {.nimcall.}
-    onsubmit*: proc (event: Event) {.nimcall.}
-    onunload*: proc (event: Event) {.nimcall.}
-    onloadstart*: proc (event: Event) {.nimcall.}
-    onprogress*: proc (event: Event) {.nimcall.}
-    onloadend*: proc (event: Event) {.nimcall.}
+    onabort*: proc (event: Event) {.closure.}
+    onblur*: proc (event: Event) {.closure.}
+    onchange*: proc (event: Event) {.closure.}
+    onclick*: proc (event: Event) {.closure.}
+    ondblclick*: proc (event: Event) {.closure.}
+    onerror*: proc (event: Event) {.closure.}
+    onfocus*: proc (event: Event) {.closure.}
+    onkeydown*: proc (event: Event) {.closure.}
+    onkeypress*: proc (event: Event) {.closure.}
+    onkeyup*: proc (event: Event) {.closure.}
+    onload*: proc (event: Event) {.closure.}
+    onmousedown*: proc (event: Event) {.closure.}
+    onmousemove*: proc (event: Event) {.closure.}
+    onmouseout*: proc (event: Event) {.closure.}
+    onmouseover*: proc (event: Event) {.closure.}
+    onmouseup*: proc (event: Event) {.closure.}
+    onreset*: proc (event: Event) {.closure.}
+    onselect*: proc (event: Event) {.closure.}
+    onsubmit*: proc (event: Event) {.closure.}
+    onunload*: proc (event: Event) {.closure.}
+    onloadstart*: proc (event: Event) {.closure.}
+    onprogress*: proc (event: Event) {.closure.}
+    onloadend*: proc (event: Event) {.closure.}
 
   DomEvent* {.pure.} = enum
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
@@ -107,6 +107,13 @@ type
     timing*: PerformanceTiming
 
   Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+    anchorNode*: Node
+    anchorOffset*: int
+    focusNode*: Node
+    focusOffset*: int
+    isCollapsed*: bool
+    rangeCount*: int
+    `type`*: cstring
 
   LocalStorage* {.importc.} = ref object
 
@@ -171,8 +178,11 @@ type
     nodeType*: NodeType
     nodeValue*: cstring
     parentNode*: Node
+    content*: Node
     previousSibling*: Node
+    ownerDocument*: Document
     innerHTML*: cstring
+    outerHTML*: cstring
     innerText*: cstring
     textContent*: cstring
     style*: Style
@@ -361,19 +371,73 @@ type
 
   Style* = ref StyleObj
   StyleObj {.importc.} = object of RootObj
+    alignContent*: cstring
+    alignItems*: cstring
+    alignSelf*: cstring
+    all*: cstring
+    animation*: cstring
+    animationDelay*: cstring
+    animationDirection*: cstring
+    animationDuration*: cstring
+    animationFillMode*: cstring
+    animationIterationCount*: cstring
+    animationName*: cstring
+    animationPlayState*: cstring
+    animationTimingFunction*: cstring
+    backdropFilter*: cstring
+    backfaceVisibility*: cstring
     background*: cstring
     backgroundAttachment*: cstring
+    backgroundBlendMode*: cstring
+    backgroundClip*: cstring
     backgroundColor*: cstring
     backgroundImage*: cstring
+    backgroundOrigin*: cstring
     backgroundPosition*: cstring
     backgroundRepeat*: cstring
     backgroundSize*: cstring
+    blockSize*: cstring
     border*: cstring
+    borderBlock*: cstring
+    borderBlockColor*: cstring
+    borderBlockEnd*: cstring
+    borderBlockEndColor*: cstring
+    borderBlockEndStyle*: cstring
+    borderBlockEndWidth*: cstring
+    borderBlockStart*: cstring
+    borderBlockStartColor*: cstring
+    borderBlockStartStyle*: cstring
+    borderBlockStartWidth*: cstring
+    borderBlockStyle*: cstring
+    borderBlockWidth*: cstring
     borderBottom*: cstring
     borderBottomColor*: cstring
+    borderBottomLeftRadius*: cstring
+    borderBottomRightRadius*: cstring
     borderBottomStyle*: cstring
     borderBottomWidth*: cstring
+    borderCollapse*: cstring
     borderColor*: cstring
+    borderEndEndRadius*: cstring
+    borderEndStartRadius*: cstring
+    borderImage*: cstring
+    borderImageOutset*: cstring
+    borderImageRepeat*: cstring
+    borderImageSlice*: cstring
+    borderImageSource*: cstring
+    borderImageWidth*: cstring
+    borderInline*: cstring
+    borderInlineColor*: cstring
+    borderInlineEnd*: cstring
+    borderInlineEndColor*: cstring
+    borderInlineEndStyle*: cstring
+    borderInlineEndWidth*: cstring
+    borderInlineStart*: cstring
+    borderInlineStartColor*: cstring
+    borderInlineStartStyle*: cstring
+    borderInlineStartWidth*: cstring
+    borderInlineStyle*: cstring
+    borderInlineWidth*: cstring
     borderLeft*: cstring
     borderLeftColor*: cstring
     borderLeftStyle*: cstring
@@ -383,84 +447,298 @@ type
     borderRightColor*: cstring
     borderRightStyle*: cstring
     borderRightWidth*: cstring
+    borderSpacing*: cstring
+    borderStartEndRadius*: cstring
+    borderStartStartRadius*: cstring
     borderStyle*: cstring
     borderTop*: cstring
     borderTopColor*: cstring
+    borderTopLeftRadius*: cstring
+    borderTopRightRadius*: cstring
     borderTopStyle*: cstring
     borderTopWidth*: cstring
     borderWidth*: cstring
     bottom*: cstring
-    boxSizing*: cstring
+    boxDecorationBreak*: cstring
     boxShadow*: cstring
+    boxSizing*: cstring
+    breakAfter*: cstring
+    breakBefore*: cstring
+    breakInside*: cstring
     captionSide*: cstring
+    caretColor*: cstring
     clear*: cstring
     clip*: cstring
+    clipPath*: cstring
     color*: cstring
+    colorAdjust*: cstring
+    columnCount*: cstring
+    columnFill*: cstring
+    columnGap*: cstring
+    columnRule*: cstring
+    columnRuleColor*: cstring
+    columnRuleStyle*: cstring
+    columnRuleWidth*: cstring
+    columnSpan*: cstring
+    columnWidth*: cstring
+    columns*: cstring
+    contain*: cstring
+    content*: cstring
+    counterIncrement*: cstring
+    counterReset*: cstring
+    counterSet*: cstring
     cursor*: cstring
     direction*: cstring
     display*: cstring
     emptyCells*: cstring
+    filter*: cstring
+    flex*: cstring
+    flexBasis*: cstring
+    flexDirection*: cstring
+    flexFlow*: cstring
+    flexGrow*: cstring
+    flexShrink*: cstring
+    flexWrap*: cstring
     cssFloat*: cstring
     font*: cstring
     fontFamily*: cstring
+    fontFeatureSettings*: cstring
+    fontKerning*: cstring
+    fontLanguageOverride*: cstring
+    fontOpticalSizing*: cstring
     fontSize*: cstring
+    fontSizeAdjust*: cstring
     fontStretch*: cstring
     fontStyle*: cstring
+    fontSynthesis*: cstring
     fontVariant*: cstring
+    fontVariantAlternates*: cstring
+    fontVariantCaps*: cstring
+    fontVariantEastAsian*: cstring
+    fontVariantLigatures*: cstring
+    fontVariantNumeric*: cstring
+    fontVariantPosition*: cstring
+    fontVariationSettings*: cstring
     fontWeight*: cstring
+    gap*: cstring
+    grid*: cstring
+    gridArea*: cstring
+    gridAutoColumns*: cstring
+    gridAutoFlow*: cstring
+    gridAutoRows*: cstring
+    gridColumn*: cstring
+    gridColumnEnd*: cstring
+    gridColumnStart*: cstring
+    gridRow*: cstring
+    gridRowEnd*: cstring
+    gridRowStart*: cstring
+    gridTemplate*: cstring
+    gridTemplateAreas*: cstring
+    gridTemplateColumns*: cstring
+    gridTemplateRows*: cstring
+    hangingPunctuation*: cstring
     height*: cstring
+    hyphens*: cstring
+    imageOrientation*: cstring
+    imageRendering*: cstring
+    inlineSize*: cstring
+    inset*: cstring
+    insetBlock*: cstring
+    insetBlockEnd*: cstring
+    insetBlockStart*: cstring
+    insetInline*: cstring
+    insetInlineEnd*: cstring
+    insetInlineStart*: cstring
+    isolation*: cstring
+    justifyContent*: cstring
+    justifyItems*: cstring
+    justifySelf*: cstring
     left*: cstring
     letterSpacing*: cstring
+    lineBreak*: cstring
     lineHeight*: cstring
     listStyle*: cstring
     listStyleImage*: cstring
     listStylePosition*: cstring
     listStyleType*: cstring
     margin*: cstring
+    marginBlock*: cstring
+    marginBlockEnd*: cstring
+    marginBlockStart*: cstring
     marginBottom*: cstring
+    marginInline*: cstring
+    marginInlineEnd*: cstring
+    marginInlineStart*: cstring
     marginLeft*: cstring
     marginRight*: cstring
     marginTop*: cstring
+    mask*: cstring
+    maskBorder*: cstring
+    maskBorderMode*: cstring
+    maskBorderOutset*: cstring
+    maskBorderRepeat*: cstring
+    maskBorderSlice*: cstring
+    maskBorderSource*: cstring
+    maskBorderWidth*: cstring
+    maskClip*: cstring
+    maskComposite*: cstring
+    maskImage*: cstring
+    maskMode*: cstring
+    maskOrigin*: cstring
+    maskPosition*: cstring
+    maskRepeat*: cstring
+    maskSize*: cstring
+    maskType*: cstring
+    maxBlockSize*: cstring
     maxHeight*: cstring
+    maxInlineSize*: cstring
     maxWidth*: cstring
+    minBlockSize*: cstring
     minHeight*: cstring
+    minInlineSize*: cstring
     minWidth*: cstring
+    mixBlendMode*: cstring
+    objectFit*: cstring
+    objectPosition*: cstring
+    offset*: cstring
+    offsetAnchor*: cstring
+    offsetDistance*: cstring
+    offsetPath*: cstring
+    offsetRotate*: cstring
     opacity*: cstring
+    order*: cstring
+    orphans*: cstring
     outline*: cstring
+    outlineColor*: cstring
+    outlineOffset*: cstring
+    outlineStyle*: cstring
+    outlineWidth*: cstring
     overflow*: cstring
+    overflowAnchor*: cstring
+    overflowBlock*: cstring
+    overflowInline*: cstring
+    overflowWrap*: cstring
     overflowX*: cstring
     overflowY*: cstring
+    overscrollBehavior*: cstring
+    overscrollBehaviorBlock*: cstring
+    overscrollBehaviorInline*: cstring
+    overscrollBehaviorX*: cstring
+    overscrollBehaviorY*: cstring
     padding*: cstring
+    paddingBlock*: cstring
+    paddingBlockEnd*: cstring
+    paddingBlockStart*: cstring
     paddingBottom*: cstring
+    paddingInline*: cstring
+    paddingInlineEnd*: cstring
+    paddingInlineStart*: cstring
     paddingLeft*: cstring
     paddingRight*: cstring
     paddingTop*: cstring
     pageBreakAfter*: cstring
     pageBreakBefore*: cstring
+    pageBreakInside*: cstring
+    paintOrder*: cstring
+    perspective*: cstring
+    perspectiveOrigin*: cstring
+    placeContent*: cstring
+    placeItems*: cstring
+    placeSelf*: cstring
     pointerEvents*: cstring
     position*: cstring
+    quotes*: cstring
     resize*: cstring
     right*: cstring
+    rotate*: cstring
+    rowGap*: cstring
+    scale*: cstring
+    scrollBehavior*: cstring
+    scrollMargin*: cstring
+    scrollMarginBlock*: cstring
+    scrollMarginBlockEnd*: cstring
+    scrollMarginBlockStart*: cstring
+    scrollMarginBottom*: cstring
+    scrollMarginInline*: cstring
+    scrollMarginInlineEnd*: cstring
+    scrollMarginInlineStart*: cstring
+    scrollMarginLeft*: cstring
+    scrollMarginRight*: cstring
+    scrollMarginTop*: cstring
+    scrollPadding*: cstring
+    scrollPaddingBlock*: cstring
+    scrollPaddingBlockEnd*: cstring
+    scrollPaddingBlockStart*: cstring
+    scrollPaddingBottom*: cstring
+    scrollPaddingInline*: cstring
+    scrollPaddingInlineEnd*: cstring
+    scrollPaddingInlineStart*: cstring
+    scrollPaddingLeft*: cstring
+    scrollPaddingRight*: cstring
+    scrollPaddingTop*: cstring
+    scrollSnapAlign*: cstring
+    scrollSnapStop*: cstring
+    scrollSnapType*: cstring
     scrollbar3dLightColor*: cstring
     scrollbarArrowColor*: cstring
     scrollbarBaseColor*: cstring
+    scrollbarColor*: cstring
     scrollbarDarkshadowColor*: cstring
     scrollbarFaceColor*: cstring
     scrollbarHighlightColor*: cstring
     scrollbarShadowColor*: cstring
     scrollbarTrackColor*: cstring
+    scrollbarWidth*: cstring
+    shapeImageThreshold*: cstring
+    shapeMargin*: cstring
+    shapeOutside*: cstring
+    tabSize*: cstring
     tableLayout*: cstring
     textAlign*: cstring
+    textAlignLast*: cstring
+    textCombineUpright*: cstring
     textDecoration*: cstring
+    textDecorationColor*: cstring
+    textDecorationLine*: cstring
+    textDecorationSkipInk*: cstring
+    textDecorationStyle*: cstring
+    textDecorationThickness*: cstring
+    textEmphasis*: cstring
+    textEmphasisColor*: cstring
+    textEmphasisPosition*: cstring
+    textEmphasisStyle*: cstring
     textIndent*: cstring
+    textJustify*: cstring
+    textOrientation*: cstring
+    textOverflow*: cstring
+    textRendering*: cstring
+    textShadow*: cstring
     textTransform*: cstring
-    transform*: cstring
+    textUnderlineOffset*: cstring
+    textUnderlinePosition*: cstring
     top*: cstring
+    touchAction*: cstring
+    transform*: cstring
+    transformBox*: cstring
+    transformOrigin*: cstring
+    transformStyle*: cstring
+    transition*: cstring
+    transitionDelay*: cstring
+    transitionDuration*: cstring
+    transitionProperty*: cstring
+    transitionTimingFunction*: cstring
+    translate*: cstring
+    unicodeBidi*: cstring
     verticalAlign*: cstring
     visibility*: cstring
+    whiteSpace*: cstring
+    widows*: cstring
     width*: cstring
+    willChange*: cstring
+    wordBreak*: cstring
     wordSpacing*: cstring
-    zIndex*: int
+    writingMode*: cstring
+    zIndex*: cstring
 
   EventPhase* = enum
     None = 0,
@@ -991,7 +1269,7 @@ type
     passive*: bool
 
 since (1, 3):
-  type 
+  type
     DomParser* = ref object
       ## DOM Parser object (defined on browser only, may not be on NodeJS).
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
@@ -1001,17 +1279,17 @@ since (1, 3):
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 
     DomException* = ref DOMExceptionObj
-      ## The DOMException interface represents an abnormal event (called an exception) 
-      ## which occurs as a result of calling a method or accessing a property of a web API. 
-      ## Each exception has a name, which is a short "CamelCase" style string identifying 
+      ## The DOMException interface represents an abnormal event (called an exception)
+      ## which occurs as a result of calling a method or accessing a property of a web API.
+      ## Each exception has a name, which is a short "CamelCase" style string identifying
       ## the error or abnormal condition.
       ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
 
-    DOMExceptionObj {.importc.} = object 
+    DOMExceptionObj {.importc.} = object
 
     FileReader* = ref FileReaderObj
-      ## The FileReader object lets web applications asynchronously read the contents of files 
-      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify 
+      ## The FileReader object lets web applications asynchronously read the contents of files
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify
       ## the file or data to read.
       ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
 
@@ -1019,7 +1297,7 @@ since (1, 3):
 
     FileReaderState* = distinct range[0'u16..2'u16]
 
-  const 
+  const
     fileReaderEmpty* = 0.FileReaderState
     fileReaderLoading* = 1.FileReaderState
     fileReaderDone* = 2.FileReaderState
@@ -1042,6 +1320,7 @@ when defined(nodejs):
     result = cast[Element](x.childNodes[idx])
 
   var document* = Document(nodeType: DocumentNode)
+  document.ownerDocument = document
 
   proc getElem(x: Element; id: cstring): Element =
     if x.id == id: return x
@@ -1055,6 +1334,7 @@ when defined(nodejs):
 
   proc appendChild*(parent, n: Node) =
     n.parentNode = parent
+    n.ownerDocument = parent.ownerDocument
     parent.childNodes.add n
 
   proc replaceChild*(parent, newNode, oldNode: Node) =
@@ -1101,6 +1381,12 @@ when defined(nodejs):
     result.nodeValue = identifier
     result.nodeType = NodeType.TextNode
 
+  proc createComment*(d: Document, data: cstring): Node =
+    new(result)
+    result.nodeName = "#comment"
+    result.nodeValue = data
+    result.nodeType = NodeType.CommentNode
+
 else:
   proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
   proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
@@ -1112,6 +1398,7 @@ else:
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
+  proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
 proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
 proc clearTimeout*(t: Timeout) {.importc, nodecl.}
@@ -1128,7 +1415,6 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc captureEvents*(w: Window, eventMask: int) {.deprecated.}
 proc clearInterval*(w: Window, interval: ref Interval)
 proc clearTimeout*(w: Window, timeout: ref TimeOut)
 proc close*(w: Window)
@@ -1148,7 +1434,6 @@ proc open*(w: Window, uri, windowname: cstring,
            properties: cstring = nil): Window
 proc print*(w: Window)
 proc prompt*(w: Window, text, default: cstring): cstring
-proc releaseEvents*(w: Window, eventMask: int) {.deprecated.}
 proc resizeBy*(w: Window, x, y: int)
 proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
@@ -1169,6 +1454,7 @@ proc deleteData*(n: Node, start, len: int)
 proc focus*(e: Node)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
+proc hasAttribute*(n: Node; attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
@@ -1177,9 +1463,10 @@ proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
+proc querySelector*(n: Node, selectors: cstring): Element
+proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
 
 # Document "methods"
-proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
 proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
@@ -1187,7 +1474,6 @@ proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
 proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
-proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)

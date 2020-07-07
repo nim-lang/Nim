@@ -3,6 +3,9 @@
 
 
 ## Standard library additions and changes
+
+- Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
+- Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
@@ -13,20 +16,21 @@
 - `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
 - File handles created from high-level abstractions in the stdlib will no longer
   be inherited by child processes. In particular, these modules are affected:
-  `system`, `nativesockets`, `net` and `selectors`.
+  `asyncdispatch`, `asyncnet`, `system`, `nativesockets`, `net` and `selectors`.
 
-  For `net` and `nativesockets`, an `inheritable` flag has been added to all
-  `proc`s that create sockets, allowing the user to control whether the
-  resulting socket is inheritable. This flag is provided to ease the writing of
-  multi-process servers, where sockets inheritance is desired.
+  For `asyncdispatch`, `asyncnet`, `net` and `nativesockets`, an `inheritable`
+  flag has been added to all `proc`s that create sockets, allowing the user to
+  control whether the resulting socket is inheritable. This flag is provided to
+  ease the writing of multi-process servers, where sockets inheritance is
+  desired.
 
   For a transistion period, define `nimInheritHandles` to enable file handle
   inheritance by default. This flag does **not** affect the `selectors` module
   due to the differing semantics between operating systems.
 
-  `system.setInheritable` and `nativesockets.setInheritable` is also introduced
-  for setting file handle or socket inheritance. Not all platform have these
-  `proc`s defined.
+  `asyncdispatch.setInheritable`, `system.setInheritable` and
+  `nativesockets.setInheritable` is also introduced for setting file handle or
+  socket inheritance. Not all platform have these `proc`s defined.
 
 - The file descriptors created for internal bookkeeping by `ioselector_kqueue`
   and `ioselector_epoll` will no longer be leaked to child processes.
@@ -56,9 +60,8 @@
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
 
-- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom` UDP functionality.
 
-- `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
 - Improvements to the `bitops` module, including bitslices, non-mutating versions
@@ -92,12 +95,47 @@
 - The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
 - The callback that is assigned to `system.onUnhandledException` must now be `.gcsafe`.
 
-- `osproc.execCmdEx` now takes an optional `input` for stdin.
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
+- Add `ssl_config` module containing lists of secure ciphers as recommended by
+  [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
+
+- `net.newContext` now defaults to the list of ciphers targeting
+  ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
+  per Mozilla's recommendation instead of `ALL`. This change should protect
+  users from the use of weak and insecure ciphers while still provides
+  adequate compatiblity with the majority of the Internet.
+
+- new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
+
+- new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
+- Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
+- Add `os.normalizeExe`, eg: `koch` => `./koch`.
+- `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
+- Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Add `typetraits.elementType` to get element type of an iterable.
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- add `macros.extractDocCommentsAndRunnables` helper
+
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
+- deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
+
+- Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+- Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
+  because negative values will result in a new file being created for each logged line which doesn't make sense.
+- Changed `log` in `logging` to use proper log level on JavaScript target,
+  eg. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
+
+
 ## Language changes
-- In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+- In the newruntime it is now allowed to assign to the discriminator field
+  without restrictions as long as case object doesn't have custom destructor.
+  The discriminator value doesn't have to be a constant either. If you have a
+  custom destructor for a case object and you do want to freely assign discriminator
+  fields, it is recommended to refactor object into 2 objects like this:
 
   ```nim
   type
@@ -126,7 +164,7 @@
       deallocShared(x.val)
       x.val = nil
   ```
-- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
@@ -156,6 +194,16 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
+- Remove `strutils.isNilOrWhitespace`, was deprecated.
+- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
+- Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
@@ -184,6 +232,15 @@ proc mydiv(a, b): int {.raises: [].} =
   use `--doccmd:skip` to skip runnableExamples and rst test snippets.
 - new flag `--usenimcache` to output to nimcache (whatever it resolves to after all commands are processed)
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
+- `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
+  for example to change backend or compile only.
+- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
+  passing `--project` now automatically generates an index and enables search.
+  See [docgen](docgen.html#introduction-quick-start) for details.
+- Removed the `--oldNewlines` switch.
+- Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
+- Removed the `--oldast` switch.
+- `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is now "typed" instead of "stmt"
+
 
 ## Tool changes
-

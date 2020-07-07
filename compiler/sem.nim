@@ -197,15 +197,13 @@ proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
     suggestDecl(c, n, result)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
-  proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
-
   # like newSymS, but considers gensym'ed symbols
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
     if result.kind notin {kind, skTemp}:
-      localError(c.config, n.info, "cannot use symbol of kind '" &
-                 $result.kind & "' as a '" & $kind & "'")
+      localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
+        [result.kind.toHumanStr, kind.toHumanStr])
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:
@@ -233,13 +231,15 @@ proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKi
                       flags: TTypeAllowedFlags = {}) =
   let t = typeAllowed(typ, kind, flags)
   if t != nil:
+    var err: string
     if t == typ:
-      localError(conf, info, "invalid type: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' for $2" % [typeToString(typ), toHumanStr(kind)]
+      if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
+        err &= ". Did you mean to call the $1 with '()'?" % [toHumanStr(typ.owner.kind)]
     else:
-      localError(conf, info, "invalid type: '" & typeToString(t) &
-        "' in this context: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
+              typeToString(typ), toHumanStr(kind)]
+    localError(conf, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c.config, typ.n.info, typ, skProc)
@@ -323,7 +323,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   let oldErrorOutputs = c.config.m.errorOutputs
 
   c.config.m.errorOutputs = {}
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   try:
     result = evalConstExpr(c.module, c.graph, e)

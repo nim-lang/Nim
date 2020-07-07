@@ -77,5 +77,9 @@ block: # Casts to uint
 
   testCast(-5'i32, uint8, 251'u8)
 
+# issue #7174
+let c = 1'u
+let val = c > 0
+doAssert val 
 
 echo("Success") #OUT Success

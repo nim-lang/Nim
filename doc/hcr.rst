@@ -76,7 +76,7 @@ To install SDL2 you can use ``nimble install sdl2``.
     discard renderer.clear()
     discard renderer.setDrawColor(255, 128, 128, 0)
 
-    var rect: Rect = (x: posX - 25, y: posY - 25, w: 50.cint, h: 50.cint)
+    var rect = Rect(x: posX - 25, y: posY - 25, w: 50.cint, h: 50.cint)
     discard renderer.fillRect(rect)
     delay(16)
     renderer.present()
@@ -221,8 +221,8 @@ is a suitable place for implementing a program loop capable of calling
 
 Please note that reloading won't be possible when any of the type definitions
 in the program has been changed. When closure iterators are used (directly or
-through async code), the reloaded refinitions will affect only newly created
-instances. Existing iterator instancess will execute their original code to
+through async code), the reloaded definitions will affect only newly created
+instances. Existing iterator instances will execute their original code to
 completion.
 
 JavaScript target

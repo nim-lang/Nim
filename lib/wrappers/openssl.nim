@@ -181,6 +181,7 @@ const
   SSL_CTRL_SET_TLSEXT_SERVERNAME_CB = 53
   SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54
   SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+  SSL_CTRL_SET_ECDH_AUTO* = 94
   TLSEXT_NAMETYPE_host_name* = 0
   SSL_TLSEXT_ERR_OK* = 0
   SSL_TLSEXT_ERR_ALERT_WARNING* = 1
@@ -201,6 +202,9 @@ const
   SSL_OP_ALL* = 0x000FFFFF
   SSL_VERIFY_NONE* = 0x00000000
   SSL_VERIFY_PEER* = 0x00000001
+  SSL_ST_CONNECT* = 0x1000
+  SSL_ST_ACCEPT* = 0x2000
+  SSL_ST_INIT* = SSL_ST_CONNECT or SSL_ST_ACCEPT
   OPENSSL_DES_DECRYPT* = 0
   OPENSSL_DES_ENCRYPT* = 1
   X509_V_OK* = 0
@@ -260,6 +264,10 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLeay(): culong {.cdecl, dynlib: DLLUtilName, importc.}
+
+    proc getOpenSSLVersion*(): culong =
+      SSLeay()
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
@@ -270,7 +278,7 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSLv23_method*(): PSSL_METHOD =
       TLS_method()
 
-    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLSSLName, importc.}
+    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
 
     proc getOpenSSLVersion*(): culong =
       ## Return OpenSSL version as unsigned long
@@ -281,6 +289,14 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
       # This proc prevents breaking existing code calling SslLoadErrorStrings
       # Static linking against OpenSSL < 1.1.0 is not supported
       discard
+
+  when defined(libressl) or defined(openssl10):
+    proc SSL_state(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_in_init*(ssl: SslPtr): cint {.inline.} =
+      SSl_state(ssl) and SSL_ST_INIT
+  else:
+    proc SSL_in_init*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
   template OpenSSL_add_all_algorithms*() = discard
 
@@ -303,13 +319,18 @@ else:
 
     result = sslMod
 
-  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+  proc utilModule(): LibHandle {.inline.} =
+    var utilMod {.global.}: LibHandle
+    if utilMod.isNil: utilMod = loadLibPattern(DLLUtilName)
+
+    result = utilMod
+
+  proc symNullable(dll: LibHandle, name: string, alternativeName = ""): pointer =
     # Load from DLL.
-    var sslDynlib = sslModule()
-    if not sslDynlib.isNil:
-      result = symAddr(sslDynlib, name)
+    if not dll.isNil:
+      result = symAddr(dll, name)
       if result.isNil and alternativeName.len > 0:
-        result = symAddr(sslDynlib, alternativeName)
+        result = symAddr(dll, alternativeName)
 
     # Attempt to load from current exe.
     if result.isNil:
@@ -317,11 +338,17 @@ else:
       if thisDynlib.isNil: return nil
       result = symAddr(thisDynlib, name)
       if result.isNil and alternativeName.len > 0:
-        result = symAddr(sslDynlib, alternativeName)
+        result = symAddr(thisDynlib, alternativeName)
+
+  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+    sslModule().symNullable(name, alternativeName)
 
   proc sslSymThrows(name: string, alternativeName = ""): pointer =
     result = sslSymNullable(name, alternativeName)
     if result.isNil: raiseInvalidLibrary(name)
+
+  proc utilSymNullable(name: string, alternativeName = ""): pointer =
+    utilModule().symNullable(name, alternativeName)
 
   proc loadPSSLMethod(method1, method2: string): PSSL_METHOD =
     ## Load <method1> from OpenSSL if available, otherwise <method2>
@@ -377,10 +404,31 @@ else:
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num"))
+    let theProc = cast[proc(): culong {.cdecl, gcsafe.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
     result =
       if theProc.isNil: 0.culong
       else: theProc()
+
+  proc SSL_in_init*(ssl: SslPtr): cint =
+    # A compatibility wrapper for `SSL_in_init()` for OpenSSL 1.0, 1.1 and LibreSSL
+    const MainProc = "SSL_in_init"
+    let
+      theProc {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable(MainProc))
+      # Fallback
+      sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable("SSL_state"))
+
+    if not theProc.isNil:
+      result = theProc(ssl)
+    elif not sslState.isNil:
+      result = sslState(ssl) and SSL_ST_INIT
+    else:
+      raiseInvalidLibrary MainProc
+
+  proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
+    var theProc {.global.}: proc(ctx: SslCtx, str: cstring) {.cdecl, gcsafe.}
+    if theProc.isNil:
+      theProc = cast[typeof(theProc)](sslSymThrows("SSL_CTX_set_ciphersuites"))
+    theProc(ctx, str)
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
@@ -450,10 +498,10 @@ proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc ERR_print_errors_fp*(fp: File){.cdecl, dynlib: DLLSSLName, importc.}
 
-proc ERR_error_string*(e: cint, buf: cstring): cstring{.cdecl,
+proc ERR_error_string*(e: culong, buf: cstring): cstring{.cdecl,
     dynlib: DLLUtilName, importc.}
-proc ERR_get_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
-proc ERR_peek_last_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
+proc ERR_get_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
+proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
@@ -503,14 +551,14 @@ proc CRYPTO_malloc_init*() =
   when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
-proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: int, parg: pointer): int{.
+proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_CTX_callback_ctrl(ctx: SslCtx, typ: cint, fp: PFunction): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSLCTXSetMode*(ctx: SslCtx, mode: int): int =
-  result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+  result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, clong mode, nil)
 
 proc SSL_ctrl*(ssl: SslPtr, cmd: cint, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
@@ -559,6 +607,15 @@ proc SSL_CTX_use_psk_identity_hint*(ctx: SslCtx; hint: cstring): cint {.cdecl, d
 
 proc SSL_get_psk_identity*(ssl: SslPtr): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Get PSK identity.
+
+proc SSL_CTX_set_ecdh_auto*(ctx: SslCtx, onoff: cint): cint {.inline.} =
+  ## Set automatic curve selection.
+  ##
+  ## On OpenSSL >= 1.1.0 this is on by default and cannot be disabled.
+  if getOpenSSLVersion() < 0x010100000 or getOpenSSLVersion() == 0x020000000:
+    result = cint SSL_CTX_ctrl(ctx, SSL_CTRL_SET_ECDH_AUTO, onoff, nil)
+  else:
+    result = 1
 
 proc bioNew*(b: PBIO_METHOD): BIO{.cdecl, dynlib: DLLUtilName, importc: "BIO_new".}
 proc bioFreeAll*(b: BIO){.cdecl, dynlib: DLLUtilName, importc: "BIO_free_all".}

@@ -1,4 +1,4 @@
-import compiler/unittest_light
+import stdtest/unittest_light
 
 proc testAssertEquals() =
   assertEquals("foo", "foo")

@@ -233,22 +233,6 @@ proc createNativeSocket*(domain: Domain = AF_INET,
   ## by child processes.
   createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol), inheritable)
 
-proc newNativeSocket*(domain: Domain = AF_INET,
-                      sockType: SockType = SOCK_STREAM,
-                      protocol: Protocol = IPPROTO_TCP): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  createNativeSocket(domain, sockType, protocol)
-
-proc newNativeSocket*(domain: cint, sockType: cint,
-                      protocol: cint): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## Use this overload if one of the enums specified above does
-  ## not contain what you need.
-  createNativeSocket(domain, sockType, protocol)
-
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
     namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)
@@ -445,9 +429,10 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  try:
-    result = toKnownDomain(name.sin6_family.cint).get()
-  except UnpackError:
+  let knownDomain = toKnownDomain(name.sin6_family.cint)
+  if knownDomain.isSome:
+    result = knownDomain.get()
+  else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
@@ -475,6 +460,40 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
       if sockAddr.sa_family.cint == nativeAfUnix:
         return "unix"
     raise newException(IOError, "Unknown socket family in getAddrString")
+
+proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
+  ## Stores in ``strAddress`` the string representation of the address inside
+  ## ``sockAddr``
+  ## 
+  ## **Note**
+  ## * ``strAddress`` must be initialized to 46 in length.
+  assert(46 == len(strAddress),
+         "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
+  if sockAddr.sa_family.cint == nativeAfInet:
+    let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
+    when not useWinVersion:
+      if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+                         strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+    else:
+      if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
+                           strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+  elif sockAddr.sa_family.cint == nativeAfInet6:
+    let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+    when not useWinVersion:
+      if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+                         strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+      if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
+        strAddress = strAddress.substr("::ffff:".len)
+    else:
+      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
+                           strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+  else:
+    raise newException(IOError, "Unknown socket family in getAddrString")
+  setLen(strAddress, len(cstring(strAddress)))
 
 when defined(posix) and not defined(nimdoc):
   proc makeUnixAddr*(path: string): Sockaddr_un =

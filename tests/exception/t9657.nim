@@ -1,11 +1,12 @@
 discard """
   action: run
   exitcode: 1
-  target: "c"
+  target: "c cpp"
   disabled: "openbsd"
   disabled: "netbsd"
 """
-# todo: remove `target: "c"` workaround once #10343 is properly fixed
+
 close stdmsg
 const m = "exception!"
+# see #10343 for details on this test
 discard writeBuffer(stdmsg, cstring(m), m.len)

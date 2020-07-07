@@ -193,7 +193,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
-  of tyString, tySequence, tyOpt: result = etySeq
+  of tyString, tySequence: result = etySeq
   of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs, tyUncheckedArray:
     result = etyObject
   of tyNil: result = etyNull
@@ -210,6 +210,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
+  of tyOptDeprecated: doAssert false
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -1041,7 +1042,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
   # still a string that needs to be copied properly:
-  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}:
+  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
     xtyp = etySeq
   case xtyp
   of etySeq:
@@ -1052,7 +1053,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind == tyVar or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -1065,8 +1066,11 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
       elif b.typ == etyBaseIndex:
         lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
+      elif b.typ == etyNone:
+        internalAssert p.config, b.address == nil
+        lineF(p, "$# = [$#, 0];$n", [a.address, b.res])
       else:
-        internalError(p.config, x.info, "genAsgn")
+        internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     else:
       lineF(p, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
   else:
@@ -1083,7 +1087,7 @@ proc genFastAsgn(p: PProc, n: PNode) =
   # See bug #5933. So we try to be more compatible with the C backend semantics
   # here for 'shallowCopy'. This is an educated guess and might require further
   # changes later:
-  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}
+  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyString}
   genAsgnAux(p, n[0], n[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
@@ -1266,6 +1270,10 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[0].sym
     if s.loc.r == nil: internalError(p.config, n.info, "genAddr: 3")
     case s.kind
+    of skParam:
+      r.res = s.loc.r
+      r.address = nil
+      r.typ = etyNone
     of skVar, skLet, skResult:
       r.kind = resExpr
       let jsType = mapType(p, n.typ)
@@ -1287,7 +1295,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         # 'var openArray' for instance produces an 'addr' but this is harmless:
         gen(p, n[0], r)
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
-    else: internalError(p.config, n.info, "genAddr: 2")
+    else: internalError(p.config, n.info, $("genAddr: 2", s.kind))
   of nkCheckedFieldExpr:
     genCheckedFieldOp(p, n[0], n.typ, r)
   of nkDotExpr:
@@ -1690,7 +1698,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString:
     result = putToSeq("[]", indirect)
-  of tyCString, tyOpt, tyProc:
+  of tyCString, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -1822,7 +1830,7 @@ proc genNewSeq(p: PProc, n: PNode) =
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
-  case skipTypes(n[1].typ, abstractVar).kind
+  case skipTypes(n[1].typ, abstractVar + abstractRange).kind
   of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n[1], r)
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
   else: internalError(p.config, n.info, "genOrd")

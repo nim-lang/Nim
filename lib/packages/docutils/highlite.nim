@@ -342,7 +342,7 @@ proc nimNextToken(g: var GeneralTokenizer) =
         inc(pos)
         g.kind = gtNone
   g.length = pos - g.pos
-  if g.kind != gtEof and g.length <= 0:
+  if g.kind != gtEof and g.state != gtNone and g.length <= 0:
     assert false, "nimNextToken: produced an empty token"
   g.pos = pos
 

@@ -1,8 +1,3 @@
-discard """
-  exitcode: 0
-  output: "ok"
-"""
-
 import json, asyncdispatch
 block: #6100
   let done = newFuture[int]()
@@ -61,5 +56,28 @@ block: # 12743
 
   waitFor prc()
 
+block: # issue #13899
+  proc someConnect() {.async.} =
+    await sleepAsync(1)
+  proc someClose() {.async.} =
+    await sleepAsync(2)
+  proc testFooFails(): Future[bool] {.async.} =
+    await someConnect()
+    defer:
+      await someClose()
+      result = true
+  proc testFooSucceed(): Future[bool] {.async.} =
+    try:
+      await someConnect()
+    finally:
+      await someClose()
+      result = true
+  doAssert waitFor testFooSucceed()
+  doAssert waitFor testFooFails()
 
-echo "ok"
+block: # issue #9313
+  doAssert compiles(block:
+    proc a() {.async.} =
+      echo "Hi"
+      quit(0)
+  )

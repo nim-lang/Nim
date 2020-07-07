@@ -24,7 +24,6 @@ const
   colPurple = 0b011
   isCycleCandidate = 0b100 # cell is marked as a cycle candidate
   jumpStackFlag = 0b1000
-  rcShift = 4      # shift by rcShift to get the reference counter
   colorMask = 0b011
 
 type

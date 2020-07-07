@@ -22,7 +22,7 @@
 # - output slices need special logic (+)
 
 import
-  ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
+  ast, astalgo, idents, lowerings, magicsys, guards, msgs,
   renderer, types, modulegraphs, options, spawn, lineinfos
 
 from trees import getMagic, isTrue, getRoot

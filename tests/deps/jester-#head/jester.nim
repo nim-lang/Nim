@@ -1,6 +1,6 @@
 # Copyright (C) 2015 Dominik Picheta
 # MIT License - Look at license.txt for details.
-import net, strtabs, re, tables, parseutils, os, strutils, uri,
+import net, strtabs, re, tables, os, strutils, uri,
        times, mimetypes, asyncnet, asyncdispatch, macros, md5,
        logging, httpcore, asyncfile, macrocache, json, options,
        strformat
@@ -23,6 +23,7 @@ export SameSite
 when useHttpBeast:
   import httpbeast except Settings, Request
   import options
+  from nativesockets import close
 else:
   import asynchttpserver except Request
 
@@ -72,14 +73,14 @@ type
     of RouteCode:
       data: ResponseData
 
-const jesterVer = "0.4.0"
+const jesterVer = "0.4.3"
 
 proc toStr(headers: Option[RawHeaders]): string =
   return $newHttpHeaders(headers.get(@({:})))
 
 proc createHeaders(headers: RawHeaders): string =
   result = ""
-  if headers != nil:
+  if headers.len > 0:
     for header in headers:
       let (key, value) = header
       result.add(key & ": " & value & "\c\L")
@@ -98,22 +99,24 @@ proc unsafeSend(request: Request, content: string) =
 
 proc send(
   request: Request, code: HttpCode, headers: Option[RawHeaders], body: string
-) =
+): Future[void] =
   when useHttpBeast:
     let h =
       if headers.isNone: ""
       else: headers.get().createHeaders
     request.getNativeReq.send(code, body, h)
+    var fut = newFuture[void]()
+    complete(fut)
+    return fut
   else:
-    # TODO: This may cause issues if we send too fast.
-    asyncCheck request.getNativeReq.respond(
+    return request.getNativeReq.respond(
       code, body, newHttpHeaders(headers.get(@({:})))
     )
 
 proc statusContent(request: Request, status: HttpCode, content: string,
-                   headers: Option[RawHeaders]) =
+                   headers: Option[RawHeaders]): Future[void] =
   try:
-    send(request, status, headers, content)
+    result = send(request, status, headers, content)
     when not defined(release):
       logging.debug("  $1 $2" % [$status, toStr(headers)])
   except:
@@ -174,7 +177,11 @@ proc sendStaticIfExists(
         return Http403
 
       let fileSize = getFileSize(p)
-      let mimetype = req.settings.mimes.getMimetype(p.splitFile.ext[1 .. ^1])
+      let ext = p.splitFile.ext
+      let mimetype = req.settings.mimes.getMimetype(
+        if ext.len > 0: ext[1 .. ^1]
+        else: ""
+      )
       if fileSize < 10_000_000: # 10 mb
         var file = readFile(p)
 
@@ -183,18 +190,18 @@ proc sendStaticIfExists(
         # If the user has a cached version of this file and it matches our
         # version, let them use it
         if req.headers.hasKey("If-None-Match") and req.headers["If-None-Match"] == hashed:
-          req.statusContent(Http304, "", none[RawHeaders]())
+          await req.statusContent(Http304, "", none[RawHeaders]())
         else:
-          req.statusContent(Http200, file, some(@({
-                              "Content-Type": mimetype,
-                              "ETag": hashed
-                            })))
+          await req.statusContent(Http200, file, some(@({
+            "Content-Type": mimetype,
+            "ETag": hashed
+          })))
       else:
         let headers = @({
           "Content-Type": mimetype,
           "Content-Length": $fileSize
         })
-        req.statusContent(Http200, "", some(headers))
+        await req.statusContent(Http200, "", some(headers))
 
         var fileStream = newFutureStream[string]("sendStaticIfExists")
         var file = openAsync(p, fmRead)
@@ -216,13 +223,22 @@ proc sendStaticIfExists(
   # If we get to here then no match could be found.
   return Http404
 
+proc close*(request: Request) =
+  ## Closes client socket connection.
+  ##
+  ## Routes using this procedure must enable raw mode.
+  let nativeReq = request.getNativeReq()
+  when useHttpBeast:
+    nativeReq.forget()
+  nativeReq.client.close()
+
 proc defaultErrorFilter(error: RouteError): ResponseData =
   case error.kind
   of RouteException:
     let e = error.exc
     let traceback = getStackTrace(e)
     var errorMsg = e.msg
-    if errorMsg.isNil: errorMsg = "(nil)"
+    if errorMsg.len == 0: errorMsg = "(empty)"
 
     let error = traceback & errorMsg
     logging.error(error)
@@ -295,9 +311,11 @@ proc handleFileRequest(
     jes.settings.staticDir / cgi.decodeUrl(req.pathInfo)
   )
 
-  # Verify that this isn't outside our static` dir.
+  # Verify that this isn't outside our static dir.
   var status = Http400
-  if path.splitFile.dir.startsWith(jes.settings.staticDir):
+  let pathDir = path.splitFile.dir / ""
+  let staticDir = jes.settings.staticDir / ""
+  if pathDir.startsWith(staticDir):
     if existsDir(path):
       status = await sendStaticIfExists(
         req,
@@ -347,7 +365,7 @@ proc handleRequestSlow(
         not dispatchedError and respData.content.len == 0:
       respData = await dispatchError(jes, req, initRouteError(respData))
 
-    statusContent(
+    await statusContent(
       req,
       respData.code,
       respData.content,
@@ -368,7 +386,7 @@ proc handleRequest(jes: Jester, httpReq: NativeRequest): Future[void] =
     if likely(jes.matchers.len == 1 and not jes.matchers[0].async):
       let respData = jes.matchers[0].syncProc(req)
       if likely(respData.matched):
-        statusContent(
+        return statusContent(
           req,
           respData.code,
           respData.content,
@@ -382,6 +400,8 @@ proc handleRequest(jes: Jester, httpReq: NativeRequest): Future[void] =
     let exc = getCurrentException()
     let respDataFut = dispatchError(jes, req, initRouteError(exc))
     return handleRequestSlow(jes, req, respDataFut, true)
+
+  assert(not result.isNil, "Expected handleRequest to return a valid future.")
 
 proc newSettings*(
   port = Port(5000), staticDir = getCurrentDir() / "public",
@@ -461,14 +481,19 @@ proc serve*(
       ]
     )
   else:
-    logging.info("Jester is making jokes at http://0.0.0.0:$1$2" %
-                 [$self.settings.port, self.settings.appName])
+    when defined(windows):
+      logging.info("Jester is making jokes at http://127.0.0.1:$1$2 (all interfaces)" %
+                   [$self.settings.port, self.settings.appName])
+    else:
+      logging.info("Jester is making jokes at http://0.0.0.0:$1$2" %
+                   [$self.settings.port, self.settings.appName])
 
   var jes = self
   when useHttpBeast:
     run(
       proc (req: httpbeast.Request): Future[void] =
-        result = handleRequest(jes, req),
+         {.gcsafe.}:
+          result = handleRequest(jes, req),
       httpbeast.initSettings(self.settings.port, self.settings.bindAddr)
     )
   else:
@@ -483,14 +508,6 @@ proc serve*(
     else:
       asyncCheck serveFut
     runForever()
-
-template resp*(code: HttpCode,
-               headers: openarray[tuple[key, value: string]],
-               content: string): typed =
-  ## Sets ``(code, headers, content)`` as the response.
-  bind TCActionSend, newHttpHeaders
-  result = (TCActionSend, code, headers.newHttpHeaders.some(), content, true)
-  break route
 
 template setHeader(headers: var Option[RawHeaders], key, value: string): typed =
   bind isNone
@@ -508,6 +525,17 @@ template setHeader(headers: var Option[RawHeaders], key, value: string): typed =
 
       # Add key if it doesn't exist.
       headers = some(h & @({key: value}))
+
+template resp*(code: HttpCode,
+               headers: openarray[tuple[key, val: string]],
+               content: string): typed =
+  ## Sets ``(code, headers, content)`` as the response.
+  bind TCActionSend
+  result = (TCActionSend, code, none[RawHeaders](), content, true)
+  for header in headers:
+    setHeader(result[2], header[0], header[1])
+  break route
+
 
 template resp*(content: string, contentType = "text/html;charset=utf-8"): typed =
   ## Sets ``content`` as the response; ``Http200`` as the status code
@@ -687,7 +715,8 @@ proc daysForward*(days: int): DateTime =
   return getTime().utc + initTimeInterval(days = days)
 
 template setCookie*(name, value: string, expires="",
-                    sameSite: SameSite=Lax): typed =
+                    sameSite: SameSite=Lax, secure = false,
+                    httpOnly = false, domain = "", path = "") =
   ## Creates a cookie which stores ``value`` under ``name``.
   ##
   ## The SameSite argument determines the level of CSRF protection that
@@ -695,7 +724,7 @@ template setCookie*(name, value: string, expires="",
   ## should protect you from most vulnerabilities. Note that this is only
   ## supported by some browsers:
   ## https://caniuse.com/#feat=same-site-cookie-attribute
-  let newCookie = makeCookie(name, value, expires)
+  let newCookie = makeCookie(name, value, expires, domain, path, secure, httpOnly, sameSite)
   if isSome(result[2]) and
      (let headers = result[2].get(); headers.toTable.hasKey("Set-Cookie")):
     result[2] = some(headers & @({"Set-Cookie": newCookie}))
@@ -703,9 +732,12 @@ template setCookie*(name, value: string, expires="",
     setHeader(result[2], "Set-Cookie", newCookie)
 
 template setCookie*(name, value: string, expires: DateTime,
-                    sameSite: SameSite=Lax): typed =
+                    sameSite: SameSite=Lax, secure = false,
+                    httpOnly = false, domain = "", path = "") =
   ## Creates a cookie which stores ``value`` under ``name``.
-  setCookie(name, value, format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"))
+  setCookie(name, value,
+            format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
+            sameSite, secure, httpOnly, domain, path)
 
 proc normalizeUri*(uri: string): string =
   ## Remove any trailing ``/``.
@@ -721,7 +753,10 @@ proc checkAction*(respData: var ResponseData): bool =
   of TCActionPass:
     result = false
   of TCActionNothing:
-    assert(false)
+    raise newException(
+      ValueError,
+      "Missing route action, did you forget to use `resp` in your route?"
+    )
 
 proc skipDo(node: NimNode): NimNode {.compiletime.} =
   if node.kind == nnkDo:
@@ -764,14 +799,14 @@ proc ctParsePattern(pattern, pathPrefix: string): NimNode {.compiletime.} =
       newStrLitNode(node.text),
       newIdentNode(if node.optional: "true" else: "false"))
 
-template setDefaultResp*(): typed =
+template setDefaultResp*() =
   # TODO: bindSym this in the 'routes' macro and put it in each route
   bind TCActionNothing, newHttpHeaders
   result.action = TCActionNothing
   result.code = Http200
   result.content = ""
 
-template declareSettings(): typed {.dirty.} =
+template declareSettings() {.dirty.} =
   when not declaredInScope(settings):
     var settings = newSettings()
 
@@ -1299,7 +1334,7 @@ proc routesEx(name: string, body: NimNode): NimNode =
     for branch in exceptionBranches:
       stmts.add(newIfStmt(branch))
     errorHandlerProc[6][0][1][^1][1][1][0] = stmts
-  if httpCodeBranches.len > 1:
+  if httpCodeBranches.len != 0:
     var stmts = newStmtList()
     for branch in httpCodeBranches:
       stmts.add(newIfStmt(branch))
@@ -1313,7 +1348,7 @@ proc routesEx(name: string, body: NimNode): NimNode =
   # echo toStrLit(result)
   # echo treeRepr(result)
 
-macro routes*(body: untyped): typed =
+macro routes*(body: untyped) =
   result = routesEx("match", body)
   let jesIdent = genSym(nskVar, "jes")
   let matchIdent = newIdentNode("match")
@@ -1329,13 +1364,13 @@ macro routes*(body: untyped): typed =
       serve(`jesIdent`)
   )
 
-macro router*(name: untyped, body: untyped): typed =
+macro router*(name: untyped, body: untyped) =
   if name.kind != nnkIdent:
     error("Need an ident.", name)
 
-  routesEx($name.ident, body)
+  routesEx(strVal(name), body)
 
-macro settings*(body: untyped): typed =
+macro settings*(body: untyped) =
   #echo(treeRepr(body))
   expectKind(body, nnkStmtList)
 

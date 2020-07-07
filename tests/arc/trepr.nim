@@ -7,8 +7,8 @@ nil
   output: '''
 nil
 2
-Obj(member: ref @[hello])
-ref (member: ref @[hello])
+Obj(member: ref @["hello"])
+ref (member: ref @["hello"])
 '''
 """
 import tables

@@ -1,13 +1,11 @@
-import os
+template pkg1(name: string; hasDeps = false; cmd = "nimble test"; url = "", useHead = true): untyped =
+  packages1.add((name, cmd, hasDeps, url, useHead))
 
-template pkg1(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
-  packages1.add((name, cmd, hasDeps, url))
+template pkg2(name: string; hasDeps = false; cmd = "nimble test"; url = "", useHead = true): untyped =
+  packages2.add((name, cmd, hasDeps, url, useHead))
 
-template pkg2(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
-  packages2.add((name, cmd, hasDeps, url))
-
-var packages1*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
-var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
+var packages1*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead: bool]] = @[]
+var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead: bool]] = @[]
 
 
 # packages A-M
@@ -36,13 +34,12 @@ pkg1 "coco", true
 pkg1 "combparser"
 pkg1 "compactdict"
 pkg1 "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
-pkg1 "criterion"
 pkg1 "dashing", false, "nim c tests/functional.nim"
 pkg1 "delaunay"
 pkg1 "docopt"
 pkg1 "easygl", true, "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg1 "elvis"
-pkg1 "fidget", true, "nim c -d:release -r tests/runNative.nim"
+pkg1 "fidget", true
 pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
 pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim"
@@ -52,7 +49,7 @@ pkg1 "gnuplot"
 pkg1 "hts", false, "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth", true
 pkg1 "illwill", false, "nimble examples"
-pkg1 "inim", true # pending https://github.com/inim-repl/INim/issues/74
+pkg1 "inim", true
 pkg1 "itertools", false, "nim doc src/itertools.nim"
 pkg1 "iterutils"
 pkg1 "jstin"
@@ -75,11 +72,6 @@ pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
 pkg2 "nesm"
 # pkg2 "nico", true
 pkg2 "nicy", false, "nim c -r src/nicy.nim"
-when defined(osx):
-  # xxx: do this more generally by installing non-nim dependencies automatically
-  # as specified in nimble file and calling `distros.foreignDepInstallCmd`, but
-  # it currently would fail work if a package is already installed.
-  doAssert execShellCmd("brew ls --versions gtk+3 || brew install gtk+3") == 0
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg2 "nimes", true, "nim c src/nimes.nim"
@@ -97,8 +89,8 @@ pkg2 "nimsvg"
 # pkg2 "nimterop", true
 pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nimx", true, "nim c --threads:on test/main.nim"
-pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg2 "norm", true, "nim c -r tests/tsqlite.nim"
+# pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
+pkg2 "norm", true, "nim c -r tests/tsqliterows.nim"
 pkg2 "npeg", false, "nimble testarc"
 pkg2 "numericalnim", true, "nim c -r tests/test_integrate.nim"
 pkg2 "optionsutils"
@@ -141,4 +133,4 @@ pkg2 "websocket", false, "nim c websocket.nim"
 pkg2 "with"
 pkg2 "ws"
 pkg2 "yaml"
-pkg2 "zero_functional", false, "nim c -r test.nim"
+pkg2 "zero_functional", false, "nim c -r -d:nimWorkaround14447 test.nim"

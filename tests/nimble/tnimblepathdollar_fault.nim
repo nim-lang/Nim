@@ -1,6 +1,9 @@
 discard """
   errmsg: "cannot open file: pkgA/module"
 """
+
+# see nims file; comment out `switch("noNimblePath")` there and there would be no error
+
 import pkgA/module as A
 import pkgB/module as B
 import pkgC/module as C

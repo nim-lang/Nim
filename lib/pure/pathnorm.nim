@@ -44,7 +44,7 @@ proc next*(it: var PathIter; x: string): (int, int) =
   it.notFirst = true
 
 iterator dirs(x: string): (int, int) =
-  var it: PathIter
+  var it = default PathIter
   while hasNext(it, x): yield next(it, x)
 
 proc isDot(x: string; bounds: (int, int)): bool =

@@ -106,7 +106,7 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyOptDeprecated, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
@@ -462,10 +462,12 @@ proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
 
 {.pop.}
 
-proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect, compilerproc.}
+proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
 
+proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+  ## Create a new ident node from a string.
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -533,9 +535,7 @@ proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffe
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
   ## Returns ``LineInfo`` of ``n``, using absolute path for ``filename``.
-  result.filename = n.getFile
-  result.line = n.getLine
-  result.column = n.getColumn
+  result = LineInfo(filename: n.getFile, line: n.getLine, column: n.getColumn)
 
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
   ## Return line info in the form `filepath(line, column)`.
@@ -758,7 +758,7 @@ proc newLit*(arg: enum): NimNode {.compileTime.} =
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
 proc newLit*[T](s: set[T]): NimNode {.compileTime.}
-proc newLit*(arg: tuple): NimNode {.compileTime.}
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
@@ -793,11 +793,24 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
   result = nnkCurly.newTree
   for x in s:
     result.add newLit(x)
+  if result.len == 0:
+    # add type cast for empty set
+    var typ = getTypeInst(typeof(s))[1]
+    result = newCall(typ,result)
 
-proc newLit*(arg: tuple): NimNode {.compileTime.} =
-  result = nnkPar.newTree
-  for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## See `typetraits.isNamedTuple`
+
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
+  ## use -d:nimHasWorkaround14720 to restore behavior prior to PR, forcing
+  ## a named tuple even when `arg` is unnamed.
+  result = nnkTupleConstr.newTree
+  when defined(nimHasWorkaround14720) or isNamedTuple(T):
+    for a, b in arg.fieldPairs:
+      result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+  else:
+    for b in arg.fields:
+      result.add newLit(b)
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
@@ -863,12 +876,14 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
 proc lispRepr*(n: NimNode; indented = false): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to a human-readable lisp-like string.
   ##
   ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
+  result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
@@ -989,12 +1004,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##    )
   ##
   ## Also see ``dumpTree`` and ``dumpLisp``.
-
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated. Use `dumpTree` instead.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated. Use `dumpLisp` instead.
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node.
@@ -1278,9 +1287,6 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = $node[0]
   else:
     badNodeKind node, "$"
-
-proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
-  ## Create a new ident node from a string.
 
 iterator items*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
@@ -1605,6 +1611,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
+  result = nil
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
@@ -1685,3 +1692,39 @@ when defined(nimMacrosSizealignof):
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.
+
+proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
+  ## returns a `nnkStmtList` containing the top-level doc comments and
+  ## runnableExamples in `a`, stopping at the first child that is neither.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##  import macros
+  ##  macro transf(a): untyped =
+  ##    result = quote do:
+  ##      proc fun2*() = discard
+  ##    let header = extractDocCommentsAndRunnables(a.body)
+  ##    # correct usage: rest is appended
+  ##    result.body = header
+  ##    result.body.add quote do: discard # just an example
+  ##    # incorrect usage: nesting inside a nnkStmtList:
+  ##    # result.body = quote do: (`header`; discard)
+  ##
+  ##  proc fun*() {.transf.} =
+  ##    ## first comment
+  ##    runnableExamples: discard
+  ##    runnableExamples: discard
+  ##    ## last comment
+  ##    discard # first statement after doc comments + runnableExamples
+  ##    ## not docgen'd
+
+  result = newStmtList()
+  for ni in n:
+    case ni.kind
+    of nnkCommentStmt:
+      result.add ni
+    of nnkCall:
+      if ni[0].kind == nnkIdent and ni[0].strVal == "runnableExamples":
+        result.add ni
+      else: break
+    else: break

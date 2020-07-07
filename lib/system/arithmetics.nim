@@ -481,17 +481,9 @@ proc `+=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}
   ## Increments an integer.
 
-proc `+=`*[T: enum|bool](x: var T, y: T) {.
-  magic: "Inc", noSideEffect, deprecated: "use `inc` instead".}
-  ## **Deprecated since v0.20**: use `inc` instead.
-
 proc `-=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Dec", noSideEffect.}
   ## Decrements an integer.
-
-proc `-=`*[T: enum|bool](x: var T, y: T) {.
-  magic: "Dec", noSideEffect, deprecated: "0.20.0, use `dec` instead".}
-  ## **Deprecated since v0.20**: use `dec` instead.
 
 proc `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =

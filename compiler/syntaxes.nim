@@ -121,9 +121,9 @@ proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
   if f != filtNone:
     assert p.config != nil
     if p.config.hasHint(hintCodeBegin):
-      rawMessage(p.config, hintCodeBegin, [])
+      rawMessage(p.config, hintCodeBegin, "")
       msgWriteln(p.config, result.s)
-      rawMessage(p.config, hintCodeEnd, [])
+      rawMessage(p.config, hintCodeEnd, "")
 
 proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
               start: PLLStream): PLLStream =

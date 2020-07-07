@@ -482,7 +482,7 @@ nil`` annotation to exclude ``nil`` as a valid value:
 
 .. code-block:: nim
   {.experimental: "notnil"}
-  
+
   type
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
@@ -811,7 +811,7 @@ object inheritance syntax involving the ``of`` keyword:
 
 .. code-block:: nim
   type
-    Graph = concept g, type G of EqualyComparable, Copyable
+    Graph = concept g, type G of EquallyComparable, Copyable
       type
         VertexType = G.VertexType
         EdgeType = G.EdgeType
@@ -1828,8 +1828,8 @@ Aliasing restrictions in parameter passing
 implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
-at runtime. An "output parameter" is a parameter of type ``var T``, an input
-parameter is any parameter that is not of type ``var``.
+at runtime. An "output parameter" is a parameter of type ``var T``,
+an input parameter is any parameter that is not of type ``var``.
 
 1. Two output parameters should never be aliased.
 2. An input and an output parameter should not be aliased.

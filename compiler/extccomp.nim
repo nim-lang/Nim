@@ -281,9 +281,6 @@ const
 
   hExt* = ".h"
 
-proc libNameTmpl(conf: ConfigRef): string {.inline.} =
-  result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
@@ -663,14 +660,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
-    var libname: string
-    if not conf.outFile.isEmpty:
-      libname = conf.outFile.string.expandTilde
-      if not libname.isAbsolute():
-        libname = getCurrentDir() / libname
-    else:
-      libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
-    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
@@ -767,18 +757,15 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
         (ose.msg & " " & $ose.errorCode))
     raise
 
+proc getExtraCmds(conf: ConfigRef; output: AbsoluteFile): seq[string] =
+  when defined(macosx):
+    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
+      # if needed, add an option to skip or override location
+      result.add "dsymutil " & $(output).quoteShell
+
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
     execExternalProgram(conf, linkCmd, hintLinking)
-
-proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
-  when defined(osx):
-    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
-      # if needed, add an option to skip or override location
-      let cmd = "dsymutil " & $(exe).quoteShell
-      conf.extraCmds.add cmd
-      tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
-        execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -850,6 +837,7 @@ proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
+    extraCmds: seq[string]
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
@@ -920,6 +908,7 @@ proc callCCompiler*(conf: ConfigRef) =
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
                        else: AbsoluteFile(conf.projectName)
       linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+      extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
         const MaxCmdLen = when defined(windows): 8_000 else: 32_000
         if linkCmd.len > MaxCmdLen:
@@ -929,7 +918,8 @@ proc callCCompiler*(conf: ConfigRef) =
           linkViaResponseFile(conf, linkCmd)
         else:
           execLinkCmd(conf, linkCmd)
-        maybeRunDsymutil(conf, mainOutput)
+        for cmd in extraCmds:
+          execExternalProgram(conf, cmd, hintExecuting)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
@@ -1003,10 +993,16 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   var buf = newStringOfCap(50)
 
   let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
+  conf.jsonBuildFile = jsonFile
+  let output = conf.absOutFile
 
   var f: File
   if open(f, jsonFile.string, fmWrite):
-    lit "{\"compile\":[\L"
+    lit "{\L"
+    lit "\"outputFile\": "
+    str $output
+
+    lit ",\L\"compile\":[\L"
     cfiles(conf, f, buf, conf.toCompile, false)
     lit "],\L\"link\":[\L"
     var objfiles = ""
@@ -1014,10 +1010,10 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, conf.absOutFile, objfiles)
+    str getLinkCmd(conf, output, objfiles)
 
     lit ",\L\"extraCmds\": "
-    lit $(%* conf.extraCmds)
+    lit $(%* getExtraCmds(conf, conf.absOutFile))
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
@@ -1074,6 +1070,17 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
   try:
     let data = json.parseFile(jsonFile.string)
+
+    let output = data["outputFile"].getStr
+    createDir output.parentDir
+    let outputCurrent = $conf.absOutFile
+    if output != outputCurrent:
+      # previously, any specified output file would be silently ignored;
+      # simply copying won't work in some cases, for example with `extraCmds`,
+      # so we just make it an error, user should use same command for jsonscript
+      # as was used with --compileOnly.
+      globalError(conf, gCmdLineInfo, "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " % [outputCurrent, output, jsonFile.string])
+
     let toCompile = data["compile"]
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq

@@ -178,13 +178,13 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   internalAssert c.config, header.kind == tyGenericInvocation
 
   var
-    typeMap: LayeredIdTable
     cl: TReplTypeVars
 
   initIdTable(cl.symMap)
   initIdTable(cl.localCache)
-  initIdTable(typeMap.topLayer)
-  cl.typeMap = addr(typeMap)
+  cl.typeMap = LayeredIdTable()
+  initIdTable(cl.typeMap.topLayer)
+
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
@@ -244,7 +244,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #addDecl(c, prc)
   pushInfoContext(c.config, info)
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(c, addr(typeMap), info, nil)
+  var cl = initTypeVars(c, typeMap, info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy

@@ -581,8 +581,8 @@ proc initDuration*(nanoseconds, microseconds, milliseconds,
   ## Create a new `Duration <#Duration>`_.
   runnableExamples:
     let dur = initDuration(seconds = 1, milliseconds = 1)
-    doAssert dur.milliseconds == 1
-    doAssert dur.seconds == 1
+    doAssert dur.inMilliseconds == 1001
+    doAssert dur.inSeconds == 1
 
   let seconds = convert(Weeks, Seconds, weeks) +
     convert(Days, Seconds, days) +
@@ -895,16 +895,16 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
   elif defined(macosx):
-    var a: Timeval
+    var a {.noinit.}: Timeval
     gettimeofday(a)
     result = initTime(a.tv_sec.int64,
                       convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
-    var ts: Timespec
+    var ts {.noinit.}: Timespec
     discard clock_gettime(CLOCK_REALTIME, ts)
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
-    var f: FILETIME
+    var f {.noinit.}: FILETIME
     getSystemTimeAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
 
@@ -1464,7 +1464,7 @@ type
     s, ss
     fff, ffffff, fffffffff
     t, tt
-    y, yy, yyy, yyyy, yyyyy
+    yy, yyyy
     YYYY
     uuuu
     UUUU
@@ -1612,11 +1612,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "fffffffff": result = fffffffff
   of "t": result = t
   of "tt": result = tt
-  of "y": result = y
   of "yy": result = yy
-  of "yyy": result = yyy
   of "yyyy": result = yyyy
-  of "yyyyy": result = yyyyy
   of "YYYY": result = YYYY
   of "uuuu": result = uuuu
   of "UUUU": result = UUUU
@@ -1709,20 +1706,14 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
     result.add if dt.hour >= 12: "P" else: "A"
   of tt:
     result.add if dt.hour >= 12: "PM" else: "AM"
-  of y: # Deprecated
-    result.add $(dt.yearOfEra mod 10)
   of yy:
     result.add (dt.yearOfEra mod 100).intToStr(2)
-  of yyy: # Deprecated
-    result.add (dt.yearOfEra mod 1000).intToStr(3)
   of yyyy:
     let year = dt.yearOfEra
     if year < 10000:
       result.add year.intToStr(4)
     else:
       result.add '+' & $year
-  of yyyyy: # Deprecated
-    result.add (dt.yearOfEra mod 100_000).intToStr(5)
   of YYYY:
     if dt.year < 1:
       result.add $(abs(dt.year) + 1)
@@ -1765,7 +1756,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
                   parsed: var ParsedTime, loc: DateTimeLocale): bool =
   template takeInt(allowedWidth: Slice[int], allowSign = false): int =
-    var sv: int
+    var sv = 0
     var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
     if pd < allowedWidth.a:
       return false
@@ -1933,8 +1924,6 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
       i.inc 2
     else:
       result = false
-  of y, yyy, yyyyy:
-    raiseAssert "Pattern is invalid for parsing: " & $pattern
   of Lit: doAssert false, "Can't happen"
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
@@ -1998,6 +1987,7 @@ proc format*(dt: DateTime, f: TimeFormat,
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == dt.format(f)
   assertDateTimeInitialized dt
+  result = ""
   var idx = 0
   while idx <= f.patterns.high:
     case f.patterns[idx].FormatPattern
@@ -2295,7 +2285,7 @@ proc between*(startDt, endDt: DateTime): TimeInterval =
       endDate.monthday.dec
 
   # Years
-  result.years.inc endDate.year - startDate.year - 1
+  result.years = endDate.year - startDate.year - 1
   if (startDate.month, startDate.monthday) <= (endDate.month, endDate.monthday):
     result.years.inc
   startDate.year.inc result.years
@@ -2452,6 +2442,7 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval):
   var months = interval.years * 12 + interval.months
   var curYear = dt.year
   var curMonth = dt.month
+  result = default(tuple[adjDur, absDur: Duration])
   # Subtracting
   if months < 0:
     for mth in countdown(-1 * months, 1):
@@ -2573,17 +2564,17 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## ``getTime`` should generally be preferred over this proc.
   when defined(macosx):
-    var a: Timeval
+    var a {.noinit.}: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
         a.tv_usec)*0.00_0001
   elif defined(posix):
-    var ts: Timespec
+    var ts {.noinit.}: Timespec
     discard clock_gettime(CLOCK_REALTIME, ts)
     result = toBiggestFloat(ts.tv_sec.int64) +
       toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
   elif defined(windows):
-    var f: winlean.FILETIME
+    var f {.noinit.}: winlean.FILETIME
     getSystemTimeAsFileTime(f)
     var i64 = rdFileTime(f) - epochDiff
     var secs = i64 div rateDiff
@@ -2619,6 +2610,8 @@ when not defined(js):
         fib.add(fib[^1] + fib[^2])
       echo "CPU time [s] ", cpuTime() - t0
       echo "Fib is [s] ", fib
+    ## When the flag `--benchmarkVM` is passed to the compiler, this proc is
+    ## also available at compile time
     when defined(posix) and not defined(osx) and declared(CLOCK_THREAD_CPUTIME_ID):
       # 'clocksPerSec' is a compile-time constant, possibly a
       # rather awful one, so use clock_gettime instead
@@ -2629,166 +2622,10 @@ when not defined(js):
     else:
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
+
 #
 # Deprecations
 #
-
-proc countLeapYears*(yearSpan: int): int
-    {.deprecated.} =
-  ## Returns the number of leap years spanned by a given number of years.
-  ##
-  ## **Note:** For leap years, start date is assumed to be 1 AD.
-  ## counts the number of leap years up to January 1st of a given year.
-  ## Keep in mind that if specified year is a leap year, the leap day
-  ## has not happened before January 1st of that year.
-  # Deprecated since v0.20.0
-  (yearSpan - 1) div 4 - (yearSpan - 1) div 100 + (yearSpan - 1) div 400
-
-proc countDays*(yearSpan: int): int
-    {.deprecated.} =
-  ## Returns the number of days spanned by a given number of years.
-  # Deprecated since v0.20.0
-  (yearSpan - 1) * 365 + countLeapYears(yearSpan)
-
-proc countYears*(daySpan: int): int
-    {.deprecated.} =
-  ## Returns the number of years spanned by a given number of days.
-  # Deprecated since v0.20.0
-  ((daySpan - countLeapYears(daySpan div 365)) div 365)
-
-proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int]
-    {.deprecated.} =
-  ## Returns the number of years spanned by a given number of days and the
-  ## remainder as days.
-  # Deprecated since v0.20.0
-  let days = daySpan - countLeapYears(daySpan div 365)
-  result.years = days div 365
-  result.days = days mod 365
-
-proc toTimeInterval*(time: Time): TimeInterval
-    {.deprecated: "Use 'between' instead".} =
-  ## Converts a Time to a TimeInterval. To be used when diffing times.
-  # Deprecated since version 0.20.0
-  runnableExamples:
-    let a = fromUnix(10)
-    let b = fromUnix(1_500_000_000)
-    let ti = b.toTimeInterval() - a.toTimeInterval()
-    doAssert a + ti == b
-  var dt = time.local
-  initTimeInterval(dt.nanosecond, 0, 0, dt.second, dt.minute, dt.hour,
-    dt.monthday, 0, dt.month.ord - 1, dt.year)
-
-proc weeks*(dur: Duration): int64
-    {.inline, deprecated: "Use 'inWeeks' instead".} =
-  ## Number of whole weeks represented by the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
-    doAssert dur.weeks == 1
-  dur.inWeeks
-
-proc days*(dur: Duration): int64
-    {.inline, deprecated: "Use 'inDays' instead".} =
-  ## Number of whole days represented by the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
-    doAssert dur.days == 9
-  dur.inDays
-
-proc hours*(dur: Duration): int64
-    {.inline, deprecated: "Use 'inHours' instead".} =
-  ## Number of whole hours represented by the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(days = 1, hours = 2, minutes = 3)
-    doAssert dur.hours == 26
-  dur.inHours
-
-proc minutes*(dur: Duration): int64
-    {.inline, deprecated: "Use 'inMinutes' instead".} =
-  ## Number of whole minutes represented by the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(days = 1, hours = 2, minutes = 3)
-    doAssert dur.minutes == 1563
-  dur.inMinutes
-
-proc seconds*(dur: Duration): int64
-    {.inline, deprecated: "Use 'inSeconds' instead".} =
-  ## Number of whole seconds represented by the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(minutes = 10, seconds = 30)
-    doAssert dur.seconds == 630
-  dur.inSeconds
-
-proc milliseconds*(dur: Duration): int {.inline, deprecated.} =
-  ## Number of whole milliseconds represented by the **fractional**
-  ## part of the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.milliseconds == 7
-  result = convert(Nanoseconds, Milliseconds, dur.nanosecond)
-
-proc microseconds*(dur: Duration): int {.inline, deprecated.} =
-  ## Number of whole microseconds represented by the **fractional**
-  ## part of the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.microseconds == 7008
-  result = convert(Nanoseconds, Microseconds, dur.nanosecond)
-
-proc nanoseconds*(dur: Duration): NanosecondRange {.inline, deprecated.} =
-  ## Number of whole microseconds represented by the **fractional**
-  ## part of the duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.nanoseconds == 7008009
-  dur.nanosecond
-
-proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
-  ## The fractional part of `dur`, as a duration.
-  # Deprecated since version v0.20.0
-  runnableExamples:
-    let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
-                           microseconds = 8, nanoseconds = 9)
-    doAssert dur.fractional == initDuration(milliseconds = 7, microseconds = 8,
-        nanoseconds = 9)
-  initDuration(nanoseconds = dur.nanosecond)
-
-proc fromSeconds*(since1970: float): Time
-    {.tags: [], raises: [], benign, deprecated: "Use `fromUnixFloat or 'fromUnix' instead".} =
-  ## Takes a float which contains the number of seconds since the unix epoch and
-  ## returns a time object.
-  # Deprecated since v0.18.0
-  fromUnixFloat(since1970)
-
-proc fromSeconds*(since1970: int64): Time
-    {.tags: [], raises: [], benign, deprecated: "Use 'fromUnix' instead".} =
-  ## Takes an int which contains the number of seconds since the unix epoch and
-  ## returns a time object.
-  # Deprecated since v0.18.0
-  fromUnix(since1970)
-
-proc toSeconds*(time: Time): float
-    {.tags: [], raises: [], benign, deprecated: "Use 'toUnixFloat' or 'toUnix' instead".} =
-  ## Returns the time in seconds since the unix epoch, with subsecond resolution.
-  # Deprecated since v0.18.0
-  toUnixFloat(time)
-
-proc getGMTime*(time: Time): DateTime
-      {.tags: [], raises: [], benign, deprecated: "Use 'utc' instead".} =
-  ## Converts the calendar time `time` to broken-down time representation,
-  ## expressed in Coordinated Universal Time (UTC).
-  # Deprecated since v0.18.0
-  time.utc
 
 proc `nanosecond=`*(dt: var DateTime, value: NanosecondRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.nanosecond = value
