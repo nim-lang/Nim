@@ -288,11 +288,9 @@ proc enlarge[A, B](t: var Table[A, B]) =
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
+  ## `initialSize` will be resized via
+  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ `; if you expect `n`
+  ## elements you can use `rightSize proc<#rightSize,Natural>`_.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.

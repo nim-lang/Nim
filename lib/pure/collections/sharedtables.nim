@@ -212,14 +212,12 @@ proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
   ##
   ## This proc must be called before any other usage of `t`.
   ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
-  assert isPowerOfTwo(initialSize)
+  ## To store `n` elements without resizing you can use `rightSize`.
+  let size2 = nextPowerOfTwo(initialSize)
   t.counter = 0
-  t.dataLen = initialSize
+  t.dataLen = size2
   t.data = cast[KeyValuePairSeq[A, B]](allocShared0(
-                                      sizeof(KeyValuePair[A, B]) * initialSize))
+                                      sizeof(KeyValuePair[A, B]) * size2))
   initLock t.lock
 
 proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =

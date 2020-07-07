@@ -67,9 +67,9 @@ const
   defaultInitialSize* = 4
 
 template initImpl(result: typed, initialSize: int) =
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  let size2 = nextPowerOfTwo(initialSize)
+  result.mask = size2-1
+  newSeq(result.data, size2)
 
 template checkIfInitialized(deq: typed) =
   when compiles(defaultInitialSize):

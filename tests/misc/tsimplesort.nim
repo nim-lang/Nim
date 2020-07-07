@@ -106,11 +106,10 @@ proc del*[A, B](t: var TTable[A, B], key: A) =
     dec(t.counter)
 
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
-  ## creates a new hash table that is empty. `initialSize` needs to be
-  ## a power of two.
-  assert isPowerOfTwo(initialSize)
+  ## creates a new empty hash table.
+  let size2 = nextPowerOfTwo(initialSize)
   result.counter = 0
-  newSeq(result.data, initialSize)
+  newSeq(result.data, size2)
 
 proc toTable*[A, B](pairs: openarray[tuple[key: A,
                     val: B]]): TTable[A, B] =
@@ -199,11 +198,10 @@ proc `[]=`*[A](t: var TCountTable[A], key: A, val: int) =
   putImpl()
 
 proc initCountTable*[A](initialSize=64): TCountTable[A] =
-  ## creates a new count table that is empty. `initialSize` needs to be
-  ## a power of two.
-  assert isPowerOfTwo(initialSize)
+  ## creates a new empty `CountTable`.
+  let size2 = nextPowerOfTwo(initialSize)
   result.counter = 0
-  newSeq(result.data, initialSize)
+  newSeq(result.data, size2)
 
 proc toCountTable*[A](keys: openArray[A]): TCountTable[A] =
   ## creates a new count table with every key in `keys` having a count of 1.

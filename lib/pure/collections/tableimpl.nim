@@ -121,12 +121,12 @@ template ctAnd(a, b): bool =
   else: false
 
 template initImpl(result: typed, size: int) =
+  let size2 = nextPowerOfTwo(size)
   when ctAnd(declared(SharedTable), type(result) is SharedTable):
-    init(result, size)
+    init(result, size2)
   else:
-    assert isPowerOfTwo(size)
     result.counter = 0
-    newSeq(result.data, size)
+    newSeq(result.data, size2)
     when compiles(result.first):
       result.first = -1
       result.last = -1
