@@ -822,31 +822,65 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       n[i] = liftCapturedVars(n[i], owner, d, c)
     if inContainer: dec c.inContainer
 
-proc anyInnerProcMightEscape(fn: PSym): bool =
-  # go over the ast and check if any procs defined
-  # within are assigned or passed rather than just called
-  # sfAddrTaken should be set on the proc's sym if that's
-  # the case
+proc anyInnerProcMightEscape(fn: PSym, g: ModuleGraph): bool =
+  # go over fn's ast and check if any procs defined within 
+  # might escape the stack, ie are assigned or passed somewhere
+
+  var innerProcTypes: seq[PSym]
+  # var innerProcTypes: IntSet
+
+  template getType(node: PNode | TNode): PType =
+    let t = if node.kind == nkSym and node.sym.typ != nil:
+      node.sym.typ
+    else:
+      node.typ
+    t.skipTypesOrNil({tyGenericInst, tyAlias, tySink})
+
+  template check(node: PNode | TNode) =
+      let t = getType(node)
+      if t != nil and t.sym in innerProcTypes: 
+        return true
+
   proc aux(nodes: TNodeSeq): bool =
     for node in nodes:
-      if (node.kind == nkSym and 
-          isInnerProc(node.sym) and 
-          {sfGenSym, sfAddrTaken} * node.sym.flags != {}):
-        # ^ HACK: checking for sfGenSym should be irrelevant here
-        # but sfAddrTaken is never set for gensym'd procs
-        # so just assume any gensym'd proc might escape
+      if node.kind == nkSym and isInnerProc(node.sym) and getType(node) != nil:
+        if sfAddrTaken in node.sym.flags:
+          return true
+        # innerProcTypes.incl(getType(node).id)
+        innerProcTypes.add(getType(node).sym)
+
+      case node.kind
+      of nkSym:
+        if node.sym.isIterator and node.sym.typ.callConv == ccClosure:
+          return true
+      of nkCallKinds:
+        for arg in node.sons[1..^1]:
+          check(arg)
+      of nkAsgn:
+        check(node[1])
+      of nkReturnStmt:
+        check(node[0])
+      of nkCast:
+        check(node[1])
+      of nkObjConstr:
+        for arg in node.sons[1..^1]:
+          check(arg)
+      of nkBracket, nkTupleConstr:
+        for element in node.sons:
+          check(element)
+      of {nkAddr, nkHiddenAddr}:
+        check(node[0])
+      of nkIdentDefs:
+        check(node[^1])
+      of nkLambdaKinds:
         return true
-      elif node.kind == nkSym and 
-          node.sym.isIterator and 
-          node.sym.typ.callConv == ccClosure:
+      else: discard
+      
+      if node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
         return true
-      elif node.kind in nkLambdaKinds:
-        # would be better to check if the lambda actually
-        # captures something
-        return true
-      elif node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
-        return true
-  return fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
+
+  result = fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
+  # if result: echo "stack env ok for ", fn
 
 # ------------------ old stuff -------------------------------------------
 
@@ -895,7 +929,7 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.transitionRoutineSymKind(skIterator)
   fn.typ.callConv = ccClosure
   d.ownerToType[fn.id] = ptrType
-  d.envOnHeap = anyInnerProcMightEscape(fn)
+  d.envOnHeap = anyInnerProcMightEscape(fn, g)
   detectCapturedVars(body, fn, d)
   result = liftCapturedVars(body, fn, d, c)
   fn.transitionRoutineSymKind(oldKind)
@@ -917,7 +951,7 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
     tooEarly = true
   else:
     var d = initDetectionPass(g, fn)
-    d.envOnHeap = anyInnerProcMightEscape(fn)
+    d.envOnHeap = anyInnerProcMightEscape(fn, g)
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
       addClosureParam(d, fn, body.info)
