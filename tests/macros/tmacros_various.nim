@@ -216,7 +216,6 @@ block getImplTransformed:
     toExpand()
     12
   const code = bar(baz)
-  echo code
   # sanity check:
   doAssert "finally" in code # `defer` is lowered to try/finally
   doAssert "while" in code # `for` is lowered to `while`
