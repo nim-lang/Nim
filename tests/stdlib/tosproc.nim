@@ -219,7 +219,8 @@ else: # main driver
     var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
-    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when not defined(windows):
+      doAssert execCmdEx("ls --nonexistant").exitCode != 0
     when false:
       # bug: on windows, this raises; on posix, passes
       doAssert execCmdEx("nonexistant").exitCode != 0
