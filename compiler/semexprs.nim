@@ -2401,7 +2401,7 @@ proc checkPar(c: PContext; n: PNode): TParKind =
     for i in 0 ..< length:
       if result == paTupleFields:
         if (n.sons[i].kind != nkExprColonExpr) or
-            n.sons[i].sons[0].kind notin {nkSym, nkIdent}:
+            n.sons[i].sons[0].kind notin {nkSym, nkIdent, nkAccQuoted}:
           localError(c.config, n.sons[i].info, errNamedExprExpected)
           return paNone
       else:
