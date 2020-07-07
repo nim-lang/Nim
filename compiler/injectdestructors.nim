@@ -37,6 +37,9 @@ type
     final: seq[PNode] # finally section
     needsTry: bool
     parent: ptr Scope
+    escapingSyms: IntSet # a construct like (block: let x = f(); x)
+                         # means that 'x' escapes. We then destroy it
+                         # in the parent's scope (and also allocate it there).
 
 proc nestedScope(parent: var Scope): Scope =
   Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
@@ -400,8 +403,11 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     checkForErrorPragma(c, t, ri, "=")
   result = genCopyNoCheck(c, dest, ri)
 
-proc addTopVar(c: var Con; s: var Scope; v: PNode) =
-  s.vars.add v.sym
+proc addTopVar(c: var Con; s: var Scope; v: PNode): ptr Scope =
+  result = addr(s)
+  while v.sym.id in result.escapingSyms and result.parent != nil:
+    result = result.parent
+  result[].vars.add v.sym
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
@@ -584,9 +590,31 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
+proc markEscapingVars(n: PNode; s: var Scope) =
+  case n.kind
+  of nkSym:
+    s.escapingSyms.incl n.sym.id
+  of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref,
+     nkAddr, nkHiddenAddr, nkStringToCString, nkCStringToString, nkObjDownConv,
+     nkObjUpConv:
+    markEscapingVars(n[0], s)
+  of nkCast, nkHiddenSubConv, nkHiddenStdConv, nkConv:
+    markEscapingVars(n[1], s)
+  of nkTupleConstr, nkBracket, nkPar, nkClosure:
+    for i in 0 ..< n.len:
+      markEscapingVars(n[i], s)
+  of nkObjConstr:
+    for i in 1 ..< n.len:
+      markEscapingVars(n[i], s)
+  of nkStmtList, nkStmtListExpr:
+    if n.len > 0:
+      markEscapingVars(n[^1], s)
+  else:
+    discard "no arbitrary tree traversal here"
+
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   # move the variable declaration to the top of the frame:
-  c.addTopVar s, v
+  let owningScope = c.addTopVar(s, v)
   if isUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
@@ -596,7 +624,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
     if sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add genDestroy(c, v)
     else:
-      s.final.add genDestroy(c, v)
+      owningScope[].final.add genDestroy(c, v)
   if ri.kind == nkEmpty and c.inLoop > 0:
     res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
   elif ri.kind != nkEmpty:
@@ -617,6 +645,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     for i in 0..<n.len-1:
       result.add p(n[i], c, s, normal)
     result.add maybeVoid(n[^1], s)
+    markEscapingVars(n[^1], s)
 
   of nkCaseStmt:
     result = copyNode(n)
@@ -630,6 +659,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
       var ofScope = nestedScope(s)
+      markEscapingVars(it[^1], ofScope)
       let ofResult = maybeVoid(it[^1], ofScope)
       branch[^1] = toTree(ofScope, ofResult, treeFlags)
       result.add branch
@@ -650,6 +680,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     if alwaysStmt: result.typ = nil
     result.add n[0]
     var bodyScope = nestedScope(s)
+    markEscapingVars(n[1], bodyScope)
     let bodyResult = processCall(n[1], bodyScope)
     result.add toTree(bodyScope, bodyResult, treeFlags)
     rememberParent(s, bodyScope)
@@ -667,6 +698,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
         branch[0] = toTree(branchScope, cond, {producesValue, onlyCareAboutVars})
 
       branchScope.parent = addr(s)
+      markEscapingVars(it[^1], branchScope)
       var branchResult = processCall(it[^1], branchScope)
       branch[^1] = toTree(branchScope, branchResult, treeFlags)
       result.add branch
@@ -676,6 +708,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     result = copyNode(n)
     if alwaysStmt: result.typ = nil
     var tryScope = nestedScope(s)
+    markEscapingVars(n[0], tryScope)
     var tryResult = maybeVoid(n[0], tryScope)
     result.add toTree(tryScope, tryResult, treeFlags)
     rememberParent(s, tryScope)
