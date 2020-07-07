@@ -1408,7 +1408,7 @@ proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].}
     '-' & intToStr(dt.monthday, 2)
 
 proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current local clock time as a string of the format ``HH:mm:ss``.
+  ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
   runnableExamples:
     echo getClockStr(now() - 1.hours)
   assertDateTimeInitialized dt
