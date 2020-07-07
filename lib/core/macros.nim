@@ -281,9 +281,12 @@ else: # bootstrapping substitute
 
 {.pop.}
 
-when defined(nimSymImplTransform):
+since (1,3,5):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
-    ## For a typed proc returns the AST after transformation pass.
+    ## For a typed proc returns the AST after transformation pass; this is useful
+    ## for debugging how the compiler transforms code but note that code transformations
+    ## are implementation dependent and subject to change.
+    ## see example in `tests/macros/tmacros_various.nim`.
 
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
