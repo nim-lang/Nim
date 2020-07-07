@@ -495,7 +495,7 @@ proc styleInsensitive(s: string): string =
     else: addx()
 
 proc walker(pattern; dir: string; counter: var int, errors: var int) =
-  if existsDir(dir):
+  if dirExists(dir):
     for kind, path in walkDir(dir):
       case kind
       of pcFile:
@@ -511,7 +511,7 @@ proc walker(pattern; dir: string; counter: var int, errors: var int) =
         if optFollow in options and optRecursive in options and
            path.hasRightDirectory:
           walker(pattern, path, counter, errors)
-  elif existsFile(dir):
+  elif fileExists(dir):
     processFile(pattern, dir, counter, errors)
   else:
     printError "Error: no such file or directory: " & dir

@@ -694,3 +694,13 @@ type
 
 doAssert sizeof(O0) == 1
 doAssert sizeof(T0) == 1
+
+
+type
+  # this thing may not have padding bytes at the end
+  PackedUnion* {.union, packed.} = object
+    a*: array[11, byte]
+    b*: int64
+
+doAssert sizeof(PackedUnion) == 11
+doAssert alignof(PackedUnion) == 1

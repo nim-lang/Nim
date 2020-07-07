@@ -26,6 +26,35 @@ proc typeToString*(t: typedesc, prefer = "preferTypeName"): string {.magic: "Typ
   ## prefer = "preferResolved" will resolve type aliases recursively.
   # Move to typetraits.nim once api stabilized.
 
+block: # name, `$`
+  static:
+    doAssert $type(42) == "int"
+    doAssert int.name == "int"
+
+  const a1 = name(int)
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a1 == "int"
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a1 = name(t)
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a1 == "int"
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
+
+  doAssert $(int,) == "(int,)"
+  doAssert $(1,) == "(1,)" # just for comparison to make sure it has same structure
+  doAssert $tuple[] == "tuple[]"
+  doAssert $(int,) == "(int,)"
+  doAssert $(int, float) == "(int, float)"
+  doAssert $((int), tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float)) ==
+    "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float))"
+
 block: # typeToString
   type MyInt = int
   type
@@ -189,6 +218,23 @@ block genericParams:
     type Bar4 = Bar[F, string]
     doAssert genericParams(Bar4) is (StaticParam[5.0], string)
     doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
+
+  block typeof:
+    var
+      a: seq[int]
+      b: array[42, float]
+      c: array[char, int]
+      d: array[1..2, char]
+
+    doAssert genericParams(typeof(a)).get(0) is int
+    doAssert genericParams(typeof(b)) is (range[0..41], float)
+    doAssert genericParams(typeof(c)) is (char, int)
+    doAssert genericParams(typeof(d)) is (range[1..2], char)
+
+  block nestedContainers:
+    doAssert genericParams(seq[Foo[string, float]]).get(0) is Foo[string, float]
+    doAssert genericParams(array[10, Foo[Bar[1, int], Bar[2, float]]]) is (StaticParam[10], Foo[Bar[1, int], Bar[2, float]])
+    doAssert genericParams(array[1..9, int]) is (range[1..9], int)
 
 ##############################################
 # bug 13095

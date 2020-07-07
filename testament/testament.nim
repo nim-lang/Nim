@@ -440,7 +440,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
-      if not existsFile(exeFile):
+      if not fileExists(exeFile):
         r.addResult(test, target, expected.output,
                     "executable not found: " & exeFile, reExeNotFound)
       else:
@@ -693,7 +693,8 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
-    myself &= " --batch:" & testamentData0.batchArg
+    if testamentData0.batchArg.len > 0:
+      myself &= " --batch:" & testamentData0.batchArg
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)

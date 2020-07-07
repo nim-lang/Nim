@@ -15,6 +15,7 @@ destroyed: false
 (x: "8")
 (x: "9")
 (x: "10")
+0
 closed
 destroying variable
 '''
@@ -173,3 +174,38 @@ proc bug14495 =
     echo o[]
 
 bug14495()
+
+# bug #14396
+type
+  Spinny = ref object
+    t: ref int
+    text: string
+
+proc newSpinny*(): Spinny =
+  Spinny(t: new(int), text: "hello")
+
+proc spinnyLoop(x: ref int, spinny: sink Spinny) =
+  echo x[]
+
+proc start*(spinny: sink Spinny) =
+  spinnyLoop(spinny.t, spinny)
+
+var spinner1 = newSpinny()
+spinner1.start()
+
+# bug #14345
+
+type
+  SimpleLoopB = ref object
+    children: seq[SimpleLoopB]
+    parent: SimpleLoopB
+
+proc addChildLoop(self: SimpleLoopB, loop: SimpleLoopB) =
+  self.children.add loop
+
+proc setParent(self: SimpleLoopB, parent: SimpleLoopB) =
+  self.parent = parent
+  self.parent.addChildLoop(self)
+
+var l = SimpleLoopB()
+l.setParent(l)

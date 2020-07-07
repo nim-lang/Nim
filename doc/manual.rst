@@ -3230,7 +3230,7 @@ has lots of advantages:
 Type conversions
 ----------------
 
-Syntactically a `type conversion` is like a procedure call, but a
+Syntactically a *type conversion* is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
@@ -3265,15 +3265,26 @@ conversions too are now *always unchecked*.
 
 Type casts
 ----------
-Example:
+
+*Type casts* are a crude mechanism to interpret the bit pattern of an expression
+as if it would be of another type. Type casts are only needed for low-level
+programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
+  
+The target type of a cast must be a concrete type, for instance, a target type
+that is a type class (which is non-concrete) would be invalid:
 
-Type casts are a crude mechanism to interpret the bit pattern of
-an expression as if it would be of another type. Type casts are
-only needed for low-level programming and are inherently unsafe.
-
+.. code-block:: nim
+  type Foo = int or float
+  var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
+  
+Type casts should not be confused with *type conversions,* as mentioned in the
+prior section. Unlike type conversions, a type cast cannot change the underlying 
+bit pattern of the data being casted (aside from that the size of the target type
+may differ from the source type). Casting resembles *type punning* in other
+languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.
 
 The addr operator
 -----------------
@@ -6455,7 +6466,7 @@ Align pragma
 The `align`:idx: pragma is for variables and object field members. It
 modifies the alignment requirement of the entity being declared. The
 argument must be a constant power of 2. Valid non-zero
-alignments that are weaker than nother align pragmas on the same
+alignments that are weaker than other align pragmas on the same
 declaration are ignored. Alignments that are weaker that the
 alignment requirement of the type are ignored.
 
@@ -7347,9 +7358,9 @@ string expressions in general:
 
   proc getDllName: string =
     result = "mylib.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     result = "mylib2.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     quit("could not load dynamic library")
 
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}

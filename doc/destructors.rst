@@ -225,7 +225,7 @@ A sink parameter
 *may* be consumed once in the proc's body but doesn't have to be consumed at all.
 The reason for this is that signatures
 like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible
-without any further overloads and ``put`` might not take owership of ``k`` if
+without any further overloads and ``put`` might not take ownership of ``k`` if
 ``k`` already exists in the table. Sink parameters enable an affine type system,
 not a linear type system.
 
@@ -283,8 +283,8 @@ Rewrite rules
    around the complete routine body.
 2. The produced ``finally`` section is wrapped around the enclosing scope.
 
-The current implementation follows strategy (1). This means that resources are
-not destroyed at the scope exit, but at the proc exit.
+The current implementation follows strategy (2). This means that resources are
+destroyed at the scope exit.
 
 ::
 

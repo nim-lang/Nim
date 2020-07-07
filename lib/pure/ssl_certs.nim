@@ -79,9 +79,9 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
     when not defined(haiku):
       for p in certificate_paths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
-          if existsFile(p):
+          if fileExists(p):
             yield p
-        elif existsDir(p):
+        elif dirExists(p):
           for fn in joinPath(p, "*").walkFiles():
             yield fn
     else:

@@ -231,7 +231,7 @@ proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
 
   result = splitLines(await ftp.getLines())
 
-proc existsFile*(ftp: AsyncFtpClient, file: string): Future[bool] {.async.} =
+proc fileExists*(ftp: AsyncFtpClient, file: string): Future[bool] {.async.} =
   ## Determines whether ``file`` exists.
   var files = await ftp.listDirs()
   for f in items(files):

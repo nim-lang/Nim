@@ -1601,11 +1601,16 @@ else:
     p.selector.registerEvent(SelectEvent(ev), data)
 
 proc drain*(timeout = 500) =
-  ## Waits for completion events and processes them. Raises ``ValueError``
+  ## Waits for completion of **all** events and processes them. Raises ``ValueError``
   ## if there are no pending operations. In contrast to ``poll`` this
-  ## processes as many events as are available.
-  if runOnce(timeout) or hasPendingOperations():
-    while hasPendingOperations() and runOnce(timeout): discard
+  ## processes as many events as are available until the timeout has elapsed.
+  var curTimeout = timeout
+  let start = now()
+  while hasPendingOperations():
+    discard runOnce(curTimeout) 
+    curTimeout -= (now() - start).inMilliseconds.int
+    if curTimeout < 0:
+      break
 
 proc poll*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
@@ -1634,16 +1639,6 @@ proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
                               protocol: Protocol = IPPROTO_TCP,
                               inheritable = defined(nimInheritHandles)): AsyncFD =
   createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
-
-proc newAsyncNativeSocket*(domain: cint, sockType: cint,
-    protocol: cint): AsyncFD {.deprecated: "use createAsyncNativeSocket instead".} =
-  createAsyncNativeSocketImpl(domain, sockType, protocol)
-
-proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
-                           sockType: SockType = SOCK_STREAM,
-                           protocol: Protocol = IPPROTO_TCP): AsyncFD
-                           {.deprecated: "use createAsyncNativeSocket instead".} =
-  createAsyncNativeSocketImpl(domain, sockType, protocol)
 
 when defined(windows) or defined(nimdoc):
   proc bindToDomain(handle: SocketHandle, domain: Domain) =

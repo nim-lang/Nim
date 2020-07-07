@@ -39,7 +39,9 @@ const
 type
   TBaseLexer* = object of RootObj
     bufpos*: int
-    buf*: string
+    buf*: cstring
+    bufStorage: string
+    bufLen: int
     stream*: PLLStream        # we read from this stream
     lineNumber*: int          # the current line number
                               # private data:
@@ -75,8 +77,8 @@ proc fillBuffer(L: var TBaseLexer) =
     oldBufLen: int
   # we know here that pos == L.sentinel, but not if this proc
   # is called the first time by initBaseLexer()
-  assert(L.sentinel < L.buf.len)
-  toCopy = L.buf.len - L.sentinel - 1
+  assert(L.sentinel < L.bufLen)
+  toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
     moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
@@ -90,7 +92,7 @@ proc fillBuffer(L: var TBaseLexer) =
     # compute sentinel:
     dec(s)                    # BUGFIX (valgrind)
     while true:
-      assert(s < L.buf.len)
+      assert(s < L.bufLen)
       while (s >= 0) and not (L.buf[s] in NewLines): dec(s)
       if s >= 0:
         # we found an appropriate character for a sentinel:
@@ -99,16 +101,18 @@ proc fillBuffer(L: var TBaseLexer) =
       else:
         # rather than to give up here because the line is too long,
         # double the buffer's size and try again:
-        oldBufLen = L.buf.len
-        L.buf.setLen(L.buf.len * 2)
-        assert(L.buf.len - oldBufLen == oldBufLen)
+        oldBufLen = L.bufLen
+        L.bufLen = L.bufLen * 2
+        L.bufStorage.setLen(L.bufLen)
+        L.buf = L.bufStorage
+        assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]),
                                  oldBufLen)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
           break
-        s = L.buf.len - 1
+        s = L.bufLen - 1
 
 proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
   assert(pos <= L.sentinel)
@@ -142,7 +146,9 @@ proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   assert(bufLen > 0)
   L.bufpos = 0
   L.offsetBase = 0
-  L.buf = newString(bufLen)
+  L.bufStorage = newString(bufLen)
+  L.buf = L.bufStorage
+  L.bufLen = bufLen
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1

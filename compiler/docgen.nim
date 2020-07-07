@@ -82,7 +82,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
     # a relative path (would it be relative wrt $PWD or to projectfile)
     conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
-    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.dirExists, arg=conf.docRoot
     # needed because `canonicalizePath` called on `file`
     result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
@@ -140,7 +140,7 @@ template declareClosures =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
-      if not existsFile(result): result = ""
+      if not fileExists(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,

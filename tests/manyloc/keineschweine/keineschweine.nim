@@ -446,7 +446,7 @@ ingameClient.registerHandler(KeyF12, down, proc() = toggleSpec())
 ingameClient.registerHandler(KeyF11, down, toggleShipSelect)
 ingameClient.registerHandler(MouseLeft, down, handleLClick)
 when defined(recordMode):
-  if not existsDir("data/snapshots"):
+  if not dirExists("data/snapshots"):
     createDir("data/snapshots")
   ingameClient.registerHandler(keynum9, down, proc() =
     if not isRecording: startRecording()

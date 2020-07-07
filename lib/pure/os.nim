@@ -1097,14 +1097,14 @@ when defined(windows) and not weirdTarget:
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
-proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
+proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect], noNimJs.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.
   ##
   ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
+  ## * `dirExists proc <#dirExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
@@ -1117,13 +1117,13 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
+proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   ##
   ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
+  ## * `fileExists proc <#fileExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
@@ -1143,8 +1143,8 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## regardless of whether the link points to a directory or file.
   ##
   ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
-  ## * `existsDir proc <#existsDir,string>`_
+  ## * `fileExists proc <#fileExists,string>`_
+  ## * `dirExists proc <#dirExists,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, link)
@@ -1156,21 +1156,14 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
-proc fileExists*(filename: string): bool {.inline, noNimJs.} =
-  ## Alias for `existsFile proc <#existsFile,string>`_.
-  ##
-  ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsFile(filename)
 
-proc dirExists*(dir: string): bool {.inline, noNimJs.} =
-  ## Alias for `existsDir proc <#existsDir,string>`_.
-  ##
-  ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsDir(dir)
+when not defined(nimscript):
+  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
+    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+      fileExists(args)
+    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+      dirExists(args)
+  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
 
 when not defined(windows) and not weirdTarget:
   proc checkSymlink(path: string): bool =
@@ -1200,7 +1193,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   template checkCurrentDir() =
     for ext in extensions:
       result = addFileExt(exe, ext)
-      if existsFile(result): return
+      if fileExists(result): return
   when defined(posix):
     if '/' in exe: checkCurrentDir()
   else:
@@ -1216,7 +1209,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
       var x = expandTilde(candidate) / exe
     for ext in extensions:
       var x = addFileExt(x, ext)
-      if existsFile(x):
+      if fileExists(x):
         when not defined(windows):
           while followSymlinks: # doubles as if here
             if x.checkSymlink:
@@ -2027,7 +2020,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     # way of retrieving the true filename
     for x in walkFiles(result):
       result = x
-    if not existsFile(result) and not existsDir(result):
+    if not fileExists(result) and not dirExists(result):
       # consider using: `raiseOSError(osLastError(), result)`
       raise newException(OSError, "file '" & result & "' does not exist")
   else:
@@ -2324,7 +2317,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   result = not rawCreateDir(dir)
   if result:
     # path already exists - need to check that it is indeed a directory
-    if not existsDir(dir):
+    if not dirExists(dir):
       raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
@@ -2893,7 +2886,7 @@ when not weirdTarget and defined(openbsd):
       # search in path
       for p in split(string(getEnv("PATH")), {PathSep}):
         var x = joinPath(p, exePath)
-        if existsFile(x):
+        if fileExists(x):
           return expandFilename(x)
     else:
       result = ""
@@ -2908,7 +2901,7 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
         # iterate over any path in the $PATH environment variable
         for p in split(string(getEnv("PATH")), {PathSep}):
           var x = joinPath(p, result)
-          if existsFile(x): return x
+          if fileExists(x): return x
     else:
       result = ""
 
