@@ -131,18 +131,17 @@ proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
   builtin
 
-template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-  # xxx: warning won't be shown for nimsscript because of current logic handling
-  # `foreignPackageNotes`
-  fileExists(args)
-
 proc dirExists*(dir: string): bool {.
   tags: [ReadIOEffect].} =
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsDir*(dir: string): bool =
-  ## An alias for ``dirExists``.
+template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+  fileExists(args)
+
+template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
   dirExists(dir)
 
 proc selfExe*(): string =

@@ -73,7 +73,7 @@ assert fileExists("tests/newconfig/tfoo.nims") == true
 assert dirExists("tests") == true
 
 assert fileExists("tests/newconfig/tfoo.nims") == true
-assert existsDir("tests") == true
+assert dirExists("tests") == true
 
 discard selfExe()
 

@@ -1,5 +1,7 @@
 discard """
-output: '''
+output: '''(a: 1)
+(a: 1)
+(a: 1, b: 2)
 '''
 """
 
@@ -75,3 +77,8 @@ block t1986:
     (var1: test(), var2: 100'u32),
     (var1: test(), var2: 192'u32)
   ]
+
+# bug #14911
+echo (a: 1)  # works
+echo (`a`: 1)  # works
+echo (`a`: 1, `b`: 2)  # Error: named expression expected

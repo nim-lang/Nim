@@ -325,6 +325,20 @@ block tablesref:
         else: break
         inc i
 
+  block smallestLargestNamedFieldsTest: # bug #14918
+    const a = [7, 8, 8]
+
+    proc testNamedFields(t: CountTable | CountTableRef) =
+      doAssert t.smallest.key == 7
+      doAssert t.smallest.val == 1
+      doAssert t.largest.key == 8
+      doAssert t.largest.val == 2
+
+    let t1 = toCountTable(a)
+    testNamedFields(t1)
+    let t2 = newCountTable(a)
+    testNamedFields(t2)
+
   block SyntaxTest:
     var x = newTable[int, string]({:})
     discard x
