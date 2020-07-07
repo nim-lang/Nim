@@ -91,17 +91,23 @@ proc optimize(s: var Scope) =
     filterNil(wasMoved)
     filterNil(final)
 
-proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
+type
+  ToTreeFlag = enum
+    onlyCareAboutVars,
+    producesValue
+
+proc toTree(s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
   if not s.needsTry: optimize(s)
   assert ret != nil
   if s.vars.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
     # trivial, nothing was done:
     result = ret
   else:
-    if isEmptyType(ret.typ):
-      result = newNodeI(nkStmtList, ret.info)
-    else:
+    let isExpr = producesValue in flags and not isEmptyType(ret.typ)
+    if isExpr:
       result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
+    else:
+      result = newNodeI(nkStmtList, ret.info)
 
     if s.vars.len > 0:
       let varSection = newNodeI(nkVarSection, ret.info)
@@ -109,7 +115,7 @@ proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
         varSection.add newTree(nkIdentDefs, newSymNode(tmp), newNodeI(nkEmpty, ret.info),
                                                              newNodeI(nkEmpty, ret.info))
       result.add varSection
-    if onlyCareAboutVars:
+    if onlyCareAboutVars in flags:
       result.add ret
       s.vars.setLen 0
     elif s.needsTry:
@@ -117,8 +123,11 @@ proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
       for m in s.wasMoved: finSection.add m
       for i in countdown(s.final.high, 0): finSection.add s.final[i]
       result.add newTryFinally(ret, finSection)
+    elif isExpr:
+      for m in s.wasMoved: result.add m
+      for i in countdown(s.final.high, 0): result.add s.final[i]
+      result.add ret
     else:
-      #assert isEmptyType(ret.typ)
       result.add ret
       for m in s.wasMoved: result.add m
       for i in countdown(s.final.high, 0): result.add s.final[i]
@@ -593,22 +602,25 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   elif ri.kind != nkEmpty:
     res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
-template handleNestedTempl(n: untyped, processCall: untyped) =
+template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
   template maybeVoid(child, s): untyped =
     if isEmptyType(child.typ): p(child, c, s, normal)
     else: processCall(child, s)
 
+  let treeFlags = if not isEmptyType(n.typ) and not alwaysStmt: {producesValue} else: {}
   case n.kind
   of nkStmtList, nkStmtListExpr:
     # a statement list does not open a new scope
     if n.len == 0: return n
     result = copyNode(n)
+    if alwaysStmt: result.typ = nil
     for i in 0..<n.len-1:
       result.add p(n[i], c, s, normal)
     result.add maybeVoid(n[^1], s)
 
   of nkCaseStmt:
     result = copyNode(n)
+    if alwaysStmt: result.typ = nil
     result.add p(n[0], c, s, normal)
     for i in 1..<n.len:
       let it = n[i]
@@ -619,7 +631,7 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
         branch[j] = copyTree(it[j])
       var ofScope = nestedScope(s)
       let ofResult = maybeVoid(it[^1], ofScope)
-      branch[^1] = toTree(ofScope, ofResult)
+      branch[^1] = toTree(ofScope, ofResult, treeFlags)
       result.add branch
       rememberParent(s, ofScope)
 
@@ -629,20 +641,22 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     result.add p(n[0], c, s, normal)
     var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
-    result.add toTree(bodyScope, bodyResult)
+    result.add toTree(bodyScope, bodyResult, treeFlags)
     rememberParent(s, bodyScope)
     dec c.inLoop
 
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
+    if alwaysStmt: result.typ = nil
     result.add n[0]
     var bodyScope = nestedScope(s)
     let bodyResult = processCall(n[1], bodyScope)
-    result.add toTree(bodyScope, bodyResult)
+    result.add toTree(bodyScope, bodyResult, treeFlags)
     rememberParent(s, bodyScope)
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
+    if alwaysStmt: result.typ = nil
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
@@ -650,19 +664,20 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
       branchScope.parent = nil
       if it.kind in {nkElifBranch, nkElifExpr}:
         let cond = p(it[0], c, branchScope, normal)
-        branch[0] = toTree(branchScope, cond, onlyCareAboutVars = true)
+        branch[0] = toTree(branchScope, cond, {producesValue, onlyCareAboutVars})
 
       branchScope.parent = addr(s)
       var branchResult = processCall(it[^1], branchScope)
-      branch[^1] = toTree(branchScope, branchResult)
+      branch[^1] = toTree(branchScope, branchResult, treeFlags)
       result.add branch
       rememberParent(s, branchScope)
 
   of nkTryStmt:
     result = copyNode(n)
+    if alwaysStmt: result.typ = nil
     var tryScope = nestedScope(s)
     var tryResult = maybeVoid(n[0], tryScope)
-    result.add toTree(tryScope, tryResult)
+    result.add toTree(tryScope, tryResult, treeFlags)
     rememberParent(s, tryScope)
 
     for i in 1..<n.len:
@@ -671,12 +686,13 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
       var branchScope = nestedScope(s)
       var branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                          else: processCall(it[^1], branchScope)
-      branch[^1] = toTree(branchScope, branchResult)
+      branch[^1] = toTree(branchScope, branchResult, treeFlags)
       result.add branch
       rememberParent(s, branchScope)
 
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
+    if alwaysStmt: result.typ = nil
     result[1][0] = processCall(n[1][0], s)
   else: assert(false)
 
@@ -708,7 +724,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkTryStmt}:
     template process(child, s): untyped = p(child, c, s, mode)
-    handleNestedTempl(n, process)
+    handleNestedTempl(n, process, false)
   elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
@@ -994,7 +1010,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     result = genSink(c, s, dest, p(ri, c, s, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
-    handleNestedTempl(ri, process)
+    handleNestedTempl(ri, process, true)
   of nkRaiseStmt:
     result = pRaiseStmt(ri, c, s)
   else:
@@ -1071,7 +1087,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add genDestroy(c, params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = toTree(scope, body)
+  result = toTree(scope, body, {})
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
