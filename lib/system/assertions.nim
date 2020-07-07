@@ -38,8 +38,22 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
     mixin failedAssertImpl
     {.line: loc.}:
       if not cond:
-        when defined(nimDisableAssertMsgs): # see bug #14905
-          failedAssertImpl("?") # for some reason "?" gives better performance than ""
+        # this could take into account `when nimvm`
+        when defined(nimDisableAssertMsgs):
+          # see bug #14905
+          # minor point: for some reason "?" gives better performance than ""
+          # which cgen's to `NIM_NIL` but this may need further investigation.
+          # This generates a single function in cgen regardless of which assert
+          # it came from.
+          failedAssertImpl("?")
+        elif defined(nimDisableAssertComputedMsgs):
+          # only disable computed messages, so that we can simply call a function
+          # with no arguments, which puts low pressure on IR cache. Note that
+          # this still can incur some cost because each assert generates its own
+          # C function in this case, but at least hot spots should not be affected
+          # as much.
+          const msg2 = ploc & " `" & expr & "` " & (when msg is static: msg else: "<ommitted>")
+          (proc(){.noinline.}=failedAssertImpl(msg2))()
         else:
           failedAssertImpl(ploc & " `" & expr & "` " & msg)
 

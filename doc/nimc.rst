@@ -633,7 +633,8 @@ To get the highest runtime performance:
   --gc:arc # usually helps but can sometimes hurt
   -d:nimDisableAssertMsgs
     # this can improve performance, and more importantly prevents drawing wrong
-    # conclusions from unrelated changes (see bug #14905)
+    # conclusions from unrelated changes (see bug #14905); for a compromise,
+    # use `-d:nimDisableAssertComputedMsgs`.
 
 Optimizing string handling
 --------------------------
