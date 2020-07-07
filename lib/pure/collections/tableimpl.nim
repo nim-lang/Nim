@@ -121,10 +121,10 @@ template ctAnd(a, b): bool =
   else: false
 
 template initImpl(result: typed, size: int) =
+  let correctSize = rightSize(size)
   when ctAnd(declared(SharedTable), type(result) is SharedTable):
-    init(result, size)
+    init(result, correctSize)
   else:
-    var correctSize = rightSize(size)
     result.counter = 0
     newSeq(result.data, correctSize)
     when compiles(result.first):
