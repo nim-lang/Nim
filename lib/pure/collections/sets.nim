@@ -94,11 +94,6 @@ include setimpl
 proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## Initializes a hash set.
   ##
-  ## The `initialSize` parameter needs to be a power of two (default: 64).
-  ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
-  ## `rightSize proc <#rightSize,Natural>`_ from this module.
-  ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -627,11 +622,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 
 proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## Initializes an ordered hash set.
-  ##
-  ## The `initialSize` parameter needs to be a power of two (default: 64).
-  ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
-  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
