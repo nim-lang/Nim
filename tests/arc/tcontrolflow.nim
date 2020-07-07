@@ -88,3 +88,17 @@ proc ifexpr(i, a, b: int) {.compilerproc, noinline.} =
     else: "index " & $i & " not in " & $a & " .. " & $b)
 
 ifexpr(2, 0, 1)
+
+# bug #14899
+template toSeq(): untyped =
+  block:
+    var result = @[1]
+    result
+
+proc clItems(s: seq[int]) =
+  assert s.len == 1
+
+proc escapeCheck =
+  clItems(toSeq())
+
+escapeCheck()
