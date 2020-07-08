@@ -93,7 +93,7 @@ proc optimize(s: var Scope) =
   proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
     # remember that it's destroy(addr(x))
     for i in 0 ..< final.len:
-      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved, strictSymEquality = true):
+      if final[i] != nil and exprStructuralEquivalent(final[i][0][1].skipAddr, moved, strictSymEquality = true):
         return i
     return -1
 
@@ -549,12 +549,12 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
       let tmp = c.getTemp(s.parent[], arg.typ, arg.info)
       result.add c.genSink(s, tmp, arg, isDecl = true)
       result.add tmp
-      s.parent[].final.add c.genDestroy(tmp)
+      s.parent[].final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
     else:
       let tmp = c.getTemp(s, arg.typ, arg.info)
       result.add c.genSink(s, tmp, arg, isDecl = true)
       result.add tmp
-      s.final.add c.genDestroy(tmp)
+      s.final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
   else:
     result = arg
 
@@ -631,9 +631,9 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   elif sfThread notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if sfGlobal in v.sym.flags and s.parent == nil:
-      c.graph.globalDestructors.add c.genDestroy(v)
+      c.graph.globalDestructors.add c.genDestroy(v) #No need to genWasMoved here
     else:
-      owningScope[].final.add c.genDestroy(v)
+      owningScope[].final.add newTree(nkStmtList, c.genDestroy(v), c.genWasMoved(v))
   if ri.kind == nkEmpty and c.inLoop > 0:
     res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
   elif ri.kind != nkEmpty:
