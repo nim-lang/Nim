@@ -128,6 +128,8 @@
   because negative values will result in a new file being created for each logged line which doesn't make sense.
 - Changed `log` in `logging` to use proper log level on JavaScript target,
   eg. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
+- table-like initialization routines (e.g. `initTable`) can now accept non-power-of-2 `initialSize`
+  parameter, and it will be automatically resized via `nextPowerOfTwo`.
 
 
 ## Language changes

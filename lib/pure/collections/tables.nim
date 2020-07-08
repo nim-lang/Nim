@@ -288,7 +288,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new empty `Table`.
   ##
-  ## To store `n` elements without resizing, usse `initialSize=rightSize(n)`,
+  ## To store `n` elements without resizing, use `initialSize=rightSize(n)`,
   ## see `rightSize proc<#rightSize,Natural>`_.
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ will be called to
   ## ensure a power of 2 will be used.
