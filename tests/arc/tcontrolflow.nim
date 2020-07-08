@@ -12,6 +12,7 @@ if
 end true
 7
 ##index 2 not in 0 .. 1##
+true
 '''
   cmd: "nim c --gc:arc -d:danger $file"
 """
@@ -88,3 +89,30 @@ proc ifexpr(i, a, b: int) {.compilerproc, noinline.} =
     else: "index " & $i & " not in " & $a & " .. " & $b)
 
 ifexpr(2, 0, 1)
+
+# bug #14899
+template toSeq(): untyped =
+  block:
+    var result = @[1]
+    result
+
+proc clItems(s: seq[int]) =
+  assert s.len == 1
+
+proc escapeCheck =
+  clItems(toSeq())
+
+escapeCheck()
+
+# bug #14900
+
+proc seqsEqual(a, b: string): bool =
+  if false:
+    false
+  else:
+    (var result1 = a; result1) == (var result2 = b; result2)
+
+# can be const or var too
+let expected = "hello"
+
+echo seqsEqual(expected, expected)

@@ -96,7 +96,7 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
       if resFut.finished: return
 
       # We don't want this callback called again.
-      future.cb = nil
+      #future.cb = nil
 
       # The return value depends on whether the FutureStream has finished.
       var res: (bool, T)
