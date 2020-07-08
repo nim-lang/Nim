@@ -41,6 +41,30 @@ type
                          # means that 'x' escapes. We then destroy it
                          # in the parent's scope (and also allocate it there).
 
+type
+  Con = object
+    owner: PSym
+    g: ControlFlowGraph
+    jumpTargets: IntSet
+    destroys, topLevelVars: PNode
+    graph: ModuleGraph
+    emptyNode: PNode
+    otherRead: PNode
+    inLoop, inSpawn: int
+    uninit: IntSet # set of uninit'ed vars
+    uninitComputed: bool
+
+  ProcessMode = enum
+    normal
+    consumed
+    sinkArg
+
+proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
+  sym.typ = typ
+  s.vars.add(sym)
+  result = newSymNode(sym)
+
 proc nestedScope(parent: var Scope): Scope =
   Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
 
@@ -99,7 +123,7 @@ type
     onlyCareAboutVars,
     producesValue
 
-proc toTree(s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
+proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
   if not s.needsTry: optimize(s)
   assert ret != nil
   if s.vars.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
@@ -107,8 +131,11 @@ proc toTree(s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
     result = ret
   else:
     let isExpr = producesValue in flags and not isEmptyType(ret.typ)
+    var r = PNode(nil)
     if isExpr:
       result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
+      if ret.kind == nkStmtListExpr:
+        r = getTemp(c, s, ret.typ, ret.info)
     else:
       result = newNodeI(nkStmtList, ret.info)
 
@@ -126,32 +153,15 @@ proc toTree(s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
       for m in s.wasMoved: finSection.add m
       for i in countdown(s.final.high, 0): finSection.add s.final[i]
       result.add newTryFinally(ret, finSection)
-    elif isExpr:
-      for m in s.wasMoved: result.add m
-      for i in countdown(s.final.high, 0): result.add s.final[i]
-      result.add ret
     else:
-      result.add ret
+      if r != nil:
+        result.add newTree(nkFastAsgn, r, ret)
+      else:
+        result.add ret
       for m in s.wasMoved: result.add m
       for i in countdown(s.final.high, 0): result.add s.final[i]
-
-type
-  Con = object
-    owner: PSym
-    g: ControlFlowGraph
-    jumpTargets: IntSet
-    destroys, topLevelVars: PNode
-    graph: ModuleGraph
-    emptyNode: PNode
-    otherRead: PNode
-    inLoop, inSpawn: int
-    uninit: IntSet # set of uninit'ed vars
-    uninitComputed: bool
-
-  ProcessMode = enum
-    normal
-    consumed
-    sinkArg
+      if r != nil:
+        result.add r
 
 
 const toDebug {.strdefine.} = ""
@@ -409,12 +419,6 @@ proc addTopVar(c: var Con; s: var Scope; v: PNode): ptr Scope =
     result = result.parent
   result[].vars.add v.sym
 
-proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
-  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
-  sym.typ = typ
-  s.vars.add(sym)
-  result = newSymNode(sym)
-
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
   # but fields within active case branch might need destruction
@@ -661,7 +665,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
       var ofScope = nestedScope(s)
       markEscapingVars(it[^1], ofScope)
       let ofResult = maybeVoid(it[^1], ofScope)
-      branch[^1] = toTree(ofScope, ofResult, treeFlags)
+      branch[^1] = toTree(c, ofScope, ofResult, treeFlags)
       result.add branch
       rememberParent(s, ofScope)
 
@@ -671,7 +675,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     result.add p(n[0], c, s, normal)
     var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
-    result.add toTree(bodyScope, bodyResult, treeFlags)
+    result.add toTree(c, bodyScope, bodyResult, treeFlags)
     rememberParent(s, bodyScope)
     dec c.inLoop
 
@@ -682,7 +686,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     var bodyScope = nestedScope(s)
     markEscapingVars(n[1], bodyScope)
     let bodyResult = processCall(n[1], bodyScope)
-    result.add toTree(bodyScope, bodyResult, treeFlags)
+    result.add toTree(c, bodyScope, bodyResult, treeFlags)
     rememberParent(s, bodyScope)
 
   of nkIfStmt, nkIfExpr:
@@ -695,12 +699,12 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
       branchScope.parent = nil
       if it.kind in {nkElifBranch, nkElifExpr}:
         let cond = p(it[0], c, branchScope, normal)
-        branch[0] = toTree(branchScope, cond, {producesValue, onlyCareAboutVars})
+        branch[0] = toTree(c, branchScope, cond, {producesValue, onlyCareAboutVars})
 
       branchScope.parent = addr(s)
       markEscapingVars(it[^1], branchScope)
       var branchResult = processCall(it[^1], branchScope)
-      branch[^1] = toTree(branchScope, branchResult, treeFlags)
+      branch[^1] = toTree(c, branchScope, branchResult, treeFlags)
       result.add branch
       rememberParent(s, branchScope)
 
@@ -710,7 +714,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
     var tryScope = nestedScope(s)
     markEscapingVars(n[0], tryScope)
     var tryResult = maybeVoid(n[0], tryScope)
-    result.add toTree(tryScope, tryResult, treeFlags)
+    result.add toTree(c, tryScope, tryResult, treeFlags)
     rememberParent(s, tryScope)
 
     for i in 1..<n.len:
@@ -719,7 +723,7 @@ template handleNestedTempl(n, processCall: untyped; alwaysStmt: bool) =
       var branchScope = nestedScope(s)
       var branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                          else: processCall(it[^1], branchScope)
-      branch[^1] = toTree(branchScope, branchResult, treeFlags)
+      branch[^1] = toTree(c, branchScope, branchResult, treeFlags)
       result.add branch
       rememberParent(s, branchScope)
 
@@ -1120,7 +1124,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add genDestroy(c, params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = toTree(scope, body, {})
+  result = toTree(c, scope, body, {})
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
