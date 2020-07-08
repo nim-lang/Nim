@@ -777,13 +777,8 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 
 proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
-  ## Creates a new ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
+  ## Creates a new empty `TableRef`, see `initTable proc<#initTable,int>`_
+  ## for explanation on parameters.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
@@ -1257,16 +1252,8 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 # ----------------------------------------------------------------------
 
 proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
-  ## Creates a new ordered hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
+  ## Creates a new empty `OrderedTable`, see `initTable proc<#initTable,int>`_
+  ## for explanation on parameters.
   ##
   ## See also:
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_
@@ -1768,13 +1755,8 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # ---------------------------------------------------------------------------
 
 proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
-  ## Creates a new ordered ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
+  ## Creates a new empty `OrderedTableRef`, see `initTable proc<#initTable,int>`_
+  ## for explanation on parameters.
   ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
@@ -2248,16 +2230,8 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 # ----------------------------------------------------------------------
 
 proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
-  ## Creates a new count table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
+  ## Creates a new empty `CountTable`, see `initTable proc<#initTable,int>`_
+  ## for explanation on parameters.
   ##
   ## See also:
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
@@ -2614,13 +2588,8 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
 proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
-  ## Creates a new ref count table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
+  ## Creates a new empty `CountTableRef`, see `initTable proc<#initTable,int>`_
+  ## for explanation on parameters.
   ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating

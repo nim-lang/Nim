@@ -76,17 +76,9 @@ template checkIfInitialized(deq: typed) =
     if deq.mask == 0:
       initImpl(deq, defaultInitialSize)
 
-proc initDeque*[T](initialSize: int = 4): Deque[T] =
-  ## Create a new empty deque.
-  ##
-  ## Optionally, the initial capacity can be reserved via `initialSize`
-  ## as a performance optimization.
-  ## The length of a newly created deque will still be 0.
-  ##
-  ## ``initialSize`` must be a power of two (default: 4).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_.
+proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
+  ## Creates a new empty `Deque`, see `initTable proc<table.html#initTable,int>`_
+  ## for explanation on parameters.
   result.initImpl(initialSize)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =

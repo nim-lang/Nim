@@ -106,7 +106,7 @@ proc del*[A, B](t: var TTable[A, B], key: A) =
     dec(t.counter)
 
 proc initTable*[A, B](initialSize=64): TTable[A, B] =
-  ## creates a new empty hash table.
+  ## creates a new empty `TTable`.
   let size2 = nextPowerOfTwo(initialSize)
   result.counter = 0
   newSeq(result.data, size2)
