@@ -77,7 +77,7 @@ template checkIfInitialized(deq: typed) =
       initImpl(deq, defaultInitialSize)
 
 proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
-  ## Creates a new empty `Deque`, see `initTable proc<table.html#initTable,int>`_
+  ## Creates a new empty `Deque`, see `initTable proc<tables.html#initTable>`_
   ## for explanation on parameters.
   result.initImpl(initialSize)
 

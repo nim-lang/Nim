@@ -230,7 +230,7 @@ type
     ## `data` and `counter` are internal implementation details which
     ## can't be accessed.
     ##
-    ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
+    ## For creating an empty Table, use `initTable proc<#initTable>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
@@ -327,7 +327,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `initTable proc<#initTable,int>`_
+  ## * `initTable proc<#initTable>`_
   ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -777,13 +777,13 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 
 proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
-  ## Creates a new empty `TableRef`, see `initTable proc<#initTable,int>`_
+  ## Creates a new empty `TableRef`, see `initTable proc<#initTable>`_
   ## for explanation on parameters.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
   ##   from a collection of `(key, value)` pairs
-  ## * `initTable proc<#initTable,int>`_ for creating a `Table`
+  ## * `initTable proc<#initTable>`_ for creating a `Table`
   runnableExamples:
     let
       a = newTable[int, string]()
@@ -1252,7 +1252,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 # ----------------------------------------------------------------------
 
 proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
-  ## Creates a new empty `OrderedTable`, see `initTable proc<#initTable,int>`_
+  ## Creates a new empty `OrderedTable`, see `initTable proc<#initTable>`_
   ## for explanation on parameters.
   ##
   ## See also:
@@ -1755,7 +1755,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # ---------------------------------------------------------------------------
 
 proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
-  ## Creates a new empty `OrderedTableRef`, see `initTable proc<#initTable,int>`_
+  ## Creates a new empty `OrderedTableRef`, see `initTable proc<#initTable>`_
   ## for explanation on parameters.
   ##
   ## See also:
@@ -2230,7 +2230,7 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 # ----------------------------------------------------------------------
 
 proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
-  ## Creates a new empty `CountTable`, see `initTable proc<#initTable,int>`_
+  ## Creates a new empty `CountTable`, see `initTable proc<#initTable>`_
   ## for explanation on parameters.
   ##
   ## See also:
@@ -2588,7 +2588,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
 proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
-  ## Creates a new empty `CountTableRef`, see `initTable proc<#initTable,int>`_
+  ## Creates a new empty `CountTableRef`, see `initTable proc<#initTable>`_
   ## for explanation on parameters.
   ##
   ## See also:
