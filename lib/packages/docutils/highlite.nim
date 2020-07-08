@@ -185,10 +185,6 @@ proc nimNextToken(g: var GeneralTokenizer) =
           while g.buf[pos] in {'0'..'9'}: inc(pos)
         of '\0':
           g.state = gtNone
-        of '\"':
-          inc(pos)
-          if g.buf.len == pos:
-            g.state = gtEof
         else: inc(pos)
         break
       of '\0', '\x0D', '\x0A':
@@ -434,10 +430,6 @@ proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
           while g.buf[pos] in {'0'..'9'}: inc(pos)
         of '\0':
           g.state = gtNone
-        of '\"':
-          inc(pos)
-          if g.buf.len == pos:
-            g.state = gtEof
         else: inc(pos)
         break
       of '\0', '\x0D', '\x0A':
