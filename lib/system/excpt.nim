@@ -267,7 +267,7 @@ when hasSomeStackTrace:
       var
         tempFrames: array[0..127, PFrame] # but better than a threadvar
     const
-      firstCalls = 32
+      firstCalls = 64
     var
       it = f
       i = 0

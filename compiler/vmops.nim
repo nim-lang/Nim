@@ -105,7 +105,7 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add toLit((k, f))
 
 when defined(nimHasInvariant):
-  from std / compilesettings import SingleValueSetting, MultipleValueSetting
+  from std / compilesettings import SingleValueSetting, MultipleValueSetting, CaptureMode
 
   proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
     case SingleValueSetting(switch)
@@ -134,6 +134,26 @@ when defined(nimHasInvariant):
     of commandArgs: result = conf.commandArgs
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
+
+proc setCapturedMsgsImpl2(conf: ConfigRef, switch: BiggestInt) =
+  let mode = CaptureMode(switch)
+  case mode
+  of captureInvalid: doAssert false
+  of captureStart:
+    conf.capturedMsgsState = true
+    # TODO: save old one and restore later?
+    # conf.writelnHookAlt
+    conf.writelnHook = proc (msg: string) =
+      # TODO: `CaptureMode` mode to tap (print as usual but also capture) result
+      conf.capturedMsgs.add msg
+      conf.capturedMsgs.add "\n"
+  of captureStop:
+    # if conf.capturedMsgs.len != 0:
+    #   dumpCaptureMsg*(conf)
+    conf.writelnHook = nil
+    conf.capturedMsgsState = false
+    # see also: dumpCaptureMsg
+    doAssert conf.capturedMsgs.len == 0, "capturedMsgs not empty: \n" & conf.capturedMsgs
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
@@ -190,6 +210,12 @@ proc registerAdditionalOps*(c: PCtx) =
         setResult(a, querySettingImpl(c.config, getInt(a, 0)))
       registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
         setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+      registerCallback c, "stdlib.compilesettings.setCapturedMsgsImpl", proc (a: VmArgs) {.nimcall.} =
+        setCapturedMsgsImpl2(c.config, getInt(a, 0))
+      registerCallback c, "stdlib.compilesettings.getCapturedMsgs", proc (a: VmArgs) {.nimcall.} =
+        doAssert c.config.capturedMsgsState, "call 'setCapturedMsgs' before 'getCapturedMsgs'"
+        setResult(a, c.config.capturedMsgs)
+        c.config.capturedMsgs.setLen 0
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"

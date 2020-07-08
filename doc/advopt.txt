@@ -27,6 +27,10 @@ Runtime checks (see -x):
   --infChecks:on|off        turn Inf checks on|off
   --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
+Static checks:
+  --staticBoundsChecks:on|off experimental
+  --staticEscapeChecks:on|off experimental
+
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written

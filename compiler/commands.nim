@@ -595,6 +595,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "refchecks": processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
   of "staticboundchecks": processOnOffSwitch(conf, {optStaticBoundsCheck}, arg, pass, info)
+  of "staticescapechecks": processOnOffSwitch(conf, {optStaticEscapeCheck}, arg, pass, info)
   of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)

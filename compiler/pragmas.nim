@@ -29,7 +29,7 @@ const
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
-    wRequires, wEnsures}
+    wRequires, wEnsures, wViewFrom}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
@@ -40,7 +40,7 @@ const
   iteratorPragmas* = declPragmas + {FirstCallConv..LastCallConv, wNoSideEffect, wSideEffect,
     wMagic, wBorrow,
     wDiscardable, wGensym, wInject, wRaises,
-    wTags, wLocks, wGcSafe, wRequires, wEnsures}
+    wTags, wLocks, wGcSafe, wRequires, wEnsures, wViewFrom}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
@@ -58,7 +58,7 @@ const
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+    wGcSafe, wCodegenDecl, wViewFrom} - {wExportNims, wError, wUsed}  # why exclude these?
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
@@ -475,6 +475,13 @@ proc processDefine(c: PContext, n: PNode) =
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     undefSymbol(c.config.symbols, n[1].ident.s)
+  else:
+    invalidPragma(c, n)
+
+proc processViewFrom(c: PContext, n: PNode) =
+  if (n.kind in nkPragmaCallKinds and n.len == 3) and (n[1].kind == nkIdent) and (n[2].kind == nkIdent):
+    # TODO: lookup to symbols and resolve immediately?
+    discard
   else:
     invalidPragma(c, n)
 
@@ -1065,6 +1072,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wEmit: pragmaEmit(c, it)
       of wUnroll: pragmaUnroll(c, it)
       of wLinearScanEnd, wComputedGoto: noVal(c, it)
+      of wViewFrom: processViewFrom(c, it)
       of wEffects:
         # is later processed in effect analysis:
         noVal(c, it)

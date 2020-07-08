@@ -621,6 +621,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         vm.setupCompileTimeVar(c.module, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
+      checkViewFromCompat(c, n, b[0], b[^1]) # xxx: also handle `var (x1, x2) = rhs`
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)

@@ -26,7 +26,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optRefCheck,
-    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
+    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStaticEscapeCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize,
     optStackTrace, # stack tracing support
@@ -320,6 +320,9 @@ type
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
     writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
+    writelnHookAlt*: proc (output: string) {.closure.} # PRTEMP
+    capturedMsgs*: string
+    capturedMsgsState*: bool
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
@@ -403,6 +406,8 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
+import ./debugutils_basic
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -457,11 +462,13 @@ proc newConfigRef*(): ConfigRef =
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
+    writelnHookAlt: (proc(msg: string) = discard),
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
+  ndebugSetConfigExt(result)
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.

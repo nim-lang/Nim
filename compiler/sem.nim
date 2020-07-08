@@ -56,6 +56,8 @@ proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
+proc checkViewFromCompat(c: PContext, n, le, ri: PNode) {.importc.}
+
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
@@ -641,3 +643,5 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)
+
+import lifetimes # for exportc symbols

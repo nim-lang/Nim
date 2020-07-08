@@ -821,6 +821,11 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
+
+  ViewDep* = object
+    sym*: PSym
+    addrLevel*: int
+
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
@@ -830,6 +835,7 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
+      resultSym*: PSym
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -847,6 +853,11 @@ type
       bitsize*: int
       alignment*: int # for alignment
     else: nil
+
+    # could optimize a bit by using `viewFromSyms1` for `skLet, skVar, skField, skForVar`, `viewFromSyms2` for `skParam`, and an accessor template `viewFromSyms`
+    # viewFromSyms*: seq[PSym] # list of symbols referenced by address
+    viewSyms*: seq[ViewDep]
+
     magic*: TMagic
     typ*: PType
     name*: PIdent
@@ -874,6 +885,7 @@ type
                               # for variables a slot index for the evaluator
     offset*: int              # offset of record field
     loc*: TLoc
+
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
     when hasFFI:
@@ -1936,6 +1948,9 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
+
+import ./debugutils
+export debugutils
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)

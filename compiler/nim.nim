@@ -118,3 +118,5 @@ when not defined(selftest):
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
   msgQuit(int8(conf.errorCounter > 0))
+
+when defined(timn_with_compilerutils): import timn/compilerutils/nimc_basics

@@ -183,7 +183,7 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   ## Casting is very unrestrictive; casts are allowed as long as
   ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
-  #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString,
+  #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCString, tyString,
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   let src = src.skipTypes(tyUserTypeClasses)
@@ -1610,6 +1610,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   result.add(n)
 
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
+  checkViewFromCompat(c, n, le, ri)
   if le.kind == nkHiddenDeref:
     var x = le[0]
     if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:

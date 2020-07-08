@@ -86,7 +86,7 @@ type
     wStdIn, wStdOut, wStdErr,
 
     wInOut, wByCopy, wByRef, wOneWay,
-    wBitsize
+    wBitsize, wViewFrom
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -176,7 +176,7 @@ const
     "stdin", "stdout", "stderr",
 
     "inout", "bycopy", "byref", "oneway",
-    "bitsize"
+    "bitsize", "viewfrom"
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
@@ -218,4 +218,5 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wLiftLocals: "liftLocals"
   of wLocalPassc: "localPassc"
   of wWarningAsError: "warningAsError"
+  of wViewFrom: "viewFrom"
   else: specialWords[w]

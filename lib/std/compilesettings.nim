@@ -54,3 +54,14 @@ proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
   ##
   ## .. code-block:: Nim
   ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)
+
+type CaptureMode* = enum
+  captureInvalid
+  captureStart
+  captureStop
+
+when defined(nimHasCapturedMsgs):
+  proc setCapturedMsgsImpl(mode: CaptureMode) {.compileTime.} = discard
+  template setCapturedMsgs*(mode: CaptureMode) =
+    static: setCapturedMsgsImpl(mode)
+  proc getCapturedMsgs*(): string {.compileTime.} = doAssert false

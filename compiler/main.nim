@@ -406,6 +406,7 @@ proc mainCommand*(graph: ModuleGraph) =
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
+    dumpCaptureMsg(conf)
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
