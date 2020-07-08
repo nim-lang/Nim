@@ -217,7 +217,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
     assert len(b) == 5
     ## b == {'a', 'b', 'c', 'd', 'r'}
 
-  result = initHashSet[A](rightSize(keys.len))
+  result = initHashSet[A](keys.len)
   for key in items(keys): result.incl(key)
 
 iterator items*[A](s: HashSet[A]): A =
@@ -675,7 +675,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
     assert len(b) == 5
     ## b == {'a', 'b', 'r', 'c', 'd'} # different than in HashSet
 
-  result = initOrderedSet[A](rightSize(keys.len))
+  result = initOrderedSet[A](keys.len)
   for key in items(keys): result.incl(key)
 
 proc contains*[A](s: OrderedSet[A], key: A): bool =
@@ -970,7 +970,7 @@ when isMainModule and not defined(release):
 
     block toSeqAndString:
       var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int](rightSize(a.len))
+      var b = initHashSet[int](a.len)
       for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
