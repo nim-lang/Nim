@@ -74,19 +74,12 @@ jobs:
     - bash: |
         sudo dpkg --add-architecture i386
 
-        # Downgrade llvm, libgcc and libstdc++:
+        # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
-        # - libgcc and libstdc++ have to be downgraded as an optimization to
-        #   prevent the use of the toolchain ppa, which has a terrible download
-        #   speed.
         cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
-        Package: libllvm6.0 libgcc1 libstdc++6
+        Package: libllvm6.0
         Pin: origin "azure.archive.ubuntu.com"
         Pin-Priority: 1001
-
-        Package: *
-        Pin: release o=LP-PPA-ubuntu-toolchain-r-test
-        Pin-Priority: 100
         EOF
 
         sudo apt-fast update -qq
