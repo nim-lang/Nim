@@ -286,23 +286,28 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # -------------------------------------------------------------------
 
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
-  ## Creates a new empty `Table`.
+  ## Creates a new empty `Table` with at least `initialSize` slots.
   ##
-  ## To store `n` elements without resizing, use `initialSize=rightSize(n)`,
-  ## see `rightSize proc<#rightSize,Natural>`_.
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ will be called to
-  ## ensure a power of 2 will be used.
+  ## `initTable` will allocate a seq of size `nextPowerOfTwo(initialSize)`.
+  ## To store `n` elements without resizing, use `initialSize = rightSize(n)`.
   ##
-  ## Starting from Nim v0.20, tables are initialized by default and it is
-  ## not necessary to call this function explicitly.
+  ## Starting from Nim v0.20, `Table` and table-like data structures
+  ## (except `SharedTable`) are initialized by default and it is
+  ## not necessary to call this function explicitly, unless you want to
+  ## pre-allocate space to reduce likelihood of resizing.
   ##
   ## See also:
   ## * `toTable proc<#toTable,openArray[]>`_
   ## * `newTable proc<#newTable,int>`_ for creating a `TableRef`
+  ## * `rightSize proc<#rightSize,Natural>`_
+  ## * `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_
   runnableExamples:
     let
       a = initTable[int, string]()
-      b = initTable[char, seq[int]]()
+      b = initTable[char, seq[int]](123)
+        # will allocate 128 slots, but to store 123 elements without resizing,
+        # use `rightSize(123)`
+    doAssert b.len == 0
   initImpl(result, initialSize)
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
