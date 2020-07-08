@@ -97,6 +97,7 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
+    withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]

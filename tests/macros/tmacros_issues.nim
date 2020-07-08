@@ -19,6 +19,8 @@ nil
 42
 false
 true
+@[i0, i1, i2, i3, i4]
+@[tmp, tmp, tmp, tmp, tmp]
 '''
 
   output: '''
@@ -244,3 +246,15 @@ macro toRendererBug(n): untyped =
   result = newLit repr(n)
 
 echo toRendererBug(0o377'i8)
+
+# bug #12129
+macro foobar() =
+  var loopVars = newSeq[NimNode](5)
+  for i, sym in loopVars.mpairs():
+    sym = ident("i" & $i)
+  echo loopVars
+  for sym in loopVars.mitems():
+    sym = ident("tmp")
+  echo loopVars
+
+foobar()

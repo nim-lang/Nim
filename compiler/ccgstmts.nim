@@ -200,6 +200,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
   var stack = newSeq[tuple[fin: PNode, inExcept: bool, label: Natural]](0)
 
+  inc p.withinBlockLeaveActions
   for i in 1..howManyTrys:
     let tryStmt = p.nestedTryStmts.pop
     if p.config.exc == excSetjmp:
@@ -216,6 +217,8 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
     var finallyStmt = tryStmt.fin
     if finallyStmt != nil:
       genStmts(p, finallyStmt[0])
+
+  dec p.withinBlockLeaveActions
 
   # push old elements again:
   for i in countdown(howManyTrys-1, 0):
@@ -861,10 +864,10 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     genCaseGeneric(p, t, d, "", "if (#eqStrings($1, $2)) goto $3;$n")
 
 proc branchHasTooBigRange(b: PNode): bool =
-  for i in 0..<b.len-1:
+  for it in b:
     # last son is block
-    if (b[i].kind == nkRange) and
-        b[i][1].intVal - b[i][0].intVal > RangeExpandLimit:
+    if (it.kind == nkRange) and
+        it[1].intVal - it[0].intVal > RangeExpandLimit:
       return true
 
 proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
@@ -988,9 +991,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
 
-  startBlock(p, "try {$n")
-  expr(p, t[0], d)
-  endBlock(p)
+  if t.kind == nkHiddenTryStmt:
+    lineCg(p, cpsStmts, "try {$n", [])
+    expr(p, t[0], d)
+    lineCg(p, cpsStmts, "}$n", [])
+  else:
+    startBlock(p, "try {$n")
+    expr(p, t[0], d)
+    endBlock(p)
 
   # First pass: handle Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
@@ -1335,13 +1343,13 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = _setjmp($1.context);$n", [safePoint])
     else:
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
-    startBlock(p, "if ($1.status == 0) {$n", [safePoint])
+    lineCg(p, cpsStmts, "if ($1.status == 0) {$n", [safePoint])
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, quirkyExceptions, 0.Natural))
   expr(p, t[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
-    endBlock(p)
+    lineCg(p, cpsStmts, "}$n", [])
     startBlock(p, "else {$n")
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])
     genRestoreFrameAfterException(p)

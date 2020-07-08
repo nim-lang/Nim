@@ -67,9 +67,9 @@ const
   defaultInitialSize* = 4
 
 template initImpl(result: typed, initialSize: int) =
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  let correctSize = nextPowerOfTwo(initialSize)
+  result.mask = correctSize-1
+  newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
   when compiles(defaultInitialSize):
@@ -82,11 +82,6 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## Optionally, the initial capacity can be reserved via `initialSize`
   ## as a performance optimization.
   ## The length of a newly created deque will still be 0.
-  ##
-  ## ``initialSize`` must be a power of two (default: 4).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_.
   result.initImpl(initialSize)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
