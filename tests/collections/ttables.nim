@@ -446,3 +446,13 @@ block: # https://github.com/nim-lang/Nim/issues/13496
   testDel(): (let t = newOrderedTable[int, int]())
   testDel(): (var t: CountTable[int])
   testDel(): (let t = newCountTable[int]())
+
+
+block testNonPowerOf2:
+  var a = initTable[int, int](7)
+  a[1] = 10
+  assert a[1] == 10
+
+  var b = initTable[int, int](9)
+  b[1] = 10
+  assert b[1] == 10
