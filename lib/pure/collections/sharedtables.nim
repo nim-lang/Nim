@@ -208,11 +208,11 @@ proc len*[A, B](t: var SharedTable[A, B]): int =
     result = t.counter
 
 proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
-  ## creates a new hash table that is empty.
+  ## creates a new empty SharedTable.
   ##
   ## This proc must be called before any other usage of `t`.
   ##
-  ## To store `n` elements without resizing you can use `rightSize`.
+  ## To store `n` elements without resizing, usse `initialSize=rightSize(n)`.
   let size2 = nextPowerOfTwo(initialSize)
   t.counter = 0
   t.dataLen = size2
