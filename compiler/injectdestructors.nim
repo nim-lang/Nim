@@ -134,7 +134,7 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
     var r = PNode(nil)
     if isExpr:
       result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
-      if ret.kind == nkStmtListExpr:
+      if ret.kind in nkCallKinds + {nkStmtListExpr}:
         r = getTemp(c, s, ret.typ, ret.info)
     else:
       result = newNodeI(nkStmtList, ret.info)
@@ -155,7 +155,13 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
       result.add newTryFinally(ret, finSection)
     else:
       if r != nil:
-        result.add newTree(nkFastAsgn, r, ret)
+        if ret.kind == nkStmtListExpr:
+          # simplify it a bit further by merging the nkStmtListExprs
+          let last = ret.len - 1
+          for i in 0 ..< last: result.add ret[i]
+          result.add newTree(nkFastAsgn, r, ret[last])
+        else:
+          result.add newTree(nkFastAsgn, r, ret)
       else:
         result.add ret
       for m in s.wasMoved: result.add m
