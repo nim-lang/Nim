@@ -19,6 +19,8 @@ nil
 42
 false
 true
+@[i0, i1, i2, i3, i4]
+@[tmp, tmp, tmp, tmp, tmp]
 '''
 
   output: '''
@@ -27,8 +29,6 @@ array[0 .. 100, int]
 10
 test
 0o377'i8
-@[i0, i1, i2, i3, i4]
-@[tmp, tmp, tmp, tmp, tmp]
 '''
 """
 
