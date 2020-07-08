@@ -12,6 +12,7 @@ if
 end true
 7
 ##index 2 not in 0 .. 1##
+true
 '''
   cmd: "nim c --gc:arc -d:danger $file"
 """
@@ -102,3 +103,22 @@ proc escapeCheck =
   clItems(toSeq())
 
 escapeCheck()
+
+# bug #14900
+template sortedByIt(seq1): untyped =
+  var result = seq1
+  result
+
+proc seqsEqual(seq1, seq2: seq[string]): bool =
+  # works as a normal proc (if we would assign result inside)
+  # doesn't work as an expression
+  result =  if false: # needed
+              false
+            else:
+              let a1 = seq1.sortedByIt()
+              let a2 = seq2.sortedByIt()
+              # echo a1 - works if you uncomment any of these
+              # echo a2
+              a1 == a2
+
+echo seqsEqual(@["a", "b", "c"], @["a", "b", "c"])
