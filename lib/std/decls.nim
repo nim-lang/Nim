@@ -22,7 +22,7 @@ template byaddr*(lhs, typ, ex) =
     let tmp: ptr typ = addr(ex)
   template lhs: untyped = tmp[]
 
-proc byLent*[T](a: T): lent T {.inline.} =
+proc byLent*[T](a: var T): lent T {.inline.} =
   ## Transforms `a` into a let param without copying; this is useful for overload
   ## resolution
   runnableExamples:
