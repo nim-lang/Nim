@@ -28,7 +28,6 @@ when defined(nimv2):
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
       deallocShared(a.data)
-      a.data = nil
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 

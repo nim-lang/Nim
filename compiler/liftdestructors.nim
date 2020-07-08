@@ -535,7 +535,6 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, cond, actions)
-    body.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     if isFinal(elemType):
@@ -584,7 +583,6 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, cond, actions)
-    body.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv), y)
@@ -613,7 +611,6 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # prevent wrong "dangling refs exist" problems:
     var actions = newNodeI(nkStmtList, c.info)
     actions.add callCodegenProc(c.g, "nimDecWeakRef", c.info, x)
-    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     let des = genIf(c, x, actions)
     if body.len == 0:
       body.add des
@@ -642,7 +639,6 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, x, actions)
-    body.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
 
@@ -672,10 +668,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedDestructor:
-      var actions = newNodeI(nkStmtList, c.info)
-      actions.add callCodegenProc(c.g, "nimDecWeakRef", c.info, xx)
-      actions.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
-      let des = genIf(c, xx, actions)
+      let des = genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       if body.len == 0:
         body.add des
       else:
@@ -695,7 +688,6 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
     body.add genIf(c, xx, actions)
-    body.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
 
