@@ -211,7 +211,7 @@ proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
   ## creates a new hash table that is empty.
   ##
   ## This proc must be called before any other usage of `t`.
-  let initialSize = rightSize(initialSize)
+  let initialSize = slotsNeeded(initialSize)
   t.counter = 0
   t.dataLen = initialSize
   t.data = cast[KeyValuePairSeq[A, B]](allocShared0(

@@ -1088,20 +1088,6 @@ when isMainModule and not defined(release):
       b.incl(2)
       assert b.len == 1
 
-    block:
-      type FakeTable = object
-        dataLen: int
-        counter: int
-        countDeleted: int
-
-      var t: FakeTable
-      for i in 0 .. 32:
-        var s = rightSize(i)
-        t.dataLen = s
-        t.counter = i
-        doAssert s > i and not mustRehash(t),
-          "performance issue: rightSize() will not elide enlarge() at: " & $i
-
     block missingOrExcl:
       var s = toOrderedSet([2, 3, 6, 7])
       assert s.missingOrExcl(4) == true

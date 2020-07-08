@@ -16,7 +16,7 @@ template dataLen(t): untyped = len(t.data)
 include hashcommon
 
 template initImpl(s: typed, size: int) =
-  let correctSize = rightSize(size)
+  let correctSize = slotsNeeded(size)
   when s is OrderedSet:
     s.first = -1
     s.last = -1

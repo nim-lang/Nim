@@ -136,8 +136,9 @@
   line which doesn't make sense.
 - Changed `log` in `logging` to use proper log level on JavaScript target,
   e.g. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
-- Tables, sets, SharedTables and deques don't require anymore that the passed
+- Tables, HashSets, SharedTables and deques don't require anymore that the passed
   initial size must be a power of two - this is done internally.
+  Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
 
 
 

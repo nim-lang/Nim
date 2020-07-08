@@ -121,7 +121,7 @@ template ctAnd(a, b): bool =
   else: false
 
 template initImpl(result: typed, size: int) =
-  let correctSize = rightSize(size)
+  let correctSize = slotsNeeded(size)
   when ctAnd(declared(SharedTable), type(result) is SharedTable):
     init(result, correctSize)
   else:
