@@ -145,7 +145,7 @@ proc assignLabel(b: var TBlock): Rope {.inline.} =
 proc blockBody(b: var TBlock): Rope =
   result = b.sections[cpsLocals]
   if b.frameLen > 0:
-    result.addf("FR_.len+=$1;$n", [b.frameLen.rope]) # PRTEMP
+    result.addf("FR_.len+=$1;$n", [b.frameLen.rope]) # deadcode
   result.add(b.sections[cpsInit])
   result.add(b.sections[cpsStmts])
 
@@ -163,7 +163,7 @@ proc endBlock(p: BProc) =
   let frameLen = p.blocks[topBlock].frameLen
   var blockEnd: Rope
   if frameLen > 0:
-    blockEnd.addf("FR_.len-=$1;$n", [frameLen.rope]) # PRTEMP
+    blockEnd.addf("FR_.len-=$1;$n", [frameLen.rope]) # deadcode
   if p.blocks[topBlock].label != nil:
     blockEnd.addf("} $1: ;$n", [p.blocks[topBlock].label])
   else:

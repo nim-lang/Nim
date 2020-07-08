@@ -645,7 +645,7 @@ $1 define nimRefreshFile(file, line) #nimRefreshFile2(file, line)
 $1 define nimRefreshLine(line) #nimRefreshLine2(line)
 """
   #[
-  dead code that could be revived one day
+  deadcode that could be revived (see `endb`)
   $1  define nimfrs_(proc, file, slots, length) \
       struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
       FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
@@ -1692,7 +1692,7 @@ proc genInitCode(m: BModule) =
     # Give this small function its own scope
     prc.addf("{$N", [])
     # Keep a bogus frame in case the code needs one
-    # prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+    # prc.add(~"\tTFrame FR_; FR_.len = 0;$N") # deadcode: FR_.len = 0
 
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
@@ -1718,7 +1718,8 @@ proc genInitCode(m: BModule) =
         var procname = makeCString(m.module.name.s)
         prc.add(initFrame(m.initProc, m.module.info, procname, quotedFilename(m.config, m.module.info)))
       else:
-        prc.add(~"\tTFrame FR_; FR_.len = 0;$N") # PRTEMP
+        # prc.add(~"\tTFrame FR_; FR_.len = 0;$N") # deadcode
+        prc.add(~"\tTFrame FR_; $N")
 
     writeSection(initProc, cpsInit, m.hcrOn)
     writeSection(initProc, cpsStmts)

@@ -62,7 +62,7 @@ type
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
-    frameLen*: int16
+    frameLen*: int16          # deadcode, currently always 0 (remnant from `endb`)
 
   TCProcFlag* = enum
     beforeRetNeeded,

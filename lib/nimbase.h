@@ -521,15 +521,6 @@ typedef char* NCSTRING;
   } TFrame;
 #endif
 
-#if NIM_CGEN_VERSION == 1
-  // PRTEMP
-  typedef struct {
-    NCSTRING procname;
-    NI line;
-    NCSTRING filename;
-  } TFrame;
-#endif
-
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
 #ifdef __GNUC__
