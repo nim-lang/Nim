@@ -106,7 +106,17 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
-  Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+  Range* {.importc.} = ref object
+    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    collapsed*: bool
+    commonAncestorContainer*: Node
+    endContainer*: Node
+    endOffset*: int
+    startContainer*: Node
+    startOffset*: int
+
+  Selection* {.importc.} = ref object
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
     anchorNode*: Node
     anchorOffset*: int
     focusNode*: Node
@@ -210,6 +220,7 @@ type
     applets*: seq[Element]
     embeds*: seq[EmbedElement]
     links*: seq[LinkElement]
+    fonts*: FontFaceSet
 
   Element* = ref ElementObj
   ElementObj {.importc.} = object of NodeObj
@@ -1189,6 +1200,10 @@ type
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DragEvent>`_
     dataTransfer*: DataTransfer
 
+  ClipboardEvent* {.importc.} = object of Event
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ClipboardEvent>`_
+    clipboardData*: DataTransfer
+
   TouchList* {.importc.} = ref object of RootObj
     length*: int
 
@@ -1267,6 +1282,15 @@ type
     capture*: bool
     once*: bool
     passive*: bool
+
+  FontFaceSetReady* {.importc.} = ref object
+    ## see: `docs<https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/ready>`_
+    then*: proc(cb: proc())
+
+  FontFaceSet* {.importc.} = ref object
+    ## see: `docs<https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet>`_
+    ready*: FontFaceSetReady
+    onloadingdone*: proc(event: Event)
 
 since (1, 3):
   type
@@ -1393,6 +1417,7 @@ else:
   proc getElementById*(id: cstring): Element {.importc: "document.getElementById", nodecl.}
   proc appendChild*(n, child: Node) {.importcpp.}
   proc removeChild*(n, child: Node) {.importcpp.}
+  proc remove*(child: Node) {.importcpp.}
   proc replaceChild*(n, newNode, oldNode: Node) {.importcpp.}
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
@@ -1454,7 +1479,7 @@ proc deleteData*(n: Node, start, len: int)
 proc focus*(e: Node)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
-proc hasAttribute*(n: Node; attr: cstring): bool
+proc hasAttribute*(n: Node, attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
@@ -1471,6 +1496,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
+proc insertNode*(range: Range, node: Node)
 proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
@@ -1562,6 +1588,8 @@ proc now*(p: Performance): float
 
 # Selection "methods"
 proc removeAllRanges*(s: Selection)
+proc deleteFromDocument*(s: Selection)
+proc getRangeAt*(s: Selection, index: int): Range
 converter toString*(s: Selection): cstring
 proc `$`*(s: Selection): string = $(s.toString())
 
