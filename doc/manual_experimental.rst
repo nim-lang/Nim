@@ -1844,3 +1844,9 @@ via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different
 
 5. A global or thread local variable (or a location derived from such a location)
    can only passed to a parameter of a ``.noSideEffect`` proc.
+
+
+Quirky exceptions
+=================
+
+* The standard library does not support Quirky exceptions, is not recommended for production usage.
