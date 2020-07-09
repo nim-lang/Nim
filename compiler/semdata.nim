@@ -143,6 +143,7 @@ type
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
+    lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
