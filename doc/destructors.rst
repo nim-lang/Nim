@@ -39,12 +39,12 @@ written as:
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x[i])
       dealloc(x.data)
-      x.data = nil
 
   proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
     # do nothing for self-assignments:
     if a.data == b.data: return
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
@@ -56,6 +56,7 @@ written as:
     # move assignment, optional.
     # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     a.data = b.data
@@ -120,7 +121,6 @@ The general pattern in ``=destroy`` looks like:
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
-      x.field = nil
 
 
 
@@ -149,6 +149,7 @@ The general pattern in ``=sink`` looks like:
 
   proc `=sink`(dest: var T; source: T) =
     `=destroy`(dest)
+    wasMoved(dest)
     dest.field = source.field
 
 
@@ -178,6 +179,7 @@ The general pattern in ``=`` looks like:
     # protect against self-assignments:
     if dest.field != source.field:
       `=destroy`(dest)
+      wasMoved(dest)
       dest.field = duplicateResource(source.field)
 
 
@@ -522,7 +524,6 @@ Let ``W`` be an ``owned ref`` type. Conceptually its hooks look like:
     if x != nil:
       assert x.refcount == 0, "dangling unowned pointers exist!"
       `=destroy`(x[])
-      x = nil
 
   proc `=`(x: var W; y: W) {.error: "owned refs can only be moved".}
 
