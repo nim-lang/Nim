@@ -22,7 +22,7 @@ when hasAlloc and not defined(js) and not usesDestructors:
     ## the mark and sweep phase with
     ## `GC_disableMarkAndSweep <#GC_disableMarkAndSweep>`_.
 
-  proc GC_enable*() {.rtl, inl, benign, raises: [].}
+  proc GC_enable*() {.rtl, inl, benign, raises: [AssertionDefect].}
     ## Enables the GC again.
 
   proc GC_fullCollect*() {.rtl, benign.}
