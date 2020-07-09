@@ -1451,7 +1451,10 @@ elif not defined(useNimRtl):
                     fileMode: FileMode) =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
-    stream = newFileStream(f)
+    stream = if fileMode == fmRead:
+      newFileStream(f).newPipeOutStream
+    else:
+      newFileStream(f)
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)
