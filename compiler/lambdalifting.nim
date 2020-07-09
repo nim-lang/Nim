@@ -190,9 +190,12 @@ proc interestingVar(s: PSym): bool {.inline.} =
     sfGlobal notin s.flags and
     s.typ.kind notin {tyStatic, tyTypeDesc}
 
-proc illegalCapture(s: PSym): bool {.inline.} =
-  result = skipTypes(s.typ, abstractInst).kind in
-                   {tyVar, tyOpenArray, tyVarargs, tyLent} or
+proc illegalCapture(s: PSym, envOnHeap: bool): bool {.inline.} =
+  var illegalTypes = {tyOpenArray, tyVarargs, tyLent}
+  if envOnHeap:
+    illegalTypes.incl(tyVar)
+
+  result = skipTypes(s.typ, abstractInst).kind in illegalTypes or
       s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
@@ -286,19 +289,6 @@ proc freshVarForClosureIter*(g: ModuleGraph; s, owner: PSym): PNode =
 
 # ------------------ new stuff -------------------------------------------
 
-proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
-  let s = n.sym
-  if illegalCapture(s):
-    localError(g.config, n.info,
-      ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
-       " safety, declared here: $3; using '-d:nimWorkaround14447' helps in some cases") %
-      [s.name.s, typeToString(s.typ), g.config$s.info])
-  elif owner.typ.callConv notin {ccClosure, ccDefault}:
-    localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
-      [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
-  incl(owner.typ.flags, tfCapturesEnv)
-  owner.typ.callConv = ccClosure
-
 type
   DetectionPass = object
     processed, capturedVars: IntSet
@@ -313,6 +303,19 @@ proc initDetectionPass(g: ModuleGraph; fn: PSym): DetectionPass =
   result.ownerToType = initTable[int, PType]()
   result.processed.incl(fn.id)
   result.graph = g
+
+proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode, d: DetectionPass) =
+  let s = n.sym
+  if illegalCapture(s, d.envOnHeap):
+    localError(g.config, n.info,
+      ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
+       " safety, declared here: $3; using '-d:nimWorkaround14447' helps in some cases") %
+      [s.name.s, typeToString(s.typ), g.config$s.info])
+  elif owner.typ.callConv notin {ccClosure, ccDefault}:
+    localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
+      [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
+  incl(owner.typ.flags, tfCapturesEnv)
+  owner.typ.callConv = ccClosure
 
 discard """
 proc outer =
@@ -382,6 +385,22 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
       if c.graph.config.selectedGC == gcDestructors:
         result.flags.incl sfCursor
     rawAddField(obj, result)
+
+proc addParamPtrField(obj: PType; s: PSym; cache: IdentCache) =
+  # stolen from lowerings.addField...
+  assert s.kind == skParam
+  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), s.owner, s.info,
+                     s.options)
+  field.id = -s.id
+  let t = newType(tyPtr, s.owner)
+  t.add skipIntLit(s.typ)
+  field.typ = t
+  # propagateToOwner(obj, t) # ??? do we need this?
+  field.position = obj.n.len
+  # field.flags = s.flags * {sfCursor} # field is going to be a raw ptr 
+                                       # so i guess we don't need this here?
+  obj.n.add newSymNode(field)
+  # fieldCheck()
 
 discard """
 There are a couple of possibilities of how to implement closure
@@ -458,6 +477,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
 
             if s.name.id == getIdent(c.graph.cache, ":state").id:
               obj.n[0].sym.id = -s.id
+            elif (not c.envOnHeap) and s.kind == skParam:
+              addParamPtrField(obj, s, c.graph.cache)
             else:
               addField(obj, s, c.graph.cache)
     # direct or indirect dependency:
@@ -474,14 +495,17 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       """
       # mark 'owner' as taking a closure:
       c.somethingToDo = true
-      markAsClosure(c.graph, owner, n)
+      markAsClosure(c.graph, owner, n, c)
       addClosureParam(c, owner, n.info)
       #echo "capturing ", n.info
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
         let obj = c.getEnvTypeForOwner(ow, n.info).skipTypes({tyOwned, tyRef, tyPtr})
         #getHiddenParam(owner).typ.skipTypes({tyOwned, tyRef, tyPtr})
-        addField(obj, s, c.graph.cache)
+        if (not c.envOnHeap) and s.kind == skParam:
+          addParamPtrField(obj, s, c.graph.cache)
+        else:
+          addField(obj, s, c.graph.cache)
       # create required upFields:
       var w = owner.skipGenericOwner
       if isInnerProc(w) or owner.isIterator:
@@ -499,7 +523,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           """
           let up = w.skipGenericOwner
           #echo "up for ", w.name.s, " up ", up.name.s
-          markAsClosure(c.graph, w, n)
+          markAsClosure(c.graph, w, n, c)
           addClosureParam(c, w, n.info) # , ow
           createUpField(c, w, up, n.info)
           w = up
@@ -528,7 +552,7 @@ proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed.incl(fn.id)
   result.envVars = initTable[int, PNode]()
 
-proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
+proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym, d: DetectionPass): PNode =
   let s = n.sym
   # Type based expression construction for simplicity:
   let envParam = getHiddenParam(g, owner)
@@ -539,7 +563,10 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
       assert obj.kind == tyObject
       let field = getFieldFromObj(obj, s)
       if field != nil:
-        return rawIndirectAccess(access, field, n.info)
+        if (not d.envOnHeap) and s.kind == skParam:
+          return newDeref(rawIndirectAccess(access, field, n.info))
+        else:
+          return rawIndirectAccess(access, field, n.info)
       let upField = lookupInRecord(obj.n, getIdent(g.cache, upName))
       if upField == nil: break
       access = rawIndirectAccess(access, upField, n.info)
@@ -626,7 +653,12 @@ proc rawClosureCreation(owner: PSym;
           else:
             rawDirectAccess(env.sym, getFieldFromObj(env.typ, local)) 
         # add ``env.param = param``
-        result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        if d.envOnHeap:
+          result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
+        else:
+          let n = newNodeI(nkAddr, env.info)
+          n.add newSymNode(local)
+          result.add(newAsgnStmt(fieldAccess, n, env.info))
         createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
           owner.flags.incl sfInjectDestructors
@@ -700,6 +732,8 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
     result =
       if d.envOnHeap:
         rawIndirectAccess(access, field, n.info)
+      elif n.sym.kind == skParam:
+        newDeref(rawDirectAccess(access.sym, field))
       else:
         rawDirectAccess(access.sym, field) 
   else:
@@ -769,9 +803,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 
     elif s.id in d.capturedVars:
       if s.owner != owner:
-        result = accessViaEnvParam(d.graph, n, owner)
+        result = accessViaEnvParam(d.graph, n, owner, d)
       elif owner.isIterator and interestingIterVar(s):
-        result = accessViaEnvParam(d.graph, n, owner)
+        result = accessViaEnvParam(d.graph, n, owner, d)
       else:
         result = accessViaEnvVar(n, owner, d, c)
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
@@ -823,31 +857,34 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     if inContainer: dec c.inContainer
 
 proc anyInnerProcMightEscape(fn: PSym, g: ModuleGraph): bool =
-  # go over fn's ast and check if any procs defined within 
-  # might escape the stack, ie are assigned or passed somewhere
+  ## go over `fn`'s ast and check if any procs defined within 
+  ## might escape the stack, ie are assigned or passed somewhere
 
-  var innerProcTypes: seq[PSym]
-  # var innerProcTypes: IntSet
-
+  var innerProcTypes: IntSet
+  
   template getType(node: PNode | TNode): PType =
     let t = if node.kind == nkSym and node.sym.typ != nil:
       node.sym.typ
     else:
       node.typ
-    t.skipTypesOrNil({tyGenericInst, tyAlias, tySink})
+    t.skipTypesOrNil(abstractInst) # do we need this?
 
   template check(node: PNode | TNode) =
       let t = getType(node)
-      if t != nil and t.sym in innerProcTypes: 
+      if t != nil and t.id in innerProcTypes: 
+        # when defined(debugStackClosures): echo "dropping because of ", t, " ", node, " ", t.id
         return true
 
   proc aux(nodes: TNodeSeq): bool =
     for node in nodes:
       if node.kind == nkSym and isInnerProc(node.sym) and getType(node) != nil:
-        if sfAddrTaken in node.sym.flags:
-          return true
-        # innerProcTypes.incl(getType(node).id)
-        innerProcTypes.add(getType(node).sym)
+        # if sfAddrTaken in node.sym.flags:
+        #   return true
+        let t = getType(node)
+        if t != nil:
+          innerProcTypes.incl(t.id)
+          for inst in node.sym.procInstCache:
+            innerProcTypes.incl(inst.sym.typ.id)
 
       case node.kind
       of nkSym:
@@ -868,8 +905,10 @@ proc anyInnerProcMightEscape(fn: PSym, g: ModuleGraph): bool =
       of nkBracket, nkTupleConstr:
         for element in node.sons:
           check(element)
-      of {nkAddr, nkHiddenAddr}:
+      of nkAddr, nkHiddenAddr:
         check(node[0])
+      of nkHiddenStdConv, nkConv: # convs should occur only when assigning
+        check(node[1])            # or passing
       of nkIdentDefs:
         check(node[^1])
       of nkLambdaKinds:
@@ -878,9 +917,11 @@ proc anyInnerProcMightEscape(fn: PSym, g: ModuleGraph): bool =
       
       if node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
         return true
-
-  result = fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
-  # if result: echo "stack env ok for ", fn
+  
+  # ptrs are broken on the vm so just don't bother with the optim for now
+  let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
+  result = isCompileTime or fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
+  if not result and defined(debugStackClosures): echo "stack env ok for ", fn
 
 # ------------------ old stuff -------------------------------------------
 
