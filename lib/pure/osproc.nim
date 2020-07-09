@@ -500,7 +500,7 @@ proc copyRefObj[T](dest, source: ref T) =
 
   copyMem(dest.head, source.head, sizeof(T) - sizeof(pointer))
 
-proc newPipeOutStream[T](s: sink ref T): owned PipeOutStream[T] =
+proc newPipeOutStream[T](s: sink (ref T)): owned PipeOutStream[T] =
   assert s.readDataImpl != nil
 
   new(result)
