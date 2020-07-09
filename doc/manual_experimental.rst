@@ -1849,4 +1849,4 @@ via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different
 Quirky exceptions
 =================
 
-* The standard library does not support Quirky exceptions, is not recommended for production usage.
+* The standard library does not support Quirky exceptions.
