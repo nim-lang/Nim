@@ -18,7 +18,7 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams, cpuinfo
+  strutils, os, strtabs, streams, cpuinfo, deques
 
 export quoteShell, quoteShellWindows, quoteShellPosix
 
@@ -434,6 +434,93 @@ when not defined(useNimRtl):
 template streamAccess(p) =
   assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
+# Wrap pipe for reading with PipeOutStream so that you can use peek* and generate runtime error
+# when setPosition/getPosition is called or write operation is performed.
+type
+  PipeOutStream[T] = ref object of T
+    buffer: Deque[char]
+    baseReadLineImpl: typeof(StreamObj.readLineImpl)
+    baseReadDataImpl: typeof(StreamObj.readDataImpl)
+
+proc posReadLine[T](s: Stream, line: var TaintedString): bool =
+  var s = PipeOutStream[T](s)
+  assert s.baseReadLineImpl != nil
+
+  let n = s.buffer.len
+  line.string.setLen(0)
+  for i in 0..<n:
+    var c = s.buffer.popFirst
+    if c == '\c':
+      c = readChar(s)
+      return true
+    elif c == '\L': return true
+    elif c == '\0':
+      return line.len > 0
+    line.string.add(c)
+
+  var line2: string
+  result = s.baseReadLineImpl(s, line)
+  line.add line2
+
+proc posReadData[T](s: Stream, buffer: pointer, bufLen: int): int =
+  var s = PipeOutStream[T](s)
+  assert s.baseReadDataImpl != nil
+
+  let
+    pbuf = cast[ByteAddress](buffer)
+    n = min(s.buffer.len, bufLen)
+  result = n
+  for i in 0..<n:
+    cast[ptr char](pbuf + i)[] = s.buffer.popFirst
+  if bufLen > n:
+    result += s.baseReadDataImpl(s, cast[pointer](pbuf + n), bufLen - n)
+
+proc posReadDataStr[T](s: Stream, buffer: var string, slice: Slice[int]): int =
+  posReadData[T](s, addr buffer[slice.a], slice.len)
+
+proc posPeekData[T](s: Stream, buffer: pointer, bufLen: int): int =
+  var s = PipeOutStream[T](s)
+  assert s.baseReadDataImpl != nil
+
+  let n = min(s.buffer.len, bufLen)
+  result = n
+  if bufLen > n:
+    let m = bufLen - n
+    var buf = newSeq[char](m)
+    result += s.baseReadDataImpl(s, addr buf[0], m)
+    for i in 0..<m:
+      s.buffer.addLast buf[i]
+  for i in 0..<bufLen:
+    cast[ptr char](cast[ByteAddress](buffer) + i)[] = s.buffer[i]
+
+proc copyRefObj[T](dest, source: ref T) =
+  # Bitwise copy from `source` to `dest` except `TNimType* m_type`
+  func head(x: ref T): pointer =
+    cast[pointer](cast[ByteAddress](addr x[]) + sizeof(pointer))
+
+  copyMem(dest.head, source.head, sizeof(T) - sizeof(pointer))
+
+proc newPipeOutStream[T](s: sink ref T): owned PipeOutStream[T] =
+  assert s.readDataImpl != nil
+
+  new(result)
+  # Please tell me how to done this correclty.
+  copyRefObj[T](result, s)
+  wasMoved(s)
+  if result.readLineImpl != nil:
+    result.baseReadLineImpl = result.readLineImpl
+    result.readLineImpl = posReadLine[T]
+  result.baseReadDataImpl = result.readDataImpl
+  result.readDataImpl = posReadData[T]
+  result.readDataStrImpl = posReadDataStr[T]
+  result.peekDataImpl = posPeekData[T]
+
+  # Set nil to anything you may not call.
+  result.setPositionImpl = nil
+  result.getPositionImpl = nil
+  result.writeDataImpl = nil
+  result.flushImpl = nil
+
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
@@ -728,13 +815,13 @@ when defined(Windows) and not defined(useNimRtl):
   proc outputStream(p: Process): Stream =
     streamAccess(p)
     if p.outStream == nil:
-      p.outStream = newFileHandleStream(p.outHandle)
+      p.outStream = newFileHandleStream(p.outHandle).newPipeOutStream
     result = p.outStream
 
   proc errorStream(p: Process): Stream =
     streamAccess(p)
     if p.errStream == nil:
-      p.errStream = newFileHandleStream(p.errHandle)
+      p.errStream = newFileHandleStream(p.errHandle).newPipeOutStream
     result = p.errStream
 
   proc execCmd(command: string): int =
