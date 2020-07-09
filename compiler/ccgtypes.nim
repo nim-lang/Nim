@@ -944,6 +944,7 @@ proc finishTypeDescriptions(m: BModule) =
     else:
       discard getTypeDescAux(m, t, check)
     inc(i)
+  m.typeStack.setLen 0
 
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
