@@ -1218,6 +1218,10 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   p.nestedTryStmts.add((fin, false, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
+
+  if not isEmptyType(t.typ) and d.k == locNone:
+    getTemp(p, t.typ, d)
+
   expr(p, t[0], d)
 
   if 1 < t.len and t[1].kind == nkExceptBranch:
