@@ -506,7 +506,7 @@ proc newPipeOutStream[T](s: sink (ref T)): owned PipeOutStream[T] =
   new(result)
   # Please tell me how to done this correclty.
   copyRefObj[T](result, s)
-  wasMoved(s)
+  wasMoved(s[])
   if result.readLineImpl != nil:
     result.baseReadLineImpl = result.readLineImpl
     result.readLineImpl = posReadLine[T]
