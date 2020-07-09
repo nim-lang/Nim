@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm, idgen,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils
+  modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -404,6 +404,8 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    if optProfileVM in conf.globalOptions:
+      echo conf.dump(conf.vmProfileData)
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,

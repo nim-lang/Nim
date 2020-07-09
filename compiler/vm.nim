@@ -16,7 +16,7 @@ import
   strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes, int128
+  modulegraphs, sighashes, int128, vmprofiler
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -27,17 +27,6 @@ const
 when hasFFI:
   import evalffi
 
-type
-  PStackFrame* = ref TStackFrame
-  TStackFrame* = object
-    prc: PSym                 # current prc; proc that is evaluated
-    slots: seq[TFullReg]      # parameters passed to the proc + locals;
-                              # parameters come first
-    next: PStackFrame         # for stacking
-    comesFrom: int
-    safePoints: seq[int]      # used for exception handling
-                              # XXX 'break' should perform cleanup actions
-                              # What does the C backend do for it?
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -551,6 +540,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
+
+    c.profiler.enter(c, tos)
 
     case instr.opcode
     of opcEof: return regs[ra]
@@ -2076,6 +2067,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       when not defined(nimNoNilSeqs):
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
+
+    c.profiler.leave(c)
 
     inc pc
 
