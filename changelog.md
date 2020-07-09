@@ -140,8 +140,6 @@
   initial size must be a power of two - this is done internally.
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
 
-
-- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now expands to `fmt"expr={expr}"`.
 - Add `decls.byLent` to turn an argument into a let param, useful for overload resolution.
 
 ## Language changes
