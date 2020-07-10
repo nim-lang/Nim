@@ -1628,21 +1628,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   if result.kind == nnkEmpty:
     error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
-
-when not defined(booting):
-  template emit*(e: static[string]): untyped {.deprecated.} =
-    ## Accepts a single string argument and treats it as nim code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nim
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: untyped {.gensym.} =
-      result = parseStmt(e)
-    payload()
-
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)
   for i in 0 ..< args.len:
