@@ -46,7 +46,6 @@ type
     owner: PSym
     g: ControlFlowGraph
     jumpTargets: IntSet
-    destroys, topLevelVars: PNode
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -58,6 +57,13 @@ type
     normal
     consumed
     sinkArg
+
+const toDebug {.strdefine.} = ""
+
+template dbg(body) =
+  when toDebug.len > 0:
+    if c.owner.name.s == toDebug or toDebug == "always":
+      body
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
@@ -89,7 +95,6 @@ proc optimize(s: var Scope) =
 
     Now assume 'echo' raises, then we shouldn't do the 'wasMoved(s)'
   ]#
-  # XXX: Investigate how to really insert 'wasMoved()' calls!
   proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
     # remember that it's destroy(addr(x))
     for i in 0 ..< final.len:
@@ -168,14 +173,6 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
       for i in countdown(s.final.high, 0): result.add s.final[i]
       if r != nil:
         result.add r
-
-
-const toDebug {.strdefine.} = ""
-
-template dbg(body) =
-  when toDebug.len > 0:
-    if c.owner.name.s == toDebug or toDebug == "always":
-      body
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
@@ -391,7 +388,7 @@ proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
 proc genSink(c: var Con; s: var Scope; dest, ri: PNode, isDecl = false): PNode =
-  if isUnpackedTuple(dest) or (isDecl and c.inLoop <= 0) or
+  if isUnpackedTuple(dest) or isDecl or
       (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or
       isNoInit(dest):
     # optimize sink call into a bitwise memcopy
@@ -545,16 +542,10 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
 
-    if s.parent != nil:
-      let tmp = c.getTemp(s.parent[], arg.typ, arg.info)
-      result.add c.genSink(s, tmp, arg, isDecl = true)
-      result.add tmp
-      s.parent[].final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
-    else:
-      let tmp = c.getTemp(s, arg.typ, arg.info)
-      result.add c.genSink(s, tmp, arg, isDecl = true)
-      result.add tmp
-      s.final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
+    let tmp = c.getTemp(s, arg.typ, arg.info)
+    result.add c.genSink(s, tmp, arg, isDecl = true)
+    result.add tmp
+    s.final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
   else:
     result = arg
 
@@ -1103,8 +1094,6 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     return n
   var c: Con
   c.owner = owner
-  c.destroys = newNodeI(nkStmtList, n.info)
-  c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
