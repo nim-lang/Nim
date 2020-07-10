@@ -271,6 +271,6 @@ ggg(hello)
 
 
 # bug #2586
-var x = 10'u8
-echo x < 9 # Works
-echo x > 9 # Error: type mismatch
+var z = 10'u8
+echo z < 9 # Works
+echo z > 9 # Error: type mismatch
