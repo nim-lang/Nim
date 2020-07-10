@@ -467,13 +467,13 @@ proc posReadData[T](s: Stream, buffer: pointer, bufLen: int): int =
   assert s.baseReadDataImpl != nil
 
   let
-    pbuf = cast[ByteAddress](buffer)
+    dest = cast[ptr UncheckedArray[char]](buffer)
     n = min(s.buffer.len, bufLen)
   result = n
   for i in 0..<n:
-    cast[ptr char](pbuf + i)[] = s.buffer.popFirst
+    dest[i] = s.buffer.popFirst
   if bufLen > n:
-    result += s.baseReadDataImpl(s, cast[pointer](pbuf + n), bufLen - n)
+    result += s.baseReadDataImpl(s, addr dest[n], bufLen - n)
 
 proc posReadDataStr[T](s: Stream, buffer: var string, slice: Slice[int]): int =
   posReadData[T](s, addr buffer[slice.a], slice.len)
@@ -490,8 +490,9 @@ proc posPeekData[T](s: Stream, buffer: pointer, bufLen: int): int =
     result += s.baseReadDataImpl(s, addr buf[0], m)
     for i in 0..<m:
       s.buffer.addLast buf[i]
+  let dest = cast[ptr UncheckedArray[char]](buffer)
   for i in 0..<bufLen:
-    cast[ptr char](cast[ByteAddress](buffer) + i)[] = s.buffer[i]
+    dest[i] = s.buffer[i]
 
 proc copyRefObj[T](dest, source: ref T) =
   # Bitwise copy from `source` to `dest` except `TNimType* m_type`
