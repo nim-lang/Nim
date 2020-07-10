@@ -379,6 +379,16 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
+{.push warnings: off.}
+
+proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
+
+proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
+
+{.pop.}
+
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
   ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
