@@ -555,7 +555,7 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     if orig == s.escapingExpr and s.parent != nil:
       let tmp = c.getTemp(s.parent[], arg.typ, arg.info)
-      result.add c.genSink(s.parent[], tmp, arg, isDecl = true)
+      result.add c.genSink(s, tmp, arg, isDecl = true)
       result.add tmp
       s.parent[].final.add c.genDestroy(tmp)
     else:
