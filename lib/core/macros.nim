@@ -237,8 +237,6 @@ proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
-
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
