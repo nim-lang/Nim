@@ -826,14 +826,6 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
 
-{.push warnings: off.}
-
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated:
-  "Deprecated since v0.18.1; use one of 'nestList(NimNode, ...)' instead.".} =
-  nestList(newIdentNode(theProc), x)
-
-{.pop.}
-
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
     if indented:
