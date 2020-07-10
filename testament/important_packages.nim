@@ -9,7 +9,7 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 
 
 # packages A-M
-pkg1 "alea", true
+# pkg1 "alea", true
 pkg1 "argparse"
 pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
 pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
