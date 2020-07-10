@@ -16,3 +16,13 @@ f(nil)
 type A = object #of RootObj <-- Uncomment this to get no errors
   test: proc(i: A): bool
 var a: proc(i: A): bool # Or comment this line to get no errors
+
+
+# bug #2703
+type
+  fooObj[T] = object of RootObj
+  bazObj[T] = object of fooObj[T]
+    x: T
+
+var troz: fooObj[string]
+echo bazObj[string](troz).x
