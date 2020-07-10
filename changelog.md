@@ -143,6 +143,8 @@
 
 
 ## Language changes
+- The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
+  wasMoved calls where needed.
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.
   The discriminator value doesn't have to be a constant either. If you have a
