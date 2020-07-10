@@ -348,7 +348,7 @@ of your program.
   proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
     NimMain() # initialize garbage collector memory, types and stack
 
-Note: XCodes "make clean" gets confused about the genreated nim.c files,
+Note: XCode's "make clean" gets confused about the generated nim.c files,
 so you need to clean those files manually to do a clean build.
 
 

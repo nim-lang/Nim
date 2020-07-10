@@ -221,7 +221,7 @@ template cacheImpl(procName, cacheName, resultType, body: untyped) {.dirty.} =
     cacheName[filename] = result
 
 template checkFile(path: untyped) {.dirty.} =
-  if not existsFile(path):
+  if not fileExists(path):
     errors.add("File missing: " & path)
 
 cacheImpl newSprite, SpriteSheets, PSpriteSheet:
@@ -322,7 +322,7 @@ proc validateSettings*(settings: JsonNode, errors: var seq[string]): bool =
         inc id
 
 proc loadSettingsFromFile*(filename: string, errors: var seq[string]): bool =
-  if not existsFile(filename):
+  if not fileExists(filename):
     errors.add("File does not exist: "&filename)
   else:
     result = loadSettings(readFile(filename), errors)

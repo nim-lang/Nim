@@ -534,8 +534,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     if isFinal(elemType):
@@ -583,8 +583,8 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    actions.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
     body.add genIf(c, cond, actions)
+    body.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv), y)
@@ -641,8 +641,8 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, x, actions)
+    body.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
 
@@ -694,8 +694,8 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, xx, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    actions.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
     body.add genIf(c, xx, actions)
+    body.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
 
@@ -703,7 +703,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyOpt, tyUncheckedArray, tyVar, tyLent:
+      tyPtr, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC in {gcArc, gcOrc}:
@@ -785,6 +785,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
+  of tyOptDeprecated: doAssert false
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo): PSym =

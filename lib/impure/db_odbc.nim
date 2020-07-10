@@ -92,6 +92,8 @@ import strutils, odbcsql
 import db_common
 export db_common
 
+import std/private/since
+
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
   DbConn* = OdbcConnTyp    ## encapsulates a database connection
@@ -449,6 +451,19 @@ proc insertId*(db: var DbConn, query: SqlQuery,
   ## Executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
+proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [ReadDbEffect, WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: var DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64 
+            {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: var DbConn, query: SqlQuery,

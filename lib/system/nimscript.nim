@@ -56,6 +56,14 @@ proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
 proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
 
+proc paramStr*(i: int): string =
+  ## Retrieves the ``i``'th command line parameter.
+  builtin
+
+proc paramCount*(): int =
+  ## Retrieves the number of command line parameters.
+  builtin
+
 proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
   ## example ``switch("checks", "on")``.
@@ -128,12 +136,12 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsFile*(filename: string): bool =
-  ## An alias for ``fileExists``.
-  fileExists(filename)
+template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+  fileExists(args)
 
-proc existsDir*(dir: string): bool =
-  ## An alias for ``dirExists``.
+template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
   dirExists(dir)
 
 proc selfExe*(): string =
@@ -271,9 +279,6 @@ proc selfExec*(command: string) {.
     if rawExec(c) != 0:
       raise newException(OSError, "FAILED: " & c)
     checkOsError()
-
-from os import paramCount, paramStr
-export paramCount, paramStr
 
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.

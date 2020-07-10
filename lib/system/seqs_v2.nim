@@ -15,7 +15,6 @@ proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
-
   NimSeqPayloadBase = object
     cap: int
 

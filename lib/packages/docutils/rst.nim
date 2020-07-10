@@ -313,7 +313,7 @@ proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
   else: writeLine(stdout, message)
 
 proc defaultFindFile*(filename: string): string =
-  if existsFile(filename): result = filename
+  if fileExists(filename): result = filename
   else: result = ""
 
 proc newSharedState(options: RstParseOptions,
@@ -328,7 +328,7 @@ proc newSharedState(options: RstParseOptions,
 
 proc findRelativeFile(p: RstParser; filename: string): string =
   result = p.filename.splitFile.dir / filename
-  if not existsFile(result):
+  if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =

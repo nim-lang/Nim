@@ -762,3 +762,21 @@ block t3717:
 
   var f: Foo[Foo[int]]
   discard foo(f)
+
+
+
+block: # issue #9458
+  type
+    Option[T] = object
+      val: T
+      has: bool
+    
+    Bar = object
+
+  proc none(T: typedesc): Option[T] =
+    discard
+
+  proc foo[T](self: T; x: Option[Bar] = Bar.none) = 
+    discard
+
+  foo(1)

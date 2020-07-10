@@ -78,16 +78,23 @@ proc sendSignal*(pid: Pid, signal: int) =
   if kill(pid, signal.cint) != 0:
     raise newException(OSError, $strerror(errno))
 
-proc mkstemp*(prefix: string): (string, File) =
-  ## Creates a unique temporary file from a prefix string. Adds a six chars suffix.
+proc mkstemp*(prefix: string, suffix=""): (string, File) =
+  ## Creates a unique temporary file from a prefix string. A six-character string
+  ## will be added. If suffix is provided it will be added to the string
   ## The file is created with perms 0600.
   ## Returns the filename and a file opened in r/w mode.
-  var tmpl = cstring(prefix & "XXXXXX")
+  var tmpl = cstring(prefix & "XXXXXX" & suffix)
   let fd =
-    when declared(mkostemp):
-      mkostemp(tmpl, O_CLOEXEC)
+    if len(suffix)==0:
+      when declared(mkostemp):
+        mkostemp(tmpl, O_CLOEXEC)
+      else:
+        mkstemp(tmpl)
     else:
-      mkstemp(tmpl)
+      when declared(mkostemps):
+        mkostemps(tmpl, cint(len(suffix)), O_CLOEXEC)
+      else:
+        mkstemps(tmpl, cint(len(suffix)))
   var f: File
   if open(f, fd, fmReadWrite):
     return ($tmpl, f)

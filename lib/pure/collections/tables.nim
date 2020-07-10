@@ -239,7 +239,7 @@ type
     ## <#newTable,int>`_.
 
 const
-  defaultInitialSize* = 64
+  defaultInitialSize* = 32
 
 # ------------------------------ helpers ---------------------------------
 
@@ -288,12 +288,6 @@ proc enlarge[A, B](t: var Table[A, B]) =
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -335,7 +329,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
     let b = toTable(a)
     assert b == {'a': 5, 'b': 9}.toTable
 
-  result = initTable[A, B](rightSize(pairs.len))
+  result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
@@ -779,12 +773,6 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
@@ -1260,12 +1248,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -1309,7 +1291,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
     let b = toOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.toOrderedTable
 
-  result = initOrderedTable[A, B](rightSize(pairs.len))
+  result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -1771,12 +1753,6 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
   ##   an `OrderedTableRef` from a collection of `(key, value)` pairs
@@ -1803,7 +1779,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
     let b = newOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
-  result = newOrderedTable[A, B](rightSize(pairs.len))
+  result = newOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result.add(key, val)
 
 
@@ -2251,12 +2227,6 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
 proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -2269,7 +2239,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## Creates a new count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = initCountTable[A](rightSize(keys.len))
+  result = initCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTable[A], key: A): int =
@@ -2617,12 +2587,6 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
@@ -2634,7 +2598,7 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
 proc newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
   ## Creates a new ref count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = newCountTable[A](rightSize(keys.len))
+  result = newCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTableRef[A], key: A): int =
@@ -2670,14 +2634,14 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     doAssert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): (A, int) =
+proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
   ## See also:
   ## * `largest proc<#largest,CountTableRef[A]>`_
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): (A, int) =
+proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the largest ``val``. Efficiency: O(n)
   ##
   ## See also:

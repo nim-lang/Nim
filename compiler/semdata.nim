@@ -143,6 +143,7 @@ type
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
+    lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -321,7 +322,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
   incl typedesc.flags, tfCheckedForDestructor
-  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
+  internalAssert(c.config, typ != nil)
+  typedesc.addSonSkipIntLit(typ)
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)

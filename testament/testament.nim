@@ -13,14 +13,15 @@ import
   strutils, pegs, os, osproc, streams, json,
   backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, times, md5, sequtils, azure
-
-include compiler/nodejs
+from std/sugar import dup
+import compiler/nodejs
 
 var useColors = true
 var backendLogging = true
 var simulate = false
 
 const
+  failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
   testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -135,7 +136,10 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
 
 proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): seq[string] =
-  let options = options & " " & quoteShell("--nimCache:" & nimcache) & " " & extraOptions
+  var options = target.defaultOptions & " " & options
+  # improve pending https://github.com/nim-lang/Nim/issues/14343
+  if nimcache.len > 0: options.add " " & ("--nimCache:" & nimcache).quoteShell
+  options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir()])
@@ -192,9 +196,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
-  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell,
-                       "filedir", filename.getFileDir()])
+  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache = "", target)
   var p = startProcess(command="gcc", args=c[5 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -254,7 +256,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
-  name.add " " & $target & test.options
+  name.add " " & $target
+  if test.options.len > 0: name.add " " & test.options
 
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
@@ -270,14 +273,16 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             expected = expected,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  template disp(msg) =
+    maybeStyledEcho styleDim, fgYellow, msg & " ", styleBright, fgCyan, name
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
-    maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
-  elif success == reJoined:
-    maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
+    if test.spec.inCurrentBatch: disp("SKIP:")
+    else: disp("NOTINBATCH:")
+  elif success == reJoined: disp("JOINED:")
   else:
-    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
@@ -435,7 +440,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
-      if not existsFile(exeFile):
+      if not fileExists(exeFile):
         r.addResult(test, target, expected.output,
                     "executable not found: " & exeFile, reExeNotFound)
       else:
@@ -450,12 +455,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             exeCmd = nodejs
             args = concat(@[exeFile], args)
           else:
-            if defined(posix) and not exeFile.contains('/'):
-              # "security" in Posix is actually just a euphemism
-              # for "unproductive arbitrary shit"
-              exeCmd = "./" & exeFile
-            else:
-              exeCmd = exeFile
+            exeCmd = exeFile.dup(normalizeExe)
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"
@@ -647,6 +647,15 @@ proc main() =
         useColors = false
       else:
         quit Usage
+    of "batch":
+      testamentData0.batchArg = p.val
+      if p.val != "_":
+        let s = p.val.split("_")
+        doAssert s.len == 2, $(p.val, s)
+        testamentData0.testamentBatch = s[0].parseInt
+        testamentData0.testamentNumBatch = s[1].parseInt
+        doAssert testamentData0.testamentNumBatch > 0
+        doAssert testamentData0.testamentBatch >= 0 and testamentData0.testamentBatch < testamentData0.testamentNumBatch
     of "simulate":
       simulate = true
     of "megatest":
@@ -684,6 +693,8 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
+    if testamentData0.batchArg.len > 0:
+      myself &= " --batch:" & testamentData0.batchArg
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
@@ -704,7 +715,7 @@ proc main() =
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
-      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
 
     if simulate:
       skips = loadSkipFrom(skipFrom)

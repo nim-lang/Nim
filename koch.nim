@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "6f2b1ace922e565f7f48a69648e16a002a5d15e3" # master
+  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
 
 when not defined(windows):
   const
@@ -53,6 +53,8 @@ Options:
   --latest                 bundle the installers with a bleeding edge Nimble
   --stable                 bundle the installers with a stable Nimble (default)
   --nim:path               use specified path for nim binary
+  --localdocs[:path]       only build local documentations. If a path is not
+                           specified (or empty), the default is used.
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -111,7 +113,7 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc safeRemove(filename: string) =
-  if existsFile(filename): removeFile(filename)
+  if fileExists(filename): removeFile(filename)
 
 proc overwriteFile(source, dest: string) =
   safeRemove(dest)
@@ -278,11 +280,11 @@ proc findStartNim: string =
   if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec(buildScript): return "bin" / nim
 
   echo("Found no nim compiler and every attempt to build one failed!")
@@ -546,7 +548,12 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
+    #[
+    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
+    ]#
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
@@ -554,7 +561,7 @@ proc runCI(cmd: string) =
         # no need to bootstrap with koch boot (would be slower)
         let backend = if doUseCpp(): "cpp" else: "c"
         execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/trunner.nim" % [nimFFI, backend])
+        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
@@ -642,7 +649,10 @@ proc showHelp() =
 
 when isMainModule:
   var op = initOptParser()
-  var latest = false
+  var
+    latest = false
+    localDocsOnly = false
+    localDocsOut = ""
   while true:
     op.next()
     case op.kind
@@ -651,12 +661,16 @@ when isMainModule:
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
+      of "localdocs":
+        localDocsOnly = true
+        if op.val.len > 0:
+          localDocsOut = op.val.absolutePath
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest)
+      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)

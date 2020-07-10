@@ -10,10 +10,20 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables, pathutils
+import ropes, tables, pathutils, hashes
 
 const
-  explanationsBaseUrl* = "https://nim-lang.org/docs"
+  explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
+    # was: "https://nim-lang.org/docs" but we're now usually showing devel docs
+    # instead of latest release docs.
+
+proc createDocLink*(urlSuffix: string): string =
+  # os.`/` is not appropriate for urls.
+  result = explanationsBaseUrl
+  if urlSuffix.len > 0 and urlSuffix[0] == '/':
+    result.add urlSuffix
+  else:
+    result.add "/" & urlSuffix
 
 type
   TMsgKind* = enum
@@ -39,10 +49,13 @@ type
     warnEachIdentIsTuple,
     warnUnsafeSetLen,
     warnUnsafeDefault,
-    warnProveInit, warnProveField, warnProveIndex, warnUnreachableElse,
+    warnProveInit, warnProveField, warnProveIndex,
+    warnUnreachableElse, warnUnreachableCode,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
+    warnObservableStores,
+    warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
@@ -98,10 +111,11 @@ const
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
     warnUnreachableElse: "unreachable else, all cases are already covered",
+    warnUnreachableCode: "unreachable code after 'return' statement or '{.noReturn.}' proc",
     warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized",
+    warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
     warnLockLevel: "$1",
@@ -109,10 +123,11 @@ const
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnCycleCreated: "$1",
+    warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
+    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
@@ -156,10 +171,11 @@ const
     "UnsafeCode", "UnusedImport", "InheritFromException",
     "EachIdentIsTuple",
     "UnsafeSetLen", "UnsafeDefault",
-    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse",
+    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse", "UnreachableCode",
     "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "CycleCreated", "User"]
+    "Spacing", "CaseTransition", "CycleCreated",
+    "ObservableStores", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
@@ -180,6 +196,12 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
+
+proc msgToStr*(msg: TMsgKind): string =
+  case msg
+  of warnMin..warnMax: WarningsToStr[ord(msg) - ord(warnMin)]
+  of hintMin..hintMax: HintsToStr[ord(msg) - ord(hintMin)]
+  else: "" # we could at least do $msg - prefix `err`
 
 static:
   doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
@@ -248,6 +270,9 @@ type
   ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
+
+proc hash*(i: TLineInfo): Hash =
+  hash (i.line.int, i.col.int, i.fileIndex.int)
 
 proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)

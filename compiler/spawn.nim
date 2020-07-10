@@ -10,7 +10,7 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings, liftdestructors
+  lowerings, liftdestructors, renderer
 from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
@@ -37,7 +37,7 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   else: srFlowVar
 
 proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
-  if c.selectedGC in {gcArc, gcOrc}: fvBlob 
+  if c.selectedGC in {gcArc, gcOrc}: fvBlob
   elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
@@ -201,7 +201,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if i < formals.len: 
+    if i < formals.len:
       if formals[i].typ.kind in {tyVar, tyLent}:
         localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
       if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
@@ -321,7 +321,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     result = newNodeI(nkStmtList, n.info)
 
   if n.kind notin nkCallKinds:
-    localError(g.config, n.info, "'spawn' takes a call expression")
+    localError(g.config, n.info, "'spawn' takes a call expression; got " & $n)
     return
   if optThreadAnalysis in g.config.globalOptions:
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:

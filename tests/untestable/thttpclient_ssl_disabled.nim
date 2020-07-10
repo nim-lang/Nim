@@ -12,7 +12,7 @@
 import httpclient,
   net,
   unittest,
-  ospaths
+  os
 
 from strutils import contains
 

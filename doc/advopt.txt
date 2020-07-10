@@ -78,7 +78,7 @@ Advanced options:
                             if path == @path, will use first matching dir in `--path`
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
-                            if these are nonexistant, will use project path
+                            if these are nonexistent, will use project path
   -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
                             else, runs runnableExamples with given options, eg:
@@ -101,19 +101,15 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
-  --laxStrings:on|off       when turned on, accessing the zero terminator in
-                            strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on
                             destructors
-  --oldast:on|off           use old AST for backwards compatibility
   --skipCfg:on|off          do not read the nim installation's configuration file
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
-  --gc:refc|markAndSweep|boehm|go|none|regions
+  --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
@@ -154,5 +150,6 @@ Advanced options:
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --profileVM:on|off        enable compile time VM profiler
   --sinkInference:on|off    en-/disable sink parameter inference (default: on)
   --panics:on|off           turn panics into process terminations (default: off)

@@ -30,8 +30,16 @@ Generate HTML documentation for a whole project:
 
 ::
   # delete any htmldocs/*.idx file before starting
-  nim doc --project --index:on --git.url:<url> --git.commit:<tag> <main_filename>.nim
-  nim buildIndex -o:htmldocs/theindex.html htmldocs
+  nim doc --project --index:on --git.url:<url> --git.commit:<tag> --outdir:htmldocs <main_filename>.nim
+  # this will generate html files, a theindex.html index, css and js under `htmldocs`
+  # See also `--docroot` to specify a relative root.
+  # to get search (dochacks.js) to work locally, you need a server otherwise
+  # CORS will prevent opening file:// urls; this works:
+  python3 -m http.server 7029 --directory htmldocs
+  # When --outdir is omitted it defaults to $projectPath/htmldocs,
+  or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
+  and likewise without `--project`.
+  Adding `-r` will open in a browser directly.
 
 
 Documentation Comments
@@ -236,7 +244,7 @@ Other Input Formats
 
 The *Nim compiler* also has support for RST (reStructuredText) files with
 the ``rst2html`` and ``rst2tex`` commands. Documents like this one are
-initially written in a dialect of RST which adds support for nim sourcecode
+initially written in a dialect of RST which adds support for nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of C++ and some other c-like languages.
 
@@ -322,7 +330,7 @@ Index (idx) file format
 
 Files with the ``.idx`` extension are generated when you use the `Index
 switch <#related-options-index-switch>`_ along with commands to generate
-documentation from source or text files. You can programatically generate
+documentation from source or text files. You can programmatically generate
 indices with the `setIndexTerm()
 <rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
@@ -367,7 +375,7 @@ exception to this are table of content (TOC) entries. TOC entries are added to
 the index file with their third column having as much prefix spaces as their
 level is in the TOC (at least 1 character). The prefix whitespace helps to
 filter TOC entries from API or text symbols. This is important because the
-amount of spaces is used to replicate the hiearchy for document TOCs in the
+amount of spaces is used to replicate the hierarchy for document TOCs in the
 final index, and TOC entries found in ``.nim`` files are discarded.
 
 

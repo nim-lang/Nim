@@ -16,7 +16,7 @@ import
   strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes, int128
+  modulegraphs, sighashes, int128, vmprofiler
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -27,17 +27,6 @@ const
 when hasFFI:
   import evalffi
 
-type
-  PStackFrame* = ref TStackFrame
-  TStackFrame* = object
-    prc: PSym                 # current prc; proc that is evaluated
-    slots: seq[TFullReg]      # parameters passed to the proc + locals;
-                              # parameters come first
-    next: PStackFrame         # for stacking
-    comesFrom: int
-    safePoints: seq[int]      # used for exception handling
-                              # XXX 'break' should perform cleanup actions
-                              # What does the C backend do for it?
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -72,20 +61,18 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     msgWriteln(c.config, s)
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
-                msg: string, lineInfo: TLineInfo) =
+  msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
+  # noinline to avoid code bloat
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
-  # XXX test if we want 'globalError' for every mode
-  if c.mode == emRepl: globalError(c.config, lineInfo, msg)
-  else: localError(c.config, lineInfo, msg)
+  let action = if c.mode == emRepl: doRaise else: doNothing
+    # XXX test if we want 'globalError' for every mode
+  let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
+  liMessage(c.config, lineInfo, errGenerated, msg, action, infoOrigin)
 
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                    msg: string, lineInfo: TLineInfo) =
-  stackTraceImpl(c, tos, pc, msg, lineInfo)
-  return
-
-template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
-  stackTraceImpl(c, tos, pc, msg, c.debug[pc])
+                    msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+  stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
   return
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
@@ -554,6 +541,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
 
+    c.profiler.enter(c, tos)
+
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -686,8 +675,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let s = regs[rb].node.strVal
       if idx <% s.len:
         regs[ra].intVal = s[idx].ord
-      elif idx == s.len and optLaxStrings in c.config.options:
-        regs[ra].intVal = 0
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
     of opcWrArr:
@@ -2080,6 +2067,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       when not defined(nimNoNilSeqs):
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
+
+    c.profiler.leave(c)
 
     inc pc
 

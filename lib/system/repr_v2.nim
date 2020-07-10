@@ -27,21 +27,23 @@ proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc repr*(x: char): string {.magic: "CharToStr", noSideEffect.}
+proc repr*(x: char): string {.noSideEffect.} =
   ## repr for a character argument. Returns `x`
   ## converted to a string.
   ##
   ## .. code-block:: Nim
-  ##   assert repr('c') == "c"
+  ##   assert repr('c') == "'c'"
+  '\'' & $x & '\''
 
-proc repr*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+proc repr*(x: cstring): string {.noSideEffect.} =
   ## repr for a CString argument. Returns `x`
-  ## converted to a string.
+  ## converted to a quoted string.
+  '"' & $x & '"'
 
-proc repr*(x: string): string {.magic: "StrToStr", noSideEffect.}
+proc repr*(x: string): string {.noSideEffect.} =
   ## repr for a string argument. Returns `x`
-  ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
+  ## but quoted.
+  '"' & x & '"'
 
 proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## repr for an enumeration argument. This works for

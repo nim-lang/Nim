@@ -1,19 +1,29 @@
 name: Nim Docs CI
 on:
   push:
-    # Run only on changes on these files
     paths:
-      - 'lib/**.nim'
+      - 'compiler/docgen.nim'
+      - 'compiler/renderverbatim.nim'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
+      - 'lib/**.nim'
+      - 'nimdoc/testproject/expected/testproject.html'
+      - 'tools/dochack/dochack.nim'
+      - 'tools/kochdocs.nim'
+      - '.github/workflows/ci_docs.yml'
+  pull_request:
+    # Run only on changes on these files.
+    paths:
+      - 'compiler/docgen.nim'
+      - 'compiler/renderverbatim.nim'
+      - 'doc/**.rst'
+      - 'doc/nimdoc.css'
+      - 'lib/**.nim'
+      - 'nimdoc/testproject/expected/testproject.html'
+      - 'tools/dochack/dochack.nim'
+      - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
 
-  pull_request:
-    # Run only on changes on these files
-    paths:
-      - 'lib/**.nim'
-      - 'doc/**.rst'
-      - '.github/workflows/ci_docs.yml'
 
 jobs:
   build:
@@ -114,13 +124,6 @@ jobs:
       - name: 'Build documentation'
         shell: bash
         run: ./koch doc --git.commit:devel
-
-      - name: 'Prepare documentation for deployment'
-        if: |
-          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
-          matrix.target == 'linux'
-        shell: bash
-        run: cp -f doc/html/{overview,index}.html
 
       - name: 'Publish documentation to Github Pages'
         if: |

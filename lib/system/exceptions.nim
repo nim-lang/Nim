@@ -140,7 +140,7 @@ type
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
 
   ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
-  DivByZeroError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
+  DivByZeroError* {.deprecated: "See corresponding Defect".} = DivByZeroDefect
   OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
   AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
   AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect

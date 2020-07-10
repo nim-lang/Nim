@@ -1103,6 +1103,7 @@ proc parseInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
     doAssert parseInt("-0042") == -42
+  result = 0
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -1112,6 +1113,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestInt(0)
   let L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -1121,6 +1123,7 @@ proc parseUInt*(s: string): uint {.noSideEffect,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = uint(0)
   let L = parseutils.parseUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
@@ -1130,6 +1133,7 @@ proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestUInt(0)
   let L = parseutils.parseBiggestUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
@@ -1143,6 +1147,7 @@ proc parseFloat*(s: string): float {.noSideEffect,
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
+  result = 0.0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
@@ -1161,6 +1166,7 @@ proc parseBinInt*(s: string): int {.noSideEffect,
     doAssert a.parseBinInt() == 53
     doAssert b.parseBinInt() == 7
 
+  result = 0
   let L = parseutils.parseBin(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1172,6 +1178,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
   ## `s` are ignored.
+  result = 0
   let L = parseutils.parseOct(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
@@ -1183,6 +1190,7 @@ proc parseHexInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
   ## within `s` are ignored.
+  result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
@@ -1270,9 +1278,9 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
                                                   bindSym"nimIdentNormalize"))
   # stores all processed field strings to give error msg for ambiguous enums
-  var foundFields: seq[string]
-  var fStr: string # string of current field
-  var fNum: BiggestInt # int value of current field
+  var foundFields: seq[string] = @[]
+  var fStr = "" # string of current field
+  var fNum = BiggestInt(0) # int value of current field
   for f in impl:
     case f.kind
     of nnkEmpty: continue # skip first node of `enumTy`
@@ -2028,6 +2036,7 @@ proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
   if sub.len == 0:
     return -1
   let last = if last == -1: s.high else: last
+  result = 0
   for i in countdown(last - sub.len + 1, start):
     for j in 0..sub.len-1:
       result = i
@@ -2044,6 +2053,7 @@ proc count*(s: string, sub: char): int {.noSideEffect,
   ##
   ## See also:
   ## * `countLines proc<#countLines,string>`_
+  result = 0
   for c in s:
     if c == sub: inc result
 
@@ -2054,6 +2064,7 @@ proc count*(s: string, subs: set[char]): int {.noSideEffect,
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert card(subs) > 0
+  result = 0
   for c in s:
     if c in subs: inc result
 
@@ -2066,6 +2077,7 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert sub.len > 0
+  result = 0
   var i = 0
   while true:
     i = s.find(sub, i)
@@ -2313,7 +2325,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
       case s[i+1]:
       of 'x':
         inc i, 2
-        var c: int
+        var c = 0
         i += parseutils.parseHex(s, c, i, maxLen = 2)
         result.add(chr(c))
         dec i, 2
@@ -2514,7 +2526,7 @@ proc formatSize*(bytes: int64,
     xb: int64 = bytes
     fbytes: float
     lastXb: int64 = bytes
-    matchedIndex: int
+    matchedIndex = 0
     prefixes: array[9, string]
   if prefix == bpColloquial:
     prefixes = collPrefixes
@@ -2923,11 +2935,6 @@ proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, rtl,
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
 
-proc isNilOrWhitespace*(s: string): bool {.noSideEffect, rtl,
-    extern: "nsuIsNilOrWhitespace",
-    deprecated: "use isEmptyOrWhitespace instead".} =
-  ## Alias for isEmptyOrWhitespace
-  result = isEmptyOrWhitespace(s)
 
 when isMainModule:
   proc nonStaticTests =

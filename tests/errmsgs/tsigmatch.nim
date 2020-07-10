@@ -12,12 +12,12 @@ proc f(b: B)
   but expression 'A()' is of type: A
 
 expression: f(A(), "extra")
-tsigmatch.nim(125, 6) Error: type mismatch: got <tuple of (string, proc (){.gcsafe, locks: 0.})>
+tsigmatch.nim(125, 6) Error: type mismatch: got <(string, proc (){.gcsafe, locks: 0.})>
 but expected one of:
 proc foo(x: (string, proc ()))
   first type mismatch at position: 1
-  required type for x: tuple of (string, proc (){.closure.})
-  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: tuple of (string, proc (){.gcsafe, locks: 0.})
+  required type for x: (string, proc (){.closure.})
+  but expression '("foobar", proc () = echo(["Hello!"]))' is of type: (string, proc (){.gcsafe, locks: 0.})
 
 expression: foo(("foobar", proc () = echo(["Hello!"])))
 tsigmatch.nim(132, 11) Error: type mismatch: got <proc (s: string): string{.noSideEffect, gcsafe, locks: 0.}>

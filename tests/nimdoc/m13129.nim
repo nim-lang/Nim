@@ -1,3 +1,5 @@
+# issue #13129
+
 when defined(cpp):
   {.push header: "<vector>".}
   type
@@ -15,11 +17,9 @@ proc main*() =
     doAssert defined(m13129Foo2)
     doAssert not defined(nimdoc)
     echo "ok2: backend: " & querySetting(backend)
-    # echo defined(c), defined(js), 
 
 import std/compilesettings
 when defined nimdoc:
-  # import std/compilesettings
   static:
     doAssert defined(m13129Foo1)
     doAssert not defined(m13129Foo2)
@@ -31,6 +31,6 @@ when isMainModule:
     let cache = querySetting(nimcacheDir)
     doAssert cache.len > 0
     let app = getAppFilename()
-    doAssert app.isRelativeTo(cache)
+    doAssert app.isRelativeTo(cache), $(app, cache)
     doAssert querySetting(projectFull) == currentSourcePath
     echo "ok3"

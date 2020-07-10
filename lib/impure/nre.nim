@@ -7,7 +7,7 @@
 #
 
 when defined(js):
-  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
 ## What is NRE?
 ## ============
@@ -57,6 +57,12 @@ runnableExamples:
   if hasVowel:
     let matchBounds = firstVowel.get().captureBounds[-1]
     doAssert matchBounds.a == 1
+
+  ## as with module `re`, unless specified otherwise, `start` parameter in each
+  ## proc indicates where the scan starts, but outputs are relative to the start
+  ## of the input string, not to `start`:
+  doAssert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
+  doAssert find("uxabc", re"ab", start = 3).isNone
 
 from pcre import nil
 import nre/private/util
@@ -222,15 +228,15 @@ type
     ## code.
 
 runnableExamples:
-    # This MUST be kept in sync with the examples in RegexMatch
-    doAssert "abc".match(re"(\w)").get.captures[0] == "a"
-    doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
-    doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+  # This MUST be kept in sync with the examples in RegexMatch
+  doAssert "abc".match(re"(\w)").get.captures[0] == "a"
+  doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
+  doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
 
-    doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
-    doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
-    doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
-    doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
+  doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+  doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
+  doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+  doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
 
 
 proc destroyRegex(pattern: Regex) =
@@ -614,9 +620,9 @@ proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool 
   ## This function is equivalent to ``isSome(str.find(pattern, start, endpos))``.
   ##
   runnableExamples:
-    doAssert "abc".contains(re"bc") == true
-    doAssert "abc".contains(re"cd") == false
-    doAssert "abc".contains(re"a", start = 1) == false
+    doAssert "abc".contains(re"bc")
+    doAssert not "abc".contains(re"cd")
+    doAssert not "abc".contains(re"a", start = 1)
 
   return isSome(str.find(pattern, start, endpos))
 

@@ -26,6 +26,35 @@ proc typeToString*(t: typedesc, prefer = "preferTypeName"): string {.magic: "Typ
   ## prefer = "preferResolved" will resolve type aliases recursively.
   # Move to typetraits.nim once api stabilized.
 
+block: # name, `$`
+  static:
+    doAssert $type(42) == "int"
+    doAssert int.name == "int"
+
+  const a1 = name(int)
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a1 == "int"
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a1 = name(t)
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a1 == "int"
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
+
+  doAssert $(int,) == "(int,)"
+  doAssert $(1,) == "(1,)" # just for comparison to make sure it has same structure
+  doAssert $tuple[] == "tuple[]"
+  doAssert $(int,) == "(int,)"
+  doAssert $(int, float) == "(int, float)"
+  doAssert $((int), tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float)) ==
+    "(int, tuple[], tuple[a: uint], tuple[a: uint, b: float], (int,), (int, float))"
+
 block: # typeToString
   type MyInt = int
   type
@@ -48,6 +77,12 @@ block: # typeToString
   doAssert (tuple[a: MyInt, b: float]).name3 == "tuple[a: MyInt{int}, b: float]"
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
     "tuple[a: C[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
+
+  macro fn(): string =
+    # not 100% sure whether this should even compile; if some PR breaks this test,
+    # this could be revisited, maybe.
+    newLit $($getType(untyped), $getType(typed))
+  doAssert fn() == """("untyped", "typed")"""
 
 block distinctBase:
   block:
@@ -184,6 +219,23 @@ block genericParams:
     doAssert genericParams(Bar4) is (StaticParam[5.0], string)
     doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
 
+  block typeof:
+    var
+      a: seq[int]
+      b: array[42, float]
+      c: array[char, int]
+      d: array[1..2, char]
+
+    doAssert genericParams(typeof(a)).get(0) is int
+    doAssert genericParams(typeof(b)) is (range[0..41], float)
+    doAssert genericParams(typeof(c)) is (char, int)
+    doAssert genericParams(typeof(d)) is (range[1..2], char)
+
+  block nestedContainers:
+    doAssert genericParams(seq[Foo[string, float]]).get(0) is Foo[string, float]
+    doAssert genericParams(array[10, Foo[Bar[1, int], Bar[2, float]]]) is (StaticParam[10], Foo[Bar[1, int], Bar[2, float]])
+    doAssert genericParams(array[1..9, int]) is (range[1..9], int)
+
 ##############################################
 # bug 13095
 
@@ -231,3 +283,23 @@ block genericHead:
   type Bar = object
   doAssert not compiles(genericHead(Bar))
   # doAssert seq[int].genericHead is seq
+
+block: # elementType
+  iterator myiter(n: int): auto =
+    for i in 0..<n: yield i
+  iterator myiter3(): int = yield 10
+  iterator myiter2(n: int): auto {.closure.} =
+    for i in 0..<n: yield i
+  doAssert elementType(@[1,2]) is int
+  doAssert elementType("asdf") is char
+  doAssert elementType(myiter(3)) is int
+  doAssert elementType(myiter2(3)) is int
+  doAssert elementType([1.1]) is float
+  doAssert compiles elementType([1])
+  doAssert not compiles elementType(1)
+  doAssert compiles elementType(myiter3())
+  doAssert not compiles elementType(myiter3)
+  # check that it also works for 0-sized seq:
+  var a: seq[int]
+  doAssert elementType(a) is int
+  doAssert elementType(seq[char].default) is char

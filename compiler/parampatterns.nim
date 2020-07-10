@@ -176,6 +176,7 @@ type
     arLocalLValue,            # is an l-value, but local var; must not escape
                               # its stack frame!
     arDiscriminant,           # is a discriminant
+    arLentValue,              # lent value
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc exprRoot*(n: PNode): PSym =
@@ -199,7 +200,7 @@ proc exprRoot*(n: PNode): PSym =
       if it.len > 0 and it.typ != nil: it = it.lastSon
       else: break
     of nkCallKinds:
-      if it.typ != nil and it.typ.kind == tyVar and it.len > 1:
+      if it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
         # See RFC #7373, calls returning 'var T' are assumed to
         # return a view into the first argument (if there is one):
         it = it[1]
@@ -213,7 +214,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   result = arNone
   case n.kind
   of nkEmpty:
-    if n.typ != nil and n.typ.kind == tyVar:
+    if n.typ != nil and n.typ.kind in {tyVar}:
       result = arLValue
   of nkSym:
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
@@ -230,7 +231,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
         result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
-      if t.kind == tyVar: result = arStrange
+      if t.kind in {tyVar}: result = arStrange
   of nkDotExpr:
     let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
     if t.kind in {tyVar, tySink, tyPtr, tyRef}:
@@ -260,9 +261,14 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n[1], isUnsafeAddr)
   of nkHiddenDeref:
-    if isUnsafeAddr and n[0].typ.kind == tyLent: result = arLValue
-    elif n[0].typ.kind == tyLent: result = arDiscriminant
-    else: result = arLValue
+    let n0 = n[0]
+    if n0.typ.kind == tyLent:
+      if isUnsafeAddr or (n0.kind == nkSym and n0.sym.kind == skResult):
+        result = arLValue
+      else:
+        result = arLentValue
+    else:
+      result = arLValue
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
@@ -271,7 +277,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
       result = isAssignable(owner, n[1], isUnsafeAddr)
-    elif n.typ != nil and n.typ.kind == tyVar:
+    elif n.typ != nil and n.typ.kind in {tyVar}:
       result = arLValue
     elif isUnsafeAddr and n.typ != nil and n.typ.kind == tyLent:
       result = arLValue

@@ -5,7 +5,12 @@ true
 alpha 100
 omega 200
 '''
+joinable: false
 """
+
+#[
+joinable: false pending https://github.com/nim-lang/Nim/issues/9754
+]#
 
 import marshal
 

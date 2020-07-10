@@ -4,6 +4,18 @@ discard """
 destroyed: false
 destroyed: false
 1
+(x: "0")
+(x: "1")
+(x: "2")
+(x: "3")
+(x: "4")
+(x: "5")
+(x: "6")
+(x: "7")
+(x: "8")
+(x: "9")
+(x: "10")
+0
 closed
 destroying variable
 '''
@@ -99,10 +111,10 @@ type
   MyType = object
     a: seq[int]
 
-proc re(x: static[string]): static MyType = 
+proc re(x: static[string]): static MyType =
   MyType()
 
-proc match(inp: string, rg: static MyType) = 
+proc match(inp: string, rg: static MyType) =
   doAssert rg.a.len == 0
 
 match("ac", re"a(b|c)")
@@ -125,9 +137,9 @@ var game*: Game
 #------------------------------------------------------------------------------
 # issue #14333
 
-type  
+type
   SimpleLoop = object
-  
+
   Lsg = object
     loops: seq[ref SimpleLoop]
     root: ref SimpleLoop
@@ -135,3 +147,65 @@ type
 var lsg: Lsg
 lsg.loops.add lsg.root
 echo lsg.loops.len
+
+# bug #14495
+type
+  Gah = ref object
+    x: string
+
+proc bug14495 =
+  var owners: seq[Gah]
+  for i in 0..10:
+    owners.add Gah(x: $i)
+
+  var x: seq[Gah]
+  for i in 0..10:
+    x.add owners[i]
+
+  for i in 0..100:
+    setLen(x, 0)
+    setLen(x, 10)
+
+  for i in 0..x.len-1:
+    if x[i] != nil:
+      echo x[i][]
+
+  for o in owners:
+    echo o[]
+
+bug14495()
+
+# bug #14396
+type
+  Spinny = ref object
+    t: ref int
+    text: string
+
+proc newSpinny*(): Spinny =
+  Spinny(t: new(int), text: "hello")
+
+proc spinnyLoop(x: ref int, spinny: sink Spinny) =
+  echo x[]
+
+proc start*(spinny: sink Spinny) =
+  spinnyLoop(spinny.t, spinny)
+
+var spinner1 = newSpinny()
+spinner1.start()
+
+# bug #14345
+
+type
+  SimpleLoopB = ref object
+    children: seq[SimpleLoopB]
+    parent: SimpleLoopB
+
+proc addChildLoop(self: SimpleLoopB, loop: SimpleLoopB) =
+  self.children.add loop
+
+proc setParent(self: SimpleLoopB, parent: SimpleLoopB) =
+  self.parent = parent
+  self.parent.addChildLoop(self)
+
+var l = SimpleLoopB()
+l.setParent(l)
