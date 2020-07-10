@@ -87,18 +87,18 @@ proc optimize(s: var Scope) =
       try:
         var s = ["hi", inp & "more"]
         for i in 0..4:
-          echo s
+          use s
         consume(s)
         wasMoved(s)
       finally:
         destroy(x)
 
-    Now assume 'echo' raises, then we shouldn't do the 'wasMoved(s)'
+    Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
   ]#
   proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
     # remember that it's destroy(addr(x))
     for i in 0 ..< final.len:
-      if final[i] != nil and exprStructuralEquivalent(final[i][0][1].skipAddr, moved, strictSymEquality = true):
+      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved, strictSymEquality = true):
         return i
     return -1
 
@@ -129,7 +129,7 @@ type
     producesValue
 
 proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
-  if not s.needsTry: optimize(s)
+  #if not s.needsTry: optimize(s)
   assert ret != nil
   if s.vars.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
     # trivial, nothing was done:
@@ -545,7 +545,7 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
     let tmp = c.getTemp(s, arg.typ, arg.info)
     result.add c.genSink(s, tmp, arg, isDecl = true)
     result.add tmp
-    s.final.add newTree(nkStmtList, c.genDestroy(tmp), c.genWasMoved(tmp))
+    s.final.add c.genDestroy(tmp)
   else:
     result = arg
 
@@ -624,7 +624,7 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
     if sfGlobal in v.sym.flags and s.parent == nil:
       c.graph.globalDestructors.add c.genDestroy(v) #No need to genWasMoved here
     else:
-      owningScope[].final.add newTree(nkStmtList, c.genDestroy(v), c.genWasMoved(v))
+      owningScope[].final.add c.genDestroy(v)
   if ri.kind == nkEmpty and c.inLoop > 0:
     res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
   elif ri.kind != nkEmpty:
