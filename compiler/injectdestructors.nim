@@ -40,6 +40,7 @@ type
     escapingSyms: IntSet # a construct like (block: let x = f(); x)
                          # means that 'x' escapes. We then destroy it
                          # in the parent's scope (and also allocate it there).
+    escapingExpr: PNode
 
 type
   Con = object
@@ -129,6 +130,9 @@ type
     producesValue
 
 proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode =
+  proc isComplexStmtListExpr(n: PNode): bool =
+    n.kind == nkStmtListExpr and (n.len == 0 or n[^1].kind != nkSym)
+
   #if not s.needsTry: optimize(s)
   assert ret != nil
   if s.vars.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
@@ -139,7 +143,7 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
     var r = PNode(nil)
     if isExpr:
       result = newNodeIT(nkStmtListExpr, ret.info, ret.typ)
-      if ret.kind in nkCallKinds + {nkStmtListExpr}:
+      if ret.kind in nkCallKinds or isComplexStmtListExpr(ret):
         r = c.getTemp(s, ret.typ, ret.info)
     else:
       result = newNodeI(nkStmtList, ret.info)
@@ -167,12 +171,20 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
           result.add newTree(nkFastAsgn, r, ret[last])
         else:
           result.add newTree(nkFastAsgn, r, ret)
+        for m in s.wasMoved: result.add m
+        for i in countdown(s.final.high, 0): result.add s.final[i]
+        result.add r
+      elif ret.kind == nkStmtListExpr:
+        # simplify it a bit further by merging the nkStmtListExprs
+        let last = ret.len - 1
+        for i in 0 ..< last: result.add ret[i]
+        for m in s.wasMoved: result.add m
+        for i in countdown(s.final.high, 0): result.add s.final[i]
+        result.add ret[last]
       else:
         result.add ret
-      for m in s.wasMoved: result.add m
-      for i in countdown(s.final.high, 0): result.add s.final[i]
-      if r != nil:
-        result.add r
+        for m in s.wasMoved: result.add m
+        for i in countdown(s.final.high, 0): result.add s.final[i]
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
@@ -534,18 +546,23 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
+proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
   if arg.typ != nil and hasDestructor(arg.typ):
     # produce temp creation for (fn, env). But we need to move 'env'?
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
-
-    let tmp = c.getTemp(s, arg.typ, arg.info)
-    result.add c.genSink(s, tmp, arg, isDecl = true)
-    result.add tmp
-    s.final.add c.genDestroy(tmp)
+    if orig == s.escapingExpr and s.parent != nil:
+      let tmp = c.getTemp(s.parent[], arg.typ, arg.info)
+      result.add c.genSink(s.parent[], tmp, arg, isDecl = true)
+      result.add tmp
+      s.parent[].final.add c.genDestroy(tmp)
+    else:
+      let tmp = c.getTemp(s, arg.typ, arg.info)
+      result.add c.genSink(s, tmp, arg, isDecl = true)
+      result.add tmp
+      s.final.add c.genDestroy(tmp)
   else:
     result = arg
 
@@ -590,27 +607,34 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc markEscapingVars(n: PNode; s: var Scope) =
+proc markEscapingVarsRec(n: PNode; s: var Scope) =
   case n.kind
   of nkSym:
     s.escapingSyms.incl n.sym.id
   of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref,
      nkAddr, nkHiddenAddr, nkStringToCString, nkCStringToString, nkObjDownConv,
      nkObjUpConv:
-    markEscapingVars(n[0], s)
+    markEscapingVarsRec(n[0], s)
   of nkCast, nkHiddenSubConv, nkHiddenStdConv, nkConv:
-    markEscapingVars(n[1], s)
+    markEscapingVarsRec(n[1], s)
   of nkTupleConstr, nkBracket, nkPar, nkClosure:
     for i in 0 ..< n.len:
-      markEscapingVars(n[i], s)
+      markEscapingVarsRec(n[i], s)
   of nkObjConstr:
     for i in 1 ..< n.len:
-      markEscapingVars(n[i], s)
+      markEscapingVarsRec(n[i], s)
   of nkStmtList, nkStmtListExpr:
     if n.len > 0:
-      markEscapingVars(n[^1], s)
+      markEscapingVarsRec(n[^1], s)
   else:
     discard "no arbitrary tree traversal here"
+
+proc markEscapingVars(n: PNode; s: var Scope) =
+  markEscapingVarsRec(n, s)
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+    it = it[^1]
+  s.escapingExpr = it
 
 proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   # move the variable declaration to the top of the frame:
@@ -820,7 +844,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         else:
           result[i] = p(n[i], c, s, m)
       if mode == normal and isRefConstr:
-        result = ensureDestruction(result, c, s)
+        result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
       let inSpawn = c.inSpawn
       if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
@@ -859,7 +883,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         result[0] = p(n[0], c, s, normal)
       if canRaise(n[0]): s.needsTry = true
       if mode == normal:
-        result = ensureDestruction(result, c, s)
+        result = ensureDestruction(result, n, c, s)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
@@ -927,7 +951,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         result[i] = p(n[i], c, s, normal)
       if n.typ != nil and hasDestructor(n.typ):
         if mode == normal:
-          result = ensureDestruction(result, c, s)
+          result = ensureDestruction(result, n, c, s)
 
     of nkHiddenSubConv, nkHiddenStdConv, nkConv:
       # we have an "ownership invariance" for all constructors C(x).
