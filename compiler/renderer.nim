@@ -1016,8 +1016,18 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkRStrLit, '\"' & replace(n[1].strVal, "\"", "\"\"") & '\"')
     else:
       gsub(g, n, 1)
-  of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
+  of nkHiddenStdConv, nkHiddenSubConv:
     if n.len >= 2:
+      gsub(g, n[1])
+    else:
+      put(g, tkSymbol, "(wrong conv)")
+  of nkHiddenCallConv:
+    if renderIds in g.flags:
+      accentedName(g, n[0])
+      put(g, tkParLe, "(")
+      gcomma(g, n, 1)
+      put(g, tkParRi, ")")
+    elif n.len >= 2:
       gsub(g, n[1])
     else:
       put(g, tkSymbol, "(wrong conv)")
