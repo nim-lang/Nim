@@ -140,7 +140,7 @@ const
 
 {.push warnings: off.}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
   "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## Constructs an identifier from the string `s`.
 
