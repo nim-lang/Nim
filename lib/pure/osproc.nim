@@ -494,19 +494,12 @@ proc posPeekData[T](s: Stream, buffer: pointer, bufLen: int): int =
   for i in 0..<bufLen:
     dest[i] = s.buffer[i]
 
-proc copyRefObj[T](dest, source: ref T) =
-  # Bitwise copy from `source` to `dest` except `TNimType* m_type`
-  func head(x: ref T): pointer =
-    cast[pointer](cast[ByteAddress](addr x[]) + sizeof(pointer))
-
-  copyMem(dest.head, source.head, sizeof(T) - sizeof(pointer))
-
 proc newPipeOutStream[T](s: sink (ref T)): owned PipeOutStream[T] =
   assert s.readDataImpl != nil
 
   new(result)
-  # Please tell me how to done this correclty.
-  copyRefObj[T](result, s)
+  for dest, src in fields((ref T)(result)[], s[]):
+    dest = src
   wasMoved(s[])
   if result.readLineImpl != nil:
     result.baseReadLineImpl = result.readLineImpl
