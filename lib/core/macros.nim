@@ -237,6 +237,8 @@ proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
 
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
+
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
@@ -376,23 +378,6 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
-
-{.push warnings: off.}
-
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
-
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
-
-{.pop.}
-
-#proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
-# this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
-# can easily do:
-#   let bracket = semCheck([1, 2])
-#   let fake = semCheck(2.0)
-#   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
