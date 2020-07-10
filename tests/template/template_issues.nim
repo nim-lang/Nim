@@ -8,6 +8,9 @@ hi
 Hello, World!
 (e: 42)
 hey
+foo
+foo
+foo
 '''
 """
 
@@ -245,3 +248,21 @@ proc foo(): auto =
     echo "hey"
 
 discard foo()
+
+
+# bug #4722
+type
+  IteratorF*[In] = iterator() : In {.closure.}
+
+template foof(In: untyped) : untyped = 
+  proc ggg*(arg: IteratorF[In]) =
+    for i in arg():
+      echo "foo"
+
+
+iterator hello() : int {.closure.} =
+  for i in 1 .. 3:
+    yield i
+    
+foof(int)
+ggg(hello)
