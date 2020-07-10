@@ -138,7 +138,7 @@ you should familiarize yourself with the following repository structure:
 If you are not familiar with making a pull request using GitHub and/or git, please
 read [this guide][pull-request-instructions].
 
-Ideally you should make sure that all tests pass before submitting a pull request.
+Ideally, you should make sure that all tests pass before submitting a pull request.
 However, if you are short on time, you can just run the tests specific to your
 changes by only running the corresponding categories of tests. Travis CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
@@ -146,7 +146,7 @@ running specific tests should be harmless.
 Integration tests should go in ``tests/untestable``.
 
 If you're looking for ways to contribute, please look at our [issue tracker][nim-issues].
-There are always plenty of issues labelled [``Easy``][nim-issues-easy]; these should
+There are always plenty of issues labeled [``Easy``][nim-issues-easy]; these should
 be a good starting point for an initial contribution to Nim.
 
 You can also help with the development of Nim by making donations. Donations can be
