@@ -13,18 +13,10 @@
 
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
-## XXX Optimization to implement: if a local variable is only assigned
-## string literals as in ``let x = conf: "foo" else: "bar"`` do not
-## produce a destructor call for ``x``. The address of ``x`` must also
-## not have been taken. ``x = "abc"; x.add(...)``
-
-# Todo:
-# - eliminate 'wasMoved(x); destroy(x)' pairs as a post processing step.
-
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes, liftdestructors
+  lineinfos, parampatterns, sighashes, liftdestructors, optimizer
 
 from trees import exprStructuralEquivalent, getRoot
 
@@ -1142,7 +1134,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = toTree(c, scope, body, {})
+  result = optimize toTree(c, scope, body, {})
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
