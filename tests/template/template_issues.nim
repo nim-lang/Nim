@@ -11,6 +11,8 @@ hey
 foo
 foo
 foo
+false
+true
 '''
 """
 
@@ -266,3 +268,9 @@ iterator hello() : int {.closure.} =
     
 foof(int)
 ggg(hello)
+
+
+# bug #2586
+var x = 10'u8
+echo x < 9 # Works
+echo x > 9 # Error: type mismatch
