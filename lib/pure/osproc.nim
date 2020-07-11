@@ -466,7 +466,7 @@ proc posReadLine[T](s: Stream, line: var TaintedString): bool =
     line.string.add(c)
 
   var line2: string
-  result = s.baseReadLineImpl(s, line)
+  result = s.baseReadLineImpl(s, line2)
   line.add line2
 
 proc posReadData[T](s: Stream, buffer: pointer, bufLen: int): int =
