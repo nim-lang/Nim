@@ -482,17 +482,21 @@ proc posPeekData[T](s: Stream, buffer: pointer, bufLen: int): int =
   var s = PipeOutStream[T](s)
   assert s.baseReadDataImpl != nil
 
-  let n = min(s.buffer.len, bufLen)
+  let
+    dest = cast[ptr UncheckedArray[char]](buffer)
+    n = min(s.buffer.len, bufLen)
+
   result = n
-  if bufLen > n:
-    let m = bufLen - n
-    var buf = newSeq[char](m)
-    result += s.baseReadDataImpl(s, addr buf[0], m)
-    for i in 0..<m:
-      s.buffer.addLast buf[i]
-  let dest = cast[ptr UncheckedArray[char]](buffer)
-  for i in 0..<bufLen:
+  for i in 0..<n:
     dest[i] = s.buffer[i]
+
+  if bufLen > n:
+    let
+      newDataNeeded = bufLen - n
+      numRead = s.baseReadDataImpl(s, addr dest[n], newDataNeeded)
+    result += numRead
+    for i in 0..<numRead:
+      s.buffer.addLast dest[n + i]
 
 proc newPipeOutStream[T](s: sink (ref T)): owned PipeOutStream[T] =
   assert s.readDataImpl != nil
