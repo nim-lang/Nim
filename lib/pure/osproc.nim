@@ -438,6 +438,13 @@ template streamAccess(p) =
 # when setPosition/getPosition is called or write operation is performed.
 type
   PipeOutStream[T] = ref object of T
+    # When stream peek operation is called, it reads from base stream
+    # type using `baseReadDataImpl` and stores the content to this buffer.
+    # Next stream read operation returns data in the buffer so that previus peek
+    # operation looks like didn't changed read positon.
+    # When stream read operation that returns N byte data is called and the size is smaller than buffer size,
+    # first N elements are removed from buffer.
+    # Deque type can do such operation more efficiently than seq type.
     buffer: Deque[char]
     baseReadLineImpl: typeof(StreamObj.readLineImpl)
     baseReadDataImpl: typeof(StreamObj.readDataImpl)
