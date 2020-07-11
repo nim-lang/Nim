@@ -22,7 +22,7 @@ const
 
   (c) 2017 Andreas Rumpf
 Usage:
-  nimpretty [options] [nimfiles...]
+  nimpretty [options] nimfiles...
 Options:
   --out:file            set the output file (default: overwrite the input file)
   --outDir:dir          set the output dir (default: overwrite the input files)
@@ -85,7 +85,7 @@ proc main =
       of "version", "v": writeVersion()
       of "backup": backup = parseBool(val)
       of "output", "o", "out": outfile = val
-      of "outDir", "outdir", "d": outdir = val
+      of "outDir", "outdir": outdir = val
       of "indent": opt.indWidth = parseInt(val)
       of "maxlinelen": opt.maxLineLen = parseInt(val)
       else: writeHelp()
