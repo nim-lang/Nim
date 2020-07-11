@@ -655,9 +655,8 @@ template handleNestedTempl(n, processCall: untyped) =
       let it = n[i]
       var branch = copyTree(it)
       var branchScope = nestedScope(s)
-      var branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
+      let branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                          else: processCall(it[^1], branchScope)
-
       branch[^1] = toTree(c, branchScope, s, branchResult, it.kind != nkFinally and not isEmptyType(n.typ))
       result.add branch
       rememberParent(s, branchScope)
