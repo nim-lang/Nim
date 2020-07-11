@@ -172,6 +172,20 @@ else: # main driver
     doAssert tmp == "56\n2"
     p.close
 
+    p = startProcess(exePath, args = ["123"])
+    outStrm = p.outputStream
+    let c = outStrm.peekChar
+    doAssert outStrm.readLine(tmp)
+    doAssert tmp[0] == c
+    tmp.setLen(7)
+    doAssert outStrm.peekData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    doAssert outStrm.peekData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    doAssert outStrm.readData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    p.close
+
     try:
       removeFile(exePath)
     except OSError:
