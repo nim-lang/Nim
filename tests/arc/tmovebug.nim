@@ -40,6 +40,13 @@ sink me (not sink)
 sinked and not optimized to a bitcopy
 sinked and not optimized to a bitcopy
 sinked and not optimized to a bitcopy
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
 '''
 """
 
@@ -325,3 +332,61 @@ proc update() =
 
 for i in 1..3:
   update()
+
+
+# bug #14961
+type
+  Foo = object
+    data: seq[int]
+
+proc initFoo(len: int): Foo =
+  result = (let s = newSeq[int](len); Foo(data: s) )
+
+var f = initFoo(2)
+echo initFoo(2)
+
+proc initFoo2(len: int) =
+  echo   if true:
+             let s = newSeq[int](len); Foo(data: s)
+         else:
+             let s = newSeq[int](len); Foo(data: s)
+
+initFoo2(2)
+
+proc initFoo3(len: int) =
+  echo (block:
+         let s = newSeq[int](len); Foo(data: s))
+
+initFoo3(2)
+
+proc initFoo4(len: int) =
+  echo (let s = newSeq[int](len); Foo(data: s))
+
+initFoo4(2)
+
+proc initFoo5(len: int) =
+  echo (case true
+        of true:
+          let s = newSeq[int](len); Foo(data: s)
+        of false:
+          let s = newSeq[int](len); Foo(data: s))
+
+initFoo5(2)
+
+proc initFoo6(len: int) =
+  echo (block:
+          try:
+            let s = newSeq[int](len); Foo(data: s)
+          finally: discard)
+
+initFoo6(2)
+
+proc initFoo7(len: int) =
+  echo (block:
+          try:
+            raise newException(CatchableError, "sup")
+            let s = newSeq[int](len); Foo(data: s)
+          except CatchableError:
+            let s = newSeq[int](len); Foo(data: s) )
+
+initFoo7(2)
