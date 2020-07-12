@@ -117,7 +117,7 @@ proc optimize(s: var Scope) =
     filterNil(wasMoved)
     filterNil(final)
 
-proc toTree(c: var Con; s: var Scope; ret: PNode, isEscapingExpr: bool): PNode =
+proc processScope(c: var Con; s: var Scope; ret: PNode, isEscapingExpr: bool): PNode =
   if isEscapingExpr:
     s.parent[].vars.add s.vars
     s.vars.setLen 0
@@ -602,7 +602,7 @@ template handleNestedTempl(n, processCall: untyped) =
         branch[j] = copyTree(it[j])
       var ofScope = nestedScope(s)
       let ofResult = maybeVoid(it[^1], ofScope)
-      branch[^1] = toTree(c, ofScope, ofResult, not isEmptyType(n.typ))
+      branch[^1] = processScope(c, ofScope, ofResult, not isEmptyType(n.typ))
       result.add branch
 
   of nkWhileStmt:
@@ -611,7 +611,7 @@ template handleNestedTempl(n, processCall: untyped) =
     result.add p(n[0], c, s, normal)
     var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
-    result.add toTree(c, bodyScope, bodyResult, false)
+    result.add processScope(c, bodyScope, bodyResult, false)
     dec c.inLoop
 
   of nkBlockStmt, nkBlockExpr:
@@ -619,7 +619,7 @@ template handleNestedTempl(n, processCall: untyped) =
     result.add n[0]
     var bodyScope = nestedScope(s)
     let bodyResult = processCall(n[1], bodyScope)
-    result.add toTree(c, bodyScope, bodyResult, n.kind == nkBlockExpr)
+    result.add processScope(c, bodyScope, bodyResult, n.kind == nkBlockExpr)
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
@@ -630,17 +630,17 @@ template handleNestedTempl(n, processCall: untyped) =
       if it.kind in {nkElifBranch, nkElifExpr}:
         let cond = p(it[0], c, branchScope, normal)
         #Condition needs to be destroyed outside of the condition/branch scope
-        branch[0] = toTree(c, branchScope, cond, true)
+        branch[0] = processScope(c, branchScope, cond, true)
 
       var branchResult = processCall(it[^1], branchScope)
-      branch[^1] = toTree(c, branchScope, branchResult, n.kind == nkIfExpr)
+      branch[^1] = processScope(c, branchScope, branchResult, n.kind == nkIfExpr)
       result.add branch
 
   of nkTryStmt:
     result = copyNode(n)
     var tryScope = nestedScope(s)
     var tryResult = maybeVoid(n[0], tryScope)
-    result.add toTree(c, tryScope, tryResult, not isEmptyType(n[0].typ))
+    result.add processScope(c, tryScope, tryResult, not isEmptyType(n[0].typ))
 
     for i in 1..<n.len:
       let it = n[i]
@@ -648,7 +648,7 @@ template handleNestedTempl(n, processCall: untyped) =
       var branchScope = nestedScope(s)
       let branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
                          else: processCall(it[^1], branchScope)
-      branch[^1] = toTree(c, branchScope, branchResult, it.kind != nkFinally and not isEmptyType(n.typ))
+      branch[^1] = processScope(c, branchScope, branchResult, it.kind != nkFinally and not isEmptyType(n.typ))
       result.add branch
 
   of nkWhen: # This should be a "when nimvm" node.
@@ -1045,7 +1045,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = toTree(c, scope, body, false)
+  result = processScope(c, scope, body, false)
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
