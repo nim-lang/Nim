@@ -37,7 +37,7 @@ type
 
 var gTerm {.threadvar.}: owned(PTerminal)
 
-proc newTerminal(): owned(PTerminal) {.gcsafe.}
+proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
