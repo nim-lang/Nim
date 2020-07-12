@@ -10,15 +10,14 @@
 ## Optimizer:
 ## - elide 'wasMoved(x); destroy(x)' pairs
 ## - recognize "all paths lead to 'wasMoved(x)'"
-## - elide 'destroy(x)' calls if only special literals are
-##   assigned to 'x' and 'x' is not mutated or passed by 'var T'
-##   to something else. Special literals are string literals or
-##   arrays / tuples of string literals etc. <-- TODO.
 
 import
   ast, astalgo, msgs, renderer, types, idents, intsets
 
 from trees import exprStructuralEquivalent, getRoot
+
+const
+  nfMarkForDeletion = nfNone # faster than a lookup table
 
 type
   BasicBlock = object
@@ -29,7 +28,7 @@ type
     parent: ptr BasicBlock
 
   Con = object
-    toElide: seq[PNode]
+    somethingTodo: bool
     inFinally: int
 
 proc nestedBlock(parent: var BasicBlock; kind: TNodeKind): BasicBlock =
@@ -94,14 +93,12 @@ proc invalidateWasMoved(c: var BasicBlock; x: PNode) =
 
 proc wasMovedDestroyPair(c: var Con; b: var BasicBlock; d: PNode) =
   var i = 0
-  var dWasAdded = false
   while i < b.wasMovedLocs.len:
     if exprStructuralEquivalent(b.wasMovedLocs[i][1].skipAddr, d[1].skipAddr,
                                 strictSymEquality = true):
-      c.toElide.add b.wasMovedLocs[i]
-      if not dWasAdded:
-        c.toElide.add d
-        dWasAdded = true
+      b.wasMovedLocs[i].flags.incl nfMarkForDeletion
+      c.somethingTodo = true
+      d.flags.incl nfMarkForDeletion
       b.wasMovedLocs.del i
     else:
       inc i
@@ -244,7 +241,7 @@ proc opt(c: Con; n, parent: PNode; parentPos: int) =
 
   case n.kind
   of nkCallKinds:
-    if n in c.toElide:
+    if nfMarkForDeletion in n.flags:
       parent[parentPos] = newNodeI(nkEmpty, n.info)
     else:
       recurse()
@@ -280,7 +277,7 @@ proc optimize*(n: PNode): PNode =
   var c: Con
   var b: BasicBlock
   analyse(c, b, n)
-  if c.toElide.len > 0:
+  if c.somethingTodo:
     result = shallowCopy(n)
     for i in 0 ..< n.safeLen:
       opt(c, n[i], result, i)
