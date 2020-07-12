@@ -24,20 +24,23 @@ type
   BasicBlock = object
     wasMovedLocs: seq[PNode]
     kind: TNodeKind
-    hasReturn: bool
+    hasReturn, hasBreak: bool
     label: PSym # can be nil
     parent: ptr BasicBlock
 
   Con = object
     toElide: seq[PNode]
+    inFinally: int
 
 proc nestedBlock(parent: var BasicBlock; kind: TNodeKind): BasicBlock =
-  BasicBlock(wasMovedLocs: @[], hasReturn: false, label: nil, parent: addr(parent))
+  BasicBlock(wasMovedLocs: @[], kind: kind, hasReturn: false, hasBreak: false,
+    label: nil, parent: addr(parent))
 
 proc breakStmt(b: var BasicBlock; n: PNode) =
   var it = addr(b)
   while it != nil:
     it.wasMovedLocs.setLen 0
+    it.hasBreak = true
 
     if n.kind == nkSym:
       if it.label == n.sym: break
@@ -114,7 +117,10 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
         b.wasMovedLocs.add n
         special = true
       elif s.name.s == "=destroy":
-        c.wasMovedDestroyPair b, n
+        if c.inFinally > 0 and (b.hasReturn or b.hasBreak):
+          discard "cannot optimize away the destructor"
+        else:
+          c.wasMovedDestroyPair b, n
         special = true
       elif s.name.s == "=sink":
         reverse = true
@@ -220,6 +226,12 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
   of nkReturnStmt, nkRaiseStmt:
     for child in n: analyse(c, b, child)
     returnStmt(b)
+
+  of nkFinally:
+    inc c.inFinally
+    for child in n: analyse(c, b, child)
+    dec c.inFinally
+
   else:
     for child in n: analyse(c, b, child)
 
