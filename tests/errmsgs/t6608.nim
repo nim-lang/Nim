@@ -1,8 +1,10 @@
 discard """
-  nimout: '''t6608.nim(12, 4) Error: type mismatch: got <>
-but expected one of: 
+  cmd: "nim c --hints:off $file"
+  errormsg: "type mismatch: got <>"
+  nimout: '''t6608.nim(14, 4) Error: type mismatch: got <>
+but expected one of:
 AcceptCB = proc (s: string){.closure.}'''
-  line: 12
+  line: 14
 """
 
 type
