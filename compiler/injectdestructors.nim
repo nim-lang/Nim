@@ -42,9 +42,7 @@ type
   Con = object
     owner: PSym
     g: ControlFlowGraph
-    jumpTargets: IntSet
     graph: ModuleGraph
-    emptyNode: PNode
     otherRead: PNode
     inLoop, inSpawn: int
     uninit: IntSet # set of uninit'ed vars
@@ -451,7 +449,7 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
 
     var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
     vpart[0] = tempAsNode
-    vpart[1] = c.emptyNode
+    vpart[1] = newNodeI(nkEmpty, tempAsNode.info)
     vpart[2] = n
     v.add(vpart)
 
@@ -1009,26 +1007,10 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
     for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
-proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
-  result = newNodeI(nkStmtList, destroys.info)
-  for i in 0..<destroys.len:
-    if destroys[i][1][0].sym.kind in {skTemp, skForVar}:
-      result.add destroys[i]
-      destroys[i] = c.emptyNode
-
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c: Con
-  c.owner = owner
-  c.graph = g
-  c.emptyNode = newNodeI(nkEmpty, n.info)
-  let cfg = constructCfg(owner, n)
-  shallowCopy(c.g, cfg)
-  c.jumpTargets = initIntSet()
-  for i in 0..<c.g.len:
-    if c.g[i].kind in {goto, fork}:
-      c.jumpTargets.incl(i+c.g[i].dest)
+  var c = Con(owner: owner, graph: g, g: constructCfg(owner, n))
   dbg:
     echo "\n### ", owner.name.s, ":\nCFG:"
     echoCfg(c.g)
