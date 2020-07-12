@@ -238,3 +238,8 @@ proc setParent(self: SimpleLoopB, parent: SimpleLoopB) =
 
 var l = SimpleLoopB()
 l.setParent(l)
+
+
+# bug #14968
+import times
+let currentTime = now().utc
