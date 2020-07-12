@@ -288,6 +288,17 @@ template get[T](c: CritBitTree[T], key: string): T =
 
   n.val
 
+proc staticGet*[T](c: CritBitTree[T], key: string): T {.inline.} =
+  ## Retrieves the value at ``c[key]``. If `key` is not in `t`, the
+  ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
+  ## the key exists. It is available at compile time.
+  ##
+  ## See also:
+  ## * `[] proc <#[],CritBitTree[T],string>`_
+  ## * `[] proc <#[],CritBitTree[T],string_2>`_
+  ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
+  get(c, key)
+
 proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## Retrieves the value at ``c[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
@@ -296,6 +307,7 @@ proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## See also:
   ## * `[] proc <#[],CritBitTree[T],string_2>`_
   ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
+  ## * `staticGet proc<#staticGet, CritBitTree[T],string>`_
   get(c, key)
 
 proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
@@ -305,6 +317,7 @@ proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
   ## See also:
   ## * `[] proc <#[],CritBitTree[T],string>`_
   ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
+  ## * `staticGet proc<#staticGet, CritBitTree[T],string>`_
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =
