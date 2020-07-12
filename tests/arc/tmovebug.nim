@@ -47,6 +47,7 @@ sinked and not optimized to a bitcopy
 (data: @[0, 0])
 (data: @[0, 0])
 (data: @[0, 0])
+100
 '''
 """
 
@@ -390,3 +391,28 @@ proc initFoo7(len: int) =
             let s = newSeq[int](len); Foo(data: s) )
 
 initFoo7(2)
+
+
+# bug #14902
+iterator zip[T](s: openarray[T]): (T, T) =
+  var i = 0
+  while i < 10:
+    yield (s[i mod 2], s[i mod 2 + 1])
+    inc i
+
+var lastMem = int.high
+
+proc leak =
+  const len = 10
+  var x = @[newString(len), newString(len), newString(len)]
+
+  var c = 0
+  for (a, b) in zip(x):
+    let newMem = getOccupiedMem()
+    assert newMem <= lastMem
+    lastMem = newMem
+    c += a.len
+  echo c
+
+leak()
+
