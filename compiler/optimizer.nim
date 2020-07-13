@@ -14,7 +14,7 @@
 import
   ast, astalgo, msgs, renderer, types, idents, intsets
 
-from trees import exprStructuralEquivalent, getRoot
+from trees import exprStructuralEquivalent
 
 const
   nfMarkForDeletion = nfNone # faster than a lookup table
