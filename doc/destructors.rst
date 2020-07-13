@@ -354,7 +354,8 @@ Destructor removal
 
 ``wasMoved(x);`` followed by a `=destroy(x)` operation cancel each other
 out. An implementation is encouraged to exploit this in order to improve
-efficiency and code sizes.
+efficiency and code sizes. The current implementation does perform this
+optimization.
 
 
 Self assignments
@@ -507,6 +508,55 @@ use raw pointers (``ptr``) instead which is more cumbersome and also more danger
 for Nim's evolution: Later on the compiler can try to prove ``.cursor`` annotations
 to be safe, but for ``ptr`` the compiler has to remain silent about possible
 problems.
+
+
+Cursor inference / copy elision
+===============================
+
+The current implementation also performs `.cursor` inference. Cursor inference is
+a form of copy elision.
+
+To see how and when we can do that, think about this question: In `dest = src` when
+do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
+afterwards. If `dest` is a local variable that is simple to analyse. And if `src` is a
+location derived from a formal parameter, we also know it is not mutated! In other
+words, we do a compile-time copy-on-write analysis.
+
+This means that "borrowed" views can be written naturally and without explicit pointer
+indirections:
+
+.. code-block:: nim
+
+  proc main(tab: Table[string, string]) =
+    let v = tab["key"] # inferred as .cursor because 'tab' is not mutated.
+    # no copy into 'v', no destruction of 'v'.
+    use(v)
+    useItAgain(v)
+
+
+But it can have surprising consequences:
+
+
+.. code-block:: nim
+
+  type T = object
+
+  proc `=`(lhs: var T, rhs: T) =
+    echo "assign"
+
+  proc `=destroy`(v: var T) =
+    echo "destroy"
+
+  proc use(x: T) = discard
+
+  proc main =
+    var v1: T # inferred to be .cursor
+    var v2: T = v1 # inferred to be .cursor
+    use v1
+
+  main()
+
+Hence the program does not output anything.
 
 
 Owned refs

@@ -16,7 +16,8 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes, liftdestructors, optimizer
+  lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
+  cursorfier
 
 from trees import exprStructuralEquivalent, getRoot
 
@@ -38,7 +39,7 @@ type
   Con = object
     owner: PSym
     g: ControlFlowGraph
-    jumpTargets: IntSet
+    cursors: IntSet
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -70,52 +71,6 @@ proc nestedScope(parent: var Scope): Scope =
 proc rememberParent(parent: var Scope; inner: Scope) {.inline.} =
   parent.needsTry = parent.needsTry or inner.needsTry
 
-proc optimize(s: var Scope) =
-  # optimize away simple 'wasMoved(x); destroy(x)' pairs.
-  #[ Unfortunately this optimization is only really safe when no exceptions
-     are possible, see for example:
-
-  proc main(inp: string; cond: bool) =
-    if cond:
-      try:
-        var s = ["hi", inp & "more"]
-        for i in 0..4:
-          use s
-        consume(s)
-        wasMoved(s)
-      finally:
-        destroy(x)
-
-    Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
-  ]#
-  proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
-    # remember that it's destroy(addr(x))
-    for i in 0 ..< final.len:
-      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved, strictSymEquality = true):
-        return i
-    return -1
-
-  var removed = 0
-  for i in 0 ..< s.wasMoved.len:
-    let j = findCorrespondingDestroy(s.final, s.wasMoved[i][1])
-    if j >= 0:
-      s.wasMoved[i] = nil
-      s.final[j] = nil
-      inc removed
-  if removed > 0:
-    template filterNil(field) =
-      var m = newSeq[PNode](s.field.len - removed)
-      var mi = 0
-      for i in 0 ..< s.field.len:
-        if s.field[i] != nil:
-          m[mi] = s.field[i]
-          inc mi
-      assert mi == m.len
-      s.field = m
-
-    filterNil(wasMoved)
-    filterNil(final)
-
 type
   ToTreeFlag = enum
     onlyCareAboutVars,
@@ -125,7 +80,6 @@ proc toTree(c: var Con; s: var Scope; ret: PNode; flags: set[ToTreeFlag]): PNode
   proc isComplexStmtListExpr(n: PNode): bool =
     n.kind == nkStmtListExpr and (n.len == 0 or n[^1].kind != nkSym)
 
-  #if not s.needsTry: optimize(s)
   assert ret != nil
   if s.vars.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
     # trivial, nothing was done:
@@ -215,6 +169,17 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
           variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
       pc = min(variantA, variantB)
   return pc
+
+proc isCursor(n: PNode; c: Con): bool =
+  case n.kind
+  of nkSym:
+    result = sfCursor in n.sym.flags or c.cursors.contains(n.sym.id)
+  of nkDotExpr:
+    result = sfCursor in n[1].sym.flags
+  of nkCheckedFieldExpr:
+    result = isCursor(n[0], c)
+  else:
+    result = false
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
@@ -558,17 +523,6 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
   else:
     result = arg
 
-proc isCursor(n: PNode): bool =
-  case n.kind
-  of nkSym:
-    result = sfCursor in n.sym.flags
-  of nkDotExpr:
-    result = sfCursor in n[1].sym.flags
-  of nkCheckedFieldExpr:
-    result = isCursor(n[0])
-  else:
-    result = false
-
 proc cycleCheck(n: PNode; c: var Con) =
   if c.graph.config.selectedGC != gcArc: return
   var value = n[1]
@@ -890,7 +844,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
+        elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0], c):
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
@@ -911,7 +865,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           result.add v
     of nkAsgn, nkFastAsgn:
       if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-          not isCursor(n[0]):
+          not isCursor(n[0], c):
         # rule (self-assignment-removal):
         if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
           result = newNodeI(nkEmpty, n.info)
@@ -1112,16 +1066,14 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   c.owner = owner
   c.graph = g
   c.emptyNode = newNodeI(nkEmpty, n.info)
-  let cfg = constructCfg(owner, n)
-  shallowCopy(c.g, cfg)
-  c.jumpTargets = initIntSet()
-  for i in 0..<c.g.len:
-    if c.g[i].kind in {goto, fork}:
-      c.jumpTargets.incl(i+c.g[i].dest)
+  c.g = constructCfg(owner, n)
+
   dbg:
     echo "\n### ", owner.name.s, ":\nCFG:"
     echoCfg(c.g)
     echo n
+
+  c.cursors = computeCursors(n)
 
   var scope: Scope
   let body = p(n, c, scope, normal)
