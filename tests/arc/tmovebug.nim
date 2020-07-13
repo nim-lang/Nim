@@ -64,6 +64,9 @@ ho
 hey
 ho
 ho
+king
+live long; long live
+king
 '''
 """
 
@@ -467,5 +470,27 @@ proc weirdScopes =
           var a = "hey"
           (echo "hey"; b2))
   echo b2
+
+  type status = enum
+    alive
+
+  var king = "king"
+  echo (block:
+          var a = "a"
+          when true:
+            var b = "b"
+            case alive
+            of alive:
+              try:
+                var c = "c"
+                if true:
+                  king
+                else:
+                  "the abyss"
+              except:
+                echo "he ded"
+                "dead king")
+  echo "live long; long live"
+  echo king
 
 weirdScopes()
