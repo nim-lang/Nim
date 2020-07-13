@@ -48,6 +48,17 @@ sinked and not optimized to a bitcopy
 (data: @[0, 0])
 (data: @[0, 0])
 100
+hey
+hey
+(a: "a", b: 2)
+ho
+(a: "b", b: 3)
+(b: "b", a: 2)
+ho
+(b: "a", a: 3)
+hey
+break
+break
 '''
 """
 
@@ -416,3 +427,30 @@ proc leak =
 
 leak()
 
+
+proc consume(a: sink string) = echo a
+
+proc weirdScopes =
+  if (let a = "hey"; a.len > 0):
+    echo a
+
+  while (let a = "hey"; a.len > 0):
+    echo a
+    break
+
+  var a = block: (a: "a", b: 2)
+  echo a
+  (discard; a) = (echo "ho"; (a: "b", b: 3))
+  echo a
+
+  var b = try: (b: "b", a: 2)
+          except: raise
+  echo b
+  (discard; b) = (echo "ho"; (b: "a", a: 3))
+  echo b
+
+  var s = "break"
+  consume((echo "hey"; s))
+  echo s
+
+weirdScopes()
