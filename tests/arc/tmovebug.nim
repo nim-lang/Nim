@@ -59,6 +59,11 @@ ho
 hey
 break
 break
+hey
+ho
+hey
+ho
+ho
 '''
 """
 
@@ -452,5 +457,15 @@ proc weirdScopes =
   var s = "break"
   consume((echo "hey"; s))
   echo s
+
+  echo (block:
+          var a = "hey"
+          (echo "hey"; "ho"))
+
+  var b2 = "ho"
+  echo (block:
+          var a = "hey"
+          (echo "hey"; b2))
+  echo b2
 
 weirdScopes()

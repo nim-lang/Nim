@@ -66,6 +66,8 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   s.vars.add(sym)
   result = newSymNode(sym)
 
+const sfSingleUsedTemp = sfExported # For temporaries that we now will only be used once
+
 proc nestedScope(parent: var Scope): Scope =
   Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
 
@@ -157,6 +159,7 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
   var instr = -1
   let m = dfa.skipConvDfa(n)
+  if m.kind == nkSym and sfSingleUsedTemp in m.sym.flags: return true
 
   for i in 0..<c.g.len:
     # This comparison is correct and MUST not be ``instrTargets``:
@@ -542,10 +545,41 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
   elif ri.kind != nkEmpty:
     res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
-proc processScope(c: var Con; s: var Scope; ret: PNode, topLevel = false): PNode =
-  let isEscapingExpr = not (ret.typ.isEmptyType or topLevel)
-  #if not s.needsTry: optimize(s)
-  result = newNodeI(if isEscapingExpr: nkStmtListExpr else: nkStmtList, ret.info)
+proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
+  result = newNodeI(nkStmtList, ret.info)
+  if s.vars.len > 0:
+    let varSection = newNodeI(nkVarSection, ret.info)
+    for tmp in s.vars:
+      varSection.add newTree(nkIdentDefs, newSymNode(tmp), newNodeI(nkEmpty, ret.info),
+                                                           newNodeI(nkEmpty, ret.info))
+    result.add varSection
+  if s.wasMoved.len > 0 or s.final.len > 0:
+    let finSection = newNodeI(nkStmtList, ret.info)
+    for m in s.wasMoved: finSection.add m
+    for i in countdown(s.final.high, 0): finSection.add s.final[i]
+    if s.needsTry:
+      result.add newTryFinally(ret, finSection)
+    else:
+      result.add ret
+      result.add finSection
+  else:
+    result.add ret
+
+  if s.parent != nil: s.parent[].needsTry = s.parent[].needsTry or s.needsTry
+
+template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: untyped): PNode =
+  assert not ret.typ.isEmptyType
+  var result = newNodeI(nkStmtListExpr, ret.info)
+  # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
+  # later and use it to eliminate the temporary when theres no need for it, but its
+  # tricky because you would have to intercept moveOrCopy at a certain point
+  var cpy = newNodeI(nkStmtList, ret.info)
+  let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
+  tmp.sym.flags.incl sfSingleUsedTemp
+  if ret.typ.hasDestructor:
+    cpy.add moveOrCopy(tmp, ret, c, s, isDecl = true)
+  else:
+    cpy.add newTree(nkFastAsgn, tmp, p(ret, c, s, normal))
 
   if s.vars.len > 0:
     let varSection = newNodeI(nkVarSection, ret.info)
@@ -554,39 +588,22 @@ proc processScope(c: var Con; s: var Scope; ret: PNode, topLevel = false): PNode
                                                            newNodeI(nkEmpty, ret.info))
     result.add varSection
 
-  if s.wasMoved.len > 0 or s.final.len > 0:
-    let finSection = newNodeI(nkStmtList, ret.info)
-    for m in s.wasMoved: finSection.add m
-    for i in countdown(s.final.high, 0): finSection.add s.final[i]
+  let finSection = newNodeI(nkStmtList, ret.info)
+  for m in s.wasMoved: finSection.add m
+  for i in countdown(s.final.high, 0): finSection.add s.final[i]
 
-    if isEscapingExpr:
-      var cpy = newNodeI(nkStmtList, ret.info)
-      let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
-      if ret.typ.hasDestructor:
-        cpy.add c.genSink(tmp, ret, isDecl = true)
-        cpy.add c.genWasMoved(ret.skipConv)
-      else:
-        cpy.add newTree(nkFastAsgn, tmp, ret)
-
-      if s.needsTry:
-        result.add newTryFinally(newTree(nkStmtListExpr, cpy, tmp), finSection)
-      else:
-        result.add cpy
-        result.add finSection
-        result.add tmp
-    else:
-      if s.needsTry:
-        result.add newTryFinally(ret, finSection)
-      else:
-        result.add ret
-        result.add finSection
+  if s.needsTry:
+    result.add newTryFinally(newTree(nkStmtListExpr, cpy, processCall(tmp, s.parent[])), finSection)
   else:
-    result.add ret
+    result.add cpy
+    result.add finSection
+    result.add processCall(tmp, s.parent[])
 
-  if s.parent != nil:
-    s.parent[].needsTry = s.parent[].needsTry or s.needsTry
+  if s.parent != nil: s.parent[].needsTry = s.parent[].needsTry or s.needsTry
 
-template handleNestedTempl(n, processCall: untyped, fromMov: bool = true) =
+  result
+
+template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
   template maybeVoid(child, s): untyped =
     if isEmptyType(child.typ): p(child, c, s, normal)
     else: processCall(child, s)
@@ -611,8 +628,10 @@ template handleNestedTempl(n, processCall: untyped, fromMov: bool = true) =
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
       var ofScope = nestedScope(s)
-      let ofResult = maybeVoid(it[^1], ofScope)
-      branch[^1] = processScope(c, ofScope, ofResult)
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+                     processScope(c, ofScope, maybeVoid(it[^1], ofScope))
+                   else:
+                     processScopeExpr(c, ofScope, it[^1], processCall)
       result.add branch
 
   of nkWhileStmt:
@@ -628,8 +647,10 @@ template handleNestedTempl(n, processCall: untyped, fromMov: bool = true) =
     result = copyNode(n)
     result.add n[0]
     var bodyScope = nestedScope(s)
-    let bodyResult = processCall(n[1], bodyScope)
-    result.add processScope(c, bodyScope, bodyResult)
+    result.add if n[1].typ.isEmptyType or willProduceStmt:
+                 processScope(c, bodyScope, processCall(n[1], bodyScope))
+               else:
+                 processScopeExpr(c, bodyScope, n[1], processCall)
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
@@ -641,23 +662,29 @@ template handleNestedTempl(n, processCall: untyped, fromMov: bool = true) =
         #Condition needs to be destroyed outside of the condition/branch scope
         branch[0] = p(it[0], c, s, normal)
 
-      var branchResult = processCall(it[^1], branchScope)
-      branch[^1] = processScope(c, branchScope, branchResult)
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
+                     processScope(c, branchScope, processCall(it[^1], branchScope))
+                   else:
+                     processScopeExpr(c, branchScope, it[^1], processCall)
       result.add branch
 
   of nkTryStmt:
     result = copyNode(n)
     var tryScope = nestedScope(s)
-    var tryResult = maybeVoid(n[0], tryScope)
-    result.add processScope(c, tryScope, tryResult)
+    result.add if n[0].typ.isEmptyType or willProduceStmt:
+                 processScope(c, tryScope, maybeVoid(n[0], tryScope))
+               else:
+                 processScopeExpr(c, tryScope, n[0], maybeVoid)
 
     for i in 1..<n.len:
       let it = n[i]
       var branch = copyTree(it)
       var branchScope = nestedScope(s)
-      let branchResult = if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
-                         else: processCall(it[^1], branchScope)
-      branch[^1] = processScope(c, branchScope, branchResult)
+      branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or it.kind == nkFinally:
+                     processScope(c, branchScope, if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
+                                                  else: processCall(it[^1], branchScope))
+                   else:
+                     processScopeExpr(c, branchScope, it[^1], processCall)
       result.add branch
 
   of nkWhen: # This should be a "when nimvm" node.
@@ -975,7 +1002,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
     template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
-    handleNestedTempl(ri, process, true)
+    # We know the result will be a stmt so we use that fact to optimize
+    handleNestedTempl(ri, process, willProduceStmt = true)
   of nkRaiseStmt:
     result = pRaiseStmt(ri, c, s)
   else:
@@ -1034,7 +1062,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = processScope(c, scope, body, true)
+  result = processScope(c, scope, body)
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
