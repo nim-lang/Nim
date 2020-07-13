@@ -77,10 +77,11 @@ proc getCursors(c: Con): IntSet =
       block doAdd:
         for d in cur.deps:
           if c.mutations.contains(d):
+            #echo "bah, not a cursor ", cur.s, " bad dependency ", d
             break doAdd
         result.incl cur.s.id
         when false:
-          echo "computed as a cursor ", cur.s, " ", cur.deps
+          echo "computed as a cursor ", cur.s, " ", cur.deps, " ", cur.s.info.line
 
 proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
   case n.kind
@@ -164,7 +165,8 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
           # But at least we do filter out simple POD types from the
           # list of dependencies via the 'hasDestructor' check for
           # the root's symbol.
-          analyseAsgn(c, dest, n[i])
+          if hasDestructor(n[i].typ):
+            analyseAsgn(c, dest, n[i])
 
   else:
     # something we cannot handle:
