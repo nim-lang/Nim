@@ -37,7 +37,7 @@ proc handleHexChar(c: char, x: var int) {.inline.} =
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: assert(false)
+  else: raise new ValueError
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -102,11 +102,16 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
     while i < data.len:
       case data[i]
       of '%':
-        var x = 0
-        handleHexChar(data[i+1], x)
-        handleHexChar(data[i+2], x)
-        inc(i, 2)
-        add(name, chr(x))
+        try:
+          var x = 0
+          handleHexChar(data[i+1], x)
+          handleHexChar(data[i+2], x)
+          inc(i, 2)
+          add(name, chr(x))
+        except ValueError:
+          raise newException(ValueError, data[i .. i+2] & " is not a valid hex value")
+        except IndexDefect:
+          raise newException(ValueError, "not a two-digit hex value after '%'")
       of '+': add(name, ' ')
       of '=', '&': break
       else: add(name, data[i])
