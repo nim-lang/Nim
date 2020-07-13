@@ -90,6 +90,8 @@ proc decodeUrl*(s: string, decodePlus = true): string =
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
+  ## If after ``%`` an illegal hexadecimal value is passed,
+  ## ``ValueError`` is raised.
   ##
   ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
@@ -101,12 +103,17 @@ proc decodeUrl*(s: string, decodePlus = true): string =
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
         false) == "https://nim-lang.org/this is a test"
+    doAssertRaises(ValueError):
+      discard decodeUrl("abc%xx")
+    doAssertRaises(ValueError):
+      discard decodeUrl("abc%")
+
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
     of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
     of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-    else: assert(false)
+    else: raise new ValueError
 
   result = newString(s.len)
   var i = 0
@@ -114,11 +121,16 @@ proc decodeUrl*(s: string, decodePlus = true): string =
   while i < s.len:
     case s[i]
     of '%':
-      var x = 0
-      handleHexChar(s[i+1], x)
-      handleHexChar(s[i+2], x)
-      inc(i, 2)
-      result[j] = chr(x)
+      try:
+        var x = 0
+        handleHexChar(s[i+1], x)
+        handleHexChar(s[i+2], x)
+        inc(i, 2)
+        result[j] = chr(x)
+      except ValueError:
+        raise newException(ValueError, s[i .. i+2] & " is not a valid hex value")
+      except IndexDefect:
+        raise newException(ValueError, "not a two-digit hex value after '%'")
     of '+':
       if decodePlus:
         result[j] = ' '
