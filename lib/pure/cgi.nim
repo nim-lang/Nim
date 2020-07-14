@@ -104,14 +104,15 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
-  proc parseData(data: string, i: var int, field: var string) {.inline.} =
-    while i < data.len:
-      case data[i]
-      of '%': add(field, handlePercent(data, i))
+  proc parseData(data: string, i: int, field: var string): int =
+    result = i
+    while result < data.len:
+      case data[result]
+      of '%': add(field, handlePercent(data, result))
       of '+': add(field, ' ')
       of '=', '&': break
-      else: add(field, data[i])
-      inc(i)
+      else: add(field, data[result])
+      inc(result)
 
   var i = 0
   var name = ""
@@ -119,11 +120,11 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   # decode everything in one pass:
   while i < data.len:
     setLen(name, 0) # reuse memory
-    parseData(data, i, name)
+    i = parseData(data, i, name)
     if i >= data.len or data[i] != '=': cgiError("'=' expected")
     inc(i) # skip '='
     setLen(value, 0) # reuse memory
-    parseData(data, i, value)
+    i = parseData(data, i, value)
     yield (name.TaintedString, value.TaintedString)
     if i < data.len:
       if data[i] == '&': inc(i)
