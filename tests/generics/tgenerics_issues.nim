@@ -23,6 +23,7 @@ concrete 88
 G:0,1:0.1
 G:0,1:0.1
 H:1:0.1
+0
 '''
 joinable: false
 """
@@ -780,3 +781,16 @@ block: # issue #9458
     discard
 
   foo(1)
+
+
+# bug #8426
+type
+  MyBool[T: uint] = range[T(0)..T(1)] # Works
+
+var x: MyBool[uint]
+echo x
+
+# x = 2 # correctly prevented
+
+type
+  MyBool2 = range[uint(0)..uint(1)] # Error ordinal or float type expected
