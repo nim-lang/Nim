@@ -1528,8 +1528,8 @@ since (1, 3):
 
   # DocumentOrShadowRoot
   proc getSelection*(n: DocumentOrShadowRoot): Selection
-  proc elementFromPoint*(n: DocumentOrShadowRoot; x,y: float): Element
-  proc elementsFromPoint*(n: DocumentOrShadowRoot; x,y: float): seq[Element]
+  proc elementFromPoint*(n: DocumentOrShadowRoot; x, y: float): Element
+  proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element]
 
   # shadow dom
   proc attachShadow*(n: Element): ShadowRoot
