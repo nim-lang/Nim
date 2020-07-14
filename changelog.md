@@ -139,7 +139,7 @@
 - Tables, HashSets, SharedTables and deques don't require anymore that the passed
   initial size must be a power of two - this is done internally.
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
-
+- Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
 
 
 ## Language changes
