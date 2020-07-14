@@ -134,7 +134,7 @@ proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
   var line = await ftp.csock.recvLine()
   result = TaintedString(line)
   var count = 0
-  while line[3] == '-':
+  while line.len > 3 and line[3] == '-':
     ## Multi-line reply.
     line = await ftp.csock.recvLine()
     string(result).add("\n" & line)
