@@ -35,20 +35,32 @@ type
     mutations: IntSet
     reassigns: IntSet
 
-proc locationRoot(n: PNode): PSym =
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
-      result = n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
-    result = locationRoot(n[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast:
-    result = locationRoot(n[1])
-  of nkStmtList, nkStmtListExpr:
-    if n.len > 0:
-      result = locationRoot(n[^1])
-  else: discard
+proc locationRoot(e: PNode; followDotExpr = true): PSym =
+  var n = e
+  while true:
+    case n.kind
+    of nkSym:
+      if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
+        return n.sym
+      else:
+        return nil
+    of nkDotExpr, nkDerefExpr, nkBracketExpr, nkHiddenDeref,
+        nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
+      if followDotExpr:
+        n = n[0]
+      else:
+        return nil
+    of nkObjUpConv, nkObjDownConv:
+      n = n[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast:
+      n = n[1]
+    of nkStmtList, nkStmtListExpr:
+      if n.len > 0:
+        n = n[^1]
+      else:
+        return nil
+    else:
+      return nil
 
 proc addDep(c: var Con; dest: var Cursor; dependsOn: PSym) =
   if dest.s != dependsOn:
@@ -176,11 +188,14 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
     c.mayOwnData.incl dest.s.id
 
 proc rhsIsSink(c: var Con, n: PNode) =
-  let r = locationRoot(n)
-  if r != nil:
-    # let x = cursor? --> treat it like a sink parameter
-    c.mayOwnData.incl r.id
-    c.mutations.incl r.id
+  if n.kind == nkSym and n.typ.skipTypes(abstractInst-{tyOwned}).kind == tyRef:
+    discard "do no pessimize simple refs further, injectdestructors.nim will prevent moving from it"
+  else:
+    let r = locationRoot(n, followDotExpr = false)
+    if r != nil and r.kind != skParam:
+      # let x = cursor? --> treat it like a sink parameter
+      c.mayOwnData.incl r.id
+      c.mutations.incl r.id
 
 proc analyse(c: var Con; n: PNode) =
   case n.kind
