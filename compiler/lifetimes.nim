@@ -2,13 +2,6 @@ when defined(nimHasUsed): {.used.}
 
 import ast, options, types, msgs, lineinfos, semdata, renderer
 from strutils import `%`
-import std/decls
-
-import std/stackframes
-
-when true:
-  # debugging PRTEMP
-  discard
 
 type ViewData* = object
   c*: PContext

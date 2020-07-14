@@ -135,6 +135,8 @@ when defined(nimHasInvariant):
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
 
+from std / compilesettings import CaptureMode
+
 proc setCapturedMsgsImpl2(conf: ConfigRef, switch: BiggestInt) =
   let mode = CaptureMode(switch)
   case mode
