@@ -1,12 +1,12 @@
 discard """
   output: '''begin A
 elif
-destroyed
 end A
+destroyed
 begin false
 if
-destroyed
 end false
+destroyed
 begin true
 if
 end true
