@@ -287,6 +287,7 @@ proc substituteLog*(frmt: string, level: Level,
   runnableExamples:
     doAssert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
     doAssert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
+    doAssert substituteLog("$levelid", lvlDebug, "error") == "Derror"
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
@@ -300,7 +301,7 @@ proc substituteLog*(frmt: string, level: Level,
       inc(i)
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
-      while frmt[i] in IdentChars:
+      while i < frmt.len and frmt[i] in IdentChars:
         v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v

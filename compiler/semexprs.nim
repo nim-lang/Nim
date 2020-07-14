@@ -955,8 +955,17 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
+          let typ = n[0].typ
           msg.add(">\nbut expected one of: \n" &
-              typeToString(n[0].typ))
+              typeToString(typ))
+          # prefer notin preferToResolveSymbols
+          # t.sym != nil
+          # sfAnon notin t.sym.flags
+          # t.kind != tySequence(It is tyProc)
+          if typ.sym != nil and sfAnon notin typ.sym.flags and 
+                                typ.kind == tyProc:
+            msg.add(" = " & 
+                typeToString(typ, preferDesc))
           localError(c.config, n.info, msg)
         return errorNode(c, n)
       result = nil

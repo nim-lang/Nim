@@ -1127,12 +1127,9 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(js) and defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
-  programResult = 0
-elif hostOS != "standalone":
+when not defined(js) and hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## deprecated, prefer ``quit``
+    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
 

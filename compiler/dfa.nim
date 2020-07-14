@@ -628,7 +628,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
   result = n.kind == nkSym and n.sym.owner == owner and
-    owner.kind != skModule and
+    sfGlobal notin n.sym.flags and
     (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
   # Note: There is a different move analyzer possible that checks for
   # consume(param.key); param.key = newValue  for all paths. Then code like

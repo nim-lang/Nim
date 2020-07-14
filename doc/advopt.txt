@@ -111,7 +111,7 @@ Advanced options:
   --skipProjCfg:on|off      do not read the project's configuration file
   --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
-  --exceptions:setjmp|cpp|goto|quirky
+  --exceptions:setjmp|cpp|goto
                             select the exception handling implementation
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
