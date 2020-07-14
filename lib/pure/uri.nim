@@ -90,6 +90,7 @@ proc decodeUrl*(s: string, decodePlus = true): string =
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
+  ## If ``xx`` is not a valid hexadecimal value, it is left intact.
   ##
   ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
@@ -101,12 +102,25 @@ proc decodeUrl*(s: string, decodePlus = true): string =
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
         false) == "https://nim-lang.org/this is a test"
-  proc handleHexChar(c: char, x: var int) {.inline.} =
+    assert decodeUrl("abc%xyz") == "abc%xyz"
+
+  proc handleHexChar(c: char, x: var int, f: var bool) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
     of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
     of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-    else: assert(false)
+    else: f = true
+
+  proc handlePercent(s: string, i: var int): char =
+    result = '%'
+    if i+2 < s.len:
+      var x = 0
+      var failed = false
+      handleHexChar(s[i+1], x, failed)
+      handleHexChar(s[i+2], x, failed)
+      if not failed:
+        result = chr(x)
+        inc(i, 2)
 
   result = newString(s.len)
   var i = 0
@@ -114,11 +128,7 @@ proc decodeUrl*(s: string, decodePlus = true): string =
   while i < s.len:
     case s[i]
     of '%':
-      var x = 0
-      handleHexChar(s[i+1], x)
-      handleHexChar(s[i+2], x)
-      inc(i, 2)
-      result[j] = chr(x)
+      result[j] = handlePercent(s, i)
     of '+':
       if decodePlus:
         result[j] = ' '
