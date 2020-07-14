@@ -31,8 +31,9 @@ type
     deps: IntSet
   Con = object
     cursors: seq[Cursor]
-    blacklist: IntSet
+    mayOwnData: IntSet
     mutations: IntSet
+    reassigns: IntSet
 
 proc locationRoot(n: PNode): PSym =
   case n.kind
@@ -73,10 +74,12 @@ proc getCursors(c: Con): IntSet =
   ]#
   result = initIntSet()
   for cur in c.cursors:
-    if not c.blacklist.contains(cur.s.id):
+    if not c.mayOwnData.contains(cur.s.id) and
+        cur.s.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       block doAdd:
         for d in cur.deps:
-          if c.mutations.contains(d):
+          # you cannot borrow from a location that is mutated or (owns data and is re-assigned)
+          if c.mutations.contains(d) or (c.mayOwnData.contains(d) and c.reassigns.contains(d)):
             #echo "bah, not a cursor ", cur.s, " bad dependency ", d
             break doAdd
         result.incl cur.s.id
@@ -93,7 +96,7 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
       # XXX think about this case. Is 'nil' an owned location?
       if hasDestructor(n.typ):
         # 'myref = nil' is destructive and so 'myref' should not be a cursor:
-        c.blacklist.incl dest.s.id
+        c.mayOwnData.incl dest.s.id
 
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast, nkConv:
     analyseAsgn(c, dest, n[1])
@@ -114,28 +117,28 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
     for i in 1..<n.len:
       analyseAsgn(c, dest, n[i])
     # you must destroy a closure:
-    c.blacklist.incl dest.s.id
+    c.mayOwnData.incl dest.s.id
 
   of nkObjConstr:
     for i in 1..<n.len:
       analyseAsgn(c, dest, n[i])
     if hasDestructor(n.typ):
       # you must destroy a ref object:
-      c.blacklist.incl dest.s.id
+      c.mayOwnData.incl dest.s.id
 
   of nkCurly, nkBracket, nkPar, nkTupleConstr:
     for son in n:
       analyseAsgn(c, dest, son)
     if n.typ.skipTypes(abstractInst).kind == tySequence:
       # you must destroy a sequence:
-      c.blacklist.incl dest.s.id
+      c.mayOwnData.incl dest.s.id
 
   of nkSym:
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam} and
         hasDestructor(n.typ):
       if n.sym.flags * {sfThread, sfGlobal} != {}:
         # aliasing a global is inherently dangerous:
-        c.blacklist.incl dest.s.id
+        c.mayOwnData.incl dest.s.id
       else:
         # otherwise it's just a dependency, nothing to worry about:
         c.addDep(dest, n.sym)
@@ -148,7 +151,7 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
     if hasDestructor(n.typ):
       # calls do construct, what we construct must be destroyed,
       # so dest cannot be a cursor:
-      c.blacklist.incl dest.s.id
+      c.mayOwnData.incl dest.s.id
     elif n.typ.kind in {tyLent, tyVar}:
       # we know the result is derived from the first argument:
       let r = locationRoot(n[1])
@@ -170,7 +173,7 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
 
   else:
     # something we cannot handle:
-    c.blacklist.incl dest.s.id
+    c.mayOwnData.incl dest.s.id
 
 proc analyse(c: var Con; n: PNode) =
   case n.kind
@@ -185,10 +188,10 @@ proc analyse(c: var Con; n: PNode) =
       if r != nil and i < L:
         let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
         if paramType.kind in {tyVar, tySink, tyOwned}:
-          # pass by var? blacklist the root
+          # pass by var? mayOwnData the root
           # Else we seek to take ownership of 'r'. This is only valid when 'r'
           # actually owns its data. Thus 'r' cannot be a cursor:
-          c.blacklist.incl r.id
+          c.mayOwnData.incl r.id
           # and we assume it might get wasMoved(...) too:
           c.mutations.incl r.id
       analyse(c, it)
@@ -204,7 +207,7 @@ proc analyse(c: var Con; n: PNode) =
         if idx >= 0:
           analyseAsgn(c, c.cursors[idx], n[1])
 
-        c.mutations.incl n[0].sym.id
+        c.reassigns.incl n[0].sym.id
     else:
       # assignments like 'x.field = value' mean that 'x' itself cannot
       # be a cursor:
@@ -212,21 +215,21 @@ proc analyse(c: var Con; n: PNode) =
       if r != nil and r.typ.skipTypes(abstractInst).kind notin {tyPtr, tyRef}:
         # however, an assignment like 'it.field = x' does not influence r's
         # cursorness property:
-        c.blacklist.incl r.id
+        c.mayOwnData.incl r.id
         c.mutations.incl r.id
 
   of nkAddr, nkHiddenAddr:
     analyse(c, n[0])
     let r = locationRoot(n[0])
     if r != nil:
-      c.blacklist.incl r.id
+      c.mayOwnData.incl r.id
       c.mutations.incl r.id
 
   of nkVarSection, nkLetSection:
     for it in n:
       let value = it[^1]
       analyse(c, value)
-      if hasDestructor(it[0].typ) and it[0].typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
+      if hasDestructor(it[0].typ):
         for i in 0..<it.len-2:
           let v = it[i]
           if v.kind == nkSym and v.sym.flags * {sfThread, sfGlobal} == {}:
@@ -234,10 +237,10 @@ proc analyse(c: var Con; n: PNode) =
             c.cursors.add Cursor(s: it[i].sym)
             if it.kind == nkVarTuple and value.kind in {nkPar, nkTupleConstr} and
                 it.len-2 == value.len:
-              # this might blacklist it again:
+              # this might mayOwnData it again:
               analyseAsgn(c, c.cursors[^1], value[i])
             else:
-              # this might blacklist it again:
+              # this might mayOwnData it again:
               analyseAsgn(c, c.cursors[^1], value)
 
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
