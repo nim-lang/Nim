@@ -218,6 +218,15 @@ proc analyse(c: var Con; n: PNode) =
         c.mayOwnData.incl r.id
         c.mutations.incl r.id
 
+    when false:
+      # XXX think about this
+      if n[1].kind == nkSym and hasDestructor(n[1].typ):
+        # let x = cursor?
+        let s = n[1].sym
+        c.mayOwnData.incl s.id
+        # and we assume it might get wasMoved(...) too:
+        c.mutations.incl s.id
+
   of nkAddr, nkHiddenAddr:
     analyse(c, n[0])
     let r = locationRoot(n[0])
