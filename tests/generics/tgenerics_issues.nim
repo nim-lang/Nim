@@ -24,6 +24,9 @@ G:0,1:0.1
 G:0,1:0.1
 H:1:0.1
 0
+(foo: None[seq[Foo]], s: "")
+(foo: Some(@[(a: "world", bar: None[Bar])]), s: "hello,")
+@[(a: "hey", bar: None[Bar])]
 '''
 joinable: false
 """
@@ -794,3 +797,55 @@ echo x
 
 type
   MyBool2 = range[uint(0)..uint(1)] # Error ordinal or float type expected
+
+
+# bug #10396
+import options, strutils
+
+type
+  Foo {.acyclic.} = object
+    a: string
+    bar: Option[Bar]
+
+  Bar {.acyclic.} = object
+    foo: Option[seq[Foo]]   # if this was just Option[Foo], everything works fine
+    s: string
+
+proc getBar(x: string): Bar
+
+proc intoFoos(ss: seq[string]): seq[Foo] =
+  result = @[]
+  for s in ss:
+    let spl = s.split(',')
+    if spl.len > 1:
+      result.add Foo(a: spl[0],
+                     bar: some(getBar(spl[1])))
+    else:
+      result.add Foo(a: s,
+                     bar: none[Bar]())
+
+proc getBar(x: string): Bar =
+  let spl = x.split(' ')
+  result =
+    if spl.len > 1:
+      Bar(foo: some(spl[1..high(spl)].intoFoos),
+          s: spl[0])
+    else:
+      Bar(foo: none[seq[Foo]](),
+          s: "")
+
+proc fakeReadLine(): TaintedString = "hey"
+
+echo getBar(fakeReadLine()) # causes error
+
+echo getBar("hello, world") # causes error
+
+discard $getBar(fakeReadLine()) # causes error
+
+discard $getBar("hello, world") # causes error
+
+discard getBar(fakeReadLine()) # no error
+
+discard getBar("hello, world") # no error
+
+echo intoFoos(fakeReadLine().split(' ')) # no error, works as expected
