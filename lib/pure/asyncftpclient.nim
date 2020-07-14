@@ -133,7 +133,7 @@ const multiLineLimit = 10000
 proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
   result = await ftp.csock.recvLine()
   var count = 0
-  while result[3] == '-':
+  while line.len > 3 and line[3] == '-':
     ## Multi-line reply.
     let line = await ftp.csock.recvLine()
     result.add("\n" & line)
