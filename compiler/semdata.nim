@@ -145,10 +145,6 @@ type
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
 
-proc sameIdent*(c: PContext, ident: PIdent, name: string): bool =
-  # xxx use that wherever relevant, reduces boilerplate
-  result = ident.id == getIdent(c.cache, name).id
-
 template config*(c: PContext): ConfigRef = c.graph.config
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
