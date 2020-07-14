@@ -29,6 +29,12 @@ array[0 .. 100, int]
 10
 test
 0o377'i8
+1
+2
+3
+foo1
+foo2
+foo3
 '''
 """
 
@@ -258,3 +264,28 @@ macro foobar() =
   echo loopVars
 
 foobar()
+
+
+# bug #13253
+import macros
+
+type
+  FooBar = object
+    a: seq[int]
+
+macro genFoobar(a: static FooBar): untyped =
+  result = newStmtList()
+  for b in a.a:
+    result.add(newCall(bindSym"echo", newLit b))
+
+proc foobar(a: static FooBar) =
+  genFoobar(a)  # removing this make it work
+  for b in a.a:
+    echo "foo" & $b
+
+proc main() =
+  const a: seq[int] = @[1, 2,3]
+  # Error: type mismatch: got <array[0..2, int]> but expected 'seq[int]'
+  const fb = Foobar(a: a)
+  foobar(fb)
+main()
