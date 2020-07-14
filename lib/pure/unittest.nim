@@ -678,7 +678,7 @@ macro check*(conditions: untyped): untyped =
     result = newNimNode(nnkStmtList)
     for node in checked:
       if node.kind != nnkCommentStmt:
-        result.add(newCall(!"check", node))
+        result.add(newCall(newIdentNode("check"), node))
 
   else:
     let lineinfo = newStrLitNode(checked.lineInfo)
