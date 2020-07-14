@@ -320,7 +320,6 @@ type
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
     writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
-    writelnHookAlt*: proc (output: string) {.closure.} # PRTEMP
     capturedMsgs*: string
     capturedMsgsState*: bool
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
@@ -462,7 +461,6 @@ proc newConfigRef*(): ConfigRef =
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
-    writelnHookAlt: (proc(msg: string) = discard),
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals

@@ -303,7 +303,6 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
   #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
-  conf.writelnHookAlt(s)
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
@@ -348,8 +347,6 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
 
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
-template callWritelnHookAlt(args: varargs[string, `$`]) =
-  conf.writelnHookAlt concat(args)
 
 proc msgWrite(conf: ConfigRef; s: string) =
   if conf.m.errorOutputs != {}:
@@ -363,7 +360,6 @@ proc msgWrite(conf: ConfigRef; s: string) =
     conf.lastMsgWasDot = true # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
-  callIgnoringStyle(callWritelnHookAlt, nil, args)
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
@@ -397,7 +393,7 @@ proc log*(s: string) =
     f.writeLine(s)
     close(f)
 
-proc dumpCaptureMsg*(conf: ConfigRef)
+proc dumpCaptureMsg*(conf: ConfigRef) {.gcsafe.}
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
   dumpCaptureMsg(conf)
@@ -630,10 +626,8 @@ proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
 proc dumpCaptureMsg(conf: ConfigRef) =
   {.gcsafe.}:
     if conf.capturedMsgsState:
-      var msg = conf.capturedMsgs # not let because 'let' doesn't copy
+      var msg = conf.capturedMsgs # `let` doesn't copy depending on gc
       conf.capturedMsgs.setLen 0
       conf.capturedMsgsState = false
       conf.writelnHook = nil
       rawMessage(conf, errGenerated, "capturedMsgs not empty:\n" & msg)
-      # styledMsgWriteln(fgRed, "remaining 'capturedMsgs': ")
-      # msgWriteln(conf, msg)

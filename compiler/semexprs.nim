@@ -183,7 +183,7 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   ## Casting is very unrestrictive; casts are allowed as long as
   ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
-  #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCString, tyString,
+  #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString,
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
   let src = src.skipTypes(tyUserTypeClasses)

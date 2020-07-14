@@ -823,8 +823,12 @@ type
   PLib* = ref TLib
 
   ViewDep* = object
-    sym*: PSym
-    addrLevel*: int
+    ## for escape analysis, we model symbol dependency using a list of `ViewDep`
+    sym*: PSym ## lhs = foo.addr => ViewDep(sym: foo, addrLevel: 1)
+               ## lhs = foo      => ViewDep(sym: foo, addrLevel: 0)
+               ## lhs = foo[]    => ViewDep(sym: foo, addrLevel: -1)
+               ## lhs = foo[][]  => ViewDep(sym: foo, addrLevel: -2) etc
+    addrLevel*: int ## addressing level, <= 1, can be < 0
 
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
@@ -835,7 +839,7 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
-      resultSym*: PSym
+      resultSym*: PSym         # the `skResult` symbol for this proc, if any
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
@@ -854,9 +858,8 @@ type
       alignment*: int # for alignment
     else: nil
 
-    # could optimize a bit by using `viewFromSyms1` for `skLet, skVar, skField, skForVar`, `viewFromSyms2` for `skParam`, and an accessor template `viewFromSyms`
-    # viewFromSyms*: seq[PSym] # list of symbols referenced by address
-    viewSyms*: seq[ViewDep]
+    viewSyms*: seq[ViewDep] ## models dependency graph between symbols, see `ViewDep`
+      # we could optimize a bit by using `viewFromSyms1` for `skLet, skVar, skField, skForVar`, `viewFromSyms2` for `skParam`, and an accessor template `viewFromSyms` to avoid including it for every `kind`
 
     magic*: TMagic
     typ*: PType
@@ -885,7 +888,6 @@ type
                               # for variables a slot index for the evaluator
     offset*: int              # offset of record field
     loc*: TLoc
-
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
     when hasFFI:

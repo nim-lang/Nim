@@ -143,15 +143,12 @@ proc setCapturedMsgsImpl2(conf: ConfigRef, switch: BiggestInt) =
   of captureInvalid: doAssert false
   of captureStart:
     conf.capturedMsgsState = true
-    # TODO: save old one and restore later?
-    # conf.writelnHookAlt
+    # xxx: save old one and restore later?
     conf.writelnHook = proc (msg: string) =
-      # TODO: `CaptureMode` mode to tap (print as usual but also capture) result
+      # we could add `CaptureMode.duplicate` to both caputre and print
       conf.capturedMsgs.add msg
       conf.capturedMsgs.add "\n"
   of captureStop:
-    # if conf.capturedMsgs.len != 0:
-    #   dumpCaptureMsg*(conf)
     conf.writelnHook = nil
     conf.capturedMsgsState = false
     # see also: dumpCaptureMsg
