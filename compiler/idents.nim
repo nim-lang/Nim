@@ -116,3 +116,7 @@ proc newIdentCache*(): IdentCache =
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
+
+proc sameIdent*(cache: IdentCache, ident: PIdent, name: string): bool =
+  ## checks whether `ident` is the same as `name` modulo style
+  result = ident.id == getIdent(cache, name).id
