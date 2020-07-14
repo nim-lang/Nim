@@ -122,6 +122,8 @@ Advanced options:
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
   --expandMacro:MACRO       dump every generated AST from MACRO
+  --expandArc:PROCNAME      show how PROCNAME looks like after diverse optimizations
+                            before the final backend phase (mostly ARC/ORC specific)
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;

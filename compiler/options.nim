@@ -235,6 +235,7 @@ type
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
+    arcToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -410,6 +411,7 @@ proc newConfigRef*(): ConfigRef =
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
+    arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),

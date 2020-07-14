@@ -14,7 +14,7 @@
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
+  intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   cursorfier
@@ -1090,3 +1090,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
+
+  if g.config.arcToExpand.hasKey(owner.name.s):
+    echo "--expandArc: ", owner.name.s
+    echo renderTree(result, {renderIr})
+    echo "-- end of expandArc ------------------------"
