@@ -1340,7 +1340,7 @@ since (1, 3):
       delegatesFocus*: bool
 
     HTMLSlotElement* = ref HTMLSlotElementObj
-    HTMLSlotElementObj {.importc.} = object of ElemeRootObjnRootObjtObj
+    HTMLSlotElementObj {.importc.} = object of RootObj
       name*: cstring
     SlotOptions* = object of RootObj
       flatten*: bool
