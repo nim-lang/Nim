@@ -1332,7 +1332,7 @@ since (1, 3):
     ShadowRoot* = ref ShadowRootObj
     ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
       delegatesFocus*: bool
-      host*: Node
+      host*: Element
       innerHTML*: cstring
       mode*: cstring # "open" or "closed"
     ShadowRootInit* = object of RootObj
