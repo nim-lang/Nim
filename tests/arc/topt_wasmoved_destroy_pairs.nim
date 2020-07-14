@@ -33,16 +33,14 @@ try:
     block :tmp_1:
       while i_1 < 4:
         var :tmpD
-        try:
-          i = i_1
-          if i == 2:
-            return
-          add(a):
-            wasMoved(:tmpD)
-            `=`(:tmpD, x)
-            :tmpD
-          inc i_1, 1
-        finally:
+        i = i_1
+        if i == 2:
+          return
+        add(a):
+          wasMoved(:tmpD)
+          `=`(:tmpD, x)
+          :tmpD
+        inc i_1, 1
   if cond:
     add(a):
       let blitTmp = x
