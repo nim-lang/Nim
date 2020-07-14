@@ -17,7 +17,7 @@ import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  cursorfier
+  cursor_inference
 
 from trees import exprStructuralEquivalent, getRoot
 
@@ -982,7 +982,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       let snk = c.genSink(dest, ri, isDecl)
       result = newTree(nkStmtList, snk, c.genWasMoved(ri))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(c, dest.typ):
+        isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       let snk = c.genSink(dest, ri, isDecl)
       result = newTree(nkStmtList, snk, c.genWasMoved(ri))

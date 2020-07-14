@@ -534,30 +534,6 @@ indirections:
     useItAgain(v)
 
 
-But it can have surprising consequences:
-
-
-.. code-block:: nim
-
-  type T = object
-
-  proc `=`(lhs: var T, rhs: T) =
-    echo "assign"
-
-  proc `=destroy`(v: var T) =
-    echo "destroy"
-
-  proc use(x: T) = discard
-
-  proc main =
-    var v1: T # inferred to be .cursor
-    var v2: T = v1 # inferred to be .cursor
-    use v1
-
-  main()
-
-Hence the program does not output anything.
-
 
 Owned refs
 ==========

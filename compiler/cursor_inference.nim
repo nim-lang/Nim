@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Cursorfier:
+## Cursor inference:
 ## The basic idea was like this: Elide 'destroy(x)' calls if only
 ## special literals are assigned to 'x' and 'x' is not mutated or
 ## passed by 'var T' to something else. Special literals are string literals or
@@ -175,6 +175,13 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
     # something we cannot handle:
     c.mayOwnData.incl dest.s.id
 
+proc rhsIsSink(c: var Con, n: PNode) =
+  let r = locationRoot(n)
+  if r != nil:
+    # let x = cursor? --> treat it like a sink parameter
+    c.mayOwnData.incl r.id
+    c.mutations.incl r.id
+
 proc analyse(c: var Con; n: PNode) =
   case n.kind
   of nkCallKinds:
@@ -218,14 +225,8 @@ proc analyse(c: var Con; n: PNode) =
         c.mayOwnData.incl r.id
         c.mutations.incl r.id
 
-    when false:
-      # XXX think about this
-      if n[1].kind == nkSym and hasDestructor(n[1].typ):
-        # let x = cursor?
-        let s = n[1].sym
-        c.mayOwnData.incl s.id
-        # and we assume it might get wasMoved(...) too:
-        c.mutations.incl s.id
+    if hasDestructor(n[1].typ):
+      rhsIsSink(c, n[1])
 
   of nkAddr, nkHiddenAddr:
     analyse(c, n[0])
@@ -248,9 +249,11 @@ proc analyse(c: var Con; n: PNode) =
                 it.len-2 == value.len:
               # this might mayOwnData it again:
               analyseAsgn(c, c.cursors[^1], value[i])
+              rhsIsSink(c, value[i])
             else:
               # this might mayOwnData it again:
               analyseAsgn(c, c.cursors[^1], value)
+              rhsIsSink(c, value)
 
   of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,

@@ -1,5 +1,8 @@
 discard """
   output: '''
+assign
+destroy
+destroy
 5
 123
 destroy Foo: 123
