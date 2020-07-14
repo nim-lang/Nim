@@ -263,6 +263,11 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   else:
     let e = newSym(skLet, iter.name, owner, n.info)
     e.typ = hp.typ
+    if e.typ.kind == tyPtr:
+      let tmp = e.typ[0]
+      assert tmp.kind == tyObject
+      e.typ = newType(tyRef, e.typ.owner)
+      e.typ.add(tmp)
     e.flags = hp.flags
     env = newSymNode(e)
     var v = newNodeI(nkVarSection, n.info)
@@ -696,7 +701,8 @@ proc closureCreationForIter(iter: PNode;
   let owner = iter.sym.skipGenericOwner
   var v = newSym(skVar, getIdent(d.graph.cache, envName), owner, iter.info)
   incl(v.flags, sfShadowed)
-  v.typ = asOwnedRef(d, getHiddenParam(d.graph, iter.sym).typ)
+  let hpTyp = getHiddenParam(d.graph, iter.sym).typ.skipTypes({tyPtr})
+  v.typ = if hpTyp.kind == tyRef: asOwnedRef(d, hpTyp) else: hpTyp
   var vnode: PNode
   if owner.isIterator:
     let it = getHiddenParam(d.graph, owner)
@@ -707,16 +713,21 @@ proc closureCreationForIter(iter: PNode;
     var vs = newNodeI(nkVarSection, iter.info)
     addVar(vs, vnode)
     result.add(vs)
-  if d.envOnHeap:
+  if vnode.typ.kind in {tyRef, tyOwned}:
     result.add(newCall(getSysSym(d.graph, iter.info, "internalNew"), vnode))
   createTypeBoundOpsLL(d.graph, vnode.typ, iter.info, owner)
 
   let upField = lookupInRecord(v.typ.skipTypes({tyOwned, tyRef, tyPtr}).n, getIdent(d.graph.cache, upName))
   if upField != nil:
     let u = setupEnvVar(owner, d, c, iter.info)
+    let access = 
+      if vnode.typ.kind == tyObject: rawDirectAccess(vnode.sym, upField)
+      else: rawIndirectAccess(vnode, upField, iter.info)
     if u.typ.skipTypes({tyOwned, tyRef, tyPtr}) == upField.typ.skipTypes({tyOwned, tyRef, tyPtr}):
-      result.add(newAsgnStmt(rawIndirectAccess(vnode, upField, iter.info),
-                 u, iter.info))
+      if d.envOnHeap:
+        result.add(newAsgnStmt(access, u, iter.info))
+      else:
+        result.add(newAsgnStmt(access, nkAddr.newTree(u), iter.info))
     else:
       localError(d.graph.config, iter.info, "internal error: cannot create up reference for iter")
   result.add makeClosure(d.graph, iter.sym, vnode, iter.info)
@@ -857,68 +868,24 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
     if inContainer: dec c.inContainer
 
 proc anyInnerProcMightEscape(fn: PSym, g: ModuleGraph): bool =
-  ## go over `fn`'s ast and check if any procs defined within 
-  ## might escape the stack, ie are assigned or passed somewhere
-
-  var innerProcTypes: IntSet
-  
-  template getType(node: PNode | TNode): PType =
-    let t = if node.kind == nkSym and node.sym.typ != nil:
-      node.sym.typ
-    else:
-      node.typ
-    t.skipTypesOrNil(abstractInst) # do we need this?
-
-  template check(node: PNode | TNode) =
-      let t = getType(node)
-      if t != nil and t.id in innerProcTypes: 
-        # when defined(debugStackClosures): echo "dropping because of ", t, " ", node, " ", t.id
-        return true
-
   proc aux(nodes: TNodeSeq): bool =
     for node in nodes:
-      if node.kind == nkSym and isInnerProc(node.sym) and getType(node) != nil:
-        # if sfAddrTaken in node.sym.flags:
-        #   return true
-        let t = getType(node)
-        if t != nil:
-          innerProcTypes.incl(t.id)
-          for inst in node.sym.procInstCache:
-            innerProcTypes.incl(inst.sym.typ.id)
-
-      case node.kind
-      of nkSym:
-        if node.sym.isIterator and node.sym.typ.callConv == ccClosure:
+      if node.kind in declarativeDefs:
+        assert namePos == 0
+        # skip name
+        if aux(node.sons[1..^1]):
           return true
-      of nkCallKinds:
-        for arg in node.sons[1..^1]:
-          check(arg)
-      of nkAsgn:
-        check(node[1])
-      of nkReturnStmt:
-        check(node[0])
-      of nkCast:
-        check(node[1])
-      of nkObjConstr:
-        for arg in node.sons[1..^1]:
-          check(arg)
-      of nkBracket, nkTupleConstr:
-        for element in node.sons:
-          check(element)
-      of nkAddr, nkHiddenAddr:
-        check(node[0])
-      of nkHiddenStdConv, nkConv: # convs should occur only when assigning
-        check(node[1])            # or passing
-      of nkIdentDefs:
-        check(node[^1])
-      of nkLambdaKinds:
+      elif node.kind in nkLambdaKinds:
         return true
-      else: discard
-      
-      if node.kind notin nkLiterals + {nkSym, nkIdent} and aux(node.sons):
+      elif node.kind in nkCallKinds and node[0].kind == nkSym:
+        if aux(node.sons[1..^1]):
+          return true
+      elif node.kind == nkSym:
+        if node.sym.isInnerProc:
+          return true
+      elif node.kind notin nkLiterals + {nkSym, nkIdent, nkTypeOfExpr} and aux(node.sons):
         return true
-  
-  # ptrs are broken on the vm so just don't bother with the optim for now
+
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
   result = isCompileTime or fn.typ.callConv == ccClosure or aux(fn.ast[bodyPos].sons)
   if not result and defined(debugStackClosures): echo "stack env ok for ", fn
@@ -1062,14 +1029,15 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
 
     let hp = getHiddenParam(g, iter)
     env = newSym(skLet, iter.name, owner, body.info)
-    env.typ = hp.typ
+    env.typ = hp.typ.skipTypes({tyPtr})
     env.flags = hp.flags
 
     var v = newNodeI(nkVarSection, body.info)
     addVar(v, newSymNode(env))
     result.add(v)
     # add 'new' statement:
-    result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
+    if env.typ.kind in {tyRef, tyOwned}:
+      result.add(newCall(getSysSym(g, env.info, "internalNew"), env.newSymNode))
     createTypeBoundOpsLL(g, env.typ, body.info, owner)
 
   elif op.kind == nkStmtListExpr:

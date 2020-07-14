@@ -260,7 +260,10 @@ proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
 
   if n[0].kind == nkClosure:
     initLocExpr(p, n[0][1], a)
-    d.r = "(((NI*) $1)[1] < 0)" % [rdLoc(a)]
+    if n[0][1].typ.kind == tyObject:
+      d.r = "(((NI*) &($1))[1] < 0)" % [rdLoc(a)]
+    else:
+      d.r = "(((NI*) $1)[1] < 0)" % [rdLoc(a)]
   else:
     initLocExpr(p, n[0], a)
     # the environment is guaranteed to contain the 'state' field at offset 1:
