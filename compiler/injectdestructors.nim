@@ -573,13 +573,12 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   # There is a possibility to do this check: s.wasMoved.len > 0 or s.final.len > 0
   # later and use it to eliminate the temporary when theres no need for it, but its
   # tricky because you would have to intercept moveOrCopy at a certain point
-  var cpy = newNodeI(nkStmtList, ret.info)
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags.incl sfSingleUsedTemp
-  if ret.typ.hasDestructor:
-    cpy.add moveOrCopy(tmp, ret, c, s, isDecl = true)
-  else:
-    cpy.add newTree(nkFastAsgn, tmp, p(ret, c, s, normal))
+  let cpy = if ret.typ.hasDestructor:
+              moveOrCopy(tmp, ret, c, s, isDecl = true)
+            else:
+              newTree(nkFastAsgn, tmp, p(ret, c, s, normal))
 
   if s.vars.len > 0:
     let varSection = newNodeI(nkVarSection, ret.info)
@@ -587,11 +586,9 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
       varSection.add newTree(nkIdentDefs, newSymNode(tmp), newNodeI(nkEmpty, ret.info),
                                                            newNodeI(nkEmpty, ret.info))
     result.add varSection
-
   let finSection = newNodeI(nkStmtList, ret.info)
   for m in s.wasMoved: finSection.add m
   for i in countdown(s.final.high, 0): finSection.add s.final[i]
-
   if s.needsTry:
     result.add newTryFinally(newTree(nkStmtListExpr, cpy, processCall(tmp, s.parent[])), finSection)
   else:
