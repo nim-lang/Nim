@@ -68,6 +68,10 @@ proc repr*(p: pointer): string =
         result[j] = HexChars[n and 0xF]
         n = n shr 4
 
+proc repr*(p: proc): string =
+  ## repr of a proc as its address
+  repr(cast[pointer](p))
+
 template repr*(x: distinct): string =
   repr(distinctBase(typeof(x))(x))
 
