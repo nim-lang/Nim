@@ -97,7 +97,7 @@ proc getCursors(c: Con): IntSet =
             break doAdd
         when true:
           result.incl cur.s.id
-        when true:
+        when false:
           echo "computed as a cursor ", cur.s, " ", cur.deps, " ", c.config $ cur.s.info
 
 proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
