@@ -1402,8 +1402,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
                [s.name.s, s.kind.toHumanStr])
     return newOrPrevType(tyError, prev, c)
 
-  var t = s.typ
-  if t.kind in {tyCompositeTypeClass, tyAlias} and t.base.kind == tyGenericBody:
+  var t = s.typ.skipTypes({tyAlias})
+  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
 
   result = newOrPrevType(tyGenericInvocation, prev, c)
