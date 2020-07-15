@@ -63,8 +63,8 @@ c2.member = new seq[string]
 c2.member[] = @["hello"]
 echo c2.repr
 
-proc a =
+proc p2 =
   echo "hey"
 
-discard repr a
+discard repr p2
 
