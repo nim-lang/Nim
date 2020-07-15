@@ -37,6 +37,10 @@ template st_maybeRehashPutImpl(enlarge) {.dirty.} =
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
+proc itemMoved[T](t: T, h: int) =
+  ## no-op for tables that don't care about backshift
+  discard
+
 proc enlarge[A, B](t: var SharedTable[A, B]) =
   let oldSize = t.dataLen
   let size = oldSize * growthFactor
