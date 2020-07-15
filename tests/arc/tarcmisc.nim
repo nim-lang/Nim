@@ -21,6 +21,8 @@ whiley ends :(
 (x: "9")
 (x: "10")
 0
+new line before - @['a']
+new line after - @['a']
 closed
 destroying variable: 20
 destroying variable: 10
@@ -243,3 +245,15 @@ l.setParent(l)
 # bug #14968
 import times
 let currentTime = now().utc
+
+
+# bug #14994
+import sequtils
+var newLine = @['a']
+let indent = newSeq[char]()
+
+echo "new line before - ", newline
+
+newline.insert(indent, 0)
+
+echo "new line after - ", newline

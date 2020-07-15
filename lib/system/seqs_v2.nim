@@ -82,6 +82,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len
+  #sysAssert newLen >= x.len, "invalid newLen parameter for 'grow'"
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or xu.p.cap < newLen:
