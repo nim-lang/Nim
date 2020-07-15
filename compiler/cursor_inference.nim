@@ -95,8 +95,9 @@ proc getCursors(c: Con): IntSet =
           if c.mutations.contains(d) or (c.mayOwnData.contains(d) and c.reassigns.contains(d)):
             #echo "bah, not a cursor ", cur.s, " bad dependency ", d
             break doAdd
-        result.incl cur.s.id
-        when false:
+        when true:
+          result.incl cur.s.id
+        when true:
           echo "computed as a cursor ", cur.s, " ", cur.deps, " ", c.config $ cur.s.info
 
 proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
@@ -249,6 +250,16 @@ proc analyse(c: var Con; n: PNode) =
     if r != nil:
       c.mayOwnData.incl r.id
       c.mutations.incl r.id
+
+  of nkTupleConstr, nkBracket, nkObjConstr:
+    for i in ord(n.kind == nkObjConstr)..<n.len:
+      if n[i].kind == nkSym:
+        # we assume constructions with cursors are better without
+        # the cursors because it's likely we can move then, see
+        # test arc/topt_no_cursor.nim
+        let r = n[i].sym
+        c.mayOwnData.incl r.id
+        c.mutations.incl r.id
 
   of nkVarSection, nkLetSection:
     for it in n:

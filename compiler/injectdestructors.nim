@@ -721,7 +721,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
-    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and isLastRead(n, c):
+    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
+        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n, c)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
