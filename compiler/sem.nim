@@ -56,7 +56,10 @@ proc semTypeOf(c: PContext; n: PNode): PNode
 proc computeRequiresInit(c: PContext, t: PType): bool
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
-proc checkViewFromCompat(c: PContext, n, le, ri: PNode) {.importc.}
+
+# lifetime
+proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.importc.}
+proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc.}
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and

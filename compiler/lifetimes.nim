@@ -11,6 +11,51 @@ type ViewData* = object
 proc containsView(c: PContext, typ: PType, n: PNode): bool
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int)
 
+proc resolveParamToPNode(c: PContext, fun: PSym, nCall: PNode, sym: PSym): PNode =
+  if sym.kind == skParam:
+    if sym.owner == fun:
+      result = nCall[1 + sym.position]
+      doAssert result != nil
+
+proc resolveSymbolLHS(c: PContext, n, le: PNode): PSym =
+  #[
+  TODO: also return addrLevel
+  we could also return an iterator to handle cases like:
+  g(x,y) = fun(a,b,c)
+  => yield x, yield y
+  ]#
+  let typ = le.typ.skipTypes(abstractInst)
+  # dbg le.kind, n.renderTree, c.config$n.info, typ.kind
+  let ok = containsView(c, le.typ, n)
+  # xxx handle this: (x1, x2) = (ptr1, ptr2)
+  # dbg ok
+  if ok:
+    var ni = le
+    while true:
+      # dbg ni.kind, ni.renderTree
+      case ni.kind
+      of nkHiddenDeref, nkDerefExpr: ni = ni[0] # eg: var result or var param
+      of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr: ni = ni[0]
+      of nkCast, nkHiddenStdConv: ni = ni[1]
+      of nkSym: return ni.sym
+      of nkHiddenAddr: ni = ni[0]
+      of nkCallKinds:
+        if ni.len >= 2:
+          #[
+          this happened for: `g.tokens[^1].sym = sym` (^ leads to a function call)
+          We could also check all arguments, but for simplicity we for now just
+          check the 1st one, see also RFC #7373
+          ]#
+          ni = ni[1]
+      else:
+        # TODO
+        if ndebugEchoEnabled():
+          dbg ni
+          dbg2 ni
+          doAssert false, $ni.kind
+        else:
+          break
+
 proc onEscape(vdata: var ViewData, sym: PSym)=
   let frame = sym.owner
   # `vdata.c.p.owner` not as relevant for error message
@@ -179,19 +224,25 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
     var sym = ai.sym
     # dbg ai, addrLevel, addrLevel + ai.addrLevel
     var addrLevel2 = addrLevel + ai.addrLevel
-    var substituted = false
-    if sym.kind == skParam:
-      if sym.owner == fun:
-        # TODO: only if fun has a result?
-        let arg = nCall[1 + sym.position]
-        viewFromRoots(vdata, arg, depth+1, addrLevel2)
-        substituted = true
-    if not substituted:
+
+    # FACTOR with evalConstraint
+    let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
+    if rhsNode!=nil:
+      viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
+    else:
       addDependencies(vdata, sym, addrLevel2)
 
-proc simulateCall2(fun: PSym, nCall: PNode) = # PRTEMP
-  var vdata: ViewData
-  simulateCall(vdata, fun, nCall, depth=0, addrLevel=0)
+proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
+  var lhs = vc.lhs
+  let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
+  if lhsNode != nil: lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  var vdata = ViewData(c: c, lhs: lhs, n: nCall)
+  let addrLevel = vc.addrLevel
+  let rhsNode = resolveParamToPNode(c,fun,nCall,vc.rhs)
+  if rhsNode != nil:
+    viewFromRoots(vdata, rhsNode, depth=0, addrLevel=addrLevel)
+  else:
+    addDependencies(vdata, vc.rhs, addrLevel)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
@@ -359,40 +410,34 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
         doAssert false, $("not yet implemented", t.kind, typ.kind, c.config$n.info, n.renderTree)
       break
 
-proc checkViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc.} =
+proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc.} =
   if optStaticEscapeCheck notin c.config.options: return
   if ri.kind in {nkEmpty, nkNilLit}: return # eg: var a: int
-  let typ = le.typ.skipTypes(abstractInst)
-  # dbg le.kind, n.renderTree, c.config$n.info, typ.kind
-  let ok = containsView(c, le.typ, n)
-  # xxx handle this: (x1, x2) = (ptr1, ptr2)
-  # dbg ok
-  if ok:
-    var ni = le
-    while true:
-      # dbg ni.kind, ni.renderTree
-      case ni.kind
-      of nkHiddenDeref, nkDerefExpr: ni = ni[0] # eg: var result or var param
-      of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr: ni = ni[0]
-      of nkCast, nkHiddenStdConv: ni = ni[1]
-      of nkSym:
-        var viewData = ViewData(c: c, lhs: ni.sym, n: n)
-        viewFromRoots(viewData, ri, 0, 0)
-        break
-      of nkHiddenAddr: ni = ni[0]
-      of nkCallKinds:
-        if ni.len >= 2:
-          #[
-          this happened for: `g.tokens[^1].sym = sym` (^ leads to a function call)
-          We could also check all arguments, but for simplicity we for now just
-          check the 1st one, see also RFC #7373
-          ]#
-          ni = ni[1]
-      else:
-        # TODO
-        if ndebugEchoEnabled():
-          dbg ni
-          dbg2 ni
-          doAssert false, $ni.kind
-        else:
-          break
+  let lhs = resolveSymbolLHS(c, n, le)
+  if lhs != nil:
+    var viewData = ViewData(c: c, lhs: lhs, n: ri)
+    viewFromRoots(viewData, ri, 0, 0)
+
+proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc.} = # PRTEMP
+  # {.define(timn_enable_echo0b).}
+  if optStaticEscapeCheck notin c.config.options: return
+  case fun.kind
+  of skVar, skLet, skIterator, skParam:
+    #[
+    TODO: skVar; fun: errorMessageWriter@3870604;
+    TODO: handle skIterator
+
+    skLet:
+    let marker = cell.typ.marker
+    marker(cellToUsr(cell), op.int)
+    
+    skParam:
+    proc translate*(s: string, replacements: proc(key: string): string): string {.
+    result.add(replacements(word))
+    ]#
+    discard
+  of skProc:
+    for vc in fun.viewConstraints: evalConstraint(c, fun, vc, nCall)
+  else:
+    dbg fun.kind, fun
+    doAssert false

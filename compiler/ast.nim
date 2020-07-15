@@ -829,6 +829,12 @@ type
                ## lhs = foo[]    => ViewDep(sym: foo, addrLevel: -1)
                ## lhs = foo[][]  => ViewDep(sym: foo, addrLevel: -2) etc
     addrLevel*: int ## addressing level, <= 1, can be < 0
+  
+  ViewConstraint* = object
+    # we could model other constraints, eg whether a parameter is being written to
+    lhs*: PSym
+    rhs*: PSym  # or ViewDep?
+    addrLevel*: int
 
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
@@ -840,6 +846,7 @@ type
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
       resultSym*: PSym         # the `skResult` symbol for this proc, if any
+      viewConstraints*: seq[ViewConstraint]
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to

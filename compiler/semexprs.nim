@@ -894,7 +894,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
-    # checkViewFromCompat(c, n, le, ri: PNode)
+    nimSimulateCall(c, callee, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
     when false:
@@ -1611,7 +1611,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   result.add(n)
 
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
-  checkViewFromCompat(c, n, le, ri)
+  nimCheckViewFromCompat(c, n, le, ri)
   if le.kind == nkHiddenDeref:
     var x = le[0]
     if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
