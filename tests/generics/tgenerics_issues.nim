@@ -849,3 +849,14 @@ discard getBar(fakeReadLine()) # no error
 discard getBar("hello, world") # no error
 
 echo intoFoos(fakeReadLine().split(' ')) # no error, works as expected
+
+
+# bug #14990
+type
+  Tile3 = Tile2
+  Tile2 = Tile
+  Tile[n] = object
+    a: n
+
+var a: Tile3[int]
+
