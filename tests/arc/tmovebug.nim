@@ -67,6 +67,9 @@ ho
 king
 live long; long live
 king
+hi
+try
+bye
 '''
 """
 
@@ -494,3 +497,30 @@ proc weirdScopes =
   echo king
 
 weirdScopes()
+
+
+# bug #14985
+proc getScope(): string =
+  if true:
+    return "hi"
+  else:
+    "else"
+
+echo getScope()
+
+proc getScope3(): string =
+  try:
+    "try"
+  except:
+    return "except"
+
+echo getScope3()
+
+proc getScope2(): string =
+  case true
+  of true:
+    return "bye"
+  else:
+    "else"
+
+echo getScope2()
