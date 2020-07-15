@@ -1,7 +1,6 @@
 discard """
-  errormsg: "value expected, but got a type"
+  errormsg: "invalid type: 'type seq[tuple[title: string, body: string]]' for var"
   line: 7
-  disabled: true
 """
 
 proc crashAndBurn() =

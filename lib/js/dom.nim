@@ -196,6 +196,9 @@ type
     innerText*: cstring
     textContent*: cstring
     style*: Style
+    baseURI*: cstring
+    parentElement*: Element
+    isConnected*: bool
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
@@ -224,6 +227,7 @@ type
 
   Element* = ref ElementObj
   ElementObj {.importc.} = object of NodeObj
+    className*: cstring
     classList*: ClassList
     checked*: bool
     defaultChecked*: bool
@@ -1481,6 +1485,7 @@ proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
 proc hasAttribute*(n: Node, attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
+proc normalize*(n: Node)
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
@@ -1490,6 +1495,13 @@ proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
 proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
+proc compareDocumentPosition*(n: Node, otherNode:Node): int
+proc lookupPrefix*(n: Node): cstring
+proc lookupNamespaceURI*(n: Node): cstring
+proc isDefaultNamespace*(n: Node): bool
+proc contains*(n: Node): bool
+proc isEqualNode*(n: Node): bool
+proc isSameNode*(n: Node): bool
 
 # Document "methods"
 proc createAttribute*(d: Document, identifier: cstring): Node
