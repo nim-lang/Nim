@@ -23,7 +23,7 @@
 ## do a compile-time copy-on-write analysis.
 
 import
-  ast, types, renderer, idents, intsets
+  ast, types, renderer, idents, intsets, options, msgs
 
 type
   Cursor = object
@@ -34,6 +34,7 @@ type
     mayOwnData: IntSet
     mutations: IntSet
     reassigns: IntSet
+    config: ConfigRef
 
 proc locationRoot(e: PNode; followDotExpr = true): PSym =
   var n = e
@@ -96,7 +97,7 @@ proc getCursors(c: Con): IntSet =
             break doAdd
         result.incl cur.s.id
         when false:
-          echo "computed as a cursor ", cur.s, " ", cur.deps, " ", cur.s.info.line
+          echo "computed as a cursor ", cur.s, " ", cur.deps, " ", c.config $ cur.s.info
 
 proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
   case n.kind
@@ -146,8 +147,7 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
       c.mayOwnData.incl dest.s.id
 
   of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam} and
-        hasDestructor(n.typ):
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       if n.sym.flags * {sfThread, sfGlobal} != {}:
         # aliasing a global is inherently dangerous:
         c.mayOwnData.incl dest.s.id
@@ -180,7 +180,7 @@ proc analyseAsgn(c: var Con; dest: var Cursor; n: PNode) =
           # But at least we do filter out simple POD types from the
           # list of dependencies via the 'hasDestructor' check for
           # the root's symbol.
-          if hasDestructor(n[i].typ):
+          if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
             analyseAsgn(c, dest, n[i])
 
   else:
@@ -278,7 +278,7 @@ proc analyse(c: var Con; n: PNode) =
   else:
     for child in n: analyse(c, child)
 
-proc computeCursors*(n: PNode): IntSet =
-  var c: Con
+proc computeCursors*(n: PNode; config: ConfigRef): IntSet =
+  var c = Con(config: config)
   analyse(c, n)
   result = getCursors c

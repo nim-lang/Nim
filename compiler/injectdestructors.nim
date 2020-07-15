@@ -1042,7 +1042,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
-  c.cursors = computeCursors(n)
+  c.cursors = computeCursors(n, g.config)
 
   var scope: Scope
   let body = p(n, c, scope, normal)
