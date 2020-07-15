@@ -14,7 +14,7 @@ proc checkEscapeImpl(actual, sub: string) =
 template checkEscape*(msg) =
   static: checkEscapeImpl(getCapturedMsgs(), msg)
 
-template checkNoEscape*() =
+template checkEscapeOK*() =
   static: checkEscapeImpl(getCapturedMsgs(), @[])
 
 template ignoreEscape*(body) =

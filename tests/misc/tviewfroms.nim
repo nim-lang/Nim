@@ -2,6 +2,10 @@ discard """
   cmd: "nim $target --staticescapechecks $options $file"
 """
 
+#[
+next: fn17
+]#
+
 import ./mviewfroms
 import std/compilesettings
 
@@ -109,7 +113,7 @@ block: # D20200710T191727 interprocedure inference: dependency of parameters bas
 
     # fn.result depends only on `fn.a2`, so only on `b1`, which is legal here
     result = fn(b2.addr, b1.addr)
-    checkNoEscape()
+    checkEscapeOK()
 
 block: # example with generic instantiation
   type Foo2[T] = object
@@ -142,7 +146,7 @@ block: # example showing a simplified view implementation
     checkEscape "'bad15.l0' escapes via 'b'"
 
     var local = initFoo2(l0)
-    checkNoEscape()
+    checkEscapeOK()
 
     when false: # BUG: unrelated cgen error
       #[
@@ -160,18 +164,18 @@ block: # example showing a simplified view implementation
     checkEscape "'bad15.l0' escapes via 'result'"
 
     var g1 = initFoo1(l0)
-    checkNoEscape()
+    checkEscapeOK()
 
     let l0b = [1,2]
     g1 = initFoo1(l0b)
-    checkNoEscape()
+    checkEscapeOK()
 
     b = initFoo1(l0)
     checkEscape "'bad15.l0' escapes via 'b'"
 
     let l4 = @[10,11] # no escape since allocated on the heap
     b = initFoo1(l4)
-    checkNoEscape()
+    checkEscapeOK()
 
   var a, b: Foo[int]
   discard bad15(a, b)
@@ -257,7 +261,7 @@ block: # escape semantics for array, seq: elements for seq are on heap
     g1 = a1.addr
     checkEscape "'bad21b.a1' escapes via 'g1'"
     g1a = a1[0].addr
-    checkNoEscape() # because elements are heap allocated
+    checkEscapeOK() # because elements are heap allocated
 
     var a2 = [12,13]
     g2 = a2.addr
@@ -342,7 +346,7 @@ block:
     var a0 = [g0.addr]
     result = a0[0]
   doAssert bad26c()[] == 13
-  checkNoEscape()
+  checkEscapeOK()
 
 block:
   proc fun2(a: var ptr int): ptr int = result = a
@@ -534,6 +538,55 @@ block:
     doAssert b4[] == 12
   fn15()
 
+block: # block scope escaping
+  type Foo = object
+    x: int
+  var f: ptr Foo
+  block:
+    var f1 {.threadvar.}: Foo
+    f = f1.addr
+    checkEscapeOK()
+
+    when false: # pending bug #14986
+      var f2 {.global.}: Foo
+      f = f2.addr
+      checkEscapeOK()
+        # this would hold currently and seems correct but is inconsistent
+        # until bug #14986 is resolved
+
+      # nim bug: there's no way to distinguish between 
+      # `var f3: Foo` and `var f2 {.global.}: Foo`, which is a problem if
+      # destructor is called for f3 but not f2.
+      var f3: Foo
+      f = f3.addr
+      checkEscapeOK() # this would hold currently
+
+  proc fn16()=
+    var l5: Foo
+    var l6: ptr Foo
+    block:
+      var l7: Foo
+      proc fn16()=
+        var l0: ptr Foo
+        block:
+          var l1 = Foo(x: 1)
+          l0 = l1.addr
+          checkEscape "'fn16.l1' escapes via 'l0'"
+          var g2 {.threadvar.}: Foo
+          l0 = g2.addr
+          checkEscapeOK()
+          var g3 {.global.}: Foo
+          l0 = g3.addr
+          checkEscapeOK()
+        var l4: Foo
+        l0 = l4.addr
+        checkEscapeOK()
+        l0 = l5.addr
+        checkEscapeOK()
+        l6 = l5.addr # both lhs,rhs in a parent scope
+        checkEscapeOK()
+        l6 = l7.addr # both lhs,rhs in a parent scope
+        checkEscape "'fn16.l7' escapes via 'l6'"
 
 block: # complex example
   type Foo[T] = object
@@ -664,5 +717,5 @@ when false:
         # result[0] = l0.addr # ok (escape detected)
         result[^1] = l0.addr # bug (escape not detected)
 
-checkNoEscape()
+checkEscapeOK()
 setCapturedMsgs(captureStop)

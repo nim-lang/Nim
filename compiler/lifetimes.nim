@@ -17,7 +17,7 @@ proc onEscape(vdata: var ViewData, sym: PSym)=
     "local '$1.$2' escapes via '$3' in '$4'" %
       [frame.name.s, sym.name.s, vdata.lhs.name.s, renderTree(vdata.n)])
 
-proc outlives(lhs, rhs: PSym): bool =
+proc outlivesProcFrame(lhs, rhs: PSym): bool =
   ##[
   return whether `lhs` outlives `rhs`, in which case a warning/error should be issued
   since what lhs points to would be invalidated when rhs dies and lhs outlives it.
@@ -29,8 +29,6 @@ proc outlives(lhs, rhs: PSym): bool =
 
   nesting is small on average so no need to cache some `PSym.depth`.
   ]##
-  if sfGlobal in lhs.flags: return sfGlobal notin rhs.flags
-  if sfGlobal in rhs.flags: return false
   let lhsFrame=lhs.owner
   var s = rhs.owner
   if s == nil: return false
@@ -52,9 +50,33 @@ proc outlives(lhs, rhs: PSym): bool =
     if s == nil: return false
     elif s == lhsFrame: return true
 
+proc findScopeDepth(scope: PScope, sym: PSym): int =
+  var scope = scope
+  while true:
+    doAssert scope != nil, $sym
+    if sym in scope.symbols.data:
+      return scope.depthLevel
+    scope = scope.parent
+
+proc outlives(c: PContext, lhs, rhs: PSym): bool =
+  # dbg lhs, rhs, lhs.flags, rhs.flags
+  # dbg2 lhs
+  # dbg2 rhs
+  if sfGlobal in lhs.flags: return sfGlobal notin rhs.flags
+  if sfGlobal in rhs.flags: return false
+  result = outlivesProcFrame(lhs, rhs)
+  if not result: # consider block scope
+    # TODO: store scope in PSym? or maybe at least depth?
+    var scope = c.currentScope
+    let d1 = findScopeDepth(scope, lhs)
+    let d2 = findScopeDepth(scope, rhs)
+    # dbg result, d1, d2, lhs, rhs, lhs.flags, rhs.flags
+    if d1 < d2:
+      result = true
+
 proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
   let lhs = result.lhs
-  if addrLevel == 1 and outlives(lhs, sym):
+  if addrLevel == 1 and outlives(result.c, lhs, sym):
     onEscape(result, sym)
   else:
     for ai in mitems(lhs.viewSyms):
@@ -274,6 +296,9 @@ proc skipToSym(n: PNode): PType =
   else: doAssert false, $n.kind
 
 proc containsView(c: PContext, typ: PType, n: PNode): bool =
+  #[
+  potentially relevant: `tfHasGCedMem in typ.flags`
+  ]#
   var t = typ.skipTypes(abstractInst)
 
   template fun(tj) =

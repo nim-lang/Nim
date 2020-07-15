@@ -894,6 +894,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     activate(c, result)
     fixAbstractType(c, result)
     analyseIfAddressTakenInCall(c, result)
+    # checkViewFromCompat(c, n, le, ri: PNode)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
     when false:
@@ -2265,12 +2266,14 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if result == nil:
       result = errorNode(c, n)
     else:
+      # xxx FACTOR with `afterCallActions`
       let callee = result[0].sym
       if callee.magic == mNone:
         semFinishOperands(c, result)
       activate(c, result)
       fixAbstractType(c, result)
       analyseIfAddressTakenInCall(c, result)
+      # PRTEMP
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
