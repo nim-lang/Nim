@@ -47,6 +47,8 @@
 import std/private/since
 
 import strutils, parseutils, base64
+include includes/decode_helpers
+
 type
   Url* = distinct string
 
@@ -104,31 +106,13 @@ proc decodeUrl*(s: string, decodePlus = true): string =
         false) == "https://nim-lang.org/this is a test"
     assert decodeUrl("abc%xyz") == "abc%xyz"
 
-  proc handleHexChar(c: char, x: var int, f: var bool) {.inline.} =
-    case c
-    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-    else: f = true
-
-  proc handlePercent(s: string, i: var int): char =
-    result = '%'
-    if i+2 < s.len:
-      var x = 0
-      var failed = false
-      handleHexChar(s[i+1], x, failed)
-      handleHexChar(s[i+2], x, failed)
-      if not failed:
-        result = chr(x)
-        inc(i, 2)
-
   result = newString(s.len)
   var i = 0
   var j = 0
   while i < s.len:
     case s[i]
     of '%':
-      result[j] = handlePercent(s, i)
+      result[j] = decodePercent(s, i)
     of '+':
       if decodePlus:
         result[j] = ' '
