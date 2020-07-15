@@ -20,7 +20,8 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
+    renderIr
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TTokType
@@ -47,10 +48,19 @@ type
       pendingNewlineCount: int
     fid*: FileIndex
     config*: ConfigRef
+    mangler: seq[PSym]
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
+
+proc disamb(g: var TSrcGen; s: PSym): int =
+  # we group by 's.name.s' to compute the stable name ID.
+  result = 0
+  for i in 0 ..< g.mangler.len:
+    if s == g.mangler[i]: return result
+    if s.name.s == g.mangler[i].name.s: inc result
+  g.mangler.add s
 
 proc isKeyword*(i: PIdent): bool =
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
@@ -850,7 +860,12 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+  if renderIr in g.flags and n.kind == nkSym:
+    let localId = disamb(g, n.sym)
+    if localId != 0 and n.sym.magic == mNone:
+      s.add '_'
+      s.addInt localId
+  elif n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
     s.add '_'
     s.addInt n.sym.id
     when defined(debugMagics):
@@ -1022,7 +1037,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       put(g, tkSymbol, "(wrong conv)")
   of nkHiddenCallConv:
-    if renderIds in g.flags:
+    if {renderIds, renderIr} * g.flags != {}:
       accentedName(g, n[0])
       put(g, tkParLe, "(")
       gcomma(g, n, 1)

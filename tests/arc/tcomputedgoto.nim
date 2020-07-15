@@ -1,15 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''copied
-copied
-2
-destroyed
-destroyed
-copied
-copied
-2
-destroyed
-destroyed'''
+  output: '''2
+2'''
 """
 
 type

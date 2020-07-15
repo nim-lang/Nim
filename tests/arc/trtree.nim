@@ -138,16 +138,16 @@ proc search*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]): seq[LT] 
 # a R*TREE proc
 proc chooseSubtree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]; level: int): H[M, D, RT, LT] =
   assert level >= 0
-  var n = t.root
-  while n.level > level:
-    let nn = Node[M, D, RT, LT](n)
+  var it = t.root
+  while it.level > level:
+    let nn = Node[M, D, RT, LT](it)
     var i0 = 0 # selected index
     var minLoss = type(b[0].a).high
-    if n.level == 1: # childreen are leaves -- determine the minimum overlap costs
-      for i in 0 ..< n.numEntries:
+    if it.level == 1: # childreen are leaves -- determine the minimum overlap costs
+      for i in 0 ..< it.numEntries:
         let nx = union(nn.a[i].b, b)
         var loss = 0
-        for j in 0 ..< n.numEntries:
+        for j in 0 ..< it.numEntries:
           if i == j: continue
           loss += (overlap(nx, nn.a[j].b) - overlap(nn.a[i].b, nn.a[j].b)) # overlap (i, j) == (j, i), so maybe cache that?
         var rep = loss < minLoss
@@ -163,7 +163,7 @@ proc chooseSubtree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]; lev
           i0 = i
           minLoss = loss
     else:
-      for i in 0 ..< n.numEntries:
+      for i in 0 ..< it.numEntries:
         let loss = enlargement(nn.a[i].b, b)
         var rep = loss < minLoss
         if loss == minLoss:
@@ -174,8 +174,8 @@ proc chooseSubtree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]; lev
         if rep:
           i0 = i
           minLoss = loss
-    n = nn.a[i0].n
-  return n
+    it = nn.a[i0].n
+  return it
 
 proc pickSeeds[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: Node[M, D, RT, LT] | Leaf[M, D, RT, LT]; bx: Box[D, RT]): (int, int) =
   var i0, j0: int

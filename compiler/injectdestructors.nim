@@ -13,18 +13,11 @@
 
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
-## XXX Optimization to implement: if a local variable is only assigned
-## string literals as in ``let x = conf: "foo" else: "bar"`` do not
-## produce a destructor call for ``x``. The address of ``x`` must also
-## not have been taken. ``x = "abc"; x.add(...)``
-
-# Todo:
-# - eliminate 'wasMoved(x); destroy(x)' pairs as a post processing step.
-
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
+  intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes, liftdestructors
+  lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
+  cursor_inference
 
 from trees import exprStructuralEquivalent, getRoot
 
@@ -42,6 +35,7 @@ type
   Con = object
     owner: PSym
     g: ControlFlowGraph
+    cursors: IntSet
     graph: ModuleGraph
     otherRead: PNode
     inLoop, inSpawn: int
@@ -154,6 +148,17 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
           variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
       pc = min(variantA, variantB)
   return pc
+
+proc isCursor(n: PNode; c: Con): bool =
+  case n.kind
+  of nkSym:
+    result = sfCursor in n.sym.flags or c.cursors.contains(n.sym.id)
+  of nkDotExpr:
+    result = sfCursor in n[1].sym.flags
+  of nkCheckedFieldExpr:
+    result = isCursor(n[0], c)
+  else:
+    result = false
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
@@ -486,17 +491,6 @@ proc ensureDestruction(arg, orig: PNode; c: var Con; s: var Scope): PNode =
   else:
     result = arg
 
-proc isCursor(n: PNode): bool =
-  case n.kind
-  of nkSym:
-    result = sfCursor in n.sym.flags
-  of nkDotExpr:
-    result = sfCursor in n[1].sym.flags
-  of nkCheckedFieldExpr:
-    result = isCursor(n[0])
-  else:
-    result = false
-
 proc cycleCheck(n: PNode; c: var Con) =
   if c.graph.config.selectedGC != gcArc: return
   var value = n[1]
@@ -727,7 +721,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
-    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and isLastRead(n, c):
+    elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
+        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n, c)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
@@ -830,7 +825,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0]):
+        elif it.kind == nkIdentDefs and hasDestructor(it[0].typ) and not isCursor(it[0], c):
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
@@ -851,7 +846,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           result.add v
     of nkAsgn, nkFastAsgn:
       if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-          not isCursor(n[0]):
+          not isCursor(n[0], c):
         # rule (self-assignment-removal):
         if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
           result = newNodeI(nkEmpty, n.info)
@@ -988,7 +983,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       let snk = c.genSink(dest, ri, isDecl)
       result = newTree(nkStmtList, snk, c.genWasMoved(ri))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(c, dest.typ):
+        isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       let snk = c.genSink(dest, ri, isDecl)
       result = newTree(nkStmtList, snk, c.genWasMoved(ri))
@@ -1048,6 +1043,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
+  c.cursors = computeCursors(n, g.config)
+
   var scope: Scope
   let body = p(n, c, scope, normal)
 
@@ -1059,7 +1056,12 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
         scope.final.add c.genDestroy(params[i])
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  result = processScope(c, scope, body)
+  result = optimize processScope(c, scope, body)
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
+
+  if g.config.arcToExpand.hasKey(owner.name.s):
+    echo "--expandArc: ", owner.name.s
+    echo renderTree(result, {renderIr})
+    echo "-- end of expandArc ------------------------"
