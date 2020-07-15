@@ -59,7 +59,9 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 
 # lifetime
 proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.importc.}
-proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc.}
+# proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc.}
+# proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc, dynlib: "/tmp/libz09x.dylib".}
+proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc, dynlib: "/tmp/libz11.dylib".}
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and

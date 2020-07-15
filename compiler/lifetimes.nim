@@ -120,7 +120,19 @@ proc outlives(c: PContext, lhs, rhs: PSym): bool =
     if d1 < d2:
       result = true
 
+proc isLocalSymbol(vd: var ViewData, sym: PSym): bool =
+  #[
+  what if its 2 globals?
+  g0=>g1
+  ]#
+  # PRTEMP
+  let funContext = vd.c.p.owner
+  result = sfGlobal notin sym.flags and sym.owner == funContext and sym.kind notin {skParam, skResult}
+  # checkme: skResult?
+  # if sym.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
+
 proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
+  dbg result.lhs, sym, addrLevel
   let lhs = result.lhs
   if addrLevel == 1 and outlives(result.c, lhs, sym):
     onEscape(result, sym)
@@ -141,10 +153,41 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     # update proc sym
     if lhs.kind in {skParam, skResult}:
       let fun = result.c.p.owner
-      doAssert lhs.owner == fun
-      if lhs.kind == skResult:
-        # IMPROVE can we get it from result.c.p ?
-        fun.resultSym = lhs
+      # PRTEMP
+      # doAssert lhs.owner == fun # TODO: not always holds, see D20200715T004851
+      if lhs.owner == fun: # TODO: not always holds, see D20200715T004851
+        if lhs.kind == skResult:
+          # IMPROVE can we get it from result.c.p ?
+          fun.resultSym = lhs
+
+    # PRTEMP
+    if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
+      let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
+      dbg vc
+      let fun = sym.owner
+      echo "D20200715T143409.6"
+      echo ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
+      doAssert false
+      dbg fun
+      if vc notin fun.viewConstraints:
+        # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
+        fun.viewConstraints.add vc
+        dbg fun, fun.viewConstraints
+
+    when false:
+      let funContext = result.c.p.owner
+      dbg lhs.owner, funContext, lhs.owner.kind
+      if lhs.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
+        let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
+        dbg vc
+        # if sym.kind in {skParam, skResult}:
+        if sym.kind in {skParam}:
+          let fun = sym.owner
+          if fun == funContext: # PRTEMP
+            if vc notin fun.viewConstraints:
+              # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
+              fun.viewConstraints.add vc
+              dbg fun, fun.viewConstraints
 
 proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
   #[
@@ -236,6 +279,9 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
   var lhs = vc.lhs
   let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
   if lhsNode != nil: lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  if lhs==nil:
+    dbg c.config$nCall.info, fun
+    return
   var vdata = ViewData(c: c, lhs: lhs, n: nCall)
   let addrLevel = vc.addrLevel
   let rhsNode = resolveParamToPNode(c,fun,nCall,vc.rhs)
@@ -246,7 +292,7 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
-  # dbg result.n.renderTree, depth, n.renderTree, n.kind, addrLevel, result.c.config$n.info
+  dbg result.n.renderTree, depth, n.renderTree, n.kind, addrLevel, result.c.config$n.info
   var it = n
   template continueSon(index, expectedLen) =
     doAssert it.len == expectedLen
@@ -410,34 +456,54 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
         doAssert false, $("not yet implemented", t.kind, typ.kind, c.config$n.info, n.renderTree)
       break
 
-proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc.} =
+proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc, dynlib.} =
   if optStaticEscapeCheck notin c.config.options: return
   if ri.kind in {nkEmpty, nkNilLit}: return # eg: var a: int
   let lhs = resolveSymbolLHS(c, n, le)
   if lhs != nil:
-    var viewData = ViewData(c: c, lhs: lhs, n: ri)
+    var viewData = ViewData(c: c, lhs: lhs, n: n)
     viewFromRoots(viewData, ri, 0, 0)
 
-proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc.} = # PRTEMP
-  # {.define(timn_enable_echo0b).}
-  if optStaticEscapeCheck notin c.config.options: return
-  case fun.kind
-  of skVar, skLet, skIterator, skParam:
-    #[
-    TODO: skVar; fun: errorMessageWriter@3870604;
-    TODO: handle skIterator
-
-    skLet:
-    let marker = cell.typ.marker
-    marker(cellToUsr(cell), op.int)
-    
-    skParam:
-    proc translate*(s: string, replacements: proc(key: string): string): string {.
-    result.add(replacements(word))
-    ]#
-    discard
-  of skProc:
-    for vc in fun.viewConstraints: evalConstraint(c, fun, vc, nCall)
-  else:
-    dbg fun.kind, fun
+when defined(timn_define_lib):
+  proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
+    if optStaticEscapeCheck notin c.config.options: return
+    echo ("D20200715T143628.12", )
     doAssert false
+    case fun.kind
+    of skVar, skLet, skIterator, skParam:
+      #[
+      TODO: skVar; fun: errorMessageWriter@3870604;
+      TODO: handle skIterator
+
+      skLet:
+      let marker = cell.typ.marker
+      marker(cellToUsr(cell), op.int)
+      
+      skParam:
+      proc translate*(s: string, replacements: proc(key: string): string): string {.
+      result.add(replacements(word))
+      ]#
+      discard
+    of skProc:
+      dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
+      for vc in fun.viewConstraints:
+        evalConstraint(c, fun, vc, nCall)
+        # dbg fun.viewConstraints.len, fun.viewConstraints
+    else:
+      dbg fun.kind, fun
+      doAssert false
+
+  # proc timnEchoEnabled(): bool {.exportc.} = true # PRTEMP
+
+# else:
+#   proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.cdecl, importc, dynlib: "/tmp/libz09x.dylib".}
+
+# PRTEMP incremental D20200712T171305
+# import ./debugutils
+# when true:
+when false:
+# when defined(timn_with_compilerutils):
+  # import timn/compilerutils/nimc_basics
+  # import timn/compilerutils/nimc_interface2
+  # proc timnEchoEnabled(): bool {.exportc.} = true # PRTEMP
+  discard
