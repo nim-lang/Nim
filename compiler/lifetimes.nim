@@ -140,12 +140,12 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
       if not found:
         addDependencies(result, ai.sym, addrLevel2)
 
-proc simulateCall(vdata: var ViewData, fun: PSym, it: PNode, depth: int, addrLevel: int) =
+proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addrLevel: int) =
   # dbg2 fun
   doAssert fun != nil
   if fun.magic == mAddr:  # TODO: do we need this special case?
     # addrLevel.inc # seemed buggy as could apply to unrelated things?
-    viewFromRoots(vdata, it[1], depth+1, addrLevel + 1)
+    viewFromRoots(vdata, nCall[1], depth+1, addrLevel + 1)
     return
 
   if fun.kind notin routineKinds:
@@ -169,9 +169,9 @@ proc simulateCall(vdata: var ViewData, fun: PSym, it: PNode, depth: int, addrLev
     proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
     TODO: what about sink params?
     ]#
-    for i in 1..<it.len:
+    for i in 1..<nCall.len:
       # CHECKME
-      viewFromRoots(vdata, it[i], depth+1, addrLevel)
+      viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
     return
 
   for ai in ret.viewSyms:
@@ -183,11 +183,15 @@ proc simulateCall(vdata: var ViewData, fun: PSym, it: PNode, depth: int, addrLev
     if sym.kind == skParam:
       if sym.owner == fun:
         # TODO: only if fun has a result?
-        let arg = it[1 + sym.position]
+        let arg = nCall[1 + sym.position]
         viewFromRoots(vdata, arg, depth+1, addrLevel2)
         substituted = true
     if not substituted:
       addDependencies(vdata, sym, addrLevel2)
+
+proc simulateCall2(fun: PSym, nCall: PNode) = # PRTEMP
+  var vdata: ViewData
+  simulateCall(vdata, fun, nCall, depth=0, addrLevel=0)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
@@ -201,7 +205,6 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
       # could avoid recursion using stack...
       viewFromRoots(result, it[i], depth+1, addrLevel)
     break
-
 
   while true:
     # dbg it.kind, it.renderTree

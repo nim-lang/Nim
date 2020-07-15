@@ -716,6 +716,13 @@ when false:
         result.setLen 1
         # result[0] = l0.addr # ok (escape detected)
         result[^1] = l0.addr # bug (escape not detected)
+    block: # D20200714T201023
+      var g: ptr int
+      proc fn(a: var int) =
+        g = a.addr # (g=>a:1)
+      proc main=
+        var l0=3
+        fn(l0) # escape
 
 checkEscapeOK()
 setCapturedMsgs(captureStop)
