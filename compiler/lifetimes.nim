@@ -9,6 +9,7 @@ type ViewData* = object
   n*: PNode
 
 proc containsView(c: PContext, typ: PType, n: PNode): bool
+proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int)
 
 proc onEscape(vdata: var ViewData, sym: PSym)=
   let frame = sym.owner
@@ -139,7 +140,56 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
       if not found:
         addDependencies(result, ai.sym, addrLevel2)
 
-proc viewFromRoots(result: var ViewData, n: PNode, depth = 0, addrLevel = 0) =
+proc simulateCall(vdata: var ViewData, fun: PSym, it: PNode, depth: int, addrLevel: int) =
+  # dbg2 fun
+  doAssert fun != nil
+  if fun.magic == mAddr:  # TODO: do we need this special case?
+    # addrLevel.inc # seemed buggy as could apply to unrelated things?
+    viewFromRoots(vdata, it[1], depth+1, addrLevel + 1)
+    return
+
+  if fun.kind notin routineKinds:
+    dbg "D20200713T124517", fun.kind
+    return
+  let ret = fun.resultSym
+  if ret == nil:
+    #[
+    TODO: sfImportc?
+    # sfWasForwarded
+    the real criterion should be whether it was processed?
+    ]#
+    if not (sfForward in fun.flags or fun.magic != mNone):
+      # eg: `proc fn(): ptr int = discard` ; no `result = ` decl'
+      # TODO: instead, assign ret.viewSyms where relevant
+      return
+    #[
+    `fun` has not body (eg it's a magic or forward decl)
+    TODO: shd use {.viewFrom.} if available
+    eg: `@` (mArrToSeq)
+    proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
+    TODO: what about sink params?
+    ]#
+    for i in 1..<it.len:
+      # CHECKME
+      viewFromRoots(vdata, it[i], depth+1, addrLevel)
+    return
+
+  for ai in ret.viewSyms:
+    # TODO: for params, avoid
+    var sym = ai.sym
+    # dbg ai, addrLevel, addrLevel + ai.addrLevel
+    var addrLevel2 = addrLevel + ai.addrLevel
+    var substituted = false
+    if sym.kind == skParam:
+      if sym.owner == fun:
+        # TODO: only if fun has a result?
+        let arg = it[1 + sym.position]
+        viewFromRoots(vdata, arg, depth+1, addrLevel2)
+        substituted = true
+    if not substituted:
+      addDependencies(vdata, sym, addrLevel2)
+
+proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
   # dbg result.n.renderTree, depth, n.renderTree, n.kind, addrLevel, result.c.config$n.info
   var it = n
@@ -152,54 +202,6 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth = 0, addrLevel = 0) =
       viewFromRoots(result, it[i], depth+1, addrLevel)
     break
 
-  proc simulateCall(vdata: var ViewData, fun: PSym, it: PNode) =
-    # dbg2 fun
-    doAssert fun != nil
-    if fun.magic == mAddr:  # TODO: do we need this special case?
-      # addrLevel.inc # seemed buggy as could apply to unrelated things?
-      viewFromRoots(vdata, it[1], depth+1, addrLevel + 1)
-      return
-
-    if fun.kind notin routineKinds:
-      dbg "D20200713T124517", fun.kind
-      return
-    let ret = fun.resultSym
-    if ret == nil:
-      #[
-      TODO: sfImportc?
-      # sfWasForwarded
-      the real criterion should be whether it was processed?
-      ]#
-      if not (sfForward in fun.flags or fun.magic != mNone):
-        # eg: `proc fn(): ptr int = discard` ; no `result = ` decl'
-        # TODO: instead, assign ret.viewSyms where relevant
-        return
-      #[
-      `fun` has not body (eg it's a magic or forward decl)
-      TODO: shd use {.viewFrom.} if available
-      eg: `@` (mArrToSeq)
-      proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
-      TODO: what about sink params?
-      ]#
-      for i in 1..<it.len:
-        # CHECKME
-        viewFromRoots(vdata, it[i], depth+1, addrLevel)
-      return
-
-    for ai in ret.viewSyms:
-      # TODO: for params, avoid
-      var sym = ai.sym
-      # dbg ai, addrLevel, addrLevel + ai.addrLevel
-      var addrLevel2 = addrLevel + ai.addrLevel
-      var substituted = false
-      if sym.kind == skParam:
-        if sym.owner == fun:
-          # TODO: only if fun has a result?
-          let arg = it[1 + sym.position]
-          viewFromRoots(vdata, arg, depth+1, addrLevel2)
-          substituted = true
-      if not substituted:
-        addDependencies(vdata, sym, addrLevel2)
 
   while true:
     # dbg it.kind, it.renderTree
@@ -257,7 +259,7 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth = 0, addrLevel = 0) =
 
       let fun = it[0]
       if fun.kind == nkSym: # else eg: let z = mt.base.deepcopy(s2) # TODO: find the sym in this case?
-        simulateCall(result, fun.sym, it)
+        simulateCall(result, fun.sym, it, depth, addrLevel)
         break
       else:
         # eg: cast[PPointer](dest)[]
@@ -372,7 +374,7 @@ proc checkViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc.} =
       of nkCast, nkHiddenStdConv: ni = ni[1]
       of nkSym:
         var viewData = ViewData(c: c, lhs: ni.sym, n: n)
-        viewFromRoots(viewData, ri)
+        viewFromRoots(viewData, ri, 0, 0)
         break
       of nkHiddenAddr: ni = ni[0]
       of nkCallKinds:
