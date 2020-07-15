@@ -278,6 +278,9 @@ proc enlarge[A, B](t: var Table[A, B]) =
       else:
         rawInsert(t, t.data, move n[i].key, move n[i].val, eh, j)
 
+proc itemMoved[T](t: T, h: int) = 
+  ## no-op for tables that don't care about backshift
+  discard
 
 
 
@@ -1181,7 +1184,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
 
 type
   OrderedKeyValuePair[A, B] = tuple[
-    hcode: Hash, next: int, key: A, val: B]
+    hcode: Hash, prev, next: int, key: A, val: B]
   OrderedKeyValuePairSeq[A, B] = seq[OrderedKeyValuePair[A, B]]
   OrderedTable*[A, B] = object
     ## Hash table that remembers insertion order.
@@ -1212,6 +1215,7 @@ proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl()
+  data[h].prev = t.last
   data[h].next = -1
   if t.first < 0: t.first = h
   if t.last >= 0: data[t.last].next = h
@@ -1457,10 +1461,26 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
+proc itemMoved*[A, B](t: var OrderedTable[A, B], h: int) = 
+  ## Called by delImplIdx after an entry is backshifted
+  ## to a new position h to adjust the doubly-linked
+  ## list used by OrderedTable.
+  let 
+    prev = t.data[h].prev
+    next = t.data[h].next
+  if prev >= 0:
+    t.data[prev].next = h
+  else:
+    t.first = h
+  if next >= 0:
+    t.data[next].prev = h
+  else:
+    t.last = h
+
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
-  ## O(n) complexity.
+  ## O(1) complexity.
   ##
   ## See also:
   ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
@@ -1472,23 +1492,25 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
 
+  var 
+    h: int
+    hc: Hash
+
   if t.counter == 0: return
-  var n: OrderedKeyValuePairSeq[A, B]
-  newSeq(n, len(t.data))
-  var h = t.first
-  t.first = -1
-  t.last = -1
-  swap(t.data, n)
-  let hc = genHash(key)
-  while h >= 0:
-    var nxt = n[h].next
-    if isFilled(n[h].hcode):
-      if n[h].hcode == hc and n[h].key == key:
-        dec t.counter
-      else:
-        var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
-        rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
-    h = nxt
+  h = rawGet(t, key, hc)
+  if h < 0: return
+  let
+    next = t.data[h].next
+    prev = t.data[h].prev
+  if prev >= 0:
+    t.data[prev].next = next
+  else:
+    t.first = next
+  if next >= 0:
+    t.data[next].prev = prev
+  else:
+    t.last = prev
+  delImplIdx(t, h)
 
 proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
@@ -2882,6 +2904,75 @@ when isMainModule:
   s2[p2] = 45_000
   s3[p1] = 30_000
   s3[p2] = 45_000
+
+  block: # OrderedTable crashes on `del` when there are repeated keys #13500
+    var t: OrderedTable[int, int]
+    # var t: Table[int, int] # this works
+    t.add 1, 10
+    t.add 1, 9
+    t[2] = 5
+    doAssert $t == "{1: 10, 1: 9, 2: 5}"
+    t.del(2)    # was raising IndexError in rawInsert
+    doAssert $t == "{1: 10, 1: 9}"
+
+    var tref = newOrderedTable[int, int]()
+    tref.add 1, 10
+    tref.add 1, 9
+    tref[2] = 5
+    doAssert $tref == "{1: 10, 1: 9, 2: 5}"
+    tref.del(2)    # was raising IndexError in rawInsert
+    doAssert $tref == "{1: 10, 1: 9}"
+
+  block: # delete dups, one at a time
+    var t = initOrderedTable[int, int]()
+    # var t: Table[int, int] # this wpporks
+    t.add 1, 10
+    t.add 1, 9
+    t[2] = 5
+    doAssert $t == "{1: 10, 1: 9, 2: 5}"
+    t.del(1)
+    doAssert $t == "{1: 9, 2: 5}"
+    t.del(1)
+    doAssert $t == "{2: 5}"
+    t.del(2)
+    doAssert $t == "{:}"
+
+    var tref = newOrderedTable[int, int]()
+    tref.add 1, 10
+    tref.add 1, 9
+    tref[2] = 5
+    doAssert $tref == "{1: 10, 1: 9, 2: 5}"
+    tref.del(1)
+    doAssert $tref == "{1: 9, 2: 5}"
+    tref.del(1)
+    doAssert $tref == "{2: 5}"
+    tref.del(2)
+    doAssert $tref == "{:}"
+
+  block:
+    const els = 10
+    var
+      t = initOrderedTable[int, string](1)
+      k = 0
+
+    for i in 0 ..< els:
+      k += i * 12345
+      t[k] = $k
+      doAssert t.len == i + 1
+
+    var i = 0
+    k = 0
+    for key, val in t.pairs:
+      k += i * 12345
+      doAssert key == k
+      doAssert val == $k
+      i += 1
+
+    k = 0
+    for i in 0 ..< els:
+      k += i * 12345
+      t.del(k)
+      doAssert t.len == els - i - 1
 
   block: # Ordered table should preserve order after deletion
     var

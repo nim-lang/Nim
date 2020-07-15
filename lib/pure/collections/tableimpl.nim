@@ -100,6 +100,7 @@ template delImplIdx(t, i) =
           t.data[j] = t.data[i]
         else:
           t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
+        itemMoved(t, j)
 
 template delImpl() {.dirty.} =
   var hc: Hash
