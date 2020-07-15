@@ -660,7 +660,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
         branch[0] = p(it[0], c, s, normal)
 
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt:
-                     processScope(c, branchScope, processCall(it[^1], branchScope))
+                     processScope(c, branchScope, maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall)
       result.add branch
@@ -679,7 +679,7 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
       var branchScope = nestedScope(s)
       branch[^1] = if it[^1].typ.isEmptyType or willProduceStmt or it.kind == nkFinally:
                      processScope(c, branchScope, if it.kind == nkFinally: p(it[^1], c, branchScope, normal)
-                                                  else: processCall(it[^1], branchScope))
+                                                  else: maybeVoid(it[^1], branchScope))
                    else:
                      processScopeExpr(c, branchScope, it[^1], processCall)
       result.add branch
