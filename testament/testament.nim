@@ -251,7 +251,7 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
-proc addResult(r: var TResults, test: TTest, target: TTarget,
+proc addResult(r: var TResults, test: ref TTest, target: TTarget,
                expected, given: string, successOrig: TResultEnum) =
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
@@ -318,7 +318,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       discard waitForExit(p)
       close(p)
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: ref TTest, target: TTarget) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
   elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
@@ -343,7 +343,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
-proc generatedFile(test: TTest, target: TTarget): string =
+proc generatedFile(test: ref TTest, target: TTarget): string =
   if target == targetJS:
     result = test.name.changeFileExt("js")
   else:
@@ -354,7 +354,7 @@ proc generatedFile(test: TTest, target: TTarget): string =
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
 
-proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
+proc codegenCheck(test: ref TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
                   given: var TSpec) =
   try:
     let genFile = generatedFile(test, target)
@@ -379,7 +379,7 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reCodeNotFound
     echo getCurrentExceptionMsg()
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
+proc nimoutCheck(test: ref TTest; expectedNimout: string; given: var TSpec) =
   let giv = given.nimout.strip
   var currentPos = 0
   # Only check that nimout contains all expected lines in that order.
@@ -390,7 +390,7 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
       given.err = reMsgsDiffer
       break
 
-proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
+proc compilerOutputTests(test: ref TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
   var givenmsg: string = ""
@@ -413,7 +413,7 @@ proc getTestSpecTarget(): TTarget =
   else:
     result = targetC
 
-proc checkDisabled(r: var TResults, test: TTest): bool =
+proc checkDisabled(r: var TResults, test: ref TTest): bool =
   if test.spec.err in {reDisabled, reJoined}:
     # targetC is a lie, but parameter is required
     r.addResult(test, targetC, "", "", test.spec.err)
@@ -425,8 +425,9 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+proc testSpecHelper(r: var TResults, test: ref TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
+  test.startTime = epochTime()
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
@@ -485,7 +486,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 
-proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
+proc targetHelper(r: var TResults, test: ref TTest, expected: TSpec, extraOptions = "") =
   for target in expected.targets:
     inc(r.total)
     if target notin gTargets:
@@ -498,7 +499,7 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = 
       let nimcache = nimcacheDir(test.name, test.options, target)
       testSpecHelper(r, test, expected, target, nimcache, extraOptions)
 
-proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
+proc testSpec(r: var TResults, test: ref TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
   if expected.parseErrors.len > 0:
     # targetC is a lie, but a parameter is required
@@ -517,13 +518,13 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   else:
     targetHelper(r, test, expected)
 
-proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
+proc testSpecWithNimcache(r: var TResults, test: ref TTest; nimcache: string) =
   if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
     testSpecHelper(r, test, test.spec, target, nimcache)
 
-proc testC(r: var TResults, test: TTest, action: TTestAction) =
+proc testC(r: var TResults, test: ref TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
   if not checkDisabled(r, test): return
 
@@ -539,7 +540,7 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
     if exitCode != 0: given.err = reExitcodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
-proc testExec(r: var TResults, test: TTest) =
+proc testExec(r: var TResults, test: ref TTest) =
   # runs executable or script, just goes by exit code
   if not checkDisabled(r, test): return
 
@@ -555,14 +556,16 @@ proc testExec(r: var TResults, test: TTest) =
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, targetC, "", given.msg, given.err)
 
-proc makeTest(test, options: string, cat: Category): TTest =
+proc makeTest(test, options: string, cat: Category):ref TTest =
+  result = new TTest
   result.cat = cat
   result.name = test
   result.options = options
   result.spec = parseSpec(addFileExt(test, ".nim"))
   result.startTime = epochTime()
 
-proc makeRawTest(test, options: string, cat: Category): TTest =
+proc makeRawTest(test, options: string, cat: Category): ref TTest =
+  result = new TTest
   result.cat = cat
   result.name = test
   result.options = options
