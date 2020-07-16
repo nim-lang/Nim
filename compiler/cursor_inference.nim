@@ -35,6 +35,7 @@ type
     mutations: IntSet
     reassigns: IntSet
     config: ConfigRef
+    inAsgnSource: int
 
 proc locationRoot(e: PNode; followDotExpr = true): PSym =
   var n = e
@@ -221,7 +222,9 @@ proc analyse(c: var Con; n: PNode) =
 
   of nkAsgn, nkFastAsgn:
     analyse(c, n[0])
+    inc c.inAsgnSource
     analyse(c, n[1])
+    dec c.inAsgnSource
 
     if n[0].kind == nkSym:
       if hasDestructor(n[0].typ):
@@ -252,14 +255,16 @@ proc analyse(c: var Con; n: PNode) =
       c.mutations.incl r.id
 
   of nkTupleConstr, nkBracket, nkObjConstr:
-    for i in ord(n.kind == nkObjConstr)..<n.len:
-      if n[i].kind == nkSym:
-        # we assume constructions with cursors are better without
-        # the cursors because it's likely we can move then, see
-        # test arc/topt_no_cursor.nim
-        let r = n[i].sym
-        c.mayOwnData.incl r.id
-        c.mutations.incl r.id
+    for child in n: analyse(c, child)
+    if c.inAsgnSource > 0:
+      for i in ord(n.kind == nkObjConstr)..<n.len:
+        if n[i].kind == nkSym:
+          # we assume constructions with cursors are better without
+          # the cursors because it's likely we can move then, see
+          # test arc/topt_no_cursor.nim
+          let r = n[i].sym
+          c.mayOwnData.incl r.id
+          c.mutations.incl r.id
 
   of nkVarSection, nkLetSection:
     for it in n:
