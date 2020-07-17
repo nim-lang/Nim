@@ -138,7 +138,7 @@ else: # main driver
     # test for PipeOutStream
     var
       p = startProcess(exePath, args = ["abcdefghi", "foo", "bar", "0123456"])
-      outStrm = p.outputStream
+      outStrm = p.peekableOutputStream
 
     var tmp: string
     doAssert outStrm.readLine(tmp)
@@ -173,7 +173,7 @@ else: # main driver
     p.close
 
     p = startProcess(exePath, args = ["123"])
-    outStrm = p.outputStream
+    outStrm = p.peekableOutputStream
     let c = outStrm.peekChar
     doAssert outStrm.readLine(tmp)
     doAssert tmp[0] == c
