@@ -473,8 +473,8 @@ iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: boo
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
 
-proc makeSupTest(test, options: string, cat: Category): ref TTest =
-  result = new TTest
+proc makeSupTest(test, options: string, cat: Category): TTest =
+  new result
   result.cat = cat
   result.name = test
   result.options = options
