@@ -276,7 +276,20 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
       viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
     return
 
-  for ai in ret.viewSyms:
+  #[
+  D20200716T235232:here
+  # for ai in ret.viewSyms:
+  the length of the seq changed while iterating over it
+  can happen for recursive calls, eg:
+  proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
+      if t.n != nil: result = genTypeInfo(m, lastSon t, info)
+  ]#
+  var index = 0
+  while true:
+    if index>=ret.viewSyms.len: break
+    let ai = ret.viewSyms[index]
+    index.inc
+    # dbg ai, "begin", ret.viewSyms
     # TODO: for params, avoid
     var sym = ai.sym
     # dbg ai, addrLevel, addrLevel + ai.addrLevel
@@ -288,6 +301,7 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
       viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
     else:
       addDependencies(vdata, sym, addrLevel2)
+    # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
 
 proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
   var lhs = vc.lhs
