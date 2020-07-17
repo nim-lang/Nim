@@ -28,11 +28,10 @@ proc resolveSymbolLHS(c: PContext, n, le: PNode): PSym =
   # dbg le.kind, n.renderTree, c.config$n.info, typ.kind
   let ok = containsView(c, le.typ, n)
   # xxx handle this: (x1, x2) = (ptr1, ptr2)
-  # dbg ok
+  # dbg ok, le.typ, le.typ.kind
   if ok:
     var ni = le
     while true:
-      # dbg ni.kind, ni.renderTree
       case ni.kind
       of nkHiddenDeref, nkDerefExpr: ni = ni[0] # eg: var result or var param
       of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr: ni = ni[0]
@@ -164,15 +163,30 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
       dbg vc
-      let fun = sym.owner
-      echo "D20200715T143409.6"
-      echo ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
-      doAssert false
-      dbg fun
-      if vc notin fun.viewConstraints:
-        # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
-        fun.viewConstraints.add vc
-        dbg fun, fun.viewConstraints
+      #[
+      note: we don't want to update viewConstraints for symbols that were instantiated
+      ]#
+      if result.lhs.kind in {skParam}: # {skParam, skResult}
+        let fun = result.lhs.owner
+        if fun == result.c.p.owner: # checkme
+          if vc notin fun.viewConstraints:
+            fun.viewConstraints.add vc
+            dbg fun, fun.viewConstraints
+
+      if sym.kind in {skParam}:
+        let fun = sym.owner
+        if fun == result.c.p.owner: # checkme
+          if vc notin fun.viewConstraints:
+            fun.viewConstraints.add vc
+            dbg fun, fun.viewConstraints
+
+    # echo ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
+      # dbg ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
+      # dbg fun
+      # if vc notin fun.viewConstraints:
+      #   # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
+      #   fun.viewConstraints.add vc
+      #   dbg fun, fun.viewConstraints
 
     when false:
       let funContext = result.c.p.owner
@@ -278,9 +292,10 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
 proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
   var lhs = vc.lhs
   let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
-  if lhsNode != nil: lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  dbg lhs, fun, vc, nCall, lhsNode
+  if lhsNode != nil:
+    lhs=resolveSymbolLHS(c, nCall, lhsNode)
   if lhs==nil:
-    dbg c.config$nCall.info, fun
     return
   var vdata = ViewData(c: c, lhs: lhs, n: nCall)
   let addrLevel = vc.addrLevel
@@ -433,6 +448,11 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
       ]#
       result = true
       break
+    of tyVar:
+      # TODO: this depends whether it's lhs or rhs; for rhs, it'd be true; for rhs, it'd be t=t[0]
+      # t = t[0]
+      result = true
+      break
     of tyArray: t = t[1]
     of tySequence: t = t[0]
     of tyDistinct, tyAlias: t = t[0]
@@ -451,24 +471,26 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
       ]#
       break
     else:
+      dbg t, t.kind
       if ndebugEchoEnabled():
         dbg2 t
         doAssert false, $("not yet implemented", t.kind, typ.kind, c.config$n.info, n.renderTree)
       break
 
 proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc, dynlib.} =
-  if optStaticEscapeCheck notin c.config.options: return
+  # if optStaticEscapeCheck notin c.config.options: return
+  if staticEscapeChecks notin c.features: return
   if ri.kind in {nkEmpty, nkNilLit}: return # eg: var a: int
   let lhs = resolveSymbolLHS(c, n, le)
   if lhs != nil:
     var viewData = ViewData(c: c, lhs: lhs, n: n)
     viewFromRoots(viewData, ri, 0, 0)
 
-when defined(timn_define_lib):
+# when defined(timn_define_lib):
+when true:
   proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
-    if optStaticEscapeCheck notin c.config.options: return
-    echo ("D20200715T143628.12", )
-    doAssert false
+    # if optStaticEscapeCheck notin c.config.options: return
+    if staticEscapeChecks notin c.features: return
     case fun.kind
     of skVar, skLet, skIterator, skParam:
       #[
@@ -485,10 +507,19 @@ when defined(timn_define_lib):
       ]#
       discard
     of skProc:
+      # dbg fun.resultSym
+      # dbg2 fun
+      # if fun.resultSym != nil: return # CHECKME; will be taken care by 
+      if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
       dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
+      let num0 = fun.viewConstraints.len
       for vc in fun.viewConstraints:
+        dbg nCall.renderTree, fun, fun.viewConstraints
+        # TODO: avoid updating `viewConstraints` inside this?
         evalConstraint(c, fun, vc, nCall)
-        # dbg fun.viewConstraints.len, fun.viewConstraints
+        if fun.viewConstraints.len != num0:
+          dbg fun.viewConstraints, fun, nCall.renderTree
+          doAssert false
     else:
       dbg fun.kind, fun
       doAssert false

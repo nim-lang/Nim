@@ -4,10 +4,13 @@ discard """
 
 #[
 next: fn17
+TODO: experimental: "staticescapechecks".} or --staticescapechecks?
 ]#
 
 import ./mviewfroms
 import std/compilesettings
+
+{.push experimental: "staticescapechecks".}
 
 setCapturedMsgs(captureStart)
 
@@ -725,5 +728,6 @@ when false:
         var l0=3
         fn(l0) # escape
 
+{.pop.} # staticescapechecks
 checkEscapeOK()
 setCapturedMsgs(captureStop)

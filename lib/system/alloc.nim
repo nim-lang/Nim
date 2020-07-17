@@ -343,6 +343,7 @@ proc contains(s: IntSet, key: int): bool =
     result = false
 
 proc incl(a: var MemRegion, s: var IntSet, key: int) =
+  {.define(timn_enable_echo0b).}
   var t = intSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))

@@ -58,10 +58,10 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 
 # lifetime
-proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.importc.}
-# proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc.}
-# proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc, dynlib: "/tmp/libz09x.dylib".}
-proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.importc, dynlib: "/tmp/libz11.dylib".}
+# {.pragma: mylib, importc, dynlib: "/tmp/libz11.dylib".} # PRTEMP PATH
+{.pragma: mylib, importc.} # PRTEMP PATH
+proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.mylib.}
+proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.mylib.}
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and

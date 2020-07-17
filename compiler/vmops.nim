@@ -22,6 +22,7 @@ from hashes import hash
 from osproc import nil
 
 import vmconv
+from astalgo import debug
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -232,6 +233,11 @@ proc registerAdditionalOps*(c: PCtx) =
                   "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
+  registerCallback c, "stdlib.macros.debugTmp", proc(a: VmArgs) {.nimcall.} =
+    # PRTEMP
+    let n = getNode(a, 0)
+    debug(n)
+    debug(n.typ)
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)
     if n.kind != nkSym:
