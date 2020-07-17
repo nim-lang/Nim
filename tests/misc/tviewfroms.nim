@@ -3,7 +3,7 @@ discard """
 """
 
 #[
-next: fn17
+next: fn21
 TODO: experimental: "staticescapechecks".} or --staticescapechecks?
 ]#
 
@@ -654,79 +654,89 @@ block: # complex example showing View and MView simplified from #14869
     g3 = a.mview
     checkEscape "'example2.a' escapes via 'g3'"
 
+block: # D20200714T201023
+  var g: ptr int
+  proc fn(a: var int) =
+    g = a.addr # (g=>a:1)
+  proc fn17=
+    var l0=3
+    fn(l0)
+    checkEscape "'fn17.l0' escapes via 'g'"
+
+block:
+  #[
+  D20200711T130559
+  memory tracking currently works through assignments (lhs = rhs) or definitions (var lhs = rhs) but
+  not through function calls.
+  ]#
+  type Foo = object
+    x: ptr int
+
+  # the root cause is the fact when `[]=` is a function call with no result; there is no
+  # assignment (but for builtin []= it works fine currently, see D20200711T180629)
+  proc fun(a: var Foo, x: ptr int) = a.x = x
+
+  proc fn18: Foo =
+    var l0=0
+    result = Foo()
+    fun(result, l0.addr)
+    checkEscape "'fn18.l0' escapes via 'result'"
+
+block:
+  type Foo = object
+    x: ptr int
+  proc `[]=`(a: var Foo, index: int, x: ptr int) = a.x = x
+
+  proc fn19: Foo =
+    var l0=0
+    result = Foo()
+    result[0] = l0.addr # this gets transformed into a proc without `result`: `[]=`
+    checkEscape "'fn19.l0' escapes via 'result'"
+
+  proc fn20: seq[ptr int] =
+    var l0=0
+    result.setLen 1
+    result[0] = l0.addr
+    checkEscape "'fn20.l0' escapes via 'result'"
+    result[^1] = l0.addr # `BackwardsIndex` gets transformed int a proc without `result`
+    checkEscape "'fn20.l0' escapes via 'result'"
+
 ## failing tests
-when false:
-  reject:
-    # fails to detect escape
-    block:
-      #[
-      D20200710T184748 capture rhs
-      lhs = rhs might capture rhs in lhs; this might be fixable by treating
-      `lhs = rhs` via also the implicit: `rhs[] = lhs` ?
-      ]#
-      proc bugBad1(a: ptr ptr int) =
-        var l0=10
-        var l1=a
-        l1[] = l0.addr
-      proc bugBad1b(a: var ptr int) = # similar bug
-        var l0=10
-        var l1=a.addr
-        l1[] = l0.addr
+block:
+  #[
+  D20200710T184748 capture rhs
+  lhs = rhs might capture rhs in lhs; this might be fixable by treating
+  `lhs = rhs` via also the implicit: `rhs[] = lhs` ?
+  ]#
+  proc fn21(a: ptr ptr int) =
+    var l0=10
+    var l1=a
+    l1[] = l0.addr
+    # checkEscape "'fn21.l0' escapes via 'a'" # BUG: this fails
+    discard getCapturedMsgs()
 
-    block:
-      #[
-      D20200711T133853
-      subfield assignment after reference copy
-      this should be fixable by tracking that the destiny of `lhs = rhs` is tied when the type is a reference
-      ]#
-      type Foo = ref object
-        x1: ptr int
-      proc bugBad2: auto =
-        var l0=0
-        let s = Foo()
-        result = s
-        s.x1 = l0.addr # undetected escape after `result = s` assignment
+  proc fn21b(a: var ptr int) = # similar bug
+    var l0=10
+    var l1=a.addr
+    l1[] = l0.addr
+    # checkEscape "'fn21b.l0' escapes via 'a'" # ditto
+    discard getCapturedMsgs()
 
-    block:
-      #[
-      D20200711T130559
-      memory tracking currently works through assignments (lhs = rhs) or definitions (var lhs = rhs) but
-      not through function calls.
-
-      BackwardsIndex
-      ]#
-      type Foo = object
-        x: ptr int
-
-      proc `[]=`(a: var Foo, index: int, x: ptr int) = a.x = x
-
-      proc bugBad3: Foo =
-        var l0=0
-        result = Foo()
-        result[0] = l0.addr
-
-      # the root cause is the fact when `[]=` is a function call with no result; there is no
-      # assignment (but for builtin []= it works fine currently, see D20200711T180629)
-      proc fun(a: var Foo, x: ptr int) = a.x = x
-
-      proc bugBad3b: Foo =
-        var l0=0
-        result = Foo()
-        fun(result, l0.addr)
-
-      proc bugBad3c: seq[ptr int] =
-        var l0=0
-        result.setLen 1
-        # result[0] = l0.addr # ok (escape detected)
-        result[^1] = l0.addr # bug (escape not detected)
-
-    block: # D20200714T201023
-      var g: ptr int
-      proc fn(a: var int) =
-        g = a.addr # (g=>a:1)
-      proc main=
-        var l0=3
-        fn(l0) # escape
+block:
+  #[
+  D20200711T133853
+  subfield assignment after reference copy
+  this should be fixable by tracking that the destiny of `lhs = rhs` is tied when the type is a reference
+  ]#
+  type Foo = ref object
+    x1: ptr int
+  proc fn22: auto =
+    var l0=0
+    let s = Foo()
+    result = s
+    s.x1 = l0.addr # undetected escape after `result = s` assignment
+    # checkEscape "'fn22.l0' escapes via 'result'" # BUG: fails
+    discard getCapturedMsgs()
 
 {.pop.} # staticescapechecks
 checkEscapeOK()
