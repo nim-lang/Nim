@@ -32,12 +32,7 @@
 import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
-proc handleHexChar(c: char, x: var int) {.inline.} =
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: assert(false)
+include includes/decode_helpers
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -93,40 +88,27 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
+  proc parseData(data: string, i: int, field: var string): int =
+    result = i
+    while result < data.len:
+      case data[result]
+      of '%': add(field, decodePercent(data, result))
+      of '+': add(field, ' ')
+      of '=', '&': break
+      else: add(field, data[result])
+      inc(result)
+
   var i = 0
   var name = ""
   var value = ""
   # decode everything in one pass:
   while i < data.len:
     setLen(name, 0) # reuse memory
-    while i < data.len:
-      case data[i]
-      of '%':
-        var x = 0
-        handleHexChar(data[i+1], x)
-        handleHexChar(data[i+2], x)
-        inc(i, 2)
-        add(name, chr(x))
-      of '+': add(name, ' ')
-      of '=', '&': break
-      else: add(name, data[i])
-      inc(i)
+    i = parseData(data, i, name)
     if i >= data.len or data[i] != '=': cgiError("'=' expected")
     inc(i) # skip '='
     setLen(value, 0) # reuse memory
-    while i < data.len:
-      case data[i]
-      of '%':
-        var x = 0
-        if i+2 < data.len:
-          handleHexChar(data[i+1], x)
-          handleHexChar(data[i+2], x)
-        inc(i, 2)
-        add(value, chr(x))
-      of '+': add(value, ' ')
-      of '&', '\0': break
-      else: add(value, data[i])
-      inc(i)
+    i = parseData(data, i, value)
     yield (name.TaintedString, value.TaintedString)
     if i < data.len:
       if data[i] == '&': inc(i)
