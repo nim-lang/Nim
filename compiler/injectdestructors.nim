@@ -1062,5 +1062,5 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
 
   if g.config.arcToExpand.hasKey(owner.name.s):
     echo "--expandArc: ", owner.name.s
-    echo renderTree(result, {renderIr})
+    echo renderTree(result, {renderIr, renderNoComments})
     echo "-- end of expandArc ------------------------"

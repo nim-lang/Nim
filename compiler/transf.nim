@@ -350,7 +350,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     # Choose the right assignment instruction according to the given ``lhs``
     # node since it may not be a nkSym (a stack-allocated skForVar) but a
     # nkDotExpr (a heap-allocated slot into the envP block)
-    case lhs.kind:
+    case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
       result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
@@ -592,6 +592,22 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
+proc isSimpleIteratorVar(iter: PSym): bool =
+  proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
+    case n.kind
+    of nkEmpty..nkNilLit: discard
+    of nkYieldStmt:
+      if n[0].kind == nkSym and n[0].sym.owner == owner:
+        discard "good: yield a single variable that we own"
+      else:
+        inc dangerousYields
+    else:
+      for c in n: rec(c, owner, dangerousYields)
+
+  var dangerousYields = 0
+  rec(iter.ast[bodyPos], iter, dangerousYields)
+  result = dangerousYields == 0
+
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -624,18 +640,22 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
   discard c.breakSyms.pop
 
+  let iter = call[0].sym
+
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
     if n[i].kind == nkVarTuple:
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
+      if n[i].kind == nkSym and isSimpleIteratorVar(iter):
+        incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
 
+
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
-  let iter = call[0].sym
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
