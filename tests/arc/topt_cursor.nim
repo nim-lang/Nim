@@ -23,7 +23,7 @@ finally:
 --expandArc: sio
 
 block :tmp:
-  var x
+  var x_cursor
   var f = open("debug.txt", fmRead, 8000)
   try:
     var res
@@ -31,8 +31,8 @@ block :tmp:
       res = TaintedString(newStringOfCap(80))
       block :tmp_1:
         while readLine(f, res):
-          x = res
-          echo [x]
+          x_cursor = res
+          echo [x_cursor]
     finally:
       `=destroy`(res)
   finally:
