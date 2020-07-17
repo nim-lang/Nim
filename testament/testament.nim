@@ -58,8 +58,7 @@ type
   TResults = object
     total, passed, skipped: int
     data: string
-  TTest = ref TTestObj
-  TTestObj = object
+  TTest = object
     name: string
     cat: Category
     options: string
@@ -425,7 +424,7 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
   case expected.action
@@ -497,7 +496,8 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = 
       echo "testSpec count: ", count, " expected: ", expected
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
-      testSpecHelper(r, test, expected, target, nimcache, extraOptions)
+      var testClone = test
+      testSpecHelper(r, testClone, expected, target, nimcache, extraOptions)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -522,7 +522,8 @@ proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
-    testSpecHelper(r, test, test.spec, target, nimcache)
+    var testClone = test
+    testSpecHelper(r, testClone, test.spec, target, nimcache)
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
@@ -557,7 +558,6 @@ proc testExec(r: var TResults, test: TTest) =
   r.addResult(test, targetC, "", given.msg, given.err)
 
 proc makeTest(test, options: string, cat: Category): TTest =
-  new result
   result.cat = cat
   result.name = test
   result.options = options
@@ -565,7 +565,6 @@ proc makeTest(test, options: string, cat: Category): TTest =
   result.startTime = epochTime()
 
 proc makeRawTest(test, options: string, cat: Category): TTest =
-  new result
   result.cat = cat
   result.name = test
   result.options = options
