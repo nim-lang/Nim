@@ -131,7 +131,7 @@ proc isLocalSymbol(vd: var ViewData, sym: PSym): bool =
   # if sym.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
 
 proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
-  dbg result.lhs, sym, addrLevel
+  # dbg result.lhs, sym, addrLevel
   let lhs = result.lhs
   if addrLevel == 1 and outlives(result.c, lhs, sym):
     onEscape(result, sym)
@@ -156,13 +156,13 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
       # doAssert lhs.owner == fun # TODO: not always holds, see D20200715T004851
       if lhs.owner == fun: # TODO: not always holds, see D20200715T004851
         if lhs.kind == skResult:
-          # IMPROVE can we get it from result.c.p ?
+          # IMPROVE can we get it from result.c.p ? EDIT: see c.p.resultSym
           fun.resultSym = lhs
 
     # PRTEMP
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
-      dbg vc
+      # dbg vc
       #[
       note: we don't want to update viewConstraints for symbols that were instantiated
       ]#
@@ -171,14 +171,14 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
         if fun == result.c.p.owner: # checkme
           if vc notin fun.viewConstraints:
             fun.viewConstraints.add vc
-            dbg fun, fun.viewConstraints
+            # dbg fun, fun.viewConstraints
 
       if sym.kind in {skParam}:
         let fun = sym.owner
         if fun == result.c.p.owner: # checkme
           if vc notin fun.viewConstraints:
             fun.viewConstraints.add vc
-            dbg fun, fun.viewConstraints
+            # dbg fun, fun.viewConstraints
 
     # echo ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
       # dbg ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
@@ -292,7 +292,7 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
 proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
   var lhs = vc.lhs
   let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
-  dbg lhs, fun, vc, nCall, lhsNode
+  # dbg lhs, fun, vc, nCall, lhsNode
   if lhsNode != nil:
     lhs=resolveSymbolLHS(c, nCall, lhsNode)
   if lhs==nil:
@@ -307,7 +307,7 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
-  dbg result.n.renderTree, depth, n.renderTree, n.kind, addrLevel, result.c.config$n.info
+  # dbg result.n.renderTree, depth, n.renderTree, n.kind, addrLevel, result.c.config$n.info
   var it = n
   template continueSon(index, expectedLen) =
     doAssert it.len == expectedLen
@@ -374,6 +374,7 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
 
       let fun = it[0]
       if fun.kind == nkSym: # else eg: let z = mt.base.deepcopy(s2) # TODO: find the sym in this case?
+        # TODO: use nimSimulateCall?
         simulateCall(result, fun.sym, it, depth, addrLevel)
         break
       else:
@@ -506,15 +507,13 @@ when true:
       result.add(replacements(word))
       ]#
       discard
-    of skProc:
+    of skProc, skFunc:
       # dbg fun.resultSym
-      # dbg2 fun
       # if fun.resultSym != nil: return # CHECKME; will be taken care by 
       if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
-      dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
+      # dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
       let num0 = fun.viewConstraints.len
       for vc in fun.viewConstraints:
-        dbg nCall.renderTree, fun, fun.viewConstraints
         # TODO: avoid updating `viewConstraints` inside this?
         evalConstraint(c, fun, vc, nCall)
         if fun.viewConstraints.len != num0:

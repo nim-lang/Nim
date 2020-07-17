@@ -1816,6 +1816,9 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       c.p.owner.typ[0].kind == tyUntyped:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
+  when true:
+    let fun = c.p.owner
+    dbg fun, fun.viewConstraints, c.config$fun.info
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
