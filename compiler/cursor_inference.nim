@@ -73,7 +73,7 @@ proc cursorId(c: Con; x: PSym): int =
     if c.cursors[i].s == x: return i
   return -1
 
-proc getCursors(c: Con): IntSet =
+proc getCursors(c: Con) =
   #[
   Question: if x depends on y and y depends on z then also y depends on z.
 
@@ -86,7 +86,6 @@ proc getCursors(c: Con): IntSet =
   y.s = "mutate"
 
   ]#
-  result = initIntSet()
   for cur in c.cursors:
     if not c.mayOwnData.contains(cur.s.id) and
         cur.s.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
@@ -97,7 +96,7 @@ proc getCursors(c: Con): IntSet =
             #echo "bah, not a cursor ", cur.s, " bad dependency ", d
             break doAdd
         when true:
-          result.incl cur.s.id
+          cur.s.flags.incl sfCursor
         when false:
           echo "computed as a cursor ", cur.s, " ", cur.deps, " ", c.config $ cur.s.info
 
@@ -294,7 +293,7 @@ proc analyse(c: var Con; n: PNode) =
   else:
     for child in n: analyse(c, child)
 
-proc computeCursors*(n: PNode; config: ConfigRef): IntSet =
+proc computeCursors*(n: PNode; config: ConfigRef) =
   var c = Con(config: config)
   analyse(c, n)
-  result = getCursors c
+  getCursors c
