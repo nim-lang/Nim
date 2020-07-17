@@ -865,6 +865,8 @@ proc gident(g: var TSrcGen, n: PNode) =
     if localId != 0 and n.sym.magic == mNone:
       s.add '_'
       s.addInt localId
+    if sfCursor in n.sym.flags:
+      s.add "_cursor"
   elif n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
     s.add '_'
     s.addInt n.sym.id

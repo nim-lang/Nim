@@ -35,6 +35,7 @@ type
     mutations: IntSet
     reassigns: IntSet
     config: ConfigRef
+    inAsgnSource: int
 
 proc locationRoot(e: PNode; followDotExpr = true): PSym =
   var n = e
@@ -72,7 +73,7 @@ proc cursorId(c: Con; x: PSym): int =
     if c.cursors[i].s == x: return i
   return -1
 
-proc getCursors(c: Con): IntSet =
+proc getCursors(c: Con) =
   #[
   Question: if x depends on y and y depends on z then also y depends on z.
 
@@ -85,7 +86,6 @@ proc getCursors(c: Con): IntSet =
   y.s = "mutate"
 
   ]#
-  result = initIntSet()
   for cur in c.cursors:
     if not c.mayOwnData.contains(cur.s.id) and
         cur.s.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
@@ -96,7 +96,7 @@ proc getCursors(c: Con): IntSet =
             #echo "bah, not a cursor ", cur.s, " bad dependency ", d
             break doAdd
         when true:
-          result.incl cur.s.id
+          cur.s.flags.incl sfCursor
         when false:
           echo "computed as a cursor ", cur.s, " ", cur.deps, " ", c.config $ cur.s.info
 
@@ -221,7 +221,9 @@ proc analyse(c: var Con; n: PNode) =
 
   of nkAsgn, nkFastAsgn:
     analyse(c, n[0])
+    inc c.inAsgnSource
     analyse(c, n[1])
+    dec c.inAsgnSource
 
     if n[0].kind == nkSym:
       if hasDestructor(n[0].typ):
@@ -252,14 +254,16 @@ proc analyse(c: var Con; n: PNode) =
       c.mutations.incl r.id
 
   of nkTupleConstr, nkBracket, nkObjConstr:
-    for i in ord(n.kind == nkObjConstr)..<n.len:
-      if n[i].kind == nkSym:
-        # we assume constructions with cursors are better without
-        # the cursors because it's likely we can move then, see
-        # test arc/topt_no_cursor.nim
-        let r = n[i].sym
-        c.mayOwnData.incl r.id
-        c.mutations.incl r.id
+    for child in n: analyse(c, child)
+    if c.inAsgnSource > 0:
+      for i in ord(n.kind == nkObjConstr)..<n.len:
+        if n[i].kind == nkSym:
+          # we assume constructions with cursors are better without
+          # the cursors because it's likely we can move then, see
+          # test arc/topt_no_cursor.nim
+          let r = n[i].sym
+          c.mayOwnData.incl r.id
+          c.mutations.incl r.id
 
   of nkVarSection, nkLetSection:
     for it in n:
@@ -289,7 +293,7 @@ proc analyse(c: var Con; n: PNode) =
   else:
     for child in n: analyse(c, child)
 
-proc computeCursors*(n: PNode; config: ConfigRef): IntSet =
+proc computeCursors*(n: PNode; config: ConfigRef) =
   var c = Con(config: config)
   analyse(c, n)
-  result = getCursors c
+  getCursors c

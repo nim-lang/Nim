@@ -58,7 +58,6 @@ type
   TResults = object
     total, passed, skipped: int
     data: string
-
   TTest = object
     name: string
     cat: Category
@@ -425,8 +424,9 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
+  test.startTime = epochTime()
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
@@ -496,7 +496,8 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = 
       echo "testSpec count: ", count, " expected: ", expected
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
-      testSpecHelper(r, test, expected, target, nimcache, extraOptions)
+      var testClone = test
+      testSpecHelper(r, testClone, expected, target, nimcache, extraOptions)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -521,7 +522,8 @@ proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
-    testSpecHelper(r, test, test.spec, target, nimcache)
+    var testClone = test
+    testSpecHelper(r, testClone, test.spec, target, nimcache)
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.

@@ -228,7 +228,6 @@ completion.
 JavaScript target
 =================
 
-Once your code is compiled for hot reloading, the ``nim-livereload`` NPM
-package provides a convenient solution for implementing the actual reloading
+Once your code is compiled for hot reloading, a convenient solution for implementing the actual reloading
 in the browser using a framework such as [LiveReload](http://livereload.com/)
 or [BrowserSync](https://browsersync.io/).
