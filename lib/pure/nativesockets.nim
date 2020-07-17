@@ -656,7 +656,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
-  ## read from. The sockets which can be read from will also be removed
+  ## read from. The sockets which cannot be read from will also be removed
   ## from ``readfds``.
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
@@ -678,7 +678,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
                   timeout = 500): int {.tags: [ReadIOEffect].} =
   ## When a socket in ``writefds`` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
-  ## written to. The sockets which can be written to will also be removed
+  ## written to. The sockets which cannot be written to will also be removed
   ## from ``writefds``.
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
