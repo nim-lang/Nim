@@ -142,7 +142,7 @@ template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExi
   fileExists(args)
 
 template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-  dirExists(dir)
+  dirExists(args)
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
