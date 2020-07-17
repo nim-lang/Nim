@@ -39,16 +39,16 @@ when defined(nimHasStyleChecks):
 type
   TSqlChar* = char
   TSqlSmallInt* = int16
-  SqlUSmallInt* = int16
+  SqlUSmallInt* = uint16
   SqlHandle* = pointer
   SqlHEnv* = SqlHandle
   SqlHDBC* = SqlHandle
   SqlHStmt* = SqlHandle
   SqlHDesc* = SqlHandle
   TSqlInteger* = int32
-  SqlUInteger* = int32
-  TSqlLen* = int64
-  TSqlULen* = uint64
+  SqlUInteger* = uint32
+  TSqlLen* = int
+  TSqlULen* = uint
   SqlPointer* = pointer
   TSqlReal* = cfloat
   TSqlDouble* = cdouble
