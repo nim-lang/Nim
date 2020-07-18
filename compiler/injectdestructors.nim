@@ -35,7 +35,6 @@ type
   Con = object
     owner: PSym
     g: ControlFlowGraph
-    cursors: IntSet
     graph: ModuleGraph
     otherRead: PNode
     inLoop, inSpawn: int
@@ -152,13 +151,13 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
 proc isCursor(n: PNode; c: Con): bool =
   case n.kind
   of nkSym:
-    result = sfCursor in n.sym.flags or c.cursors.contains(n.sym.id)
+    sfCursor in n.sym.flags
   of nkDotExpr:
-    result = sfCursor in n[1].sym.flags
+    isCursor(n[1], c)
   of nkCheckedFieldExpr:
-    result = isCursor(n[0], c)
+    isCursor(n[0], c)
   else:
-    result = false
+    false
 
 proc isLastRead(n: PNode; c: var Con): bool =
   # first we need to search for the instruction that belongs to 'n':
@@ -1043,7 +1042,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
-  c.cursors = computeCursors(n, g.config)
+  computeCursors(n, g.config)
 
   var scope: Scope
   let body = p(n, c, scope, normal)
@@ -1063,5 +1062,5 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
 
   if g.config.arcToExpand.hasKey(owner.name.s):
     echo "--expandArc: ", owner.name.s
-    echo renderTree(result, {renderIr})
+    echo renderTree(result, {renderIr, renderNoComments})
     echo "-- end of expandArc ------------------------"

@@ -28,13 +28,13 @@ var
 try:
   x = f()
   block :tmp:
-    var i
+    var i_cursor
     var i_1 = 0
     block :tmp_1:
       while i_1 < 4:
         var :tmpD
-        i = i_1
-        if i == 2:
+        i_cursor = i_1
+        if i_cursor == 2:
           return
         add(a):
           wasMoved(:tmpD)

@@ -115,6 +115,8 @@ else: # main driver
     runTest("c_exit2_139", 139)
     runTest("quit_139", 139)
 
+  import std/streams
+
   block execProcessTest:
     let dir = sourcePath.parentDir
     let (_, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
@@ -132,12 +134,62 @@ else: # main driver
     doAssert outStr2 == absolutePath(testDir) & "\nx yz\n"
 
     removeDir(testDir)
+
+    # test for PipeOutStream
+    var
+      p = startProcess(exePath, args = ["abcdefghi", "foo", "bar", "0123456"])
+      outStrm = p.peekableOutputStream
+
+    var tmp: string
+    doAssert outStrm.readLine(tmp)
+    doAssert outStrm.readChar == 'a'
+    doAssert outStrm.peekChar == 'b'
+    doAssert outStrm.readChar == 'b'
+    doAssert outStrm.readChar == 'c'
+    doAssert outStrm.peekChar == 'd'
+    doAssert outStrm.peekChar == 'd'
+    doAssert outStrm.readChar == 'd'
+    doAssert outStrm.readStr(2) == "ef"
+    doAssert outStrm.peekStr(2) == "gh"
+    doAssert outStrm.peekStr(2) == "gh"
+    doAssert outStrm.readStr(1) == "g"
+    doAssert outStrm.readStr(3) == "hi\n"
+
+    doAssert outStrm.readLine == "foo"
+    doAssert outStrm.readChar == 'b'
+    doAssert outStrm.peekChar == 'a'
+    doAssert outStrm.readLine == "ar"
+
+    tmp.setLen(4)
+    tmp[0] = 'n'
+    doAssert outStrm.readDataStr(tmp, 1..3) == 3
+    doAssert tmp == "n012"
+    doAssert outStrm.peekStr(3) == "345"
+    doAssert outStrm.readDataStr(tmp, 1..2) == 2
+    doAssert tmp == "n342"
+    doAssert outStrm.peekStr(2) == "56"
+    doAssert outStrm.readDataStr(tmp, 0..3) == 3
+    doAssert tmp == "56\n2"
+    p.close
+
+    p = startProcess(exePath, args = ["123"])
+    outStrm = p.peekableOutputStream
+    let c = outStrm.peekChar
+    doAssert outStrm.readLine(tmp)
+    doAssert tmp[0] == c
+    tmp.setLen(7)
+    doAssert outStrm.peekData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    doAssert outStrm.peekData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    doAssert outStrm.readData(addr tmp[0], 7) == 4
+    doAssert tmp[0..3] == "123\n"
+    p.close
+
     try:
       removeFile(exePath)
     except OSError:
       discard
-
-  import std/streams
 
   block: # test for startProcess (more tests needed)
     # bugfix: windows stdin.close was a noop and led to blocking reads

@@ -1,6 +1,6 @@
 discard """
   output: '''("string here", 80)'''
-  cmd: '''nim c --gc:arc --expandArc:main --hint:Performance:off $file'''
+  cmd: '''nim c --gc:arc --expandArc:main --expandArc:sio --hint:Performance:off $file'''
   nimout: '''--expandArc: main
 
 var
@@ -8,17 +8,35 @@ var
   :tmpD_1
   :tmpD_2
 try:
-  var x = ("hi", 5)
-  x = if cond:
+  var x_cursor = ("hi", 5)
+  x_cursor = if cond:
     :tmpD = ("different", 54)
     :tmpD else:
     :tmpD_1 = ("string here", 80)
     :tmpD_1
   echo [
-    :tmpD_2 = `$`(x)
+    :tmpD_2 = `$`(x_cursor)
     :tmpD_2]
 finally:
   `=destroy`(:tmpD_2)
+-- end of expandArc ------------------------
+--expandArc: sio
+
+block :tmp:
+  var x_cursor
+  var f = open("debug.txt", fmRead, 8000)
+  try:
+    var res
+    try:
+      res = TaintedString(newStringOfCap(80))
+      block :tmp_1:
+        while readLine(f, res):
+          x_cursor = res
+          echo [x_cursor]
+    finally:
+      `=destroy`(res)
+  finally:
+    close(f)
 -- end of expandArc ------------------------'''
 """
 
@@ -33,3 +51,10 @@ proc main(cond: bool) =
   echo x
 
 main(false)
+
+proc sio =
+  for x in lines("debug.txt"):
+    echo x
+
+if false:
+  sio()
