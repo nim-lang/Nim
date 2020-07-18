@@ -18,7 +18,12 @@ type TestamentData* = ref object
 
 let testamentData0* = TestamentData()
 
-var compilerPrefix* = findExe("nim")
+let defaultPath = findExe("bin/nim_temp")
+var compilerPrefix* =
+  if defaultPath.len != 0:
+    defaultPath
+  else:
+    findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
