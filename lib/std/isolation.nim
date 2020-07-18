@@ -12,19 +12,20 @@
 ## passed efficiently to different channels and threads.
 
 type
-  Isolated*[T] = distinct T ## Isolated data can only be moved, not copied.
+  Isolated*[T] = object ## Isolated data can only be moved, not copied.
+    value: T
 
 proc `=`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
 
 proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
-  # delegate to T's sink operation
-  `=sink`(dest.T, src.T)
+  # delegate to value's sink operation
+  `=sink`(dest.value, src.value)
 
 proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
-  # delegate to T's destroy operation
-  `=destroy`(dest.T)
+  # delegate to value's destroy operation
+  `=destroy`(dest.value)
 
-func recover*[T](x: sink T): Isolated[T] {.magic: "Recover".}
-  ## Create an isolated subgraph from the expression `x`.
+func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".}
+  ## Create an isolated subgraph from the expression `value`.
   ## Please read https://github.com/nim-lang/RFCs/issues/244
   ## for more details.

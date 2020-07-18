@@ -68,7 +68,7 @@ proc canAlias(arg, ret: PType): bool =
   var marker = initIntSet()
   result = canAlias(arg, ret, marker)
 
-proc checkRecover*(n: PNode): bool =
+proc checkIsolate*(n: PNode): bool =
   if types.containsTyRef(n.typ):
     # XXX Maybe require that 'n.typ' is acyclic. This is not much
     # worse than the already exisiting inheritance and closure restrictions.
@@ -76,33 +76,36 @@ proc checkRecover*(n: PNode): bool =
     of nkCharLit..nkNilLit:
       result = true
     of nkCallKinds:
-      if n.typ.flags * {tfGcSafe, tfNoSideEffect} == {}:
+      if n[0].typ.flags * {tfGcSafe, tfNoSideEffect} == {}:
         return false
       for i in 1..<n.len:
-        let argType = n[i].typ
-        if argType != nil and not isCompileTimeOnly(argType) and containsTyRef(argType):
-          if argType.canAlias(n.typ):
-            return false
+        if checkIsolate(n[i]):
+          discard "fine, it is isolated already"
+        else:
+          let argType = n[i].typ
+          if argType != nil and not isCompileTimeOnly(argType) and containsTyRef(argType):
+            if argType.canAlias(n.typ):
+              return false
       result = true
     of nkIfStmt, nkIfExpr:
       for it in n:
-        result = checkRecover(it.lastSon)
+        result = checkIsolate(it.lastSon)
         if not result: break
     of nkCaseStmt, nkObjConstr:
       for i in 1..<n.len:
-        result = checkRecover(n[i].lastSon)
+        result = checkIsolate(n[i].lastSon)
         if not result: break
     of nkBracket, nkTupleConstr, nkPar:
       for it in n:
-        result = checkRecover(it)
+        result = checkIsolate(it)
         if not result: break
     of nkHiddenStdConv, nkHiddenSubConv, nkCast, nkConv:
-      result = checkRecover(n[1])
+      result = checkIsolate(n[1])
     of nkObjUpConv, nkObjDownConv, nkDotExpr:
-      result = checkRecover(n[0])
+      result = checkIsolate(n[0])
     of nkStmtList, nkStmtListExpr:
       if n.len > 0:
-        result = checkRecover(n[^1])
+        result = checkIsolate(n[^1])
       else:
         result = false
     else:
