@@ -18,7 +18,8 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams, cpuinfo
+  strutils, os, strtabs, streams, cpuinfo, streamwrapper,
+  std/private/since
 
 export quoteShell, quoteShellWindows, quoteShellPosix
 
@@ -237,6 +238,10 @@ proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
 proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s output stream for reading from.
   ##
+  ## You cannot perform peek/write/setOption operations to this stream.
+  ## Use `peekableOutputStream proc <#peekableOutputStream,Process>`_
+  ## if you need to peek stream.
+  ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
   ## is closed when closing the Process ``p``.
   ##
@@ -247,12 +252,40 @@ proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
 proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s error stream for reading from.
   ##
+  ## You cannot perform peek/write/setOption operations to this stream.
+  ## Use `peekableErrorStream proc <#peekableErrorStream,Process>`_
+  ## if you need to peek stream.
+  ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
   ## is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
   ## * `outputStream proc <#outputStream,Process>`_
+
+proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
+  ## Returns ``p``'s output stream for reading from.
+  ##
+  ## You can peek returned stream.
+  ##
+  ## **WARNING**: The returned `Stream` should not be closed manually as it
+  ## is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `outputStream proc <#outputStream,Process>`_
+  ## * `peekableErrorStream proc <#peekableErrorStream,Process>`_
+
+proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
+  ## Returns ``p``'s error stream for reading from.
+  ##
+  ## You can run peek operation to returned stream.
+  ##
+  ## **WARNING**: The returned `Stream` should not be closed manually as it
+  ## is closed when closing the Process ``p``.
+  ##
+  ## See also:
+  ## * `errorStream proc <#errorStream,Process>`_
+  ## * `peekableOutputStream proc <#peekableOutputStream,Process>`_
 
 proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
@@ -735,6 +768,18 @@ when defined(Windows) and not defined(useNimRtl):
     streamAccess(p)
     if p.errStream == nil:
       p.errStream = newFileHandleStream(p.errHandle)
+    result = p.errStream
+
+  proc peekableOutputStream(p: Process): Stream =
+    streamAccess(p)
+    if p.outStream == nil:
+      p.outStream = newFileHandleStream(p.outHandle).newPipeOutStream
+    result = p.outStream
+
+  proc peekableErrorStream(p: Process): Stream =
+    streamAccess(p)
+    if p.errStream == nil:
+      p.errStream = newFileHandleStream(p.errHandle).newPipeOutStream
     result = p.errStream
 
   proc execCmd(command: string): int =
@@ -1360,28 +1405,40 @@ elif not defined(useNimRtl):
         p.exitStatus = status
         result = exitStatusLikeShell(status)
 
-  proc createStream(stream: var owned(Stream), handle: var FileHandle,
-                    fileMode: FileMode) =
+  proc createStream(handle: var FileHandle,
+                    fileMode: FileMode): owned FileStream =
     var f: File
     if not open(f, handle, fileMode): raiseOSError(osLastError())
-    stream = newFileStream(f)
+    return newFileStream(f)
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)
     if p.inStream == nil:
-      createStream(p.inStream, p.inHandle, fmWrite)
+      p.inStream = createStream(p.inHandle, fmWrite)
     return p.inStream
 
   proc outputStream(p: Process): Stream =
     streamAccess(p)
     if p.outStream == nil:
-      createStream(p.outStream, p.outHandle, fmRead)
+      p.outStream = createStream(p.outHandle, fmRead)
     return p.outStream
 
   proc errorStream(p: Process): Stream =
     streamAccess(p)
     if p.errStream == nil:
-      createStream(p.errStream, p.errHandle, fmRead)
+      p.errStream = createStream(p.errHandle, fmRead)
+    return p.errStream
+
+  proc peekableOutputStream(p: Process): Stream =
+    streamAccess(p)
+    if p.outStream == nil:
+      p.outStream = createStream(p.outHandle, fmRead).newPipeOutStream
+    return p.outStream
+
+  proc peekableErrorStream(p: Process): Stream =
+    streamAccess(p)
+    if p.errStream == nil:
+      p.errStream = createStream(p.errHandle, fmRead).newPipeOutStream
     return p.errStream
 
   proc csystem(cmd: cstring): cint {.nodecl, importc: "system",
