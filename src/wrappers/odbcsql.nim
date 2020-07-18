@@ -47,8 +47,8 @@ type
   SqlHDesc* = SqlHandle
   TSqlInteger* = int32
   SqlUInteger* = int32
-  TSqlLen* = int64
-  TSqlULen* = uint64
+  TSqlLen* = int
+  TSqlULen* = uint
   SqlPointer* = pointer
   TSqlReal* = cfloat
   TSqlDouble* = cdouble
