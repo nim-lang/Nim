@@ -3,6 +3,16 @@ when defined(nimHasUsed): {.used.}
 import ast, options, types, msgs, lineinfos, semdata, renderer
 from strutils import `%`
 
+proc `$`(a: ViewConstraint): string =
+  result = $a.lhs.owner & "." & $a.lhs & " => " & $a.rhs.owner & "." & $a.rhs & ":" & $a.addrLevel
+
+proc toHuman*(a: seq[ViewConstraint]): string =
+  # why is this needed? doesnt' seem to pickup `$`(a: ViewConstraint) otherwise
+  for ai in a: result.add $ai & "; "
+
+# IMPROVE RENAME
+proc nimToHuman(a: seq[ViewConstraint]): string {.exportc.} = toHuman(a)
+
 type ViewData* = object
   c*: PContext
   lhs*: PSym
@@ -225,11 +235,13 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
       result = b
     ]#
 
+    # dbg sym, sym.kind
     if sym.kind in {skParam, skResult}:
       insertNoDupCheck(result, sym, addrLevel)
 
     # for ai in sym.viewSyms: ? but see D20200713T102518
     let len1 = sym.viewSyms.len
+    # dbg sym.viewSyms
     for i in 0..<len1:
       let ai = sym.viewSyms[i]
       var addrLevel2 = addrLevel+ai.addrLevel
@@ -241,6 +253,40 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
           break
       if not found:
         addDependencies(result, ai.sym, addrLevel2)
+
+proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, resultSym: PSym = nil) =
+  var lhs = vc.lhs
+  let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
+  # dbg lhs, fun, vc, nCall, lhsNode
+  if lhsNode != nil:
+    lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  if lhs==nil:
+    return
+  var vdata = ViewData(c: c, lhs: lhs, n: nCall)
+  let addrLevel = vc.addrLevel
+  var rhs = vc.rhs
+  if rhs.kind == skResult:
+    if rhs.owner == fun:
+      doAssert resultSym!=nil
+      #[
+      D20200718T125524:here
+      checkme: not entirely correct eg:
+      proc fn(a: ptr int, b: var ptr int): auto =
+        result = a
+        b = result
+      result = l0.addr
+      var b: ptr int
+      result = fn(l1.addr, b)
+      # b should not depend on l0.addr
+      ]#
+
+      rhs = resultSym
+  else:
+    let rhsNode = resolveParamToPNode(c, fun, nCall, rhs)
+    if rhsNode != nil:
+      viewFromRoots(vdata, rhsNode, depth=0, addrLevel=addrLevel)
+      return
+  addDependencies(vdata, rhs, addrLevel)
 
 proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addrLevel: int) =
   # dbg2 fun
@@ -284,40 +330,38 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
   proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       if t.n != nil: result = genTypeInfo(m, lastSon t, info)
   ]#
-  var index = 0
-  while true:
-    if index>=ret.viewSyms.len: break
-    let ai = ret.viewSyms[index]
-    index.inc
-    # dbg ai, "begin", ret.viewSyms
-    # TODO: for params, avoid
-    var sym = ai.sym
-    # dbg ai, addrLevel, addrLevel + ai.addrLevel
-    var addrLevel2 = addrLevel + ai.addrLevel
+  block:
+    var index = 0
+    while true:
+      if index>=ret.viewSyms.len: break
+      let ai = ret.viewSyms[index]
+      index.inc
+      # dbg ai, "begin", ret.viewSyms
+      # TODO: for params, avoid
+      var sym = ai.sym
+      # dbg ai, addrLevel, addrLevel + ai.addrLevel
+      var addrLevel2 = addrLevel + ai.addrLevel
 
-    # FACTOR with evalConstraint
-    let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
-    if rhsNode!=nil:
-      viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
-    else:
-      addDependencies(vdata, sym, addrLevel2)
-    # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
+      # FACTOR with evalConstraint
+      let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
+      if rhsNode!=nil:
+        viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
+      else:
+        addDependencies(vdata, sym, addrLevel2)
+      # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
 
-proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode) =
-  var lhs = vc.lhs
-  let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
-  # dbg lhs, fun, vc, nCall, lhsNode
-  if lhsNode != nil:
-    lhs=resolveSymbolLHS(c, nCall, lhsNode)
-  if lhs==nil:
-    return
-  var vdata = ViewData(c: c, lhs: lhs, n: nCall)
-  let addrLevel = vc.addrLevel
-  let rhsNode = resolveParamToPNode(c,fun,nCall,vc.rhs)
-  if rhsNode != nil:
-    viewFromRoots(vdata, rhsNode, depth=0, addrLevel=addrLevel)
-  else:
-    addDependencies(vdata, vc.rhs, addrLevel)
+  # eval other constraints; FACTOR
+  # for vc in fun.viewConstraints:
+  block:
+    var index = 0
+    while true:
+      if index>=fun.viewConstraints.len: break
+      let vc = fun.viewConstraints[index]
+      index.inc
+      # dbg vc, ret, fun
+      if vc.lhs != ret:
+        # TODO: merge previous section to here
+        evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
@@ -526,13 +570,26 @@ when true:
       # if fun.resultSym != nil: return # CHECKME; will be taken care by 
       if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
       # dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
-      let num0 = fun.viewConstraints.len
-      for vc in fun.viewConstraints:
+      # let num0 = fun.viewConstraints.len
+
+      # for recursive calls eg: processQuotations
+      # for vc in fun.viewConstraints:
+      var index = 0
+      while true:
+        if index >= fun.viewConstraints.len: break
+        let vc = fun.viewConstraints[index]
+        index.inc
         # TODO: avoid updating `viewConstraints` inside this?
+        # var old = fun.viewConstraints
         evalConstraint(c, fun, vc, nCall)
-        if fun.viewConstraints.len != num0:
-          dbg fun.viewConstraints, fun, nCall.renderTree
-          doAssert false
+        when false:
+          if fun.viewConstraints.len != num0:
+            dbg c.p.owner, fun, nCall.renderTree, "\n", $fun.viewConstraints, "\n", $old
+            # dbg fun.viewConstraints, fun, nCall.renderTree
+            #[
+            processQuotations
+            ]#
+            doAssert false
     else:
       dbg fun.kind, fun
       doAssert false

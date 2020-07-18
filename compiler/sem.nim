@@ -62,6 +62,7 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 {.pragma: mylib, importc.} # PRTEMP PATH
 proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.mylib.}
 proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.mylib.}
+proc nimToHuman(a: seq[ViewConstraint]): string {.importc.}
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
