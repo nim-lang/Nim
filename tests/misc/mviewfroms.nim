@@ -1,5 +1,6 @@
 import std/compilesettings
 from strutils import contains, `%`, count
+import std/macros
 
 proc checkEscapeImpl(actual: string, sub: seq[string]) =
   let num = actual.count("StackAddrEscapes")
@@ -22,3 +23,8 @@ template ignoreEscape*(body) =
   {.push warning[StackAddrEscapes]: off.}
   body
   {.pop.}
+
+macro viewConstraints*(n: proc): string =
+  echo n.kind
+  echo n.treeRepr
+  result = newLit viewConstraintsStr(n)

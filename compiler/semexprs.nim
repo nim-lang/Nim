@@ -1818,7 +1818,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       c.p.owner.name.s)
   when true:
     let fun = c.p.owner
-    dbg fun, fun.viewConstraints.nimToHuman, c.config$fun.info
+    dbg fun, fun.viewConstraints.nimToHumanViewConstraint, c.config$fun.info
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =

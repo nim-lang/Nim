@@ -4,14 +4,16 @@ import ast, options, types, msgs, lineinfos, semdata, renderer
 from strutils import `%`
 
 proc `$`(a: ViewConstraint): string =
-  result = $a.lhs.owner & "." & $a.lhs & " => " & $a.rhs.owner & "." & $a.rhs & ":" & $a.addrLevel
+  # result = $a.lhs.owner & "." & $a.lhs & " => " & $a.rhs.owner & "." & $a.rhs & ":" & $a.addrLevel
+  proc name2(a: PSym): string = a.owner.name.s & "." & a.name.s
+  result = a.lhs.name2 & " => " & a.rhs.name2 & ":" & $a.addrLevel
 
 proc toHuman*(a: seq[ViewConstraint]): string =
   # why is this needed? doesnt' seem to pickup `$`(a: ViewConstraint) otherwise
   for ai in a: result.add $ai & "; "
 
 # IMPROVE RENAME
-proc nimToHuman(a: seq[ViewConstraint]): string {.exportc.} = toHuman(a)
+proc nimToHumanViewConstraint(a: seq[ViewConstraint]): string {.exportc.} = toHuman(a)
 
 type ViewData* = object
   c*: PContext
@@ -330,25 +332,26 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
   proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       if t.n != nil: result = genTypeInfo(m, lastSon t, info)
   ]#
-  block:
-    var index = 0
-    while true:
-      if index>=ret.viewSyms.len: break
-      let ai = ret.viewSyms[index]
-      index.inc
-      # dbg ai, "begin", ret.viewSyms
-      # TODO: for params, avoid
-      var sym = ai.sym
-      # dbg ai, addrLevel, addrLevel + ai.addrLevel
-      var addrLevel2 = addrLevel + ai.addrLevel
+  when true:
+    block:
+      var index = 0
+      while true:
+        if index>=ret.viewSyms.len: break
+        let ai = ret.viewSyms[index]
+        index.inc
+        # dbg ai, "begin", ret.viewSyms
+        # TODO: for params, avoid
+        var sym = ai.sym
+        # dbg ai, addrLevel, addrLevel + ai.addrLevel
+        var addrLevel2 = addrLevel + ai.addrLevel
 
-      # FACTOR with evalConstraint
-      let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
-      if rhsNode!=nil:
-        viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
-      else:
-        addDependencies(vdata, sym, addrLevel2)
-      # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
+        # FACTOR with evalConstraint
+        let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
+        if rhsNode!=nil:
+          viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
+        else:
+          addDependencies(vdata, sym, addrLevel2)
+        # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
 
   # eval other constraints; FACTOR
   # for vc in fun.viewConstraints:

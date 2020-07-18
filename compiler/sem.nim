@@ -57,12 +57,7 @@ proc computeRequiresInit(c: PContext, t: PType): bool
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 
-# lifetime
-# {.pragma: mylib, importc, dynlib: "/tmp/libz11.dylib".} # PRTEMP PATH
-{.pragma: mylib, importc.} # PRTEMP PATH
-proc nimCheckViewFromCompat(c: PContext, n, le, ri: PNode) {.mylib.}
-proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.mylib.}
-proc nimToHuman(a: seq[ViewConstraint]): string {.importc.}
+import interfaces
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and

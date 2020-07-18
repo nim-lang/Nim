@@ -3,8 +3,8 @@ discard """
 """
 
 #[
-next: fn21
-TODO: experimental: "staticescapechecks".} or --staticescapechecks?
+next: fn24
+TODO: experimental: "staticescapechecks".} or --staticescapechecks or --experimental:staticescapechecks
 ]#
 
 import ./mviewfroms
@@ -21,6 +21,19 @@ block: # simple cases
 
   proc bad6(a1: int) = g0 = a1.unsafeAddr
   checkEscape "'bad6.a1' escapes via 'g0'"
+
+block: # shows `viewConstraints` for debugging
+  # example for D20200718T125524
+  type
+    Foo = ref object
+      loc: Foo
+  proc aux(s: Foo): Foo =
+    result = s
+    s.loc = result
+  proc fn23(prc: Foo): Foo =
+    result = aux(prc)
+  doAssert viewConstraints(aux) == "aux.result => aux.s:0; aux.s => aux.result:0; "
+  doAssert viewConstraints(fn23) == "fn23.result => fn23.prc:0; fn23.prc => fn23.result:0; "
 
 block: # shows how to ignore `StackAddrEscapes` in a scope
   proc bad2(): ptr int =

@@ -23,6 +23,7 @@ from osproc import nil
 
 import vmconv
 from astalgo import debug
+from interfaces import nimToHumanViewConstraint
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -238,6 +239,16 @@ proc registerAdditionalOps*(c: PCtx) =
     let n = getNode(a, 0)
     debug(n)
     debug(n.typ)
+
+  registerCallback c, "stdlib.macros.viewConstraintsStr", proc(a: VmArgs) {.nimcall.} =
+    # PRTEMP
+    let n = getNode(a, 0)
+    let ret = n.sym.viewConstraints.nimToHumanViewConstraint
+    dbg ret
+    dbg n.sym
+    dbg n.sym.viewConstraints
+    setResult(a, ret)
+
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)
     if n.kind != nkSym:
