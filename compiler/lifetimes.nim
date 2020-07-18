@@ -143,14 +143,27 @@ proc isLocalSymbol(vd: var ViewData, sym: PSym): bool =
   # if sym.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
 
 proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
-  # dbg result.lhs, sym, addrLevel
+  dbg result.lhs, sym, addrLevel
   let lhs = result.lhs
   if addrLevel == 1 and outlives(result.c, lhs, sym):
     onEscape(result, sym)
   else:
-    for ai in mitems(lhs.viewSyms):
-      if sym == ai.sym:
-        ai.addrLevel = max(ai.addrLevel, addrLevel)
+    block:
+      # IMPROVE
+      var found = false
+      for ai in mitems(lhs.viewSyms):
+        if sym == ai.sym:
+          ai.addrLevel = max(ai.addrLevel, addrLevel)
+          found = true
+          break
+      let fun = lhs.owner
+      if fun.kind in routineKinds:
+        for ai in mitems(fun.viewConstraints):
+          if ai.lhs == lhs and ai.rhs == sym:
+            ai.addrLevel = max(ai.addrLevel, addrLevel)
+            found = true
+            break
+      if found:
         return
 
     let vd = ViewDep(sym: sym, addrLevel: addrLevel)
@@ -160,6 +173,7 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     ]#
     # if sym!=lhs:# CHECKME: D20200713T102518
     lhs.viewSyms.add vd
+    dbg vd
 
     # update proc sym
     if lhs.kind in {skParam, skResult}:
@@ -174,7 +188,7 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     # PRTEMP
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
-      # dbg vc
+      dbg vc
       #[
       note: we don't want to update viewConstraints for symbols that were instantiated
       ]#
@@ -258,31 +272,34 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
 
 proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, resultSym: PSym = nil) =
   var lhs = vc.lhs
-  let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
-  # dbg lhs, fun, vc, nCall, lhsNode
-  if lhsNode != nil:
-    lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  if lhs.kind == skResult and lhs.owner == fun:
+    doAssert resultSym!=nil
+    lhs = resultSym
+  else:
+    let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
+    # dbg lhs, fun, vc, nCall, lhsNode
+    if lhsNode != nil:
+      lhs=resolveSymbolLHS(c, nCall, lhsNode)
   if lhs==nil:
     return
   var vdata = ViewData(c: c, lhs: lhs, n: nCall)
   let addrLevel = vc.addrLevel
   var rhs = vc.rhs
-  if rhs.kind == skResult:
-    if rhs.owner == fun:
-      doAssert resultSym!=nil
-      #[
-      D20200718T125524:here
-      checkme: not entirely correct eg:
-      proc fn(a: ptr int, b: var ptr int): auto =
-        result = a
-        b = result
-      result = l0.addr
-      var b: ptr int
-      result = fn(l1.addr, b)
-      # b should not depend on l0.addr
-      ]#
+  if rhs.kind == skResult and rhs.owner == fun:
+    doAssert resultSym!=nil
+    #[
+    D20200718T125524:here
+    checkme: not entirely correct eg:
+    proc fn(a: ptr int, b: var ptr int): auto =
+      result = a
+      b = result
+    result = l0.addr
+    var b: ptr int
+    result = fn(l1.addr, b)
+    # b should not depend on l0.addr
+    ]#
 
-      rhs = resultSym
+    rhs = resultSym
   else:
     let rhsNode = resolveParamToPNode(c, fun, nCall, rhs)
     if rhsNode != nil:
@@ -332,7 +349,7 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
   proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       if t.n != nil: result = genTypeInfo(m, lastSon t, info)
   ]#
-  when true:
+  when false:
     block:
       var index = 0
       while true:
@@ -362,9 +379,10 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
       let vc = fun.viewConstraints[index]
       index.inc
       # dbg vc, ret, fun
-      if vc.lhs != ret:
-        # TODO: merge previous section to here
-        evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
+      # if vc.lhs != ret:
+      #   # TODO: merge previous section to here
+      #   evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
+      evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
@@ -568,7 +586,7 @@ when true:
       result.add(replacements(word))
       ]#
       discard
-    of skProc, skFunc:
+    of skProc, skFunc: # TOOD: routineKinds
       # dbg fun.resultSym
       # if fun.resultSym != nil: return # CHECKME; will be taken care by 
       if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
