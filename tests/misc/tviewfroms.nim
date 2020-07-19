@@ -397,11 +397,19 @@ block:
   proc fn1a2(a1: var int): auto = a1
   proc fn1a3(a1: var int): auto = a1.addr
 
-proc fn1(a1: ptr ptr int, a2: var int) =
-  a1[] = a2.addr
+block:
+  proc fn25a(a1: ptr int): ptr int = discard
+  proc fn25(): ptr int =
+    var l0=0
+    return fn25a(l0.addr)
+  checkEscapeOK()
 
-proc fn2(a1: var int, a2: var int): auto =
-  [a1.addr, a2.addr]
+block:
+  proc fn1(a1: ptr ptr int, a2: var int) =
+    a1[] = a2.addr
+
+  proc fn2(a1: var int, a2: var int): auto =
+    [a1.addr, a2.addr]
 
 block:
   var g0: ptr int

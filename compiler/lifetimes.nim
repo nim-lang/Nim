@@ -292,17 +292,19 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
   if fun.kind notin routineKinds:
     dbg "D20200713T124517", fun.kind
     return
-  let ret = fun.resultSym
-  if ret == nil:
+
+  if sfForward in fun.flags or fun.magic != mNone:
+    # the real criterion should be whether it was processed, maybe we can add
+    # a sfProcBodyChecked; also for recursive procs, it's a bit tricky.
+    for i in 1..<nCall.len:
+      # CHECKME
+      viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
+  else:
     #[
     TODO: sfImportc?
     # sfWasForwarded
-    the real criterion should be whether it was processed?
     ]#
-    if not (sfForward in fun.flags or fun.magic != mNone):
-      # eg: `proc fn(): ptr int = discard` ; no `result = ` decl'
-      # TODO: instead, assign ret.viewSyms where relevant
-      return
+    #   # eg: `proc fn(): ptr int = discard` ; no `result = ` decl'
     #[
     `fun` has not body (eg it's a magic or forward decl)
     TODO: shd use {.viewFrom.} if available
@@ -310,10 +312,6 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
     proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
     TODO: what about sink params?
     ]#
-    for i in 1..<nCall.len:
-      # CHECKME
-      viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
-  else:
     evalConstraints(vdata.c, fun, nCall, vdata.lhs)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
