@@ -4,12 +4,10 @@ import ast, options, types, msgs, lineinfos, semdata, renderer
 from strutils import `%`
 
 proc `$`(a: ViewConstraint): string =
-  # result = $a.lhs.owner & "." & $a.lhs & " => " & $a.rhs.owner & "." & $a.rhs & ":" & $a.addrLevel
-  proc name2(a: PSym): string = a.owner.name.s & "." & a.name.s
+  proc name2(a: PSym): string = a.owner.name.s & "." & a.name.s # or us $a to show unique id as well
   result = a.lhs.name2 & " => " & a.rhs.name2 & ":" & $a.addrLevel
 
 proc toHuman*(a: seq[ViewConstraint]): string =
-  # why is this needed? doesnt' seem to pickup `$`(a: ViewConstraint) otherwise
   for ai in a: result.add $ai & "; "
 
 # IMPROVE RENAME
@@ -117,8 +115,6 @@ proc findScopeDepth(scope: PScope, sym: PSym): int =
 
 proc outlives(c: PContext, lhs, rhs: PSym): bool =
   # dbg lhs, rhs, lhs.flags, rhs.flags
-  # dbg2 lhs
-  # dbg2 rhs
   if sfGlobal in lhs.flags: return sfGlobal notin rhs.flags
   if sfGlobal in rhs.flags: return false
   result = outlivesProcFrame(lhs, rhs)
@@ -136,11 +132,8 @@ proc isLocalSymbol(vd: var ViewData, sym: PSym): bool =
   what if its 2 globals?
   g0=>g1
   ]#
-  # PRTEMP
   let funContext = vd.c.p.owner
   result = sfGlobal notin sym.flags and sym.owner == funContext and sym.kind notin {skParam, skResult}
-  # checkme: skResult?
-  # if sym.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
 
 proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
   dbg result.lhs, sym, addrLevel
@@ -173,9 +166,6 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     ]#
     # if sym!=lhs:# CHECKME: D20200713T102518
     lhs.viewSyms.add vd
-    dbg vd
-
-    # update proc sym
     if lhs.kind in {skParam, skResult}:
       let fun = result.c.p.owner
       # PRTEMP
@@ -185,10 +175,8 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
           # IMPROVE can we get it from result.c.p ? EDIT: see c.p.resultSym
           fun.resultSym = lhs
 
-    # PRTEMP
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
-      dbg vc
       #[
       note: we don't want to update viewConstraints for symbols that were instantiated
       ]#
@@ -197,37 +185,11 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
         if fun == result.c.p.owner: # checkme
           if vc notin fun.viewConstraints:
             fun.viewConstraints.add vc
-            # dbg fun, fun.viewConstraints
-
       if sym.kind in {skParam}:
         let fun = sym.owner
         if fun == result.c.p.owner: # checkme
           if vc notin fun.viewConstraints:
             fun.viewConstraints.add vc
-            # dbg fun, fun.viewConstraints
-
-    # echo ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
-      # dbg ($sym, $result.lhs, $fun, $fun.kind, "D20200715T110042") # PRTEMP 2
-      # dbg fun
-      # if vc notin fun.viewConstraints:
-      #   # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
-      #   fun.viewConstraints.add vc
-      #   dbg fun, fun.viewConstraints
-
-    when false:
-      let funContext = result.c.p.owner
-      dbg lhs.owner, funContext, lhs.owner.kind
-      if lhs.owner != funContext or lhs.owner.kind in {skParam, skResult} or sfGlobal in lhs.flags:
-        let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
-        dbg vc
-        # if sym.kind in {skParam, skResult}:
-        if sym.kind in {skParam}:
-          let fun = sym.owner
-          if fun == funContext: # PRTEMP
-            if vc notin fun.viewConstraints:
-              # TODO: find + update if some other vc.addrLevel w same lhs/rhs found
-              fun.viewConstraints.add vc
-              dbg fun, fun.viewConstraints
 
 proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
   #[
@@ -257,7 +219,6 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
 
     # for ai in sym.viewSyms: ? but see D20200713T102518
     let len1 = sym.viewSyms.len
-    # dbg sym.viewSyms
     for i in 0..<len1:
       let ai = sym.viewSyms[i]
       var addrLevel2 = addrLevel+ai.addrLevel
@@ -322,7 +283,6 @@ proc evalConstraints(c: PContext, fun: PSym, nCall: PNode, lhs: PSym) =
     evalConstraint(c, fun, vc, nCall, lhs)
 
 proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addrLevel: int) =
-  # dbg2 fun
   doAssert fun != nil
   if fun.magic == mAddr:  # TODO: do we need this special case?
     # addrLevel.inc # seemed buggy as could apply to unrelated things?

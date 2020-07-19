@@ -1,10 +1,6 @@
-discard """
-  cmd: "nim $target --staticescapechecks $options $file"
-"""
-
 #[
 next: fn25
-TODO: experimental: "staticescapechecks".} or --staticescapechecks or --experimental:staticescapechecks
+see --experimental:staticescapechecks
 ]#
 
 import ./mviewfroms
@@ -747,6 +743,8 @@ block:
   D20200711T133853
   subfield assignment after reference copy
   this should be fixable by tracking that the destiny of `lhs = rhs` is tied when the type is a reference
+  but it could also lead to more false positives
+  note: this seems like the same issue as D20200710T184748
   ]#
   type Foo = ref object
     x1: ptr int

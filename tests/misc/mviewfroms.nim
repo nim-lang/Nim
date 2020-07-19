@@ -19,12 +19,9 @@ template checkEscapeOK*() =
   static: checkEscapeImpl(getCapturedMsgs(), @[])
 
 template ignoreEscape*(body) =
-  # somehow `{.warning[StackAddrEscapes]: off.}:` doesn't stop at end of scope
   {.push warning[StackAddrEscapes]: off.}
   body
   {.pop.}
 
 macro viewConstraints*(n: proc): string =
-  echo n.kind
-  echo n.treeRepr
   result = newLit viewConstraintsStr(n)
