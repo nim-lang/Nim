@@ -2766,7 +2766,6 @@ elif defined(genode):
 
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib"):
-  # not(defined(posix) and appType == "lib_temp"): # D20200712T171305
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint

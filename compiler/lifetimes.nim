@@ -330,10 +330,8 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
     break
 
   while true:
-    # dbg it.kind, it.renderTree
     case it.kind
     of nkSym:
-      # dbg sym, addrLevel, sfAddrTaken in sym.flags, result.lhs, sym.viewFromSyms
       addDependencies(result, it.sym, addrLevel)
       break
     of nkHiddenDeref, nkDerefExpr:
@@ -425,11 +423,8 @@ proc skipToSym(n: PNode): PType =
   else: doAssert false, $n.kind
 
 proc containsView(c: PContext, typ: PType, n: PNode): bool =
-  #[
-  potentially relevant: `tfHasGCedMem in typ.flags`
-  ]#
+  # potentially relevant: `tfHasGCedMem in typ.flags`
   var t = typ.skipTypes(abstractInst)
-
   template fun(tj) =
     if containsView(c, tj, n): return true
 
@@ -454,10 +449,7 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
     of tyPtr, tyRef, tyPointer:
       result = true # TODO: for tyRef, we probably should recurse before deciding, eg: `ref int`
       break
-    of tyCString:
-      #[
-      D20200710T213712
-      ]#
+    of tyCString: # D20200710T213712
       result = true
       break
     of tyVar:
@@ -504,21 +496,12 @@ proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
     #[
     TODO: skVar; fun: errorMessageWriter@3870604;
     TODO: handle skIterator
-
-    skLet:
-    let marker = cell.typ.marker
-    marker(cellToUsr(cell), op.int)
-    
-    skParam:
-    proc translate*(s: string, replacements: proc(key: string): string): string {.
-    result.add(replacements(word))
+    skLet: let marker = cell.typ.marker; marker(...)
+    skParam: proc main(fn: proc(key: string): string): string; fn(...)
     ]#
     discard
   of skProc, skFunc: # TOOD: routineKinds
-    # if fun.resultSym != nil: return # CHECKME; will be taken care by 
     if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
-    # dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
-    # let num0 = fun.viewConstraints.len
     evalConstraints(c, fun, nCall, lhs = nil)
   else:
     dbg fun.kind, fun
@@ -531,7 +514,6 @@ proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
 
 # PRTEMP incremental D20200712T171305
 # import ./debugutils
-# when true:
 when false:
 # when defined(timn_with_compilerutils):
   # import timn/compilerutils/nimc_basics
