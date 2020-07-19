@@ -21,12 +21,9 @@ let testamentData0* = TestamentData()
 # First check the bin directory and then check the system path.
 let
   nimBinPath = findExe("bin/nim")
-  nimTempPath = findExe("bin/nim_temp")
 var compilerPrefix* =
   if nimBinPath.len != 0:
     nimBinPath
-  elif nimTempPath.len != 0:
-    nimTempPath
   else:
     findExe("nim")
 
