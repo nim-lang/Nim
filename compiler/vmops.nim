@@ -22,7 +22,6 @@ from hashes import hash
 from osproc import nil
 
 import vmconv
-from astalgo import debug
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
