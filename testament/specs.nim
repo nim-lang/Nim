@@ -18,10 +18,11 @@ type TestamentData* = ref object
 
 let testamentData0* = TestamentData()
 
-let defaultPath = findExe("bin/nim_temp")
+# First check the bin directory and then check the system path.
+let nimTempPath = findExe("bin/nim_temp")
 var compilerPrefix* =
-  if defaultPath.len != 0:
-    defaultPath
+  if nimTempPath.len != 0:
+    nimTempPath
   else:
     findExe("nim")
 
