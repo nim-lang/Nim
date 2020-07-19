@@ -1,5 +1,5 @@
 #[
-next: fn25
+next: fn27
 see --experimental:staticescapechecks
 ]#
 
@@ -688,16 +688,12 @@ block: # D20200714T201023
     checkEscape "'fn17.l0' escapes via 'g'"
 
 block:
-  #[
-  D20200711T130559
-  memory tracking currently works through assignments (lhs = rhs) or definitions (var lhs = rhs) but
-  not through function calls.
-  ]#
+  # D20200711T130559 memory tracking through function calls without result
   type Foo = object
     x: ptr int
 
-  # the root cause is the fact when `[]=` is a function call with no result; there is no
-  # assignment (but for builtin []= it works fine currently, see D20200711T180629)
+  # `[]=` is a function call with no result depending on the type
+  # see also D20200711T180629
   proc fun(a: var Foo, x: ptr int) = a.x = x
 
   proc fn18: Foo =
@@ -725,10 +721,13 @@ block:
     result[^1] = l0.addr # `BackwardsIndex` gets transformed int a proc without `result`
     checkEscape "'fn20.l0' escapes via 'result'"
 
+
+
+#############################################################################
 ## failing tests
 block:
   #[
-  D20200710T184748 capture rhs
+  BUG D20200710T184748 capture rhs
   lhs = rhs might capture rhs in lhs; this might be fixable by treating
   `lhs = rhs` via also the implicit: `rhs[] = lhs` ?
   ]#
@@ -736,7 +735,7 @@ block:
     var l0=10
     var l1=a
     l1[] = l0.addr
-    # checkEscape "'fn21.l0' escapes via 'a'" # BUG: this fails
+    # checkEscape "'fn21.l0' escapes via 'a'" # fails
     discard getCapturedMsgs()
 
   proc fn21b(a: var ptr int) = # similar bug
@@ -748,7 +747,7 @@ block:
 
 block:
   #[
-  D20200711T133853
+  BUG D20200711T133853
   subfield assignment after reference copy
   this should be fixable by tracking that the destiny of `lhs = rhs` is tied when the type is a reference
   but it could also lead to more false positives
@@ -760,7 +759,21 @@ block:
     let s = Foo()
     result = s
     s.x1 = l0.addr # undetected escape after `result = s` assignment
-    # checkEscape "'fn22.l0' escapes via 'result'" # BUG: fails
+    # checkEscape "'fn22.l0' escapes via 'result'" # fails
+    discard getCapturedMsgs()
+
+block:
+  #[
+  BUG D20200711T133853 iterator not supported yet
+  ]#
+  iterator myiter(a: ptr int): ptr int =
+    yield a
+
+  proc fn26():auto =
+    var l0=0
+    for ai in myiter(l0.addr):
+      return ai
+    # checkEscape "'fn26.l0' escapes via 'result'" # would fail
     discard getCapturedMsgs()
 
 {.pop.} # staticescapechecks

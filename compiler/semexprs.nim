@@ -1869,6 +1869,8 @@ proc semYield(c: PContext, n: PNode): PNode =
       localError(c.config, n.info, errCannotReturnExpr)
   elif c.p.owner.typ[0] != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
+  # to support nimCheckViewFromCompat
+  # nimCheckViewFromCompat(c, n, b[0], b[^1])
 
 proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
   if onlyCurrentScope:
@@ -2276,7 +2278,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       activate(c, result)
       fixAbstractType(c, result)
       analyseIfAddressTakenInCall(c, result)
-      # PRTEMP
+      nimSimulateCall(c, callee, result)
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:

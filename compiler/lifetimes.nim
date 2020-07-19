@@ -323,17 +323,14 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
       let t2 = n2.typ
       case t2.kind
       of tySequence, tyCString, tyString:
-        # tyString should probably not hit here since string content is allocated on heap but still
+        # tyString should probably not hit here since string content is allocated
+        # on heap but this still seems more robust
         addrLevel.dec
-        # discard # PRTEMP
       of tyArray, tyTuple, tyUncheckedArray, tyOpenArray,
         tyGenericInst, # D20200711T222510 eg: `t.data[index]` with t.data a tyGenericInst
         tyVarargs:
         discard # addrLevel.dec would be incorrect: `a` and `a[0]` are at same address (or address "level")
       else:
-        dbg2 n
-        dbg2 it
-        dbg2 t2
         doAssert false, $("not yet implemented", t2.kind) # if fails, adapt code as needed
       it = it[0]
     of nkDotExpr, nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr: continueSon(0, 2)
@@ -361,7 +358,7 @@ proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
         break
       else:
         # eg: cast[PPointer](dest)[]
-        dbg "D20200712T195444", fun.kind # TODO
+        dbg "TODO", fun.kind # TODO
         recurseSons(1)
     of nkTupleConstr, nkBracket: recurseSons(0)
     of nkBlockExpr: it = it[^1]
