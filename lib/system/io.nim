@@ -283,10 +283,10 @@ elif defined(windows):
     importc: "_get_osfhandle", header: "<io.h>".}
 
   type
-    Handle = distinct pointer
+    IoHandle = distinct pointer
       ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
-      ## one.
-  proc setHandleInformation(handle: Handle, mask, flags: culong): cint {.
+      ## one. Named like this to avoid collision with other `system` modules.
+  proc setHandleInformation(handle: IoHandle, mask, flags: culong): cint {.
     importc: "SetHandleInformation", header: "<handleapi.h>".}
 
 const
@@ -343,7 +343,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[Handle](f), HANDLE_FLAG_INHERIT,
+      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
