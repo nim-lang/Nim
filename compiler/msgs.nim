@@ -393,7 +393,10 @@ proc log*(s: string) =
     f.writeLine(s)
     close(f)
 
+proc dumpCaptureMsg*(conf: ConfigRef) {.gcsafe.}
+
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
+  dumpCaptureMsg(conf)
   if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
@@ -619,3 +622,12 @@ template listMsg(title, r) =
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
+
+proc dumpCaptureMsg(conf: ConfigRef) =
+  {.gcsafe.}:
+    if conf.capturedMsgsState:
+      var msg = conf.capturedMsgs # `let` doesn't copy depending on gc
+      conf.capturedMsgs.setLen 0
+      conf.capturedMsgsState = false
+      conf.writelnHook = nil
+      rawMessage(conf, errGenerated, "capturedMsgs not empty:\n" & msg)

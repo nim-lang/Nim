@@ -22,6 +22,7 @@ from hashes import hash
 from osproc import nil
 
 import vmconv
+from astalgo import debug
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -105,7 +106,7 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add toLit((k, f))
 
 when defined(nimHasInvariant):
-  from std / compilesettings import SingleValueSetting, MultipleValueSetting
+  from std / compilesettings import SingleValueSetting, MultipleValueSetting, CaptureMode
 
   proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
     case SingleValueSetting(switch)
@@ -134,6 +135,25 @@ when defined(nimHasInvariant):
     of commandArgs: result = conf.commandArgs
     of cincludes: copySeq(conf.cIncludes)
     of clibs: copySeq(conf.cLibs)
+
+from std / compilesettings import CaptureMode
+
+proc setCapturedMsgsImpl2(conf: ConfigRef, switch: BiggestInt) =
+  let mode = CaptureMode(switch)
+  case mode
+  of captureInvalid: doAssert false
+  of captureStart:
+    conf.capturedMsgsState = true
+    # xxx: save old one and restore later?
+    conf.writelnHook = proc (msg: string) =
+      # we could add `CaptureMode.duplicate` to both caputre and print
+      conf.capturedMsgs.add msg
+      conf.capturedMsgs.add "\n"
+  of captureStop:
+    conf.writelnHook = nil
+    conf.capturedMsgsState = false
+    # see also: dumpCaptureMsg
+    doAssert conf.capturedMsgs.len == 0, "capturedMsgs not empty: \n" & conf.capturedMsgs
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
@@ -190,6 +210,12 @@ proc registerAdditionalOps*(c: PCtx) =
         setResult(a, querySettingImpl(c.config, getInt(a, 0)))
       registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
         setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+      registerCallback c, "stdlib.compilesettings.setCapturedMsgsImpl", proc (a: VmArgs) {.nimcall.} =
+        setCapturedMsgsImpl2(c.config, getInt(a, 0))
+      registerCallback c, "stdlib.compilesettings.getCapturedMsgs", proc (a: VmArgs) {.nimcall.} =
+        doAssert c.config.capturedMsgsState, "call 'setCapturedMsgs' before 'getCapturedMsgs'"
+        setResult(a, c.config.capturedMsgs)
+        c.config.capturedMsgs.setLen 0
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"

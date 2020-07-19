@@ -163,6 +163,7 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
+    staticEscapeChecks,
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -320,6 +321,8 @@ type
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
     writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
+    capturedMsgs*: string
+    capturedMsgsState*: bool
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
