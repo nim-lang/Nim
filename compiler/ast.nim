@@ -845,7 +845,6 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
-      resultSym*: PSym         # the `skResult` symbol for this proc, if any
       viewConstraints*: seq[ViewConstraint]
     of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.

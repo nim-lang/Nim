@@ -166,14 +166,7 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
     ]#
     # if sym!=lhs:# CHECKME: D20200713T102518
     lhs.viewSyms.add vd
-    if lhs.kind in {skParam, skResult}:
-      let fun = result.c.p.owner
-      # PRTEMP
-      # doAssert lhs.owner == fun # TODO: not always holds, see D20200715T004851
-      if lhs.owner == fun: # TODO: not always holds, see D20200715T004851
-        if lhs.kind == skResult:
-          # IMPROVE can we get it from result.c.p ? EDIT: see c.p.resultSym
-          fun.resultSym = lhs
+    # if lhs.kind in {skParam, skResult}: doAssert lhs.owner == result.c.p.owner # not always holds, see D20200715T004851
 
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
@@ -259,7 +252,6 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, re
     result = fn(l1.addr, b)
     # b should not depend on l0.addr
     ]#
-
     rhs = resultSym
   else:
     let rhsNode = resolveParamToPNode(c, fun, nCall, rhs)
