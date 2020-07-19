@@ -1,3 +1,8 @@
+#[
+TODO:
+* do `sink` (tySink) params need special treatment?
+]#
+
 when defined(nimHasUsed): {.used.}
 
 import ast, options, types, msgs, lineinfos, semdata, renderer
@@ -10,7 +15,6 @@ proc `$`(a: ViewConstraint): string =
 proc toHuman*(a: seq[ViewConstraint]): string =
   for ai in a: result.add $ai & "; "
 
-# IMPROVE RENAME
 proc nimToHumanViewConstraint(a: seq[ViewConstraint]): string {.exportc.} = toHuman(a)
 
 type ViewData* = object
@@ -119,7 +123,6 @@ proc outlives(c: PContext, lhs, rhs: PSym): bool =
   if sfGlobal in rhs.flags: return false
   result = outlivesProcFrame(lhs, rhs)
   if not result: # consider block scope
-    # TODO: store scope in PSym? or maybe at least depth?
     var scope = c.currentScope
     let d1 = findScopeDepth(scope, lhs)
     let d2 = findScopeDepth(scope, rhs)
@@ -128,10 +131,7 @@ proc outlives(c: PContext, lhs, rhs: PSym): bool =
       result = true
 
 proc isLocalSymbol(vd: var ViewData, sym: PSym): bool =
-  #[
-  what if its 2 globals?
-  g0=>g1
-  ]#
+  # what if its 2 globals?
   let funContext = vd.c.p.owner
   result = sfGlobal notin sym.flags and sym.owner == funContext and sym.kind notin {skParam, skResult}
 
@@ -160,19 +160,11 @@ proc insertNoDupCheck(result: var ViewData, sym: PSym, addrLevel: int) =
         return
 
     let vd = ViewDep(sym: sym, addrLevel: addrLevel)
-    # if ever becomes a bottleneck, we could use a Table-like structure (unlikely)
-    #[
-    D20200713T102518:here to avoid:  the length of the seq changed while iterating over it [AssertionDefect]
-    ]#
-    # if sym!=lhs:# CHECKME: D20200713T102518
     lhs.viewSyms.add vd
     # if lhs.kind in {skParam, skResult}: doAssert lhs.owner == result.c.p.owner # not always holds, see D20200715T004851
 
     if not isLocalSymbol(result, lhs) and not isLocalSymbol(result, sym):
       let vc = ViewConstraint(lhs: result.lhs, rhs: sym, addrLevel: addrLevel)
-      #[
-      note: we don't want to update viewConstraints for symbols that were instantiated
-      ]#
       if result.lhs.kind in {skParam}: # {skParam, skResult}
         let fun = result.lhs.owner
         if fun == result.c.p.owner: # checkme
@@ -190,7 +182,6 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
   TODO: instead of making the graph complete, we could at the end do a cycle check / DFS /BFS on a sparse graph?
   ]#
   # dbg result.c.config$result.n.info, result.lhs, sym, sym.viewSyms, addrLevel
-  # doAssert addrLevel > -20 # fail early on inf recursion
   if result.lhs == sym: return
 
   if addrLevel == 1:
@@ -199,18 +190,23 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
     doAssert false, $(addrLevel, sym)
   else:
     #[
-    PRTEMP; eg:
+    eg:
     proc fn(a: ptr int): auto = a
     proc fn(a: ptr int): auto =
       var b = a
       result = b
+    note: we could change the semantics and use a reference type instead of value
+    type for `viewSyms`, which would avoid having to copy the contents, and
+    would solve problems like D20200711T133853
     ]#
-
     # dbg sym, sym.kind
     if sym.kind in {skParam, skResult}:
       insertNoDupCheck(result, sym, addrLevel)
 
-    # for ai in sym.viewSyms: ? but see D20200713T102518
+    #[
+    for ai in sym.viewSyms: would not work with recursive functions, where
+    viewSyms changes during iteration
+    ]#
     let len1 = sym.viewSyms.len
     for i in 0..<len1:
       let ai = sym.viewSyms[i]
@@ -225,22 +221,7 @@ proc addDependencies(result: var ViewData, sym: PSym, addrLevel: int) =
         addDependencies(result, ai.sym, addrLevel2)
 
 proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, resultSym: PSym = nil) =
-  var lhs = vc.lhs
-  if lhs.kind == skResult and lhs.owner == fun:
-    doAssert resultSym!=nil
-    lhs = resultSym
-  else:
-    let lhsNode = resolveParamToPNode(c,fun,nCall,lhs)
-    # dbg lhs, fun, vc, nCall, lhsNode
-    if lhsNode != nil:
-      lhs=resolveSymbolLHS(c, nCall, lhsNode)
-  if lhs==nil:
-    return
-  var vdata = ViewData(c: c, lhs: lhs, n: nCall)
-  let addrLevel = vc.addrLevel
-  var rhs = vc.rhs
-  if rhs.kind == skResult and rhs.owner == fun:
-    doAssert resultSym!=nil
+  proc interpParamResult(sym: PSym): (PSym, PNode) =
     #[
     D20200718T125524:here
     checkme: not entirely correct eg:
@@ -252,13 +233,23 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, re
     result = fn(l1.addr, b)
     # b should not depend on l0.addr
     ]#
-    rhs = resultSym
+    if sym.kind == skResult and sym.owner == fun:
+      doAssert resultSym!=nil
+      result[0] = resultSym
+    else:
+      let lhsNode = resolveParamToPNode(c,fun,nCall,sym)
+      result[0] = sym
+      result[1] = lhsNode
+  var (lhs, lhsNode) = interpParamResult(vc.lhs)
+  if lhsNode != nil: lhs=resolveSymbolLHS(c, nCall, lhsNode)
+  if lhs==nil: return
+  var vdata = ViewData(c: c, lhs: lhs, n: nCall)
+  let addrLevel = vc.addrLevel
+  var (rhs, rhsNode) = interpParamResult(vc.rhs)
+  if rhsNode != nil:
+    viewFromRoots(vdata, rhsNode, depth=0, addrLevel=addrLevel)
   else:
-    let rhsNode = resolveParamToPNode(c, fun, nCall, rhs)
-    if rhsNode != nil:
-      viewFromRoots(vdata, rhsNode, depth=0, addrLevel=addrLevel)
-      return
-  addDependencies(vdata, rhs, addrLevel)
+    addDependencies(vdata, rhs, addrLevel)
 
 proc evalConstraints(c: PContext, fun: PSym, nCall: PNode, lhs: PSym) =
   #[
@@ -276,8 +267,7 @@ proc evalConstraints(c: PContext, fun: PSym, nCall: PNode, lhs: PSym) =
 
 proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addrLevel: int) =
   doAssert fun != nil
-  if fun.magic == mAddr:  # TODO: do we need this special case?
-    # addrLevel.inc # seemed buggy as could apply to unrelated things?
+  if fun.magic == mAddr:
     viewFromRoots(vdata, nCall[1], depth+1, addrLevel + 1)
     return
 
@@ -286,24 +276,17 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
     return
 
   if sfForward in fun.flags or fun.magic != mNone:
-    # the real criterion should be whether it was processed, maybe we can add
-    # a sfProcBodyChecked; also for recursive procs, it's a bit tricky.
-    for i in 1..<nCall.len:
-      # CHECKME
-      viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
-  else:
-    #[
-    TODO: sfImportc?
-    # sfWasForwarded
-    ]#
-    #   # eg: `proc fn(): ptr int = discard` ; no `result = ` decl'
     #[
     `fun` has not body (eg it's a magic or forward decl)
     TODO: shd use {.viewFrom.} if available
-    eg: `@` (mArrToSeq)
-    proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
-    TODO: what about sink params?
+    the real criterion should be whether it was processed, maybe we can add
+    a `sfProcBodyChecked`; also for recursive procs, it's a bit tricky.
+    see also: sfImportc, sfWasForwarded
+    eg:  `@` (magic: "ArrToSeq")
     ]#
+    for i in 1..<nCall.len:
+      viewFromRoots(vdata, nCall[i], depth+1, addrLevel)  # CHECKME
+  else:
     evalConstraints(vdata.c, fun, nCall, vdata.lhs)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
@@ -484,13 +467,11 @@ proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
   case fun.kind
   of skVar, skLet, skIterator, skParam:
     #[
-    TODO: skVar; fun: errorMessageWriter@3870604;
-    TODO: handle skIterator
-    skLet: let marker = cell.typ.marker; marker(...)
+    skLet, skVar: let marker = cell.typ.marker; marker(...)
     skParam: proc main(fn: proc(key: string): string): string; fn(...)
     ]#
     discard
-  of skProc, skFunc: # TOOD: routineKinds
+  of skProc, skFunc: # TOOD: routineKinds (eg: skIterator)
     if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
     evalConstraints(c, fun, nCall, lhs = nil)
   else:

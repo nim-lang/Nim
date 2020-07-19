@@ -752,7 +752,6 @@ block:
   subfield assignment after reference copy
   this should be fixable by tracking that the destiny of `lhs = rhs` is tied when the type is a reference
   but it could also lead to more false positives
-  note: this seems like the same issue as D20200710T184748
   ]#
   type Foo = ref object
     x1: ptr int
