@@ -833,8 +833,8 @@ type
   ViewConstraint* = object
     # we could model other constraints, eg whether a parameter is being written to
     lhs*: PSym
-    rhs*: PSym  # or ViewDep?
-    addrLevel*: int
+    rhs*: PSym
+    addrLevel*: int  # see also `ViewDep`
 
   TSym* {.acyclic.} = object of TIdObj
     # proc and type instantiations are cached in the generic symbol
