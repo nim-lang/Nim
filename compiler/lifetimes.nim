@@ -307,6 +307,20 @@ proc evalConstraint(c: PContext, fun: PSym, vc: ViewConstraint, nCall: PNode, re
       return
   addDependencies(vdata, rhs, addrLevel)
 
+proc evalConstraints(c: PContext, fun: PSym, nCall: PNode, lhs: PSym) =
+  #[
+  D20200716T235232:here
+  for recursive calls (eg processQuotations, genTypeInfo etc), fun.viewConstraints can change
+  while we iterate on it
+  # TODO: avoid updating `viewConstraints` inside this?
+  ]#
+  var index = 0
+  while true:
+    if index>=fun.viewConstraints.len: break
+    let vc = fun.viewConstraints[index]
+    index.inc
+    evalConstraint(c, fun, vc, nCall, lhs)
+
 proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addrLevel: int) =
   # dbg2 fun
   doAssert fun != nil
@@ -339,50 +353,8 @@ proc simulateCall(vdata: var ViewData, fun: PSym, nCall: PNode, depth: int, addr
     for i in 1..<nCall.len:
       # CHECKME
       viewFromRoots(vdata, nCall[i], depth+1, addrLevel)
-    return
-
-  #[
-  D20200716T235232:here
-  # for ai in ret.viewSyms:
-  the length of the seq changed while iterating over it
-  can happen for recursive calls, eg:
-  proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
-      if t.n != nil: result = genTypeInfo(m, lastSon t, info)
-  ]#
-  when false:
-    block:
-      var index = 0
-      while true:
-        if index>=ret.viewSyms.len: break
-        let ai = ret.viewSyms[index]
-        index.inc
-        # dbg ai, "begin", ret.viewSyms
-        # TODO: for params, avoid
-        var sym = ai.sym
-        # dbg ai, addrLevel, addrLevel + ai.addrLevel
-        var addrLevel2 = addrLevel + ai.addrLevel
-
-        # FACTOR with evalConstraint
-        let rhsNode = resolveParamToPNode(vdata.c,fun,nCall,sym)
-        if rhsNode!=nil:
-          viewFromRoots(vdata, rhsNode, depth+1, addrLevel2)
-        else:
-          addDependencies(vdata, sym, addrLevel2)
-        # dbg ai, "end", ret.viewSyms, fun, vdata.c.config$fun.info
-
-  # eval other constraints; FACTOR
-  # for vc in fun.viewConstraints:
-  block:
-    var index = 0
-    while true:
-      if index>=fun.viewConstraints.len: break
-      let vc = fun.viewConstraints[index]
-      index.inc
-      # dbg vc, ret, fun
-      # if vc.lhs != ret:
-      #   # TODO: merge previous section to here
-      #   evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
-      evalConstraint(vdata.c, fun, vc, nCall, vdata.lhs)
+  else:
+    evalConstraints(vdata.c, fun, nCall, vdata.lhs)
 
 proc viewFromRoots(result: var ViewData, n: PNode, depth: int, addrLevel: int) =
   var addrLevel = addrLevel # `sfAddrTaken` is inadequate (depends on unrelated context)
@@ -558,7 +530,6 @@ proc containsView(c: PContext, typ: PType, n: PNode): bool =
       break
 
 proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc, dynlib.} =
-  # if optStaticEscapeCheck notin c.config.options: return
   if staticEscapeChecks notin c.features: return
   if ri.kind in {nkEmpty, nkNilLit}: return # eg: var a: int
   let lhs = resolveSymbolLHS(c, n, le)
@@ -566,57 +537,35 @@ proc nimCheckViewFromCompat*(c: PContext, n, le, ri: PNode) {.exportc, dynlib.} 
     var viewData = ViewData(c: c, lhs: lhs, n: n)
     viewFromRoots(viewData, ri, 0, 0)
 
-# when defined(timn_define_lib):
-when true:
-  proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
-    # if optStaticEscapeCheck notin c.config.options: return
-    if staticEscapeChecks notin c.features: return
-    case fun.kind
-    of skVar, skLet, skIterator, skParam:
-      #[
-      TODO: skVar; fun: errorMessageWriter@3870604;
-      TODO: handle skIterator
+proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.exportc, dynlib.} =
+  if staticEscapeChecks notin c.features: return
+  case fun.kind
+  of skVar, skLet, skIterator, skParam:
+    #[
+    TODO: skVar; fun: errorMessageWriter@3870604;
+    TODO: handle skIterator
 
-      skLet:
-      let marker = cell.typ.marker
-      marker(cellToUsr(cell), op.int)
-      
-      skParam:
-      proc translate*(s: string, replacements: proc(key: string): string): string {.
-      result.add(replacements(word))
-      ]#
-      discard
-    of skProc, skFunc: # TOOD: routineKinds
-      # dbg fun.resultSym
-      # if fun.resultSym != nil: return # CHECKME; will be taken care by 
-      if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
-      # dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
-      # let num0 = fun.viewConstraints.len
-
-      # for recursive calls eg: processQuotations
-      # for vc in fun.viewConstraints:
-      var index = 0
-      while true:
-        if index >= fun.viewConstraints.len: break
-        let vc = fun.viewConstraints[index]
-        index.inc
-        # TODO: avoid updating `viewConstraints` inside this?
-        # var old = fun.viewConstraints
-        evalConstraint(c, fun, vc, nCall)
-        when false:
-          if fun.viewConstraints.len != num0:
-            dbg c.p.owner, fun, nCall.renderTree, "\n", $fun.viewConstraints, "\n", $old
-            # dbg fun.viewConstraints, fun, nCall.renderTree
-            #[
-            processQuotations
-            ]#
-            doAssert false
-    else:
-      dbg fun.kind, fun
-      doAssert false
+    skLet:
+    let marker = cell.typ.marker
+    marker(cellToUsr(cell), op.int)
+    
+    skParam:
+    proc translate*(s: string, replacements: proc(key: string): string): string {.
+    result.add(replacements(word))
+    ]#
+    discard
+  of skProc, skFunc: # TOOD: routineKinds
+    # if fun.resultSym != nil: return # CHECKME; will be taken care by 
+    if fun.typ[0] != nil: return # CHECKME; will be taken care by nimCheckViewFromCompat; BUT should relax the `containsView` check to cover it
+    # dbg c.config$nCall.info, nCall.renderTree, fun, c.config$fun.ast.info, fun.viewConstraints
+    # let num0 = fun.viewConstraints.len
+    evalConstraints(c, fun, nCall, lhs = nil)
+  else:
+    dbg fun.kind, fun
+    doAssert false
 
   # proc timnEchoEnabled(): bool {.exportc.} = true # PRTEMP
-
+# when defined(timn_define_lib):
 # else:
 #   proc nimSimulateCall(c: PContext, fun: PSym, nCall: PNode) {.cdecl, importc, dynlib: "/tmp/libz09x.dylib".}
 

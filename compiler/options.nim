@@ -26,7 +26,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optRefCheck,
-    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStaticEscapeCheck, optStyleCheck,
+    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize,
     optStackTrace, # stack tracing support
