@@ -865,7 +865,9 @@ type
     else: nil
 
     viewSyms*: seq[ViewDep] ## models dependency graph between symbols, see `ViewDep`
-      # we could optimize a bit by using `viewFromSyms1` for `skLet, skVar, skField, skForVar`, `viewFromSyms2` for `skParam`, and an accessor template `viewFromSyms` to avoid including it for every `kind`
+      # only needed for `skLet, skVar, skField, skForVar` +  `skParam`, `skResult`
+      # see https://github.com/nim-lang/RFCs/issues/19 which would allow that,
+      # else we could use different names + 1 common accessor.
 
     magic*: TMagic
     typ*: PType
