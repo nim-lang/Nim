@@ -1228,14 +1228,19 @@ else:
     let newLength = max(len(curList), InitCallbackListSize)
     var newList = newSeqOfCap[Callback](newLength)
 
+    var eventsExtinguished = false
     for cb in curList:
+      if eventsExtinguished:
+        newList.add(cb)
+        continue
       if not cb(fd):
         # Callback wants to be called again.
         newList.add(cb)
         # This callback has returned with EAGAIN, so we don't need to
         # call any other callbacks as they are all waiting for the same event
         # on the same fd.
-        break
+        # We do need to ensure they are called again though.
+        eventsExtinguished = true
 
     withData(selector, fd.int, fdData) do:
       # Descriptor is still present in the queue.
