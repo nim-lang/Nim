@@ -29,7 +29,6 @@ pkg1 "chronicles", true, "nim c -o:chr -r chronicles.nim"
 when not defined(osx): # testdatagram.nim(560, 54): Check failed
   pkg1 "chronos", true, "nim c -r -d:release tests/testall"
 pkg1 "cligen", false, "nim c -o:cligenn -r cligen.nim"
-pkg1 "coco", true
 pkg1 "combparser"
 pkg1 "compactdict"
 pkg1 "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
