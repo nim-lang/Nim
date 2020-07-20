@@ -440,8 +440,10 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   nimexec "cc --opt:speed testament/testament"
-  let tester = quoteShell(getCurrentDir() / "testament/testament".exe)
-  let success = tryExec tester & " " & (args|"all")
+  var testCmd = quoteShell(getCurrentDir() / "testament/testament".exe)
+  testCmd.add " " & quoteShell("--nim:" & findNim())
+  testCmd.add " " & (args|"all")
+  let success = tryExec testCmd
   if not success:
     quit("tests failed", QuitFailure)
 
