@@ -67,7 +67,7 @@ pkg1 "stint", false, "nim c -o:stintt -r stint.nim"
 # packages N-Z
 pkg2 "nake", false, "nim c nakefile.nim"
 pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
-pkg2 "nesm"
+pkg2 "nesm", false, "nimble tests" # notice plural 'tests'
 # pkg2 "nico", true
 pkg2 "nicy", false, "nim c -r src/nicy.nim"
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
