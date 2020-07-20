@@ -237,10 +237,11 @@ proc analyse(c: var Con; n: PNode) =
       # assignments like 'x.field = value' mean that 'x' itself cannot
       # be a cursor:
       let r = locationRoot(n[0])
-      if r != nil and r.typ.skipTypes(abstractInst).kind notin {tyPtr, tyRef}:
+      if r != nil:
         # however, an assignment like 'it.field = x' does not influence r's
         # cursorness property:
-        c.mayOwnData.incl r.id
+        if r.typ.skipTypes(abstractInst).kind notin {tyPtr, tyRef}:
+          c.mayOwnData.incl r.id
         c.mutations.incl r.id
 
     if hasDestructor(n[1].typ):
