@@ -729,7 +729,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       assert(t.n[0].kind == nkSym)
       result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
@@ -786,7 +786,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     assert(t.n[^1].kind == nkSym)
     result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = Zero
   of tyOrdinal:
