@@ -13,7 +13,6 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 pkg1 "argparse"
 pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
 pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
-pkg1 "asyncmysql", true
 pkg1 "awk", true
 pkg1 "bigints"
 pkg1 "binaryheap", false, "nim c -r binaryheap.nim"
