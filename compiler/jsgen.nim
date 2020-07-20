@@ -653,7 +653,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     useMagic(p, "nimFloatToString")
     applyFormat "cstrToNimstr(nimFloatToString($1))"
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
-  of mStrToStr, mUnown: applyFormat("$1", "$1")
+  of mStrToStr, mUnown, mIsolate: applyFormat("$1", "$1")
   else:
     assert false, $op
 

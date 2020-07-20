@@ -16,7 +16,8 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, plugins/active, rod, lineinfos, strtabs, int128
+  lowerings, plugins/active, rod, lineinfos, strtabs, int128,
+  isolation_check
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 

@@ -558,6 +558,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let constructed = result[1].typ.base
     if constructed.requiresInit:
       message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  of mIsolate:
+    if not checkIsolate(n[1]):
+      localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
+    result = n
   else:
     result = n
-
