@@ -429,7 +429,6 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
-  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
 
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
@@ -449,6 +448,8 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
   let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
 
 proc getCompileOptions(conf: ConfigRef): string =
   result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")
