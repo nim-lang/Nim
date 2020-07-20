@@ -18,6 +18,8 @@ when defined(useDfa):
 import liftdestructors
 include sinkparameter_inference
 
+from cursor_inference import locationRoot
+
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
 
@@ -76,6 +78,7 @@ type
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
+    mutations: IntSet
     config: ConfigRef
     graph: ModuleGraph
     c: PContext
