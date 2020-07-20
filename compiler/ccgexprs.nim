@@ -2209,7 +2209,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
   of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
-  of mStrToStr, mUnown: expr(p, e[1], d)
+  of mStrToStr, mUnown, mIsolate: expr(p, e[1], d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
