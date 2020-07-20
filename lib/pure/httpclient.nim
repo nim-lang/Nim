@@ -1033,6 +1033,11 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
+  ##
+  ## You need to make sure that the ``url`` doesn't contain any newline
+  ## characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
+
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
   var lastURL = url
