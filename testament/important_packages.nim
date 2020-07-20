@@ -86,7 +86,7 @@ pkg2 "nimpy", false, "nim c -r tests/nimfrompy.nim"
 pkg2 "nimquery"
 pkg2 "nimsl", true
 pkg2 "nimsvg"
-# pkg2 "nimterop", true
+pkg2 "nimterop", true, "nimble minitest"
 pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nimx", true, "nim c --threads:on test/main.nim"
 # pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
