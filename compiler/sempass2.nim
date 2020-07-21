@@ -65,6 +65,10 @@ discard """
 """
 
 type
+  LocalVariable = object
+    s: PSym
+    deps: seq[PSym]
+
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
@@ -77,6 +81,7 @@ type
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
+    vars: seq[LocalVariable]
     currOptions: TOptions
     mutations: IntSet
     config: ConfigRef
@@ -184,6 +189,20 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
     for x in a.init:
       if x == s.id: return
     a.init.add s.id
+
+proc varDecl(a: PEffects, n: PNode) =
+  if n.kind == nkSym:
+    c.vars.add LocalVariable(s: n.sym)
+
+proc addDep(a: PEffects; dest: var LocalVariable; dependsOn: PSym) =
+  if dest.s != dependsOn:
+    if not dest.deps.contains(dependsOn):
+      dest.deps.add dependsOn
+
+proc variableId(a: PEffects; x: PSym): int =
+  for i in 0..<a.vars.len:
+    if a.vars[i].s == x: return i
+  return -1
 
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
@@ -888,6 +907,11 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
       checkForSink(tracked.config, tracked.owner, n[1])
+      if n[0].kind != nkSym:
+        let r = locationRoot(n[0])
+        if r != nil:
+          tracked.mutations.incl r.id
+    dependencyBetween(a, n[0], n[1])
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -901,11 +925,13 @@ proc track(tracked: PEffects, n: PNode) =
           createTypeBoundOps(tracked, child[0].typ, child.info)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0..<child.len-2:
+          varDecl(tracked, child[i])
           initVar(tracked, child[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child[i], last)
           notNilCheck(tracked, last, child[i].typ)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0..<child.len-1:
+          varDecl(tracked, child[i])
           if child[i].kind == nkEmpty or
             child[i].kind == nkSym and child[i].sym.name.s == "_":
             continue
