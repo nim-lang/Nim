@@ -91,7 +91,10 @@ when defined(posix):
     dlclose(lib)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    result = dlopen(path, RTLD_NOW)
+    let flags =
+      when defined(globalSymbols): RTLD_NOW or RTLD_GLOBAL
+      else: RTLD_NOW
+    result = dlopen(path, flags)
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
