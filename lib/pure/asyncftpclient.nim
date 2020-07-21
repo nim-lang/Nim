@@ -146,7 +146,11 @@ proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ##
+  ## You need to make sure that the message ``m`` doesn't contain any newline
+  ## characters. Failing to do so will raise ``AssertionDefect``.
+  ##
   ## **Note:** The server may return multiple lines of coded replies.
+  doAssert(not m.contains({'\c', '\L'}), "message shouldn't contain any newline characters")
   await ftp.csock.send(m & "\c\L")
   return await ftp.expectReply()
 
