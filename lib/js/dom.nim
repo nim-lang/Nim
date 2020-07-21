@@ -1324,6 +1324,26 @@ since (1, 3):
     FileReaderObj {.importc.} = object of EventTargetObj
 
     FileReaderState* = distinct range[0'u16..2'u16]
+    RootNodeOptions* = object of RootObj
+      composed*: bool
+    DocumentOrShadowRoot* {.importc.} = object of RootObj
+      activeElement*: Element
+      # styleSheets*: StyleSheetList 
+    ShadowRoot* = ref ShadowRootObj
+    ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
+      delegatesFocus*: bool
+      host*: Element
+      innerHTML*: cstring
+      mode*: cstring # "open" or "closed"
+    ShadowRootInit* = object of RootObj
+      mode*: cstring
+      delegatesFocus*: bool
+
+    HTMLSlotElement* = ref HTMLSlotElementObj
+    HTMLSlotElementObj {.importc.} = object of RootObj
+      name*: cstring
+    SlotOptions* = object of RootObj
+      flatten*: bool
 
   const
     fileReaderEmpty* = 0.FileReaderState
@@ -1502,6 +1522,18 @@ proc isDefaultNamespace*(n: Node): bool
 proc contains*(n: Node): bool
 proc isEqualNode*(n: Node): bool
 proc isSameNode*(n: Node): bool
+
+since (1, 3):
+  proc getRootNode*(n: Node,options: RootNodeOptions): Node
+
+  # DocumentOrShadowRoot
+  proc getSelection*(n: DocumentOrShadowRoot): Selection
+  proc elementFromPoint*(n: DocumentOrShadowRoot; x, y: float): Element
+
+  # shadow dom
+  proc attachShadow*(n: Element): ShadowRoot
+  proc assignedNodes*(n: HTMLSlotElement; options: SlotOptions): seq[Node]
+  proc assignedElements*(n: HTMLSlotElement; options: SlotOptions): seq[Element]
 
 # Document "methods"
 proc createAttribute*(d: Document, identifier: cstring): Node
