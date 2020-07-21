@@ -1238,7 +1238,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
 
-  if not t.hasSideEffect and t.hasDangerousAssign:
+  if strictFuncs in c.features and not t.hasSideEffect and t.hasDangerousAssign:
     t.hasSideEffect = mutatesNonVarParameters(s, body)
 
   if sfThread in s.flags and t.gcUnsafe:

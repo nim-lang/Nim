@@ -13,6 +13,7 @@
 
 import ast, types
 from trees import getMagic
+from isolation_check import canAlias
 
 type
   SubgraphFlag = enum
@@ -40,10 +41,16 @@ proc hasSideEffect(p: Partitions): bool =
     if g == {isMutated, connectsConstParam}: return true
   return false
 
+template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
+
 proc registerVariable(p: var Partitions; n: PNode) =
   if n.kind == nkSym:
     p.symToId.add n.sym
-    p.s.add VarIndex(kind: isEmptyRoot)
+    if isConstParam(n.sym):
+      p.s.add VarIndex(kind: isRootOf, graphIndex: p.graphs.len)
+      p.graphs.add({connectsConstParam})
+    else:
+      p.s.add VarIndex(kind: isEmptyRoot)
 
 proc variableId(p: Partitions; x: PSym): int {.inline.} = system.find(p.symToId, x)
 
@@ -74,8 +81,6 @@ proc potentialMutation(v: var Partitions; s: PSym) =
     discard "we are not interested in the mutation"
 
 proc connect(v: var Partitions; a, b: PSym) =
-  template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
-
   let aid = variableId(v, a)
   if aid < 0:
     return
@@ -152,8 +157,9 @@ proc allRoots(n: PNode; result: var seq[PSym]) =
           let it = n[i]
           if typ != nil and i < typ.len:
             assert(typ.n[i].kind == nkSym)
-            let paramType = typ.n[i]
-            if not paramType.typ.isCompileTimeOnly:
+            let paramType = typ.n[i].typ
+            if not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
+                canAlias(paramType, typ.sons[0]):
               allRoots(it, result)
           else:
             allRoots(it, result)
