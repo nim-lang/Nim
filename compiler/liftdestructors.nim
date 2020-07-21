@@ -10,9 +10,6 @@
 ## This module implements lifting for type-bound operations
 ## (``=sink``, ``=``, ``=destroy``, ``=deepCopy``).
 
-# Todo:
-# - use openArray instead of array to avoid over-specializations
-
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, tables
 
@@ -26,8 +23,9 @@ type
     fn: PSym
     asgnForType: PType
     recurse: bool
-    filterDiscriminator: PSym  # we generating destructor for case branch
     addMemReset: bool    # add wasMoved() call after destructor call
+    canRaise: bool
+    filterDiscriminator: PSym  # we generating destructor for case branch
     c: PContext # c can be nil, then we are called from lambdalifting!
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
@@ -120,10 +118,12 @@ proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   result.add newNodeIT(nkType, c.info, objPtr)
   result.add minusExpr
 
-proc destructorCall(c: TLiftCtx; op: PSym; x: PNode): PNode =
+proc destructorCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   var destroy = newNodeIT(nkCall, x.info, op.typ[0])
   destroy.add(newSymNode(op))
   destroy.add genAddr(c.g, x)
+  if sfNeverRaises notin op.flags:
+    c.canRaise = true
   if c.addMemReset:
     result = newTree(nkStmtList, destroy, genBuiltin(c.g, mWasMoved,  "wasMoved", x))
   else:
@@ -243,25 +243,29 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   else:
     fillBodyObjTImpl(c, t, body, x, y)
 
-proc newHookCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
+proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   #if sfError in op.flags:
   #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
   result = newNodeI(nkCall, x.info)
   result.add newSymNode(op)
+  if sfNeverRaises notin op.flags:
+    c.canRaise = true
   if op.typ.sons[1].kind == tyVar:
-    result.add genAddr(g, x)
+    result.add genAddr(c.g, x)
   else:
     result.add x
   if y != nil:
     result.add y
 
-proc newOpCall(op: PSym; x: PNode): PNode =
+proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add x
+  if sfNeverRaises notin op.flags:
+    c.canRaise = true
 
-proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
-  result = newAsgnStmt(x, newOpCall(op, y))
+proc newDeepCopyCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
+  result = newAsgnStmt(x, newOpCall(c, op, y))
 
 proc usesBuiltinArc(t: PType): bool =
   proc wrap(t: PType): bool {.nimcall.} = ast.isGCedMem(t)
@@ -293,7 +297,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       #else:
       #  markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
-      body.add newHookCall(c.g, op, x, y)
+      body.add newHookCall(c, op, x, y)
       result = true
   elif tfHasAsgn in t.flags:
     var op: PSym
@@ -322,7 +326,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       #debug(t)
       #return false
     assert op.ast[genericParamsPos].kind == nkEmpty
-    body.add newHookCall(c.g, op, x, y)
+    body.add newHookCall(c, op, x, y)
     result = true
 
 proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
@@ -373,7 +377,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     if op != nil:
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
-      body.add newDeepCopyCall(op, x, y)
+      body.add newDeepCopyCall(c, op, x, y)
       result = true
 
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
@@ -460,7 +464,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn, attachedDeepCopy:
     if t.assignment == nil:
       return # protect from recursion
-    body.add newHookCall(c.g, t.assignment, x, y)
+    body.add newHookCall(c, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
     let moveCall = genBuiltin(c.g, mMove, "move", x)
@@ -471,18 +475,18 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # alternatively we could do this:
     when false:
       doAssert t.asink != nil
-      body.add newHookCall(c.g, t.asink, x, y)
+      body.add newHookCall(c, t.asink, x, y)
   of attachedDestructor:
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
     if t.attachedOps[c.kind] == nil:
       return # protect from recursion
-    body.add newHookCall(c.g, t.attachedOps[c.kind], x, y)
+    body.add newHookCall(c, t.attachedOps[c.kind], x, y)
   of attachedDispose:
     if t.attachedOps[c.kind] == nil:
       return # protect from recursion
-    body.add newHookCall(c.g, t.attachedOps[c.kind], x, nil)
+    body.add newHookCall(c, t.attachedOps[c.kind], x, nil)
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -837,7 +841,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
        sfOverriden in typ.attachedOps[attachedDestructor].flags:
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
-    result.ast[bodyPos].add newOpCall(typ.attachedOps[attachedDestructor], d[0])
+    result.ast[bodyPos].add newOpCall(a, typ.attachedOps[attachedDestructor], d[0])
     result.ast[bodyPos].add newAsgnStmt(d, src)
   else:
     var tk: TTypeKind
@@ -852,6 +856,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
       fillStrOp(a, typ, result.ast[bodyPos], d, src)
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
+  if not a.canRaise: incl result.flags, sfNeverRaises
 
 
 proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym, info: TLineInfo): PSym =
@@ -873,6 +878,7 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   result.ast[bodyPos].add v
   let placeHolder = newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
   fillBody(a, typ, result.ast[bodyPos], d, placeHolder)
+  if not a.canRaise: incl result.flags, sfNeverRaises
 
 
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
