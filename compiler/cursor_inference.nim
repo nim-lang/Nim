@@ -37,7 +37,7 @@ type
     config: ConfigRef
     inAsgnSource: int
 
-proc locationRoot*(e: PNode; followDotExpr = true): PSym =
+proc locationRoot(e: PNode; followDotExpr = true): PSym =
   var n = e
   while true:
     case n.kind

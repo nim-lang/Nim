@@ -74,7 +74,6 @@ type
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
-    mutations: IntSet
     config: ConfigRef
     graph: ModuleGraph
     c: PContext
