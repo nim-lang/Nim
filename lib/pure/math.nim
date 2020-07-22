@@ -958,7 +958,7 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x: T, y: Natural): T =
+proc `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use
