@@ -130,5 +130,5 @@ pkg2 "websocket", false, "nim c websocket.nim"
 # pkg2 "winim", true
 pkg2 "with"
 pkg2 "ws"
-pkg2 "yaml", false, "nim quickstartTests"
+pkg2 "yaml", false, "nim build"
 pkg2 "zero_functional", false, "nim c -r -d:nimWorkaround14447 test.nim"
