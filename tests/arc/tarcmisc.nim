@@ -257,3 +257,10 @@ echo "new line before - ", newline
 newline.insert(indent, 0)
 
 echo "new line after - ", newline
+
+# bug #14480
+proc hello(): int =
+  result = 42
+
+var leaves {.global.} = hello()
+doAssert leaves == 42
