@@ -283,38 +283,3 @@ proc hello(): int =
 
 var leaves {.global.} = hello()
 doAssert leaves == 42
-
-# bug #15052
-
-proc mutstrings =
-  var data = "hello"
-  for c in data.mitems():
-    c = 'a'
-  echo data
-
-mutstrings()
-
-# bug #15038
-
-type
-  Machine = ref object
-    hello: string
-
-var machineTypes: seq[tuple[factory: proc(): Machine]]
-
-proc registerMachine(factory: proc(): Machine) =
-  var mCreator = proc(): Machine =
-    result = factory()
-
-  machineTypes.add((factory: mCreator))
-
-proc facproc(): Machine =
-  result = Machine(hello: "hello")
-
-registerMachine(facproc)
-
-proc createMachine =
-  for machine in machineTypes:
-    echo machine.factory().hello
-
-createMachine()
