@@ -525,10 +525,10 @@ template alpnAccept*(fname:untyped, protos: seq[string]): untyped =
   proc fname(ssl: SslPtr, outbuf: ptr ptr cuchar,
         outlen: ptr cuchar, inbuf: ptr cuchar,
         inlen: cuint, args: pointer): cint {.exportc.} =
-      return alpnSelectCandidates(ssl,
-                                  outbuf, outlen,
-                                  inbuf, inlen,
-                                  protos)
+    return alpnSelectCandidates(ssl,
+                                outbuf, outlen,
+                                inbuf, inlen,
+                                protos)
 
 proc setAlpnSelectCallback*(ctx: SslCtx, cb: AlpnSelectCallback): bool =
   ## Wrapper around SSL_CTX_set_alpn_select_cb.

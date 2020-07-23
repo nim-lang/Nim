@@ -26,7 +26,11 @@ when not defined(windows):
     times,
     unittest
 
+<<<<<<< HEAD
   # self-signed certificate with a root ca to setup
+=======
+  # self-signed certificate with a root ca to setup 
+>>>>>>> support openssl ALPN extension
   const
     certFile = "tests/stdlib/certs/localhost.crt"
     keyFile = "tests/stdlib/certs/localhost.key"
@@ -39,7 +43,11 @@ when not defined(windows):
     echo "    [" & $epochTime() & "] " & msg
     discard
 
+<<<<<<< HEAD
   alpnAccept(www_alpn, @["h2", "http/1.1"])
+=======
+  alpnAccept(www_run_server_alpn, @["h2", "http/1.1"])
+>>>>>>> support openssl ALPN extension
 
   proc runServer(port: Port): bool {.thread.} =
     ## Run a trivial HTTPS server in a {.thread.}
@@ -54,7 +62,11 @@ when not defined(windows):
       keyFile=keyFile,
       caFile=caFile,
       verifyMode=CVerifyPeer)
+<<<<<<< HEAD
     discard ctx.context.setAlpnSelectCallback(www_alpn)
+=======
+    discard ctx.context.setAlpnCallback(www_run_server_alpn)
+>>>>>>> support openssl ALPN extension
     ##  Handle one connection
     socket.listen()
 
@@ -101,7 +113,11 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12351")
+<<<<<<< HEAD
       check content == "selected alpn protocol is http/1.1"
+=======
+      check content.contains("selected alpn protocol is http/1.1")
+>>>>>>> support openssl ALPN extension
 
     test "HttpClient with alpn: protcol == h2":
       const port = 12352.Port
@@ -118,7 +134,11 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12352")
+<<<<<<< HEAD
       check content == "selected alpn protocol is h2"
+=======
+      check content.contains("selected alpn protocol is h2")
+>>>>>>> support openssl ALPN extension
 
     test "HttpClient with different alpn protcol":
       const port = 12353.Port
@@ -135,4 +155,8 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12353")
+<<<<<<< HEAD
       check content == "selected alpn protocol is empty"
+=======
+      check content.contains("selected alpn protocol is empty")
+>>>>>>> support openssl ALPN extension
