@@ -30,11 +30,11 @@ block:
     Bar = distinct float
   template isFoo(x: Bar): untyped = true
   proc foo(x: var Foo) =
-    (float)(x) = 1.0
+    float(x) = 1.0
   proc foo2(x: var Bar) =
-    (float)(x) = 1.0
+    float(x) = 1.0
   proc foo3(x: var any) =
-    (float)(x) = 1.0
+    float(x) = 1.0
   var x: Bar
   foo(x)
   foo2(x)

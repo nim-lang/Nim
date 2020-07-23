@@ -1069,8 +1069,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       if containsOrIncl(c, a, b): return true
 
   if x == y: return true
-  var a = skipTypes(x, {tyGenericInst, tyAlias, tyUserTypeClass})
-  var b = skipTypes(y, {tyGenericInst, tyAlias, tyUserTypeClass})
+  var a = skipTypes(x, {tyGenericInst, tyAlias})
+  while a.kind == tyUserTypeClass and tfResolved in a.flags:
+    a = skipTypes(a[^1], {tyGenericInst, tyAlias})
+  var b = skipTypes(y, {tyGenericInst, tyAlias})
+  while b.kind == tyUserTypeClass and tfResolved in b.flags:
+    b = skipTypes(b[^1], {tyGenericInst, tyAlias})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
