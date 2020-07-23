@@ -16,6 +16,7 @@ import strutils
 
 when defined(windows):
   import winlean
+  from os import absolutePath
 else:
   import os, osproc
 
@@ -23,6 +24,12 @@ const osOpenCmd* =
   when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \
   ## Alias for the operating system specific *"open"* command,
   ## ``"open"`` on OSX, MacOS and Windows, ``"xdg-open"`` on Linux, BSD, etc.
+
+proc prepare(s: string): string =
+  if s.contains("://"):
+    result = s
+  else:
+    result = "file://" & absolutePath(s)
 
 proc openDefaultBrowser*(url: string) =
   ## opens `url` with the user's default browser. This does not block.
@@ -35,12 +42,12 @@ proc openDefaultBrowser*(url: string) =
   ## This proc doesn't raise an exception on error, beware.
   when defined(windows):
     var o = newWideCString(osOpenCmd)
-    var u = newWideCString(url)
+    var u = newWideCString(prepare url)
     discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
   elif defined(macosx):
-    discard execShellCmd(osOpenCmd & " " & quoteShell(url))
+    discard execShellCmd(osOpenCmd & " " & quoteShell(prepare url))
   else:
-    var u = quoteShell(url)
+    var u = quoteShell(prepare url)
     if execShellCmd(osOpenCmd & " " & u) == 0: return
     for b in getEnv("BROWSER").string.split(PathSep):
       try:
