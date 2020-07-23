@@ -33,9 +33,12 @@ block:
     float(x) = 1.0
   proc foo2(x: var Bar) =
     float(x) = 1.0
-  proc foo3(x: var any) =
+  proc foo3(x: var (Bar|SomeNumber)) =
+    float(x) = 1.0
+  proc foo4(x: var any) =
     float(x) = 1.0
   var x: Bar
   foo(x)
   foo2(x)
   foo3(x)
+  foo4(x)
