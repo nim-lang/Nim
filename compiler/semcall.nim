@@ -219,7 +219,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
-      of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
+      of kUnknownNamedParam:
+        if nArg == nil:
+          candidates.add("\n  unknown named parameter")
+        else:
+          candidates.add("\n  unknown named parameter: " & $nArg[0])
       of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
       of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
       of kExtraArg: candidates.add("\n  extra argument given")
@@ -318,7 +322,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
-  if nfDotField in n.flags and nfExplicitCall notin n.flags:
+  if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
     let sym = n[1].typ.sym
     var typeHint = ""
     if sym == nil:
