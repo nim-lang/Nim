@@ -1,6 +1,9 @@
 ## Regular Expressions for the JavaScript target.
 ## * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
 
+when not defined(js) and not defined(Nimdoc):
+  {.error: "This module only works on the JavaScript platform".}
+
 type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript target.
   flags* {.importjs.}: cstring        ## cstring that contains the flags of the RegExp object.
   dotAll* {.importjs.}: bool          ## Whether `.` matches newlines or not.
