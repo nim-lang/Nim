@@ -729,12 +729,10 @@ when defineSsl:
       raiseSSLError()
 
   proc getAlpnProtocol*(socket: Socket): string =
-    ## Returns the negotiaged ALPN protocols.
-    ## If the ALPN extension is not available or no ALPN candidate
-    ## provided by clients then returns empty string.
-    if not socket.isSsl:
-      result = ""
-    else:
+    ## Returns the negotiated ALPN protocol
+    ## if the ALPN extension is not available or no ALPN candidate
+    ## is provided by clients then returns empty string.
+    if socket.isSsl:
       result = socket.sslHandle.getAlpnProtocol()
 
   proc checkCertName(socket: Socket, hostname: string) =

@@ -773,12 +773,10 @@ when defineSsl:
       sslSetAcceptState(socket.sslHandle)
 
   proc getAlpnProtocol*(socket: AsyncSocket): string =
-    ## Returns the negotiaged ALPN protocols.
+    ## Returns the negotiated ALPN protocol.
     ## If the ALPN extension is not available or no ALPN candidate
-    ## provided by clients then returns empty string.
-    if not socket.isSsl:
-      result = ""
-    else:
+    ## is provided by clients then returns empty string.
+    if socket.isSsl:
       result = socket.sslHandle.getAlpnProtocol()
 
   proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =

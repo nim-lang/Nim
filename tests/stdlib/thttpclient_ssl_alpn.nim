@@ -26,7 +26,7 @@ when not defined(windows):
     times,
     unittest
 
-  # self-signed certificate with a root ca to setup 
+  # self-signed certificate with a root ca to setup
   const
     certFile = "tests/stdlib/certs/localhost.crt"
     keyFile = "tests/stdlib/certs/localhost.key"
@@ -39,7 +39,7 @@ when not defined(windows):
     echo "    [" & $epochTime() & "] " & msg
     discard
 
-  alpnAccept(www_run_server_alpn, @["h2", "http/1.1"])
+  alpnAccept(www_alpn, @["h2", "http/1.1"])
 
   proc runServer(port: Port): bool {.thread.} =
     ## Run a trivial HTTPS server in a {.thread.}
@@ -54,7 +54,7 @@ when not defined(windows):
       keyFile=keyFile,
       caFile=caFile,
       verifyMode=CVerifyPeer)
-    discard ctx.context.setAlpnCallback(www_run_server_alpn)
+    discard ctx.context.setAlpnSelectCallback(www_alpn)
     ##  Handle one connection
     socket.listen()
 
@@ -101,7 +101,7 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12351")
-      check content.contains("selected alpn protocol is http/1.1")
+      check content == "selected alpn protocol is http/1.1"
 
     test "HttpClient with alpn: protcol == h2":
       const port = 12352.Port
@@ -118,7 +118,7 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12352")
-      check content.contains("selected alpn protocol is h2")
+      check content == "selected alpn protocol is h2"
 
     test "HttpClient with different alpn protcol":
       const port = 12353.Port
@@ -135,4 +135,4 @@ when not defined(windows):
 
       log "client: connect"
       let content = client.getContent("https://localhost:12353")
-      check content.contains("selected alpn protocol is empty")
+      check content == "selected alpn protocol is empty"
