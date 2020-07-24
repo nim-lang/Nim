@@ -160,6 +160,7 @@ lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/js/jsre.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
@@ -258,7 +259,7 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
-    let extra = if isJsOnly(d): " --backend:js " else: ""
+    let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
     commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
