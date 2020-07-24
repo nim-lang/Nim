@@ -23,6 +23,7 @@ whiley ends :(
 0
 new line before - @['a']
 new line after - @['a']
+finalizer
 closed
 destroying variable: 20
 destroying variable: 10
@@ -257,6 +258,22 @@ echo "new line before - ", newline
 newline.insert(indent, 0)
 
 echo "new line after - ", newline
+
+# bug #15044
+
+type
+  Test = ref object
+
+proc test: Test =
+  # broken
+  new(result, proc(x: Test) =
+    echo "finalizer"
+  )
+
+proc tdirectFinalizer =
+  discard test()
+
+tdirectFinalizer()
 
 # bug #14480
 proc hello(): int =

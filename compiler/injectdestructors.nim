@@ -59,8 +59,6 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   s.vars.add(sym)
   result = newSymNode(sym)
 
-const sfSingleUsedTemp = sfExported # For temporaries that we know will only be used once
-
 proc nestedScope(parent: var Scope): Scope =
   Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
 
