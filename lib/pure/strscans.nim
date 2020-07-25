@@ -396,7 +396,11 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           var resLen = genSym(nskLet, "resLen")
           conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp,
               results[i], newLit(token), idx))
-          conds.add newCall(bindSym"!=", resLen, newLit min)
+          # Edge case for when the length of the matched token is 1
+          if token != "":
+            conds.add newCall(bindSym"!=", resLen, newLit min)
+          else:
+            conds.add newLit(true)
           conds.add resLen
         else:
           matchError
@@ -745,3 +749,9 @@ when isMainModule:
   var a: int
   discard scanf(test(), ",$i", a)
   doAssert count == 1
+
+  # bug #15064
+  var nick, msg: string
+  discard scanf("<abcd> a", "<$+> $+", nick, msg)
+  doAssert nick == "abcd"
+  doAssert msg == "a"
