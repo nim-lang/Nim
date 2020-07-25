@@ -729,6 +729,15 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     else:
       putIntoDest(p, d, e, "(*$1)" % [rdLoc(a)], a.storage)
 
+proc cow(p: BProc; n: PNode) =
+  if n.kind == nkHiddenAddr and optSeqDestructors in p.config.globalOptions:
+    if n[0].kind == nkBracketExpr:
+      let strCandidate = n[0][0]
+      if strCandidate.typ.skipTypes(abstractInst).kind == tyString:
+        var a: TLoc
+        initLocExpr(p, strCandidate, a)
+        linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
@@ -2699,9 +2708,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
   of nkAsgn:
+    cow(p, n[1])
     if nfPreventCg notin n.flags:
       genAsgn(p, n, fastAsgn=false)
   of nkFastAsgn:
+    cow(p, n[1])
     if nfPreventCg notin n.flags:
       # transf is overly aggressive with 'nkFastAsgn', so we work around here.
       # See tests/run/tcnstseq3 for an example that would fail otherwise.
