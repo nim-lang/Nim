@@ -1876,7 +1876,7 @@ For example:
 
   func mut(n: Node) =
     let m = n # is the statement that connected the mutation to the parameter
-    n.data = "yeah" # the mutation is here
+    m.data = "yeah" # the mutation is here
     # Error: 'mut' can have side effects
     # an object reachable from 'n' is potentially mutated
 
