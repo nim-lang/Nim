@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs
+  modulegraphs, varpartitions
 
 when defined(useDfa):
   import dfa
@@ -35,9 +35,6 @@ In x = y the type of x is marked.
 For every sink parameter of type T T is marked.
 
 For every call f() the return type of f() is marked.
-
-
-
 
 ]#
 
@@ -73,6 +70,7 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
+    hasDangerousAssign: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
@@ -885,6 +883,8 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
       checkForSink(tracked.config, tracked.owner, n[1])
+      if not tracked.hasDangerousAssign and n[0].kind != nkSym:
+        tracked.hasDangerousAssign = true
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -1236,6 +1236,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not isNil(ensuresSpec):
     patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
+
+  if strictFuncs in c.features and not t.hasSideEffect and t.hasDangerousAssign:
+    t.hasSideEffect = mutatesNonVarParameters(s, body)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:

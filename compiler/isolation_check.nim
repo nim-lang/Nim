@@ -64,7 +64,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   else:
     result = false
 
-proc canAlias(arg, ret: PType): bool =
+proc canAlias*(arg, ret: PType): bool =
   var marker = initIntSet()
   result = canAlias(arg, ret, marker)
 
