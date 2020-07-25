@@ -1237,8 +1237,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
 
+  var mutationInfo = MutationInfo()
   if strictFuncs in c.features and not t.hasSideEffect and t.hasDangerousAssign:
-    t.hasSideEffect = mutatesNonVarParameters(s, body)
+    t.hasSideEffect = mutatesNonVarParameters(s, body, mutationInfo)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
@@ -1251,7 +1252,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     when false:
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:
-      localError(g.config, s.info, "'$1' can have side effects" % s.name.s)
+      localError(g.config, s.info, ("'$1' can have side effects" % s.name.s) & (g.config $ mutationInfo))
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
