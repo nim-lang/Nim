@@ -10,11 +10,11 @@
 #
 
 const
-  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
+  NimbleStableCommit = "e5d340df8cf26f89ad2c9f0bc081ecd7e0323b0a" # master
 
 when not defined(windows):
   const
-    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
+    Z3StableCommit = "65de3f748a6812eecd7db7c478dcd5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):
