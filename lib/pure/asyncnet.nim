@@ -123,6 +123,7 @@ type
       sslContext: SslContext
       bioIn: BIO
       bioOut: BIO
+      sslNoShutdown: bool
     domain: Domain
     sockType: SockType
     protocol: Protocol
@@ -200,9 +201,10 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
-  proc getSslError(handle: SslPtr, err: cint): cint =
+  proc getSslError(socket: AsyncSocket, err: cint): cint =
+    assert socket.isSsl
     assert err < 0
-    var ret = SSL_get_error(handle, err.cint)
+    var ret = SSL_get_error(socket.sslHandle, err.cint)
     case ret
     of SSL_ERROR_ZERO_RETURN:
       raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -213,6 +215,7 @@ when defineSsl:
     of SSL_ERROR_WANT_X509_LOOKUP:
       raiseSSLError("Function for x509 lookup has been called.")
     of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+      socket.sslNoShutdown = true
       raiseSSLError()
     else: raiseSSLError("Unknown Error")
 
@@ -265,7 +268,7 @@ when defineSsl:
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let err = getSslError(socket.sslHandle, opResult.cint)
+        let err = getSslError(socket, opResult.cint)
         let fut = appeaseSsl(socket, flags, err.cint)
         yield fut
         if not fut.read():
@@ -718,7 +721,7 @@ proc close*(socket: AsyncSocket) =
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if SSL_in_init(socket.sslHandle) == 0:
+        if not socket.sslNoShutdown and SSL_in_init(socket.sslHandle) == 0:
           ErrClearError()
           SSL_shutdown(socket.sslHandle)
         else:
@@ -746,6 +749,8 @@ when defineSsl:
     socket.bioIn = bioNew(bioSMem())
     socket.bioOut = bioNew(bioSMem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
+
+    socket.sslNoShutdown = true
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
                             handshake: SslHandshakeType,
