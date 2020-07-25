@@ -24,6 +24,7 @@ whiley ends :(
 new line before - @['a']
 new line after - @['a']
 finalizer
+aaaaa
 closed
 destroying variable: 20
 destroying variable: 10
@@ -282,3 +283,13 @@ proc hello(): int =
 
 var leaves {.global.} = hello()
 doAssert leaves == 42
+
+# bug #15052
+
+proc mutstrings =
+  var data = "hello"
+  for c in data.mitems():
+    c = 'a'
+  echo data
+
+mutstrings()
