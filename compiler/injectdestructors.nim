@@ -62,52 +62,6 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
 proc nestedScope(parent: var Scope): Scope =
   Scope(vars: @[], wasMoved: @[], final: @[], needsTry: false, parent: addr(parent))
 
-proc optimize(s: var Scope) =
-  # optimize away simple 'wasMoved(x); destroy(x)' pairs.
-  #[ Unfortunately this optimization is only really safe when no exceptions
-     are possible, see for example:
-
-  proc main(inp: string; cond: bool) =
-    if cond:
-      try:
-        var s = ["hi", inp & "more"]
-        for i in 0..4:
-          use s
-        consume(s)
-        wasMoved(s)
-      finally:
-        destroy(x)
-
-    Now assume 'use' raises, then we shouldn't do the 'wasMoved(s)'
-  ]#
-  proc findCorrespondingDestroy(final: seq[PNode]; moved: PNode): int =
-    # remember that it's destroy(addr(x))
-    for i in 0 ..< final.len:
-      if final[i] != nil and exprStructuralEquivalent(final[i][1].skipAddr, moved, strictSymEquality = true):
-        return i
-    return -1
-
-  var removed = 0
-  for i in 0 ..< s.wasMoved.len:
-    let j = findCorrespondingDestroy(s.final, s.wasMoved[i][1])
-    if j >= 0:
-      s.wasMoved[i] = nil
-      s.final[j] = nil
-      inc removed
-  if removed > 0:
-    template filterNil(field) =
-      var m = newSeq[PNode](s.field.len - removed)
-      var mi = 0
-      for i in 0 ..< s.field.len:
-        if s.field[i] != nil:
-          m[mi] = s.field[i]
-          inc mi
-      assert mi == m.len
-      s.field = m
-
-    filterNil(wasMoved)
-    filterNil(final)
-
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
@@ -411,6 +365,7 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if not hasDestructor(n.typ):
+    assert n.kind != nkSym or not hasDestructor(n.sym.typ)
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
