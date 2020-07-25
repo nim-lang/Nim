@@ -784,6 +784,8 @@ proc track(tracked: PEffects, n: PNode) =
     useVar(tracked, n)
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
       tracked.owner.flags.incl sfInjectDestructors
+      # bug #15038: ensure consistency
+      if not hasDestructor(n.typ): n.typ = n.sym.typ
   of nkRaiseStmt:
     if n[0].kind != nkEmpty:
       n[0].info = n.info

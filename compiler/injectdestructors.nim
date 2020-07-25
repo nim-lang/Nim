@@ -363,6 +363,7 @@ proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
 proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   # generate: (let tmp = v; reset(v); tmp)
   if not hasDestructor(n.typ):
+    assert n.kind != nkSym or not hasDestructor(n.sym.typ)
     result = copyTree(n)
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
