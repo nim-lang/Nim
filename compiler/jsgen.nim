@@ -1689,7 +1689,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyObject:
     var initList: Rope
     createObjInitList(p, t, initIntSet(), initList)
-    result = ("{$1}") % [initList]
+    result = ("({$1})") % [initList]
     if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyLent, tyRef, tyPointer:
     if mapType(p, t) == etyBaseIndex:
