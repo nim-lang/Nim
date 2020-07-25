@@ -44,9 +44,9 @@ type
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
   if g.flags == {isMutated, connectsConstParam}:
-    result.add "\nan object reachable from "
+    result.add "\nan object reachable from '"
     result.add g.param.name.s
-    result.add " is potentially mutated"
+    result.add "' is potentially mutated"
     if g.mutatedHere != unknownLineInfo:
       result.add "\n"
       result.add config $ g.mutatedHere
