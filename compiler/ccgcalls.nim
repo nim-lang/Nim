@@ -411,7 +411,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
-  let rawProc = getClosureType(p.module, typ, clHalf)
+  let rawProc = getClosureType(p, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
