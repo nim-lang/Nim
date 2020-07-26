@@ -1322,11 +1322,11 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkObjDownConv:
     gen(p, n[0], r)
   of nkHiddenDeref:
-    gen(p, n[0][0], r)
+    gen(p, n[0], r)
   of nkHiddenAddr:
     gen(p, n[0], r)
   of nkStmtListExpr:
-    gen(p, n[^1], r)
+    gen(p, n[0], r)
   else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
