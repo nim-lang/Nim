@@ -273,9 +273,13 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       var internalTmpFuture: FutureBase = f
       yield internalTmpFuture
       (cast[type(f)](internalTmpFuture)).read()
-
+  var waitForDefinition = quote:
+    template waitFor[T](fut: Future[T]) {.used.} =
+      static:
+        error "waitFor shouldn't be used inside async procedure"
   if procBody.kind != nnkEmpty:
     body2.add quote do:
+      `waitForDefinition`
       `awaitDefinition`
       `outerProcBody`
     result.body = body2
