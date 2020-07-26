@@ -1069,6 +1069,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       elif b.typ == etyNone:
         internalAssert p.config, b.address == nil
         lineF(p, "$# = [$#, 0];$n", [a.address, b.res])
+      elif x.typ.kind == tyVar and y.typ.kind == tyPtr:
+        lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
+        lineF(p, "$1 = $2;$n", [a.address, b.res])
+        lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
       else:
         internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     else:
@@ -1319,6 +1323,10 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[0], r)
   of nkHiddenDeref:
     gen(p, n[0][0], r)
+  of nkHiddenAddr:
+    gen(p, n[0], r)
+  of nkStmtListExpr:
+    gen(p, n[^1], r)
   else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
