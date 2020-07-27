@@ -53,9 +53,10 @@ jobs:
       condition: eq(variables['Agent.OS'], 'Windows_NT')
 
     - checkout: self
+      fetchDepth: 1
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources.git
-      displayName: 'Checkout csources'
+    - bash: git clone --depth 1 https://github.com/nim-lang/csources
+      displayName: 'Checkout Nim csources'
 
     - task: NodeTool@0
       inputs:
@@ -73,19 +74,12 @@ jobs:
     - bash: |
         sudo dpkg --add-architecture i386
 
-        # Downgrade llvm, libgcc and libstdc++:
+        # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
-        # - libgcc and libstdc++ have to be downgraded as an optimization to
-        #   prevent the use of the toolchain ppa, which has a terrible download
-        #   speed.
         cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
-        Package: libllvm6.0 libgcc1 libstdc++6
+        Package: libllvm6.0
         Pin: origin "azure.archive.ubuntu.com"
         Pin-Priority: 1001
-
-        Package: *
-        Pin: release o=LP-PPA-ubuntu-toolchain-r-test
-        Pin-Priority: 100
         EOF
 
         sudo apt-fast update -qq
@@ -141,8 +135,18 @@ jobs:
         make -v
       displayName: 'System information'
 
+    - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
+      displayName: 'Get csources version'
+
+    - task: Cache@2
+      inputs:
+        key: 'csources | "$(Agent.OS)" | $(CPU) | $(csources_version)'
+        path: csources/bin
+      displayName: 'Restore built csources'
+
     - bash: |
         ncpu=
+        ext=
         case '$(Agent.OS)' in
         'Linux')
           ncpu=$(nproc)
@@ -152,19 +156,25 @@ jobs:
           ;;
         'Windows_NT')
           ncpu=$NUMBER_OF_PROCESSORS
+          ext=.exe
           ;;
         esac
         [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
-        make -C csources -j $ncpu CC=gcc ucpu=$(CPU)
-      displayName: 'Build csources'
+        if [[ -x csources/bin/nim$ext ]]; then
+          echo "Found cached compiler, skipping build"
+        else
+          make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
+        fi
+
+        cp csources/bin/nim$ext bin
+      displayName: 'Build 1-stage compiler from csources'
 
     - bash: nim c koch
       displayName: 'Build koch'
 
       # set result to omit the "bash exited with error code '1'" message
-    - bash: |
-        ./koch runCI || echo '##vso[task.complete result=Failed]'
+    - bash: ./koch runCI || echo '##vso[task.complete result=Failed]'
       displayName: 'Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
