@@ -2939,6 +2939,16 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
   ## Returns the filename of the application's executable.
   ## This proc will resolve symlinks.
   ##
+  ## The output of this proc should only be used for advisory/debugging
+  ## purposes. Usage in context with security implications must be evaluated
+  ## tightly. It's well known that incorrect usage of the returned filename can
+  ## `lead to privilege escalation <https://vulners.com/securityvulns/SECURITYVULNS:DOC:22183>`_.
+  ##
+  ## On Linux, if the executable no longer exists at the point of query, the
+  ## returned file name will have ``(deleted)`` appended at the end. It's not
+  ## recommended that applications unconditionally remove this suffix, as
+  ## this suffix can be a valid part of the file name.
+  ##
   ## See also:
   ## * `getAppDir proc <#getAppDir>`_
   ## * `getCurrentCompilerExe proc <#getCurrentCompilerExe>`_
