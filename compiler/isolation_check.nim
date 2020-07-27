@@ -11,7 +11,7 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer, idents, intsets, options, msgs
+  ast, types, renderer, idents, intsets
 
 proc canAlias(arg, ret: PType; marker: var IntSet): bool
 
