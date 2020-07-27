@@ -2264,10 +2264,10 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-  var parts, prefix: string
+  var prefix: string
   let hasPrefix = isDigit(s[s.low]) == false
+  var idx:int
   if hasPrefix:
-    var idx:int
     prefix.add s[s.low]
     for i in (s.low + 1)..s.high:
       idx = i
@@ -2275,10 +2275,7 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
         prefix.add s[i]
       else:
         break
-    parts = s.substr(idx)
-  else:
-    parts = s
-  let partsLen = parts.len
+  let partsLen = s.len - idx
   var L = (partsLen-1) div digits + partsLen
   result = newString(L)
   var j = 0
@@ -2288,7 +2285,7 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
       result[L] = sep
       dec(L)
       j = 0
-    result[L] = parts[i]
+    result[L] = s[i + idx]
     inc(j)
     dec(L)
   result = prefix & result
