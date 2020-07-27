@@ -23,7 +23,7 @@
 ## do a compile-time copy-on-write analysis.
 
 import
-  ast, types, renderer, idents, intsets, options, msgs
+  ast, types, renderer, idents, intsets, options
 
 type
   Cursor = object
