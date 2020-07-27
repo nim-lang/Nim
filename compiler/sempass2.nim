@@ -84,6 +84,19 @@ proc `<=`(a, b: TLockLevel): bool {.borrow.}
 proc `==`(a, b: TLockLevel): bool {.borrow.}
 proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
+proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
+  if typ == nil: return
+  when false:
+    let realType = typ.skipTypes(abstractInst)
+    if realType.kind == tyRef and
+        optSeqDestructors in tracked.config.globalOptions:
+      createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
+
+  createTypeBoundOps(tracked.graph, tracked.c, typ, info)
+  if (tfHasAsgn in typ.flags) or
+      optSeqDestructors in tracked.config.globalOptions:
+    tracked.owner.flags.incl sfInjectDestructors
+
 proc isLocalVar(a: PEffects, s: PSym): bool =
   # and (s.kind != skParam or s.typ.kind == tyOut)
   s.kind in {skVar, skResult} and sfGlobal notin s.flags and
@@ -400,6 +413,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
           if b[j].isInfixAs():
             assert(b[j][1].kind == nkType)
             catches(tracked, b[j][1].typ)
+            createTypeBoundOps(tracked, b[j][2].typ, b[j][2].info)
           else:
             assert(b[j].kind == nkType)
             catches(tracked, b[j].typ)
@@ -720,20 +734,6 @@ proc checkRange(c: PEffects; value: PNode; typ: PType) =
     checkLe(c, lowBound, value)
     checkLe(c, value, highBound)
 
-proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
-  if typ == nil: return
-  let realType = typ.skipTypes(abstractInst)
-  when false:
-    # XXX fix this in liftdestructors instead
-    if realType.kind == tyRef and
-        optSeqDestructors in tracked.config.globalOptions:
-      createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
-
-  createTypeBoundOps(tracked.graph, tracked.c, typ, info)
-  if (tfHasAsgn in typ.flags) or
-      optSeqDestructors in tracked.config.globalOptions:
-    tracked.owner.flags.incl sfInjectDestructors
-
 proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -799,7 +799,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
 
     # check required for 'nim check':
     if n[1].typ.len > 0:
-      createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
       createTypeBoundOps(tracked, n[1].typ, n.info)
       # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
