@@ -108,10 +108,10 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ## the diverse optional parameters:
   ## - `separator`: character used to separate fields
   ## - `quote`: Used to quote fields containing special characters like
-  ##   `separator`, `quote` or new-line characters. '\0' disables the parsing
+  ##   `separator`, `quote` or new-line characters. '\\0' disables the parsing
   ##   of quotes.
   ## - `escape`: removes any special meaning from the following character;
-  ##   '\0' disables escaping; if escaping is disabled and `quote` is not '\0',
+  ##   '\\0' disables escaping; if escaping is disabled and `quote` is not '\\0',
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
