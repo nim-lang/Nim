@@ -787,7 +787,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
               if ri.kind == nkEmpty and c.inLoop > 0:
                 ri = genDefaultCall(v.typ, c, v.info)
               if ri.kind != nkEmpty:
-                result.add moveOrCopy(v, ri, c, s, isDecl = true)
+                result.add moveOrCopy(v, ri, c, s, isDecl = false)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
