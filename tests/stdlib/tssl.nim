@@ -4,29 +4,39 @@ discard """
 
 import net, nativesockets
 
-when defined(posix): import posix
+when defined(posix): import os, posix
+
+when not defined(ssl):
+  {.error: "This test must be compiled with -d:ssl".}
 
 const DummyData = "dummy data\n"
 
-when defined(ssl):
+proc connector(port: Port) {.thread.} =
+  let clientContext = newContext(verifyMode = CVerifyNone)
+  var client = newSocket(buffered = false)
+  clientContext.wrapSocket(client)
+  client.connect("localhost", port)
+
+  discard client.recvLine()
+  client.getFd.close()
+
+proc main() =
   let serverContext = newContext(verifyMode = CVerifyNone,
                                  certFile = "tests/testdata/mycert.pem",
                                  keyFile = "tests/testdata/mycert.pem")
 
   when defined(posix):
-    signal(SIGPIPE, SIG_IGN)
+    var
+      ignoreAction = SigAction(sa_handler: SIG_IGN)
+      oldSigPipeHandler: SigAction
+    if sigemptyset(ignoreAction.sa_mask) == -1:
+      raiseOSError(osLastError(), "Couldn't create an empty signal set")
+    if sigaction(SIGPIPE, ignoreAction, oldSigPipeHandler) == -1:
+      raiseOSError(osLastError(), "Couldn't ignore SIGPIPE")
 
-  proc connector(port: Port) {.thread.} =
-    let clientContext = newContext(verifyMode = CVerifyNone)
-    var client = newSocket(buffered = false)
-    clientContext.wrapSocket(client)
-    client.connect("localhost", port)
-
-    discard client.recvLine()
-    client.getFd.close()
-
-  block:
+  block peer_close_without_shutdown:
     var server = newSocket(buffered = false)
+    defer: server.close()
     serverContext.wrapSocket(server)
     server.bindAddr(address = "localhost")
     let (_, port) = server.getLocalAddr()
@@ -45,9 +55,7 @@ when defined(ssl):
       while true:
         # Send data until we get EPIPE.
         peer.send(DummyData, {})
-    except:
+    except OSError:
       discard
     finally:
       peer.close()
-
-    server.close()
