@@ -2279,7 +2279,7 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   var L = (partsLen-1) div digits + partsLen
   var j = 0
   dec(L)
-  for i in countup(0, partsLen-1):
+  for i in 0 ..< partsLen:
     if j == digits:
       result.add sep
       dec(L)
