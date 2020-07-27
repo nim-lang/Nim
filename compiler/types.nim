@@ -936,9 +936,6 @@ proc equalParams(a, b: PNode): TParamsEquality =
         discard
       of paramsIncompatible:
         result = paramsIncompatible
-      if (m.name.id != n.name.id):
-        # BUGFIX
-        return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
       # it stays incompatible
     if not sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}):

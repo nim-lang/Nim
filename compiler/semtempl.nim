@@ -291,12 +291,18 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   if n.kind notin nkLambdaKinds and symBinding(n[pragmasPos]) == spGenSym:
     let ident = getIdentNode(c, n[namePos])
     if not isTemplParam(c, ident):
-      var s = newGenSym(k, ident, c)
-      s.ast = n
-      addPrelimDecl(c.c, s)
-      styleCheckDef(c.c.config, n.info, s)
-      onDef(n.info, s)
-      n[namePos] = newSymNode(s, n[namePos].info)
+      #We ensure that gensymmed definitions find their gensymmed forward declarations
+      let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
+      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
+        styleCheckDef(c.c.config, n.info, s)
+        replaceIdentBySym(c.c, n[namePos], newSymNode(s, n[namePos].info))
+      else:
+        var s = newGenSym(k, ident, c)
+        s.ast = n
+        addPrelimDecl(c.c, s)
+        styleCheckDef(c.c.config, n.info, s)
+        onDef(n.info, s)
+        replaceIdentBySym(c.c, n[namePos], newSymNode(s, n[namePos].info))
     else:
       n[namePos] = ident
   else:
