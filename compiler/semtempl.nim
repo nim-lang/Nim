@@ -287,14 +287,31 @@ proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
 proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   result = n
   checkSonsLen(n, bodyPos + 1, c.c.config)
+  # Name gets processed later, because we might need to resolve forward decls and need the params processed for that
+
+  # open scope for parameters
+  openScope(c)
+  for i in patternPos..paramsPos-1:
+    n[i] = semTemplBody(c, n[i])
+
+  if k == skTemplate: inc(c.inTemplateHeader)
+  n[paramsPos] = semTemplBody(c, n[paramsPos])
+  if k == skTemplate: dec(c.inTemplateHeader)
+
+  # Temporarily close the scope here
+  let scopeBackup = c.c.currentScope
+  rawCloseScope(c.c)
   # routines default to 'inject':
   if n.kind notin nkLambdaKinds and symBinding(n[pragmasPos]) == spGenSym:
     let ident = getIdentNode(c, n[namePos])
     if not isTemplParam(c, ident):
-      #We ensure that gensymmed definitions find their gensymmed forward declarations
+      # We ensure that gensymmed definitions find their gensymmed forward declarations
       let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
       if s != nil and s.owner == c.owner and sfGenSym in s.flags:
+        s.ast = n
+        addPrelimDecl(c.c, s)
         styleCheckDef(c.c.config, n.info, s)
+        onDefResolveForward(n.info, s)
         replaceIdentBySym(c.c, n[namePos], newSymNode(s, n[namePos].info))
       else:
         var s = newGenSym(k, ident, c)
@@ -307,14 +324,9 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n[namePos] = ident
   else:
     n[namePos] = semRoutineInTemplName(c, n[namePos])
-  # open scope for parameters
-  openScope(c)
-  for i in patternPos..paramsPos-1:
-    n[i] = semTemplBody(c, n[i])
 
-  if k == skTemplate: inc(c.inTemplateHeader)
-  n[paramsPos] = semTemplBody(c, n[paramsPos])
-  if k == skTemplate: dec(c.inTemplateHeader)
+  # Restore the param scope
+  c.c.currentScope = scopeBackup
 
   for i in paramsPos+1..miscPos:
     n[i] = semTemplBody(c, n[i])
