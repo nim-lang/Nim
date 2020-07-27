@@ -1986,7 +1986,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if n[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
         if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
-        c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))

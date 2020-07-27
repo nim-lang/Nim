@@ -28,40 +28,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
-  # Searches for a forward declaration or a "twin" symbol of fn
-  # in the symbol table. If the parameter lists are exactly
-  # the same the sym in the symbol table is returned, else nil.
-  var it: TIdentIter
-  result = initIdentIter(it, scope.symbols, fn.name)
-  if isGenericRoutine(fn):
-    # we simply check the AST; this is imprecise but nearly the best what
-    # can be done; this doesn't work either though as type constraints are
-    # not kept in the AST ..
-    while result != nil:
-      if result.kind == fn.kind and isGenericRoutine(result):
-        let genR = result.ast[genericParamsPos]
-        let genF = fn.ast[genericParamsPos]
-        if exprStructuralEquivalent(genR, genF) and
-           exprStructuralEquivalent(result.ast[paramsPos],
-                                    fn.ast[paramsPos]) and
-           equalGenericParams(genR, genF):
-            return
-      result = nextIdentIter(it, scope.symbols)
-  else:
-    while result != nil:
-      if result.kind == fn.kind and not isGenericRoutine(result):
-        case equalParams(result.typ.n, fn.typ.n)
-        of paramsEqual:
-          return
-        of paramsIncompatible:
-          localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
-          return
-        of paramsNotEqual:
-          discard
-      result = nextIdentIter(it, scope.symbols)
-
-proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
+proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
   var it: TIdentIter
@@ -82,16 +49,6 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
       of paramsNotEqual:
         discard
     result = nextIdentIter(it, scope.symbols)
-
-proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
-  result = searchForProcNew(c, scope, fn)
-  when false:
-    let old = searchForProcOld(c, scope, fn)
-    if old != result:
-      echo "Mismatch in searchForProc: ", fn.info
-      debug fn.typ
-      debug if result != nil: result.typ else: nil
-      debug if old != nil: old.typ else: nil
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool =
