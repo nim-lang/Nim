@@ -2264,31 +2264,29 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-  var prefix: string
+  result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
   var idx:int
   if hasPrefix:
-    prefix.add s[s.low]
+    result.add s[s.low]
     for i in (s.low + 1)..s.high:
       idx = i
       if not isDigit(s[i]):
-        prefix.add s[i]
+        result.add s[i]
       else:
         break
   let partsLen = s.len - idx
   var L = (partsLen-1) div digits + partsLen
-  result = newString(L)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1, 0):
+  for i in countup(0, partsLen-1):
     if j == digits:
-      result[L] = sep
+      result.add sep
       dec(L)
       j = 0
-    result[L] = s[i + idx]
+    result.add s[i + idx]
     inc(j)
     dec(L)
-  result = prefix & result
 
 proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   rtl, extern: "nsuEscape".} =
