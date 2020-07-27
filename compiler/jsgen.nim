@@ -1324,7 +1324,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkHiddenDeref:
     gen(p, n[0], r)
   of nkHiddenAddr:
-    if not n.len == 1:
+    if n.len != 1
       internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
     gen(p, n[0], r)
   of nkStmtListExpr:
