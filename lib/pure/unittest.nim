@@ -499,7 +499,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
+  bind contains, shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -524,6 +524,10 @@ template test*(name, body) {.dirty.} =
       fail()
 
     finally:
+      if checkpoints.len > 0:
+        let lastCheckFailed = checkpoints[^1].contains("Check failed:")
+        if testStatusIMPL == TestStatus.OK and lastCheckFailed:
+          testStatusIMPL = TestStatus.FAILED
       if testStatusIMPL == TestStatus.FAILED:
         setProgramResult 1
       let testResult = TestResult(
@@ -578,7 +582,6 @@ template fail* =
 
   if abortOnError: quit(1)
 
-  checkpoints = @[]
 
 template skip* =
   ## Mark the test as skipped. Should be used directly
@@ -594,7 +597,6 @@ template skip* =
   bind checkpoints
 
   testStatusIMPL = TestStatus.SKIPPED
-  checkpoints = @[]
 
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
@@ -662,7 +664,6 @@ macro check*(conditions: untyped): untyped =
 
   case checked.kind
   of nnkCallKinds:
-
     let (assigns, check, printOuts) = inspectArgs(checked)
     let lineinfo = newStrLitNode(checked.lineInfo)
     let callLit = checked.toStrLit
