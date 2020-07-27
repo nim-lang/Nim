@@ -42,8 +42,9 @@ when defined(ssl):
 
       joinThread clientThread
 
-      peer.send(DummyData, {})
-      peer.send(DummyData, {})
+      while true:
+        # Send data until we get EPIPE.
+        peer.send(DummyData, {})
     except:
       discard
     finally:
