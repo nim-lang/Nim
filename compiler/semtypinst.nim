@@ -631,7 +631,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       # Slow path, we have some work to do
       if t.kind == tyRef and t.len > 0 and t[0].kind == tyObject and t[0].n != nil:
-        result.n = replaceObjBranches(cl, t[0].n)
+        discard replaceObjBranches(cl, t[0].n)
 
       elif result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
