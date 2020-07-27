@@ -1423,8 +1423,8 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".} 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -1752,7 +1752,7 @@ when notJSnotNims:
 
 
 when defined(nimV2):
-  include system/refs_v2
+  include system/arc
 
 import system/assertions
 export assertions
