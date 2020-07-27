@@ -2277,7 +2277,7 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
         break
     parts = s.substr(idx)
   else:
-    parts.shallowCopy s
+    parts = s
   let partsLen = parts.len
   var L = (partsLen-1) div digits + partsLen
   result = newString(L)
