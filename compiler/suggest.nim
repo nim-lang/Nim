@@ -558,7 +558,7 @@ proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
       warnAboutDeprecated(conf, info, s)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags:
-      if not (c.lastTLineInfo.line == info.line and 
+      if not (c.lastTLineInfo.line == info.line and
               c.lastTLineInfo.col == info.col):
         warnAboutDeprecated(conf, info, s)
         c.lastTLineInfo = info
