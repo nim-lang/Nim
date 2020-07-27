@@ -507,6 +507,8 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
   let elemType = t.lastSon
 
+  createTypeBoundOps(c.g, c.c, elemType, c.info)
+
   if isFinal(elemType):
     addDestructorCall(c, elemType, actions, genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimRawDispose", c.info, x)
