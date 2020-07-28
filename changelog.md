@@ -78,6 +78,55 @@
 - Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
   hangs if a process had both reads from stdin and writes (eg to stdout).
 
+- The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
+- The callback that is assigned to `system.onUnhandledException` must now be `.gcsafe`.
+
+- `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
+  parameters.
+
+- Added a `ssl_config` module containing lists of secure ciphers as recommended by
+  [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
+
+- `net.newContext` now defaults to the list of ciphers targeting
+  ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
+  per Mozilla's recommendation instead of `ALL`. This change should protect
+  users from the use of weak and insecure ciphers while still provides
+  adequate compatibility with the majority of the Internet.
+
+- A new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` operations for json
+  serialization/deserialization of custom types was added.
+
+- A new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``
+  was added.
+- Added `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator`
+  with `outLatex` output.
+- Added `os.normalizeExe`, e.g.: `koch` => `./koch`.
+- `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720`
+  to keep old behavior.
+- Added `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Added `typetraits.elementType` to get element type of an iterable.
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- Added `macros.extractDocCommentsAndRunnables` helper
+
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now
+  expands to `fmt"expr={expr}"`.
+- deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
+
+- Added `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+- Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
+  because negative values will result in a new file being created for each logged
+  line which doesn't make sense.
+- Changed `log` in `logging` to use proper log level on JavaScript target,
+  e.g. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
+- Tables, HashSets, SharedTables and deques don't require anymore that the passed
+  initial size must be a power of two - this is done internally.
+  Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
+  `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
+- Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
+
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
   ```nim
