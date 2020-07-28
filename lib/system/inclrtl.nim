@@ -48,3 +48,6 @@ when defined(nimlocks):
   {.pragma: benign, gcsafe, locks: 0.}
 else:
   {.pragma: benign, gcsafe.}
+
+when defined(nimHasSinkInference):
+  {.push sinkInference: on.}

@@ -265,6 +265,10 @@ proc mydiv(a, b): int {.raises: [].} =
 - Removed the `--oldast` switch.
 - `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is
   now "typed" instead of "stmt".
+- Sink inference is now disabled per default and has to enabled explicitly via
+  `--sinkInference:on`. *Note*: For the standard library sink inference remains
+  enabled. This change is most relevant for the `--gc:arc`, `--gc:orc` memory
+  management modes.
 
 
 ## Tool changes
