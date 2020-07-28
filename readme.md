@@ -52,6 +52,12 @@ Next, to build from source you will need:
   * Either ``git`` or ``wget`` to download the needed source repositories.
   * The ``build-essential`` package when using ``gcc`` on Ubuntu (and likely
     other distros as well).
+  * On Windows MinGW 4.3.0 (GCC 8.10) is the minimum recommended compiler.
+  * Nim hosts a known working MinGW distribution:
+    * [MinGW32.7z](https://nim-lang.org/download/mingw32.7z)
+    * [MinGW64.7z](https://nim-lang.org/download/mingw64.7z)
+
+**Windows Note: Cygwin and similar posix runtime environments are not supported.**
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
 Nim from source using ``gcc``, ``git`` and the ``koch`` build tool.
@@ -75,6 +81,9 @@ Next run the appropriate build shell script for your platform:
 * `build_all.sh` (Linux, Mac)
 * `build_all.bat` (Windows)
 
+Windows requires a number of other dependencies that you may need to install including
+PCRE and OpenSSL. Nim hosts a zip package containing known working versions of the
+required DLLs [here](https://nim-lang.org/download/dlls.zip).
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
 should add the ``bin`` directory to your PATH.
