@@ -2277,14 +2277,15 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
         break
   let partsLen = s.len - idx
   var L = (partsLen-1) div digits + partsLen
+  result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countup(0, partsLen-1):
+  for i in countdown(partsLen-1,0):
     if j == digits:
-      result.add sep
+      result[L + idx] = sep
       dec(L)
       j = 0
-    result.add s[i + idx]
+    result[L + idx] = s[i + idx]
     inc(j)
     dec(L)
 
