@@ -138,6 +138,10 @@ proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
+template tabMakeEmpty(i) = t.data[i].hcode = 0
+template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
+template tabCellHash(i)  = t.data[i].hcode
+
 proc withKey*[A, B](t: var SharedTable[A, B], key: A,
                     mapper: proc(key: A, val: var B, pairExists: var bool)) =
   ## Computes a new mapping for the ``key`` with the specified ``mapper``
@@ -179,7 +183,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
     if pairExists:
       mapper(t.data[index].key, t.data[index].val, pairExists)
       if not pairExists:
-        delImplIdx(t, index)
+        delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
     else:
       var val: B
       mapper(key, val, pairExists)
@@ -200,7 +204,7 @@ proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
 proc del*[A, B](t: var SharedTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   withLock t:
-    delImpl()
+    delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc len*[A, B](t: var SharedTable[A, B]): int =
   ## number of elements in `t`
