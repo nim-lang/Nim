@@ -21,6 +21,7 @@ type
                       # new symbol
     config: ConfigRef
     ic: IdentCache
+    gensymHash: int
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -54,7 +55,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
-          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.gensymHash),
             if c.instLines: actual.info else: templ.info)
         else:
           result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
@@ -163,7 +164,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.add d
     result.add res
     result.typ = res.typ
-
+import random
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
                    ic: IdentCache;
@@ -181,6 +182,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.config = conf
   ctx.ic = ic
   initIdTable(ctx.mapping)
+  ctx.gensymHash = rand(0..int.high) #TODO: Wtf
 
   let body = tmpl.getBody
   #echo "instantion of ", renderTree(body, {renderIds})

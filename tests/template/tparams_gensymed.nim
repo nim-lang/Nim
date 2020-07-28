@@ -253,7 +253,7 @@ block: #This works
 #And fully recursive:
 block: #Doesn't work
   template genGenTempl: untyped =
-    #proc loop(locals: int) #XXX: this should work too
+    proc loop(locals: int)
     proc loop(locals: int) = loop(locals)
   genGenTempl()
   let pool = loop
@@ -261,7 +261,7 @@ block: #Doesn't work
 block: #Doesn't work
   macro genGenMacro: untyped =
     quote do:
-      #proc loop(locals: int) #XXX: this should work too
+      proc loop(locals: int)
       proc loop(locals: int) = loop(locals)
   genGenMacro()
   let pool = loop
@@ -281,7 +281,7 @@ block:
 
 block: #Fully recursive and gensymmed:
   template genGenTempl: untyped =
-    #proc loop(locals: int) {.gensym.} #XXX: this should work too
+    proc loop(locals: int) {.gensym.}
     proc loop(locals: int) {.gensym.} = loop(locals)
     let pool = loop
   genGenTempl()
