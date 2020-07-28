@@ -261,8 +261,14 @@ optimizations (and the current implementation does not).
 Sink parameter inference
 ========================
 
-The current implementation does a limited form of sink parameter
-inference. The `.nosinks`:idx: pragma can be used to disable this inference
+The current implementation can do a limited form of sink parameter
+inference. But it has to be enabled via `--sinkInference:on`, either
+on the command line or via a `push` pragma.
+
+To enable it for a section of code, one can
+use `{.push sinkInference: on.}`...`{.pop.}`.
+
+The `.nosinks`:idx: pragma can be used to disable this inference
 for a single routine:
 
 .. code-block:: nim
@@ -270,8 +276,6 @@ for a single routine:
   proc addX(x: T; child: T) {.nosinks.} =
     x.s.add child
 
-To disable it for a section of code, one can
-use `{.push sinkInference: off.}`...`{.pop.}`.
 
 The details of the inference algorithm are currently undocumented.
 
