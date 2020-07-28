@@ -78,22 +78,22 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template delImplIdx(t, i) =
+template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
     block outer:
       while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
+        var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hcode = 0              # mark current EMPTY
+        makeEmpty(i)                     # mark current EMPTY
         t.data[i].key = default(type(t.data[i].key))
         t.data[i].val = default(type(t.data[i].val))
         while true:
           i = (i + 1) and msk            # increment mod table size
-          if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
+          if cellEmpty(i):               # end of collision cluster; So all done
             break outer
-          r = t.data[i].hcode and msk    # "home" location of key@i
+          r = cellHash(i) and msk        # initial probe index for key@slot i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
         when defined(js):
@@ -101,10 +101,19 @@ template delImplIdx(t, i) =
         else:
           t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
 
-template delImpl() {.dirty.} =
+template delImpl(makeEmpty, cellEmpty, cellHash) {.dirty.} =
   var hc: Hash
   var i = rawGet(t, key, hc)
-  delImplIdx(t, i)
+  delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+
+template delImplNoHCode(makeEmpty, cellEmpty, cellHash) {.dirty.} =
+  if t.dataLen > 0:
+    var i: Hash = hash(key) and maxHash(t)
+    while not cellEmpty(i):
+      if t.data[i].key == key:
+        delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+        break
+      i = nextTry(i, maxHash(t))
 
 template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
