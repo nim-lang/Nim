@@ -494,6 +494,10 @@ proc add*[A, B](t: var Table[A, B], key: A, val: B) {.deprecated:
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
+template tabMakeEmpty(i) = t.data[i].hcode = 0
+template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
+template tabCellHash(i)  = t.data[i].hcode
+
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
@@ -507,7 +511,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toTable
 
-  delImpl()
+  delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
@@ -535,7 +539,7 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   result = index >= 0
   if result:
     val = move(t.data[index].val)
-    delImplIdx(t, index)
+    delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
   ## Alias for:
@@ -2199,19 +2203,6 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
-proc remove[A](t: var CountTable[A], key: A) =
-  var n: seq[tuple[key: A, val: int]]
-  newSeq(n, len(t.data))
-  var removed: bool
-  for i in countup(0, high(t.data)):
-    if t.data[i].val != 0:
-      if t.data[i].key != key:
-        ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
-      else:
-        removed = true
-  swap(t.data, n)
-  if removed: dec(t.counter)
-
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2225,7 +2216,7 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
+proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
@@ -2262,6 +2253,10 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
+template cntMakeEmpty(i) = t.data[i].val = 0
+template cntCellEmpty(i) = t.data[i].val == 0
+template cntCellHash(i)  = hash(t.data[i].key)
+
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
@@ -2272,7 +2267,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
   if val == 0:
-    t.remove(key)
+    delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
     let h = rawGet(t, key)
     if h >= 0:
@@ -2280,11 +2275,8 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     else:
       insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
-  ##
-  ## ``val`` must be a positive number. If you need to decrement a value,
-  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')
@@ -2295,9 +2287,11 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter)
+    if t.data[index].val == 0:
+      delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
-    insertImpl()
+    if val != 0:
+      insertImpl()
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
@@ -2358,8 +2352,6 @@ proc len*[A](t: CountTable[A]): int =
 proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
-  ## O(n) complexity.
-  ##
   ## See also:
   ## * `pop proc<#pop,CountTable[A],A,int>`_
   ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
@@ -2372,15 +2364,13 @@ proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
     a.del('c')
     assert a == toCountTable("aa")
 
-  remove(t, key)
+  delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
 
 proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
   ## unchanged.
-  ##
-  ## O(n) complexity.
   ##
   ## See also:
   ## * `del proc<#del,CountTable[A],A>`_
@@ -2398,7 +2388,7 @@ proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).}
   result = index >= 0
   if result:
     val = move(t.data[index].val)
-    remove(t, key)
+    delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
 
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
@@ -2686,8 +2676,6 @@ proc len*[A](t: CountTableRef[A]): int =
 proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
-  ## O(n) complexity.
-  ##
   ## See also:
   ## * `pop proc<#pop,CountTableRef[A],A,int>`_
   ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
@@ -2698,8 +2686,6 @@ proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} 
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
   ## unchanged.
-  ##
-  ## O(n) complexity.
   ##
   ## See also:
   ## * `del proc<#del,CountTableRef[A],A>`_
