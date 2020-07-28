@@ -1,2 +1,3 @@
 --threads:on
 --d:ssl
+--gc:arc
