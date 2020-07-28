@@ -301,7 +301,6 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n[namePos] = ident
   else:
     n[namePos] = semRoutineInTemplName(c, n[namePos])
-
   # open scope for parameters
   openScope(c)
   for i in patternPos..paramsPos-1:
