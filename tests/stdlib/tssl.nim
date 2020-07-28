@@ -59,3 +59,5 @@ proc main() =
       discard
     finally:
       peer.close()
+
+when isMainModule: main()
