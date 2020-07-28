@@ -146,8 +146,6 @@ Advanced options:
   --legacy:$2
                             enable obsolete/legacy language feature
   --useVersion:1.0          emulate Nim version X of the Nim compiler
-  --newruntime              use an alternative runtime that uses destructors
-                            and that uses a shared heap via -d:useMalloc
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
