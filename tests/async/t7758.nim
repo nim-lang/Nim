@@ -10,6 +10,6 @@ proc main() =
     inc(counter)
     poll(10)
 
-  doAssert counter <= 4
+  doAssert counter <= 5
 
 for i in 0 .. 10: main()
