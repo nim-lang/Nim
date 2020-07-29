@@ -1476,7 +1476,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericBody:
     considerPreviousT:
-      if a == f or a.kind == tyGenericInst and a[0] == f:
+      if a == f or a.kind == tyGenericInst and a.skipGenericAlias[0] == f:
         bindingRet isGeneric
       let ff = lastSon(f)
       if ff != nil:

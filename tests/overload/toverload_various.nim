@@ -15,7 +15,6 @@ static: const
 static: literal
 static: constant folding
 static: static string
-foo1
 1
 '''
 """
@@ -177,50 +176,110 @@ block tstaticoverload:
   foo("constant" & " " & "folding")
   foo(staticString("static string"))
 
-# bug #8568 (2)
 
-proc goo(a: int): string = "int"
-proc goo(a: static[int]): string = "static int"
-proc goo(a: var int): string = "var int"
-proc goo[T: int](a: T): string = "T: int"
-#proc goo[T](a: T): string = "nur T"
+# nested generic types
+block:
+  type
+    Foo[T] = object
+      f: T
+    Bar[T] = object
+      b: T
+    Baz[T] = object
+      z: T
+    FooBar[T] = Foo[Bar[T]]
+    FooBarBaz[T] = FooBar[Baz[T]]
+    #Int = int
+    Int = SomeInteger
+    FooBarBazInt = FooBarBaz[Int]
+    FooBarBazX = FooBarBaz[int]
 
-const tmp1 = 1
-let tmp2 = 1
-var tmp3 = 1
+  proc p00(x: Foo): auto = x.f
+  proc p01[T](x: Foo[T]): auto = x.f
+  proc p02[T:Foo](x: T): auto = x.f
 
-doAssert goo(1) == "static int"
-doAssert goo(tmp1) == "static int"
-doAssert goo(tmp2) == "int"
-doAssert goo(tmp3) == "var int"
+  proc p10(x: FooBar): auto = x.f
+  proc p11[T](x: FooBar[T]): auto = x.f
+  proc p12[T:FooBar](x: T): auto = x.f
+  proc p13(x: Foo[Bar]): auto = x.f
+  proc p14[T](x: Foo[Bar[T]]): auto = x.f
+  proc p15[T:Bar](x: Foo[T]): auto = x.f
+  proc p16[T:Foo[Bar]](x: T): auto = x.f
 
-doAssert goo[int](1) == "T: int"
+  proc p20(x: FooBarBaz): auto = x.f
+  proc p21[T](x: FooBarBaz[T]): auto = x.f
+  proc p22[T:FooBarBaz](x: T): auto = x.f
+  proc p23(x: FooBar[Baz]): auto = x.f
+  proc p24[T](x: FooBar[Baz[T]]): auto = x.f
+  proc p25[T:Baz](x: FooBar[T]): auto = x.f
+  proc p26[T:FooBar[Baz]](x: T): auto = x.f
+  proc p27(x: Foo[Bar[Baz]]): auto = x.f
+  proc p28[T](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p29[T:Baz](x: Foo[Bar[T]]): auto = x.f
+  proc p2A[T:Bar[Baz]](x: Foo[T]): auto = x.f
+  proc p2B[T:Foo[Bar[Baz]]](x: T): auto = x.f
 
-doAssert goo[int](tmp1) == "T: int"
-doAssert goo[int](tmp2) == "T: int"
-doAssert goo[int](tmp3) == "T: int"
+  proc p30(x: FooBarBazInt): auto = x.f
+  proc p31[T:FooBarBazInt](x: T): auto = x.f
+  proc p32(x: FooBarBaz[Int]): auto = x.f
+  proc p33[T:Int](x: FooBarBaz[T]): auto = x.f
+  proc p34[T:FooBarBaz[Int]](x: T): auto = x.f
+  proc p35(x: FooBar[Baz[Int]]): auto = x.f
+  proc p36[T:Int](x: FooBar[Baz[T]]): auto = x.f
+  proc p37[T:Baz[Int]](x: FooBar[T]): auto = x.f
+  proc p38[T:FooBar[Baz[Int]]](x: T): auto = x.f
+  proc p39(x: Foo[Bar[Baz[Int]]]): auto = x.f
+  proc p3A[T:Int](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p3B[T:Baz[Int]](x: Foo[Bar[T]]): auto = x.f
+  proc p3C[T:Bar[Baz[Int]]](x: Foo[T]): auto = x.f
+  proc p3D[T:Foo[Bar[Baz[Int]]]](x: T): auto = x.f
 
-# bug #6076
+  template test(x: typed) =
+    let t00 = p00(x)
+    let t01 = p01(x)
+    let t02 = p02(x)
+    let t10 = p10(x)
+    let t11 = p11(x)
+    let t12 = p12(x)
+    #let t13 = p13(x)
+    let t14 = p14(x)
+    #let t15 = p15(x)
+    #let t16 = p16(x)
+    let t20 = p20(x)
+    let t21 = p21(x)
+    let t22 = p22(x)
+    #let t23 = p23(x)
+    let t24 = p24(x)
+    #let t25 = p25(x)
+    #let t26 = p26(x)
+    #let t27 = p27(x)
+    let t28 = p28(x)
+    #let t29 = p29(x)
+    #let t2A = p2A(x)
+    #let t2B = p2B(x)
+    let t30 = p30(x)
+    let t31 = p31(x)
+    let t32 = p32(x)
+    let t33 = p33(x)
+    let t34 = p34(x)
+    let t35 = p35(x)
+    let t36 = p36(x)
+    let t37 = p37(x)
+    let t38 = p38(x)
+    let t39 = p39(x)
+    let t3A = p3A(x)
+    let t3B = p3B(x)
+    let t3C = p3C(x)
+    let t3D = p3D(x)
 
-type A[T] = object
+  var a: Foo[Bar[Baz[int]]]
+  test(a)
+  var b: FooBar[Baz[int]]
+  test(b)
+  var c: FooBarBaz[int]
+  test(c)
+  var d: FooBarBazX
+  test(d)
 
-proc regr(a: A[void]) = echo "foo1"
-proc regr[T](a: A[T]) = doAssert(false)
-
-regr(A[void]())
-
-
-type Foo[T] = object
-
-proc regr[T](p: Foo[T]): seq[T] =
-  discard
-
-proc regr(p: Foo[void]): seq[int] =
-  discard
-
-
-discard regr(Foo[int]())
-discard regr(Foo[void]())
 
 
 type
