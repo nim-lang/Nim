@@ -254,15 +254,28 @@ proc analyse(c: var Con; n: PNode) =
       c.mayOwnData.incl r.id
       c.mutations.incl r.id
 
-  of nkTupleConstr, nkBracket, nkObjConstr:
+  of nkTupleConstr, nkBracket:
     for child in n: analyse(c, child)
     if c.inAsgnSource > 0:
-      for i in ord(n.kind == nkObjConstr)..<n.len:
+      for i in 0..<n.len:
         if n[i].kind == nkSym:
           # we assume constructions with cursors are better without
           # the cursors because it's likely we can move then, see
           # test arc/topt_no_cursor.nim
           let r = n[i].sym
+          c.mayOwnData.incl r.id
+          c.mutations.incl r.id
+
+  of nkObjConstr:
+    for child in n: analyse(c, child)
+    if c.inAsgnSource > 0:
+      for i in 1..<n.len:
+        let it = n[i].skipColon
+        if it.kind == nkSym:
+          # we assume constructions with cursors are better without
+          # the cursors because it's likely we can move then, see
+          # test arc/topt_no_cursor.nim
+          let r = it.sym
           c.mayOwnData.incl r.id
           c.mutations.incl r.id
 

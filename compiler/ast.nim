@@ -1841,6 +1841,11 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
+proc skipColon*(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n[1]
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:

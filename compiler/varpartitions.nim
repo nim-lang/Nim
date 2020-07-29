@@ -261,8 +261,7 @@ proc traverse(p: var Partitions; n: PNode) =
       if i < typ.len:
         assert(typ.n[i].kind == nkSym)
         let paramType = typ.n[i]
-        if paramType.typ.isCompileTimeOnly: continue
-        if paramType.typ.kind == tyVar:
+        if not paramType.typ.isCompileTimeOnly and paramType.typ.kind == tyVar:
           var roots: seq[PSym]
           allRoots(n, roots)
           for r in roots: potentialMutation(p, r, n.info)
