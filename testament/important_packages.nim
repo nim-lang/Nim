@@ -12,7 +12,7 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 # pkg1 "alea", true
 pkg1 "argparse"
 pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
-pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
+#pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk", true
 pkg1 "bigints"
 pkg1 "binaryheap", false, "nim c -r binaryheap.nim"
@@ -95,7 +95,7 @@ pkg2 "optionsutils"
 pkg2 "ormin", true, "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"
-pkg2 "plotly", true, "nim c --oldgensym:on examples/all.nim"
+pkg2 "plotly", true, "nim c examples/all.nim"
 pkg2 "pnm"
 pkg2 "polypbren"
 pkg2 "prologue", true, "nim c -d:release -r tests/test_compile/test_compile.nim"

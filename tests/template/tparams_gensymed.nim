@@ -195,3 +195,129 @@ mystate_machine:
   state_push(S1)
   echo state_current()
   state_pop()
+
+# bug #15075
+block: #Doesn't work
+  template genGenTempl: untyped =
+    proc loop(locals: int)
+    proc loop(locals: int) = discard
+  genGenTempl()
+  let pool = loop
+
+block: #Doesn't work
+  macro genGenMacro: untyped =
+    quote do:
+      proc loop(locals: int)
+      proc loop(locals: int) = discard
+  genGenMacro()
+  let pool = loop
+
+block: #This works
+  proc loop(locals: int)
+  proc loop(locals: int) = discard
+  let pool = loop
+
+#Now somewhat recursive:
+type Cont = ref object of RootObj
+  fn*: proc(c: Cont): Cont {.nimcall.}
+
+block: #Doesn't work
+  template genGenTempl(): untyped =
+    proc loop(locals: Cont): Cont
+    proc loop(locals: Cont): Cont =
+      return Cont(fn: loop)
+    proc doServer(): Cont =
+      return Cont(fn: loop)
+  genGenTempl()
+  discard doServer()
+
+block: #Doesn't work
+  macro genGenMacro(): untyped =
+    quote:
+      proc loop(locals: Cont): Cont
+      proc loop(locals: Cont): Cont =
+        return Cont(fn: loop)
+      proc doServer(): Cont =
+        return Cont(fn: loop)
+  genGenMacro()
+  discard doServer()
+
+block: #This works
+  proc loop(locals: Cont): Cont
+  proc loop(locals: Cont): Cont =
+    return Cont(fn: loop)
+  proc doServer(): Cont =
+    return Cont(fn: loop)
+  discard doServer()
+
+#And fully recursive:
+block: #Doesn't work
+  template genGenTempl: untyped =
+    proc loop(locals: int)
+    proc loop(locals: int) = loop(locals)
+  genGenTempl()
+  let pool = loop
+
+block: #Doesn't work
+  macro genGenMacro: untyped =
+    quote do:
+      proc loop(locals: int)
+      proc loop(locals: int) = loop(locals)
+  genGenMacro()
+  let pool = loop
+
+block: #This works
+  proc loop(locals: int)
+  proc loop(locals: int) = loop(locals)
+  let pool = loop
+
+block:
+  template genAndCallLoop: untyped =
+    proc loop() {.gensym.}
+    proc loop() {.gensym.} =
+      discard
+    loop()
+  genAndCallLoop
+
+block: #Fully recursive and gensymmed:
+  template genGenTempl: untyped =
+    proc loop(locals: int) {.gensym.}
+    proc loop(locals: int) {.gensym.} = loop(locals)
+    let pool = loop
+  genGenTempl()
+
+block: #Make sure gensymmed symbol doesn't overwrite the forward decl
+  proc loop()
+  proc loop() = discard
+  template genAndCallLoop: untyped =
+    proc loop() {.gensym.} =
+      discard
+    loop()
+  genAndCallLoop()
+
+template genLoopDecl: untyped =
+  proc loop()
+template genLoopDef: untyped =
+  proc loop() = discard
+block:
+  genLoopDecl
+  genLoopDef
+  loop()
+block:
+  proc loop()
+  genLoopDef
+  loop()
+block:
+  genLoopDecl
+  proc loop() = discard
+  loop()
+
+block: #Gensymmed sym sharing forward decl
+  macro genGenMacro: untyped =
+    let sym = genSym(nskProc, "loop")
+    nnkStmtList.newTree(
+      newProc(sym, body = newEmptyNode()),
+      newCall(sym),
+      newProc(sym, body = newStmtList()),
+    )
+  genGenMacro

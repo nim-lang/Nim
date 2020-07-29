@@ -33,7 +33,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
-  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, c.templInstCounter, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
@@ -1203,17 +1203,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     elif sfGenSym in s.flags:
       # the owner should have been set by now by addParamOrResult
       internalAssert c.config, s.owner != nil
-      if c.p.wasForwarded:
-        # gensym'ed parameters that nevertheless have been forward declared
-        # need a special fixup:
-        let realParam = c.p.owner.typ.n[s.position+1]
-        internalAssert c.config, realParam.kind == nkSym and realParam.sym.kind == skParam
-        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
-      elif c.p.owner.kind == skMacro:
-        # gensym'ed macro parameters need a similar hack (see bug #1944):
-        var u = searchInScopes(c, s.name)
-        internalAssert c.config, u != nil and u.kind == skParam and u.owner == s.owner
-        return newSymNode(u, n.info)
     result = newSymNode(s, n.info)
   of skVar, skLet, skResult, skForVar:
     if s.magic == mNimvm:

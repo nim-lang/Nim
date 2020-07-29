@@ -264,6 +264,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - Removed the `--oldNewlines` switch.
 - Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
 - Removed the `--oldast` switch.
+- Removed the `--oldgensym` switch
 - `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is
   now "typed" instead of "stmt".
 - Sink inference is now disabled per default and has to enabled explicitly via
