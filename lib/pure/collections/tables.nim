@@ -2293,6 +2293,10 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     if val != 0:
       insertImpl()
 
+proc len*[A](t: CountTable[A]): int =
+  ## Returns the number of keys in ``t``.
+  result = t.counter
+
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
@@ -2344,10 +2348,6 @@ proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
   ctget(t, key, default)
-
-proc len*[A](t: CountTable[A]): int =
-  ## Returns the number of keys in ``t``.
-  result = t.counter
 
 proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
