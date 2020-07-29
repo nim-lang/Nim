@@ -521,6 +521,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   c.semTypeNode = semTypeNode
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
   c.hasUnresolvedArgs = hasUnresolvedArgs
+  c.templInstCounter = new int
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
@@ -599,7 +600,6 @@ proc recoverContext(c: PContext) =
 proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
-  c.templInstCounter = new int
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
   else:
