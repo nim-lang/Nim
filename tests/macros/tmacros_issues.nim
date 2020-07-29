@@ -35,6 +35,10 @@ test
 foo1
 foo2
 foo3
+true
+false
+true
+false
 '''
 """
 
@@ -289,3 +293,113 @@ proc main() =
   const fb = Foobar(a: a)
   foobar(fb)
 main()
+
+# bug #13484
+
+proc defForward(id, nid: NimNode): NimNode =
+  result = newProc(id, @[newIdentNode("bool"), newIdentDefs(nid, newIdentNode("int"))], body=newEmptyNode())
+
+proc defEven(evenid, oddid, nid: NimNode): NimNode =
+  result = quote do:
+    proc `evenid`(`nid`: int): bool =
+      if `nid` == 0:
+        return true
+      else:
+        return `oddid`(`nid` - 1)
+
+proc defOdd(evenid, oddid, nid: NimNode): NimNode =
+  result = quote do:
+    proc `oddid`(`nid`: int): bool =
+      if `nid` == 0:
+        return false
+      else:
+        return `evenid`(`nid` - 1)
+
+proc callNode(funid, param: NimNode): NimNode =
+  result = quote do:
+    `funid`(`param`)
+
+macro testEvenOdd3(): untyped =
+  let
+    evenid = newIdentNode("even3")
+    oddid = newIdentNode("odd3")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd4(): untyped =
+  let
+    evenid = newIdentNode("even4")
+    oddid = newIdentNode("odd4")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  # rewrite the body of proc node.
+  oddForward[6] = newStmtList()
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd5(): untyped =
+  let
+    evenid = genSym(nskProc, "even5")
+    oddid = genSym(nskProc, "odd5")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd6(): untyped =
+  let
+    evenid = genSym(nskProc, "even6")
+    oddid = genSym(nskProc, "odd6")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  # rewrite the body of proc node.
+  oddForward[6] = newStmtList()
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+# it works
+testEvenOdd3()
+
+# it causes an error (redefinition of odd4), which is correct
+assert not compiles testEvenOdd4()
+
+# it caused an error (still forwarded: odd5)
+testEvenOdd5()
+
+# it works, because the forward decl and definition share the symbol and the compiler is forgiving here
+#testEvenOdd6() #Don't test it though, the compiler may become more strict in the future
+
