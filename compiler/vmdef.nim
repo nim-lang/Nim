@@ -262,6 +262,7 @@ type
     graph*: ModuleGraph
     oldErrorCount*: int
     profiler*: Profiler
+    templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
 
   PStackFrame* = ref TStackFrame
   TStackFrame* = object

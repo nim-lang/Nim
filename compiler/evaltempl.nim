@@ -21,7 +21,7 @@ type
                       # new symbol
     config: ConfigRef
     ic: IdentCache
-    gensymHash: int
+    instID: int
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -55,7 +55,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
-          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.gensymHash),
+          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
             if c.instLines: actual.info else: templ.info)
         else:
           result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
@@ -164,10 +164,10 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
     result.add d
     result.add res
     result.typ = res.typ
-import random
+
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
-                   ic: IdentCache;
+                   ic: IdentCache; instID: ref int;
                    fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
@@ -182,7 +182,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.config = conf
   ctx.ic = ic
   initIdTable(ctx.mapping)
-  ctx.gensymHash = rand(0..int.high) #TODO: Wtf
+  ctx.instID = instID[]
 
   let body = tmpl.getBody
   #echo "instantion of ", renderTree(body, {renderIds})
@@ -205,3 +205,5 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
+  # The instID must be unique for every template instantiation, so we increment it here
+  inc instID[]

@@ -472,7 +472,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-  result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
+  result = evalMacroCall(c.module, c.graph, c.templInstCounter, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   if c.config.macrosToExpand.hasKey(sym.name.s):
@@ -599,6 +599,7 @@ proc recoverContext(c: PContext) =
 proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
+  c.templInstCounter = new int
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
   else:
