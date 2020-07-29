@@ -11,7 +11,7 @@
 ## Nim's write tracking. The used algorithm is "union find"
 ## with path compression.
 
-import ast, types, lineinfos, options, msgs
+import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic
 from isolation_check import canAlias
 
@@ -263,8 +263,8 @@ proc traverse(p: var Partitions; n: PNode) =
         let paramType = typ.n[i]
         if not paramType.typ.isCompileTimeOnly and paramType.typ.kind == tyVar:
           var roots: seq[PSym]
-          allRoots(n, roots)
-          for r in roots: potentialMutation(p, r, n.info)
+          allRoots(it, roots)
+          for r in roots: potentialMutation(p, r, it.info)
 
   else:
     for child in n: traverse(p, child)
