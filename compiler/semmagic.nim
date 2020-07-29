@@ -545,6 +545,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let constructed = result[1].typ.base
     if constructed.requiresInit:
       message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  of mPred:
+    if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
+      n[0].sym.magic = mSubU
+    result = n
   else:
     result = n
 
