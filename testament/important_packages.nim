@@ -44,10 +44,10 @@ pkg "msgpack4nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
 # pkg "nico", "", true
-pkg "nicy", "nim c src/nicy.nim"
+# pkg "nicy", "nim c src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim c -r tests/testall.nim"
-pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
+# pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
 pkg "nimes", "nim c src/nimes.nim", true
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
@@ -65,7 +65,7 @@ pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
 pkg "parsetoml"
 pkg "patty"
-pkg "plotly", "nim c --oldgensym:on examples/all.nim", true
+# pkg "plotly", "nim c --oldgensym:on examples/all.nim", true
 pkg "pnm"
 pkg "polypbren"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
