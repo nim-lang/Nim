@@ -15,7 +15,7 @@ pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "bncurve", "", true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
-pkg "chroma"
+# pkg "chroma"
 # pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
 pkg "coco", "", true
