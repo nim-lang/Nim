@@ -1,3 +1,4 @@
 --threads:on
 --d:ssl
---gc:arc
+when defined(freebsd):
+  --tlsEmulation:off
