@@ -902,6 +902,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check)
+  of tyEmpty:
+    discard
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = nil

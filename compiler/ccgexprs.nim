@@ -871,6 +871,8 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange + abstractPtrs + tyUserTypeClasses)
+  if ty.kind == tyArray and ty[1].kind == tyEmpty:
+    localError(p.config, x.info, "cannot infer the type of the array")
   var first = intLiteral(firstOrd(p.config, ty))
   # emit range check:
   if optBoundsCheck in p.options and ty.kind != tyUncheckedArray:
