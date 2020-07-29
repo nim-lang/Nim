@@ -163,6 +163,7 @@ var
                                     ## the non-js target.
 
   checkpoints {.threadvar.}: seq[string]
+  checkResults {.threadvar.}: seq[bool]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
   disabledParamFiltering {.threadvar.}: bool
@@ -499,7 +500,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind contains, shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
+  bind checkResults, shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -525,7 +526,7 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if checkpoints.len > 0:
-        let lastCheckFailed = checkpoints[^1].contains("Check failed:")
+        let lastCheckFailed = checkResults[^1] == false
         if testStatusIMPL == TestStatus.OK and lastCheckFailed:
           testStatusIMPL = TestStatus.FAILED
       if testStatusIMPL == TestStatus.FAILED:
@@ -566,6 +567,7 @@ template fail* =
   ##
   ## outputs "Checkpoint A" before quitting.
   bind ensureInitialized, setProgramResult
+  checkResults[^1] = false
   when declared(testStatusIMPL):
     testStatusIMPL = TestStatus.FAILED
   else:
@@ -670,6 +672,7 @@ macro check*(conditions: untyped): untyped =
     result = quote do:
       block:
         `assigns`
+        checkResults.add true
         if not `check`:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
@@ -686,6 +689,7 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
+      checkResults.add true
       if not `checked`:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
