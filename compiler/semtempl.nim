@@ -145,9 +145,6 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
     illFormedAst(n, c.c.config)
     result = n
 
-template oldCheck(cx: TemplCtx; cond: bool): bool =
-  (optNimV019 notin cx.c.config.globalOptions or cond)
-
 proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
   result = n.kind == nkSym and n.sym.kind == skParam and
            n.sym.owner == c.owner and sfTemplateParam in n.sym.flags
@@ -546,16 +543,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
-      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
+      inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
-      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
+      dec c.noGenSym
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
     if n.len == 2:
-      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
+      inc c.noGenSym
       result[0] = semTemplBody(c, n[0])
-      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
+      dec c.noGenSym
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)

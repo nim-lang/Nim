@@ -54,7 +54,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #if x.kind == skParam and x.owner.kind == skModule:
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
-        if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
+        if sfGenSym in s.flags:
           result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
             if c.instLines: actual.info else: templ.info)
         else:

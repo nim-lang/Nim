@@ -871,8 +871,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandarc":
     expectArg(conf, switch, arg, pass, info)
     conf.arcToExpand[arg] = "T"
-  of "oldgensym":
-    processOnOffSwitchG(conf, {optNimV019}, arg, pass, info)
   of "useversion":
     expectArg(conf, switch, arg, pass, info)
     case arg

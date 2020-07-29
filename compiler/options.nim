@@ -89,7 +89,6 @@ type                          # please make sure we have under 32 options
                               # implementation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
-    optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
