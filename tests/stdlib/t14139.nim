@@ -5,5 +5,5 @@ var test_queue : HeapQueue[int]
 test_queue.push(7)
 test_queue.push(3)
 test_queue.push(9)
-let i = test_queue.pushpop(10) # This will not compile
+let i = test_queue.pushpop(10)
 assert i == 3
