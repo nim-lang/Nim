@@ -133,6 +133,7 @@ type
       sslNoHandshake: bool # True if needs handshake.
       sslHasPeekChar: bool
       sslPeekChar: char
+      sslNoShutdown: bool # True if shutdown shouldn't be done.
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
     sockType: SockType
@@ -173,7 +174,8 @@ when defined(nimHasStyleChecks):
   {.pop.}
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode): void {.gcsafe.}
+                  lastError = (-1).OSErrorCode,
+                  flags: set[SocketFlag] = {}): void {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -722,6 +724,7 @@ when defineSsl:
     socket.sslHandle = SSL_new(socket.sslContext.context)
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
+    socket.sslNoShutdown = false
     if socket.sslHandle == nil:
       raiseSSLError()
 
@@ -818,7 +821,8 @@ proc getSocketError*(socket: Socket): OSErrorCode =
     raiseOSError(result, "No valid socket error code available")
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode) =
+                  lastError = (-1).OSErrorCode,
+                  flags: set[SocketFlag] = {}) =
   ## Raises an OSError based on the error code returned by ``SSL_get_error``
   ## (for SSL sockets) and ``osLastError`` otherwise.
   ##
@@ -826,6 +830,9 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ## error was caused by no data being available to be read.
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.
+  ##
+  ## If ``flags`` contains ``SafeDisconn``, no exception will be raised
+  ## when the error was caused by a peer disconnection.
   when defineSsl:
     if socket.isSsl:
       if err <= 0:
@@ -844,33 +851,39 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL:
-          var errStr = "IO error has occurred "
-          let sslErr = ERR_peek_last_error()
-          if sslErr == 0 and err == 0:
-            errStr.add "because an EOF was observed that violates the protocol"
-          elif sslErr == 0 and err == -1:
-            errStr.add "in the BIO layer"
-          else:
-            let errStr = $ERR_error_string(sslErr, nil)
-            raiseSSLError(errStr & ": " & errStr)
+          # SSL shutdown must not be done if a fatal error occurred.
+          socket.sslNoShutdown = true
           let osErr = osLastError()
-          raiseOSError(osErr, errStr)
+          if not flags.isDisconnectionError(osErr):
+            var errStr = "IO error has occurred "
+            let sslErr = ERR_peek_last_error()
+            if sslErr == 0 and err == 0:
+              errStr.add "because an EOF was observed that violates the protocol"
+            elif sslErr == 0 and err == -1:
+              errStr.add "in the BIO layer"
+            else:
+              let errStr = $ERR_error_string(sslErr, nil)
+              raiseSSLError(errStr & ": " & errStr)
+            raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
+          # SSL shutdown must not be done if a fatal error occurred.
+          socket.sslNoShutdown = true
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
 
   if err == -1 and not (when defineSsl: socket.isSsl else: false):
     var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
-    if async:
-      when useWinVersion:
-        if lastE.int32 == WSAEWOULDBLOCK:
-          return
-        else: raiseOSError(lastE)
-      else:
-        if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
-          return
-        else: raiseOSError(lastE)
-    else: raiseOSError(lastE)
+    if not flags.isDisconnectionError(lastE):
+      if async:
+        when useWinVersion:
+          if lastE.int32 == WSAEWOULDBLOCK:
+            return
+          else: raiseOSError(lastE)
+        else:
+          if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
+            return
+          else: raiseOSError(lastE)
+      else: raiseOSError(lastE)
 
 proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
@@ -1026,7 +1039,7 @@ proc close*(socket: Socket) =
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if SSL_in_init(socket.sslHandle) == 0:
+        if not socket.sslNoShutdown and SSL_in_init(socket.sslHandle) == 0:
           # As we are closing the underlying socket immediately afterwards,
           # it is valid, under the TLS standard, to perform a unidirectional
           # shutdown i.e not wait for the peers "close notify" alert with a second
@@ -1312,9 +1325,9 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   if result < 0:
     data.setLen(0)
     let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError): return
-    socket.socketError(result, lastError = lastError)
-  data.setLen(result)
+    socket.socketError(result, lastError = lastError, flags = flags)
+  else:
+    data.setLen(result)
 
 proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
@@ -1388,8 +1401,9 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
-    socket.socketError(n, lastError = lastError)
+    if flags.isDisconnectionError(lastError):
+      setLen(line.string, 0)
+    socket.socketError(n, lastError = lastError, flags = flags)
 
   var waited: Duration
 
@@ -1520,8 +1534,7 @@ proc send*(socket: Socket, data: string,
   let sent = send(socket, cstring(data), data.len)
   if sent < 0:
     let lastError = osLastError()
-    if flags.isDisconnectionError(lastError): return
-    socketError(socket, lastError = lastError)
+    socketError(socket, lastError = lastError, flags = flags)
 
   if sent != data.len:
     raiseOSError(osLastError(), "Could not send all data.")
