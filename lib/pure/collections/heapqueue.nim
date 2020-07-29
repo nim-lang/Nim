@@ -159,9 +159,9 @@ proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   if heap.len > 0 and heapCmp(heap.data[0], item):
     result = item
     swap(result, heap.data[0])
+    siftup(heap, 0)
   else:
     result = item
-    siftup(heap, 0)
 
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Remove all elements from `heap`, making it empty.
