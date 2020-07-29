@@ -215,21 +215,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      # fix #2670, consider:
-      #
-      # when b:
-      #    var a = "hi"
-      # else:
-      #    var a = 5
-      # echo a
-      #
-      # We need to ensure that both 'a' produce the same gensym'ed symbol.
-      # So we need only check the *current* scope.
-      let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
-      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
-        onUse(n.info, s)
-        replaceIdentBySym(c.c, n, newSymNode(s, n.info))
-      elif n.kind != nkSym:
+      if n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
