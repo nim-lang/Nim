@@ -156,8 +156,9 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
-  if heap.len > 0 and heapCmp(heap[0], item):
-    swap(item, heap[0])
+  var item = item
+  if heap.len > 0 and heapCmp(heap.data[0], item):
+    swap(item, heap.data[0])
     siftup(heap, 0)
   return item
 
