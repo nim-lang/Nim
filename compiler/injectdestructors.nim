@@ -17,7 +17,7 @@ import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
-  cursor_inference
+  varpartitions
 
 from trees import exprStructuralEquivalent, getRoot
 
@@ -1002,7 +1002,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
-  computeCursors(n, g.config)
+  computeCursors(owner, n, g.config)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

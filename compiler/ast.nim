@@ -1841,6 +1841,11 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
+proc skipColon*(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n[1]
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
@@ -1860,6 +1865,10 @@ when false:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
+
+proc hasDisabledAsgn*(t: PType): bool =
+  t.attachedOps[attachedAsgn] != nil and sfError in t.attachedOps[attachedAsgn].flags
+
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 
