@@ -1031,8 +1031,72 @@ proc accept*(server: Socket, client: var owned(Socket),
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-proc close*(socket: Socket) =
+when defined(posix):
+  from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
+    sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
+
+template blockSigpipe(body: untyped): untyped =
+  ## Temporary block SIGPIPE within the provided code block. If SIGPIPE is
+  ## raised for the duration of the code block, it will be queued and will be
+  ## raised once the block ends.
+  ##
+  ## Within the block a `selectSigpipe()` template is provided which can be
+  ## used to remove SIGPIPE from the queue. Note that if SIGPIPE is **not**
+  ## raised at the time of call, it will block until SIGPIPE is raised.
+  ##
+  ## If SIGPIPE has already been blocked at the time of execution, the
+  ## signal mask is left as-is and `selectSigpipe()` will become a no-op.
+  ##
+  ## For convenience, this template is also available for non-POSIX system,
+  ## where `body` will be executed as-is.
+  when not defined(posix):
+    body
+  else:
+    template sigmask(how: cint, set, oset: var Sigset): untyped {.gensym.} =
+      ## Alias for pthread_sigmask or sigprocmask depends on the status
+      ## of --threads flag
+      when compileOption("threads"):
+        pthread_sigmask(how, set, oset)
+      else:
+        sigprocmask(how, set, oset)
+
+    var oldSet, watchSet: Sigset
+    if sigemptyset(oldSet) == -1:
+      raiseOSError(osLastError())
+    if sigemptyset(watchSet) == -1:
+      raiseOSError(osLastError())
+
+    if sigaddset(watchSet, SIGPIPE) == -1:
+      raiseOSError(osLastError(), "Couldn't add SIGPIPE to Sigset")
+
+    if sigmask(SIG_BLOCK, watchSet, oldSet) == -1:
+      raiseOSError(osLastError(), "Couldn't block SIGPIPE")
+
+    let alreadyBlocked = sigismember(oldSet, SIGPIPE) != 1
+
+    template selectSigpipe(): untyped {.used.} =
+      if not alreadyBlocked:
+        var signal: cint
+        let err = sigwait(watchSet, signal)
+        if err != 0:
+          raiseOSError(err.OSErrorCode, "Couldn't select SIGPIPE")
+        assert signal == SIGPIPE
+
+    try:
+      body
+    finally:
+      if not alreadyBlocked:
+        if sigmask(SIG_UNBLOCK, watchSet, oldSet) == -1:
+          raiseOSError(osLastError(), "Couldn't unblock SIGPIPE")
+
+proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
   ## Closes a socket.
+  ##
+  ## If `socket` is an SSL/TLS socket, this proc will also send a closure
+  ## notification to the peer. If `SafeDisconn` is in `flags`, failure to do so
+  ## due to disconnections will be ignored. This is generally safe in
+  ## practice. See
+  ## `here <https://security.stackexchange.com/a/82044>`_ for more details.
   try:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
@@ -1044,12 +1108,33 @@ proc close*(socket: Socket) =
           # it is valid, under the TLS standard, to perform a unidirectional
           # shutdown i.e not wait for the peers "close notify" alert with a second
           # call to SSL_shutdown
-          ErrClearError()
-          let res = SSL_shutdown(socket.sslHandle)
-          if res == 0:
-            discard
-          elif res != 1:
-            socketError(socket, res)
+          blockSigpipe:
+            ErrClearError()
+            let res = SSL_shutdown(socket.sslHandle)
+            if res == 0:
+              discard
+            elif res != 1:
+              let
+                err = osLastError()
+                sslError = SSL_get_error(socket.sslHandle, res)
+
+              # If a close notification is received, failures outside of the
+              # protocol will be returned as SSL_ERROR_ZERO_RETURN instead
+              # of SSL_ERROR_SYSCALL. This fact is deduced by digging into
+              # SSL_get_error() source code.
+              if sslError == SSL_ERROR_ZERO_RETURN or
+                 sslError == SSL_ERROR_SYSCALL:
+                when defined(posix) and not defined(nimdoc):
+                  if err == EPIPE.OSErrorCode:
+                    # Clear the SIGPIPE that's been raised due to
+                    # the disconnection.
+                    selectSigpipe()
+                else:
+                  discard
+                if not flags.isDisconnectionError(err):
+                  socketError(socket, res, lastError = err, flags = flags)
+              else:
+                socketError(socket, res, lastError = err, flags = flags)
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
@@ -1470,7 +1555,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
     var addrLen = sizeof(sockAddress).SockLen
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-    
+
     if result != -1:
       data.setLen(result)
       address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
