@@ -344,6 +344,11 @@ proc deps(c: var Partitions; dest, src: PNode) =
       let vid = variableId(c, dest.sym)
       if vid >= 0:
         analyseAsgn(c, c.s[vid], src)
+        # do not borrow from a different local variable, this is easier
+        # than tracking reassignments, consider 'var cursor = local; local = newNode()'
+        if src.kind == nkSym and (src.sym.kind in {skVar, skResult, skTemp} or
+            (src.sym.kind in {skLet, skParam, skForVar} and hasDisabledAsgn(src.sym.typ))):
+          c.s[vid].flags.incl preventCursor
 
     if hasDestructor(src.typ):
       rhsIsSink(c, src)
@@ -451,7 +456,8 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags == {} and v.sym.kind notin {skParam, skResult} and
-        v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ):
+        v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
+        v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
       if par.s[rid].kind == isRootOf and isMutated in par.graphs[par.s[rid].graphIndex].flags:
         discard "cannot cursor into a graph that is mutated"
