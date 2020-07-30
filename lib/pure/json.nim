@@ -152,7 +152,7 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, macros, parsejson
+  hashes, tables, strutils, lexbase, streams, macros, parsejson, sets
 
 import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
@@ -986,6 +986,8 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var HashSet[T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedSet[T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string)
@@ -1038,6 +1040,18 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add ']'
       initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen orignalJsonPathLen
+
+  proc initFromJson[T](dst: var HashSet[T]; jsonNode: JsonNode; jsonPath: var string) =
+    verifyJsonKind(jsonNode, {JArray}, jsonPath)
+    var s: seq[T]
+    initFromJson(s, jsonNode, jsonPath)
+    dst = s.toHashSet
+
+  proc initFromJson[T](dst: var OrderedSet[T]; jsonNode: JsonNode; jsonPath: var string) =
+    verifyJsonKind(jsonNode, {JArray}, jsonPath)
+    var s: seq[T]
+    initFromJson(s, jsonNode, jsonPath)
+    dst = s.toOrderedSet
 
   proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
