@@ -1124,7 +1124,8 @@ proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
               # SSL_get_error() source code.
               if sslError == SSL_ERROR_ZERO_RETURN or
                  sslError == SSL_ERROR_SYSCALL:
-                when defined(posix) and not defined(nimdoc):
+                when defined(posix) and not defined(macosx) and
+                     not defined(nimdoc):
                   if err == EPIPE.OSErrorCode:
                     # Clear the SIGPIPE that's been raised due to
                     # the disconnection.
