@@ -526,6 +526,8 @@ proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
+  if p.tok.tokType == tkSemiColon:
+    getTok(p)
   withInd(p):
     while true:
       if p.tok.tokType == tkSemiColon:
