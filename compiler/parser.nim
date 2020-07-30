@@ -534,7 +534,6 @@ proc semiStmtList(p: var Parser, result: PNode) =
         break
       elif not (sameInd(p) or realInd(p)):
         parMessage(p, errInvalidIndentation)
-        break
       result.add complexOrSimpleStmt(p)
   dec p.inSemiStmtList
   result.transitionSonsKind(nkStmtListExpr)
