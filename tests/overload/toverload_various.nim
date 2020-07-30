@@ -270,3 +270,108 @@ proc hmac*[A, B](HashType: typedesc, key: openarray[A],
   ctx.init(nil, 0)
 
 sha256.hmac("", "")
+
+
+
+# nested generic types
+block:
+  type
+    Foo[T] = object
+      f: T
+    Bar[T] = object
+      b: T
+    Baz[T] = object
+      z: T
+    FooBar[T] = Foo[Bar[T]]
+    FooBarBaz[T] = FooBar[Baz[T]]
+    #Int = int
+    Int = SomeInteger
+    FooBarBazInt = FooBarBaz[Int]
+    FooBarBazX = FooBarBaz[int]
+
+  proc p00(x: Foo): auto = x.f
+  proc p01[T](x: Foo[T]): auto = x.f
+  proc p02[T:Foo](x: T): auto = x.f
+
+  proc p10(x: FooBar): auto = x.f
+  proc p11[T](x: FooBar[T]): auto = x.f
+  proc p12[T:FooBar](x: T): auto = x.f
+  proc p13(x: Foo[Bar]): auto = x.f
+  proc p14[T](x: Foo[Bar[T]]): auto = x.f
+  proc p15[T:Bar](x: Foo[T]): auto = x.f
+  proc p16[T:Foo[Bar]](x: T): auto = x.f
+
+  proc p20(x: FooBarBaz): auto = x.f
+  proc p21[T](x: FooBarBaz[T]): auto = x.f
+  proc p22[T:FooBarBaz](x: T): auto = x.f
+  proc p23(x: FooBar[Baz]): auto = x.f
+  proc p24[T](x: FooBar[Baz[T]]): auto = x.f
+  proc p25[T:Baz](x: FooBar[T]): auto = x.f
+  proc p26[T:FooBar[Baz]](x: T): auto = x.f
+  proc p27(x: Foo[Bar[Baz]]): auto = x.f
+  proc p28[T](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p29[T:Baz](x: Foo[Bar[T]]): auto = x.f
+  proc p2A[T:Bar[Baz]](x: Foo[T]): auto = x.f
+  proc p2B[T:Foo[Bar[Baz]]](x: T): auto = x.f
+
+  proc p30(x: FooBarBazInt): auto = x.f
+  proc p31[T:FooBarBazInt](x: T): auto = x.f
+  proc p32(x: FooBarBaz[Int]): auto = x.f
+  proc p33[T:Int](x: FooBarBaz[T]): auto = x.f
+  proc p34[T:FooBarBaz[Int]](x: T): auto = x.f
+  proc p35(x: FooBar[Baz[Int]]): auto = x.f
+  proc p36[T:Int](x: FooBar[Baz[T]]): auto = x.f
+  proc p37[T:Baz[Int]](x: FooBar[T]): auto = x.f
+  proc p38[T:FooBar[Baz[Int]]](x: T): auto = x.f
+  proc p39(x: Foo[Bar[Baz[Int]]]): auto = x.f
+  proc p3A[T:Int](x: Foo[Bar[Baz[T]]]): auto = x.f
+  proc p3B[T:Baz[Int]](x: Foo[Bar[T]]): auto = x.f
+  proc p3C[T:Bar[Baz[Int]]](x: Foo[T]): auto = x.f
+  proc p3D[T:Foo[Bar[Baz[Int]]]](x: T): auto = x.f
+
+  template test(x: typed) =
+    let t00 = p00(x)
+    let t01 = p01(x)
+    let t02 = p02(x)
+    let t10 = p10(x)
+    let t11 = p11(x)
+    let t12 = p12(x)
+    #let t13 = p13(x)
+    let t14 = p14(x)
+    #let t15 = p15(x)
+    #let t16 = p16(x)
+    let t20 = p20(x)
+    let t21 = p21(x)
+    let t22 = p22(x)
+    #let t23 = p23(x)
+    let t24 = p24(x)
+    #let t25 = p25(x)
+    #let t26 = p26(x)
+    #let t27 = p27(x)
+    let t28 = p28(x)
+    #let t29 = p29(x)
+    #let t2A = p2A(x)
+    #let t2B = p2B(x)
+    let t30 = p30(x)
+    let t31 = p31(x)
+    let t32 = p32(x)
+    let t33 = p33(x)
+    let t34 = p34(x)
+    let t35 = p35(x)
+    let t36 = p36(x)
+    let t37 = p37(x)
+    let t38 = p38(x)
+    let t39 = p39(x)
+    let t3A = p3A(x)
+    let t3B = p3B(x)
+    let t3C = p3C(x)
+    let t3D = p3D(x)
+
+  var a: Foo[Bar[Baz[int]]]
+  test(a)
+  var b: FooBar[Baz[int]]
+  test(b)
+  var c: FooBarBaz[int]
+  test(c)
+  var d: FooBarBazX
+  test(d)
