@@ -1053,8 +1053,8 @@ template blockSigpipe(body: untyped): untyped =
     body
   else:
     template sigmask(how: cint, set, oset: var Sigset): untyped {.gensym.} =
-      ## Alias for pthread_sigmask or sigprocmask depends on the status
-      ## of --threads flag
+      ## Alias for pthread_sigmask or sigprocmask depending on the status
+      ## of --threads
       when compileOption("threads"):
         pthread_sigmask(how, set, oset)
       else:
@@ -1072,7 +1072,7 @@ template blockSigpipe(body: untyped): untyped =
     if sigmask(SIG_BLOCK, watchSet, oldSet) == -1:
       raiseOSError(osLastError(), "Couldn't block SIGPIPE")
 
-    let alreadyBlocked = sigismember(oldSet, SIGPIPE) != 1
+    let alreadyBlocked = sigismember(oldSet, SIGPIPE) == 1
 
     template selectSigpipe(): untyped {.used.} =
       if not alreadyBlocked:
