@@ -1,7 +1,5 @@
 discard """
-  output: '''empty
-empty
-empty'''
+  output: '''emptyemptyempty'''
   cmd: '''nim c --gc:arc $file'''
 """
 

@@ -22,7 +22,6 @@ type
 
   VarFlag = enum
     ownsData,
-    willEscape,
     preventCursor
 
   VarIndexKind = enum
@@ -44,7 +43,6 @@ type
     flags: set[SubgraphFlag]
 
   Partitions = object
-    symToId: seq[PSym]
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     unanalysableMutation, performCursorInference: bool
@@ -76,7 +74,6 @@ template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
 
 proc registerVariable(c: var Partitions; n: PNode) =
   if n.kind == nkSym:
-    c.symToId.add n.sym
     if isConstParam(n.sym):
       c.s.add VarIndex(kind: isRootOf, graphIndex: c.graphs.len, sym: n.sym)
       c.graphs.add MutationInfo(param: n.sym, mutatedHere: unknownLineInfo,
@@ -84,7 +81,10 @@ proc registerVariable(c: var Partitions; n: PNode) =
     else:
       c.s.add VarIndex(kind: isEmptyRoot, sym: n.sym)
 
-proc variableId(c: Partitions; x: PSym): int {.inline.} = system.find(c.symToId, x)
+proc variableId(c: Partitions; x: PSym): int {.inline.} =
+  for i in 0 ..< c.s.len:
+    if c.s[i].sym == x: return i
+  return -1
 
 proc root(v: var Partitions; start: int): int =
   result = start
@@ -97,7 +97,8 @@ proc root(v: var Partitions; start: int): int =
     var it = start
     while v.s[it].kind == dependsOn:
       let next = v.s[it].parent
-      v.s[it] = VarIndex(kind: dependsOn, parent: result, sym: v.s[it].sym)
+      v.s[it] = VarIndex(kind: dependsOn, parent: result,
+                         sym: v.s[it].sym, flags: v.s[it].flags)
       it = next
 
 proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
@@ -106,7 +107,8 @@ proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
     let r = root(v, id)
     case v.s[r].kind
     of isEmptyRoot:
-      v.s[r] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[r].sym)
+      v.s[r] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len,
+                        sym: v.s[r].sym, flags: v.s[r].flags)
       v.graphs.add MutationInfo(param: if isConstParam(s): s else: nil, mutatedHere: info,
                             connectedVia: unknownLineInfo, flags: {isMutated})
     of isRootOf:
@@ -151,10 +153,10 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
       mutatedHere = gb.mutatedHere
       rbFlags = gb.flags
 
-    v.s[rb] = VarIndex(kind: dependsOn, parent: ra, sym: v.s[rb].sym)
+    v.s[rb] = VarIndex(kind: dependsOn, parent: ra, sym: v.s[rb].sym, flags: v.s[rb].flags)
     case v.s[ra].kind
     of isEmptyRoot:
-      v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[ra].sym)
+      v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[ra].sym, flags: v.s[ra].flags)
       v.graphs.add MutationInfo(param: param, mutatedHere: mutatedHere,
                             connectedVia: info, flags: paramFlags + rbFlags)
     of isRootOf:
@@ -337,7 +339,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
       for s in sources:
         connect(c, t, s, dest.info)
 
-  if c.performCursorInference:
+  if c.performCursorInference and src.kind != nkEmpty:
     if dest.kind == nkSym:
       let vid = variableId(c, dest.sym)
       if vid >= 0:
@@ -425,7 +427,7 @@ proc traverse(c: var Partitions; n: PNode) =
     for child in n: traverse(c, child)
 
 proc mutatesNonVarParameters*(s: PSym; n: PNode; info: var MutationInfo): bool =
-  var par = Partitions()
+  var par = Partitions(performCursorInference: false)
   if s.kind != skMacro:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -435,3 +437,24 @@ proc mutatesNonVarParameters*(s: PSym; n: PNode; info: var MutationInfo): bool =
 
   traverse(par, n)
   result = hasSideEffect(par, info)
+
+proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
+  var par = Partitions(performCursorInference: true)
+  if s.kind notin {skMacro, skModule}:
+    let params = s.typ.n
+    for i in 1..<params.len:
+      registerVariable(par, params[i])
+    if resultPos < s.ast.safeLen:
+      registerVariable(par, s.ast[resultPos])
+
+  traverse(par, n)
+  for i in 0 ..< par.s.len:
+    let v = addr(par.s[i])
+    if v.flags == {} and v.sym.kind notin {skParam, skResult} and
+        v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ):
+      let rid = root(par, i)
+      if par.s[rid].kind == isRootOf and isMutated in par.graphs[par.s[rid].graphIndex].flags:
+        discard "cannot cursor into a graph that is mutated"
+      else:
+        v.sym.flags.incl sfCursor
+        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags

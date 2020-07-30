@@ -29,11 +29,14 @@ result = (
 -- end of expandArc ------------------------
 --expandArc: delete
 
-var saved
-var sibling_cursor = target.parent.left
-`=`(saved, sibling_cursor.right)
-`=`(sibling_cursor.right, saved.left)
-`=sink`(sibling_cursor.parent, saved)
+var
+  sibling
+  saved
+`=`(sibling, target.parent.left)
+`=`(saved, sibling.right)
+`=`(sibling.right, saved.left)
+`=sink`(sibling.parent, saved)
+`=destroy`(sibling)
 -- end of expandArc ------------------------'''
 """
 
