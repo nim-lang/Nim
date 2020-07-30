@@ -75,6 +75,9 @@ export Domain, SockType, Protocol
 const useWinVersion = defined(Windows) or defined(nimdoc)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
+when useWinVersion:
+  from winlean import WSAESHUTDOWN
+
 when defineSsl:
   import openssl
 
@@ -187,6 +190,7 @@ proc isDisconnectionError*(flags: set[SocketFlag],
        lastError.int32 == WSAECONNABORTED or
        lastError.int32 == WSAENETRESET or
        lastError.int32 == WSAEDISCON or
+       lastError.int32 == WSAESHUTDOWN or
        lastError.int32 == ERROR_NETNAME_DELETED)
   else:
     SocketFlag.SafeDisconn in flags and
