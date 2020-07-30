@@ -84,3 +84,7 @@ proc square2(inSeq: seq[float]): seq[float] =
     result[i] = v * v;
   )
 
+proc cstringCheck(tracked: int; n: int) =
+  if true == false and (let a = high(int); let b = high(int);
+      a.int8 == 8 and a.int8 notin {3..9}):
+    echo(tracked, n)
