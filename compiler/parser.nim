@@ -521,12 +521,16 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
   else:
     result = a
 
-proc complexOrSimpleStmt(p: var Parser): PNode
+proc complexOrSimpleStmt(p: var Parser, lenient: static bool = false): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
+    if p.tok.tokType == tkSemiColon:
+      getTok(p)
+    # Be lenient with the first stmt/expr
+    result.add complexOrSimpleStmt(p, lenient = true)
     while true:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
@@ -850,63 +854,15 @@ proc simpleExpr(p: var Parser, mode = pmNormal): PNode =
   when defined(nimpretty):
     dec p.em.doIndentMore
 
+proc parseIfOrWhen(p: var Parser, kind: TNodeKind, lenient: static bool = false): PNode
+
 proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
   #| condExpr = expr colcom expr optInd
   #|         ('elif' expr colcom expr optInd)*
   #|          'else' colcom expr
   #| ifExpr = 'if' condExpr
   #| whenExpr = 'when' condExpr
-  when true:
-    result = newNodeP(kind, p)
-    while true:
-      getTok(p)                 # skip `if`, `when`, `elif`
-      var branch = newNodeP(nkElifExpr, p)
-      optInd(p, branch)
-      branch.add(parseExpr(p))
-      colcom(p, branch)
-      branch.add(parseStmt(p))
-      skipComment(p, branch)
-      result.add(branch)
-      if p.tok.tokType != tkElif: break # or not sameOrNoInd(p): break
-    if p.tok.tokType == tkElse: # and sameOrNoInd(p):
-      var branch = newNodeP(nkElseExpr, p)
-      eat(p, tkElse)
-      colcom(p, branch)
-      branch.add(parseStmt(p))
-      result.add(branch)
-  else:
-    var
-      b: PNode
-      wasIndented = false
-    result = newNodeP(kind, p)
-
-    getTok(p)
-    let branch = newNodeP(nkElifExpr, p)
-    branch.add(parseExpr(p))
-    colcom(p, branch)
-    let oldInd = p.currInd
-    if realInd(p):
-      p.currInd = p.tok.indent
-      wasIndented = true
-    branch.add(parseExpr(p))
-    result.add branch
-    while sameInd(p) or not wasIndented:
-      case p.tok.tokType
-      of tkElif:
-        b = newNodeP(nkElifExpr, p)
-        getTok(p)
-        optInd(p, b)
-        b.add(parseExpr(p))
-      of tkElse:
-        b = newNodeP(nkElseExpr, p)
-        getTok(p)
-      else: break
-      colcom(p, b)
-      b.add(parseStmt(p))
-      result.add(b)
-      if b.kind == nkElseExpr: break
-    if wasIndented:
-      p.currInd = oldInd
+  parseIfOrWhen(p, kind, lenient = true)
 
 proc parsePragma(p: var Parser): PNode =
   #| pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
@@ -1553,7 +1509,7 @@ proc parseReturnOrRaise(p: var Parser, kind: TNodeKind): PNode =
     e = postExprBlocks(p, e)
     result.add(e)
 
-proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
+proc parseIfOrWhen(p: var Parser, kind: TNodeKind, lenient: static bool = false): PNode =
   #| condStmt = expr colcom stmt COMMENT?
   #|            (IND{=} 'elif' expr colcom stmt)*
   #|            (IND{=} 'else' colcom stmt)?
@@ -1569,8 +1525,8 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
     branch.add(parseStmt(p))
     skipComment(p, branch)
     result.add(branch)
-    if p.tok.tokType != tkElif or not sameOrNoInd(p): break
-  if p.tok.tokType == tkElse and sameOrNoInd(p):
+    if not(p.tok.tokType == tkElif and (lenient or sameOrNoInd(p))): break
+  if p.tok.tokType == tkElse and (lenient or sameOrNoInd(p)):
     var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
     colcom(p, branch)
@@ -2189,7 +2145,7 @@ proc simpleStmt(p: var Parser): PNode =
     else: result = p.emptyNode
   if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
-proc complexOrSimpleStmt(p: var Parser): PNode =
+proc complexOrSimpleStmt(p: var Parser, lenient: static bool = false): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
   #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
@@ -2206,7 +2162,7 @@ proc complexOrSimpleStmt(p: var Parser): PNode =
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
-  of tkIf: result = parseIfOrWhen(p, nkIfStmt)
+  of tkIf: result = parseIfOrWhen(p, nkIfStmt, lenient)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=false)

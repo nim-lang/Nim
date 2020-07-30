@@ -143,3 +143,23 @@ proc cstringCheck(tracked: int; n: int) =
   if true == false and (let a = high(int); let b = high(int);
       a.int8 == 8 and a.int8 notin {3..9}):
     echo(tracked, n)
+
+template dim: int =
+  (if int.high == 0:
+    int.high
+  else:
+    int.high)
+
+template dim2: int =
+  (if int.high == 0:
+    int.high
+   else:
+    int.high)
+
+template dim: int =
+  (
+   if int.high == 0:
+     int.high
+   else:
+     int.high)
+
