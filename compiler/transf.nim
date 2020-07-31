@@ -1104,15 +1104,15 @@ proc liftDeferAux(n: PNode) =
         if n.sons[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n.sons[i].info)
           deferPart.add n.sons[i].sons[0]
-          var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
-          var body = newNodeI(n.kind, n.sons[i].info)
+          var tryStmt = newNodeIT(nkTryStmt, n.sons[i].info, n.typ)
+          var body = newNodeIT(n.kind, n.sons[i].info, n.typ)
           if i < last:
             body.sons = n.sons[(i+1)..last]
           tryStmt.addSon(body)
           tryStmt.addSon(deferPart)
           n.sons[i] = tryStmt
           n.sons.setLen(i+1)
-          n.typ = n.sons[i].typ
+          n.typ = tryStmt.typ
           goOn = true
           break
   for i in 0..n.safeLen-1:
