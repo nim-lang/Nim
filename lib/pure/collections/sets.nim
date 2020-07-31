@@ -80,6 +80,8 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
+  SomeSet*[A] = HashSet[A] | OrderedSet[A]
+    ## Type union representing `HashSet` or `OrderedSet`.
 
 const
   defaultInitialSize* = 64
@@ -907,7 +909,41 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
 
+proc fromJsonHook*[A, B](s: var SomeSet[A], jsonNode: B) =
+  ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    var foo: tuple[hs: HashSet[string], os: OrderedSet[string]]
+    fromJson(foo, parseJson("""
+      {"hs": ["hash", "set"], "os": ["ordered", "set"]}"""))
+    assert foo.hs == ["hash", "set"].toHashSet
+    assert foo.os == ["ordered", "set"].toOrderedSet
 
+  mixin jsonTo
+  assert jsonNode.kind == JArray,
+          "The kind of the `jsonNode` must be `JArray`, but its actual " &
+          "type is `" & $jsonNode.kind & "`."
+  clear(s)
+  for v in jsonNode:
+    incl(s, jsonTo(v, A))
+
+proc toJsonHook*[A](s: SomeSet[A]): auto =
+  ## Enables `toJson` for `HashSet` and `OrderedSet` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,SomeSet[A],B>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    let foo = (hs: ["hash"].toHashSet, os: ["ordered", "set"].toOrderedSet)
+    assert $toJson(foo) == """{"hs":["hash"],"os":["ordered","set"]}"""
+
+  mixin newJArray, toJson
+  result = newJArray()
+  for k in s:
+    add(result, toJson(k))
 
 # -----------------------------------------------------------------------
 

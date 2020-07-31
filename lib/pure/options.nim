@@ -372,6 +372,42 @@ proc unsafeGet*[T](self: Option[T]): T {.inline.}=
   assert self.isSome
   self.val
 
+proc fromJsonHook*[T, JN](self: var Option[T], jsonNode: JN) =
+  ## Enables `fromJson` for `Option` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    var opt: Option[string]
+    fromJsonHook(opt, parseJson("\"test\""))
+    assert get(opt) == "test"
+    fromJson(opt, parseJson("null"))
+    assert isNone(opt)
+
+  mixin jsonTo, JNull
+  if jsonNode.kind != JNull:
+    self = some(jsonTo(jsonNode, T))
+  else:
+    self = none[T]()
+
+proc toJsonHook*[T](self: Option[T]): auto =
+  ## Enables `toJson` for `Option` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JN>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    let optSome = some("test")
+    assert $toJson(optSome) == "\"test\""
+    let optNone = none[string]()
+    assert $toJson(optNone) == "null"
+
+  mixin toJson, newJNull
+  if isSome(self):
+    toJson(get(self))
+  else:
+    newJNull()
 
 when isMainModule:
   import unittest, sequtils

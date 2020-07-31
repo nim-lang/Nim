@@ -13,16 +13,11 @@ runnableExamples:
   let j = a.toJson
   doAssert j.jsonTo(type(a)).toJson == j
 
-import std/[json,tables,strutils]
+import std/[json,strutils]
 
 #[
-xxx
-use toJsonHook,fromJsonHook for Table|OrderedTable
-add Options support also using toJsonHook,fromJsonHook and remove `json=>options` dependency
-
 Future directions:
 add a way to customize serialization, for eg:
-* allowing missing or extra fields in JsonNode
 * field renaming
 * allow serializing `enum` and `char` as `string` instead of `int`
   (enum is more compact/efficient, and robust to enum renamings, but string
@@ -31,6 +26,17 @@ add a way to customize serialization, for eg:
 ]#
 
 import std/macros
+
+type
+  Joptions* = object
+    ## Options controlling the behavior of `fromJson`.
+    allowExtraKeys*: bool
+      ## If `true` Nim's object to which the JSON is parsed is not required to
+      ## have a field for every JSON key.
+    allowMissingKeys*: bool
+      ## If `true` Nim's object to which JSON is parsed is allowed to have
+      ## fields without corresponding JSON keys.
+    # in future work: a key rename could be added
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
@@ -58,11 +64,11 @@ macro getDiscriminants(a: typedesc): seq[string] =
     result = quote do:
       seq[string].default
 
-macro initCaseObject(a: typedesc, fun: untyped): untyped =
+macro initCaseObject(T: typedesc, fun: untyped): untyped =
   ## does the minimum to construct a valid case object, only initializing
   ## the discriminant fields; see also `getDiscriminants`
   # maybe candidate for std/typetraits
-  var a = a.getTypeImpl
+  var a = T.getTypeImpl
   doAssert a.kind == nnkBracketExpr
   let sym = a[1]
   let t = sym.getTypeImpl
@@ -92,20 +98,80 @@ proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
 template checkJson(cond: untyped, msg = "") =
   checkJsonImpl(cond, astToStr(cond), msg)
 
-template fromJsonFields(a, b, T, keys) =
-  checkJson b.kind == JObject, $(b.kind) # we could customize whether to allow JNull
-  var num = 0
-  for key, val in fieldPairs(a):
-    num.inc
-    when key notin keys:
-      if b.hasKey key:
-        fromJson(val, b[key])
-      else:
-        # we could customize to allow this
-        checkJson false, $($T, key, b)
-  checkJson b.len == num, $(b.len, num, $T, b) # could customize
+proc hasField[T](obj: T, field: string): bool =
+  for k, _ in fieldPairs(obj):
+    if k == field:
+      return true
+  return false
 
-proc fromJson*[T](a: var T, b: JsonNode) =
+macro accessField(obj: typed, name: static string): untyped = 
+  newDotExpr(obj, ident(name))
+
+template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
+  type T = typeof(newObj)
+  # we could customize whether to allow JNull
+  checkJson json.kind == JObject, $json.kind
+  var num, numMatched = 0
+  for key, val in fieldPairs(newObj):
+    num.inc
+    when key notin discKeys:
+      if json.hasKey key:
+        numMatched.inc
+        fromJson(val, json[key])
+      elif opt.allowMissingKeys:
+        # if there are no discriminant keys the `oldObj` must always have the
+        # same keys as the new one. Otherwise we must check, because they could
+        # be set to different branches.
+        if discKeys.len == 0 or hasField(oldObj, key):
+          val = accessField(oldObj, key)
+      else:
+        checkJson false, $($T, key, json)
+    else:
+      if json.hasKey key:
+        numMatched.inc
+
+  let ok =
+    if opt.allowExtraKeys and opt.allowMissingKeys:
+      true
+    elif opt.allowExtraKeys:
+      # This check is redundant because if here missing keys are not allowed,
+      # and if `num != numMatched` it will fail in the loop above but it is left
+      # for clarity.
+      assert num == numMatched
+      num == numMatched
+    elif opt.allowMissingKeys:
+      json.len == numMatched
+    else:
+      json.len == num and num == numMatched
+  
+  checkJson ok, $(json.len, num, numMatched, $T, json)
+
+proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
+
+proc discKeyMatch[T](obj: T, json: JsonNode, key: static string): bool =
+  if not json.hasKey key:
+    return true
+  let field = accessField(obj, key)
+  var jsonVal: typeof(field)
+  fromJson(jsonVal, json[key])
+  if jsonVal != field:
+    return false
+  return true
+
+macro discKeysMatchBodyGen(obj: typed, json: JsonNode,
+                           keys: static seq[string]): untyped =
+  result = newStmtList()
+  let r = ident("result")
+  for key in keys:
+    let keyLit = newLit key
+    result.add quote do:
+      `r` = `r` and discKeyMatch(`obj`, `json`, `keyLit`)
+
+proc discKeysMatch[T](obj: T, json: JsonNode, keys: static seq[string]): bool =
+  result = true
+  discKeysMatchBodyGen(obj, json, keys)
+
+proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   ## inplace version of `jsonTo`
   #[
   adding "json path" leading to `b` can be added in future work.
@@ -113,10 +179,6 @@ proc fromJson*[T](a: var T, b: JsonNode) =
   checkJson b != nil, $($T, b)
   when compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
   elif T is bool: a = to(b,T)
-  elif T is Table | OrderedTable:
-    a.clear
-    for k,v in b:
-      a[k] = jsonTo(v, typeof(a[k]))
   elif T is enum:
     case b.kind
     of JInt: a = T(b.getBiggestInt())
@@ -149,13 +211,25 @@ proc fromJson*[T](a: var T, b: JsonNode) =
       fromJson(a[i], val)
   elif T is object:
     template fun(key, typ): untyped =
-      jsonTo(b[key], typ)
-    a = initCaseObject(T, fun)
+      if b.hasKey key:
+        jsonTo(b[key], typ)
+      elif hasField(a, key):
+        accessField(a, key)
+      else:
+        default(typ)
     const keys = getDiscriminants(T)
-    fromJsonFields(a, b, T, keys)
+    when keys.len == 0:
+      fromJsonFields(a, a, b, keys, opt)
+    else:
+      if discKeysMatch(a, b, keys):
+        fromJsonFields(a, a, b, keys, opt)
+      else:
+        var newObj = initCaseObject(T, fun)
+        fromJsonFields(newObj, a, b, keys, opt)
+        a = newObj
   elif T is tuple:
     when isNamedTuple(T):
-      fromJsonFields(a, b, T, seq[string].default)
+      fromJsonFields(a, a, b, seq[string].default, opt)
     else:
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
       var i = 0
@@ -175,9 +249,6 @@ proc toJson*[T](a: T): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
-  elif T is Table | OrderedTable:
-    result = newJObject()
-    for k, v in pairs(a): result[k] = toJson(v)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()

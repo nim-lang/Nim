@@ -1750,9 +1750,44 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
     yield t.data[h].val
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
+proc fromJsonHook*[K, V, JN](t: var (Table[K, V] | OrderedTable[K, V]),
+                             jsonNode: JN) =
+  ## Enables `fromJson` for `Table` and `OrderedTable` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,(Table[K,V]|OrderedTable[K,V])>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
+    fromJson(foo, parseJson("""
+      {"t":{"two":2,"one":1},"ot":{"one":1,"three":3}}"""))
+    assert foo.t == [("one", 1), ("two", 2)].toTable
+    assert foo.ot == [("one", 1), ("three", 3)].toOrderedTable
 
+  mixin jsonTo
+  assert jsonNode.kind == JObject,
+          "The kind of the `jsonNode` must be `JObject`, but its actual " &
+          "type is `" & $jsonNode.kind & "`."
+  clear(t)
+  for k, v in jsonNode:
+    t[k] = jsonTo(v, V)
 
+proc toJsonHook*[K, V](t: (Table[K, V] | OrderedTable[K, V])): auto =
+  ## Enables `toJson` for `Table` and `OrderedTable` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,(Table[K,V]|OrderedTable[K,V]),JN>`_
+  runnableExamples:
+    import std/[json, jsonutils]
+    let foo = (
+      t: [("two", 2)].toTable,
+      ot: [("one", 1), ("three", 3)].toOrderedTable)
+    assert $toJson(foo) == """{"t":{"two":2},"ot":{"one":1,"three":3}}"""
 
+  mixin newJObject, toJson
+  result = newJObject()
+  for k, v in pairs(t):
+    result[k] = toJson(v)
 
 # ---------------------------------------------------------------------------
 # --------------------------- OrderedTableRef -------------------------------
