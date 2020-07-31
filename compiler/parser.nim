@@ -527,14 +527,12 @@ proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
-    if p.tok.tokType == tkSemiColon:
-      getTok(p)
     # Be lenient with the first stmt/expr
     result.add complexOrSimpleStmt(p, maybeExpr = true)
     while true:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
-      if p.tok.tokType in {tkCurlyRi, tkParRi, tkCurlyDotRi, tkBracketRi}:
+      if p.tok.tokType == tkParRi:
         break
       elif not (sameInd(p) or realInd(p)):
         parMessage(p, errInvalidIndentation)
