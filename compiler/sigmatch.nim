@@ -1510,18 +1510,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
-    elif x.kind == tyGenericInst and isGenericSubtype(c, x, f, depth, f) and
-          (x.len - 1 == f.len):
-      # do not recurse here in order to not K bind twice for this code:
-      #
-      # type
-      #   BaseFruit[T] = object of RootObj
-      #   Banana[T] = object of BaseFruit[uint32] # Concrete type here, not T!
-      # proc setColor[K](self: var BaseFruit[K])
-      # var x: Banana[float64]
-      # x.setColor()
-      c.inheritancePenalty += depth
-      result = isGeneric
     else:
       let genericBody = f[0]
       var askip = skippedNone
