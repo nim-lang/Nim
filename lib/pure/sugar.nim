@@ -201,7 +201,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   ##     for j in 7..9:
   ##       if i * j == 42:
   ##         capture i, j:
-  ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
+  ##           myClosure = proc () = echo fmt"{i} * {j} == 42"
   ##   myClosure() # output: 6 * 7 == 42
   ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
   ##   var l = m.mapIt(capture(it, proc (s: string): string = it(s)))
