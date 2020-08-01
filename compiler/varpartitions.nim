@@ -9,6 +9,8 @@
 
 ## Partition variables into different graphs. Used for
 ## Nim's write tracking and also for the cursor inference.
+## The algorithm is a reinvention / variation of Steensgaard's
+## algorithm.
 ## The used algorithm is "union find" with path compression.
 
 import ast, types, lineinfos, options, msgs, renderer
