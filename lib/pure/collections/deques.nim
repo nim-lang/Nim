@@ -87,7 +87,7 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
 proc initDeque*[T](s: seq[T]): Deque[T] =
   ## Create a new deque initialized with a sequence
   result = initDeque[T]()
-  for i in 0..< s.len:
+  for i in 0 ..< s.len:
     result.addLast(s[i])
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
