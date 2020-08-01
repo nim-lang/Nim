@@ -143,6 +143,8 @@
   `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
 
+- Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
+
 
 ## Language changes
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
