@@ -826,6 +826,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
       case op[i].kind
       of tySink:
         checkForSink(tracked.config, tracked.owner, n[i])
+      of tyVar:
+        tracked.hasDangerousAssign = true
       #of tyOut:
       # consider this case: p(out x, x); we want to remark that 'x' is not
       # initialized until after the call. Since we do this after we analysed the
