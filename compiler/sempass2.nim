@@ -799,6 +799,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
 
     # check required for 'nim check':
     if n[1].typ.len > 0:
+      createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
       createTypeBoundOps(tracked, n[1].typ, n.info)
       # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
