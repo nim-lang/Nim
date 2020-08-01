@@ -2,8 +2,9 @@ discard """
   output: '''(repo: "", package: "meo", ext: "")
 doing shady stuff...
 3
-6'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --hint:Performance:off $file'''
+6
+(@[1], @[2])'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -37,6 +38,44 @@ var
 `=`(sibling.right, saved.left)
 `=sink`(sibling.parent, saved)
 `=destroy`(sibling)
+-- end of expandArc ------------------------
+--expandArc: p1
+
+var
+  lresult
+  lvalue
+  _
+`=`(lresult, [123])
+var lnext_cursor: string
+_ = (
+  let blitTmp = lresult
+  blitTmp, ";")
+lvalue = _[0]
+lnext_cursor = _[1]
+`=sink`(result.value, lvalue)
+-- end of expandArc ------------------------
+--expandArc: tt
+
+var
+  a
+  :tmpD
+  :tmpD_1
+  :tmpD_2
+try:
+  var it_cursor = x
+  a = (
+    wasMoved(:tmpD)
+    `=`(:tmpD, it_cursor.key)
+    :tmpD,
+    wasMoved(:tmpD_1)
+    `=`(:tmpD_1, it_cursor.val)
+    :tmpD_1)
+  echo [
+    :tmpD_2 = `$`(a)
+    :tmpD_2]
+finally:
+  `=destroy`(:tmpD_2)
+  `=destroy_1`(a)
 -- end of expandArc ------------------------'''
 """
 
@@ -98,3 +137,37 @@ proc main =
   echo five.right.value
 
 main()
+
+type
+  Maybe = object
+    value: seq[int]
+
+proc p1(): Maybe =
+  let lresult = @[123]
+  var lvalue: seq[int]
+  var lnext: string
+  (lvalue, lnext) = (lresult, ";")
+
+  result.value = lvalue
+
+proc tissue15130 =
+  doAssert p1().value == @[123]
+
+tissue15130()
+
+type
+  KeyValue = tuple[key, val: seq[int]]
+
+proc tt(x: KeyValue) =
+  var it = x
+  let a = (it.key, it.val)
+  echo a
+
+proc encodedQuery =
+  var query: seq[KeyValue]
+  query.add (key: @[1], val: @[2])
+
+  for elem in query:
+    elem.tt()
+
+encodedQuery()
