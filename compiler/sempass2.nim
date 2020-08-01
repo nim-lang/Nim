@@ -843,7 +843,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
       tracked.owner.flags.incl sfInjectDestructors
       # bug #15038: ensure consistency
-      if not hasDestructor(n.typ): n.typ = n.sym.typ
+      if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
     if n[0].kind == nkSym and isLocalVar(tracked, n[0].sym):
       useVarNoInitCheck(tracked, n[0], n[0].sym)
