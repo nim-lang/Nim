@@ -253,7 +253,7 @@ when defined(windows) or defined(nimdoc):
 
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
-      handles: HashSet[AsyncFD]
+      handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
 
     CustomObj = object of OVERLAPPED
       data*: CompletionData
