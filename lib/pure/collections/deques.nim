@@ -84,6 +84,12 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## The length of a newly created deque will still be 0.
   result.initImpl(initialSize)
 
+proc initDeque*[T](s: seq[T]): Deque[T] =
+  ## Create a new deque initialized with a sequence
+  result = initDeque[T]()
+  for i in 0..< s.len:
+    result.addLast(s[i])
+
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
   result = deq.count
