@@ -48,7 +48,7 @@ type
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     unanalysableMutation, performCursorInference: bool
-    inAsgnSource: int
+    inAsgnSource, inConstructor: int
 
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
@@ -264,8 +264,10 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
       dest.flags.incl ownsData
 
   of nkCurly, nkBracket, nkPar, nkTupleConstr:
+    inc c.inConstructor
     for son in n:
       analyseAsgn(c, dest, son)
+    dec c.inConstructor
     if n.typ.skipTypes(abstractInst).kind == tySequence:
       # you must destroy a sequence:
       dest.flags.incl ownsData
@@ -278,6 +280,8 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
       else:
         # otherwise it's just a dependency, nothing to worry about:
         connect(c, dest.sym, n.sym, n.info)
+        # but a construct like ``[symbol]`` is dangerous:
+        if c.inConstructor > 0: dest.flags.incl ownsData
 
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
