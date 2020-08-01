@@ -1953,7 +1953,7 @@ proc parseObjectPart(p: var TParser): PNode =
         else:
           parMessage(p, errIdentifierExpected, p.tok)
           break
-  else:
+  elif sameOrNoInd(p):
     case p.tok.tokType
     of tkWhen:
       result = parseObjectWhen(p)
@@ -1968,6 +1968,8 @@ proc parseObjectPart(p: var TParser): PNode =
       getTok(p)
     else:
       result = p.emptyNode
+  else:
+    result = p.emptyNode
 
 proc parseObject(p: var TParser): PNode =
   #| object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
