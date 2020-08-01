@@ -319,3 +319,31 @@ proc createMachine =
     echo machine.factory().hello
 
 createMachine()
+
+# bug #15122
+
+import tables
+
+type
+  BENodeKind = enum
+    tkBytes,
+    tkList,
+    tkDict
+
+  BENode = object
+    case kind: BENodeKind
+    of tkBytes: strVal: string
+    of tkList: listVal: seq[BENode]
+    of tkDict: dictVal: Table[string, BENode]
+
+var data = {
+  "examples": {
+    "values": BENode(
+      kind: tkList,
+      listVal: @[BENode(kind: tkBytes, strVal: "test")]
+    )
+  }.toTable()
+}.toTable()
+
+# For ARC listVal is empty for some reason
+doAssert data["examples"]["values"].listVal[0].strVal == "test"

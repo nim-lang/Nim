@@ -232,7 +232,7 @@ proc enlarge(t: StringTableRef) =
   swap(t.data, n)
 
 proc `[]=`*(t: StringTableRef, key, val: string) {.
-  rtlFunc, extern: "nstPut", noSideEffect.} =
+  rtlFunc, extern: "nstPut".} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
