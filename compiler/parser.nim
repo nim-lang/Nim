@@ -521,7 +521,7 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
   else:
     result = a
 
-proc complexOrSimpleStmt(p: var Parser, maybeExpr: static bool = false): PNode
+proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
@@ -1499,7 +1499,7 @@ proc parseReturnOrRaise(p: var Parser, kind: TNodeKind): PNode =
     e = postExprBlocks(p, e)
     result.add(e)
 
-proc parseIfOrWhen(p: var Parser, kind: TNodeKind, maybeExpr: static bool = false): PNode =
+proc parseIfOrWhen(p: var Parser, kind: TNodeKind, maybeExpr = false): PNode =
   #| condStmt = expr colcom stmt COMMENT?
   #|            (IND{=} 'elif' expr colcom stmt)*
   #|            (IND{=} 'else' colcom stmt)?
@@ -2143,7 +2143,7 @@ proc simpleStmt(p: var Parser): PNode =
     else: result = p.emptyNode
   if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
-proc complexOrSimpleStmt(p: var Parser, maybeExpr: static bool = false): PNode =
+proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
   #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
