@@ -409,7 +409,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   var copy = data
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
-    copyMem(buffer, cast[cstring](copy), data.len)
+    copyMem(buffer, copy.cstring, data.len)
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
