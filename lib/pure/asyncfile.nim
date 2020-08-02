@@ -409,7 +409,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   var copy = data
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
-    copyMem(buffer, copy.cstring, data.len)
+    copyMem(buffer, cast[cstring](copy), data.len)
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
@@ -454,8 +454,14 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
     proc cb(fd: AsyncFD): bool =
       result = true
+
       let remainderSize = data.len-written
-      let res = write(fd.cint, addr copy[written], remainderSize.cint)
+      let res =
+        if written == 0:
+          write(fd.cint, cast[cstring](copy), remainderSize.cint)
+        else:
+          write(fd.cint, addr copy[written], remainderSize.cint)
+
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:
