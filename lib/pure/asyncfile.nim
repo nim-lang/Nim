@@ -379,7 +379,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
 
     proc cb(fd: AsyncFD): bool =
       result = true
-      let remainderSize = size-written
+      let remainderSize = size - written
       var cbuf = cast[cstring](buf)
       let res = write(fd.cint, addr cbuf[written], remainderSize.cint)
       if res < 0:
@@ -455,11 +455,11 @@ proc write*(f: AsyncFile, data: string): Future[void] =
     proc cb(fd: AsyncFD): bool =
       result = true
 
-      let remainderSize = data.len-written
+      let remainderSize = data.len - written
 
       let res =
         if data.len == 0:
-          0
+          write(fd.cint, copy.cstring, remainderSize.cint)
         else:
           write(fd.cint, addr copy[written], remainderSize.cint)
 
