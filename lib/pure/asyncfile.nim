@@ -459,7 +459,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
       let res =
         if data.len == 0:
-          write(fd.cint, copy.cstring, remainderSize.cint)
+          write(fd.cint, copy.cstring, 0)
         else:
           write(fd.cint, addr copy[written], remainderSize.cint)
 
