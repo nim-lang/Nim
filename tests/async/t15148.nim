@@ -5,7 +5,7 @@ const filename = "t15148.txt"
 proc saveEmpty() {.async.} =
   let
     text = ""
-    file = open_async(filename, fmWrite)
+    file = openAsync(filename, fmWrite)
   await file.write(text)
   file.close()
 
