@@ -86,7 +86,7 @@ template wrap2svoid(op, modop) {.dirty.} =
 
 template wrapDangerous(op, modop) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+    if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
       discard
     else:
       op(getString(a, 0), getString(a, 1))
