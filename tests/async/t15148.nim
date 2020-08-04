@@ -10,5 +10,3 @@ proc saveEmpty() {.async.} =
   file.close()
 
 waitFor saveEmpty()
-
-doAssert fileExists(Filename)
