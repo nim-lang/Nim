@@ -159,7 +159,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if it.len == 2:
       openScope(c)
       it[0] = forceBool(c, semExprWithType(c, it[0]))
-      it[1] = semExprBranch(c, it[1])
+      it[1] = semExprBranch(c, it[1], flags)
       typ = commonType(typ, it[1])
       closeScope(c)
     elif it.len == 1:
