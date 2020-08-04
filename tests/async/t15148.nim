@@ -1,14 +1,14 @@
 import asyncdispatch, asyncfile, os
 
-const filename = "t15148.txt"
+const Filename = "t15148.txt"
 
 proc saveEmpty() {.async.} =
   let
     text = ""
-    file = openAsync(filename, fmWrite)
+    file = openAsync(Filename, fmWrite)
   await file.write(text)
   file.close()
 
 waitFor saveEmpty()
 
-doAssert fileExists(filename)
+doAssert fileExists(Filename)
