@@ -290,7 +290,7 @@ else:
       skey.ident = pident
       skey.events = pevents
       skey.param = pparam
-      skey.data = data
+      skey.data = pdata
 
   when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
