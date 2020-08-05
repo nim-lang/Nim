@@ -730,7 +730,7 @@ proc SQLExtendedFetch*(hstmt: SqlHStmt, fFetchType: SqlUSmallInt,
     importc.}
 proc SQLGetData*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                  TargetType: TSqlSmallInt, TargetValue: SqlPointer,
-                 BufferLength: TSqlInteger, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
+                 BufferLength: TSqlLen, StrLen_or_Ind: ptr TSqlLen): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetStmtAttr*(StatementHandle: SqlHStmt, Attribute: TSqlInteger,
                      Value: SqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
