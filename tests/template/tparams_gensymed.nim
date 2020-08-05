@@ -336,3 +336,24 @@ test(hello):
 var data = 5
 
 hello(data)
+
+# bug #5691
+
+template bar(x: typed) = discard
+macro barry(x: typed) = discard
+
+bar:
+  var a = 10
+
+barry:
+  var a = 20
+
+var a = 30
+
+# template bar(x: static int) = discard
+#You may think that this should work:
+# bar((var c = 1; echo "hey"; c))
+# echo c
+#But it must not! Since this would be incorrect:
+# bar((var b = 3; const c = 1; echo "hey"; c))
+# echo b # <- b wouldn't exist

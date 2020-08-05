@@ -94,10 +94,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
-        #if sym.name.s == "==" and (n.info ?? "temp3"):
-        #  echo typeToString(sym.typ)
-        #  writeMatches(z)
-
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator: inc(z.exactMatches, 200)
         case best.state
@@ -557,6 +553,10 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode {.nosinks.} =
+  # Backup the scope, because macro and template arguments may not introduce new symbols
+  var oldScope: TScope = c.currentScope[]
+  oldScope.symbols.data = newSeq[PSym](c.currentScope.symbols.data.len)
+  for i, s in c.currentScope.symbols.data: oldScope.symbols.data[i] = s
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -595,6 +595,9 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
+  if result != nil and result[0].sym.kind in {skTemplate, skMacro}:
+    # Restore the original scope
+    c.currentScope[] = oldScope
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
