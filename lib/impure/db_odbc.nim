@@ -321,7 +321,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095,sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
@@ -388,7 +388,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095,sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
