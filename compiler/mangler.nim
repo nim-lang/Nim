@@ -323,8 +323,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  when true: # just to irritate the god of minimal debugging output
-    if startsWith(conflict.name, "fubar"):
+  when false: # just to irritate the god of minimal debugging output
+    if startsWith(conflict.name, "rand"):
       debug s
       when m is BModule:
         echo "module $4 >> $1 .. $2 -> $3" %
