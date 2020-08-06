@@ -122,8 +122,9 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
         # if there are no discriminant keys the `oldObj` must always have the
         # same keys as the new one. Otherwise we must check, because they could
         # be set to different branches.
-        if discKeys.len == 0 or hasField(oldObj, key):
-          val = accessField(oldObj, key)
+        when typeof(oldObj) isnot typeof(nil):
+          if discKeys.len == 0 or hasField(oldObj, key):
+            val = accessField(oldObj, key)
       else:
         checkJson false, $($T, key, json)
     else:
@@ -219,17 +220,17 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
         default(typ)
     const keys = getDiscriminants(T)
     when keys.len == 0:
-      fromJsonFields(a, a, b, keys, opt)
+      fromJsonFields(a, nil, b, keys, opt)
     else:
       if discKeysMatch(a, b, keys):
-        fromJsonFields(a, a, b, keys, opt)
+        fromJsonFields(a, nil, b, keys, opt)
       else:
         var newObj = initCaseObject(T, fun)
         fromJsonFields(newObj, a, b, keys, opt)
         a = newObj
   elif T is tuple:
     when isNamedTuple(T):
-      fromJsonFields(a, a, b, seq[string].default, opt)
+      fromJsonFields(a, nil, b, seq[string].default, opt)
     else:
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
       var i = 0
