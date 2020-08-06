@@ -112,10 +112,13 @@ proc shouldAppendModuleName(s: PSym): bool =
   if s.hasImmutableName:
     return false
   case s.kind
-  of skLocalVars + {skModule, skPackage, skTemp}:
+  of skForVar, skParam, skResult, skModule, skPackage, skTemp:
     result = false
   else:
     if s.owner == nil or s.owner.kind in {skModule, skPackage}:
+      # the symbol is top-level; add the module name
+      result = true
+    elif sfGlobal in s.flags:
       # the symbol is top-level; add the module name
       result = true
     elif s.kind in routineKinds:
