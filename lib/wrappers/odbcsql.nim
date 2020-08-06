@@ -718,14 +718,14 @@ proc SQLNumResultCols*(StatementHandle: SqlHStmt, ColumnCount: var TSqlSmallInt)
 proc SQLDescribeCol*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                      ColumnName: PSQLCHAR, BufferLength: TSqlSmallInt,
                      NameLength: var TSqlSmallInt, DataType: var TSqlSmallInt,
-                     ColumnSize: var TSQLULEN,
+                     ColumnSize: var TSqlULen,
                      DecimalDigits: var TSqlSmallInt, Nullable: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLFetchScroll*(StatementHandle: SqlHStmt, FetchOrientation: TSqlSmallInt,
-                     FetchOffset: TSqlInteger): TSqlSmallInt{.dynlib: odbclib,
+                     FetchOffset: TSqlLen): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLExtendedFetch*(hstmt: SqlHStmt, fFetchType: SqlUSmallInt,
-                       irow: TSqlInteger, pcrow: var TSQLULEN,
+                       irow: TSqlLen, pcrow: var TSqlULen,
                        rgfRowStatus: PSQLUSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLGetData*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
