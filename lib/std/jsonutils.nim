@@ -23,6 +23,8 @@ add a way to customize serialization, for eg:
   (enum is more compact/efficient, and robust to enum renamings, but string
   is more human readable)
 * handle cyclic references, using a cache of already visited addresses
+* implement support for serialization and de-serialization of nested variant
+  objects.
 ]#
 
 import std/macros

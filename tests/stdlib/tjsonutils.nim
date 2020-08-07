@@ -264,5 +264,34 @@ template fn() =
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
+    when false:
+      ## TODO: Implement support for nested variant objects allowing the tests
+      ## bellow to pass.
+      block testNestedVariantObjects:
+        type
+          Variant = object
+            case b: bool
+            of false:
+              case bf: bool
+              of false: bff: int
+              of true: bft: float
+            of true:
+              case bt: bool
+              of false: btf: string
+              of true: btt: char
+
+        testRoundtrip(Variant(b: false, bf: false, bff: 42)):
+          """{"b": false, "bf": false, "bff": 42}"""
+        testRoundtrip(Variant(b: false, bf: true, bft: 3.14159)):
+          """{"b": false, "bf": true, "bft": 3.14159}"""
+        testRoundtrip(Variant(b: true, bt: false, btf: "test")):
+          """{"b": true, "bt": false, "btf": "test"}"""
+        testRoundtrip(Variant(b: true, bt: true, btt: 'c')):
+          """{"b": true, "bt": true, "btt": "c"}"""
+        
+        # TODO: Add additional tests with missing and extra JSON keys, both when
+        # allowed and forbidden analogous to the tests for the not nested
+        # variant objects.
+
 static: fn()
 fn()
