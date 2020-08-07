@@ -279,7 +279,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
   ## Rows are retrieved from the server at each iteration.
   var
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -293,8 +293,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       yield rowRes
       res = SQLFetch(db.stmt)
@@ -308,7 +307,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
   ## on demand using []. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -322,8 +321,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
@@ -349,7 +347,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
   ## will return a Row with empty strings for each column.
   var
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -362,8 +360,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     for colId in 1..cCnt:
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                               sz.addr))
+                               cast[cstring](buf.addr), 4095, sz.addr))
       rowRes[colId-1] = $(addr buf)
     res = SQLFetch(db.stmt)
     result = rowRes
@@ -377,7 +374,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
   var
     rows: seq[Row] = @[]
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -391,8 +388,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
