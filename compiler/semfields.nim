@@ -23,7 +23,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     result = newNode(nkEmpty)
     return
   case n.kind
-  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
+  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = copyNode(n)
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)
@@ -53,8 +53,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     if n.kind == nkContinueStmt:
       localError(c.c.config, n.info,
                  "'continue' not supported in a 'fields' loop")
-    result = copyNode(n)
-    newSons(result, len(n))
+    result = shallowCopy(n)
     for i in 0 ..< len(n):
       result.sons[i] = instFieldLoopBody(c, n.sons[i], forLoop)
 
