@@ -247,7 +247,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
 proc wordToCallConv(sw: TSpecialWord): TCallingConvention =
   # this assumes that the order of special words and calling conventions is
   # the same
-  result = TCallingConvention(ord(ccDefault) + ord(sw) - ord(wNimcall))
+  TCallingConvention(ord(ccNimCall) + ord(sw) - ord(wNimcall))
 
 proc isTurnedOn(c: PContext, n: PNode): bool =
   if n.kind in nkPragmaCallKinds and n.len == 2:
@@ -326,7 +326,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
     # a calling convention that doesn't introduce custom name mangling
     # cdecl is the default - the user can override this explicitly
     if sym.kind in routineKinds and sym.typ != nil and
-        sym.typ.callConv == ccDefault:
+        sym.typ.callConv == ccImplicit:
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
@@ -978,7 +978,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfProcvar)
         if sym.typ != nil:
           incl(sym.typ.flags, tfThread)
-          if sym.typ.callConv == ccClosure: sym.typ.callConv = ccDefault
+          if sym.typ.callConv == ccClosure: sym.typ.callConv = ccNimCall
       of wGcSafe:
         noVal(c, it)
         if sym != nil:
