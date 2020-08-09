@@ -1301,6 +1301,9 @@ array constructor ``[]``. The element type of this array expression is
 inferred from the type of the first element. All other elements need to be
 implicitly convertible to this type.
 
+An array type can be defined using the `array[size, T]` syntax, or using
+`array[lo..hi, T]` for arrays that start at an index other than zero.
+
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
 allocating pieces of memory as items are added. A sequence ``S`` is always
