@@ -177,6 +177,10 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     else:
       mangle(p, typ.sym)
 
+  if result in ["pro_5835056", "pro_5831024"]:
+    writeStackTrace()
+    debug(typ)
+
 template maybeAppendCounter(result: typed; count: int) =
   if count > 0:
     result.add "_"
@@ -306,13 +310,21 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
     # in the event a global symbol is actually foreign to `p`
     if sfGlobal in s.flags:
       var parent = findPendingModule(m, s)
-      # is it foreign?  terribly expensive, i know.
-      if parent.cfilename.string != m.cfilename.string:
-        # use or set the existing foreign counter for the key
-        (name, counter) = getSetConflict(parent, s)
-        # use or set the existing foreign counter for the name
-        next = mgetOrPut(parent.sigConflicts, name, counter + 1)
-        break
+
+      # FIXME: it seems we have some constants which are globals
+      #        and need to be set in the correct parent, but they
+      #        aren't getting fresh counters for some reason
+      #
+      when false:
+        when parent is BModule:
+          # is it (not) foreign?  terribly expensive, i know.
+          if parent.cfilename.string == m.cfilename.string:
+            break
+      # use or set the existing foreign counter for the key
+      (name, counter) = getSetConflict(parent, s)
+      # use or set the existing foreign counter for the name
+      next = mgetOrPut(parent.sigConflicts, name, counter + 1)
+      break
 
   # we're kinda cheating here; this caches the symbol for write at file close
   if s.kind != skTemp:
@@ -341,17 +353,20 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  when false: # just to irritate the god of minimal debugging output
-    if startsWith(conflict.name, "rand"):
-      debug s
+  when true: # just to irritate the god of minimal debugging output
+    if startsWith(conflict.name, "opr"):
+      #debug s
       when m is BModule:
         echo "module $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
       else:
-        #result = "/*" & $conflictKey(s) & "*/" & result
-        echo "  proc $4 >> $1 .. $2 -> $3" %
-          [ $conflictKey(s), s.name.s, $result,
-           if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
+        when compiles(m.prc):
+          debug m.prc.name.s
+          debug s.typ
+          result = "/*" & $conflictKey(s) & "*/" & result
+          echo "  proc $4 >> $1 .. $2 -> $3" %
+            [ $conflictKey(s), s.name.s, $result,
+             if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
 
 proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
   ## produce a useful name for the given type, obvs
