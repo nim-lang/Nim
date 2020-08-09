@@ -62,6 +62,7 @@ template conflictKey(s: BProc): int =
     conflictKey(s.prc)
 
 proc mangle*(p: ModuleOrProc; s: PSym): string
+proc mangleName*(m: ModuleOrProc; s: PSym): Rope
 
 proc getSomeNameForModule*(m: PSym): string =
   assert m.kind == skModule
@@ -374,10 +375,8 @@ proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
     while true:
       # use an immutable symbol name if we find one
       if t.sym.hasImmutableName:
-        assert t.sym.loc.r != nil
-        result = t.sym.loc.r
-        m.sigConflicts[key] = conflictKey(t.sym)
-        #echo "immutable ", key, " is ", conflictKey(t.sym), " ", result
+        # the symbol might need mangling, first
+        result = mangleName(m, t.sym)
         break found
       elif t.kind in irrelevantForBackend:
         t = t.lastSon    # continue into more precise types
@@ -386,7 +385,6 @@ proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
 
     assert t != nil
     result = typeName(m, t).rope
-    #echo "otherwise ", key, " is ", conflictKey(t), " ", result
     let counter = getOrSet(m.sigConflicts, $result, conflictKey(t))
     result.maybeAppendCounter counter
     #result.add "/*" & $key & "*/"
