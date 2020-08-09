@@ -312,9 +312,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
     p.sigConflicts[key] = counter
 
     # set the next value to the larger of the local and remote values
-    let existing = getOrDefault(p.sigConflicts, name, 1)
-    while next <= counter or next < existing:
-      inc next
+    next = max(counter + 1, getOrDefault(p.sigConflicts, name, 1))
 
     # now we can set the next value locally
     p.sigConflicts[name] = next
