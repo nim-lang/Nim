@@ -28,11 +28,21 @@ conflict table; they are increasing but not guaranteed to be sequential.
 import # compiler imports
 
     ast, cgendata, modulegraphs, ropes, ccgutils, ndi, msgs, incremental,
-    idents, options, wordrecg, astalgo, treetab, sighashes
+    idents, options, wordrecg, astalgo, treetab
 
 import # stdlib imports
 
   std / [ strutils, tables, sets ]
+
+type
+  ModuleOrProc* = concept m
+    m.sigConflicts is ConflictsTable
+
+  BackendModule = concept m    ##
+    ## BModule in C or JavaScript backends
+    m.sigConflicts is ConflictsTable
+    m.module is PSym
+    m.config is ConfigRef
 
 template config(): ConfigRef = cache.modules.config
 
@@ -65,6 +75,11 @@ proc getSomeNameForModule*(m: PSym): string =
 proc findPendingModule*(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
+
+proc findPendingModule*[Js: BackendModule](m: Js; s: PSym): Js =
+  var ms = getModule(s)
+  assert m.module.id == ms.id
+  result = m
 
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -301,7 +316,9 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
 
   # we're kinda cheating here; this caches the symbol for write at file close
   if s.kind != skTemp:
-    writeMangledName(m.ndi, s, m.config)
+    when m is BModule:
+      # only write mangled names for c codegen
+      writeMangledName(m.ndi, s, m.config)
 
   # if the counter hasn't been set from a foreign or cached symbol,
   if counter == -1:

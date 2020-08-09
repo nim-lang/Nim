@@ -10,8 +10,9 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs, sets
+
+  ast, ropes, options, intsets, tables, ndi, lineinfos, sets, pathutils,
+  modulegraphs
 
 type
   ConflictsTable* = Table[string, int]
@@ -175,15 +176,6 @@ type
     g*: BModuleList
     ndi*: NdiFile
 
-  ModuleOrProc* = BModule or BProc
-
-template getem*() =
-  # get a BModule when we might only have a BProc
-  when p is BProc:
-    p.module
-  else:
-    p
-
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 
@@ -209,6 +201,13 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
   result.sigConflicts = initTable[string, int]()
+
+template getem*() =
+  # get a BModule when we might only have a BProc
+  when p is BProc:
+    p.module
+  else:
+    p
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),

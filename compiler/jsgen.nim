@@ -29,21 +29,23 @@ implements the required case distinction.
 
 
 import
-  ast, strutils, trees, magicsys, options, mangler,
-  nversion, msgs, idents, types, tables,
-  ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, json, sets
+
+  ast, strutils, trees, magicsys, options, mangler, nversion, msgs, sets,
+  idents, types, tables, ropes, math, passes, ccgutils, wordrecg, json,
+  renderer, intsets, cgmeth, lowerings, modulegraphs, lineinfos, rodutils,
+  transf, injectdestructors, sourcemap
 
 
 from modulegraphs import ModuleGraph, PPassContext
 
 type
+  ConflictsTable* = Table[string, int]
+
   TJSGen = object of PPassContext
     module: PSym
     graph: ModuleGraph
     config: ConfigRef
-    sigConflicts: CountTable[SigHash]
+    sigConflicts: ConflictsTable
 
   BModule = ref TJSGen
   TJSTypeKind = enum       # necessary JS "types"
@@ -2550,7 +2552,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
-  result.sigConflicts = initCountTable[SigHash]()
+  result.sigConflicts = initTable[string, int]()
   if g.backend == nil:
     g.backend = newGlobals()
   result.graph = g
