@@ -78,8 +78,10 @@ proc findPendingModule*(m: BModule, s: PSym): BModule =
 
 proc findPendingModule*[Js: BackendModule](m: Js; s: PSym): Js =
   var ms = getModule(s)
-  assert m.module.id == ms.id
-  result = m
+  if m.module.id == ms.id:
+    result = m
+  else:
+    discard "no way to determine pending module in javascript"
 
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -311,16 +313,17 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
     # NOTE: constants are effectively global
     if sfGlobal in s.flags or s.kind == skConst:
       var parent = findPendingModule(m, s)
-      when parent is BModule:
-        when p is BModule:
-          # is it (not) foreign?  terribly expensive, i know.
-          if parent.cfilename.string == m.cfilename.string:
-            break
-        # use or set the existing foreign counter for the key
-        (name, counter) = getSetConflict(parent, s)
-        # use or set the existing foreign counter for the name
-        next = mgetOrPut(parent.sigConflicts, name, counter + 1)
-        break
+      if parent != nil:   # javascript can yield nil here
+        when parent is BModule:
+          when p is BModule:
+            # is it (not) foreign?  terribly expensive, i know.
+            if parent.cfilename.string == m.cfilename.string:
+              break
+          # use or set the existing foreign counter for the key
+          (name, counter) = getSetConflict(parent, s)
+          # use or set the existing foreign counter for the name
+          next = mgetOrPut(parent.sigConflicts, name, counter + 1)
+          break
 
   # only write mangled names for c codegen
   when m is BModule:
