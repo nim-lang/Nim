@@ -216,7 +216,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
     of skProc:
       # anonymous closures are special for... reasons
       if s.name.s == ":anonymous":
-        result = "anon_proc_"
+        result = "lambda_"
         result.add $conflictKey(s)
         break
       # closures are great for link collisions
