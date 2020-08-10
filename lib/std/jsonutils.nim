@@ -13,7 +13,7 @@ runnableExamples:
   let j = a.toJson
   doAssert j.jsonTo(type(a)).toJson == j
 
-import std/[json,strutils]
+import std/[json,strutils,tables,sets,strtabs,options]
 
 #[
 Future directions:
@@ -272,3 +272,145 @@ proc toJson*[T](a: T): JsonNode =
   elif T is bool: result = %(a)
   elif T is Ordinal: result = %(a.ord)
   else: result = %a
+
+proc fromJsonHook*[K, V](t: var (Table[K, V] | OrderedTable[K, V]),
+                         jsonNode: JsonNode) =
+  ## Enables `fromJson` for `Table` and `OrderedTable` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,(Table[K,V]|OrderedTable[K,V])>`_
+  runnableExamples:
+    import tables, json
+    var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
+    fromJson(foo, parseJson("""
+      {"t":{"two":2,"one":1},"ot":{"one":1,"three":3}}"""))
+    assert foo.t == [("one", 1), ("two", 2)].toTable
+    assert foo.ot == [("one", 1), ("three", 3)].toOrderedTable
+
+  assert jsonNode.kind == JObject,
+          "The kind of the `jsonNode` must be `JObject`, but its actual " &
+          "type is `" & $jsonNode.kind & "`."
+  clear(t)
+  for k, v in jsonNode:
+    t[k] = jsonTo(v, V)
+
+proc toJsonHook*[K, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+  ## Enables `toJson` for `Table` and `OrderedTable` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,(Table[K,V]|OrderedTable[K,V]),JsonNode>`_
+  runnableExamples:
+    import tables, json
+    let foo = (
+      t: [("two", 2)].toTable,
+      ot: [("one", 1), ("three", 3)].toOrderedTable)
+    assert $toJson(foo) == """{"t":{"two":2},"ot":{"one":1,"three":3}}"""
+
+  result = newJObject()
+  for k, v in pairs(t):
+    result[k] = toJson(v)
+
+proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
+  ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
+  runnableExamples:
+    import sets, json
+    var foo: tuple[hs: HashSet[string], os: OrderedSet[string]]
+    fromJson(foo, parseJson("""
+      {"hs": ["hash", "set"], "os": ["ordered", "set"]}"""))
+    assert foo.hs == ["hash", "set"].toHashSet
+    assert foo.os == ["ordered", "set"].toOrderedSet
+
+  assert jsonNode.kind == JArray,
+          "The kind of the `jsonNode` must be `JArray`, but its actual " &
+          "type is `" & $jsonNode.kind & "`."
+  clear(s)
+  for v in jsonNode:
+    incl(s, jsonTo(v, A))
+
+proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
+  ## Enables `toJson` for `HashSet` and `OrderedSet` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,SomeSet[A],JsonNode>`_
+  runnableExamples:
+    import sets, json
+    let foo = (hs: ["hash"].toHashSet, os: ["ordered", "set"].toOrderedSet)
+    assert $toJson(foo) == """{"hs":["hash"],"os":["ordered","set"]}"""
+
+  result = newJArray()
+  for k in s:
+    add(result, toJson(k))
+
+proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
+  ## Enables `fromJson` for `Option` types.
+  ## 
+  ## See also:
+  ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
+  runnableExamples:
+    import options, json
+    var opt: Option[string]
+    fromJsonHook(opt, parseJson("\"test\""))
+    assert get(opt) == "test"
+    fromJson(opt, parseJson("null"))
+    assert isNone(opt)
+
+  if jsonNode.kind != JNull:
+    self = some(jsonTo(jsonNode, T))
+  else:
+    self = none[T]()
+
+proc toJsonHook*[T](self: Option[T]): JsonNode =
+  ## Enables `toJson` for `Option` types.
+  ##
+  ## See also:
+  ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode>`_
+  runnableExamples:
+    import options, json
+    let optSome = some("test")
+    assert $toJson(optSome) == "\"test\""
+    let optNone = none[string]()
+    assert $toJson(optNone) == "null"
+
+  if isSome(self):
+    toJson(get(self))
+  else:
+    newJNull()
+
+proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
+  ## Enables `fromJson` for `StringTableRef` type.
+  ## 
+  ## See also:
+  ## * `toJsonHook` proc<#toJsonHook,StringTableRef>`_
+  runnableExamples:
+    import strtabs, json
+    var t = newStringTable(modeCaseSensitive)
+    let jsonStr = """{"mode": 0, "table": {"name": "John", "surname": "Doe"}}"""
+    fromJsonHook(t, parseJson(jsonStr))
+    assert t[] == newStringTable("name", "John", "surname", "Doe",
+                                 modeCaseSensitive)[]
+
+  var mode = jsonTo(b["mode"], StringTableMode)
+  a = newStringTable(mode)
+  let b2 = b["table"]
+  for k,v in b2: a[k] = jsonTo(v, string)
+
+proc toJsonHook*(a: StringTableRef): JsonNode =
+  ## Enables `toJson` for `StringTableRef` type.
+  ## 
+  ## See also:
+  ## * `fromJsonHook` proc<#fromJsonHook,StringTableRef,JsonNode>`_
+  runnableExamples:
+    import strtabs, json
+    let t = newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)
+    let jsonStr = """{"mode": "modeCaseSensitive",
+                      "table": {"name": "John", "surname": "Doe"}}"""
+    assert toJson(t) == parseJson(jsonStr)
+
+  result = newJObject()
+  result["mode"] = toJson($a.mode)
+  let t = newJObject()
+  for k,v in a: t[k] = toJson(v)
+  result["table"] = t
