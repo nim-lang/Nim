@@ -159,9 +159,11 @@ const
                            tyStatic, tyAlias, tySink, tyInferred}
 
 proc shortKind(k: TTypeKind): string =
-  # tell me about it.
-  result = $k
-  result = result[2 .. min(4, result.high)].toLowerAscii
+  ## truncate types
+  result = toLowerAscii($k)
+  removePrefix(result, "ty")
+  if len(result) > 4:
+    result = split(result, {'e','i','o','u'}).join("")
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
   let m = getem()
