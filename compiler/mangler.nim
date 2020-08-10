@@ -351,10 +351,8 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
     p.sigConflicts[key] = counter
 
     # set the next value to the larger of the local and remote values
-    next = max(counter + 1, getOrDefault(p.sigConflicts, name, 1))
-
-    # now we can set the next value locally
-    p.sigConflicts[name] = next
+    p.sigConflicts[name] = max(counter + 1,
+                               getOrDefault(p.sigConflicts, name, 1))
 
   result = (name: name, counter: counter)
 
@@ -375,8 +373,9 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
           [ $conflictKey(s), s.name.s, $result,
            if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
 
-proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
+proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
   ## produce a useful name for the given type, obvs
+  let m = getem()
   var key = $conflictKey(typ)
   block found:
     # try to find the actual type
@@ -385,7 +384,7 @@ proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
       # use an immutable symbol name if we find one
       if t.sym.hasImmutableName:
         # the symbol might need mangling, first
-        result = mangleName(m, t.sym)
+        result = mangleName(p, t.sym)
         break found
       elif t.kind in irrelevantForBackend:
         t = t.lastSon    # continue into more precise types
@@ -393,8 +392,8 @@ proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
         break            # this looks like a good place to stop
 
     assert t != nil
-    result = typeName(m, t).rope
-    let counter = getOrSet(m.sigConflicts, $result, conflictKey(t))
+    result = typeName(p, t).rope
+    let counter = getOrSet(p.sigConflicts, $result, conflictKey(t))
     result.maybeAppendCounter counter
     #result.add "/*" & $key & "*/"
 
@@ -526,19 +525,25 @@ proc assignParam*(p: BProc, s: PSym; ret: PType) =
   # It's very possible that the symbol is already in the module scope!
   if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
     purgeConflict(p.module, s)   # discard any existing counter for this sym
-    if s.kind == skResult:
-      s.loc.r = ~"result"
-    else:
+    if s.kind != skResult:
       s.loc.r = nil              # from the parent module as we move it local
       s.loc.r = mangleName(p, s) # and force the new location like a punk
+    else:
+      s.loc.r = ~"result"        # or just set it to result if it's skResult
   if s.loc.r == nil:
     internalError(p.config, s.info, "assignParam")
 
-proc mangleParamName*(p: ModuleOrProc; s: PSym): Rope =
+proc mangleParamName*(p: BProc; s: PSym): Rope =
+  ## mangle a param name when we actually have the target proc
+  result = mangleName(p, s)
+  if result == nil:
+    internalError(p.config, s.info, "mangleParamName")
+
+proc mangleParamName*(m: BModule; s: PSym): Rope =
   ## we should be okay with just a simple mangle here for prototype
   ## purposes; the real meat happens in assignParam later...
   if s.loc.r == nil:
-    s.loc.r = mangle(p, s).rope
+    s.loc.r = mangle(m, s).rope
   result = s.loc.r
   if result == nil:
-    internalError(p.config, s.info, "mangleParamName")
+    internalError(m.config, s.info, "mangleParamName")
