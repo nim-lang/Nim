@@ -72,6 +72,9 @@ proc getSomeNameForModule*(m: PSym): string =
     result.add "_"
     assert m.name.s.len > 0
   result.add mangle(m.name.s)
+  if result.startsWith("stdlib_"):
+    # replaceWord will consume _ :-(
+    result = "std_" & result[len("stdlib_") .. ^1]
 
 proc findPendingModule*(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
