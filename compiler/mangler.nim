@@ -196,7 +196,11 @@ proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
       result = s.typ.sons.len > 1
       if result:
         nom.add "_"
-        nom.add typeName(m, s.typ.sons[1], shorten = true)
+        # avoid including the conflictKey of param
+        if s.typ.sym == nil:
+          nom.add shortKind(s.typ.kind)
+        else:
+          nom.add typeName(m, s.typ.sons[1], shorten = true)
 
 proc mangle*(p: ModuleOrProc; s: PSym): string =
   # TODO: until we have a new backend ast, all mangles have to be done
