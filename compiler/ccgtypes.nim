@@ -234,7 +234,7 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
     else: result = false
 
 const
-  CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL", "N_NIMCALL",
+  CallingConvToStr: array[TCallingConvention, string] = ["N_NIMCALL",
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants
@@ -1297,7 +1297,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
-    if theProc.typ == nil or theProc.typ.callConv notin ccDefault:
+    if theProc.typ == nil or theProc.typ.callConv != ccNimCall:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 

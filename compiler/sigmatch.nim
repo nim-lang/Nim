@@ -639,11 +639,11 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       return isNone
     elif f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
-      if f.callConv == ccClosure and a.callConv in ccDefault:
+      if f.callConv == ccClosure and a.callConv == ccNimCall:
         result = if result == isInferred: isInferredConvertible
                  elif result == isBothMetaConvertible: isBothMetaConvertible
                  else: isConvertible
-      elif not(f.callConv in ccDefault and a.callConv in ccDefault):
+      else:
         return isNone
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
