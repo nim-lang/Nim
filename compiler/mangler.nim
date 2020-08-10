@@ -185,7 +185,7 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     else:
       mangle(p, typ.sym)
 
-  if result in ["pro_5835056", "pro_5831024"]:
+  if typ.kind == tyProc and typ.uniqueId in 4_000_000 .. 6_000_000:
     writeStackTrace()
     debug(typ)
 
