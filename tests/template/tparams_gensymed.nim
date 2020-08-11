@@ -15,6 +15,7 @@ wth
 0
 (total: 6)
 S1
+5
 '''
 """
 # bug #1915
@@ -321,3 +322,17 @@ block: #Gensymmed sym sharing forward decl
       newProc(sym, body = newStmtList()),
     )
   genGenMacro
+
+# inject pragma on params
+
+template test(procname, body: untyped): untyped = 
+  proc procname(data {.inject.}: var int = 0) =
+    body
+
+test(hello):
+  echo data
+  data = 3
+
+var data = 5
+
+hello(data)
