@@ -373,7 +373,7 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
           [ $conflictKey(s), s.name.s, $result,
            if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
 
-proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
+proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   ## produce a useful name for the given type, obvs
   let m = getem()
   var key = $conflictKey(typ)
@@ -399,6 +399,9 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
+
+proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope {.deprecated.} =
+  result = getTypeName(p, typ)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
