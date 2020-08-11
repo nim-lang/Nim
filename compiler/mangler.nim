@@ -28,7 +28,7 @@ conflict table; they are increasing but not guaranteed to be sequential.
 import # compiler imports
 
     ast, cgendata, modulegraphs, ropes, ccgutils, ndi, msgs, incremental,
-    idents, options, wordrecg, astalgo, treetab
+    idents, options, wordrecg, astalgo, treetab, sighashes
 
 import # stdlib imports
 
@@ -62,7 +62,7 @@ template conflictKey(s: BProc): int =
     conflictKey(s.prc)
 
 proc mangle*(p: ModuleOrProc; s: PSym): string
-proc mangleName*(m: ModuleOrProc; s: PSym): Rope
+proc mangleName*(p: ModuleOrProc; s: PSym): Rope
 
 proc getSomeNameForModule*(m: PSym): string =
   assert m.kind == skModule
@@ -169,7 +169,6 @@ proc shortKind(k: TTypeKind): string =
     result = split(result, {'e','i','o','u'}).join("")
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
-  let m = getem()
   var typ = typ.skipTypes(irrelevantForBackend)
   result = case typ.kind
   of tySet, tySequence, tyTypeDesc, tyArray:
@@ -177,17 +176,16 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
   of tyVar, tyRef, tyPtr:
     # omit this verbosity for now
     typeName(p, typ.lastSon, shorten = shorten)
+  of tyProc, tyTuple:
+    # these need a signature-based name so that type signatures match :-(
+    shortKind(typ.kind) & $hashType(typ)
   else:
-    if typ.sym == nil: # or typ.kind notin {tyObject, tyEnum}:
+    if typ.sym == nil:
       shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
       mangle(typ.sym.name.s)
     else:
       mangle(p, typ.sym)
-
-  if typ.kind == tyProc and typ.uniqueId in 4_000_000 .. 6_000_000:
-    writeStackTrace()
-    debug(typ)
 
 template maybeAppendCounter(result: typed; count: int) =
   if count > 0:
@@ -416,6 +414,7 @@ proc getTempNameImpl(m: BModule; id: int): string =
   # get the appropriate name
   result = tempNameForLabel(m, id)
   # (result ends in _)
+  assert result.endsWith("_")
   # make sure it's not in the conflicts table
   assert result notin m.sigConflicts
   # put it in the conflicts table with the NEXT available counter
@@ -452,17 +451,17 @@ proc getTempName*(m: BModule): Rope =
   ## the module from which the name originates; this always creates a new name
   result = getTempNameImpl(m, m.labels).rope
 
-proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
+proc mangleName*(p: ModuleOrProc; s: PSym): Rope =
   ## Mangle the symbol name and set a new location rope for it, returning
   ## same.  Has no effect if the symbol already has a location rope.
   if s.loc.r == nil:
-    when m is BModule:
+    when p is BModule:
       # skParam is valid for global object fields with proc types
       #assert s.kind notin {skParam, skResult}
       assert s.kind notin {skResult}
-    when m is BProc:
+    when p is BProc:
       assert s.kind notin {skModule, skPackage}
-    s.loc.r = idOrSig(m, s)
+    s.loc.r = idOrSig(p, s)
   result = s.loc.r
 
     #[
