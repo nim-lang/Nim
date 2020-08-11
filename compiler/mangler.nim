@@ -400,9 +400,6 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
 
-proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope {.deprecated.} =
-  result = getTypeName(p, typ)
-
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
   m.tmpBase & $label & "_"
