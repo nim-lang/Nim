@@ -539,7 +539,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # happens sometimes for generated assignments, etc.
   of tyProc:
     result = transformSons(c, n)
-    if dest.callConv == ccClosure and source.callConv == ccDefault:
+    if dest.callConv == ccClosure and source.callConv == ccNimCall:
       result = generateThunk(c, result[1], dest)
   else:
     result = transformSons(c, n)

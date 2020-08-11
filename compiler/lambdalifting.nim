@@ -293,7 +293,7 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
        " safety, declared here: $3; using '-d:nimWorkaround14447' helps in some cases") %
       [s.name.s, typeToString(s.typ), g.config$s.info])
-  elif owner.typ.callConv notin {ccClosure, ccDefault}:
+  elif not (owner.typ.callConv == ccClosure or owner.typ.callConv == ccNimCall and tfExplicitCallConv notin owner.typ.flags):
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
   incl(owner.typ.flags, tfCapturesEnv)
@@ -822,7 +822,8 @@ proc semCaptureSym*(s, owner: PSym) =
       var o = owner.skipGenericOwner
       while o != nil and o.kind != skModule:
         if s.owner == o:
-          if owner.typ.callConv in {ccClosure, ccDefault} or owner.kind == skIterator:
+          if owner.typ.callConv == ccClosure or owner.kind == skIterator or
+             owner.typ.callConv == ccNimCall and tfExplicitCallConv notin owner.typ.flags:
             owner.typ.callConv = ccClosure
             propagateClosure(owner.skipGenericOwner, s.owner)
           else:
