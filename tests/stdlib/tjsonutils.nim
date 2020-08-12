@@ -13,8 +13,7 @@ proc testRoundtrip[T](t: T, expected: string) =
   t2.fromJson(j)
   doAssert t2.toJson == j
 
-import tables, sets, algorithm, sequtils, options
-import strtabs
+import tables, sets, algorithm, sequtils, options, strtabs
 
 type Foo = ref object
   id: int
@@ -140,6 +139,14 @@ template fn() =
     testRoundtrip(none[string]()): "null"
     testRoundtrip(some(42)): "42"
     testRoundtrip(none[int]()): "null"
+
+  block testStrtabs:
+    testRoundtrip(newStringTable(modeStyleInsensitive)):
+      """{"mode":"modeStyleInsensitive","table":{}}"""
+
+    testRoundtrip(
+      newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)):
+        """{"mode":"modeCaseSensitive","table":{"name":"John","surname":"Doe"}}"""
 
   block testJoptions:
     type
