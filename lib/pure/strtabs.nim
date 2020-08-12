@@ -302,7 +302,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   when defined(js) or defined(nimscript):
     result = ""
   else:
-    if useEnvironment in flags: result = os.getEnv(key).string
+    if useEnvironment in flags: result = getEnv(key).string
     else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key

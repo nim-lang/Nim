@@ -145,6 +145,9 @@
 
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
+- Added `deques.toDeque`, which creates a deque from an openArray. The usage is
+  similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty deque and add items manually.
 
 ## Language changes
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts

@@ -394,3 +394,13 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+
+    proc tforum =
+      let ans = collect(newSeq):
+        for y in 0..10:
+          if y mod 5 == 2:
+            for x in 0..y:
+              x
+
+    tforum()

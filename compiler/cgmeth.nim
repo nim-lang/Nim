@@ -113,7 +113,7 @@ proc createDispatcher(s: PSym): PSym =
   excl(disp.flags, sfExported)
   disp.typ = copyType(disp.typ, disp.typ.owner, false)
   # we can't inline the dispatcher itself (for now):
-  if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
+  if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
   disp.ast[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = nil

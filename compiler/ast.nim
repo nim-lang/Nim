@@ -17,7 +17,7 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccDefault,                # proc has no explicit calling convention
+    ccNimCall,                # nimcall, also the default
     ccStdCall,                # procedure is stdcall
     ccCDecl,                  # cdecl
     ccSafeCall,               # safecall
@@ -30,7 +30,7 @@ type
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
-  CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
+  CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
@@ -560,6 +560,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfExplicitCallConv
 
   TTypeFlags* = set[TTypeFlag]
 
