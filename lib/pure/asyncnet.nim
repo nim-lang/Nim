@@ -691,8 +691,12 @@ elif defined(nimdoc):
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
+  if socket.closed: return
+
   defer:
     socket.fd.AsyncFD.closeSocket()
+    socket.closed = true # TODO: Add extra debugging checks for this.
+
   when defineSsl:
     if socket.isSsl:
       let res = SSL_shutdown(socket.sslHandle)
@@ -701,7 +705,6 @@ proc close*(socket: AsyncSocket) =
         discard
       elif res != 1:
         raiseSSLError()
-  socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defineSsl:
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
