@@ -102,6 +102,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   of 4: u = cast[ptr uint32](p)[]
   of 8: u = cast[ptr uint64](p)[]
   else:
+    u = uint64(0)
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
       if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:

@@ -251,12 +251,12 @@ proc walkDirRecursively(s: var seq[string], root, explicit: string,
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
-    if existsDir(p):
+    if dirExists(p):
       walkDirRecursively(s, p, p, false)
     else:
       var i = 0
       for f in walkPattern(p):
-        if existsDir(f):
+        if dirExists(f):
           walkDirRecursively(s, f, p, false)
         elif not ignoreFile(f, p, false):
           add(s, unixToNativePath(f))
@@ -518,7 +518,7 @@ template gatherFiles(fun, libpath, outDir) =
 
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"
-  if not existsDir(cCodeDir): createDir(cCodeDir)
+  if not dirExists(cCodeDir): createDir(cCodeDir)
   gatherFiles(copyFile, c.libpath, cCodeDir)
   var winIndex = -1
   var intel32Index = -1
@@ -532,7 +532,7 @@ proc srcdist(c: var ConfigData) =
       if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA
       elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
-      if existsDir(dir): removeDir(dir)
+      if dirExists(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
@@ -639,13 +639,13 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
   proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
     when false: echo "Copying ", src, " to ", dest
-    if not existsFile(src):
+    if not fileExists(src):
       echo "[Warning] Source file doesn't exist: ", src
     let destDir = dest.splitFile.dir
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
-  if not windowsZip and not existsFile("build" / buildBatFile):
+  if not windowsZip and not fileExists("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
          "./koch csource -d:release.")
 
@@ -708,8 +708,8 @@ RunProgram="tools\downloader.exe"
 # -- prepare build files for .deb creation
 
 proc debDist(c: var ConfigData) =
-  if not existsFile(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
-  if not existsFile(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
+  if not fileExists(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
+  if not fileExists(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
 
   if c.debOpts.shortDesc == "": quit("shortDesc must be set in the .ini file.")
   if c.debOpts.licenses.len == 0:

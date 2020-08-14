@@ -94,6 +94,7 @@
 ##     echo "suite teardown: run once after the tests"
 
 import std/private/since
+import std/exitprocs
 
 import
   macros, strutils, streams, times, sets, sequtils
@@ -416,8 +417,7 @@ proc ensureInitialized() =
   if formatters.len == 0:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
-  if not disabledParamFiltering and not testsFilters.isValid:
-    testsFilters.init()
+  if not disabledParamFiltering:
     when declared(paramCount):
       # Read tests to run from the command line.
       for i in 1 .. paramCount():
@@ -499,7 +499,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -525,7 +525,7 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
-        programResult = 1
+        setProgramResult 1
       let testResult = TestResult(
         suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
@@ -561,12 +561,11 @@ template fail* =
   ##  fail()
   ##
   ## outputs "Checkpoint A" before quitting.
-  bind ensureInitialized
-
+  bind ensureInitialized, setProgramResult
   when declared(testStatusIMPL):
     testStatusIMPL = TestStatus.FAILED
   else:
-    programResult = 1
+    setProgramResult 1
 
   ensureInitialized()
 
@@ -577,8 +576,7 @@ template fail* =
     else:
       formatter.failureOccurred(checkpoints, "")
 
-  when declared(programResult):
-    if abortOnError: quit(programResult)
+  if abortOnError: quit(1)
 
   checkpoints = @[]
 
@@ -680,7 +678,7 @@ macro check*(conditions: untyped): untyped =
     result = newNimNode(nnkStmtList)
     for node in checked:
       if node.kind != nnkCommentStmt:
-        result.add(newCall(!"check", node))
+        result.add(newCall(newIdentNode("check"), node))
 
   else:
     let lineinfo = newStrLitNode(checked.lineInfo)
@@ -712,7 +710,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##  import math, random
   ##  proc defectiveRobot() =
   ##    randomize()
-  ##    case random(1..4)
+  ##    case rand(1..4)
   ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
   ##    of 2: discard parseInt("Hello World!")
   ##    of 3: raise newException(IOError, "I can't do that Dave.")

@@ -36,6 +36,40 @@ fff
 mmm
 sink me (sink)
 assign me (not sink)
+sink me (not sink)
+sinked and not optimized to a bitcopy
+sinked and not optimized to a bitcopy
+sinked and not optimized to a bitcopy
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+(data: @[0, 0])
+100
+hey
+hey
+(a: "a", b: 2)
+ho
+(a: "b", b: 3)
+(b: "b", a: 2)
+ho
+(b: "a", a: 3)
+hey
+break
+break
+hey
+ho
+hey
+ho
+ho
+king
+live long; long live
+king
+hi
+try
+bye
 '''
 """
 
@@ -243,7 +277,7 @@ iterator combinations[T](s: openarray[T], k: int): seq[T] =
       break
 
 type
-  UndefEx = object of Exception
+  UndefEx = object of ValueError
 
 proc main2 =
   var delayedSyms = @[1, 2, 3]
@@ -273,10 +307,10 @@ type ME = object
   who: string
 
 proc `=`(x: var ME, y: ME) =
-  if x.who.len > 0: echo "assign ",x.who
+  if y.who.len > 0: echo "assign ",y.who
 
 proc `=sink`(x: var ME, y: ME) =
-  if x.who.len > 0: echo "sink ",x.who
+  if y.who.len > 0: echo "sink ",y.who
 
 var dump: ME
 template use(x) = dump = x
@@ -302,3 +336,191 @@ proc shouldNotSink() =
   use(x) # Not ok without the '[else]'
 
 shouldNotSink()
+
+# bug #14568
+import os
+
+type O2 = object
+  s: seq[int]
+
+proc `=sink`(dest: var O2, src: O2) =
+  echo "sinked and not optimized to a bitcopy"
+
+var testSeq: O2
+
+proc update() =
+  # testSeq.add(0) # uncommenting this line fixes the leak
+  testSeq = O2(s: @[])
+  testSeq.s.add(0)
+
+for i in 1..3:
+  update()
+
+
+# bug #14961
+type
+  Foo = object
+    data: seq[int]
+
+proc initFoo(len: int): Foo =
+  result = (let s = newSeq[int](len); Foo(data: s) )
+
+var f = initFoo(2)
+echo initFoo(2)
+
+proc initFoo2(len: int) =
+  echo   if true:
+             let s = newSeq[int](len); Foo(data: s)
+         else:
+             let s = newSeq[int](len); Foo(data: s)
+
+initFoo2(2)
+
+proc initFoo3(len: int) =
+  echo (block:
+         let s = newSeq[int](len); Foo(data: s))
+
+initFoo3(2)
+
+proc initFoo4(len: int) =
+  echo (let s = newSeq[int](len); Foo(data: s))
+
+initFoo4(2)
+
+proc initFoo5(len: int) =
+  echo (case true
+        of true:
+          let s = newSeq[int](len); Foo(data: s)
+        of false:
+          let s = newSeq[int](len); Foo(data: s))
+
+initFoo5(2)
+
+proc initFoo6(len: int) =
+  echo (block:
+          try:
+            let s = newSeq[int](len); Foo(data: s)
+          finally: discard)
+
+initFoo6(2)
+
+proc initFoo7(len: int) =
+  echo (block:
+          try:
+            raise newException(CatchableError, "sup")
+            let s = newSeq[int](len); Foo(data: s)
+          except CatchableError:
+            let s = newSeq[int](len); Foo(data: s) )
+
+initFoo7(2)
+
+
+# bug #14902
+iterator zip[T](s: openarray[T]): (T, T) =
+  var i = 0
+  while i < 10:
+    yield (s[i mod 2], s[i mod 2 + 1])
+    inc i
+
+var lastMem = int.high
+
+proc leak =
+  const len = 10
+  var x = @[newString(len), newString(len), newString(len)]
+
+  var c = 0
+  for (a, b) in zip(x):
+    let newMem = getOccupiedMem()
+    assert newMem <= lastMem
+    lastMem = newMem
+    c += a.len
+  echo c
+
+leak()
+
+
+proc consume(a: sink string) = echo a
+
+proc weirdScopes =
+  if (let a = "hey"; a.len > 0):
+    echo a
+
+  while (let a = "hey"; a.len > 0):
+    echo a
+    break
+
+  var a = block: (a: "a", b: 2)
+  echo a
+  (discard; a) = (echo "ho"; (a: "b", b: 3))
+  echo a
+
+  var b = try: (b: "b", a: 2)
+          except: raise
+  echo b
+  (discard; b) = (echo "ho"; (b: "a", a: 3))
+  echo b
+
+  var s = "break"
+  consume((echo "hey"; s))
+  echo s
+
+  echo (block:
+          var a = "hey"
+          (echo "hey"; "ho"))
+
+  var b2 = "ho"
+  echo (block:
+          var a = "hey"
+          (echo "hey"; b2))
+  echo b2
+
+  type status = enum
+    alive
+
+  var king = "king"
+  echo (block:
+          var a = "a"
+          when true:
+            var b = "b"
+            case alive
+            of alive:
+              try:
+                var c = "c"
+                if true:
+                  king
+                else:
+                  "the abyss"
+              except:
+                echo "he ded"
+                "dead king")
+  echo "live long; long live"
+  echo king
+
+weirdScopes()
+
+
+# bug #14985
+proc getScope(): string =
+  if true:
+    return "hi"
+  else:
+    "else"
+
+echo getScope()
+
+proc getScope3(): string =
+  try:
+    "try"
+  except:
+    return "except"
+
+echo getScope3()
+
+proc getScope2(): string =
+  case true
+  of true:
+    return "bye"
+  else:
+    "else"
+
+echo getScope2()

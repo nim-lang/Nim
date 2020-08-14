@@ -232,7 +232,7 @@ proc enlarge(t: StringTableRef) =
   swap(t.data, n)
 
 proc `[]=`*(t: StringTableRef, key, val: string) {.
-  rtlFunc, extern: "nstPut", noSideEffect.} =
+  rtlFunc, extern: "nstPut".} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -302,7 +302,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   when defined(js) or defined(nimscript):
     result = ""
   else:
-    if useEnvironment in flags: result = os.getEnv(key).string
+    if useEnvironment in flags: result = getEnv(key).string
     else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
@@ -419,6 +419,24 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
       add(result, f[i])
       inc(i)
 
+since (1,3,5):
+  proc fromJsonHook*[T](a: var StringTableRef, b: T) =
+    ## for json.fromJson
+    mixin jsonTo
+    var mode = jsonTo(b["mode"], StringTableMode)
+    a = newStringTable(mode)
+    let b2 = b["table"]
+    for k,v in b2: a[k] = jsonTo(v, string)
+
+  proc toJsonHook*[](a: StringTableRef): auto =
+    ## for json.toJson
+    mixin newJObject
+    mixin toJson
+    result = newJObject()
+    result["mode"] = toJson($a.mode)
+    let t = newJObject()
+    for k,v in a: t[k] = toJson(v)
+    result["table"] = t
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable

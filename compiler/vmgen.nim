@@ -997,7 +997,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genNarrow(n[1], d)
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
-  of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
+  of mOrd, mChr, mArrToSeq, mUnown, mIsolate: c.gen(n[1], dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
     c.genNew(n)
@@ -1820,8 +1820,6 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  of tyOpt:
-    result = newNodeIT(nkNilLit, info, t)
   of tySequence:
     result = newNodeIT(nkBracket, info, t)
   else:

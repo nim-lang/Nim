@@ -187,6 +187,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     else:
       return -1
 
+  result = 0
   if (len and (len - 1)) == 0:
     # when `len` is a power of 2, a faster shr can be used.
     var step = len shr 1
@@ -221,10 +222,6 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
   runnableExamples:
     assert binarySearch([0, 1, 2, 3, 4], 4) == 4
     assert binarySearch([0, 1, 4, 2, 3], 4) == 2
-  binarySearch(a, key, cmp[T])
-
-proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated:
-  "Deprecated since v0.18.1; Use 'binarySearch'".} =
   binarySearch(a, key, cmp[T])
 
 const

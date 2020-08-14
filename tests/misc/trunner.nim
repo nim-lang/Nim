@@ -11,6 +11,7 @@ import std/[strformat,os,osproc,unittest]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
+from std/private/globs import nativeToUnixPath
 
 import "$lib/../compiler/nimpaths"
 
@@ -25,7 +26,7 @@ const
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
-  doAssert fileabs.existsFile, fileabs
+  doAssert fileabs.fileExists, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
   result = execCmdEx(cmd)
   when false:  echo result[0] & "\n" & result[1] # for debugging
@@ -90,11 +91,7 @@ else: # don't run twice the same test
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd)
       check exitCode == 0
-      proc nativeToUnixPathWorkaround(a: string): string =
-        # xxx pending https://github.com/nim-lang/Nim/pull/13265 `nativeToUnixPath`
-        a.replace(DirSep, '/')
-
-      let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
+      let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPath).sorted.join("\n")
       let context = $(i, ret, cmd)
       var expected = ""
       case i

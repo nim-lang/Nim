@@ -100,10 +100,9 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
     for i in 0..<n.len: computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
     let a = n[0]
-    if a.kind == nkExprColonExpr and a[0].kind == nkIdent and
-       a[0].ident.s == "pragma":
-        # user defined pragma
-        decl(a[1])
+    if a.kind == nkExprColonExpr and a[0].kind == nkIdent and a[0].ident.s == "pragma":
+      # user defined pragma
+      decl(a[1])
     else:
       for i in 0..<n.safeLen: deps(n[i])
   else:
@@ -209,42 +208,42 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
           sn.add dn.pnode[0]
         res.add sn
       else:
-          # Problematic circular dependency, we arrange the nodes into
-          # their original relative order and make sure to re-merge
-          # consecutive type and const sections
-          var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
-            " reorder some nodes properely"
-          when defined(debugReorder):
-            wmsg &= ":\n"
-            for i in 0..<cs.len-1:
-                for j in i..<cs.len:
-                  for ci in 0..<cs[i].kids.len:
-                    if cs[i].kids[ci].id == cs[j].id:
-                      wmsg &= "line " & $cs[i].pnode.info.line &
-                        " depends on line " & $cs[j].pnode.info.line &
-                        ": " & cs[i].expls[ci] & "\n"
-            for j in 0..<cs.len-1:
-                for ci in 0..<cs[^1].kids.len:
-                  if cs[^1].kids[ci].id == cs[j].id:
-                    wmsg &= "line " & $cs[^1].pnode.info.line &
-                      " depends on line " & $cs[j].pnode.info.line &
-                      ": " & cs[^1].expls[ci] & "\n"
-          message(conf, cs[0].pnode.info, warnUser, wmsg)
+        # Problematic circular dependency, we arrange the nodes into
+        # their original relative order and make sure to re-merge
+        # consecutive type and const sections
+        var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
+          " reorder some nodes properely"
+        when defined(debugReorder):
+          wmsg &= ":\n"
+          for i in 0..<cs.len-1:
+            for j in i..<cs.len:
+              for ci in 0..<cs[i].kids.len:
+                if cs[i].kids[ci].id == cs[j].id:
+                  wmsg &= "line " & $cs[i].pnode.info.line &
+                    " depends on line " & $cs[j].pnode.info.line &
+                    ": " & cs[i].expls[ci] & "\n"
+          for j in 0..<cs.len-1:
+            for ci in 0..<cs[^1].kids.len:
+              if cs[^1].kids[ci].id == cs[j].id:
+                wmsg &= "line " & $cs[^1].pnode.info.line &
+                  " depends on line " & $cs[j].pnode.info.line &
+                  ": " & cs[^1].expls[ci] & "\n"
+        message(conf, cs[0].pnode.info, warnUser, wmsg)
 
-          var i = 0
-          while i < cs.len:
-            if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
-              let ckind = cs[i].pnode.kind
-              var sn = newNode(ckind)
+        var i = 0
+        while i < cs.len:
+          if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
+            let ckind = cs[i].pnode.kind
+            var sn = newNode(ckind)
+            sn.add cs[i].pnode[0]
+            inc i
+            while i < cs.len and cs[i].pnode.kind == ckind:
               sn.add cs[i].pnode[0]
               inc i
-              while i < cs.len and cs[i].pnode.kind == ckind:
-                sn.add cs[i].pnode[0]
-                inc i
-              res.add sn
-            else:
-              res.add cs[i].pnode
-              inc i
+            res.add sn
+          else:
+            res.add cs[i].pnode
+            inc i
 
 proc hasImportStmt(n: PNode): bool =
   # Checks if the node is an import statement or
@@ -291,17 +290,17 @@ proc hasAccQuoted(n: PNode): bool =
     if hasAccQuoted(a):
       return true
 
-const extandedProcDefs = procDefs + {nkMacroDef,  nkTemplateDef}
+const extendedProcDefs = procDefs + {nkMacroDef, nkTemplateDef}
 
 proc hasAccQuotedDef(n: PNode): bool =
   # Checks if the node is a function, macro, template ...
   # with a quoted name or if it contains one
   case n.kind
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
-      if a.hasAccQuotedDef:
+      if hasAccQuotedDef(a):
         return true
   else:
     result = false
@@ -317,7 +316,7 @@ proc hasBody(n: PNode): bool =
   case n.kind
   of nkCommand, nkCall:
     result = true
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
@@ -423,7 +422,7 @@ proc hasForbiddenPragma(n: PNode): bool =
   for a in n:
     if a.kind == nkPragma and a[0].kind == nkIdent and
         a[0].ident.s == "push":
-          return true
+      return true
 
 proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   if n.hasForbiddenPragma:

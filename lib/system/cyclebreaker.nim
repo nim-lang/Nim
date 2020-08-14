@@ -60,7 +60,6 @@ const
   colGreen = 0b000
   colYellow = 0b001
   colRed = 0b010
-  rcShift = 3      # shift by rcShift to get the reference counter
   colorMask = 0b011
 
 type

@@ -41,8 +41,8 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://pinning-test.badssl.com/", bad_broken, "pinning-test"),
   ("https://no-common-name.badssl.com/", dubious_broken, "no-common-name"),
   ("https://no-subject.badssl.com/", dubious_broken, "no-subject"),
-  ("https://incomplete-chain.badssl.com/", dubious, "incomplete-chain"),
-  ("https://sha1-intermediate.badssl.com/", bad_broken, "sha1-intermediate"),
+  ("https://incomplete-chain.badssl.com/", dubious_broken, "incomplete-chain"),
+  ("https://sha1-intermediate.badssl.com/", bad, "sha1-intermediate"),
   ("https://sha256.badssl.com/", good, "sha256"),
   ("https://sha384.badssl.com/", good, "sha384"),
   ("https://sha512.badssl.com/", good, "sha512"),
@@ -54,7 +54,7 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://rsa8192.badssl.com/", dubious_broken, "rsa8192"),
   ("http://http.badssl.com/", good, "regular http"),
   ("https://http.badssl.com/", bad_broken, "http on https URL"),  # FIXME
-  ("https://cbc.badssl.com/", dubious_broken, "cbc"),
+  ("https://cbc.badssl.com/", dubious, "cbc"),
   ("https://rc4-md5.badssl.com/", bad, "rc4-md5"),
   ("https://rc4.badssl.com/", bad, "rc4"),
   ("https://3des.badssl.com/", bad, "3des"),
@@ -68,10 +68,10 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://dh2048.badssl.com/", good, "dh2048"),
   ("https://dh-small-subgroup.badssl.com/", bad_broken, "dh-small-subgroup"),
   ("https://dh-composite.badssl.com/", bad_broken, "dh-composite"),
-  ("https://static-rsa.badssl.com/", dubious_broken, "static-rsa"),
-  ("https://tls-v1-0.badssl.com:1010/", dubious_broken, "tls-v1-0"),
-  ("https://tls-v1-1.badssl.com:1011/", dubious_broken, "tls-v1-1"),
-  ("https://invalid-expected-sct.badssl.com/", bad_broken, "invalid-expected-sct"),
+  ("https://static-rsa.badssl.com/", dubious, "static-rsa"),
+  ("https://tls-v1-0.badssl.com:1010/", dubious, "tls-v1-0"),
+  ("https://tls-v1-1.badssl.com:1011/", dubious, "tls-v1-1"),
+  ("https://invalid-expected-sct.badssl.com/", bad, "invalid-expected-sct"),
   ("https://hsts.badssl.com/", good, "hsts"),
   ("https://upgrade.badssl.com/", good, "upgrade"),
   ("https://preloaded-hsts.badssl.com/", good, "preloaded-hsts"),
@@ -106,7 +106,10 @@ template evaluate(exception_msg: string, category: Category, desc: string) =
         exception_msg == "SSL Certificate check failed." or
         exception_msg.contains("certificate verify failed") or
         exception_msg.contains("key too small") or
-        exception_msg.contains "shutdown while in init", exception_msg
+        exception_msg.contains("alert handshake failure") or
+        exception_msg.contains("bad dh p length") or
+        # TODO: This one should only triggers for 10000-sans
+        exception_msg.contains("excessive message size"), exception_msg
 
   else:
     # this is unexpected

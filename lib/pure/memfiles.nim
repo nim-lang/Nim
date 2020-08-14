@@ -445,7 +445,7 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim = '\l',
   for ms in memSlices(mfile, delim, eat):
     setLen(buf.string, ms.size)
     if ms.size > 0:
-      copyMem(addr buf[0], ms.data, ms.size)
+      copyMem(addr string(buf)[0], ms.data, ms.size)
     yield buf
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): TaintedString {.inline.} =

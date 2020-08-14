@@ -72,8 +72,8 @@ assert cmpic("HeLLO", "hello") == 0
 assert fileExists("tests/newconfig/tfoo.nims") == true
 assert dirExists("tests") == true
 
-assert existsFile("tests/newconfig/tfoo.nims") == true
-assert existsDir("tests") == true
+assert fileExists("tests/newconfig/tfoo.nims") == true
+assert dirExists("tests") == true
 
 discard selfExe()
 

@@ -66,10 +66,6 @@ proc addInt*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
-proc add*(result: var string; x: int64) {.deprecated:
-  "Deprecated since v0.20, use 'addInt'".} =
-  addInt(result, x)
-
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
@@ -94,13 +90,9 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buffer: array[65, char]
+    var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
-
-proc add*(result: var string; x: float) {.deprecated:
-  "Deprecated since v0.20, use 'addFloat'".} =
-  addFloat(result, x)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -131,8 +123,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     i = start
     sign = 1.0
     kdigits, fdigits = 0
-    exponent: int
-    integer: uint64
+    exponent = 0
+    integer = uint64(0)
     fracExponent = 0
     expSign = 1
     firstDigit = -1

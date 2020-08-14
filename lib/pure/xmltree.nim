@@ -334,7 +334,7 @@ proc insert*(father, son: XmlNode, index: int) {.inline.} =
   else:
     insert(father.s, son, len(father.s))
 
-proc delete*(n: XmlNode, i: Natural) {.noSideEffect.} =
+proc delete*(n: XmlNode, i: Natural) =
   ## Delete the `i`'th child of `n`.
   ##
   ## See also:

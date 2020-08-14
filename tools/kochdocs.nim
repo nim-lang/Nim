@@ -1,17 +1,21 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm
+import os, strutils, osproc, sets, pathnorm, pegs
+from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
-  # --warning[LockLevel]:off pending #13218
-  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  # errormax: subsequent errors are probably consequences of 1st one; a simple
+  # bug could cause unlimited number of errors otherwise, hard to debug in CI.
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+
+template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -23,10 +27,10 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
   let nim = "nim".exe
   result.path = "bin" / nim
   result.ok = true
-  if existsFile(result.path): return
+  if fileExists(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
     result.path = dir / nim
-    if existsFile(result.path): return
+    if fileExists(result.path): return
   # assume there is a symlink to the exe or something:
   return (nim, false)
 
@@ -47,14 +51,22 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
 template inFold*(desc, body) =
   if existsEnv("TRAVIS"):
     echo "travis_fold:start:" & desc.replace(" ", "_")
+  elif existsEnv("GITHUB_ACTIONS"):
+    echo "::group::" & desc
+  elif existsEnv("TF_BUILD"):
+    echo "##[group]" & desc
 
   body
 
   if existsEnv("TRAVIS"):
     echo "travis_fold:end:" & desc.replace(" ", "_")
+  elif existsEnv("GITHUB_ACTIONS"):
+    echo "::endgroup::"
+  elif existsEnv("TF_BUILD"):
+    echo "##[endgroup]"
 
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  ## Execute shell command. Add log folding on Travis CI.
+  ## Execute shell command. Add log folding for various CI services.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
@@ -86,6 +98,16 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+proc getRst2html(): seq[string] =
+  for a in walkDirRecFilter("doc"):
+    let path = a.path
+    if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
+        ["docs.rst", "nimfix.rst"]:
+          # maybe we should still show nimfix, could help reviving it
+          # `docs` is redundant with `overview`, might as well remove that file?
+      result.add path
+  doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
+
 const
   pdf = """
 doc/manual.rst
@@ -96,39 +118,6 @@ doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
-""".splitWhitespace()
-
-  rst2html = """
-doc/intern.rst
-doc/apis.rst
-doc/lib.rst
-doc/manual.rst
-doc/manual_experimental.rst
-doc/destructors.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/hcr.rst
-doc/drnim.rst
-doc/overview.rst
-doc/filters.rst
-doc/tools.rst
-doc/niminst.rst
-doc/nimgrep.rst
-doc/gc.rst
-doc/estp.rst
-doc/idetools.rst
-doc/docgen.rst
-doc/koch.rst
-doc/backends.rst
-doc/nimsuggest.rst
-doc/nep1.rst
-doc/nims.rst
-doc/contributing.rst
-doc/codeowners.rst
-doc/packaging.rst
-doc/manual/var_t_return.rst
 """.splitWhitespace()
 
   doc0 = """
@@ -171,6 +160,7 @@ lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/js/jsre.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
@@ -186,7 +176,7 @@ proc getDocList(): seq[string] =
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
 
-  # don't ignore these even though in lib/system
+  # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
 lib/system/io.nim
 lib/system/nimscript.nim
@@ -196,13 +186,13 @@ lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
 
-  for a in walkDirRec("lib"):
-    if a.splitFile.ext != ".nim" or
-       a.isRelativeTo("lib/pure/includes") or
-       a.isRelativeTo("lib/genode") or
-       a.isRelativeTo("lib/deprecated") or
-       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
-       a.replace('\\', '/') in docIgnore:
+  proc follow(a: PathEntry): bool =
+    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+  for entry in walkDirRecFilter("lib", follow = follow):
+    let a = entry.path
+    if entry.kind != pcFile or a.splitFile.ext != ".nim" or
+       (a.isRelativeTo("lib/system") and a.nativeToUnixPath notin goodSystem) or
+       a.nativeToUnixPath in docIgnore:
          continue
     result.add a
   result.add normalizePath("nimsuggest/sexp.nim")
@@ -231,8 +221,29 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
+proc buildDocPackages(nimArgs, destPath: string) =
+  # compiler docs; later, other packages (perhaps tools, testament etc)
+  let nim = findNim().quoteShell()
+    # to avoid broken links to manual from compiler dir, but a multi-package
+    # structure could be supported later
+
+  proc docProject(outdir, options, mainproj: string) =
+    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $options $mainproj" % [
+      "nim", nim,
+      "outdir", outdir,
+      "nimArgs", nimArgs,
+      "gitUrl", gitUrl,
+      "options", options,
+      "mainproj", mainproj,
+      ])
+  let extra = "-u:boot"
+  # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
+  # start using nims instead of nimdoc.cfg
+  docProject(destPath/"compiler", extra, "compiler/index.nim")
+
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
+  let rst2html = getRst2html()
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
     i = 0
@@ -248,11 +259,11 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
+    let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
-    if d.isRelativeTo("compiler"):
-      nimArgs2.add " --docroot"
-    commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
-      [nimArgs2, gitUrl, destPath, d]
+    if d.isRelativeTo("compiler"): doAssert false
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
+      [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
@@ -262,6 +273,11 @@ proc buildDoc(nimArgs, destPath: string) =
 
   mexec(commands)
   exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
+    # caveat: this works so long it's called before `buildDocPackages` which
+    # populates `compiler/` with unrelated idx files that shouldn't be in index,
+    # so should work in CI but you may need to remove your generated html files
+    # locally after calling `./koch docs`. The clean fix would be for `idx` files
+    # to be transient with `--project` (eg all in memory).
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   createDir(destPath)
@@ -283,7 +299,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(dest)
       moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
-      if existsFile(changeFileExt(pdf, "toc")):
+      if fileExists(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
@@ -293,23 +309,32 @@ proc buildJS(): string =
   let nim = findNim()
   exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
+      # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
   result = getDocHacksJs(nimr = getCurrentDir(), nim)
 
-proc buildDocs*(args: string) =
-  let
-    a = nimArgs & " " & args
-    docHackJsSource = buildJS()
-    docHackJs = docHackJsSource.lastPathPart
+proc buildDocsDir*(args: string, dir: string) =
+  let args = nimArgs & " " & args
+  let docHackJsSource = buildJS()
+  createDir(dir)
+  buildDocSamples(args, dir)
+  buildDoc(args, dir) # bottleneck
+  copyFile(dir / "overview.html", dir / "index.html")
+  buildDocPackages(args, dir)
+  copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
-  let docup = webUploadOutput / NimVersion
-  createDir(docup)
-  buildDocSamples(a, docup)
-  buildDoc(a, docup)
+proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
+  let localOutDir =
+    if localOutDir.len == 0:
+      docHtmlOutput
+    else:
+      localOutDir
 
-  # 'nimArgs' instead of 'a' is correct here because we don't want
-  # that the offline docs contain the 'gaCode'!
-  createDir(docHtmlOutput)
-  buildDocSamples(nimArgs, docHtmlOutput)
-  buildDoc(nimArgs, docHtmlOutput)
-  copyFile(docHackJsSource, docHtmlOutput / docHackJs)
-  copyFile(docHackJsSource, docup / docHackJs)
+  var args = args
+
+  if not localOnly:
+    buildDocsDir(args, webUploadOutput / NimVersion)
+
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
+
+  buildDocsDir(args, localOutDir)

@@ -34,7 +34,6 @@ const
     "niminaction",
     "threads",
     "untestable",
-    "stdlib",
     "testdata",
     "nimcache",
     "coroutines",
@@ -269,8 +268,8 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
+    testSpec r, makeTest(filename, options, cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -453,15 +452,15 @@ type
     ppOne
     ppTwo
 
-iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool] =
+iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool, useHead: bool] =
   let packageList = parseFile(packageIndex)
   let importantList =
     case part
     of ppOne: important_packages.packages1
     of ppTwo: important_packages.packages2
-  for n, cmd, hasDeps, url in importantList.items:
+  for n, cmd, hasDeps, url, useHead in importantList.items:
     if url.len != 0:
-      yield (n, url, cmd, hasDeps)
+      yield (n, url, cmd, hasDeps, useHead)
     else:
       var found = false
       for package in packageList.items:
@@ -469,7 +468,7 @@ iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: boo
         if name == n:
           found = true
           let pUrl = package["url"].str
-          yield (name, pUrl, cmd, hasDeps)
+          yield (name, pUrl, cmd, hasDeps, useHead)
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
@@ -479,6 +478,16 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.name = test
   result.options = options
   result.startTime = epochTime()
+
+proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
+  ## retry `action` up to `maxRetry` times with exponential backoff and initial
+  ## duraton of `backoffDuration` seconds
+  var t = backoffDuration
+  for i in 0..<maxRetry:
+    if action(): return true
+    if i == maxRetry - 1: break
+    sleep(int(t * 1000))
+    t *= 2 # exponential backoff
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
@@ -492,26 +501,38 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages(part):
+    for name, url, cmd, hasDep, useHead in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
-      if not existsDir(buildPath):
-        if hasDep:
-          let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
-          if nimbleStatus != QuitSuccess:
-            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+      if not dirExists(buildPath):
+        if useHead:
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+          if installStatus != QuitSuccess:
+            let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
-        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
-        if installStatus != QuitSuccess:
-          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
-          r.addResult(test, targetC, "", message, reInstallFailed)
-          continue
+          if hasDep:
+            var message: string
+            if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+              proc: bool =
+                 let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
+                 if status != 0:
+                   message = "'$1' failed:\n$2" % [cmd, outp]
+                   false
+                 else: true
+              ):
+              r.addResult(test, targetC, "", message, reInstallFailed)
+              continue
+        else:
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", name, "-y"])
+          if installStatus != QuitSuccess:
+            let message = "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput
+            r.addResult(test, targetC, "", message, reInstallFailed)
+            continue
 
       let cmdArgs = parseCmdLine(cmd)
 
@@ -551,7 +572,7 @@ proc `&.?`(a, b: string): string =
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = testsDir &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
-  if existsFile(test):
+  if fileExists(test):
     testSpec r, makeTest(test, options, cat), {target}
   else:
     doAssert false, test & " test does not exist"
@@ -572,6 +593,9 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
+  if result:
+    if spec.file.readFile.contains "when isMainModule":
+      result = false
 
 proc norm(s: var string) =
   while true:
@@ -608,43 +632,38 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  #[
-  TODO(minor):
-  get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
-  delete upon completion, maybe
-  ]#
+  # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_" & $i & ".nim")
+    let file2 = outDir / ("megatest_$1.nim" % $i)
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
+    let code = "echo \"$1\", $2\n" % [marker, quoted(file)]
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import " & quoted(file2) & "\n"
-    megatest.add "import " & quoted(file) & "\n"
+    megatest.add "import $1\nimport $2\n" % [quoted(file2), quoted(file)]
 
-  writeFile("megatest.nim", megatest)
+  let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
+  writeFile(megatestFile, megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
-              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
-
+  let root = getCurrentDir()
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo "$ ", cmdLine
-    echo buf.string
-    quit("megatest compilation failed")
+    echo "$ " & cmdLine & "\n" & buf.string
+    quit(failString & "megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx("./megatest")
+  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
     echo buf.string
-    quit("megatest execution failed")
+    quit(failString & "megatest execution failed")
 
   norm buf.string
-  writeFile("outputGotten.txt", buf.string)
+  const outputExceptedFile = "outputExpected.txt"
+  const outputGottenFile = "outputGotten.txt"
+  writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -653,15 +672,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   norm outputExpected
 
   if buf.string != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
-    echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
+    writeFile(outputExceptedFile, outputExpected)
+    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
+    echo failString & "megatest output different!"
+    # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:
-    echo "output OK"
-    removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
+    echo "megatest output OK"
+    when false: # no point removing those, always good for debugging
+      removeFile(outputGottenFile)
+      removeFile(megatestFile) # keep it around
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------

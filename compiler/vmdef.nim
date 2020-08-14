@@ -261,6 +261,22 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    profiler*: Profiler
+    templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+
+  PStackFrame* = ref TStackFrame
+  TStackFrame* = object
+    prc*: PSym                 # current prc; proc that is evaluated
+    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
+                              # parameters come first
+    next*: PStackFrame         # for stacking
+    comesFrom*: int
+    safePoints*: seq[int]      # used for exception handling
+                              # XXX 'break' should perform cleanup actions
+                              # What does the C backend do for it?
+  Profiler* = object
+    tEnter*: float
+    tos*: PStackFrame
 
   TPosition* = distinct int
 

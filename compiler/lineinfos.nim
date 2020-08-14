@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables, pathutils
+import ropes, tables, pathutils, hashes
 
 const
   explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
@@ -49,10 +49,13 @@ type
     warnEachIdentIsTuple,
     warnUnsafeSetLen,
     warnUnsafeDefault,
-    warnProveInit, warnProveField, warnProveIndex, warnUnreachableElse,
+    warnProveInit, warnProveField, warnProveIndex,
+    warnUnreachableElse, warnUnreachableCode,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
+    warnObservableStores,
+    warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
@@ -108,10 +111,11 @@ const
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
     warnUnreachableElse: "unreachable else, all cases are already covered",
+    warnUnreachableCode: "unreachable code after 'return' statement or '{.noReturn.}' proc",
     warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized",
+    warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
     warnLockLevel: "$1",
@@ -119,6 +123,7 @@ const
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnCycleCreated: "$1",
+    warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -166,10 +171,11 @@ const
     "UnsafeCode", "UnusedImport", "InheritFromException",
     "EachIdentIsTuple",
     "UnsafeSetLen", "UnsafeDefault",
-    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse",
+    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse", "UnreachableCode",
     "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "CycleCreated", "User"]
+    "Spacing", "CaseTransition", "CycleCreated",
+    "ObservableStores", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",
@@ -264,6 +270,9 @@ type
   ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
+
+proc hash*(i: TLineInfo): Hash =
+  hash (i.line.int, i.col.int, i.fileIndex.int)
 
 proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)

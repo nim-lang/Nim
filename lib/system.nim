@@ -1127,12 +1127,9 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(js) and defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
-  programResult = 0
-elif hostOS != "standalone":
+when not defined(js) and hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## deprecated, prefer ``quit``
+    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
 
@@ -1147,8 +1144,8 @@ when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
     ## Stops the program immediately with an exit code.
     ##
-    ## Before stopping the program the "quit procedures" are called in the
-    ## opposite order they were added with `addQuitProc <#addQuitProc,proc>`_.
+    ## Before stopping the program the "exit procedures" are called in the
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc>`_.
     ## ``quit`` never returns and ignores any exception that may have been raised
     ## by the quit procedures.  It does *not* call the garbage collector to free
     ## all the memory, unless a quit procedure calls `GC_fullCollect
@@ -1427,7 +1424,7 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
-  importc: "atexit", header: "<stdlib.h>".}
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -1439,7 +1436,6 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # Support for addQuitProc() is done by Ansi C's facilities here.
 # In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
-
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
@@ -1756,7 +1752,7 @@ when notJSnotNims:
 
 
 when defined(nimV2):
-  include system/refs_v2
+  include system/arc
 
 import system/assertions
 export assertions
@@ -1768,6 +1764,7 @@ export iterators
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
+  result = 0
   for i in items(a):
     if i == item: return
     inc(result)
@@ -2106,7 +2103,7 @@ when not defined(js):
       # Linux 64bit system. -- That's because the stack direction is the other
       # way around.
       when declared(nimGC_setStackBottom):
-        var locals {.volatile.}: pointer
+        var locals {.volatile, noinit.}: pointer
         locals = addr(locals)
         nimGC_setStackBottom(locals)
 
@@ -2275,7 +2272,9 @@ when notJSnotNims:
       of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
       of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
       of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
-      else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
+      else:
+        d = 0'u
+        sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
     proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =

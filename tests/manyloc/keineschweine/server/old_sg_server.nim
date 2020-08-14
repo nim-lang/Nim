@@ -149,7 +149,7 @@ when true:
     of cmdShortOption, cmdLongOption:
       case key
       of "f", "file":
-        if existsFile(val):
+        if fileExists(val):
           zoneCfgFile = val
         else:
           echo("File does not exist: ", val)
@@ -165,7 +165,7 @@ when true:
     dirServerInfo = jsonSettings["dirserver"]
 
   var path = getAppDir()/../"data"/zoneFile
-  if not existsFile(path):
+  if not fileExists(path):
     echo("Zone settings file does not exist: ../data/", zoneFile)
     echo(path)
     quit(1)

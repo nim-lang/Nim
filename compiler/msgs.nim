@@ -11,8 +11,9 @@ import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
 import std/private/miscdollars
+import strutils2
 
-type InstantiationInfo = typeof(instantiationInfo())
+type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template flushDot(conf, stdorr) =
@@ -66,6 +67,12 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
+proc canonicalCase(path: var string) =
+  ## the idea is to only use this for checking whether a path is already in
+  ## the table but otherwise keep the original case
+  when FileSystemCaseSensitive: discard
+  else: toLowerAscii(path)
+
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var
     canon: AbsoluteFile
@@ -73,6 +80,7 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
     canon = canonicalizePath(conf, filename)
   except OSError:
     canon = filename
+  canon.string.canonicalCase
   result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
@@ -89,15 +97,19 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  if conf.m.filenameToIndexTbl.hasKey(canon.string):
+  var canon2: string
+  forceCopy(canon2, canon.string) # because `canon` may be shallow
+  canon2.canonicalCase
+
+  if conf.m.filenameToIndexTbl.hasKey(canon2):
     isKnownFile = true
-    result = conf.m.filenameToIndexTbl[canon.string]
+    result = conf.m.filenameToIndexTbl[canon2]
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
-    conf.m.filenameToIndexTbl[canon.string] = result
+    conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
@@ -116,6 +128,8 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 
 proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
+
+const gCmdLineInfo* = newLineInfo(commandLineIdx, 1, 1)
 
 proc concat(strings: openArray[string]): string =
   var totalLen = 0
@@ -371,7 +385,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
   result = msgKindToString(msg) % [arg]
 
 type
-  TErrorHandling = enum doNothing, doAbort, doRaise
+  TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
   var f: File
@@ -421,7 +435,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
         conf.structuredErrorHook(conf, context.info, instantiationFrom,
-                                 Severity.Error)
+                                 Severity.Hint)
       else:
         let message = if context.detail == "":
           instantiationFrom
@@ -436,18 +450,25 @@ proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
 
-proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
-  if i.fileIndex.int32 < 0: return ""
-
-  if conf.m.fileInfos[i.fileIndex.int32].lines.len == 0:
+proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
+  ## xxx there's an off by 1 error that should be fixed; if a file ends with "foo" or "foo\n"
+  ## it will return same number of lines (ie, a trailing empty line is discounted)
+  result = conf.m.fileInfos[fileIdx.int32].lines.len
+  if result == 0:
     try:
-      for line in lines(toFullPathConsiderDirty(conf, i)):
-        addSourceLine conf, i.fileIndex, line.string
+      for line in lines(toFullPathConsiderDirty(conf, fileIdx).string):
+        addSourceLine conf, fileIdx, line.string
     except IOError:
       discard
-  assert i.fileIndex.int32 < conf.m.fileInfos.len
+    result = conf.m.fileInfos[fileIdx.int32].lines.len
+
+proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
+  ## 1-based index (matches editor line numbers); 1st line is for i.line = 1
+  ## last valid line is `numLines` inclusive
+  if i.fileIndex.int32 < 0: return ""
+  let num = numLines(conf, i.fileIndex)
   # can happen if the error points to EOF:
-  if i.line.int > conf.m.fileInfos[i.fileIndex.int32].lines.len: return ""
+  if i.line.int > num: return ""
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
@@ -464,7 +485,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               else: ErrorTitle
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
-proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
+proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
   var
     title: string
@@ -487,8 +508,12 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
+    if msg in conf.warningAsErrors:
+      ignoreMsg = false
+      title = ErrorTitle
+    else:
+      title = WarningTitle
     if not ignoreMsg: writeContext(conf, info)
-    title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
     color = WarningColor
     inc(conf.warnCounter)
   of hintMin..hintMax:
@@ -533,12 +558,13 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
   ## avoids boilerplate
   if not cond:
-    const info2 = instantiationInfo(-1, fullPaths = true)
     var arg2 = "'$1' failed" % [astToStr(cond)]
     if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
-    liMessage(conf, info, errGenerated, arg2, doRaise, info2)
+    liMessage(conf, info, errGenerated, arg2, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  ## `local` means compilation keeps going until errorMax is reached (via `doNothing`),
+  ## `global` means it stops.
   liMessage(conf, info, msg, arg, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
@@ -568,7 +594,7 @@ template internalError*(conf: ConfigRef; errMsg: string) =
   internalErrorImpl(conf, unknownLineInfo, errMsg, instLoc())
 
 template internalAssert*(conf: ConfigRef, e: bool) =
-  # xxx merge with globalAssert from PR #14324
+  # xxx merge with `globalAssert`
   if not e:
     const info2 = instLoc()
     let arg = info2.toFileLineCol

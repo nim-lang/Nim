@@ -150,7 +150,7 @@ macro `->`*(p, b: untyped): untyped =
 
   result = createProcType(p, b)
 
-macro dump*(x: typed): untyped =
+macro dump*(x: untyped): untyped =
   ## Dumps the content of an expression, useful for debugging.
   ## It accepts any expression and prints a textual representation
   ## of the tree representing the expression - as it would appear in
@@ -420,3 +420,13 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+
+    proc tforum =
+      let ans = collect(newSeq):
+        for y in 0..10:
+          if y mod 5 == 2:
+            for x in 0..y:
+              x
+
+    tforum()

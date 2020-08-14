@@ -17,7 +17,9 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths
+  pathutils, trees, tables, nimpaths, renderverbatim, osproc
+
+from std/private/globs import nativeToUnixPath
 
 const
   exportSection = skField
@@ -53,15 +55,6 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
-
-proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
-
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -89,7 +82,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
     # a relative path (would it be relative wrt $PWD or to projectfile)
     conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
-    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.dirExists, arg=conf.docRoot
     # needed because `canonicalizePath` called on `file`
     result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
@@ -97,7 +90,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
   if isTitle:
-    result = result.string.nativeToUnix.RelativeFile
+    result = result.string.nativeToUnixPath.RelativeFile
   else:
     result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
@@ -147,7 +140,7 @@ template declareClosures =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
-      if not existsFile(result): result = ""
+      if not fileExists(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
@@ -158,13 +151,9 @@ proc parseRst(text, filename: string,
                     docgenFindFile, compilerMsgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
-                 ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
-  if optWholeProject in conf.globalOptions:
-    let d = conf.docOutDir(dir)
-    createDir(d)
-    result = d / changeFileExt(filename, ext)
-  elif guessTarget:
-    let d = conf.docOutDir
+                 ext: string, guessTarget: bool): AbsoluteFile =
+  if optWholeProject in conf.globalOptions or guessTarget:
+    let d = conf.outDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -236,11 +225,11 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         ]
       let cmd = cmd.interpSnippetCmd
       rawMessage(conf, hintExecuting, cmd)
-      if execShellCmd(cmd) != status:
-        rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
+      let (output, gotten) = execCmdEx(cmd)
+      if gotten != status:
+        rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
-                                outExt, htmldocsDir, false)
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -315,7 +304,11 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
-    renderRstToOut(d[], parseRst(n.comment, toFullPath(d.conf, n.info),
+    var comment2 = n.comment
+    when false:
+      # RFC: to preseve newlines in comments, this would work:
+      comment2 = comment2.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -364,8 +357,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
-                          htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -494,8 +486,8 @@ proc runAllExamples(d: PDoc) =
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
-proc prepareExample(d: PDoc; n: PNode): string =
-  ## returns `rdoccmd` for this runnableExamples
+proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
+  ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
   if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
   if n.len == 3:
@@ -512,10 +504,11 @@ proc prepareExample(d: PDoc; n: PNode): string =
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
-
+  let ret = extractRunnableExamplesSource(d.conf, n)
   for a in n.lastSon: runnableExamples.add a
+  # we could also use `ret` instead here, to keep sources verbatim
   writeExample(d, runnableExamples, rdoccmd)
-  result = rdoccmd
+  result = (rdoccmd, ret)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -529,39 +522,52 @@ proc prepareExample(d: PDoc; n: PNode): string =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previousIsRunnable: var bool) =
+proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
+  ## this is a rather hacky way to get rid of the initial indentation
+  ## that the renderer currently produces:
+  # deadcode
+  var i = 0
+  var body = n.lastSon
+  if body.len == 1 and body.kind == nkStmtList and
+      body.lastSon.kind == nkStmtList:
+    body = body.lastSon
+  for b in body:
+    if i > 0: dest.add "\n"
+    inc i
+    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+
+type RunnableState = enum
+  rsStart
+  rsComment
+  rsRunnable
+  rsDone
+
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState): RunnableState =
   ##[
-  previousIsRunnable: keep track of whether previous sibling was a runnableExample (true if 1st sibling though).
-  This is to ensure this works:
+  Simple state machine to tell whether we render runnableExamples and doc comments.
+  This is to ensure that we can interleave runnableExamples and doc comments freely;
+  the logic is easy to change but currently a doc comment following another doc comment
+  will not render, to avoid rendering in following case:
+
   proc fn* =
     runnableExamples: discard
     ## d1
     runnableExamples: discard
     ## d2
 
-    ## d3 # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
-
-  It also works with:
-  proc fn* =
-    ## d0
-    runnableExamples: discard
-    ## d1
-
-    etc
+    ## internal explanation  # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
+    discard # some code
   ]##
-  # xxx: checkme: owner check instead? this fails with the $nim/nimdoc/tester.nim test
-  # now that we're calling `genRecComment` only from here (to maintain correct order wrt runnableExample)
-  # if n.info.fileIndex != orig.info.fileIndex: return
+
   case n.kind
   of nkCommentStmt:
-    if previousIsRunnable:
+    if state in {rsStart, rsRunnable}:
       dest.add genRecComment(d, n)
-    previousIsRunnable = false
+      return rsComment
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList:
-      previousIsRunnable = true
-      let rdoccmd = prepareExample(d, n)
+        n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
+      let (rdoccmd, code) = prepareExample(d, n)
       var msg = "Example:"
       if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
@@ -569,27 +575,63 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previous
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      # this is a rather hacky way to get rid of the initial indentation
-      # that the renderer currently produces:
-      var i = 0
-      var body = n.lastSon
-      if body.len == 1 and body.kind == nkStmtList and
-          body.lastSon.kind == nkStmtList:
-        body = body.lastSon
-      for b in body:
-        if i > 0: dest.add "\n"
-        inc i
-        nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+      when true:
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+      else:
+        renderNimCodeOld(d, n, dest)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
-  else: previousIsRunnable = false
+      return rsRunnable
+  else: discard
+  return rsDone
+    # change this to `rsStart` if you want to keep generating doc comments
+    # and runnableExamples that occur after some code in routine
 
-  var previousIsRunnable2 = true
-  for i in 0..<n.safeLen:
-    getAllRunnableExamplesRec(d, n[i], orig, dest, previousIsRunnable2)
+proc getRoutineBody(n: PNode): PNode =
+  ##[
+  nim transforms these quite differently:
 
-proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
-  var previousIsRunnable = true
-  getAllRunnableExamplesRec(d, n, n, dest, previousIsRunnable)
+  proc someType*(): int =
+    ## foo
+    result = 3
+=>
+  result =
+    ## foo
+    3;
+
+  proc someType*(): int =
+    ## foo
+    3
+=>
+  ## foo
+  result = 3;
+
+  so we normalize the results to get to the statement list containing the
+  (0 or more) doc comments and runnableExamples.
+  ]##
+  result = n[bodyPos]
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
+    doAssert result.len == 2
+    result = result[1]
+
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
+  var n = n
+  var state = rsStart
+  template fn(n2) =
+    state = getAllRunnableExamplesImpl(d, n2, dest, state)
+  dest.add genComment(d, n).rope
+  case n.kind
+  of routineDefs:
+    n = n.getRoutineBody
+    case n.kind
+    of nkCommentStmt, nkCallKinds: fn(n)
+    else:
+      for i in 0..<n.safeLen:
+        fn(n[i])
+        if state == rsDone: return
+  else: fn(n)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -765,12 +807,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var literal, plainName = ""
   var kind = tkEof
   var comm: Rope = nil
-  # skipping this (and doing it inside getAllRunnableExamples) would fix order in
-  # case of a runnableExample appearing before a doccomment, but would cause other
-  # issues
-  comm.add genRecComment(d, n)
-  if n.kind in declarativeDefs:
+  if n.kind in routineDefs:
     getAllRunnableExamples(d, n, comm)
+  else:
+    comm.add genRecComment(d, n)
+
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
@@ -1182,20 +1223,23 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
-  let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
+  var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
+  let bodyname = if d.hasToc and not d.isPureRst:
+                   groupsection.setLen 0
+                   "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile)])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
@@ -1211,14 +1255,13 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = d.conf.docOutDir(htmldocsDir)
+    let dir = d.conf.outDir
     createDir(dir)
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
     if d.conf.outFile.isEmpty:
       d.conf.outFile = outfile.relativeTo(d.conf.outDir)
       if isAbsolute(d.conf.outFile.string):
@@ -1231,7 +1274,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
     updateOutfile(d, outfile)

@@ -301,8 +301,7 @@ template build_specification_lookup():
     OrderedTable[string, ptr Tparameter_specification] =
   ## Returns the table used to keep pointers to all of the specifications.
   var result {.gensym.}: OrderedTable[string, ptr Tparameter_specification]
-  result = initOrderedTable[string, ptr Tparameter_specification](
-    tables.rightSize(expected.len))
+  result = initOrderedTable[string, ptr Tparameter_specification](expected.len)
   for i in 0..expected.len-1:
     for param_to_detect in expected[i].names:
       if result.hasKey(param_to_detect):
@@ -447,7 +446,7 @@ proc build_help*(expected: seq[Tparameter_specification] = @[],
 
   # First generate the joined version of input parameters in a list.
   var
-    seen = initSet[string]()
+    seen = initHashSet[string]()
     prefixes: seq[string] = @[]
     helps: seq[string] = @[]
   for key in keys:

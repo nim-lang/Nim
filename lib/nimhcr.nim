@@ -1,3 +1,7 @@
+discard """
+batchable: false
+"""
+
 #
 #
 #            Nim's Runtime Library

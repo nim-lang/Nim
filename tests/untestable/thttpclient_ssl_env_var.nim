@@ -13,7 +13,7 @@
 ##  SSL_CERT_FILE=BogusInexistentFileName tests/untestable/thttpclient_ssl_env_var
 ##  SSL_CERT_DIR=BogusInexistentDirName tests/untestable/thttpclient_ssl_env_var
 
-import httpclient, unittest, ospaths
+import httpclient, unittest, os
 from net import newSocket, newContext, wrapSocket, connect, close, Port,
   CVerifyPeerUseEnvVars
 from strutils import contains

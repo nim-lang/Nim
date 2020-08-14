@@ -7,7 +7,7 @@ axc
 ...
 destroying GenericObj[T] GenericObj[system.int]
 test
-(allocCount: 17, deallocCount: 15)
+(allocCount: 13, deallocCount: 11)
 3'''
 """
 

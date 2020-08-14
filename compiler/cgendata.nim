@@ -70,7 +70,8 @@ type
     hasCurFramePointer,
     noSafePoints,
     nimErrorFlagAccessed,
-    nimErrorFlagDeclared
+    nimErrorFlagDeclared,
+    nimErrorFlagDisabled
 
   TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
@@ -96,6 +97,7 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
+    withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
@@ -188,8 +190,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module
-  if prc != nil: result.options = prc.options
-  else: result.options = module.config.options
+  result.options = if prc != nil: prc.options
+                   else: module.config.options
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
