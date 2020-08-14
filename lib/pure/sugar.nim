@@ -357,7 +357,7 @@ when isMainModule:
         doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
 
       block:
-        let b = a.dup(inc_col, pos = 3, name: "bar"):
+        let b = a.dup(inc_col, pos = 3, name = "bar"):
           name_append("bar")
           inc_pos
 

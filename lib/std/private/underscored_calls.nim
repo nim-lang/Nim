@@ -26,14 +26,12 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     for i in 1..u-1: result.add n[i]
     result.add arg0
     for i in u+1..n.len-1: result.add n[i]
-  elif n.kind == nnkAsgn:
+  elif n.kind in {nnkAsgn, nnkExprEqExpr}:
     var field = n[0]
     if n[0].kind == nnkDotExpr and n[0][0].eqIdent("_"):
       # handle _.field = ...
       field = n[0][1]
     result = newDotExpr(arg0, field).newAssignment n[1]
-  elif n.kind in {nnkExprEqExpr, nnkExprColonExpr}:
-    result = newDotExpr(arg0, n[0]).newAssignment n[1]
   else:
     # handle e.g. 'x.dup(sort)'
     result = newNimNode(nnkCall, n)
