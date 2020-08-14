@@ -148,6 +148,21 @@
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
+  
+- `std/with`, `sugar.dup` now support object field assignment expression:
+  ```nim
+  import std/with
+
+  type Foo = object
+    x, y: int
+
+  var foo = Foo()
+  with foo:
+    x = 10
+    y = 20
+
+  echo foo
+  ```
 
 ## Language changes
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
