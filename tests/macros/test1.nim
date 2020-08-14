@@ -5,7 +5,6 @@ macro makeVar(): untyped =
     var tensorY {.inject.}: int
 
 macro noop(a: typed): untyped =
-  assert false
   a
 
 noop:

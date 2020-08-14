@@ -383,7 +383,7 @@ when not defined(nimHasSinkInference):
 
 include hlo, seminst, semcall
 
-when false:
+when true:
   # hopefully not required:
   proc resetSemFlag(n: PNode) =
     excl n.flags, nfSem
@@ -403,8 +403,9 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   c.friendModules.add(s.owner.getModule)
   idSynchronizationPoint(5000)
   result = macroResult
-  excl(result.flags, nfSem)
-  #resetSemFlag n
+  #excl(result.flags, nfSem)
+  # TODO: Maybe replace with a TExprFlag efForceResem?
+  resetSemFlag result
   if s.typ[0] == nil:
     result = semStmt(c, result, flags)
   else:
