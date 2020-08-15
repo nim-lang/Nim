@@ -43,6 +43,8 @@ macro checkType(ex: typed): untyped =
   echo ex.getTypeInst.repr, "; ", ex.typeKind, "; ", ex.getType.repr, "; ", ex.getTypeImpl.repr
 
 macro checkProcType(fn: typed): untyped =
+  if fn.kind == nnkProcDef:
+    result = fn
   let fn_sym = if fn.kind == nnkProcDef: fn[0] else: fn
   echo fn_sym, "; ", fn_sym.typeKind, "; ", fn_sym.getType.repr, "; ", fn_sym.getTypeImpl.repr
 
