@@ -169,6 +169,7 @@ proc shortKind(k: TTypeKind): string =
     result = split(result, {'e','i','o','u'}).join("")
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
+  let m = getem()
   var typ = typ.skipTypes(irrelevantForBackend)
   result = case typ.kind
   of tySet, tySequence, tyTypeDesc, tyArray:
@@ -177,8 +178,11 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     # omit this verbosity for now
     typeName(p, typ.lastSon, shorten = shorten)
   of tyProc, tyTuple:
-    # these need a signature-based name so that type signatures match :-(
-    shortKind(typ.kind) & $hashType(typ)
+    if m.config.backend == backendCpp:
+      # these need a signature-based name so that type signatures match :-(
+      shortKind(typ.kind) & $hashType(typ)
+    else:
+      shortKind(typ.kind) & "_" & $conflictKey(typ)
   else:
     if typ.sym == nil:
       shortKind(typ.kind) & "_" & $conflictKey(typ)
