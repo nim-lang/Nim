@@ -187,10 +187,9 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   let it = transformImportAs(c, it)
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
-    var emptySet: IntSet
     # ``addDecl`` needs to be done before ``importAllSymbols``!
     addDecl(c, m, it.info) # add symbol to symbol table of module
-    importAllSymbolsExcept(c, m, emptySet)
+    importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =

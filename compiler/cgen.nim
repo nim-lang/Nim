@@ -682,6 +682,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     else:
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace}
+      p.flags.incl nimErrorFlagDisabled
       var dest: TLoc
       initLoc(dest, locTemp, lib.path, OnStack)
       dest.r = getTempName(m)
@@ -975,6 +976,9 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
+proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
+  sfNoReturn in s.flags and m.config.exc != excGoto
+
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
@@ -1029,7 +1033,7 @@ proc genProcAux(m: BModule, prc: PSym) =
 
   var generatedProc: Rope
   generatedProc.genCLineDir prc.info, m.config
-  if sfNoReturn in prc.flags:
+  if isNoReturn(p.module, prc):
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
@@ -1092,13 +1096,13 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     let asPtr = isReloadable(m, sym)
     var header = genProcHeader(m, sym, asPtr)
     if not asPtr:
-      if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
+      if isNoReturn(m, sym) and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
         header = "__declspec(noreturn) " & header
       if sym.typ.callConv != ccInline and requiresExternC(m, sym):
         header = "extern \"C\" " & header
       if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((naked))")
-      if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
+      if isNoReturn(m, sym) and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((noreturn))")
     m.s[cfsProcHeaders].add(ropecg(m, "$1;$N", [header]))
 
@@ -1557,7 +1561,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   if sfSystemModule in m.module.flags:
     if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
       g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+    if m.config.target.targetOS != osStandalone and m.config.selectedGC notin {gcNone, gcArc, gcOrc}:
       g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
 
   if m.s[cfsInitProc].len > 0:
@@ -1662,6 +1666,10 @@ proc genInitCode(m: BModule) =
     writeSection(preInitProc, cpsInit, m.hcrOn)
     writeSection(preInitProc, cpsStmts)
     prc.addf("}$N", [])
+    when false:
+      m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
+      m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)
+      m.initProc.blocks[0].sections[cpsStmts].prepend m.preInitProc.s(cpsStmts)
 
   # add new scope for following code, because old vcc compiler need variable
   # be defined at the top of the block
@@ -1773,11 +1781,6 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   if moduleIsEmpty:
     result = nil
 
-proc newPreInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 100_000
-
 proc initProcOptions(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
@@ -1798,7 +1801,9 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.sigConflicts = initCountTable[SigHash]()
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
-  result.preInitProc = newPreInitProc(result)
+  result.preInitProc = newProc(nil, result)
+  result.preInitProc.flags.incl nimErrorFlagDisabled
+  result.preInitProc.labels = 100_000 # little hack so that unique temporaries are generated
   initNodeTable(result.dataCache)
   result.typeStack = @[]
   result.typeNodesName = getTempName(result)

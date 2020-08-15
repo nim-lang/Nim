@@ -47,21 +47,12 @@ function main() {
 
   toggleSwitch.addEventListener('change', switchTheme, false);
 
+  const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+  if (currentTheme) {
+    document.documentElement.setAttribute('data-theme', currentTheme);
 
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.setAttribute('data-theme', "dark");
-    toggleSwitch.checked = true;
-  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-    document.documentElement.setAttribute('data-theme', "light");
-    toggleSwitch.checked = false;
-  } else {
-    const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
-    if (currentTheme) {
-      document.documentElement.setAttribute('data-theme', currentTheme);
-
-      if (currentTheme === 'dark') {
-        toggleSwitch.checked = true;
-      }
+    if (currentTheme === 'dark') {
+      toggleSwitch.checked = true;
     }
   }
 }
@@ -84,6 +75,18 @@ function main() {
 <dt><a name="aEnum" href="#aEnum"><span>aEnum:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: aEnum(): untyped" href="subdir/subdir_b/utils.html#aEnum.t">utils: aEnum(): untyped</a></li>
+          </ul></dd>
+<dt><a name="asyncFun1" href="#asyncFun1"><span>asyncFun1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: asyncFun1(): Future[int]" href="testproject.html#asyncFun1">testproject: asyncFun1(): Future[int]</a></li>
+          </ul></dd>
+<dt><a name="asyncFun2" href="#asyncFun2"><span>asyncFun2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: asyncFun2(): owned(Future[void])" href="testproject.html#asyncFun2">testproject: asyncFun2(): owned(Future[void])</a></li>
+          </ul></dd>
+<dt><a name="asyncFun3" href="#asyncFun3"><span>asyncFun3:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: asyncFun3(): owned(Future[void])" href="testproject.html#asyncFun3">testproject: asyncFun3(): owned(Future[void])</a></li>
           </ul></dd>
 <dt><a name="aVariable" href="#aVariable"><span>aVariable:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -181,6 +184,14 @@ function main() {
 <li><a class="reference external"
           data-doc-search-tag="testproject: isValid[T](x: T): bool" href="testproject.html#isValid%2CT">testproject: isValid[T](x: T): bool</a></li>
           </ul></dd>
+<dt><a name="iter1" href="#iter1"><span>iter1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: iter1(n: int): int" href="testproject.html#iter1.i%2Cint">testproject: iter1(n: int): int</a></li>
+          </ul></dd>
+<dt><a name="iter2" href="#iter2"><span>iter2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: iter2(n: int): int" href="testproject.html#iter2.i%2Cint">testproject: iter2(n: int): int</a></li>
+          </ul></dd>
 <dt><a name="low" href="#low"><span>low:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="testproject: low[T: Ordinal | enum | range](x: T): T" href="testproject.html#low%2CT">testproject: low[T: Ordinal | enum | range](x: T): T</a></li>
@@ -188,6 +199,18 @@ function main() {
 <dt><a name="low2" href="#low2"><span>low2:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="testproject: low2[T: Ordinal | enum | range](x: T): T" href="testproject.html#low2%2CT">testproject: low2[T: Ordinal | enum | range](x: T): T</a></li>
+          </ul></dd>
+<dt><a name="method1" href="#method1"><span>method1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: method1(self: Moo)" href="testproject.html#method1.e%2CMoo">testproject: method1(self: Moo)</a></li>
+          </ul></dd>
+<dt><a name="method2" href="#method2"><span>method2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: method2(self: Moo): int" href="testproject.html#method2.e%2CMoo">testproject: method2(self: Moo): int</a></li>
+          </ul></dd>
+<dt><a name="method3" href="#method3"><span>method3:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: method3(self: Moo): int" href="testproject.html#method3.e%2CMoo">testproject: method3(self: Moo): int</a></li>
           </ul></dd>
 <dt><a name="myfn" href="#myfn"><span>myfn:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"

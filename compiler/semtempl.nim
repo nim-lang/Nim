@@ -145,9 +145,6 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
     illFormedAst(n, c.c.config)
     result = n
 
-template oldCheck(cx: TemplCtx; cond: bool): bool =
-  (optNimV019 notin cx.c.config.globalOptions or cond)
-
 proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
   result = n.kind == nkSym and n.sym.kind == skParam and
            n.sym.owner == c.owner and sfTemplateParam in n.sym.flags
@@ -215,21 +212,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      # fix #2670, consider:
-      #
-      # when b:
-      #    var a = "hi"
-      # else:
-      #    var a = 5
-      # echo a
-      #
-      # We need to ensure that both 'a' produce the same gensym'ed symbol.
-      # So we need only check the *current* scope.
-      let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
-      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
-        onUse(n.info, s)
-        replaceIdentBySym(c.c, n, newSymNode(s, n.info))
-      elif n.kind != nkSym:
+      if n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
@@ -560,16 +543,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
-      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
+      inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
-      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
+      dec c.noGenSym
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
     if n.len == 2:
-      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
+      inc c.noGenSym
       result[0] = semTemplBody(c, n[0])
-      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
+      dec c.noGenSym
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)

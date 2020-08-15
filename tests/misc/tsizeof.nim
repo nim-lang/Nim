@@ -78,7 +78,7 @@ macro c_offsetof(fieldAccess: typed): int32 =
   ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0] 
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0]
           else: fieldAccess
   let a = s[0].getTypeInst
   let b = s[1]
@@ -686,3 +686,21 @@ reject:
 
 reject:
   const off8 = offsetof(MyPackedCaseObject, val5)
+
+
+type
+  O0 = object
+  T0 = tuple[]
+
+doAssert sizeof(O0) == 1
+doAssert sizeof(T0) == 1
+
+
+type
+  # this thing may not have padding bytes at the end
+  PackedUnion* {.union, packed.} = object
+    a*: array[11, byte]
+    b*: int64
+
+doAssert sizeof(PackedUnion) == 11
+doAssert alignof(PackedUnion) == 1

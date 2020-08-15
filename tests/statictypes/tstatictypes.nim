@@ -9,6 +9,7 @@ output: '''
 b is 2 times a
 17
 ['\x00', '\x00', '\x00', '\x00']
+heyho
 '''
 """
 
@@ -216,3 +217,25 @@ block: # #12713
     proc test(c: static string) = discard #Remove this and it compiles
     proc test(c: Cell) = discard
     test Cell()
+
+block: # issue #14802
+  template fn(s: typed): untyped =
+    proc bar() = discard
+    12
+  const myConst = static(fn(1))
+  doAssert myConst == 12
+
+
+# bug #12571
+type
+  T[K: static bool] = object of RootObj
+    when K == true:
+      foo: string
+    else:
+      bar: string
+  U[K: static bool] = object of T[K]
+
+let t = T[true](foo: "hey")
+let u = U[false](bar: "ho")
+echo t.foo, u.bar
+

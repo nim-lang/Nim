@@ -54,11 +54,6 @@ proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: Con
       s.add(": ")
       storeAny(s, field.typ, it, stored, conf)
 
-proc skipColon*(n: PNode): PNode =
-  result = n
-  if n.kind == nkExprColonExpr:
-    result = n[1]
-
 proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
               conf: ConfigRef) =
   case t.kind

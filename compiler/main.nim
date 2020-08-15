@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm, idgen,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils
+  modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -67,10 +67,15 @@ when not defined(leanCompiler):
     finishDoc2Pass(graph.config.projectName)
 
 proc setOutFile(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
   if conf.outFile.isEmpty:
     let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
       platform.OS[conf.target.targetOS].dllFrmt % base
+    elif optGenStaticLib in conf.globalOptions:
+      libNameTmpl(conf) % base
     else:
       base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName
@@ -399,6 +404,8 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    if optProfileVM in conf.globalOptions:
+      echo conf.dump(conf.vmProfileData)
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,

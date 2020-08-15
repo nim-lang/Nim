@@ -5,7 +5,7 @@
 ## Standard library additions and changes
 
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
-- Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
+- Add `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
@@ -24,7 +24,7 @@
   ease the writing of multi-process servers, where sockets inheritance is
   desired.
 
-  For a transistion period, define `nimInheritHandles` to enable file handle
+  For a transition period, define `nimInheritHandles` to enable file handle
   inheritance by default. This flag does **not** affect the `selectors` module
   due to the differing semantics between operating systems.
 
@@ -60,7 +60,7 @@
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
 
-- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom` UDP functionality.
 
 - `dollars.$` now works for unsigned ints with `nim js`
 
@@ -83,11 +83,14 @@
 
   proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
+
 - The fields of `times.DateTime` are now private, and are accessed with getters and deprecated setters.
 
-- The `times` module now handles the default value for `DateTime` more consistently. Most procs raise an assertion error when given
-  an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`). The proc `times.isInitialized`
-  has been added which can be used to check if a `DateTime` has been initialized.
+- The `times` module now handles the default value for `DateTime` more consistently.
+  Most procs raise an assertion error when given
+  an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`).
+  The proc `times.isInitialized` has been added which can be used to check if
+  a `DateTime` has been initialized.
 
 - Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
   hangs if a process had both reads from stdin and writes (eg to stdout).
@@ -98,24 +101,77 @@
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
-- Add `ssl_config` module containing lists of secure ciphers as recommended by
+- Added a `ssl_config` module containing lists of secure ciphers as recommended by
   [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
 
 - `net.newContext` now defaults to the list of ciphers targeting
   ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
   per Mozilla's recommendation instead of `ALL`. This change should protect
   users from the use of weak and insecure ciphers while still provides
-  adequate compatiblity with the majority of the Internet.
+  adequate compatibility with the majority of the Internet.
 
-- new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
+- A new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` operations for json
+  serialization/deserialization of custom types was added.
 
-- new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
-- Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
-- Add `os.normalizeExe`, eg: `koch` => `./koch`.
+- A new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``
+  was added.
+- Added `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator`
+  with `outLatex` output.
+- Added `os.normalizeExe`, e.g.: `koch` => `./koch`.
+- `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720`
+  to keep old behavior.
+- Added `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Added `typetraits.elementType` to get element type of an iterable.
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
+- Added `macros.extractDocCommentsAndRunnables` helper
 
+- `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now
+  expands to `fmt"expr={expr}"`.
+- deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
+
+- Added `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+- Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
+  because negative values will result in a new file being created for each logged
+  line which doesn't make sense.
+- Changed `log` in `logging` to use proper log level on JavaScript target,
+  e.g. `debug` uses `console.debug`, `info` uses `console.info`, `warn` uses `console.warn`, etc.
+- Tables, HashSets, SharedTables and deques don't require anymore that the passed
+  initial size must be a power of two - this is done internally.
+  Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
+  `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
+- Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
+
+- Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
+
+- Added `deques.toDeque`, which creates a deque from an openArray. The usage is
+  similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty deque and add items manually.
+  
+- `std/with`, `sugar.dup` now support object field assignment expression:
+  ```nim
+  import std/with
+
+  type Foo = object
+    x, y: int
+
+  var foo = Foo()
+  with foo:
+    x = 10
+    y = 20
+
+  echo foo
+  ```
 
 ## Language changes
-- In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+- The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
+  `wasMoved` calls where needed.
+- In the newruntime it is now allowed to assign to the discriminator field
+  without restrictions as long as case object doesn't have custom destructor.
+  The discriminator value doesn't have to be a constant either. If you have a
+  custom destructor for a case object and you do want to freely assign discriminator
+  fields, it is recommended to refactor object into 2 objects like this:
 
   ```nim
   type
@@ -144,8 +200,8 @@
       deallocShared(x.val)
       x.val = nil
   ```
-- getImpl() on enum type symbols now returns field syms instead of idents. This helps
-  with writing typed macros. Old behavior for backwards compatiblity can be restored
+- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
+  with writing typed macros. Old behavior for backwards compatibility can be restored
   with command line switch `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
   ``importc``/``importcpp``/``importjs``/``importobjc``.
@@ -174,7 +230,19 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
+- Remove `strutils.isNilOrWhitespace`, was deprecated.
+- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
+- Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+
+- There is a new experimental feature called "strictFuncs" which makes the definition of
+  `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
+  for more information.
+
 
 ## Compiler changes
 
@@ -195,19 +263,34 @@ proc mydiv(a, b): int {.raises: [].} =
   (likewise with other hints and warnings), which is consistent with all other bool flags.
   (since 1.3.3).
 - `nim doc -r main` and `nim rst2html -r main` now call openDefaultBrowser
-- new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error) was generated; this
-  helps in particular when it's non obvious where it came from either because multiple locations generate
-  the same message, or because the message involves runtime formatting.
-- new flag `--backend:js|c|cpp|objc (or -b:js etc), to change backend; can be used with any command
-  (eg nim r, doc, check etc); safe to re-assign.
-- new flag `--doccmd:cmd` to pass additional flags for runnableExamples, eg: `--doccmd:-d:foo --threads`
+- new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error)
+  was generated; this helps in particular when it's non obvious where it came from
+  either because multiple locations generate the same message, or because the
+  message involves runtime formatting.
+- new flag `--backend:js|c|cpp|objc` (or -b:js etc), to change backend; can be
+  used with any command (eg nim r, doc, check etc); safe to re-assign.
+- new flag `--doccmd:cmd` to pass additional flags for runnableExamples,
+  e.g.: `--doccmd:-d:foo --threads`
   use `--doccmd:skip` to skip runnableExamples and rst test snippets.
-- new flag `--usenimcache` to output to nimcache (whatever it resolves to after all commands are processed)
+- new flag `--usenimcache` to output to nimcache (whatever it resolves to after
+  all commands are processed)
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
-- `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
-  for example to change backend or compile only.
-- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
-  passing `--project` now automatically generates an index and enables search.
+- `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override
+  how an example is compiled and run, for example to change backend or compile only.
+- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified
+  (with or without `--project`); passing `--project` now automatically generates
+  an index and enables search.
   See [docgen](docgen.html#introduction-quick-start) for details.
+- Removed the `--oldNewlines` switch.
+- Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
+- Removed the `--oldast` switch.
+- Removed the `--oldgensym` switch
+- `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is
+  now "typed" instead of "stmt".
+- Sink inference is now disabled per default and has to enabled explicitly via
+  `--sinkInference:on`. *Note*: For the standard library sink inference remains
+  enabled. This change is most relevant for the `--gc:arc`, `--gc:orc` memory
+  management modes.
+
 
 ## Tool changes

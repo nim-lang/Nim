@@ -29,7 +29,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, types, intsets, lineinfos, renderer
+import ast, types, intsets, lineinfos, renderer, asciitables
 
 from patterns import sameTrees
 
@@ -57,14 +57,11 @@ type
 
   Con = object
     code: ControlFlowGraph
-    inCall, inTryStmt: int
+    inTryStmt: int
     blocks: seq[TBlock]
     owner: PSym
 
-proc debugInfo(info: TLineInfo): string =
-  result = $info.line #info.toFilename & ":" & $info.line
-
-proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
+proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
@@ -85,17 +82,14 @@ proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
       result.add "L"
       result.addInt c[i].dest+i
     result.add("\t#")
-    result.add(debugInfo(c[i].n.info))
+    result.add($c[i].n.info.line)
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
-  # consider calling `asciitables.alignTable`
 
-proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
+proc echoCfg*(c: ControlFlowGraph; start = 0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
-  var buf = ""
-  codeListing(c, buf, start, last)
-  echo buf
+  echo codeListing(c, start, last).alignTable
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -273,22 +267,20 @@ duplicate the 'join' instructions on breaks and return exits!
 
 ]#
 
-proc genLabel(c: Con): TPosition =
-  result = TPosition(c.code.len)
+proc genLabel(c: Con): TPosition = TPosition(c.code.len)
+
+template checkedDistance(dist): int =
+  doAssert low(int) div 2 + 1 < dist and dist < high(int) div 2
+  dist
 
 proc jmpBack(c: var Con, n: PNode, p = TPosition(0)) =
-  let dist = p.int - c.code.len
-  doAssert(low(int) div 2 + 1 < dist and dist < high(int) div 2)
-  c.code.add Instr(n: n, kind: goto, dest: dist)
+  c.code.add Instr(n: n, kind: goto, dest: checkedDistance(p.int - c.code.len))
 
 proc patch(c: var Con, p: TPosition) =
   # patch with current index
-  let p = p.int
-  let diff = c.code.len - p
-  doAssert(low(int) div 2 + 1 < diff and diff < high(int) div 2)
-  c.code[p].dest = diff
+  c.code[p.int].dest = checkedDistance(c.code.len - p.int)
 
-proc gen(c: var Con; n: PNode) # {.noSideEffect.}
+proc gen(c: var Con; n: PNode)
 
 proc popBlock(c: var Con; oldLen: int) =
   var exits: seq[TPosition]
@@ -302,8 +294,8 @@ proc popBlock(c: var Con; oldLen: int) =
     c.patch e
   c.blocks.setLen(oldLen)
 
-template withBlock(labl: PSym; body: untyped) {.dirty.} =
-  var oldLen {.gensym.} = c.blocks.len
+template withBlock(labl: PSym; body: untyped) =
+  let oldLen = c.blocks.len
   c.blocks.add TBlock(isTryBlock: false, label: labl)
   body
   popBlock(c, oldLen)
@@ -366,11 +358,9 @@ when true:
           endings[i] = c.forkI(n)
           c.gen(n[1])
         for i in countdown(endings.high, 0):
-          let endPos = endings[i]
-          c.patch(endPos)
+          c.patch(endings[i])
 
 else:
-
   proc genWhile(c: var Con; n: PNode) =
     # lab1:
     #   cond, tmp
@@ -385,10 +375,9 @@ else:
         c.jmpBack(n, lab1)
       else:
         c.gen(n[0])
-        let lab2 = c.forkI(n)
-        c.gen(n[1])
-        c.jmpBack(n, lab1)
-        c.patch(lab2)
+        forkT(n):
+          c.gen(n[1])
+          c.jmpBack(n, lab1)
 
 template forkT(n, body) =
   let lab1 = c.forkI(n)
@@ -434,16 +423,14 @@ proc genIf(c: var Con, n: PNode) =
   ]#
   var endings: seq[TPosition] = @[]
   for i in 0..<n.len:
-    var it = n[i]
+    let it = n[i]
     c.gen(it[0])
     if it.len == 2:
-      let elsePos = forkI(c, it[1])
-      c.gen(it[1])
-      endings.add(c.gotoI(it[1]))
-      c.patch(elsePos)
+      forkT(it[1]):
+        c.gen(it[1])
+        endings.add c.gotoI(it[1])
   for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
+    c.patch(endings[i])
 
 proc genAndOr(c: var Con; n: PNode) =
   #   asgn dest, a
@@ -473,16 +460,13 @@ proc genCase(c: var Con; n: PNode) =
   c.gen(n[0])
   for i in 1..<n.len:
     let it = n[i]
-    if it.len == 1:
-      c.gen(it[0])
-    elif i == n.len-1 and isExhaustive:
+    if it.len == 1 or (i == n.len-1 and isExhaustive):
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
     else:
-      let elsePos = c.forkI(it.lastSon)
-      c.gen(it.lastSon)
-      endings.add(c.gotoI(it.lastSon))
-      c.patch(elsePos)
+      forkT(it.lastSon):
+        c.gen(it.lastSon)
+        endings.add c.gotoI(it.lastSon)
   for i in countdown(endings.high, 0):
     let endPos = endings[i]
     c.patch(endPos)
@@ -506,7 +490,6 @@ proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
 
 proc genBreak(c: var Con; n: PNode) =
   if n[0].kind == nkSym:
-    #echo cast[int](n[0].sym)
     for i in countdown(c.blocks.high, 0):
       if not c.blocks[i].isTryBlock and c.blocks[i].label == n[0].sym:
         genBreakOrRaiseAux(c, i, n)
@@ -525,7 +508,6 @@ proc genTry(c: var Con; n: PNode) =
   c.blocks.add TBlock(isTryBlock: true, finale: if n[^1].kind == nkFinally: n[^1] else: newNode(nkEmpty))
 
   inc c.inTryStmt
-  #let elsePos = c.forkI(n)
   c.gen(n[0])
   dec c.inTryStmt
 
@@ -534,20 +516,14 @@ proc genTry(c: var Con; n: PNode) =
 
   c.blocks.setLen oldLen
 
-  #c.patch(elsePos)
   for i in 1..<n.len:
     let it = n[i]
     if it.kind != nkFinally:
-      let endExcept = c.forkI(it)
-      c.gen(it.lastSon)
-      endings.add(c.gotoI(it))
-      c.patch(endExcept)
+      forkT(it):
+        c.gen(it.lastSon)
+        endings.add c.gotoI(it)
   for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
-
-  # join the 'elsePos' forkI instruction:
-  #c.joinI(c.blocks[^1].forks.pop(), n)
+    c.patch(endings[i])
 
   let fin = lastSon(n)
   if fin.kind == nkFinally:
@@ -597,59 +573,43 @@ proc skipConvDfa*(n: PNode): PNode =
       result = result[1]
     else: break
 
-proc genUse(c: var Con; orig: PNode) =
-  var n = orig
+proc aliases*(obj, field: PNode): bool =
+  var n = field
+  var obj = obj
   while true:
+    case obj.kind
+    of {nkObjDownConv, nkObjUpConv, nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
+      obj = obj[0]
+    of PathKinds1:
+      obj = obj[1]
+    else: break
+  while true:
+    if sameTrees(obj, n): return true
     case n.kind
-    of PathKinds0 - {nkBracketExpr}:
-      n = n[0]
-    of nkBracketExpr:
-      gen(c, n[1])
+    of PathKinds0:
       n = n[0]
     of PathKinds1:
       n = n[1]
     else: break
-    if n.kind in nkCallKinds:
-      gen(c, n)
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
 
-proc aliases*(obj, field: PNode): bool =
-  var n = field
-  var obj = obj
-  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv,
-                     nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
-    obj = obj[0]
-  while true:
-    if sameTrees(obj, n): return true
-    case n.kind
-    of PathKinds0, PathKinds1:
-      n = n[0]
-    else:
-      break
+type InstrTargetKind* = enum
+  None, Full, Partial
 
-proc useInstrTargets*(ins: Instr; loc: PNode): bool =
-  assert ins.kind == use
-  result = sameTrees(ins.n, loc) or
-    ins.n.aliases(loc) or loc.aliases(ins.n)
-  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-  # use x.f;  question: does it affect the full 'x'? No.
-  # use x; question does it affect 'x.f'? Yes.
-
-proc defInstrTargets*(ins: Instr; loc: PNode): bool =
-  assert ins.kind == def
-  result = sameTrees(ins.n, loc) or ins.n.aliases(loc)
-  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-  # def x.f; question: does it affect the full 'x'? No.
-  # def x; question: does it affect the 'x.f'? Yes.
+proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
+  if sameTrees(insloc, loc) or insloc.aliases(loc):
+    Full    # x -> x; x -> x.f
+  elif loc.aliases(insloc):
+    Partial # x.f -> x
+  else: None
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
   while true:
     case n.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
+    of PathKinds0 - {nkBracketExpr, nkHiddenDeref, nkDerefExpr}:
       n = n[0]
+    of PathKinds1:
+      n = n[1]
     of nkBracketExpr:
       # in a[i] the 'i' must be known
       if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
@@ -662,14 +622,13 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       # bug #14159, we cannot reason about sinkParam[].location as it can
       # still be shared for tyRef.
       n = n[0]
-      return n.kind == nkSym and n.sym.owner == owner and (
-          n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
-    else:
-      break
+      return n.kind == nkSym and n.sym.owner == owner and
+         (n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
+    else: break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
   result = n.kind == nkSym and n.sym.owner == owner and
-    owner.kind != skModule and
+    {sfGlobal, sfThread, sfCursor} * n.sym.flags == {} and
     (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
   # Note: There is a different move analyzer possible that checks for
   # consume(param.key); param.key = newValue  for all paths. Then code like
@@ -682,43 +641,42 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   # free the old data and all is lost! Lesson: Don't be too smart, trust the
   # lower level C++ optimizer to specialize this code.
 
-proc genDef(c: var Con; n: PNode) =
-  var m = n
-  # XXX do something about this duplicated logic here.
+proc skipTrivials(c: var Con, n: PNode): PNode =
+  result = n
   while true:
-    case m.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-        nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
-      m = m[0]
+    case result.kind
+    of PathKinds0 - {nkBracketExpr}:
+      result = result[0]
     of nkBracketExpr:
-      gen(c, m[1])
-      m = m[0]
-    of nkHiddenDeref, nkDerefExpr:
-      m = m[0]
-    else:
-      break
+      gen(c, result[1])
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
+
+proc genUse(c: var Con; orig: PNode) =
+  let n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: def)
-  elif isAnalysableFieldAccess(n, c.owner):
-    c.code.add Instr(n: n, kind: def)
-  else:
-    # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
-    # we still need to gather the use information:
+    c.code.add Instr(n: orig, kind: use)
+  elif n.kind in nkCallKinds:
     gen(c, n)
+
+proc genDef(c: var Con; orig: PNode) =
+  let n = c.skipTrivials(orig)
+
+  if n.kind == nkSym and n.sym.kind in InterestingSyms:
+    c.code.add Instr(n: orig, kind: def)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
   var t = n[0].typ
   if t != nil: t = t.skipTypes(abstractInst)
-  inc c.inCall
   for i in 1..<n.len:
     gen(c, n[i])
     when false:
-      if t != nil and i < t.len and t[i].kind == tyVar:
-        # This is wrong! Pass by var is a 'might def', not a 'must def'
-        # like the other defs we emit. This is not good enough for a move
-        # optimizer.
+      if t != nil and i < t.len and t[i].kind == tyOut:
+        # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
         genDef(c, n[i])
   # every call can potentially raise:
   if c.inTryStmt > 0 and canRaiseConservative(n[0]):
@@ -727,13 +685,11 @@ proc genCall(c: var Con; n: PNode) =
     # goto exceptionHandler (except or finally)
     # lab1:
     # join F1
-    let endGoto = c.forkI(n)
-    for i in countdown(c.blocks.high, 0):
-      if c.blocks[i].isTryBlock:
-        genBreakOrRaiseAux(c, i, n)
-        break
-    c.patch(endGoto)
-  dec c.inCall
+    forkT(n):
+      for i in countdown(c.blocks.high, 0):
+        if c.blocks[i].isTryBlock:
+          genBreakOrRaiseAux(c, i, n)
+          break
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
   case m
@@ -777,7 +733,7 @@ proc gen(c: var Con; n: PNode) =
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
-  of PathKinds0 - {nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}:
+  of PathKinds0 - {nkObjDownConv, nkObjUpConv}:
     genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)
   of nkWhenStmt:
@@ -794,13 +750,12 @@ proc gen(c: var Con; n: PNode) =
      nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr, nkYieldStmt:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
-  of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n[0])
-  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, nkHiddenSubConv, nkHiddenStdConv:
+  of nkDiscardStmt, nkObjDownConv, nkObjUpConv, nkStringToCString, nkCStringToString:
+    gen(c, n[0])
+  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
     gen(c, n[1])
-  of nkStringToCString, nkCStringToString: gen(c, n[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
-  of nkDefer:
-    doAssert false, "dfa construction pass requires the elimination of 'defer'"
+  of nkDefer: doAssert false, "dfa construction pass requires the elimination of 'defer'"
   else: discard
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =

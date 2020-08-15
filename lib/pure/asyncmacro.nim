@@ -180,8 +180,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # Extract the documentation comment from the original procedure declaration.
   # Note that we're not removing it from the body in order not to make this
   # transformation even more complex.
-  if prc.body.len > 1 and prc.body[0].kind == nnkCommentStmt:
-    outerProcBody.add(prc.body[0])
+  let body2 = extractDocCommentsAndRunnables(prc.body)
 
   # -> var retFuture = newFuture[T]()
   var retFutureSym = genSym(nskVar, "retFuture")
@@ -207,6 +206,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
                                     futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
+    # fix #13899, defer should not escape its original scope
+    procBody = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
+
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
 
     if not subtypeIsVoid:
@@ -273,9 +275,10 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       (cast[type(f)](internalTmpFuture)).read()
 
   if procBody.kind != nnkEmpty:
-    result.body = quote:
+    body2.add quote do:
       `awaitDefinition`
       `outerProcBody`
+    result.body = body2
 
   #echo(treeRepr(result))
   #if prcName == "recvLineInto":

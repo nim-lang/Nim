@@ -38,6 +38,11 @@ c_nonexistant	testproject.html#c_nonexistant,cstring	testproject: c_nonexistant(
 low	testproject.html#low,T	testproject: low[T: Ordinal | enum | range](x: T): T	
 low2	testproject.html#low2,T	testproject: low2[T: Ordinal | enum | range](x: T): T	
 tripleStrLitTest	testproject.html#tripleStrLitTest	testproject: tripleStrLitTest()	
+method1	testproject.html#method1.e,Moo	testproject: method1(self: Moo)	
+method2	testproject.html#method2.e,Moo	testproject: method2(self: Moo): int	
+method3	testproject.html#method3.e,Moo	testproject: method3(self: Moo): int	
+iter1	testproject.html#iter1.i,int	testproject: iter1(n: int): int	
+iter2	testproject.html#iter2.i,int	testproject: iter2(n: int): int	
 bar	testproject.html#bar.m	testproject: bar(): untyped	
 z16	testproject.html#z16.m	testproject: z16()	
 z18	testproject.html#z18.m	testproject: z18(): int	
@@ -45,4 +50,7 @@ foo	testproject.html#foo.t,SomeType,SomeType	testproject: foo(a, b: SomeType)
 myfn	testproject.html#myfn.t	testproject: myfn()	
 z14	testproject.html#z14.t	testproject: z14()	
 z15	testproject.html#z15.t	testproject: z15()	
+asyncFun1	testproject.html#asyncFun1	testproject: asyncFun1(): Future[int]	
+asyncFun2	testproject.html#asyncFun2	testproject: asyncFun2(): owned(Future[void])	
+asyncFun3	testproject.html#asyncFun3	testproject: asyncFun3(): owned(Future[void])	
 testNimDocTrailingExample	testproject.html#testNimDocTrailingExample.t	testproject: testNimDocTrailingExample()	

@@ -14,7 +14,7 @@
 # compilation.
 import os, strutils
 
-when defined(openbsd):
+when defined(openbsd) or defined(freebsd) or defined(netbsd):
   const
     cc = "cc -o $# $#.c"
     cpp = "cc -E -o $#.i $#.c"
@@ -98,8 +98,8 @@ proc main =
     f.write(nimfile % [other])
     close(f)
 
-  let cCompile = when defined(openbsd): ccLinkMath else: cc
-  let cppCompile = when defined(openbsd): cppLinkMath else: cpp
+  let cCompile = when defined(openbsd) or defined(freebsd) or defined(netbsd): ccLinkMath else: cc
+  let cppCompile = when defined(openbsd) or defined(freebsd) or defined(netbsd): cppLinkMath else: cpp
   if not myExec(cCompile % [gen.addFileExt(ExeExt), gen]): quit(1)
   if not myExec(cppCompile % [pre.addFileExt(ExeExt), pre]): quit(1)
   when defined(windows):

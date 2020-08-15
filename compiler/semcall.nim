@@ -219,7 +219,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
-      of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
+      of kUnknownNamedParam:
+        if nArg == nil:
+          candidates.add("\n  unknown named parameter")
+        else:
+          candidates.add("\n  unknown named parameter: " & $nArg[0])
       of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
       of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
       of kExtraArg: candidates.add("\n  extra argument given")
@@ -318,7 +322,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
-  if nfDotField in n.flags and nfExplicitCall notin n.flags:
+  if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
     let sym = n[1].typ.sym
     var typeHint = ""
     if sym == nil:
@@ -676,13 +680,14 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
-      x = newTypeS(tyVar, c)
+      x = newTypeS(param.typ.kind, c)
       x.addSonSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
-    var resolved = semOverloadedCall(c, call, call, {fn.kind}, {})
+    let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
+    var resolved = semOverloadedCall(c, call, call, filter, {})
     if resolved != nil:
       result = resolved[0].sym
       if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):

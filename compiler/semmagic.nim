@@ -42,9 +42,6 @@ type
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode
 
-proc skipAddr(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n[0] else: n)
-
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
   for i in 1..<n.len: result.add(n[i])
@@ -530,12 +527,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
+      let fin = if n[^1].kind == nkLambda: n[^1][namePos].sym
+                else: n[^1].sym
       # check if we converted this finalizer into a destructor already:
-      let t = whereToBindTypeHook(c, n[^1].sym.typ[1].skipTypes(abstractInst+{tyRef}))
-      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == n[^1].sym:
+      let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
         discard "already turned this one into a finalizer"
       else:
-        bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
+        bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n
@@ -561,6 +560,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let constructed = result[1].typ.base
     if constructed.requiresInit:
       message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  of mIsolate:
+    if not checkIsolate(n[1]):
+      localError(c.config, n.info, "expression cannot be isolated: " & $n[1])
+    result = n
+  of mPred:
+    if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
+      n[0].sym.magic = mSubU
+    result = n
   else:
     result = n
-

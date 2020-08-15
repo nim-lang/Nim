@@ -28,7 +28,6 @@ when defined(nimv2):
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
       deallocShared(a.data)
-      a.data = nil
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
@@ -56,13 +55,14 @@ else:
     WideCStringObj* = WideCString
 
   template createWide(a; L) =
-    unsafeNew(a, L * 4 + 2)
+    unsafeNew(a, L)
 
 proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
+  result = 0
   while int16(w[result]) != 0'i16: inc result
 
 const
@@ -137,8 +137,7 @@ iterator runes(s: cstring, L: int): int =
     yield result
 
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
-  createWide(result, L * 4 + 2)
-  #result = cast[wideCString](alloc(L * 4 + 2))
+  createWide(result, L * 2 + 2)
   var d = 0
   for ch in runes(source, L):
 

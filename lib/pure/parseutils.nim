@@ -249,6 +249,7 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
     doAssert skipWhitespace(" Hello World", 0) == 1
     doAssert skipWhitespace("Hello World", 5) == 1
     doAssert skipWhitespace("Hello  World", 5) == 2
+  result = 0
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
@@ -260,6 +261,7 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
     doAssert skip("2019-01-22", "19", 2) == 2
     doAssert skip("CAPlow", "CAP", 0) == 3
     doAssert skip("CAPlow", "cap", 0) == 0
+  result = 0
   while start+result < s.len and result < token.len and
       s[result+start] == token[result]:
     inc(result)
@@ -270,6 +272,7 @@ proc skipIgnoreCase*(s, token: string, start = 0): int =
   runnableExamples:
     doAssert skipIgnoreCase("CAPlow", "CAP", 0) == 3
     doAssert skipIgnoreCase("CAPlow", "cap", 0) == 3
+  result = 0
   while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
   if result != token.len: result = 0
@@ -282,6 +285,7 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
     doAssert skipUntil("Hello World", {'W', 'e'}, 0) == 1
     doAssert skipUntil("Hello World", {'W'}, 0) == 6
     doAssert skipUntil("Hello World", {'W', 'd'}, 0) == 6
+  result = 0
   while start+result < s.len and s[result+start] notin until: inc(result)
 
 proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
@@ -293,6 +297,7 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
     doAssert skipUntil("Hello World", 'o', 4) == 0
     doAssert skipUntil("Hello World", 'W', 0) == 6
     doAssert skipUntil("Hello World", 'w', 0) == 11
+  result = 0
   while start+result < s.len and s[result+start] != until: inc(result)
 
 proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
@@ -302,6 +307,7 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
     doAssert skipWhile("Hello World", {'H', 'e'}) == 2
     doAssert skipWhile("Hello World", {'e'}) == 0
     doAssert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
+  result = 0
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
 proc parseUntil*(s: string, token: var string, until: set[char],
@@ -437,7 +443,7 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
     var res: BiggestInt
     doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
     doAssert res == 9223372036854775807
-  var res: BiggestInt
+  var res = BiggestInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseInt(s, res, start)
@@ -455,7 +461,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
     doAssert res == 2019
     doAssert parseInt("2019", res, 2) == 2
     doAssert res == 19
-  var res: BiggestInt
+  var res = BiggestInt(0)
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
     if res < low(int) or res > high(int):
@@ -518,7 +524,7 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
     doAssert res == 12
     doAssert parseBiggestUInt("1111111111111111111", res, 0) == 19
     doAssert res == 1111111111111111111'u64
-  var res: BiggestUInt
+  var res = BiggestUInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseUInt(s, res, start)
@@ -536,7 +542,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
     doAssert res == 3450
     doAssert parseUInt("3450", res, 2) == 2
     doAssert res == 50
-  var res: BiggestUInt
+  var res = BiggestUInt(0)
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
@@ -563,7 +569,7 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
     doAssert res == 32.57
     doAssert parseFloat("32.57", res, 3) == 2
     doAssert res == 57.00
-  var bf: BiggestFloat
+  var bf = BiggestFloat(0.0)
   result = parseBiggestFloat(s, bf, start)
   if result != 0:
     number = bf

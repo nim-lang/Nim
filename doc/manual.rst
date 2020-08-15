@@ -843,7 +843,10 @@ language features:
 * closure iterators
 * the ``cast`` operator
 * reference (pointer) types
-* the FFI
+* FFI
+
+The use of wrappers that use FFI and/or ``cast`` is also disallowed. Note that
+these wrappers include the ones in the standard libraries.
 
 Some or all of these restrictions are likely to be lifted over time.
 
@@ -1297,6 +1300,9 @@ integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``. The element type of this array expression is
 inferred from the type of the first element. All other elements need to be
 implicitly convertible to this type.
+
+An array type can be defined using the `array[size, T]` syntax, or using
+`array[lo..hi, T]` for arrays that start at an index other than zero.
 
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
@@ -2458,12 +2464,13 @@ matches) is preferred:
   gen(ri) # "ref T"
 
 
-Overloading based on 'var T'
-----------------------------
+Overloading based on 'var T' / 'out T'
+--------------------------------------
 
-If the formal parameter ``f`` is of type ``var T`` in addition to the ordinary
-type checking, the argument is checked to be an `l-value`:idx:. ``var T``
-matches better than just ``T`` then.
+If the formal parameter ``f`` is of type ``var T`` (or ``out T``)
+in addition to the ordinary
+type checking, the argument is checked to be an `l-value`:idx:.
+``var T`` (or ``out T``) matches better than just ``T`` then.
 
 .. code-block:: nim
   proc sayHi(x: int): string =
@@ -2480,6 +2487,17 @@ matches better than just ``T`` then.
 
   sayHello(3) # 3
               # 13
+
+
+An l-value matches ``var T`` and ``out T`` equally well, hence
+the following is ambiguous:
+
+.. code-block:: nim
+
+  proc p(x: out string) = x = ""
+  proc p(x: var string) = x = ""
+  var v: string
+  p(v) # ambiguous
 
 
 Lazy type resolution for untyped
@@ -3215,7 +3233,7 @@ has lots of advantages:
 Type conversions
 ----------------
 
-Syntactically a `type conversion` is like a procedure call, but a
+Syntactically a *type conversion* is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
@@ -3250,15 +3268,26 @@ conversions too are now *always unchecked*.
 
 Type casts
 ----------
-Example:
+
+*Type casts* are a crude mechanism to interpret the bit pattern of an expression
+as if it would be of another type. Type casts are only needed for low-level
+programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
+  
+The target type of a cast must be a concrete type, for instance, a target type
+that is a type class (which is non-concrete) would be invalid:
 
-Type casts are a crude mechanism to interpret the bit pattern of
-an expression as if it would be of another type. Type casts are
-only needed for low-level programming and are inherently unsafe.
-
+.. code-block:: nim
+  type Foo = int or float
+  var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
+  
+Type casts should not be confused with *type conversions,* as mentioned in the
+prior section. Unlike type conversions, a type cast cannot change the underlying 
+bit pattern of the data being casted (aside from that the size of the target type
+may differ from the source type). Casting resembles *type punning* in other
+languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.
 
 The addr operator
 -----------------
@@ -4230,9 +4259,7 @@ error message from ``e``, and for such situations it is enough to use
 Custom exceptions
 -----------------
 
-Is it possible to create custom exceptions. These make it easy to distinguish between exceptions raised by nim and those from your own code.
-
-A custom exception is a custom type:
+Is it possible to create custom exceptions. A custom exception is a custom type:
 
 .. code-block:: nim
   type
@@ -4782,7 +4809,7 @@ of "typedesc"-ness is stripped off:
 Generic inference restrictions
 ------------------------------
 
-The types ``var T`` and ``typedesc[T]`` cannot be inferred in a generic
+The types ``var T``, ``out T`` and ``typedesc[T]`` cannot be inferred in a generic
 instantiation. The following is not allowed:
 
 .. code-block:: nim
@@ -5930,7 +5957,7 @@ noSideEffect pragma
 The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
 effects. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
-arguments. If none of its parameters have the type ``var T``
+arguments. If none of its parameters have the type ``var T`` or ``out T``
 or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
 error to mark a proc/iterator to have no side effect if the compiler cannot
 verify this.
@@ -6210,25 +6237,6 @@ the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
-unroll pragma
--------------
-The ``unroll`` pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for execution efficiency:
-
-.. code-block:: nim
-  proc searchChar(s: string, c: char): int =
-    for i in 0 .. s.high:
-      {.unroll: 4.}
-      if s[i] == c: return i
-    result = -1
-
-In the above example, the search loop is unrolled by a factor 4. The unroll
-factor can be left out too; the compiler then chooses an appropriate unroll
-factor.
-
-**Note**: Currently the compiler recognizes but ignores this pragma.
-
-
 immediate pragma
 ----------------
 
@@ -6461,7 +6469,7 @@ Align pragma
 The `align`:idx: pragma is for variables and object field members. It
 modifies the alignment requirement of the entity being declared. The
 argument must be a constant power of 2. Valid non-zero
-alignments that are weaker than nother align pragmas on the same
+alignments that are weaker than other align pragmas on the same
 declaration are ignored. Alignments that are weaker that the
 alignment requirement of the type are ignored.
 
@@ -6612,7 +6620,7 @@ during semantic analysis:
 Emit pragma
 -----------
 The ``emit`` pragma can be used to directly affect the output of the
-compiler's code generator. So it makes your code unportable to other code
+compiler's code generator. The code is then unportable to other code
 generators/backends. Its usage is highly discouraged! However, it can be
 extremely useful for interfacing with `C++`:idx: or `Objective C`:idx: code.
 
@@ -7353,9 +7361,9 @@ string expressions in general:
 
   proc getDllName: string =
     result = "mylib.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     result = "mylib2.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     quit("could not load dynamic library")
 
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}

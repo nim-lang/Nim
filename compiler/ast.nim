@@ -17,7 +17,7 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccDefault,                # proc has no explicit calling convention
+    ccNimCall,                # nimcall, also the default
     ccStdCall,                # procedure is stdcall
     ccCDecl,                  # cdecl
     ccSafeCall,               # safecall
@@ -30,7 +30,7 @@ type
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
-  CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
+  CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
@@ -230,7 +230,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 42 flags!
+  TSymFlag* = enum    # 43 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -294,6 +294,7 @@ type
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
+    sfSingleUsedTemp   # For temporaries that we know will only be used once
 
   TSymFlags* = set[TSymFlag]
 
@@ -435,7 +436,8 @@ type
       # be any type.
 
     tyOptDeprecated
-      # deadcode: was `tyOpt`, Builtin optional type
+      # 'out' parameter. Comparable to a 'var' parameter but every
+      # path must assign a value to it before it can be read from.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -558,6 +560,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfExplicitCallConv
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -657,7 +660,7 @@ type
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mReset,
+    mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -1294,7 +1297,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  of tyBool,tyEnum:
+  of tyBool, tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
@@ -1755,7 +1758,7 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
-           s.kind == skProc and sfCompileTime in s.flags
+           s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
 proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
@@ -1802,12 +1805,12 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType): PType =
+proc toVar*(typ: PType; kind: TTypeKind): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.kind != tyVar:
-    result = newType(tyVar, typ.owner)
+  if typ.kind != kind:
+    result = newType(kind, typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =
@@ -1839,8 +1842,14 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
+proc skipColon*(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n[1]
+
 proc findUnresolvedStatic*(n: PNode): PNode =
-  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
+  # n.typ == nil: see issue #14802
+  if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
 
   for son in n:
@@ -1857,6 +1866,10 @@ when false:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
+
+proc hasDisabledAsgn*(t: PType): bool =
+  t.attachedOps[attachedAsgn] != nil and sfError in t.attachedOps[attachedAsgn].flags
+
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 
@@ -1934,3 +1947,6 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n[0] else: n)

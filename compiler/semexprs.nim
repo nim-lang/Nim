@@ -33,7 +33,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
-  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, c.templInstCounter, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
@@ -190,6 +190,8 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
+    return false
+  if skipTypes(dst, abstractInst).kind == tyBuiltInTypeClass:
     return false
   if conf.selectedGC in {gcArc, gcOrc}:
     let d = skipTypes(dst, abstractInst)
@@ -712,7 +714,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
     for i in 1..<n.len:
       if i < t.len and t[i] != nil and
-          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
         let it = n[i]
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
@@ -733,7 +735,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       # calls and then they wouldn't be analysed otherwise
       analyseIfAddressTakenInCall(c, n[i])
     if i < t.len and
-        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
       if n[i].kind != nkHiddenAddr:
         n[i] = analyseIfAddressTaken(c, n[i])
 
@@ -953,8 +955,17 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
+          let typ = n[0].typ
           msg.add(">\nbut expected one of: \n" &
-              typeToString(n[0].typ))
+              typeToString(typ))
+          # prefer notin preferToResolveSymbols
+          # t.sym != nil
+          # sfAnon notin t.sym.flags
+          # t.kind != tySequence(It is tyProc)
+          if typ.sym != nil and sfAnon notin typ.sym.flags and 
+                                typ.kind == tyProc:
+            msg.add(" = " & 
+                typeToString(typ, preferDesc))
           localError(c.config, n.info, msg)
         return errorNode(c, n)
       result = nil
@@ -1192,17 +1203,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     elif sfGenSym in s.flags:
       # the owner should have been set by now by addParamOrResult
       internalAssert c.config, s.owner != nil
-      if c.p.wasForwarded:
-        # gensym'ed parameters that nevertheless have been forward declared
-        # need a special fixup:
-        let realParam = c.p.owner.typ.n[s.position+1]
-        internalAssert c.config, realParam.kind == nkSym and realParam.sym.kind == skParam
-        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
-      elif c.p.owner.kind == skMacro:
-        # gensym'ed macro parameters need a similar hack (see bug #1944):
-        var u = searchInScopes(c, s.name)
-        internalAssert c.config, u != nil and u.kind == skParam and u.owner == s.owner
-        return newSymNode(u, n.info)
     result = newSymNode(s, n.info)
   of skVar, skLet, skResult, skForVar:
     if s.magic == mNimvm:
@@ -1711,7 +1711,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   var le = a.typ
   if le == nil:
     localError(c.config, a.info, "expression has no type")
-  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
+  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
         isAssignable(c, a) in {arNone, arLentValue}) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
@@ -2430,7 +2430,7 @@ proc checkPar(c: PContext; n: PNode): TParKind =
     for i in 0..<n.len:
       if result == paTupleFields:
         if (n[i].kind != nkExprColonExpr) or
-            n[i][0].kind notin {nkSym, nkIdent}:
+            n[i][0].kind notin {nkSym, nkIdent, nkAccQuoted}:
           localError(c.config, n[i].info, errNamedExprExpected)
           return paNone
       else:

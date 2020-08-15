@@ -16,7 +16,7 @@ import
   strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
-  modulegraphs, sighashes, int128
+  modulegraphs, sighashes, int128, vmprofiler
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -27,17 +27,6 @@ const
 when hasFFI:
   import evalffi
 
-type
-  PStackFrame* = ref TStackFrame
-  TStackFrame* = object
-    prc: PSym                 # current prc; proc that is evaluated
-    slots: seq[TFullReg]      # parameters passed to the proc + locals;
-                              # parameters come first
-    next: PStackFrame         # for stacking
-    comesFrom: int
-    safePoints: seq[int]      # used for exception handling
-                              # XXX 'break' should perform cleanup actions
-                              # What does the C backend do for it?
 
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
@@ -552,6 +541,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
 
+    c.profiler.enter(c, tos)
+
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -684,8 +675,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let s = regs[rb].node.strVal
       if idx <% s.len:
         regs[ra].intVal = s[idx].ord
-      elif idx == s.len and optLaxStrings in c.config.options:
-        regs[ra].intVal = 0
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
     of opcWrArr:
@@ -1244,7 +1233,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache)
+        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -2079,6 +2068,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
 
+    c.profiler.leave(c)
+
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =
@@ -2241,7 +2232,7 @@ proc errorNode(owner: PSym, n: PNode): PNode =
   result.typ = newType(tyError, owner)
   result.typ.flags.incl tfCheckedForDestructor
 
-proc evalMacroCall*(module: PSym; g: ModuleGraph;
+proc evalMacroCall*(module: PSym; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =
   if g.config.errorCounter > 0: return errorNode(module, n)
 
@@ -2262,6 +2253,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
   c.callsite = nOrig
+  c.templInstCounter = templInstCounter
   let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)

@@ -10,11 +10,12 @@
 #
 
 const
-  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
+  NimbleStableCommit = "a3e1267265965fc79a50b66999b660e0920db8cd" # master
+  FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
 
 when not defined(windows):
   const
-    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
+    Z3StableCommit = "65de3f748a6812eecd7db7c478dcd5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):
@@ -50,16 +51,22 @@ Usage:
   koch [options] command [options for command]
 Options:
   --help, -h               shows this help and quits
-  --latest                 bundle the installers with a bleeding edge Nimble
-  --stable                 bundle the installers with a stable Nimble (default)
+  --latest                 bundle the installers with bleeding edge versions of
+                           external components.
+  --stable                 bundle the installers with stable versions of
+                           external components (default).
   --nim:path               use specified path for nim binary
+  --localdocs[:path]       only build local documentations. If a path is not
+                           specified (or empty), the default is used.
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
-  toolsNoNimble            builds Nim related tools (except nimble)
+  toolsNoExternal          builds Nim related tools (except external tools,
+                           ie. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
+  fusion                   clone fusion into the working tree
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -111,7 +118,7 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc safeRemove(filename: string) =
-  if existsFile(filename): removeFile(filename)
+  if fileExists(filename): removeFile(filename)
 
 proc overwriteFile(source, dest: string) =
   safeRemove(dest)
@@ -192,7 +199,13 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
+proc bundleFusion(latest: bool) =
+  let commit = if latest: "HEAD" else: FusionStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit)
+  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
+
 proc zip(latest: bool; args: string) =
+  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -232,6 +245,7 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
+  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -278,11 +292,11 @@ proc findStartNim: string =
   if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec(buildScript): return "bin" / nim
 
   echo("Found no nim compiler and every attempt to build one failed!")
@@ -438,8 +452,10 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   nimexec "cc --opt:speed testament/testament"
-  let tester = quoteShell(getCurrentDir() / "testament/testament".exe)
-  let success = tryExec tester & " " & (args|"all")
+  var testCmd = quoteShell(getCurrentDir() / "testament/testament".exe)
+  testCmd.add " " & quoteShell("--nim:" & findNim())
+  testCmd.add " " & (args|"all")
+  let success = tryExec testCmd
   if not success:
     quit("tests failed", QuitFailure)
 
@@ -546,7 +562,12 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
+    #[
+    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
+    ]#
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
@@ -642,7 +663,10 @@ proc showHelp() =
 
 when isMainModule:
   var op = initOptParser()
-  var latest = false
+  var
+    latest = false
+    localDocsOnly = false
+    localDocsOut = ""
   while true:
     op.next()
     case op.kind
@@ -651,19 +675,16 @@ when isMainModule:
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
-      of "docslocal":
-        # undocumented for now, allows to rebuild local docs in < 40s as follows:
-        # `./koch --nim:$nimb --docslocal:htmldocs2 --doccmd:skip --warnings:off --hints:off`
-        # whereas `./koch docs` takes 190s; useful for development.
-        doAssert op.val.len > 0
-        buildDocsDir(op.cmdLineRest, op.val)
-        break
+      of "localdocs":
+        localDocsOnly = true
+        if op.val.len > 0:
+          localDocsOut = op.val.absolutePath
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest)
+      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)
@@ -684,15 +705,18 @@ when isMainModule:
       of "wintools": bundleWinTools(op.cmdLineRest)
       of "nimble": buildNimble(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
-      of "toolsnonimble":
+      # toolsNoNimble is kept for backward compatibility with build scripts
+      of "toolsnonimble", "toolsnoexternal":
         buildTools(op.cmdLineRest)
       of "tools":
         buildTools(op.cmdLineRest)
         buildNimble(latest, op.cmdLineRest)
+        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
+      of "fusion": bundleFusion(latest)
       else: showHelp()
       break
     of cmdEnd: break

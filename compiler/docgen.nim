@@ -82,7 +82,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
     # a relative path (would it be relative wrt $PWD or to projectfile)
     conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
-    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.dirExists, arg=conf.docRoot
     # needed because `canonicalizePath` called on `file`
     result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
@@ -140,7 +140,7 @@ template declareClosures =
     result = options.findFile(conf, s).string
     if result.len == 0:
       result = getCurrentDir() / s
-      if not existsFile(result): result = ""
+      if not fileExists(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
@@ -609,21 +609,12 @@ proc getRoutineBody(n: PNode): PNode =
 
   so we normalize the results to get to the statement list containing the
   (0 or more) doc comments and runnableExamples.
-  (even if using `result = n[bodyPos]`, you'd still to apply similar logic).
   ]##
-  result = n[^1]
-  case result.kind
-  of nkSym:
-    result = n[^2]
-    case result.kind
-      of nkAsgn:
-        doAssert result[0].kind == nkSym
-        doAssert result.len == 2
-        result = result[1]
-      else: # eg: nkStmtList
-        discard
-  else:
-    discard
+  result = n[bodyPos]
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
+    doAssert result.len == 2
+    result = result[1]
 
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n

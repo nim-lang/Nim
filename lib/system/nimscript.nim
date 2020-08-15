@@ -136,13 +136,13 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsFile*(filename: string): bool =
-  ## An alias for ``fileExists``.
-  fileExists(filename)
+template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+  fileExists(args)
 
-proc existsDir*(dir: string): bool =
-  ## An alias for ``dirExists``.
-  dirExists(dir)
+template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+  dirExists(args)
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.

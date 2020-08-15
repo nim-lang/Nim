@@ -20,7 +20,8 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
+    renderIr
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TTokType
@@ -47,10 +48,19 @@ type
       pendingNewlineCount: int
     fid*: FileIndex
     config*: ConfigRef
+    mangler: seq[PSym]
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
+
+proc disamb(g: var TSrcGen; s: PSym): int =
+  # we group by 's.name.s' to compute the stable name ID.
+  result = 0
+  for i in 0 ..< g.mangler.len:
+    if s == g.mangler[i]: return result
+    if s.name.s == g.mangler[i].name.s: inc result
+  g.mangler.add s
 
 proc isKeyword*(i: PIdent): bool =
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
@@ -309,8 +319,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
-                          tyOrdinal, tyAlias, tySink}:
+    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
+                          tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
 
   let typ = n.typ.skip
@@ -850,7 +860,14 @@ proc gident(g: var TSrcGen, n: PNode) =
       t = tkSymbol
   else:
     t = tkOpr
-  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+  if renderIr in g.flags and n.kind == nkSym:
+    let localId = disamb(g, n.sym)
+    if localId != 0 and n.sym.magic == mNone:
+      s.add '_'
+      s.addInt localId
+    if sfCursor in n.sym.flags:
+      s.add "_cursor"
+  elif n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
     s.add '_'
     s.addInt n.sym.id
     when defined(debugMagics):
@@ -883,7 +900,7 @@ proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
     case n.kind
     of nkClosedSymChoice, nkOpenSymChoice:
       if n.len > 0: result = bracketKind(g, n[0])
-    of nkSym: 
+    of nkSym:
       result = case n.sym.name.s
         of "[]": bkBracket
         of "[]=": bkBracketAsgn
@@ -974,7 +991,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
-    elif n.len >= 1:     
+    elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
         gsub(g, n, 1)
@@ -1016,8 +1033,18 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkRStrLit, '\"' & replace(n[1].strVal, "\"", "\"\"") & '\"')
     else:
       gsub(g, n, 1)
-  of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
+  of nkHiddenStdConv, nkHiddenSubConv:
     if n.len >= 2:
+      gsub(g, n[1])
+    else:
+      put(g, tkSymbol, "(wrong conv)")
+  of nkHiddenCallConv:
+    if {renderIds, renderIr} * g.flags != {}:
+      accentedName(g, n[0])
+      put(g, tkParLe, "(")
+      gcomma(g, n, 1)
+      put(g, tkParRi, ")")
+    elif n.len >= 2:
       gsub(g, n[1])
     else:
       put(g, tkSymbol, "(wrong conv)")

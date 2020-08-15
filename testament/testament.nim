@@ -21,6 +21,7 @@ var backendLogging = true
 var simulate = false
 
 const
+  failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
   testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -57,7 +58,6 @@ type
   TResults = object
     total, passed, skipped: int
     data: string
-
   TTest = object
     name: string
     cat: Category
@@ -272,14 +272,16 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             expected = expected,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  template disp(msg) =
+    maybeStyledEcho styleDim, fgYellow, msg & " ", styleBright, fgCyan, name
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
-    maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
-  elif success == reJoined:
-    maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
+    if test.spec.inCurrentBatch: disp("SKIP:")
+    else: disp("NOTINBATCH:")
+  elif success == reJoined: disp("JOINED:")
   else:
-    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
@@ -422,8 +424,9 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
+  test.startTime = epochTime()
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
@@ -437,7 +440,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
-      if not existsFile(exeFile):
+      if not fileExists(exeFile):
         r.addResult(test, target, expected.output,
                     "executable not found: " & exeFile, reExeNotFound)
       else:
@@ -493,7 +496,8 @@ proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = 
       echo "testSpec count: ", count, " expected: ", expected
     else:
       let nimcache = nimcacheDir(test.name, test.options, target)
-      testSpecHelper(r, test, expected, target, nimcache, extraOptions)
+      var testClone = test
+      testSpecHelper(r, testClone, expected, target, nimcache, extraOptions)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -518,7 +522,8 @@ proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   if not checkDisabled(r, test): return
   for target in test.spec.targets:
     inc(r.total)
-    testSpecHelper(r, test, test.spec, target, nimcache)
+    var testClone = test
+    testSpecHelper(r, testClone, test.spec, target, nimcache)
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
@@ -644,6 +649,15 @@ proc main() =
         useColors = false
       else:
         quit Usage
+    of "batch":
+      testamentData0.batchArg = p.val
+      if p.val != "_":
+        let s = p.val.split("_")
+        doAssert s.len == 2, $(p.val, s)
+        testamentData0.testamentBatch = s[0].parseInt
+        testamentData0.testamentNumBatch = s[1].parseInt
+        doAssert testamentData0.testamentNumBatch > 0
+        doAssert testamentData0.testamentBatch >= 0 and testamentData0.testamentBatch < testamentData0.testamentNumBatch
     of "simulate":
       simulate = true
     of "megatest":
@@ -681,6 +695,8 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
+    if testamentData0.batchArg.len > 0:
+      myself &= " --batch:" & testamentData0.batchArg
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
@@ -701,7 +717,7 @@ proc main() =
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
-      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
 
     if simulate:
       skips = loadSkipFrom(skipFrom)

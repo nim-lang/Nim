@@ -233,7 +233,7 @@ proc hasContinue(n: PNode): bool =
 
 proc newLabel(c: PTransf, n: PNode): PSym =
   result = newSym(skLabel, nil, getCurrOwner(c), n.info)
-  result.name = getIdent(c.graph.cache, genPrefix & $result.id)
+  result.name = getIdent(c.graph.cache, genPrefix)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =
   var labl: PSym
@@ -350,7 +350,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
     # Choose the right assignment instruction according to the given ``lhs``
     # node since it may not be a nkSym (a stack-allocated skForVar) but a
     # nkDotExpr (a heap-allocated slot into the envP block)
-    case lhs.kind:
+    case lhs.kind
     of nkSym:
       internalAssert c.graph.config, lhs.sym.kind == skForVar
       result = newAsgnStmt(c, nkFastAsgn, lhs, rhs)
@@ -423,7 +423,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind == a or m.kind == b:
@@ -433,7 +433,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   else:
     if n[0].kind == a or n[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -539,7 +539,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # happens sometimes for generated assignments, etc.
   of tyProc:
     result = transformSons(c, n)
-    if dest.callConv == ccClosure and source.callConv == ccDefault:
+    if dest.callConv == ccClosure and source.callConv == ccNimCall:
       result = generateThunk(c, result[1], dest)
   else:
     result = transformSons(c, n)
@@ -569,14 +569,14 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = putArgInto(arg[0], formal)
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: 
+      if putArgInto(arg[i], formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]
-      if putArgInto(a, formal) != paDirectMapping: 
+      if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   else:
@@ -591,6 +591,22 @@ proc findWrongOwners(c: PTransf, n: PNode) =
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
+
+proc isSimpleIteratorVar(iter: PSym): bool =
+  proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
+    case n.kind
+    of nkEmpty..nkNilLit: discard
+    of nkYieldStmt:
+      if n[0].kind == nkSym and n[0].sym.owner == owner:
+        discard "good: yield a single variable that we own"
+      else:
+        inc dangerousYields
+    else:
+      for c in n: rec(c, owner, dangerousYields)
+
+  var dangerousYields = 0
+  rec(iter.ast[bodyPos], iter, dangerousYields)
+  result = dangerousYields == 0
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
@@ -624,18 +640,22 @@ proc transformFor(c: PTransf, n: PNode): PNode =
 
   discard c.breakSyms.pop
 
+  let iter = call[0].sym
+
   var v = newNodeI(nkVarSection, n.info)
   for i in 0..<n.len - 2:
     if n[i].kind == nkVarTuple:
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
+      if n[i].kind == nkSym and isSimpleIteratorVar(iter):
+        incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
 
+
   # Bugfix: inlined locals belong to the invoking routine, not to the invoked
   # iterator!
-  let iter = call[0].sym
   var newC = newTransCon(getCurrOwner(c))
   newC.forStmt = n
   newC.forLoopBody = loopBody
@@ -667,7 +687,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
-      assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
+      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
@@ -1089,15 +1109,15 @@ proc liftDeferAux(n: PNode) =
         if n[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n[i].info)
           deferPart.add n[i][0]
-          var tryStmt = newNodeI(nkTryStmt, n[i].info)
-          var body = newNodeI(n.kind, n[i].info)
+          var tryStmt = newNodeIT(nkTryStmt, n[i].info, n.typ)
+          var body = newNodeIT(n.kind, n[i].info, n.typ)
           if i < last:
             body.sons = n.sons[(i+1)..last]
           tryStmt.add body
           tryStmt.add deferPart
           n[i] = tryStmt
           n.sons.setLen(i+1)
-          n.typ = n[i].typ
+          n.typ = tryStmt.typ
           goOn = true
           break
   for i in 0..n.safeLen-1:

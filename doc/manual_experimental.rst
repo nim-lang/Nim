@@ -482,7 +482,7 @@ nil`` annotation to exclude ``nil`` as a valid value:
 
 .. code-block:: nim
   {.experimental: "notnil"}
-  
+
   type
     PObject = ref TObj not nil
     TProc = (proc (x, y: int)) not nil
@@ -811,7 +811,7 @@ object inheritance syntax involving the ``of`` keyword:
 
 .. code-block:: nim
   type
-    Graph = concept g, type G of EqualyComparable, Copyable
+    Graph = concept g, type G of EquallyComparable, Copyable
       type
         VertexType = G.VertexType
         EdgeType = G.EdgeType
@@ -1828,8 +1828,8 @@ Aliasing restrictions in parameter passing
 implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
-at runtime. An "output parameter" is a parameter of type ``var T``, an input
-parameter is any parameter that is not of type ``var``.
+at runtime. An "output parameter" is a parameter of type ``var T``,
+an input parameter is any parameter that is not of type ``var``.
 
 1. Two output parameters should never be aliased.
 2. An input and an output parameter should not be aliased.
@@ -1844,3 +1844,41 @@ via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different
 
 5. A global or thread local variable (or a location derived from such a location)
    can only passed to a parameter of a ``.noSideEffect`` proc.
+
+
+Strict funcs
+============
+
+Since version 1.4 a stricter definition of "side effect" is available. In addition
+to the existing rule that a side effect is calling a function with side effects
+the following rule is also enforced:
+
+Any mutation to an object does count as a side effect if that object is reachable
+via a parameter that is not declared as a ``var`` parameter.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "strictFuncs".}
+
+  type
+    Node = ref object
+      le, ri: Node
+      data: string
+
+  func len(n: Node): int =
+    # valid: len does not have side effects
+    var it = n
+    while it != nil:
+      inc result
+      it = it.ri
+
+  func mut(n: Node) =
+    let m = n # is the statement that connected the mutation to the parameter
+    m.data = "yeah" # the mutation is here
+    # Error: 'mut' can have side effects
+    # an object reachable from 'n' is potentially mutated
+
+
+The algorithm behind this analysis is currently not documented.

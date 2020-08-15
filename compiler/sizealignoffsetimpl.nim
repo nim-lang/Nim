@@ -164,7 +164,7 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
     accum.maxAlign = szUnknownSize
     accum.offset = szUnknownSize
 
-proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var OffsetAccum) =
+proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bool; accum: var OffsetAccum) =
   ## ``accum.offset`` will the offset from the larget member of the union.
   case n.kind
   of nkRecCase:
@@ -175,7 +175,7 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
     let accumRoot = accum # copy, because each branch should start af the same offset
     for i, child in n.sons:
       var branchAccum = accumRoot
-      computeUnionObjectOffsetsFoldFunction(conf, child, branchAccum)
+      computeUnionObjectOffsetsFoldFunction(conf, child, packed, branchAccum)
       accum.mergeBranch(branchAccum)
   of nkSym:
     var size = szUnknownSize
@@ -183,7 +183,7 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
     if n.sym.bitsize == 0: # 0 represents bitsize not set
       computeSizeAlign(conf, n.sym.typ)
       size = n.sym.typ.size.int
-      align = n.sym.typ.align.int
+      align = if packed: 1 else: n.sym.typ.align.int
     accum.align(align)
     if n.sym.alignment > 0:
       accum.align(n.sym.alignment)
@@ -330,7 +330,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           sym.offset = accum.offset
         accum.inc(int(child.size))
       typ.paddingAtEnd = int16(accum.finish())
-      typ.size = accum.offset
+      typ.size = if accum.offset == 0: 1 else: accum.offset
       typ.align = int16(accum.maxAlign)
     except IllegalTypeRecursionError:
       typ.paddingAtEnd = szIllegalRecursion
@@ -365,16 +365,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         else:
           OffsetAccum(maxAlign: 1)
       if tfUnion in typ.flags:
-        if tfPacked in typ.flags:
-          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
-          localError(conf, info, "union type may not be packed.")
-          accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
-        elif accum.offset != 0:
+        if accum.offset != 0:
           let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
           localError(conf, info, "union type may not have an object header")
           accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
+        elif tfPacked in typ.flags:
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, true, accum)
         else:
-          computeUnionObjectOffsetsFoldFunction(conf, typ.n, accum)
+          computeUnionObjectOffsetsFoldFunction(conf, typ.n, false, accum)
       elif tfPacked in typ.flags:
         accum.maxAlign = 1
         computeObjectOffsetsFoldFunction(conf, typ.n, true, accum)
@@ -388,7 +386,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = szUnknownSize
         typ.paddingAtEnd = szUnknownSize
       else:
-        typ.size = accum.offset
+        typ.size = if accum.offset == 0: 1 else: accum.offset
         typ.align = int16(accum.maxAlign)
         typ.paddingAtEnd = paddingAtEnd
     except IllegalTypeRecursionError:

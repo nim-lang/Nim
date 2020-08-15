@@ -812,7 +812,7 @@ let foo = if cond:
 
 let a =
   [[aaadsfas, bbb],
-    [ccc, ddd]]
+   [ccc, ddd]]
 
 let b = [
   [aaa, bbb],
@@ -835,3 +835,24 @@ proc f =
   # doesn't break the code, but leaving indentation as is would be nice.
   let x = if true: callingProcWhatever()
           else: callingADifferentProc()
+
+
+type
+  EventKind = enum
+    Stop, StopSuccess, StopError,
+    SymbolChange, TextChange,
+
+  SpinnyEvent = tuple
+    kind: EventKind
+    payload: string
+
+
+type
+  EventKind2 = enum
+    Stop2, StopSuccess2, StopError2,
+    SymbolChange2, TextChange2,
+
+type
+  SpinnyEvent2 = tuple
+    kind: EventKind
+    payload: string

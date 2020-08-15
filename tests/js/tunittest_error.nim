@@ -3,6 +3,8 @@ discard """
   outputsub: "[FAILED] with exception"
 """
 
+# see also: `tests/stdlib/tunittest_error.nim`
+
 import unittest
 
 proc ddd() =

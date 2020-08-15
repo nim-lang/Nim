@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm
+import os, strutils, osproc, sets, pathnorm, pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -8,12 +8,14 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+
+template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -25,10 +27,10 @@ proc findNimImpl*(): tuple[path: string, ok: bool] =
   let nim = "nim".exe
   result.path = "bin" / nim
   result.ok = true
-  if existsFile(result.path): return
+  if fileExists(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
     result.path = dir / nim
-    if existsFile(result.path): return
+    if fileExists(result.path): return
   # assume there is a symlink to the exe or something:
   return (nim, false)
 
@@ -158,6 +160,7 @@ lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/js/jsre.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
@@ -182,7 +185,7 @@ lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
-  
+
   proc follow(a: PathEntry): bool =
     a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
   for entry in walkDirRecFilter("lib", follow = follow):
@@ -256,10 +259,11 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
+    let extra = if isJsOnly(d): "--backend:js" else: ""
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"): doAssert false
-    commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
-      [nimArgs2, gitUrl, destPath, d]
+    commands[i] = nim & " doc $# $# --git.url:$# --outdir:$# --index:on $#" %
+      [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
@@ -295,7 +299,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(dest)
       moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
-      if existsFile(changeFileExt(pdf, "toc")):
+      if fileExists(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
@@ -318,6 +322,19 @@ proc buildDocsDir*(args: string, dir: string) =
   buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
-proc buildDocs*(args: string) =
-  buildDocsDir(args, webUploadOutput / NimVersion)
-  buildDocsDir("", docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
+proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
+  let localOutDir =
+    if localOutDir.len == 0:
+      docHtmlOutput
+    else:
+      localOutDir
+
+  var args = args
+
+  if not localOnly:
+    buildDocsDir(args, webUploadOutput / NimVersion)
+
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
+
+  buildDocsDir(args, localOutDir)

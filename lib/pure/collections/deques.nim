@@ -67,9 +67,9 @@ const
   defaultInitialSize* = 4
 
 template initImpl(result: typed, initialSize: int) =
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  let correctSize = nextPowerOfTwo(initialSize)
+  result.mask = correctSize-1
+  newSeq(result.data, correctSize)
 
 template checkIfInitialized(deq: typed) =
   when compiles(defaultInitialSize):
@@ -83,11 +83,24 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## as a performance optimization.
   ## The length of a newly created deque will still be 0.
   ##
-  ## ``initialSize`` must be a power of two (default: 4).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_.
+  ## See also:
+  ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
+
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## See also:
+  ## * `initDeque proc <#initDeque,int>`_
+  runnableExamples:
+    var a = toDeque([7, 8, 9])
+    assert len(a) == 3
+    assert a.popFirst == 7
+    assert len(a) == 2
+
+  result.initImpl(x.len)
+  for item in items(x):
+    result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
@@ -533,6 +546,7 @@ when isMainModule:
   assert first == 123
   assert second == 9
   assert($deq == "[4, 56, 6, 789]")
+  assert deq == [4, 56, 6, 789].toDeque
 
   assert deq[0] == deq.peekFirst and deq.peekFirst == 4
   #assert deq[^1] == deq.peekLast and deq.peekLast == 789

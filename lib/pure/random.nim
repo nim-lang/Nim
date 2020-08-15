@@ -78,7 +78,8 @@
 ##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm #For upperBound
+import algorithm, math
+import std/private/since
 
 include "system/inclrtl"
 {.push debugger: off.}
@@ -516,6 +517,33 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``
+  ## using the given state.
+  # Ratio of uniforms method for normal
+  # http://www2.econ.osaka-u.ac.jp/~tanizaki/class/2013/econome3/13.pdf
+  const K = sqrt(2 / E)
+  var
+    a = 0.0
+    b = 0.0
+  while true:
+    a = rand(r, 1.0)
+    b = (2.0 * rand(r, 1.0) - 1.0) * K
+    if  b * b <= -4.0 * a * a * ln(a): break
+  result = mu + sigma * (b / a)
+
+proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  result = gauss(state, mu, sigma)
+
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand<#Rand>`_ state using the given seed.
   ##
@@ -619,6 +647,8 @@ when not defined(nimscript) and not defined(standalone):
 {.pop.}
 
 when isMainModule:
+  import stats
+
   proc main =
     var occur: array[1000, int]
 
@@ -631,6 +661,17 @@ when isMainModule:
         doAssert false, "too few occurrences of " & $i
       elif oc > 150:
         doAssert false, "too many occurrences of " & $i
+
+    when false:
+      var rs: RunningStat
+      for j in 1..5:
+        for i in 1 .. 1_000:
+          rs.push(gauss())
+        echo("mean: ", rs.mean,
+          " stdDev: ", rs.standardDeviation(),
+          " min: ", rs.min,
+          " max: ", rs.max)
+        rs.clear()
 
     var a = [0, 1]
     shuffle(a)

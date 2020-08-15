@@ -194,3 +194,31 @@ static:
     doAssert(v == a)
 
   echo "macrocache ok"
+
+block tupleNewLitTests:
+  macro t(): untyped =
+    result = newLit (1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))
+  doAssert $t() == """(1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))"""
+    # this `$` test is needed because tuple equality doesn't distinguish
+    # between named vs unnamed tuples
+  doAssert t() == (1, "foo", (), (1, ), (a1: 'x', a2: @["ba"]))
+
+from strutils import contains
+block getImplTransformed:
+  macro bar(a: typed): string =
+    # newLit a.getImpl.repr # this would be before code transformation
+    let b = a.getImplTransformed
+    newLit b.repr
+  template toExpand() =
+    for ai in 0..2: echo ai
+  proc baz(a=1): int =
+    defer: discard
+    toExpand()
+    12
+  const code = bar(baz)
+  # sanity check:
+  doAssert "finally" in code # `defer` is lowered to try/finally
+  doAssert "while" in code # `for` is lowered to `while`
+  doAssert "toExpand" notin code
+    # template is expanded (but that would already be the case with
+    # `a.getImpl.repr`, unlike the other transformations mentioned above

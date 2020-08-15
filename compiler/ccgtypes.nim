@@ -279,7 +279,7 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = false
   # first parameter and return type is 'lent T'? --> use pass by pointer
   if s.position == 0 and retType != nil and retType.kind == tyLent:
-    result = true
+    result = pt.kind != tyVar
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
@@ -701,7 +701,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     return
   case t.kind
   of tyRef, tyPtr, tyVar, tyLent:
-    var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
+    var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
@@ -944,6 +944,7 @@ proc finishTypeDescriptions(m: BModule) =
     else:
       discard getTypeDescAux(m, t, check)
     inc(i)
+  m.typeStack.setLen 0
 
 template cgDeclFrmt*(s: PSym): string =
   s.constraint.strVal
@@ -1296,7 +1297,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
-    if theProc.typ == nil or theProc.typ.callConv != ccDefault:
+    if theProc.typ == nil or theProc.typ.callConv != ccNimCall:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 

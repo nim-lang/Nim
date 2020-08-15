@@ -395,6 +395,8 @@ proc firstSetBitNim(x: uint64): int {.inline, noSideEffect.} =
   if k == 0:
     k = uint32(v shr 32'u32) and 0xFFFFFFFF'u32
     result = 32
+  else:
+    result = 0
   result += firstSetBitNim(k)
 
 proc fastlog2Nim(x: uint32): int {.inline, noSideEffect.} =

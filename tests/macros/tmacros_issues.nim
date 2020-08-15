@@ -19,6 +19,8 @@ nil
 42
 false
 true
+@[i0, i1, i2, i3, i4]
+@[tmp, tmp, tmp, tmp, tmp]
 '''
 
   output: '''
@@ -27,6 +29,16 @@ array[0 .. 100, int]
 10
 test
 0o377'i8
+1
+2
+3
+foo1
+foo2
+foo3
+true
+false
+true
+false
 '''
 """
 
@@ -244,3 +256,150 @@ macro toRendererBug(n): untyped =
   result = newLit repr(n)
 
 echo toRendererBug(0o377'i8)
+
+# bug #12129
+macro foobar() =
+  var loopVars = newSeq[NimNode](5)
+  for i, sym in loopVars.mpairs():
+    sym = ident("i" & $i)
+  echo loopVars
+  for sym in loopVars.mitems():
+    sym = ident("tmp")
+  echo loopVars
+
+foobar()
+
+
+# bug #13253
+import macros
+
+type
+  FooBar = object
+    a: seq[int]
+
+macro genFoobar(a: static FooBar): untyped =
+  result = newStmtList()
+  for b in a.a:
+    result.add(newCall(bindSym"echo", newLit b))
+
+proc foobar(a: static FooBar) =
+  genFoobar(a)  # removing this make it work
+  for b in a.a:
+    echo "foo" & $b
+
+proc main() =
+  const a: seq[int] = @[1, 2,3]
+  # Error: type mismatch: got <array[0..2, int]> but expected 'seq[int]'
+  const fb = Foobar(a: a)
+  foobar(fb)
+main()
+
+# bug #13484
+
+proc defForward(id, nid: NimNode): NimNode =
+  result = newProc(id, @[newIdentNode("bool"), newIdentDefs(nid, newIdentNode("int"))], body=newEmptyNode())
+
+proc defEven(evenid, oddid, nid: NimNode): NimNode =
+  result = quote do:
+    proc `evenid`(`nid`: int): bool =
+      if `nid` == 0:
+        return true
+      else:
+        return `oddid`(`nid` - 1)
+
+proc defOdd(evenid, oddid, nid: NimNode): NimNode =
+  result = quote do:
+    proc `oddid`(`nid`: int): bool =
+      if `nid` == 0:
+        return false
+      else:
+        return `evenid`(`nid` - 1)
+
+proc callNode(funid, param: NimNode): NimNode =
+  result = quote do:
+    `funid`(`param`)
+
+macro testEvenOdd3(): untyped =
+  let
+    evenid = newIdentNode("even3")
+    oddid = newIdentNode("odd3")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd4(): untyped =
+  let
+    evenid = newIdentNode("even4")
+    oddid = newIdentNode("odd4")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  # rewrite the body of proc node.
+  oddForward[6] = newStmtList()
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd5(): untyped =
+  let
+    evenid = genSym(nskProc, "even5")
+    oddid = genSym(nskProc, "odd5")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+macro testEvenOdd6(): untyped =
+  let
+    evenid = genSym(nskProc, "even6")
+    oddid = genSym(nskProc, "odd6")
+    nid = newIdentNode("n")
+    oddForward = defForward(oddid, nid)
+    even = defEven(evenid, oddid, nid)
+    odd = defOdd(evenid, oddid, nid)
+    callEven = callNode(evenid, newLit(42))
+    callOdd = callNode(oddid, newLit(42))
+  # rewrite the body of proc node.
+  oddForward[6] = newStmtList()
+  result = quote do:
+    `oddForward`
+    `even`
+    `odd`
+    echo `callEven`
+    echo `callOdd`
+
+# it works
+testEvenOdd3()
+
+# it causes an error (redefinition of odd4), which is correct
+assert not compiles testEvenOdd4()
+
+# it caused an error (still forwarded: odd5)
+testEvenOdd5()
+
+# it works, because the forward decl and definition share the symbol and the compiler is forgiving here
+#testEvenOdd6() #Don't test it though, the compiler may become more strict in the future
+

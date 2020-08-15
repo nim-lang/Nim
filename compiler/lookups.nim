@@ -316,8 +316,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
-    elif checkAmbiguity in flags and result != nil and
-        contains(c.ambiguousSymbols, result.id):
+    elif checkAmbiguity in flags and result != nil and result.id in c.ambiguousSymbols:
       errorUseQualifier(c, n.info, result)
   of nkSym:
     result = n.sym

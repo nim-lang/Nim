@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths
+  prefixmatches, pathutils, nimpaths, tables
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -39,9 +39,7 @@ type                          # please make sure we have under 32 options
                               # evaluation
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optLaxStrings,
     optNilSeqs,
-    optOldAst,
     optSinkInference          # 'sink T' inference
 
 
@@ -91,12 +89,12 @@ type                          # please make sure we have under 32 options
                               # implementation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
-    optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
+    optProfileVM              # enable VM profiler
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -164,6 +162,7 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
+    strictFuncs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -219,6 +218,13 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
+  ProfileInfo* = object
+    time*: float
+    count*: int
+
+  ProfileData* = ref object
+    data*: TableRef[TLineInfo, ProfileInfo]
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -229,6 +235,7 @@ type
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
+    arcToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -316,6 +323,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    vmProfileData*: ProfileData
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -364,7 +372,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck, optSinkInference}
+    optTrMacros, optStyleCheck}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -392,6 +400,9 @@ template newPackageCache*(): untyped =
                  else:
                    modeCaseSensitive)
 
+proc newProfileData(): ProfileData =
+  ProfileData(data: newTable[TLineInfo, ProfileInfo]())
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -400,6 +411,7 @@ proc newConfigRef*(): ConfigRef =
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
+    arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),
@@ -444,6 +456,7 @@ proc newConfigRef*(): ConfigRef =
     arguments: "",
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
+    vmProfileData: newProfileData(),
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
@@ -741,7 +754,7 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeF
 
 proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
-    result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""
+    result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
   else:
     result = rawFindFile(conf, RelativeFile f, suppressStdlib)
     if result.isEmpty:

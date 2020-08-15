@@ -214,7 +214,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   result = arNone
   case n.kind
   of nkEmpty:
-    if n.typ != nil and n.typ.kind == tyVar:
+    if n.typ != nil and n.typ.kind in {tyVar}:
       result = arLValue
   of nkSym:
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
@@ -231,7 +231,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
         result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
-      if t.kind == tyVar: result = arStrange
+      if t.kind in {tyVar}: result = arStrange
   of nkDotExpr:
     let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
     if t.kind in {tyVar, tySink, tyPtr, tyRef}:
@@ -277,7 +277,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
       result = isAssignable(owner, n[1], isUnsafeAddr)
-    elif n.typ != nil and n.typ.kind == tyVar:
+    elif n.typ != nil and n.typ.kind in {tyVar}:
       result = arLValue
     elif isUnsafeAddr and n.typ != nil and n.typ.kind == tyLent:
       result = arLValue

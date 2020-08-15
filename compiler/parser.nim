@@ -793,7 +793,7 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
-       tkOpr, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
+       tkOpr, tkDotDot, tkVar, tkOut, tkStatic, tkType, tkEnum, tkTuple,
        tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
       # command syntax, with the exception of expressions such as
@@ -1300,6 +1300,10 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     optInd(p, result)
     result.add(primary(p, pmNormal))
   of tkVar: result = parseTypeDescKAux(p, nkVarTy, mode)
+  of tkOut:
+    # I like this parser extension to be in 1.4 as it still might turn out
+    # useful in the long run.
+    result = parseTypeDescKAux(p, nkMutableTy, mode)
   of tkRef: result = parseTypeDescKAux(p, nkRefTy, mode)
   of tkPtr: result = parseTypeDescKAux(p, nkPtrTy, mode)
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
@@ -1949,7 +1953,7 @@ proc parseObjectPart(p: var TParser): PNode =
         else:
           parMessage(p, errIdentifierExpected, p.tok)
           break
-  else:
+  elif sameOrNoInd(p):
     case p.tok.tokType
     of tkWhen:
       result = parseObjectWhen(p)
@@ -1964,6 +1968,8 @@ proc parseObjectPart(p: var TParser): PNode =
       getTok(p)
     else:
       result = p.emptyNode
+  else:
+    result = p.emptyNode
 
 proc parseObject(p: var TParser): PNode =
   #| object = 'object' pragma? ('of' typeDesc)? COMMENT? objectPart
@@ -2285,7 +2291,7 @@ proc parseStmt(p: var TParser): PNode =
     case p.tok.tokType
     of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkFunc,
        tkIterator, tkMacro, tkType, tkConst, tkWhen, tkVar:
-      parMessage(p, "complex statement requires indentation")
+      parMessage(p, "nestable statement requires indentation")
       result = p.emptyNode
     else:
       if p.inSemiStmtList > 0:
