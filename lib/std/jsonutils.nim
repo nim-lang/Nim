@@ -213,7 +213,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for i, val in b.getElems:
       fromJson(a[i], val)
   elif T is object:
-    template fun(key, typ): untyped =
+    template fun(key, typ): untyped {.used.} =
       if b.hasKey key:
         jsonTo(b[key], typ)
       elif hasField(a, key):
