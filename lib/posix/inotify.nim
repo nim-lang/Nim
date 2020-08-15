@@ -73,6 +73,20 @@ proc inotify_rm_watch*(fd: cint; wd: cint): cint {.cdecl,
     importc: "inotify_rm_watch", header: "<sys/inotify.h>".}
   ## Remove the watch specified by WD from the inotify instance FD.
 
+iterator inotify_events*(evs: pointer, n: int): ptr InotifyEvent =
+  ## Abstract the packed buffer interface to yield event object pointers.
+  ##
+  ## .. code-block:: Nim
+  ##   var evs = newSeq[byte](8192)        # Already did inotify_init+add_watch
+  ##   while (let n = read(fd, evs[0].addr, 8192); n) > 0:     # read forever
+  ##     for e in inotify_events(evs[0].addr, n): echo e[].len # echo name lens
+  var ev: ptr InotifyEvent = cast[ptr InotifyEvent](evs)
+  var n = n
+  while n > 0:
+    yield ev
+    let sz = InotifyEvent.sizeof + int(ev[].len)
+    n -= sz
+    ev = cast[ptr InotifyEvent](cast[uint](ev) + uint(sz))
 
 runnableExamples:
   when defined(linux):

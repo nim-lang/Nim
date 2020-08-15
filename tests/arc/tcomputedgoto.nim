@@ -1,13 +1,7 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''copied
-copied
-2
-copied
-copied
-2
-destroyed
-destroyed'''
+  output: '''2
+2'''
 """
 
 type
@@ -37,9 +31,9 @@ proc test(a: range[0..1], arg: ObjWithDestructor) =
     inc iteration
 
     case a
-    of 0:  
-        assert false
-    of 1:      
+    of 0:
+      assert false
+    of 1:
       echo b
       if iteration == 2:
         break

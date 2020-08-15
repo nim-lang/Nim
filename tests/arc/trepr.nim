@@ -62,3 +62,9 @@ var c2 = new tuple[member: ref seq[string]]
 c2.member = new seq[string]
 c2.member[] = @["hello"]
 echo c2.repr
+
+proc p2 =
+  echo "hey"
+
+discard repr p2
+

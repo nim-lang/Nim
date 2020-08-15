@@ -1,5 +1,6 @@
 discard """
-  output: '''assign
+  output: '''
+assign
 destroy
 destroy
 5
@@ -104,12 +105,12 @@ test()
 #------------------------------------------------------------
 # Issue #12883
 
-type 
+type
   TopObject = object
     internal: UniquePtr[int]
 
 proc deleteTop(p: ptr TopObject) =
-  if p != nil:    
+  if p != nil:
     `=destroy`(p[]) # !!! this operation used to leak the integer
     deallocshared(p)
 
@@ -117,12 +118,12 @@ proc createTop(): ptr TopObject =
   result = cast[ptr TopObject](allocShared0(sizeof(TopObject)))
   result.internal = newUniquePtr(1)
 
-proc test2() = 
+proc test2() =
   let x = createTop()
   echo $x.internal
   deleteTop(x)
 
-echo "---------------"  
+echo "---------------"
 echo "app begin"
 test2()
 echo "app end"

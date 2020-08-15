@@ -639,7 +639,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       return isNone
     elif f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
-      if f.callConv == ccClosure and a.callConv == ccDefault:
+      if f.callConv == ccClosure and a.callConv == ccNimCall:
         result = if result == isInferred: isInferredConvertible
                  elif result == isBothMetaConvertible: isBothMetaConvertible
                  else: isConvertible
@@ -1476,7 +1476,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericBody:
     considerPreviousT:
-      if a == f or a.kind == tyGenericInst and a[0] == f:
+      if a == f or a.kind == tyGenericInst and a.skipGenericAlias[0] == f:
         bindingRet isGeneric
       let ff = lastSon(f)
       if ff != nil:

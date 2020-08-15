@@ -527,7 +527,8 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
     assert dest == outcome
 
   var j = len(dest) - 1
-  var i = len(dest) + len(src) - 1
+  var i = j + len(src)
+  if i == j: return
   dest.setLen(i + 1)
 
   # Move items after `pos` to the end of the sequence.

@@ -10,7 +10,7 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings, liftdestructors
+  lowerings, liftdestructors, renderer
 from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
@@ -321,7 +321,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     result = newNodeI(nkStmtList, n.info)
 
   if n.kind notin nkCallKinds:
-    localError(g.config, n.info, "'spawn' takes a call expression")
+    localError(g.config, n.info, "'spawn' takes a call expression; got " & $n)
     return
   if optThreadAnalysis in g.config.globalOptions:
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:

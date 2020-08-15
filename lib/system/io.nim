@@ -282,7 +282,11 @@ elif defined(windows):
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  proc setHandleInformation(handle: int, mask, flags: culong): cint {.
+  type
+    IoHandle = distinct pointer
+      ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
+      ## one. Named like this to avoid collision with other `system` modules.
+  proc setHandleInformation(handle: IoHandle, mask, flags: culong): cint {.
     importc: "SetHandleInformation", header: "<handleapi.h>".}
 
 const
@@ -339,7 +343,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(f.int, HANDLE_FLAG_INHERIT, culong inheritable) != 0
+      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
+                                    culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -351,6 +356,68 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## ``false`` is returned `line` contains no new data.
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
+
+  when defined(windows) and not defined(useWinAnsi):
+    proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
+                     nNumberOfCharsToRead: int32,
+                     lpNumberOfCharsRead: ptr int32,
+                     pInputControl: pointer): int32 {.
+      importc: "ReadConsoleW", stdcall, dynlib: "kernel32".}
+
+    proc getLastError(): int32 {.
+      importc: "GetLastError", stdcall, dynlib: "kernel32", sideEffect.}
+
+    proc formatMessageW(dwFlags: int32, lpSource: pointer,
+                        dwMessageId, dwLanguageId: int32,
+                        lpBuffer: pointer, nSize: int32,
+                        arguments: pointer): int32 {.
+      importc: "FormatMessageW", stdcall, dynlib: "kernel32".}
+
+    proc localFree(p: pointer) {.
+      importc: "LocalFree", stdcall, dynlib: "kernel32".}
+
+    proc isatty(f: File): bool =
+      when defined(posix):
+        proc isatty(fildes: FileHandle): cint {.
+          importc: "isatty", header: "<unistd.h>".}
+      else:
+        proc isatty(fildes: FileHandle): cint {.
+          importc: "_isatty", header: "<io.h>".}
+      result = isatty(getFileHandle(f)) != 0'i32
+
+    # this implies the file is open
+    if f.isatty:
+      const numberOfCharsToRead = 2048
+      var numberOfCharsRead = 0'i32
+      var buffer = newWideCString("", numberOfCharsToRead)
+      if readConsole(getOsFileHandle(f), addr(buffer[0]),
+        numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
+        var error = getLastError()
+        var errorMsg: string
+        var msgbuf: WideCString
+        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+                        nil, error, 0, addr(msgbuf), 0, nil) != 0'i32:
+          errorMsg = $msgbuf
+          if msgbuf != nil:
+            localFree(cast[pointer](msgbuf))
+        raiseEIO("error: " & $error & " `" & errorMsg & "`")
+      # input always ends with "\r\n"
+      numberOfCharsRead -= 2
+      # handle Ctrl+Z as EOF
+      for i in 0..<numberOfCharsRead:
+        if buffer[i].uint16 == 26:  #Ctrl+Z
+          close(f)  #has the same effect as setting EOF
+          if i == 0:
+            line = TaintedString("")
+            return false
+          numberOfCharsRead = i
+          break
+      buffer[numberOfCharsRead] = 0.Utf16Char
+      when defined(nimv2):
+        line = TaintedString($toWideCString(buffer))
+      else:
+        line = TaintedString($buffer)
+      return(true)
 
   var pos = 0
 

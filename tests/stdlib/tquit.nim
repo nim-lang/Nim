@@ -5,7 +5,7 @@ just exiting...
 joinable: false
 """
 
-# Test the new beforeQuit variable:
+# Test `addQuitProc`
 
 proc myExit() {.noconv.} =
   write(stdout, "just exiting...\n")

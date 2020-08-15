@@ -17,7 +17,7 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccDefault,                # proc has no explicit calling convention
+    ccNimCall,                # nimcall, also the default
     ccStdCall,                # procedure is stdcall
     ccCDecl,                  # cdecl
     ccSafeCall,               # safecall
@@ -30,7 +30,7 @@ type
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
-  CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
+  CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
@@ -230,7 +230,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 42 flags!
+  TSymFlag* = enum    # 43 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -294,6 +294,7 @@ type
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
+    sfSingleUsedTemp   # For temporaries that we know will only be used once
 
   TSymFlags* = set[TSymFlag]
 
@@ -559,6 +560,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfExplicitCallConv
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -658,7 +660,7 @@ type
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mReset,
+    mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -1840,6 +1842,11 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
+proc skipColon*(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n[1]
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
@@ -1859,6 +1866,10 @@ when false:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
+
+proc hasDisabledAsgn*(t: PType): bool =
+  t.attachedOps[attachedAsgn] != nil and sfError in t.attachedOps[attachedAsgn].flags
+
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 

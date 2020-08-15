@@ -30,6 +30,10 @@ var o: Obj
 doAssert fmt"{o}" == "foobar"
 doAssert fmt"{o:10}" == "foobar    "
 
+doAssert fmt"{o=}" == "o=foobar"
+doAssert fmt"{o=:10}" == "o=foobar    "
+
+
 # see issue #7933
 var str = "abc"
 doAssert fmt">7.1 :: {str:>7.1}" == ">7.1 ::       a"
@@ -47,14 +51,38 @@ doAssert fmt"^7.2 :: {str:^7.2}" == "^7.2 ::   ab   "
 doAssert fmt"^7.3 :: {str:^7.3}" == "^7.3 ::   abc  "
 doAssert fmt"^7.9 :: {str:^7.9}" == "^7.9 ::   abc  "
 doAssert fmt"^7.0 :: {str:^7.0}" == "^7.0 ::        "
+
+doAssert fmt">7.1 :: {str=:>7.1}" == ">7.1 :: str=      a"
+doAssert fmt">7.2 :: {str=:>7.2}" == ">7.2 :: str=     ab"
+doAssert fmt">7.3 :: {str=:>7.3}" == ">7.3 :: str=    abc"
+doAssert fmt">7.9 :: {str=:>7.9}" == ">7.9 :: str=    abc"
+doAssert fmt">7.0 :: {str=:>7.0}" == ">7.0 :: str=       "
+doAssert fmt" 7.1 :: {str=:7.1}" == " 7.1 :: str=a      "
+doAssert fmt" 7.2 :: {str=:7.2}" == " 7.2 :: str=ab     "
+doAssert fmt" 7.3 :: {str=:7.3}" == " 7.3 :: str=abc    "
+doAssert fmt" 7.9 :: {str=:7.9}" == " 7.9 :: str=abc    "
+doAssert fmt" 7.0 :: {str=:7.0}" == " 7.0 :: str=       "
+doAssert fmt"^7.1 :: {str=:^7.1}" == "^7.1 :: str=   a   "
+doAssert fmt"^7.2 :: {str=:^7.2}" == "^7.2 :: str=  ab   "
+doAssert fmt"^7.3 :: {str=:^7.3}" == "^7.3 :: str=  abc  "
+doAssert fmt"^7.9 :: {str=:^7.9}" == "^7.9 :: str=  abc  "
+doAssert fmt"^7.0 :: {str=:^7.0}" == "^7.0 :: str=       "
 str = "äöüe\u0309\u0319o\u0307\u0359"
 doAssert fmt"^7.1 :: {str:^7.1}" == "^7.1 ::    ä   "
 doAssert fmt"^7.2 :: {str:^7.2}" == "^7.2 ::   äö   "
 doAssert fmt"^7.3 :: {str:^7.3}" == "^7.3 ::   äöü  "
 doAssert fmt"^7.0 :: {str:^7.0}" == "^7.0 ::        "
+
+doAssert fmt"^7.1 :: {str=:^7.1}" == "^7.1 :: str=   ä   "
+doAssert fmt"^7.2 :: {str=:^7.2}" == "^7.2 :: str=  äö   "
+doAssert fmt"^7.3 :: {str=:^7.3}" == "^7.3 :: str=  äöü  "
+doAssert fmt"^7.0 :: {str=:^7.0}" == "^7.0 :: str=       "
 # this is actually wrong, but the unicode module has no support for graphemes
 doAssert fmt"^7.4 :: {str:^7.4}" == "^7.4 ::  äöüe  "
 doAssert fmt"^7.9 :: {str:^7.9}" == "^7.9 :: äöüe\u0309\u0319o\u0307\u0359"
+
+doAssert fmt"^7.4 :: {str=:^7.4}" == "^7.4 :: str= äöüe  "
+doAssert fmt"^7.9 :: {str=:^7.9}" == "^7.9 :: str=äöüe\u0309\u0319o\u0307\u0359"
 
 # see issue #7932
 doAssert fmt"{15:08}" == "00000015" # int, works
@@ -65,6 +93,14 @@ doAssert fmt"{-1.5:08}" == "-00001.5" # works
 doAssert fmt"{1.5:+08}" == "+00001.5" # works
 doAssert fmt"{1.5: 08}" == " 00001.5" # works
 
+doAssert fmt"{15=:08}" == "15=00000015" # int, works
+doAssert fmt"{1.5=:08}" == "1.5=000001.5" # float, works
+doAssert fmt"{1.5=:0>8}" == "1.5=000001.5" # workaround using fill char works for positive floats
+doAssert fmt"{-1.5=:0>8}" == "-1.5=0000-1.5" # even that does not work for negative floats
+doAssert fmt"{-1.5=:08}" == "-1.5=-00001.5" # works
+doAssert fmt"{1.5=:+08}" == "1.5=+00001.5" # works
+doAssert fmt"{1.5=: 08}" == "1.5= 00001.5" # works
+
 # only add explicitly requested sign if value != -0.0 (neg zero)
 doAssert fmt"{-0.0:g}" == "-0"
 doAssert fmt"{-0.0:+g}" == "-0"
@@ -72,6 +108,13 @@ doAssert fmt"{-0.0: g}" == "-0"
 doAssert fmt"{0.0:g}" == "0"
 doAssert fmt"{0.0:+g}" == "+0"
 doAssert fmt"{0.0: g}" == " 0"
+
+doAssert fmt"{-0.0=:g}" == "-0.0=-0"
+doAssert fmt"{-0.0=:+g}" == "-0.0=-0"
+doAssert fmt"{-0.0=: g}" == "-0.0=-0"
+doAssert fmt"{0.0=:g}" == "0.0=0"
+doAssert fmt"{0.0=:+g}" == "0.0=+0"
+doAssert fmt"{0.0=: g}" == "0.0= 0"
 
 # seq format
 
@@ -88,6 +131,7 @@ proc formatValue(result: var string; value: (array|seq|openArray); specifier: st
 
 doAssert fmt"data1: {data1:8} #" == "data1: [       1,    10000, 10000000] #"
 doAssert fmt"data2: {data2:8} =" == "data2: [10000000,      100,        1] ="
+
 doAssert fmt"data1: {data1=:8} #" == "data1: data1=[       1,    10000, 10000000] #"
 doAssert fmt"data2: {data2=:8} =" == "data2: data2=[10000000,      100,        1] ="
 
@@ -159,6 +203,9 @@ proc my_proc =
   const value = "value"
   const a = &"{value}"
   assert a == value
+
+  const b = &"{value=}"
+  assert b == "value=" & value
 
 my_proc()
 
@@ -262,6 +309,7 @@ block:
   doAssert &"name: {name    =}\nage: {  age  =: >7}\nhobby: {   hobby=  : 8}" == 
         "name: name    =hello\nage:   age  =     21\nhobby:    hobby=  swim    "
   doAssert fmt"{age  ==  12}" == "false"
+  doAssert fmt"{name.toUpperAscii() = }" == "name.toUpperAscii() = HELLO"
   doAssert fmt"{name.toUpperAscii( ) =  }" == "name.toUpperAscii( ) =  HELLO"
   doAssert fmt"{  toUpperAscii(  s  =  name  )  =   }" == "  toUpperAscii(  s  =  name  )  =   HELLO"
   doAssert fmt"{  strutils.toUpperAscii(  s  =  name  )  =   }" == "  strutils.toUpperAscii(  s  =  name  )  =   HELLO"
@@ -276,16 +324,30 @@ block:
   doAssert fmt"{0==1}" == "false"
 
 
+# It is space sensitive.
+block:
+  let x = "12"
+  doAssert fmt"{x=:}" == "x=12"
+  doAssert fmt"{x=}" == "x=12"
+  doAssert fmt"{x =:}" == "x =12"
+  doAssert fmt"{x =}" == "x =12"
+  doAssert fmt"{x= :}" == "x= 12"
+  doAssert fmt"{x= }" == "x= 12"
+  doAssert fmt"{x = :}" == "x = 12"
+  doAssert fmt"{x = }" == "x = 12"
+  doAssert fmt"{x   =  :}" == "x   =  12"
+  doAssert fmt"{x   =  }" == "x   =  12"
+
 block:
   let x = "hello"
-  doAssert fmt"{x=}" == "x=" & $x
-  doAssert fmt"{x =}" == "x =" & $x
+  doAssert fmt"{x=}" == "x=hello" 
+  doAssert fmt"{x =}" == "x =hello"
 
 
   let y = 3.1415926
   doAssert fmt"{y=:.2f}" == fmt"y={y:.2f}"
   doAssert fmt"{y=}" == fmt"y={y}"
-  doAssert fmt"{y =: <16}" == fmt"y ={y: <16}"
+  doAssert fmt"{y = : <8}" == fmt"y = 3.14159 "
 
   proc hello(a: string, b: float): int = 12
   template foo(a: string, b: float): int = 18
@@ -294,6 +356,11 @@ block:
   doAssert fmt"{hello(x, y) =}" == "hello(x, y) =12"
   doAssert fmt"{hello(x, y)= }" == "hello(x, y)= 12"
   doAssert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
+
+  doAssert fmt"{hello x, y=}" == "hello x, y=12"
+  doAssert fmt"{hello x, y =}" == "hello x, y =12"
+  doAssert fmt"{hello x, y= }" == "hello x, y= 12"
+  doAssert fmt"{hello x, y = }" == "hello x, y = 12"
 
   doAssert fmt"{x.hello(y)=}" == "x.hello(y)=12"
   doAssert fmt"{x.hello(y) =}" == "x.hello(y) =12"

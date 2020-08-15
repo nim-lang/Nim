@@ -77,7 +77,7 @@ task "testskel", "create skeleton test dir for testing":
 task "clean", "cleanup generated files":
   var dirs = @["nimcache", "server"/"nimcache"]
   dirs.apply(proc(x: var string) =
-    if existsDir(x): removeDir(x))
+    if dirExists(x): removeDir(x))
 
 task "download", "download game assets":
   var
@@ -86,7 +86,7 @@ task "download", "download game assets":
     client = newHttpClient()
   path.add DirSep
   path.add(extractFilename(GameAssets))
-  if existsFile(path):
+  if fileExists(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
     case stdin.readLine.toLowerAscii

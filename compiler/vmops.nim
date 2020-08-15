@@ -85,12 +85,14 @@ template wrap2svoid(op, modop) {.dirty.} =
   modop op
 
 template wrapDangerous(op, modop) {.dirty.} =
-  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       discard
-    else:
+    modop op
+  else:
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       op(getString(a, 0), getString(a, 1))
-  modop op
+    modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
@@ -186,9 +188,9 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     when defined(nimHasInvariant):
-      registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
+      registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
         setResult(a, querySettingImpl(c.config, getInt(a, 0)))
-      registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
+      registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
         setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
@@ -200,14 +202,14 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
 
-  registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
                   "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
-  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,

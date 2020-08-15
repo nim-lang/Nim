@@ -43,7 +43,7 @@
 ## For SSL support this module relies on OpenSSL. If you want to
 ## enable SSL, compile with ``-d:ssl``.
 
-import net, strutils, strtabs, base64, os
+import net, strutils, strtabs, base64, os, strutils
 import asyncnet, asyncdispatch
 
 export Port
@@ -60,10 +60,16 @@ type
 
   SmtpBase[SocketType] = ref object
     sock: SocketType
+    address: string
     debug: bool
 
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
+
+proc containsNewline(xs: seq[string]): bool =
+  for x in xs:
+    if x.contains({'\c', '\L'}):
+      return true
 
 proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
   ## Sends ``cmd`` on the socket connected to the SMTP server.
@@ -119,6 +125,14 @@ else:
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openarray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
+  ##
+  ## You need to make sure that ``mSubject``, ``mTo`` and ``mCc`` don't contain
+  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not mSubject.contains({'\c', '\L'}),
+           "'mSubject' shouldn't contain any newline characters")
+  doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
+           "'mTo' and 'mCc' shouldn't contain any newline characters")
+
   result.msgTo = mTo
   result.msgCc = mCc
   result.msgSubject = mSubject
@@ -130,6 +144,13 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
 proc createMessage*(mSubject, mBody: string, mTo,
                     mCc: seq[string] = @[]): Message =
   ## Alternate version of the above.
+  ##
+  ## You need to make sure that ``mSubject``, ``mTo`` and ``mCc`` don't contain
+  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not mSubject.contains({'\c', '\L'}),
+           "'mSubject' shouldn't contain any newline characters")
+  doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
+           "'mTo' and 'mCc' shouldn't contain any newline characters")
   result.msgTo = mTo
   result.msgCc = mCc
   result.msgSubject = mSubject
@@ -205,15 +226,19 @@ proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   if not line.startswith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
 
+proc helo*(smtp: Smtp | AsyncSmtp) {.multisync.} =
+  # Sends the HELO request
+  await smtp.debugSend("HELO " & smtp.address & "\c\L")
+  await smtp.checkReply("250")
+
 proc connect*(smtp: Smtp | AsyncSmtp,
               address: string, port: Port) {.multisync.} =
   ## Establishes a connection with a SMTP server.
   ## May fail with ReplyError or with a socket error.
+  smtp.address = address
   await smtp.sock.connect(address, port)
-
   await smtp.checkReply("220")
-  await smtp.debugSend("HELO " & address & "\c\L")
-  await smtp.checkReply("250")
+  await smtp.helo()
 
 proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
   ## Put the SMTP connection in TLS (Transport Layer Security) mode.
@@ -225,6 +250,7 @@ proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync
       getSSLContext().wrapConnectedSocket(smtp.sock, handshakeAsClient)
     else:
       sslContext.wrapConnectedSocket(smtp.sock, handshakeAsClient)
+    await smtp.helo()
   else:
     {.error: "SMTP module compiled without SSL support".}
 
@@ -247,6 +273,11 @@ proc sendMail*(smtp: Smtp | AsyncSmtp, fromAddr: string,
   ## Sends ``msg`` from ``fromAddr`` to the addresses specified in ``toAddrs``.
   ## Messages may be formed using ``createMessage`` by converting the
   ## Message into a string.
+  ##
+  ## You need to make sure that ``fromAddr`` and ``toAddrs`` don't contain
+  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not (toAddrs.containsNewline() or fromAddr.contains({'\c', '\L'})),
+           "'toAddrs' and 'fromAddr' shouldn't contain any newline characters")
 
   await smtp.debugSend("MAIL FROM:<" & fromAddr & ">\c\L")
   await smtp.checkReply("250")

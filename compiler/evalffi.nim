@@ -104,7 +104,7 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
 
 proc mapCallConv(conf: ConfigRef, cc: TCallingConvention, info: TLineInfo): TABI =
   case cc
-  of ccDefault: result = DEFAULT_ABI
+  of ccNimCall: result = DEFAULT_ABI
   of ccStdCall: result = when defined(windows) and defined(x86): STDCALL else: DEFAULT_ABI
   of ccCDecl: result = DEFAULT_ABI
   else:
