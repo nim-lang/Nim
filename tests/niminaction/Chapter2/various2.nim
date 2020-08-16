@@ -140,7 +140,7 @@ let numbers = @[1, 2, 3, 4, 5, 6]
 let odd = filter(numbers, proc (x: int): bool = x mod 2 != 0)
 doAssert odd == @[1, 3, 5]
 
-import sequtils, future
+import sequtils, sugar
 let numbers1 = @[1, 2, 3, 4, 5, 6]
 let odd1 = filter(numbers1, (x: int) -> bool => x mod 2 != 0)
 assert odd1 == @[1, 3, 5]
@@ -149,7 +149,7 @@ proc isValid(x: int, validator: proc (x: int): bool) =
   if validator(x): echo(x, " is valid")
   else: echo(x, " is NOT valid")
 
-import future
+import sugar
 proc isValid2(x: int, validator: (x: int) -> bool) =
   if validator(x): echo(x, " is valid")
   else: echo(x, " is NOT valid")
