@@ -49,7 +49,7 @@ pkg1 "hts", false, "nim c -o:htss src/hts.nim"
 pkg1 "illwill", false, "nimble examples"
 pkg1 "inim", true
 pkg1 "itertools", false, "nim doc src/itertools.nim"
-pkg1 "iterutils"
+#pkg1 "iterutils" # See https://github.com/nim-lang/Nim/pull/15189
 pkg1 "jstin"
 pkg1 "karax", false, "nim c -r tests/tester.nim"
 pkg1 "kdtree", false, "nimble test", "https://github.com/jblindsay/kdtree"
