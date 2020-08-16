@@ -2349,6 +2349,12 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   formal = if formalLen > 1: m.callee.n[1].sym else: nil
 
   while a < n.len:
+
+    # Backup the scope, because macro and template arguments may not introduce new symbols
+    var oldScope: TScope = c.currentScope[]
+    oldScope.symbols.data = newSeq[PSym](c.currentScope.symbols.data.len)
+    for i, s in c.currentScope.symbols.data: oldScope.symbols.data[i] = s
+
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
       incl(marker, formal.position)
@@ -2503,6 +2509,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             noMatch()
             return
         checkConstraint(n[a])
+
+    if m.state == csMatch and m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}: #template or macro (and proc with static params?)
+      # Restore the original scope
+      c.currentScope[] = oldScope
+
     inc(a)
   # for some edge cases (see tdont_return_unowned_from_owned test case)
   m.firstMismatch.arg = a
@@ -2534,7 +2545,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   for f in 1..<m.callee.n.len:
-    var formal = m.callee.n[f].sym
+    let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:
