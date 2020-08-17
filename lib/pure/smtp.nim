@@ -87,7 +87,7 @@ proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
   await smtp.sock.send(cmd)
 
 proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
-  ## Receives a line of data from the socket connected to the 
+  ## Receives a line of data from the socket connected to the
   ## SMTP server.
   ##
   ## If the ``smtp`` object was created with ``debug`` enabled,
@@ -112,8 +112,7 @@ proc quitExcpt(smtp: Smtp, msg: string) =
 const compiledWithSsl = defined(ssl)
 
 when not defined(ssl):
-  type PSSLContext = ref object
-  let defaultSSLContext: PSSLContext = nil
+  let defaultSSLContext: SSLContext = nil
 else:
   var defaultSSLContext {.threadvar.}: SSLContext
 
