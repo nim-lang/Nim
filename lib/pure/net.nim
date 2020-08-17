@@ -116,7 +116,7 @@ when defineSsl:
 
 else:
   type
-    SslContext* = void # TODO: Workaround #4797.
+    SslContext* = ref object # TODO: Workaround #4797.
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
