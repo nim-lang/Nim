@@ -326,8 +326,10 @@ else:
 
   template withLock[T: not Trivial](location: var Atomic[T]; order: MemoryOrder; body: untyped): untyped =
     while location.guard.testAndSet(moAcquire): discard
-    body
-    location.guard.clear(moRelease)
+    try:
+      body
+    finally:
+      location.guard.clear(moRelease)
 
   proc load*[T: not Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
     withLock(location, order):
@@ -345,16 +347,14 @@ else:
   proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
     withLock(location, success):
       if location.nonAtomicValue != expected:
+        expected = location.nonAtomicValue
         return false
+      expected = desired
       swap(location.nonAtomicValue, expected)
       return true
 
   proc compareExchangeWeak*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; success, failure: MemoryOrder): bool {.inline.} =
-    withLock(location, success):
-      if location.nonAtomicValue != expected:
-        return false
-      swap(location.nonAtomicValue, expected)
-      return true
+    compareExchange(location, expected, desired, success, failure)
 
   proc compareExchange*[T: not Trivial](location: var Atomic[T]; expected: var T; desired: T; order: MemoryOrder = moSequentiallyConsistent): bool {.inline.} =
     compareExchange(location, expected, desired, order, order)
