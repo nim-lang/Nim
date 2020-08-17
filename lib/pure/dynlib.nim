@@ -56,6 +56,9 @@
 
 import strutils
 
+when defined(nixbuild):
+  import os
+
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
 
@@ -95,6 +98,27 @@ proc libCandidates*(s: string, dest: var seq[string]) =
       libCandidates(prefix & middle & suffix, dest)
   else:
     add(dest, s)
+  when defined(nixbuild):
+    # Nix doesn't have a global library directory so
+    # load libraries using an absolute path if one
+    # can be derived from NIX_LDFLAGS.
+    #
+    # During Nix/NixOS packaging the line "define:nixbuild"
+    # should be appended to the ../../config/nim.cfg file
+    # to enable this behavior by default.
+    #
+    let nixLdflags = getEnv("NIX_LDFLAGS")
+    if nixLdflags != "":
+      var libDirs: seq[string]
+      for flag in nixLdflags.split:
+        if flag.startsWith("-L"):
+          libDirs.add(flag[2..flag.high])
+      for lib in dest:
+        for dir in libDirs:
+          let abs = dir / lib
+          if existsFile(abs):
+            dest = @[abs]
+            return
 
 proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dynlib`
