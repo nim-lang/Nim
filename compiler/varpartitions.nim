@@ -336,12 +336,15 @@ proc deps(c: var Partitions; dest, src: PNode) =
   var targets, sources: seq[PSym]
   allRoots(dest, targets)
   allRoots(src, sources)
+
+  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
+
   for t in targets:
     if dest.kind != nkSym:
       potentialMutation(c, t, dest.info)
 
-    proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-    if types.searchTypeFor(t.typ, wrap):
+    if destIsComplex:
       for s in sources:
         connect(c, t, s, dest.info)
 

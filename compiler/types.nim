@@ -543,7 +543,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       else:
         result = "<invalid tyUserTypeClass>"
     of tyBuiltInTypeClass:
-      result = case t.base.kind:
+      result = case t.base.kind
         of tyVar: "var"
         of tyRef: "ref"
         of tyPtr: "ptr"
