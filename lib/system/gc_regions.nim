@@ -87,13 +87,13 @@ var
   tlRegion {.threadVar.}: MemRegion
 #  tempStrRegion {.threadVar.}: MemRegion  # not yet used
 
-template withRegion*(r: MemRegion; body: untyped) =
+template withRegion*(r: var MemRegion; body: untyped) =
   let oldRegion = tlRegion
   tlRegion = r
   try:
     body
   finally:
-    #r = tlRegion
+    r = tlRegion
     tlRegion = oldRegion
 
 template inc(p: pointer, s: int) =
@@ -262,14 +262,13 @@ when false:
     setObstackPtr(obs)
 
 template withScratchRegion*(body: untyped) =
-  var scratch: MemRegion
   let oldRegion = tlRegion
-  tlRegion = scratch
+  tlRegion = MemRegion()
   try:
     body
   finally:
+    deallocAll()
     tlRegion = oldRegion
-    deallocAll(scratch)
 
 when false:
   proc joinRegion*(dest: var MemRegion; src: MemRegion) =
