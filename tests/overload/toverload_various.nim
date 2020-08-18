@@ -375,3 +375,63 @@ block:
   test(c)
   var d: FooBarBazX
   test(d)
+
+
+# overloading on tuples with generic alias
+block:
+  type
+    Foo[F,T] = object
+      exArgs: T
+    FooUn[F,T] = Foo[F,tuple[a:T]]
+    FooBi[F,T1,T2] = Foo[F,tuple[a:T1,b:T2]]
+
+  proc foo1[F,T](x: Foo[F,tuple[a:T]]): int = 1
+  proc foo1[F,T1,T2](x: Foo[F,tuple[a:T1,b:T2]]): int = 2
+  proc foo2[F,T](x: FooUn[F,T]): int = 1
+  proc foo2[F,T1,T2](x: FooBi[F,T1,T2]):int = 2
+
+  template bar1[F,T](x: Foo[F,tuple[a:T]]): int = 1
+  template bar1[F,T1,T2](x: Foo[F,tuple[a:T1,b:T2]]): int = 2
+  template bar2[F,T](x: FooUn[F,T]): int = 1
+  template bar2[F,T1,T2](x: FooBi[F,T1,T2]): int = 2
+
+  proc test(x: any, n: int) =
+    doAssert(foo1(x) == n)
+    doAssert(foo2(x) == n)
+    doAssert(bar1(x) == n)
+    doAssert(bar2(x) == n)
+
+  var a: Foo[int, tuple[a:int]]
+  test(a, 1)
+  var b: FooUn[int, int]
+  test(b, 1)
+  var c: Foo[int, tuple[a:int,b:int]]
+  test(c, 2)
+  var d: FooBi[int, int, int]
+  test(d, 2)
+
+
+# inheritance depth
+block:
+  type
+    Foo[T] = object of RootObj
+      x: T
+    Bar[T] = object of Foo[T]
+      y: T
+    Baz[T] = object of Bar[T]
+      z: T
+
+  template t0[T](x: Foo[T]): int = 0
+  template t0[T](x: Bar[T]): int = 1
+  proc p0[T](x: Foo[T]): int = 0
+  proc p0[T](x: Bar[T]): int = 1
+
+  var a: Foo[int]
+  var b: Bar[int]
+  var c: Baz[int]
+  doAssert(t0(a) == 0)
+  doAssert(t0(b) == 1)
+  doAssert(t0(c) == 1)
+  doAssert(p0(a) == 0)
+  doAssert(p0(b) == 1)
+  doAssert(p0(c) == 1)
