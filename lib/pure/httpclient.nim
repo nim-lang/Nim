@@ -115,7 +115,7 @@
 ##
 ## SSL/TLS support
 ## ===============
-## This requires the OpenSSL library, fortunately it's widely used and installed
+## This requires the OpenSSL library. Fortunately it's widely used and installed
 ## on many operating systems. httpclient will use SSL automatically if you give
 ## any of the functions a url with the `https` schema, for example:
 ## `https://github.com/`.
@@ -123,11 +123,23 @@
 ## You will also have to compile with `ssl` defined like so:
 ## `nim c -d:ssl ...`.
 ##
-## Certificate validation is NOT performed by default.
-## This will change in the future.
+## Certificate validation is performed by default.
 ##
 ## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
 ## module are scanned to locate CA certificates.
+##
+## Example of setting SSL verification parameters in a new client:
+##
+## .. code-block:: Nim
+##    import httpclient
+##    var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
+##
+## There are three options for verify mode:
+## ``CVerifyNone``: certificates are not verified;
+## ``CVerifyPeer``: certificates are verified;
+## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+## locate certificates
 ##
 ## See `newContext <net.html#newContext.string,string,string,string>`_ to tweak or disable certificate validation.
 ##
