@@ -252,7 +252,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     inc(t.counter)
 
 proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1".} =
+  rtlFunc, extern: "nst$1", noSideEffect.} =
   ## Creates a new empty string table.
   ##
   ## See also:
@@ -265,7 +265,7 @@ proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1WithPairs".} =
+  rtlFunc, extern: "nst$1WithPairs", noSideEffect.} =
   ## Creates a new string table with given `key, value` string pairs.
   ##
   ## `StringTableMode` must be specified.
@@ -276,12 +276,13 @@ proc newStringTable*(keyValuePairs: varargs[string],
   result = newStringTable(mode)
   var i = 0
   while i < high(keyValuePairs):
-    result[keyValuePairs[i]] = keyValuePairs[i + 1]
+    {.noSideEffect.}:
+      result[keyValuePairs[i]] = keyValuePairs[i + 1]
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
-    rtlFunc, extern: "nst$1WithTableConstr".} =
+    rtlFunc, extern: "nst$1WithTableConstr", noSideEffect.} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
   ##
   ## The default mode is case sensitive.
@@ -291,7 +292,9 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
       mytab2 = newStringTable([("key3", "val3"), ("key4", "val4")])
 
   result = newStringTable(mode)
-  for key, val in items(keyValuePairs): result[key] = val
+  for key, val in items(keyValuePairs):
+    {.noSideEffect.}:
+      result[key] = val
 
 proc raiseFormatException(s: string) =
   raise newException(ValueError, "format string: key not found: " & s)

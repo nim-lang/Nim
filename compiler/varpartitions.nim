@@ -14,7 +14,8 @@
 ## The used data structure is "union find" with path compression.
 
 import ast, types, lineinfos, options, msgs, renderer
-from trees import getMagic
+from trees import getMagic, whichPragma
+from wordrecg import wNoSideEffect
 from isolation_check import canAlias
 
 type
@@ -48,7 +49,7 @@ type
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     unanalysableMutation, performCursorInference: bool
-    inAsgnSource, inConstructor: int
+    inAsgnSource, inConstructor, inNoSideEffectSection: int
 
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
@@ -336,12 +337,15 @@ proc deps(c: var Partitions; dest, src: PNode) =
   var targets, sources: seq[PSym]
   allRoots(dest, targets)
   allRoots(src, sources)
+
+  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
+
   for t in targets:
     if dest.kind != nkSym:
       potentialMutation(c, t, dest.info)
 
-    proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-    if types.searchTypeFor(t.typ, wrap):
+    if destIsComplex:
       for s in sources:
         connect(c, t, s, dest.info)
 
@@ -399,7 +403,8 @@ proc traverse(c: var Partitions; n: PNode) =
           var roots: seq[PSym]
           allRoots(it, roots)
           if paramType.kind == tyVar:
-            for r in roots: potentialMutation(c, r, it.info)
+            if c.inNoSideEffectSection == 0:
+              for r in roots: potentialMutation(c, r, it.info)
           else:
             for r in roots: noCursor(c, r)
 
@@ -434,6 +439,17 @@ proc traverse(c: var Partitions; n: PNode) =
           # test arc/topt_no_cursor.nim
           noCursor(c, it.sym)
 
+  of nkPragmaBlock:
+    let pragmaList = n[0]
+    var enforceNoSideEffects = 0
+    for i in 0..<pragmaList.len:
+      if whichPragma(pragmaList[i]) == wNoSideEffect:
+        enforceNoSideEffects = 1
+        break
+
+    inc c.inNoSideEffectSection, enforceNoSideEffects
+    traverse(c, n.lastSon)
+    dec c.inNoSideEffectSection, enforceNoSideEffects
   else:
     for child in n: traverse(c, child)
 
