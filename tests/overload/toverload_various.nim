@@ -409,3 +409,29 @@ block:
   test(c, 2)
   var d: FooBi[int, int, int]
   test(d, 2)
+
+
+# inheritance depth
+block:
+  type
+    Foo[T] = object of RootObj
+      x: T
+    Bar[T] = object of Foo[T]
+      y: T
+    Baz[T] = object of Bar[T]
+      z: T
+
+  template t0[T](x: Foo[T]): int = 0
+  template t0[T](x: Bar[T]): int = 1
+  proc p0[T](x: Foo[T]): int = 0
+  proc p0[T](x: Bar[T]): int = 1
+
+  var a: Foo[int]
+  var b: Bar[int]
+  var c: Baz[int]
+  doAssert(t0(a) == 0)
+  doAssert(t0(b) == 1)
+  doAssert(t0(c) == 1)
+  doAssert(p0(a) == 0)
+  doAssert(p0(b) == 1)
+  doAssert(p0(c) == 1)

@@ -579,7 +579,7 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if f.isMetaType:
       # We are matching a generic proc (as proc param)
       # to another generic type appearing in the proc
-      # signature. There is a change that the target
+      # signature. There is a chance that the target
       # type is already fully-determined, so we are
       # going to try resolve it
       if c.call != nil:
@@ -1496,7 +1496,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       #echo "inferred ", typeToString(inst), " for ", f
       return typeRel(c, inst, a)
 
-    var depth = 0
     if x.kind == tyGenericInvocation or f[0].kind != tyGenericBody:
       #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
       # simply no match for now:
