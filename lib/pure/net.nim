@@ -20,7 +20,8 @@
 ## ====
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
-## compile your application with the ``-d:ssl`` flag.
+## compile your application with the ``-d:ssl`` flag. See the `newContext`
+## procedure for additional details.
 ##
 ## Examples
 ## ========
@@ -36,8 +37,16 @@
 ##   var socket = newSocket()
 ##   socket.connect("google.com", Port(80))
 ##
+## For SSL, use the next example.
+##
+## .. code-block:: Nim
+##   var socket = newSocket()
+##   var ctx = newContext()
+##   wrapSocket(ctx, socket)
+##   socket.connect("google.com", Port(443))
+##
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
-## call the ``connect`` procedure. They can simply start sending data
+## call the `connect` procedure. They can simply start sending data
 ## immediately.
 ##
 ## .. code-block:: Nim
@@ -1942,6 +1951,9 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ##
   ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
+  ##
+  ## Do not use this version of `connect` for an SSL socket. Instead use the
+  ## version with no `timeout` parameter.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
