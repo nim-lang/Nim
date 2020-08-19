@@ -2501,7 +2501,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
     c.closeScope
     if m.state == csMatch and m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
-      discard prepareOperand(c, n[a])
+      discard prepareOperand(c, formal.typ, n[a])
 
     inc(a)
   # for some edge cases (see tdont_return_unowned_from_owned test case)
