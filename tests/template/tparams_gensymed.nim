@@ -342,7 +342,6 @@ hello(data)
 template bar(x: typed) = discard
 macro barry(x: typed) = discard
 
-#[XXX: Should this work?
 var a = 0
 
 bar:
@@ -350,7 +349,6 @@ bar:
 
 barry:
   var a = 20
-]#
 
 bar:
   var b = 10
