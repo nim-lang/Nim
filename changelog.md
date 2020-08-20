@@ -148,7 +148,7 @@
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
-  
+
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -237,7 +237,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
 - Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
 - Remove `math.round` generic, was deprecated since `0.19` and produces wrong results.
-
+- Add `math.quantize` generic, as a flexible alternative to deprecated `math.round`.
 
 - Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
