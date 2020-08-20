@@ -1058,6 +1058,22 @@ proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
     result = lcm(result, x[i])
     inc(i)
 
+when not defined(js) and not defined(objc):
+  func rint(value: SomeFloat): SomeFloat {.importc: "rint", since: (1, 3).}
+
+  func quantize*[T: float32|float64](value: T, unit: T, rfunc: proc(value: T): T = rint): T {.since: (1, 3).} =
+    ## Round `value` to a multiple of `unit` using `rfunc` rounding proc,
+    ## `rfunc` uses `rint` by default, you can provide your own proc.
+    runnableExamples:
+      doAssert quantize(123.456, 0.1) == 123.5
+      doAssert quantize(123.456, 5) == 125.0
+    if unit != 0:
+      let scaled = value / unit
+      if scaled.classify notin {fcInf, fcNegInf}:
+        return rfunc(scaled) * unit
+    return value
+
+
 when isMainModule and not defined(js) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
