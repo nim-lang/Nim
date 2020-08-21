@@ -47,7 +47,7 @@
 ##   socket.connect("google.com", Port(443))
 ##
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
-## call the `connect<net.html#connect%2CSocket%2Cstring>`_ procedure. They can
+## call the `connect <net.html#connect%2CSocket%2Cstring>`_ procedure. They can
 ## simply start sending data immediately.
 ##
 ## .. code-block:: Nim
