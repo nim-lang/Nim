@@ -20,7 +20,8 @@
 ## ====
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
-## compile your application with the ``-d:ssl`` flag. See the `newContext`
+## compile your application with the ``-d:ssl`` flag. See the
+## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring>`_
 ## procedure for additional details.
 ##
 ## Examples
@@ -46,8 +47,8 @@
 ##   socket.connect("google.com", Port(443))
 ##
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
-## call the `connect` procedure. They can simply start sending data
-## immediately.
+## call the `connect<net.html#connect%2CSocket%2Cstring>`_ procedure. They can
+## simply start sending data immediately.
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
