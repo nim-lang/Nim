@@ -1953,8 +1953,8 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   ##
-  ## Do not use this version of `connect` for an SSL socket. Instead use the
-  ## version with no `timeout` parameter.
+  ## **Warning:** This procedure appears to be broken for SSL connections as of
+  ## Nim v1.0.2. Consider using the other `connect` procedure.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
