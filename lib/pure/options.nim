@@ -185,7 +185,7 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   result = self.val
 
-proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
+proc get*[T](self: Option[T], otherwise: T): lent T {.inline.} =
   ## Returns the contents of the `Option` or an `otherwise` value if
   ## the `Option` is `None`.
   runnableExamples:
@@ -196,9 +196,9 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
     assert b.get(9999) == 9999
 
   if self.isSome:
-    self.val
+    result = self.val
   else:
-    otherwise
+    result = otherwise
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns contents of the `var Option`. If it is `None`, then an exception
@@ -363,14 +363,14 @@ proc `$`*[T](self: Option[T]): string =
   else:
     result = "None[" & name(T) & "]"
 
-proc unsafeGet*[T](self: Option[T]): T {.inline.}=
+proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
   ## Returns the value of a `some`. Behavior is undefined for `none`.
   ##
   ## **Note:** Use it only when you are **absolutely sure** the value is present
   ## (e.g. after checking `isSome <#isSome,Option[T]>`_).
   ## Generally, using `get proc <#get,Option[T]>`_ is preferred.
   assert self.isSome
-  self.val
+  result = self.val
 
 
 when isMainModule:
