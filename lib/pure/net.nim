@@ -38,7 +38,7 @@
 ##   var socket = newSocket()
 ##   socket.connect("google.com", Port(80))
 ##
-## For SSL, use the next example.
+## For SSL, use the following example (and make sure to compile with ``-d:ssl``):
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket()
