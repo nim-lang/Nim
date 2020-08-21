@@ -185,7 +185,7 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   result = self.val
 
-proc get*[T](self: Option[T], otherwise: T): lent T {.inline.} =
+proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the contents of the `Option` or an `otherwise` value if
   ## the `Option` is `None`.
   runnableExamples:
@@ -196,9 +196,9 @@ proc get*[T](self: Option[T], otherwise: T): lent T {.inline.} =
     assert b.get(9999) == 9999
 
   if self.isSome:
-    result = self.val
+    self.val
   else:
-    result = otherwise
+    otherwise
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
   ## Returns contents of the `var Option`. If it is `None`, then an exception
