@@ -1058,20 +1058,17 @@ proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
     result = lcm(result, x[i])
     inc(i)
 
-when not defined(js) and not defined(objc):
-  func rint(value: SomeFloat): SomeFloat {.importc: "rint", since: (1, 3).}
 
-  func round*[T: float32|float64](value: T, unit: T, rfunc: proc(value: T): T = rint): T {.since: (1, 3).} =
-    ## Round `value` to a multiple of `unit` using `rfunc` rounding proc,
-    ## `rfunc` uses `rint` by default, you can provide your own proc.
-    runnableExamples:
-      doAssert round(123.456, 0.1) == 123.5
-      doAssert round(123.456, 5) == 125.0
-    if unit != 0:
-      let scaled = value / unit
-      if scaled.classify notin {fcInf, fcNegInf}:
-        return rfunc(scaled) * unit
-    return value
+func round*[T: float32|float64](value: T, unit: T, rfunc: proc(value: T): T): T {.since: (1, 3).} =
+  ## Round `value` to a multiple of `unit` using `rfunc` rounding proc and returns rounded `value`,
+  ## you must provide your own `rfunc` rounding proc as argument, depending on the compilation target,
+  ## you can use `rint for C and C++ <https://en.cppreference.com/w/c/numeric/math/rint>`_,
+  ## `round for JavaScript <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/round>`_, etc.
+  if unit != 0:
+    let scaled = value / unit
+    if scaled.classify notin {fcInf, fcNegInf}:
+      return rfunc(scaled) * unit
+  return value
 
 
 when isMainModule and not defined(js) and not windowsCC89:
