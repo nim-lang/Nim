@@ -199,6 +199,27 @@ proc copyCandidate(a: var TCandidate, b: TCandidate) =
   a.baseTypeMatch = b.baseTypeMatch
   copyIdTable(a.bindings, b.bindings)
 
+proc typeRel*(c: var TCandidate, f, aOrig: PType,
+              flags: TTypeRelFlags = {}): TTypeRelation
+
+proc checkGeneric(a, b: TCandidate): int =
+  let c = a.c
+  let aa = a.callee
+  let bb = b.callee
+  var winner = 0
+  for i in 1..<min(aa.len, bb.len):
+    var ma = newCandidate(c, bb[i])
+    let tra = typeRel(ma, bb[i], aa[i], {trDontBind})
+    var mb = newCandidate(c, aa[i])
+    let trb = typeRel(mb, aa[i], bb[i], {trDontBind})
+    if tra == isGeneric and trb == isNone:
+      if winner == -1: return 0
+      winner = 1
+    if trb == isGeneric and tra == isNone:
+      if winner == 1: return 0
+      winner = -1
+  result = winner
+
 proc sumGeneric(t: PType): int =
   # count the "genericness" so that Foo[Foo[T]] has the value 3
   # and Foo[T] has the value 2 so that we know Foo[Foo[T]] is more
@@ -296,6 +317,9 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # the other way round because of other semantics:
   result = b.inheritancePenalty - a.inheritancePenalty
   if result != 0: return
+  # check for generic subclass relation
+  result = checkGeneric(a, b)
+  if result != 0: return
   # prefer more specialized generic over more general generic:
   result = complexDisambiguation(a.callee, b.callee)
   # only as a last resort, consider scoping:
@@ -336,9 +360,6 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     result.add(argTypeToString(arg, prefer))
     if i != n.len - 1: result.add(", ")
 
-proc typeRel*(c: var TCandidate, f, aOrig: PType,
-              flags: TTypeRelFlags = {}): TTypeRelation
-
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
   of tyTypeDesc:
@@ -357,8 +378,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
       if result.kind != tyGenericParam: break
   of tyGenericInvocation:
-    result = t
-    doAssert(false, "cannot resolve type: " & typeToString(t))
+    result = nil
   of tyOwned:
     # bug #11257: the comparison system.`==`[T: proc](x, y: T) works
     # better without the 'owned' type:
@@ -1465,7 +1485,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if baseType != nil:
             c.inheritancePenalty += 1
             let ret = typeRel(c, f, baseType)
-            return if ret == isEqual: isSubtype else: ret
+            return if ret in {isEqual,isGeneric}: isSubtype else: ret
 
         result = isNone
     else:
@@ -1496,10 +1516,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       #echo "inferred ", typeToString(inst), " for ", f
       return typeRel(c, inst, a)
 
-    if x.kind == tyGenericInvocation or f[0].kind != tyGenericBody:
-      #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
-      # simply no match for now:
-      discard
+    if x.kind == tyGenericInvocation:
+      if f[0] == x[0]:
+        for i in 1..<f.len:
+          let tr = typeRel(c, f[i], x[i])
+          if tr <= isSubtype: return
+        result = isGeneric
     elif x.kind == tyGenericInst and f[0] == x[0] and
           x.len - 1 == f.len:
       for i in 1..<f.len:
