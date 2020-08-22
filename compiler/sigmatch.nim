@@ -619,7 +619,8 @@ proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     # if f is metatype.
     result = typeRel(c, f, a)
 
-  if result <= isSubtype or inconsistentVarTypes(f, a):
+  #               v--- is this correct?
+  if result <= isIntConv or inconsistentVarTypes(f, a):
     result = isNone
 
   #if result == isEqual:
