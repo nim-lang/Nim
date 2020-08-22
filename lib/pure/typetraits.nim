@@ -306,27 +306,16 @@ macro inEnumWithHoles[U: Ordinal](T: typedesc[enum], v: U): bool =
     newLetStmt(value, newCall(ord, v))
   )
 
-  template newOrdLit(lit: untyped): NimNode =
-    if lit.kind != nnkSym:
-      newCall(ord, newLit lit)
-    else:
-      newCall(ord, lit)
-
-  when T is Ordinal:
-    result.add newCall(`and`,
-                       newCall(ge, value, newOrdLit T.low),
-                       newCall(le, value, newOrdLit T.high))
-  else:
-    var matcher: NimNode
-    let enumDef = getType(T)
-    for i in enumDef.findChild(it.kind == nnkEnumTy):
-      if i.kind != nnkEmpty:
-        let match = newCall(eq, newOrdLit i, value)
-        if matcher.isNil:
-          matcher = match
-        else:
-          matcher = newCall(`or`, matcher, match)
-    result.add matcher
+  var matcher: NimNode
+  let enumDef = getType(T)
+  for i in enumDef.findChild(it.kind == nnkEnumTy):
+    if i.kind != nnkEmpty:
+      let match = newCall(eq, newCall(ord, i), value)
+      if matcher.isNil:
+        matcher = match
+      else:
+        matcher = newCall(`or`, matcher, match)
+  result.add matcher
 
 func contains*[U, V: SomeOrdinal](T: typedesc[U], v: V): bool
                                  {.inline, since: (1, 3, 5).} =
