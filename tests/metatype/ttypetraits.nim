@@ -1,5 +1,6 @@
 import typetraits
 import macros
+import fenv
 
 block: # isNamedTuple
   type Foo1 = (a:1,).type
@@ -350,3 +351,55 @@ block: # enum.len
     doAssert MyEnum.enumLen == 4
     doAssert OtherEnum.enumLen == 3
     doAssert MyFlag.enumLen == 4
+
+block contains:
+  block ordinal:
+    doAssert -10 notin uint8
+    doAssert 10 in uint8
+    doAssert high(uint64) notin int32
+    doAssert -10 in int32
+
+  block float:
+    doAssert -float64.maximumPositiveValue in float64
+    doAssert float64.maximumPositiveValue notin float32
+
+  block range:
+    doAssert 0u32 in Natural
+    doAssert 0 notin Positive
+    doAssert 0 in Natural
+
+    type
+      Letters = range['a'..'z']
+
+    doAssert '0' notin Letters
+    doAssert 'a' in Letters
+    doAssert ord(' ') notin Letters
+    doAssert ord('a') in Letters
+
+    type
+      ZeroOrPositiveFloat = range[0.0..high(float)]
+      ZeroOrPositiveFloat32 = range[0.0f32..high(float32)]
+    doAssert -10.0f32 notin ZeroOrPositiveFloat
+    doAssert 10.0 in ZeroOrPositiveFloat
+
+  block `enum`:
+    type
+      E {.pure.} = enum
+        A
+        B
+        C
+        D
+    doAssert 3 in E
+    doAssert 10 notin E
+
+    type
+      Holes {.pure.} = enum
+        A = 1
+        B
+        C
+        D = 9
+        E
+        F = 20
+
+    doAssert 1 in Holes
+    doAssert -10 notin Holes
