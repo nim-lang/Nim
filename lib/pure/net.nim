@@ -1954,7 +1954,8 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ## the connection to the server to be made.
   ##
   ## **Warning:** This procedure appears to be broken for SSL connections as of
-  ## Nim v1.0.2. Consider using the other `connect` procedure.
+  ## Nim v1.0.2. Consider using the other `connect` procedure. See
+  ## https://github.com/nim-lang/Nim/issues/15215 for more info.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
