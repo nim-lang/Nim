@@ -242,8 +242,11 @@ proc closeShadowScope*(c: PContext) =
 proc mergeShadowScope*(c: PContext) =
   let shadowScope = c.currentScope
   c.rawCloseScope
-  for i in shadowScope.symbols:
-    c.addDecl(i)
+  for sym in shadowScope.symbols:
+    if sym.kind in OverloadableSyms:
+      c.addInterfaceOverloadableSymAt(c.currentScope, sym)
+    else:
+      c.addInterfaceDecl(sym)
 
 when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifier:
