@@ -2314,7 +2314,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     formal: PSym # current routine parameter
 
   template noMatch() =
-    c.closeScope
+    c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
@@ -2349,8 +2349,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
   while a < n.len:
 
-    c.openScope
-    dec c.currentScope.depthLevel
+    c.openShadowScope
 
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
@@ -2368,7 +2367,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         else:
           incrIndexType(container.typ)
         container.add n[a]
-
     elif n[a].kind == nkExprEqExpr:
       # named param
       m.firstMismatch.kind = kUnknownNamedParam
@@ -2408,7 +2406,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       else:
         setSon(m.call, formal.position + 1, arg)
       inc f
-
     else:
       # unnamed param
       if f >= formalLen:
@@ -2499,9 +2496,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             noMatch()
         checkConstraint(n[a])
 
-    c.closeScope
-    if m.state == csMatch and m.calleeSym != nil and m.calleeSym.kind notin {skTemplate, skMacro}:
-      discard prepareOperand(c, formal.typ, n[a])
+    if m.state == csMatch and not(m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+      c.mergeShadowScope
+    else:
+      c.closeShadowScope
 
     inc(a)
   # for some edge cases (see tdont_return_unowned_from_owned test case)

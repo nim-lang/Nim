@@ -231,6 +231,20 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addOverloadableSymAt(c, scope, sym)
   addInterfaceDeclAux(c, sym)
 
+proc openShadowScope*(c: PContext) =
+  c.currentScope = PScope(parent: c.currentScope,
+                          symbols: newStrTable(),
+                          depthLevel: c.scopeDepth)
+
+proc closeShadowScope*(c: PContext) =
+  c.closeScope
+
+proc mergeShadowScope*(c: PContext) =
+  let shadowScope = c.currentScope
+  c.rawCloseScope
+  for i in shadowScope.symbols:
+    c.addDecl(i)
+
 when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifier:
   proc altSpelling(x: PIdent): PIdent =

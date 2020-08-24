@@ -365,3 +365,13 @@ var b = 30
 #But it must not! Since this would be incorrect:
 # bar((var b = 3; const c = 1; echo "hey"; c))
 # echo b # <- b wouldn't exist
+
+discard not (let xx = 1; true)
+discard xx
+
+template barrel(a: typed): untyped = a
+
+barrel:
+  var aa* = 1
+  var bb = 3
+  export bb
