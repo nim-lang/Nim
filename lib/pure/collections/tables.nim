@@ -131,7 +131,7 @@
 ##   let myString = "abracadabra"
 ##   let letterFrequencies = toCountTable(myString)
 ##   echo letterFrequencies
-##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
+##   # output: {'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
 ## and increasing each key's value with `inc proc
