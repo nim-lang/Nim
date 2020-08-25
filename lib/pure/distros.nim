@@ -231,6 +231,8 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("netpkg install " & p, true)
     elif detectOs(NixOS):
       result = ("nix-env -i " & p, false)
+    elif detectOS(Solus):
+      result = ("eopkg it " & p, true)
     elif detectOs(Solaris):
       result = ("pkg install " & p, true)
     elif detectOs(PCLinuxOS):
