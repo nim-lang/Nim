@@ -602,8 +602,16 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
-  of mShlI: applyFormat("($1 << $2)", "($1 << $2)")
-  of mAshrI: applyFormat("($1 >> $2)", "($1 >> $2)")
+  of mShlI: 
+    if n[1].typ.size <= 4:
+      applyFormat("($1 << $2)", "($1 << $2)")
+    else:
+      applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
+  of mAshrI: 
+    if n[1].typ.size <= 4:
+      applyFormat("($1 >> $2)", "($1 >> $2)")
+    else:
+      applyFormat("Math.floor($1 / Math.pow(2,$2))", "Math.floor($1 / Math.pow(2,$2))")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
