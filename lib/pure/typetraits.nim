@@ -295,10 +295,7 @@ proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
 macro inEnumWithHoles[U: Ordinal](T: typedesc[enum], v: U): bool =
   let
     eq = bindSym("==", brOpen)
-    le = bindSym("<=", brOpen)
-    ge = bindSym(">=", brOpen)
     `or` = bindSym"or"
-    `and` = bindSym"and"
     ord = bindSym"ord"
 
   let value = genSym()
