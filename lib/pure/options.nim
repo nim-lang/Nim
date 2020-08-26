@@ -372,6 +372,19 @@ proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
   assert self.isSome
   result = self.val
 
+converter toBool*[T](self: Option[T]): bool =
+  ## Converts an option to be true if it is `Some`.
+  runnableExamples:
+    var isSome = false
+    var val = some "I have some"
+    if val: # Allows easy checking if an option has a value
+      isSome = true
+    assert isSome == true
+    val = none(string)
+    if not val:
+      isSome = false
+    assert isSome == false
+  return self.isSome
 
 when isMainModule:
   import unittest, sequtils
