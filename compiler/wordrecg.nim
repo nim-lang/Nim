@@ -155,7 +155,7 @@ const
     "subschar", "acyclic", "shallow", "unroll", "linearScanEnd",
     "computedGoto", "injectStmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
-    "asmNosSackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
+    "asmNoStackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
     "guard", "locks", "partial", "explain", "liftLocals",
 
     "auto", "bool", "catch", "char", "class", "compl",

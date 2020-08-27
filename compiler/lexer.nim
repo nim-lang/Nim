@@ -170,7 +170,7 @@ proc `$`*(tok: Token): string =
   of tkIntLit..tkInt64Lit: $tok.iNumber
   of tkFloatLit..tkFloat64Lit: $tok.fNumber
   of tkInvalid, tkStrLit..tkCharLit, tkComment: tok.literal
-  of tkParLe..tkColon, tkEof, tkAccent: $tok.tokType
+  of tkParLe..tkColon, tkEof, tkAccent: TokTypeToStr[tok.tokType]
   else:
     if tok.ident != nil:
       tok.ident.s
@@ -183,7 +183,7 @@ proc prettyTok*(tok: Token): string =
 
 proc printTok*(conf: ConfigRef; tok: Token) =
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
-      $tok.tokType & " " & $tok)
+      TokTypeToStr[tok.tokType] & " " & $tok)
 
 proc initToken*(L: var Token) =
   L.tokType = tkInvalid
