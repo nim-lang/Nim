@@ -148,7 +148,7 @@
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
-  
+
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -168,6 +168,29 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
+- Added `typetraits.rangeof` which returns a slice with the full range of
+  a given type. This is a shortcut for `low(T)..high(T)` aiming to improve
+  the ergonomics of performing safe type conversions, especially between
+  range types. Below is an example usage of the new function:
+  ```nim
+  import typetraits, strutils
+
+  type
+    AllowedPort = range[1024..65535]
+
+  proc setupServer(port: AllowedPort) =
+    # Setup a webserver...
+    discard
+
+  stdout.write("Please enter a port [1024-65535]: ")
+  stdout.flushFile()
+  let port = stdin.readLine().parseInt()
+
+  if port in rangeof(AllowedPort):
+    setupServer(AllowedPort(port))
+  else:
+    stderr.write("Invalid port number")
+  ```
 
 
 ## Language changes

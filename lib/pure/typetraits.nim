@@ -183,3 +183,32 @@ since (1, 1):
 
     type T2 = T
     genericParamsImpl(T2)
+
+func rangeof*(T: typedesc): Slice[T] {.inline, since: (1, 3, 5).} =
+  ## Returns a slice containing the full range of type `T`. This is a shortcut
+  ## for `low(T)..high(T)`.
+  ##
+  ## This proc is useful for verifying whether value of one type
+  ## can be safely converted to an another:
+  ##
+  ## .. code-block:: nim
+  ##    :test: "$nim $backend $options"
+  ##
+  ##   import strutils
+  ##
+  ##   type
+  ##     AllowedPort = range[1024..65535]
+  ##
+  ##   proc setupServer(port: AllowedPort) =
+  ##     # Setup a webserver...
+  ##     discard
+  ##
+  ##   stdout.write("Please enter a port [1024-65535]: ")
+  ##   stdout.flushFile()
+  ##   let port = stdin.readLine().parseInt()
+  ##
+  ##   if port in rangeof(AllowedPort):
+  ##     setupServer(AllowedPort(port))
+  ##   else:
+  ##     stderr.write("Invalid port number")
+  low(T)..high(T)
