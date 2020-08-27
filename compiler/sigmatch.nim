@@ -265,17 +265,12 @@ proc sumGeneric(t: PType): int =
     else:
       return 0
 
-#var ggDebug: bool
-
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
   var winner = 0
   for i in 1..<min(a.len, b.len):
     let x = a[i].sumGeneric
     let y = b[i].sumGeneric
-    #if ggDebug:
-    #echo "came herA ", typeToString(a[i]), " ", x
-    #echo "came herB ", typeToString(b[i]), " ", y
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -2210,17 +2205,11 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
         z.callee = arg[i].typ
         if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg[i].sym
-        #if arg[i].sym.name.s == "cmp":
-        #  ggDebug = true
-        #  echo "CALLLEEEEEEEE A ", typeToString(z.callee)
         # XXX this is still all wrong: (T, T) should be 2 generic matches
         # and  (int, int) 2 exact matches, etc. Essentially you cannot call
         # typeRel here and expect things to work!
         let r = typeRel(z, f, arg[i].typ)
         incMatches(z, r, 2)
-        #if arg[i].sym.name.s == "cmp": # and arg.info.line == 606:
-        #  echo "M ", r, " ", arg.info, " ", typeToString(arg[i].sym.typ)
-        #  writeMatches(z)
         if r != isNone:
           z.state = csMatch
           case x.state
@@ -2313,14 +2302,7 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
-proc matchesAux(c: PContext, n, nOrig: PNode,
-                m: var TCandidate, marker: var IntSet) =
-  var
-    a = 1 # iterates over the actual given arguments
-    f = if m.callee.kind != tyGenericBody: 1
-        else: 0 # iterates over formal parameters
-    arg: PNode # current prepared argument
-    formal: PSym # current routine parameter
+proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
 
   template noMatch() =
     c.mergeShadowScope #merge so that we don't have to resem for later overloads
@@ -2349,15 +2331,19 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
-  m.call = newNodeI(n.kind, n.info)
-  m.call.typ = base(m.callee) # may be nil
-  var formalLen = m.callee.n.len
+  m.call = newNodeIT(n.kind, n.info, m.callee.base)
   m.call.add n[0]
-  var container: PNode = nil # constructed container
-  formal = if formalLen > 1: m.callee.n[1].sym else: nil
+
+  var
+    a = 1 # iterates over the actual given arguments
+    f = if m.callee.kind != tyGenericBody: 1
+        else: 0 # iterates over formal parameters
+    arg: PNode # current prepared argument
+    formalLen = m.callee.n.len
+    formal = if formalLen > 1: m.callee.n[1].sym else: nil # current routine parameter
+    container: PNode = nil # constructed container
 
   while a < n.len:
-
     c.openShadowScope
 
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
@@ -2492,7 +2478,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             f = max(f, formalLen - n.len + a + 1)
           elif formal.typ.kind != tyVarargs or container == nil:
             setSon(m.call, formal.position + 1, arg)
-            inc(f)
+            inc f
             container = nil
           else:
             # we end up here if the argument can be converted into the varargs
@@ -2510,7 +2496,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     else:
       c.closeShadowScope
 
-    inc(a)
+    inc a
   # for some edge cases (see tdont_return_unowned_from_owned test case)
   m.firstMismatch.arg = a
   m.firstMismatch.formal = formal
