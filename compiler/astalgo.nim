@@ -345,7 +345,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     result.addf("$N$1\"n\": $2",     [istr, treeToYamlAux(conf, n.n, marker, indent + 2, maxRecDepth - 1)])
     if card(n.flags) > 0:
       result.addf("$N$1\"flags\": $2", [istr, flagsToStr(n.flags)])
-    result.addf("$N$1\"callconv\": $2", [istr, makeYamlString($n.callConv)])
+    result.addf("$N$1\"callconv\": $2", [istr, makeYamlString(CallingConvToStr[n.callConv])])
     result.addf("$N$1\"size\": $2", [istr, rope(n.size)])
     result.addf("$N$1\"align\": $2", [istr, rope(n.align)])
     result.addf("$N$1\"sons\": $2", [istr, sonsRope])
