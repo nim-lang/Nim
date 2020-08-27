@@ -825,6 +825,9 @@ when defineSsl:
     else:
       result = getPeerCertificates(socket.sslHandle)
 
+  proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
+      SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
+  
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
   ## the last error stored in the socket object.
