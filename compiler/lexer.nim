@@ -66,7 +66,6 @@ type
 
   TokTypes* = set[TokType]
 
-
 const
   weakTokens = {tkComma, tkSemiColon, tkColon,
                 tkParRi, tkParDotRi, tkBracketRi, tkBracketDotRi,
