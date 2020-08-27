@@ -411,7 +411,7 @@ block:
   test(d, 2)
 
 
-# inheritance depth
+# inheritance and generics
 block:
   type
     Foo[T] = object of RootObj
@@ -421,17 +421,43 @@ block:
     Baz[T] = object of Bar[T]
       z: T
 
-  template t0[T](x: Foo[T]): int = 0
-  template t0[T](x: Bar[T]): int = 1
-  proc p0[T](x: Foo[T]): int = 0
-  proc p0[T](x: Bar[T]): int = 1
+  template t0(x: Foo[int]): int = 0
+  template t0(x: Bar[int]): int = 1
+  template t0(x: Foo[bool or int]): int = 10
+  template t0(x: Bar[bool or int]): int = 11
+  template t0[T](x: Foo[T]): int = 20
+  template t0[T](x: Bar[T]): int = 21
+  proc p0(x: Foo[int]): int = 0
+  proc p0(x: Bar[int]): int = 1
+  #proc p0(x: Foo[bool or int]): int = 10
+  #proc p0(x: Bar[bool or int]): int = 11
+  proc p0[T](x: Foo[T]): int = 20
+  proc p0[T](x: Bar[T]): int = 21
 
   var a: Foo[int]
   var b: Bar[int]
   var c: Baz[int]
+  var d: Foo[bool]
+  var e: Bar[bool]
+  var f: Baz[bool]
+  var g: Foo[float]
+  var h: Bar[float]
+  var i: Baz[float]
   doAssert(t0(a) == 0)
   doAssert(t0(b) == 1)
   doAssert(t0(c) == 1)
+  doAssert(t0(d) == 10)
+  doAssert(t0(e) == 11)
+  doAssert(t0(f) == 11)
+  doAssert(t0(g) == 20)
+  doAssert(t0(h) == 21)
+  #doAssert(t0(i) == 21)
   doAssert(p0(a) == 0)
   doAssert(p0(b) == 1)
   doAssert(p0(c) == 1)
+  #doAssert(p0(d) == 10)
+  #doAssert(p0(e) == 11)
+  #doAssert(p0(f) == 11)
+  doAssert(p0(g) == 20)
+  doAssert(p0(h) == 21)
+  doAssert(p0(i) == 21)
