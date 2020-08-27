@@ -377,7 +377,6 @@ template styledMsgWriteln*(args: varargs[typed]) =
     when defined(windows):
       flushFile(stderr)
 
-
 proc msgKindToString*(kind: TMsgKind): string = MsgKindToStr[kind]
   # later versions may provide translated error messages
 

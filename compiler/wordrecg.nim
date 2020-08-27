@@ -88,7 +88,6 @@ type
     wInOut, wByCopy, wByRef, wOneWay,
     wBitsize
 
-
   TSpecialWords* = set[TSpecialWord]
 
 const

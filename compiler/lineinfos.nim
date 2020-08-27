@@ -49,7 +49,8 @@ type
     warnEachIdentIsTuple,
     warnUnsafeSetLen,
     warnUnsafeDefault,
-    warnProveInit, warnProveField, warnProveIndex, warnUnreachableElse,
+    warnProveInit, warnProveField, warnProveIndex,
+    warnUnreachableElse, warnUnreachableCode,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
@@ -110,6 +111,7 @@ const
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
     warnUnreachableElse: "unreachable else, all cases are already covered",
+    warnUnreachableCode: "unreachable code after 'return' statement or '{.noReturn.}' proc",
     warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
@@ -156,7 +158,6 @@ const
     hintExtendedContext: "$1",
     hintMsgOrigin: "$1",
   ]
-
 
 const
   WarningsToStr* = ["CannotOpenFile", "OctalEscape",
