@@ -375,3 +375,22 @@ barrel:
   var aa* = 1
   var bb = 3
   export bb
+
+# Test declaredInScope within params
+template test1: untyped =
+  when not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop =
+  test1
+  test1
+
+template test2: untyped =
+  when not not not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop2 =
+  test2
+  test2
+
+test1(); test2()

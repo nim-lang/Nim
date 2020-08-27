@@ -93,6 +93,11 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
+  var shadow = c.currentScope
+  while result == nil and shadow.parent != nil and shadow.depthLevel == shadow.parent.depthLevel:
+    # We are in a shadow scope, check in the parent too
+    result = strTableGet(shadow.parent.symbols, s)
+    shadow = shadow.parent
 
 proc searchInScopes*(c: PContext, s: PIdent): PSym =
   for scope in walkScopes(c.currentScope):
