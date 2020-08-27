@@ -30,8 +30,8 @@ type
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
-    "closure", "noconv"]
+  "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
+  "closure", "noconv"]
 
 type
   TNodeKind* = enum # order is extremely important, because ranges are used
