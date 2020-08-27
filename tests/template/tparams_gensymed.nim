@@ -336,3 +336,61 @@ test(hello):
 var data = 5
 
 hello(data)
+
+# bug #5691
+
+template bar(x: typed) = discard
+macro barry(x: typed) = discard
+
+var a = 0
+
+bar:
+  var a = 10
+
+barry:
+  var a = 20
+
+bar:
+  var b = 10
+
+barry:
+  var b = 20
+
+var b = 30
+
+# template bar(x: static int) = discard
+#You may think that this should work:
+# bar((var c = 1; echo "hey"; c))
+# echo c
+#But it must not! Since this would be incorrect:
+# bar((var b = 3; const c = 1; echo "hey"; c))
+# echo b # <- b wouldn't exist
+
+discard not (let xx = 1; true)
+discard xx
+
+template barrel(a: typed): untyped = a
+
+barrel:
+  var aa* = 1
+  var bb = 3
+  export bb
+
+# Test declaredInScope within params
+template test1: untyped =
+  when not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop =
+  test1
+  test1
+
+template test2: untyped =
+  when not not not declaredInScope(thing):
+    var thing {.inject.}: int
+
+proc chunkedReadLoop2 =
+  test2
+  test2
+
+test1(); test2()

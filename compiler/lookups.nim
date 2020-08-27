@@ -93,6 +93,11 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
+  var shadow = c.currentScope
+  while result == nil and shadow.parent != nil and shadow.depthLevel == shadow.parent.depthLevel:
+    # We are in a shadow scope, check in the parent too
+    result = strTableGet(shadow.parent.symbols, s)
+    shadow = shadow.parent
 
 proc searchInScopes*(c: PContext, s: PIdent): PSym =
   for scope in walkScopes(c.currentScope):
@@ -230,6 +235,23 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   # it adds the symbol to the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
   addInterfaceDeclAux(c, sym)
+
+proc openShadowScope*(c: PContext) =
+  c.currentScope = PScope(parent: c.currentScope,
+                          symbols: newStrTable(),
+                          depthLevel: c.scopeDepth)
+
+proc closeShadowScope*(c: PContext) =
+  c.closeScope
+
+proc mergeShadowScope*(c: PContext) =
+  let shadowScope = c.currentScope
+  c.rawCloseScope
+  for sym in shadowScope.symbols:
+    if sym.kind in OverloadableSyms:
+      c.addInterfaceOverloadableSymAt(c.currentScope, sym)
+    else:
+      c.addInterfaceDecl(sym)
 
 when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifier:

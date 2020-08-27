@@ -2324,9 +2324,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     formal: PSym # current routine parameter
 
   template noMatch() =
+    c.mergeShadowScope #merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
+    return
 
   template checkConstraint(n: untyped) {.dirty.} =
     if not formal.constraint.isNil:
@@ -2335,7 +2337,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         inc(m.genericMatches, 100)
       else:
         noMatch()
-        return
 
     if formal.typ.kind in {tyVar}:
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
@@ -2343,11 +2344,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
-          return
       elif not n.isLValue:
         m.firstMismatch.kind = kVarNeeded
         noMatch()
-        return
 
   m.state = csMatch # until proven otherwise
   m.firstMismatch = MismatchInfo()
@@ -2359,6 +2358,9 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   formal = if formalLen > 1: m.callee.n[1].sym else: nil
 
   while a < n.len:
+
+    c.openShadowScope
+
     if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
       formal = m.callee.n[f].sym
       incl(marker, formal.position)
@@ -2383,12 +2385,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       if n[a][0].kind != nkIdent:
         localError(c.config, n[a].info, "named parameter has to be an identifier")
         noMatch()
-        return
       formal = getNamedParamFromList(m.callee.n, n[a][0].ident)
       if formal == nil:
         # no error message!
         noMatch()
-        return
       if containsOrIncl(marker, formal.position):
         m.firstMismatch.kind = kAlreadyGiven
         # already in namedParams, so no match
@@ -2397,7 +2397,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         # different parameter names could match later on):
         when false: localError(n[a].info, errCannotBindXTwice, formal.name.s)
         noMatch()
-        return
       m.baseTypeMatch = false
       m.typedescMatched = false
       n[a][1] = prepareOperand(c, formal.typ, n[a][1])
@@ -2407,7 +2406,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
       m.firstMismatch.kind = kTypeMismatch
       if arg == nil:
         noMatch()
-        return
       checkConstraint(n[a][1])
       if m.baseTypeMatch:
         #assert(container == nil)
@@ -2448,16 +2446,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             checkConstraint(n[a])
           else:
             noMatch()
-            return
         else:
           m.firstMismatch.kind = kExtraArg
           noMatch()
-          return
       else:
         if m.callee.n[f].kind != nkSym:
           internalError(c.config, n[a].info, "matches")
           noMatch()
-          return
         formal = m.callee.n[f].sym
         m.firstMismatch.kind = kTypeMismatch
         if containsOrIncl(marker, formal.position) and container.isNil:
@@ -2465,7 +2460,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
           # positional param already in namedParams: (see above remark)
           when false: localError(n[a].info, errCannotBindXTwice, formal.name.s)
           noMatch()
-          return
 
         if formal.typ.isVarargsUntyped:
           if container.isNil:
@@ -2482,7 +2476,6 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                     n[a], nOrig[a])
           if arg == nil:
             noMatch()
-            return
           if m.baseTypeMatch:
             assert formal.typ.kind == tyVarargs
             #assert(container == nil)
@@ -2511,8 +2504,13 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             localError(c.config, n[a].info, "cannot convert $1 to $2" % [
               typeToString(n[a].typ), typeToString(formal.typ) ])
             noMatch()
-            return
         checkConstraint(n[a])
+
+    if m.state == csMatch and not(m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+      c.mergeShadowScope
+    else:
+      c.closeShadowScope
+
     inc(a)
   # for some edge cases (see tdont_return_unowned_from_owned test case)
   m.firstMismatch.arg = a
@@ -2544,7 +2542,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:
   for f in 1..<m.callee.n.len:
-    var formal = m.callee.n[f].sym
+    let formal = m.callee.n[f].sym
     if not containsOrIncl(marker, formal.position):
       if formal.ast == nil:
         if formal.typ.kind == tyVarargs:

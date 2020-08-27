@@ -617,7 +617,7 @@ var
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
+    mDefined, mDeclared, mDeclaredInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
     mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,

@@ -150,25 +150,30 @@ else:
   template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
-proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared. `x` has to be an identifier or a qualified identifier.
-  ##
-  ## See also:
-  ## * `declaredInScope <#declaredInScope,untyped>`_
-  ##
-  ## This can be used to check whether a library provides a certain
-  ## feature or not:
-  ##
-  ## .. code-block:: Nim
-  ##   when not declared(strutils.toUpper):
-  ##     # provide our own toUpper proc here, because strutils is
-  ##     # missing it.
+when defined(nimHasDeclaredMagic):
+  proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared. `x` has to be an identifier or a qualified identifier.
+    ##
+    ## See also:
+    ## * `declaredInScope <#declaredInScope,untyped>`_
+    ##
+    ## This can be used to check whether a library provides a certain
+    ## feature or not:
+    ##
+    ## .. code-block:: Nim
+    ##   when not declared(strutils.toUpper):
+    ##     # provide our own toUpper proc here, because strutils is
+    ##     # missing it.
+else:
+  proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 
-proc declaredInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared in the current scope. `x` has to be an identifier.
+when defined(nimHasDeclaredMagic):
+  proc declaredInScope*(x: untyped): bool {.magic: "DeclaredInScope", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared in the current scope. `x` has to be an identifier.
+else:
+  proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.

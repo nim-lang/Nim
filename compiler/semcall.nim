@@ -94,10 +94,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
-        #if sym.name.s == "==" and (n.info ?? "temp3"):
-        #  echo typeToString(sym.typ)
-        #  writeMatches(z)
-
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator: inc(z.exactMatches, 200)
         case best.state

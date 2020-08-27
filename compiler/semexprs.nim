@@ -1854,29 +1854,32 @@ proc semYield(c: PContext, n: PNode): PNode =
   elif c.p.owner.typ[0] != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
-proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
-  if onlyCurrentScope:
-    result = localSearchInScope(c, i)
-  else:
-    result = searchInScopes(c, i) # no need for stub loading
+proc semDefined(c: PContext, n: PNode): PNode =
+  checkSonsLen(n, 2, c.config)
+  # we replace this node by a 'true' or 'false' node:
+  result = newIntNode(nkIntLit, 0)
+  result.intVal = ord isDefined(c.config, considerQuotedIdent(c, n[1], n).s)
+  result.info = n.info
+  result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
+proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   case n.kind
-  of nkIdent:
-    result = lookUpForDefined(c, n.ident, onlyCurrentScope)
+  of nkIdent, nkAccQuoted:
+    result = if onlyCurrentScope:
+               localSearchInScope(c, considerQuotedIdent(c, n))
+             else:
+               searchInScopes(c, considerQuotedIdent(c, n))
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
     checkSonsLen(n, 2, c.config)
-    var m = lookUpForDefined(c, n[0], onlyCurrentScope)
+    var m = lookUpForDeclared(c, n[0], onlyCurrentScope)
     if m != nil and m.kind == skModule:
       let ident = considerQuotedIdent(c, n[1], n)
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
         result = strTableGet(m.tab, ident)
-  of nkAccQuoted:
-    result = lookUpForDefined(c, considerQuotedIdent(c, n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -1885,15 +1888,11 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
     result = nil
 
-proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
+proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2, c.config)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if not onlyCurrentScope and considerQuotedIdent(c, n[0], n).s == "defined":
-    let d = considerQuotedIdent(c, n[1], n)
-    result.intVal = ord isDefined(c.config, d.s)
-  elif lookUpForDefined(c, n[1], onlyCurrentScope) != nil:
-    result.intVal = 1
+  result.intVal = ord lookUpForDeclared(c, n[1], onlyCurrentScope) != nil
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
@@ -2187,10 +2186,13 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = semTypeOf(c, n)
   of mDefined:
     markUsed(c, n.info, s)
-    result = semDefined(c, setMs(n, s), false)
-  of mDefinedInScope:
+    result = semDefined(c, setMs(n, s))
+  of mDeclared:
     markUsed(c, n.info, s)
-    result = semDefined(c, setMs(n, s), true)
+    result = semDeclared(c, setMs(n, s), false)
+  of mDeclaredInScope:
+    markUsed(c, n.info, s)
+    result = semDeclared(c, setMs(n, s), true)
   of mCompiles:
     markUsed(c, n.info, s)
     result = semCompiles(c, setMs(n, s), flags)
