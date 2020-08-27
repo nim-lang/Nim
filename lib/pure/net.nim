@@ -826,6 +826,8 @@ when defineSsl:
       result = getPeerCertificates(socket.sslHandle)
 
   proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
+      ## Set the session id context, used for resuming handshakes
+      ## Must be unique to application.
       SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
   
 proc getSocketError*(socket: Socket): OSErrorCode =
