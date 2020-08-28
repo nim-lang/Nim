@@ -53,6 +53,7 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
+  result = ""
   for f in T:
     if result.len > 0: result.add "|"
     result.add $f
