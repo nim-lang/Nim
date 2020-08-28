@@ -144,24 +144,24 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
-  of "","on": conf.options = conf.options + op
-  of "off": conf.options = conf.options - op
+  of "","on": conf.options.incl op
+  of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
   result = false
   case arg.normalize
-  of "on": conf.options = conf.options + op
-  of "off": conf.options = conf.options - op
+  of "on": conf.options.incl op
+  of "off": conf.options.excl op
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 
 proc processOnOffSwitchG(conf: ConfigRef; op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
   case arg.normalize
-  of "", "on": conf.globalOptions = conf.globalOptions + op
-  of "off": conf.globalOptions = conf.globalOptions - op
+  of "", "on": conf.globalOptions.incl op
+  of "off": conf.globalOptions.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc expectArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =

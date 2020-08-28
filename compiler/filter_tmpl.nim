@@ -214,9 +214,9 @@ proc filterTmpl*(conf: ConfigRef, stdin: PLLStream, filename: AbsoluteFile,
   p.x = newStringOfCap(120)
   # do not process the first line which contains the directive:
   if llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + 1'u16
+    inc p.info.line
   while llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + 1'u16
+    inc p.info.line
     parseLine(p)
   newLine(p)
   result = p.outp

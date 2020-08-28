@@ -681,7 +681,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
             [loadlib, genStringLiteral(m, lib.path)])
     else:
       var p = newProc(nil, m)
-      p.options = p.options - {optStackTrace}
+      p.options.excl optStackTrace
       p.flags.incl nimErrorFlagDisabled
       var dest: TLoc
       initLoc(dest, locTemp, lib.path, OnStack)

@@ -257,8 +257,8 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
   localError(c.config, n.info, "'on' or 'off' expected")
 
 proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
-  if isTurnedOn(c, n): resOptions = resOptions + op
-  else: resOptions = resOptions - op
+  if isTurnedOn(c, n): resOptions.incl op
+  else: resOptions.excl op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n):

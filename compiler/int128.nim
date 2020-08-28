@@ -373,8 +373,8 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   let b00 = cast[uint64](rhs.udata[0])
 
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
-  result = result + toInt128(a32 * b00) shl 32
-  result = result + toInt128(a00 * b32) shl 32
+  result += toInt128(a32 * b00) shl 32
+  result += toInt128(a00 * b32) shl 32
 
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
@@ -427,7 +427,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   for i in 0..shift:
     quotient = quotient shl 1
     if dividend >= denominator:
-      dividend = dividend - denominator
+      dividend -= denominator
       quotient = bitor(quotient, One)
 
     denominator = denominator shr 1

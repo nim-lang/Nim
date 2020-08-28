@@ -1498,7 +1498,7 @@ proc genPragma(p: BProc, n: PNode) =
     of wEmit: genEmit(p, it)
     of wInjectStmt:
       var p = newProc(nil, p.module)
-      p.options = p.options - {optLineTrace, optStackTrace}
+      p.options.excl {optLineTrace, optStackTrace}
       genStmts(p, it[1])
       p.module.injectStmt = p.s(cpsStmts)
     else: discard

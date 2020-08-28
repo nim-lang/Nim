@@ -459,8 +459,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result = result + lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result = result + lsub(g, n[^1]) + 3
+    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -471,8 +471,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
   of nkObjDownConv, nkObjUpConv:
     result = 2
-    if n.len >= 1: result = result + lsub(g, n[0])
-    result = result + lcomma(g, n, 1)
+    if n.len >= 1: result += lsub(g, n[0])
+    result += lcomma(g, n, 1)
   of nkExprColonExpr: result = lsons(g, n) + 2
   of nkInfix: result = lsons(g, n) + 2
   of nkPrefix:
@@ -536,7 +536,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkGenericParams: result = lcomma(g, n) + 2
   of nkFormalParams:
     result = lcomma(g, n, 1) + 2
-    if n[0].kind != nkEmpty: result = result + lsub(g, n[0]) + 2
+    if n[0].kind != nkEmpty: result += lsub(g, n[0]) + 2
   of nkExceptBranch:
     result = lcomma(g, n, 0, -2) + lsub(g, lastSon(n)) + len("except_:_")
   of nkObjectTy:

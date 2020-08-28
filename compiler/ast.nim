@@ -1362,7 +1362,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
   if a.storage == low(a.storage): a.storage = b.storage
-  a.flags = a.flags + b.flags
+  a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
@@ -1387,7 +1387,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
+      dest.sym.flags.incl src.sym.flags-{sfExported}
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
@@ -1494,7 +1494,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
+  owner.flags.incl elem.flags * {tfHasMeta, tfTriggersCompileTime}
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil

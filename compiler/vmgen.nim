@@ -2187,7 +2187,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
         of opcJmp:
-          d = d + c.code[d].jmpDiff
+          d += c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
           # tjmp x, 23
@@ -2195,12 +2195,12 @@ proc optimizeJumps(c: PCtx; start: int) =
           # tjmp x, 12
           # -- we know 'x' is true, and so can jump to 12+13:
           if c.code[d].opcode == opc:
-            d = d + c.code[d].jmpDiff
+            d += c.code[d].jmpDiff
           else:
             # tjmp x, 23
             # fjmp x, 22
             # We know 'x' is true so skip to the next instruction:
-            d = d + 1
+            d += 1
         else: break
       if d != i + c.code[i].jmpDiff:
         c.finalJumpTarget(i, d - i)
@@ -2208,7 +2208,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       var iters = maxIterations
       while c.code[d].opcode == opcJmp and iters > 0:
-        d = d + c.code[d].jmpDiff
+        d += c.code[d].jmpDiff
         dec iters
       if c.code[d].opcode == opcRet:
         # optimize 'jmp to ret' to 'ret' here
