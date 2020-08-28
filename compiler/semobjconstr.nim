@@ -139,8 +139,7 @@ template quoteStr(s: string): string = "'" & s & "'"
 proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): string =
   result = ""
   for field in directFieldsInRecList(fieldsRecList):
-    let assignment = locateFieldInInitExpr(c, field.sym, initExpr)
-    if assignment != nil:
+    if locateFieldInInitExpr(c, field.sym, initExpr) != nil:
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 

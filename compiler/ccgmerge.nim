@@ -282,7 +282,7 @@ proc mergeRequired*(m: BModule): bool =
     if m.s[i] != nil:
       #echo "not empty: ", i, " ", m.s[i]
       return true
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     if m.initProc.s(i) != nil:
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
@@ -292,7 +292,7 @@ proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   var old: TMergeSections
   readMergeSections(cfilename, old)
   # do the merge; old section before new section:
-  for i in low(TCFileSection)..high(TCFileSection):
+  for i in TCFileSection:
     m.s[i] = old.f[i] & m.s[i]
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     m.initProc.s(i) = old.p[i] & m.initProc.s(i)

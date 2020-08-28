@@ -1,6 +1,6 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, os, strutils,
+  intsets, ast, idents, algorithm, renderer, strutils,
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
@@ -107,28 +107,6 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
       for i in 0..<n.safeLen: deps(n[i])
   else:
     for i in 0..<n.safeLen: deps(n[i])
-
-proc cleanPath(s: string): string =
-  # Here paths may have the form A / B or "A/B"
-  result = ""
-  for c in s:
-    if c != ' ' and c != '\"':
-      result.add c
-
-proc joinPath(parts: seq[string]): string =
-  let nb = parts.len
-  assert nb > 0
-  if nb == 1:
-    return parts[0]
-  result = parts[0] / parts[1]
-  for i in 2..<parts.len:
-    result = result / parts[i]
-
-proc getIncludePath(n: PNode, modulePath: string): string =
-  let istr = n.renderTree.cleanPath
-  let (pdir, _) = modulePath.splitPath
-  let p = istr.split('/').joinPath.addFileExt("nim")
-  result = pdir / p
 
 proc hasIncludes(n:PNode): bool =
   for a in n:
@@ -409,8 +387,7 @@ proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
 proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
   ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
-  result = newSeq[seq[DepN]]()
-  var s = newSeq[DepN]()
+  var s: seq[DepN]
   var idx = 0
   for v in g.mitems:
     if v.idx < 0:

@@ -691,12 +691,10 @@ iterator nimbleSubs*(conf: ConfigRef; p: string): string =
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
-  let (head, tail) = splitPath(path.string)
-  result = getNimcacheDir(conf) / RelativeFile changeFileExt(tail, ext)
+  result = getNimcacheDir(conf) / RelativeFile path.string.splitPath.tail.changeFileExt(ext)
 
 proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
                                 createSubDir: bool = true): AbsoluteFile =
-  let (head, tail) = splitPath(f.string)
   let subdir = getNimcacheDir(conf)
   if createSubDir:
     try:
@@ -704,7 +702,7 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     except OSError:
       writeLine(stdout, "cannot create directory: " & subdir.string)
       quit(1)
-  result = subdir / RelativeFile tail
+  result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =

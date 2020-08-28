@@ -162,9 +162,9 @@ proc getColNumber(L: TBaseLexer, pos: int): int =
 proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   result = ""
   var i = L.lineStart
-  while not (L.buf[i] in {CR, LF, EndOfFile}):
-    result.add(L.buf[i])
-    inc(i)
-  result.add("\n")
+  while L.buf[i] notin {CR, LF, EndOfFile}:
+    result.add L.buf[i]
+    inc i
+  result.add "\n"
   if marker:
-    result.add(spaces(getColNumber(L, L.bufpos)) & '^' & "\n")
+    result.add spaces(getColNumber(L, L.bufpos)) & '^' & "\n"

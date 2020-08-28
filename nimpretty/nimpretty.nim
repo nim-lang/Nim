@@ -54,12 +54,12 @@ proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   let f = splitFile(outfile.expandTilde)
   conf.outFile = RelativeFile f.name & f.ext
   conf.outDir = toAbsoluteDir f.dir
-  var p: TParsers
-  p.parser.em.indWidth = opt.indWidth
-  if setupParsers(p, fileIdx, newIdentCache(), conf):
-    p.parser.em.maxLineLen = opt.maxLineLen
-    discard parseAll(p)
-    closeParsers(p)
+  var parser: Parser
+  parser.em.indWidth = opt.indWidth
+  if setupParser(parser, fileIdx, newIdentCache(), conf):
+    parser.em.maxLineLen = opt.maxLineLen
+    discard parseAll(parser)
+    closeParser(parser)
 
 proc main =
   var outfile, outdir: string

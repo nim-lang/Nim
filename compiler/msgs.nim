@@ -377,15 +377,12 @@ template styledMsgWriteln*(args: varargs[typed]) =
     when defined(windows):
       flushFile(stderr)
 
-proc msgKindToString*(kind: TMsgKind): string =
+proc msgKindToString*(kind: TMsgKind): string = MsgKindToStr[kind]
   # later versions may provide translated error messages
-  result = MsgKindToStr[kind]
 
-proc getMessageStr(msg: TMsgKind, arg: string): string =
-  result = msgKindToString(msg) % [arg]
+proc getMessageStr(msg: TMsgKind, arg: string): string = msgKindToString(msg) % [arg]
 
-type
-  TErrorHandling* = enum doNothing, doAbort, doRaise
+type TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
   var f: File

@@ -485,7 +485,6 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
     if ns:
       needsSplit = true
       var tmp: PSym
-      var s: PNode
       let isExpr = not isEmptyType(n.typ)
       if isExpr:
         tmp = ctx.newTempVar(n.typ)
@@ -742,8 +741,6 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result.add(n)
 
   of nkWhileStmt:
-    var ns = false
-
     var condNeedsSplit = false
     n[0] = ctx.lowerStmtListExprs(n[0], condNeedsSplit)
     var bodyNeedsSplit = false
