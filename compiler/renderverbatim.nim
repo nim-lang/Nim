@@ -108,7 +108,7 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
 
-  let ldata = LineData(lineFirst: first.line.int, conf: conf)
+  var ldata = LineData(lineFirst: first.line.int, conf: conf)
   visitMultilineStrings(ldata, n[^1])
   when isDebug:
     debug(n)
