@@ -401,6 +401,7 @@ proc atom(g: TSrcGen; n: PNode): string =
     else: result = "[type node]"
   else:
     internalError(g.config, "rnimsyn.atom " & $n.kind)
+    result = ""
 
 proc lcomma(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
   assert(theEnd < 0)

@@ -71,11 +71,11 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc differ*(line: string, a, b: int, x: string): string =
   proc substrEq(s: string, pos, last: int, substr: string): bool =
-    var i = 0
-    while i < substr.len and pos+i <= last and s[pos+i] == substr[i]:
-      inc i
-    return i == substr.len
+    result = true
+    for i in 0..<substr.len:
+      if pos+i > last or s[pos+i] != substr[i]: return false
 
+  result = ""
   if not substrEq(line, a, b, x):
     let y = line[a..b]
     if cmpIgnoreStyle(y, x) == 0:

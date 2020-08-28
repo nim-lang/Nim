@@ -290,6 +290,7 @@ proc nameToCC*(name: string): TSystemCC =
   result = ccNone
 
 proc listCCnames(): string =
+  result = ""
   for i in succ(ccNone)..high(TSystemCC):
     if i > succ(ccNone): result.add ", "
     result.add CC[i].name

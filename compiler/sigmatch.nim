@@ -332,13 +332,13 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   else:
     result = arg.typ.typeToString(prefer)
 
-proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
-                   prefer: TPreferedDesc = preferName): string =
+proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): string =
+  result = ""
   for i in startIdx..<n.len:
     var arg = n[i]
     if n[i].kind == nkExprEqExpr:
-      result.add(renderTree(n[i][0]))
-      result.add(": ")
+      result.add renderTree(n[i][0])
+      result.add ": "
       if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
         # XXX we really need to 'tryExpr' here!
         arg = c.semOperand(c, n[i][1])
@@ -351,8 +351,8 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         arg = c.semOperand(c, n[i])
         n[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
-    result.add(argTypeToString(arg, prefer))
-    if i != n.len - 1: result.add(", ")
+    result.add argTypeToString(arg, prefer)
+    if i != n.len - 1: result.add ", "
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind

@@ -301,15 +301,14 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
     if i - 1 >= start: result.add(substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
-  var dummyHasToc: bool
+  result = ""
   if n.comment.len > 0:
-    var comment2 = n.comment
+    let comment = n.comment
     when false:
       # RFC: to preseve newlines in comments, this would work:
-      comment2 = comment2.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
-                               toLinenumber(n.info), toColumn(n.info),
-                               dummyHasToc, d.options, d.conf), result)
+      comment = comment.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
+                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -341,10 +340,10 @@ proc getPlainDocstring(n: PNode): string =
   ## You need to call this before genRecComment, whose side effects are removal
   ## of comments from the tree. The proc will recursively scan and return all
   ## the concatenated ``##`` comments of the node.
-  if n == nil: return
-  if startsWith(n.comment, "##"):
+  if n == nil: result = ""
+  elif startsWith(n.comment, "##"):
     result = n.comment
-  if result.len < 1:
+  else:
     for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return

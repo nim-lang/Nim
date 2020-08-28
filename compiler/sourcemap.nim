@@ -78,8 +78,7 @@ proc text*(sourceNode: SourceNode, depth: int): string =
       result.add(child.node.text(depth + 1))
 
 
-proc `$`*(sourceNode: SourceNode): string =
-  text(sourceNode, 0)
+proc `$`*(sourceNode: SourceNode): string = text(sourceNode, 0)
 
 
 # base64_VLQ
@@ -89,6 +88,7 @@ let integers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 
 
 proc encode*(i: int): string =
+  result = ""
   var n = i
   if n < 0:
     n = (-n shl 1) or 1
@@ -106,8 +106,7 @@ proc encode*(i: int): string =
     z += 1
 
 
-type
-  TokenState = enum Normal, String, Ident, Mangled
+type TokenState = enum Normal, String, Ident, Mangled
 
 iterator tokenize*(line: string): (bool, string) =
   # result = @[]
@@ -246,6 +245,7 @@ proc serializeMappings(map: SourceMapGenerator, mappings: seq[Mapping]): string 
   var next = ""
   var nameId = 0
   var sourceId = 0
+  result = ""
 
   for z, mapping in mappings:
     next = ""

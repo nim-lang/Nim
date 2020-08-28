@@ -108,13 +108,14 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
 
-  var ldata = LineData(lineFirst: first.line.int, conf: conf)
+  let ldata = LineData(lineFirst: first.line.int, conf: conf)
   visitMultilineStrings(ldata, n[^1])
   when isDebug:
     debug(n)
     for i in 0..<ldata.lines.len:
       echo (i+ldata.lineFirst, ldata.lines[i])
 
+  result = ""
   for line in first.line..numLines: # bugfix, see `testNimDocTrailingExample`
     info.line = line
     let src = sourceLine(conf, info)

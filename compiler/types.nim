@@ -469,6 +469,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       prefer
 
   proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+    result = ""
     let prefer = getPrefer(prefer)
     let t = typ
     if t == nil: return

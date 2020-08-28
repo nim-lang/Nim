@@ -503,6 +503,7 @@ proc processCompile(c: PContext, n: PNode) =
       shallowCopy(result, n[i].strVal)
     else:
       localError(c.config, n.info, errStringLiteralExpected)
+      result = ""
 
   let it = if n.kind in nkPragmaCallKinds and n.len == 2: n[1] else: n
   if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
