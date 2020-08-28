@@ -828,6 +828,9 @@ when defineSsl:
   proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
       ## Set the session id context, used for resuming handshakes
       ## Must be unique to application.
+      ## sidCtx must be at most 32 characters in length.
+      if sidCtx.len > 32:
+        raiseSSLError("sessionIdContext must be shorter than 32 characters")
       SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
   
 proc getSocketError*(socket: Socket): OSErrorCode =
