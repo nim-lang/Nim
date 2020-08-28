@@ -118,7 +118,7 @@ when false:
 
 proc dbQuote*(s: string): string =
   ## DB quotes the string.
-  result = newStringOfCap(s.str.len + 2)
+  result = newStringOfCap(s.len + 2)
   result.add "'"
   for c in items(s):
     # see https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html#mysql-escaping
