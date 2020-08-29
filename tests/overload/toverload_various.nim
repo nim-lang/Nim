@@ -425,6 +425,7 @@ block:
   template t0(x: Bar[int]): int = 1
   template t0(x: Foo[bool or int]): int = 10
   template t0(x: Bar[bool or int]): int = 11
+  #template t0[T:bool or int](x: Bar[T]): int = 11
   template t0[T](x: Foo[T]): int = 20
   template t0[T](x: Bar[T]): int = 21
   proc p0(x: Foo[int]): int = 0
@@ -461,3 +462,21 @@ block:
   doAssert(p0(g) == 20)
   doAssert(p0(h) == 21)
   doAssert(p0(i) == 21)
+
+  #type
+  #  f0 = proc(x:Foo)
+
+block:
+  type
+    TilesetCT[n: static int] = int
+    TilesetRT = int
+    Tileset = TilesetCT | TilesetRT
+
+  func prepareTileset(tileset: var Tileset) = discard
+
+  func prepareTileset(tileset: Tileset): Tileset =
+    result = tileset
+    result.prepareTileset
+
+  var parsedTileset: TilesetRT
+  prepareTileset(parsedTileset)
