@@ -351,8 +351,8 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1; prefer = preferName): st
         arg = c.semOperand(c, n[i])
         n[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
-    result.add(argTypeToString(arg, prefer))
-    if i != n.len - 1: result.add(", ")
+    result.add argTypeToString(arg, prefer)
+    if i != n.len - 1: result.add ", "
 
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
