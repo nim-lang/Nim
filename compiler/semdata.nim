@@ -135,7 +135,7 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     features*: set[Feature]
-    inTypeContext*: int
+    inTypeContext*, inConceptDecl*: int
     typesWithOps*: seq[(PType, PType)] #\
       # We need to instantiate the type bound ops lazily after
       # the generic type has been constructed completely. See

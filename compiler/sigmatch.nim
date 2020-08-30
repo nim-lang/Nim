@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs, concepts
 
 type
   MismatchKind* = enum
@@ -1652,6 +1652,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         else:
           result = isNone
+
+  of tyConcept:
+    result = if concepts.conceptMatch(c.c, f, a, c.bindings): isGeneric
+             else: isNone
 
   of tyCompositeTypeClass:
     considerPreviousT:
