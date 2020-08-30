@@ -164,7 +164,7 @@ proc newWideCString*(s: cstring): WideCStringObj =
 proc newWideCString*(s: string): WideCStringObj =
   result = newWideCString(s, s.len)
 
-proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
+proc `$`*(w: UncheckedArray[Utf16Char], estimate: int, replacement: int = 0xFFFD): string =
   result = newStringOfCap(estimate + estimate shr 2)
 
   var i = 0
@@ -206,5 +206,8 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
       result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
       result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
 
+proc `$`*(s: WideCString, estimate: int, replacement: int = 0xFFFD): string =
+  result = `$`(s[], estimate, replacement) 
+
 proc `$`*(s: WideCString): string =
-  result = s $ 80
+  result = s[] $ 80
