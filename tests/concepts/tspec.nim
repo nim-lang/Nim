@@ -61,3 +61,9 @@ when true:
       echo x
 
   g(@[1, 2, 3])
+
+proc hs(x: Swapable) =
+  var y = x
+  swap y, y
+
+hs(4)

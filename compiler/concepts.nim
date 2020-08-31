@@ -22,7 +22,7 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   s.typ.add newType(tyEmpty, ow)
   addDecl(c, s, info)
 
-proc isSelf(t: PType): bool {.inline.} =
+proc isSelf*(t: PType): bool {.inline.} =
   t.kind == tyTypeDesc and tfPacked in t.flags
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
@@ -83,7 +83,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
 
   of tyGenericParam:
     let ak = a.skipTypes({tyVar, tySink, tyLent, tyOwned})
-    if ak.kind in {tyTypeDesc, tyStatic}:
+    if ak.kind in {tyTypeDesc, tyStatic} and not isSelf(ak):
       result = false
     else:
       let old = existingBinding(m, f)

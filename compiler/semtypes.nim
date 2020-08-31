@@ -196,7 +196,9 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
 proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
     result = newOrPrevType(kind, prev, c)
-    var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
+    var base = semTypeNode(c, n[0], nil)
+    if base.kind == tyTypeDesc and not isSelf(base):
+      base = base[0]
     if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
