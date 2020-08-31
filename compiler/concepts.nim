@@ -88,8 +88,17 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     else:
       let old = existingBinding(m, f)
       if old == nil:
-        m.inferred.add((f, ak))
-        result = true
+        if f.len > 0 and f[0].kind != tyNone:
+          # also check the generic's constraints:
+          let oldLen = m.inferred.len
+          result = matchType(c, f[0], a, m)
+          m.inferred.setLen oldLen
+          if result:
+            m.inferred.add((f, ak))
+        else:
+          m.inferred.add((f, ak))
+          #echo "binding ", typeToString(ak), " to ", typeToString(f)
+          result = true
       elif not m.marker.containsOrIncl(old.id):
         result = matchType(c, old, ak, m)
 
