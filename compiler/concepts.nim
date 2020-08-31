@@ -161,6 +161,8 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       m.inferred.setLen oldLen
   of tyAnything:
     result = true
+  of tyOrdinal:
+    result = isOrdinalType(a, allowEnumWithHoles = false) or a.kind == tyGenericParam
   else:
     result = false
 

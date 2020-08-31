@@ -1,11 +1,15 @@
 discard """
-  output: '''0
+  output: '''4
+0
 4
 4
 1
 2
 3'''
+  joinable: false
 """
+
+import hashes
 
 type
   Comparable = concept # no T, an atom
@@ -20,6 +24,12 @@ type
 
   Swapable = concept
     proc swap(x, y: var self)
+
+
+proc h(x: Hashable) =
+  echo x
+
+h(4)
 
 when true:
   proc compare(a: Comparable) =
