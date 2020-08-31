@@ -9,7 +9,7 @@ x as CustomTypeClass'''
 
 type ParameterizedType[T] = object
 
-type CustomTypeClass = concept
+type CustomTypeClass = concept c
   true
 
 # 3 competing procs
