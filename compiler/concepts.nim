@@ -103,7 +103,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
   of tyEnum, tyObject, tyDistinct:
     result = sameType(f, a)
   of tyBool, tyChar, tyEmpty, tyString, tyCString, tyInt..tyUInt64, tyPointer, tyNil,
-     tyUntyped, tyTyped:
+     tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyConcept:
     let oldLen = m.inferred.len
@@ -120,12 +120,44 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       for i in 0..<ak.len:
         if not matchType(c, f[i], ak[i], m): return false
       return true
+  of tyOr:
+    let oldLen = m.inferred.len
+    if a.kind == tyOr:
+      # say the concept requires 'int|float|string' if the potentialImplementation
+      # says 'int|string' that is good enough.
+      var covered = 0
+      for i in 0..<f.len:
+        for j in 0..<a.len:
+          let oldLenB = m.inferred.len
+          let r = matchType(c, f[i], a[j], m)
+          if r:
+            inc covered
+            break
+          m.inferred.setLen oldLenB
+
+      result = covered >= a.len
+      if not result:
+        m.inferred.setLen oldLen
+    else:
+      for i in 0..<f.len:
+        result = matchType(c, f[i], a, m)
+        if result: break # and remember the binding!
+        m.inferred.setLen oldLen
+  of tyNot:
+    if a.kind == tyNot:
+      result = matchType(c, f[0], a[0], m)
+    else:
+      let oldLen = m.inferred.len
+      result = not matchType(c, f[0], a, m)
+      m.inferred.setLen oldLen
+  of tyAnything:
+    result = true
   else:
-    return false
+    result = false
 
 proc matchReturnType(c: PContext; f, a: PType; m: var MatchCon): bool =
-  if f == nil:
-    result = a == nil
+  if f.isEmptyType:
+    result = a.isEmptyType
   elif a == nil:
     result = false
   else:
@@ -139,6 +171,11 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
   let con = n[0].sym.typ.n
 
   let common = min(can.len, con.len)
+
+  if can.len < common:
+    # too few arguments, cannot be a match:
+    return false
+
   for i in 1 ..< common:
     if not matchType(c, con[i].typ, can[i].typ, m):
       m.inferred.setLen oldLen
@@ -211,3 +248,5 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable): boo
           bindings.idTablePut(a, dest)
       else:
         bindings.idTablePut(a, b)
+    # we have a match, so bind 'arg' itself to 'concpt':
+    bindings.idTablePut(concpt, arg)

@@ -368,7 +368,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tySequence, tySet:
     if t[0].kind == tyEmpty: result = nil
     else: result = t
-  of tyGenericParam, tyAnything:
+  of tyGenericParam, tyAnything, tyConcept:
     result = t
     while true:
       result = PType(idTableGet(c.bindings, t))
@@ -2510,7 +2510,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             noMatch()
         checkConstraint(n[a])
 
-    if m.state == csMatch and not(m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
       c.mergeShadowScope
     else:
       c.closeShadowScope

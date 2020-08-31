@@ -505,7 +505,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses:
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil: return lookup
 

@@ -210,7 +210,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyOptDeprecated: doAssert false
+  of tyConcept: doAssert false
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -602,12 +602,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
-  of mShlI: 
+  of mShlI:
     if n[1].typ.size <= 4:
       applyFormat("($1 << $2)", "($1 << $2)")
     else:
       applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
-  of mAshrI: 
+  of mAshrI:
     if n[1].typ.size <= 4:
       applyFormat("($1 >> $2)", "($1 >> $2)")
     else:
