@@ -90,7 +90,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       if old == nil:
         m.inferred.add((f, ak))
         result = true
-      elif m.marker.containsOrIncl(old.id):
+      elif not m.marker.containsOrIncl(old.id):
         result = matchType(c, old, ak, m)
 
   of tyVar, tySink, tyLent, tyOwned:

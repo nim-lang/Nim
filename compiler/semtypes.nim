@@ -1142,7 +1142,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = recurse(expanded, true)
 
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
-     tyAnd, tyOr, tyNot:
+     tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
         copyType(paramType, getCurrOwner(c), false), paramTypId,
         info, genericParams, paramName)
