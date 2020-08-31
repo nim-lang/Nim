@@ -65,7 +65,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
       var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
-      s.flags = s.flags + {sfUsed, sfFromGeneric}
+      s.flags.incl {sfUsed, sfFromGeneric}
       var t = PType(idTableGet(pt, q.typ))
       if t == nil:
         if tfRetType in q.typ.flags:

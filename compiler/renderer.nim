@@ -24,7 +24,7 @@ type
     renderIr
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
-    kind*: TTokType
+    kind*: TokType
     length*: int16
     sym*: PSym
 
@@ -118,7 +118,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.inGenericParams = false
   g.config = config
 
-proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
+proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   setLen(g.tokens, g.tokens.len + 1)
   g.tokens[^1].kind = kind
   g.tokens[^1].length = int16(s.len)
@@ -178,7 +178,7 @@ proc dedent(g: var TSrcGen) =
     dec(g.pendingNL, IndentWidth)
     dec(g.lineLen, IndentWidth)
 
-proc put(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
+proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
     if s.len > 0:
@@ -250,7 +250,7 @@ proc maxLineLength(s: string): int =
       inc(lineLen)
       inc(i)
 
-proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
+proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var i = 0
   let hi = s.len - 1
   var str = ""
@@ -459,8 +459,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result = result + lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result = result + lsub(g, n[^1]) + 3
+    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -471,8 +471,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
   of nkObjDownConv, nkObjUpConv:
     result = 2
-    if n.len >= 1: result = result + lsub(g, n[0])
-    result = result + lcomma(g, n, 1)
+    if n.len >= 1: result += lsub(g, n[0])
+    result += lcomma(g, n, 1)
   of nkExprColonExpr: result = lsons(g, n) + 2
   of nkInfix: result = lsons(g, n) + 2
   of nkPrefix:
@@ -536,7 +536,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkGenericParams: result = lcomma(g, n) + 2
   of nkFormalParams:
     result = lcomma(g, n, 1) + 2
-    if n[0].kind != nkEmpty: result = result + lsub(g, n[0]) + 2
+    if n[0].kind != nkEmpty: result += lsub(g, n[0]) + 2
   of nkExceptBranch:
     result = lcomma(g, n, 0, -2) + lsub(g, lastSon(n)) + len("except_:_")
   of nkObjectTy:
@@ -575,7 +575,7 @@ proc hasCom(n: PNode): bool =
     for i in 0..<n.len:
       if hasCom(n[i]): return true
 
-proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
+proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, kind, s)
   put(g, tkSpaces, Space)
 
@@ -618,7 +618,7 @@ proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
   for i in start..n.len + theEnd: gsub(g, n[i], c)
 
-proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
+proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TokType,
               k: string) =
   if n.len == 0: return # empty var sections are possible
   putWithSpace(g, kind, k)
@@ -847,7 +847,7 @@ proc gident(g: var TSrcGen, n: PNode) =
     if sfAnon in n.sym.flags or
       (n.typ != nil and tfImplicitTypeParam in n.typ.flags): return
 
-  var t: TTokType
+  var t: TokType
   var s = atom(g, n)
   if s.len > 0 and s[0] in lexer.SymChars:
     if n.kind == nkIdent:
@@ -855,7 +855,7 @@ proc gident(g: var TSrcGen, n: PNode) =
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
         t = tkSymbol
       else:
-        t = TTokType(n.ident.id + ord(tkSymbol))
+        t = TokType(n.ident.id + ord(tkSymbol))
     else:
       t = tkSymbol
   else:
@@ -1644,7 +1644,7 @@ proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
   initSrcGen(r, renderFlags, newPartialConfigRef())
   gsub(r, n)
 
-proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =
+proc getNextTok*(r: var TSrcGen, kind: var TokType, literal: var string) =
   if r.idx < r.tokens.len:
     kind = r.tokens[r.idx].kind
     let length = r.tokens[r.idx].length.int

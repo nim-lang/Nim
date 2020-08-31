@@ -17,22 +17,21 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccNimCall,                # nimcall, also the default
-    ccStdCall,                # procedure is stdcall
-    ccCDecl,                  # cdecl
-    ccSafeCall,               # safecall
-    ccSysCall,                # system call
-    ccInline,                 # proc should be inlined
-    ccNoInline,               # proc should not be inlined
-    ccFastCall,               # fastcall (pass parameters in registers)
-    ccThisCall,               # thiscall (parameters are pushed right-to-left)
-    ccClosure,                # proc has a closure
+    ccNimCall                 # nimcall, also the default
+    ccStdCall                 # procedure is stdcall
+    ccCDecl                   # cdecl
+    ccSafeCall                # safecall
+    ccSysCall                 # system call
+    ccInline                  # proc should be inlined
+    ccNoInline                # proc should not be inlined
+    ccFastCall                # fastcall (pass parameters in registers)
+    ccThisCall                # thiscall (parameters are pushed right-to-left)
+    ccClosure                 # proc has a closure
     ccNoConvention            # needed for generating proper C procs sometimes
 
-const
-  CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
-    "closure", "noconv"]
+const CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
+  "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
+  "closure", "noconv"]
 
 type
   TNodeKind* = enum # order is extremely important, because ranges are used
@@ -1362,7 +1361,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
   if a.storage == low(a.storage): a.storage = b.storage
-  a.flags = a.flags + b.flags
+  a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
@@ -1387,7 +1386,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
+      dest.sym.flags.incl src.sym.flags-{sfExported}
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
@@ -1494,8 +1493,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
-  owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
+  owner.flags.incl elem.flags * {tfHasMeta, tfTriggersCompileTime}
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil

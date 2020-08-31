@@ -91,7 +91,7 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
         return -1
       inc pc
     of goto:
-      pc = pc + cfg[pc].dest
+      pc += cfg[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
       var variantA = pc + 1
@@ -156,7 +156,7 @@ proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
         return -1
       inc pc
     of goto:
-      pc = pc + cfg[pc].dest
+      pc += cfg[pc].dest
     of fork:
       # every branch must not contain a def/use of our location:
       var variantA = pc + 1
@@ -198,7 +198,7 @@ proc initialized(code: ControlFlowGraph; pc: int,
   while pc < code.len:
     case code[pc].kind
     of goto:
-      pc = pc + code[pc].dest
+      pc += code[pc].dest
     of fork:
       var initA = initIntSet()
       var initB = initIntSet()
@@ -699,8 +699,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
-    elif n.typ == nil:
-      # 'raise X' can be part of a 'case' expression. Deal with it here:
+    elif n.typ == nil or n.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyVar}).kind == tyOpenArray:
+      # 'raise X' can be part of a 'case' expression. Deal with it here.
+      # openarrays require perfect forwarding
       result = p(n, c, s, normal)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter

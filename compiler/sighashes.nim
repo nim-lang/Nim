@@ -157,7 +157,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         if t.n.len > 0:
           let oldFlags = t.sym.flags
           # Mild hack to prevent endless recursion.
-          t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
+          t.sym.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
           t.sym.flags = oldFlags
         else:

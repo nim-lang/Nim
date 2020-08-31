@@ -104,8 +104,7 @@ const
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
-  specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["",
-
+  specialWords*: array[TSpecialWord, string] = ["",
     "addr", "and", "as", "asm",
     "bind", "block", "break", "case", "cast",
     "concept", "const", "continue", "converter",
@@ -129,35 +128,35 @@ const
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
-    "incompletestruct",
-    "completestruct",
-    "requiresinit", "align", "nodecl", "pure", "sideeffect",
-    "header", "nosideeffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
+    "importCompilerProc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
+    "incompleteStruct",
+    "completeStruct",
+    "requiresInit", "align", "nodecl", "pure", "sideEffect",
+    "header", "noSideEffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
     "compilerproc", "core", "procvar", "base", "used",
-    "fatal", "error", "warning", "hint", "warningaserror", "line",
-    "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
+    "fatal", "error", "warning", "hint", "warningAsError", "line",
+    "push", "pop", "define", "undef", "lineDir", "stackTrace", "lineTrace",
     "link", "compile", "linksys", "deprecated", "varargs",
     "callconv", "debugger", "nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall", "closure",
-    "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
-    "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks", "stylechecks", "staticboundchecks",
-    "nonreloadable", "executeonreload",
+    "noconv", "on", "off", "checks", "rangeChecks", "boundChecks",
+    "overflowChecks", "nilChecks",
+    "floatChecks", "nanChecks", "infChecks", "styleChecks", "staticBoundChecks",
+    "nonReloadable", "executeOnReload",
 
     "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "requires", "ensures", "invariant", "assume", "assert",
-    "deadcodeelim",  # deprecated, dead code elim always happens
+    "deadCodeElim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
-    "compiletime", "noinit",
-    "passc", "passl", "localpassc", "borrow", "discardable", "fieldchecks",
-    "subschar", "acyclic", "shallow", "unroll", "linearscanend",
-    "computedgoto", "injectstmt", "experimental",
+    "compileTime", "noinit",
+    "passc", "passl", "localPassC", "borrow", "discardable", "fieldChecks",
+    "subschar", "acyclic", "shallow", "unroll", "linearScanEnd",
+    "computedGoto", "injectStmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
-    "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
-    "guard", "locks", "partial", "explain", "liftlocals",
+    "asmNoStackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
+    "guard", "locks", "partial", "explain", "liftLocals",
 
     "auto", "bool", "catch", "char", "class", "compl",
     "const_cast", "default", "delete", "double",
@@ -184,38 +183,3 @@ proc findStr*(a: openArray[string], s: string): int =
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
-
-proc canonPragmaSpelling*(w: TSpecialWord): string =
-  case w
-  of wNoSideEffect: "noSideEffect"
-  of wImportCompilerProc: "importCompilerProc"
-  of wIncompleteStruct: "incompleteStruct"
-  of wCompleteStruct: "completeStruct"
-  of wRequiresInit: "requiresInit"
-  of wSideEffect: "sideEffect"
-  of wLineDir: "lineDir"
-  of wStackTrace: "stackTrace"
-  of wLineTrace: "lineTrace"
-  of wRangeChecks: "rangeChecks"
-  of wBoundChecks: "boundChecks"
-  of wOverflowChecks: "overflowChecks"
-  of wNilChecks: "nilChecks"
-  of wFloatChecks: "floatChecks"
-  of wNanChecks: "nanChecks"
-  of wInfChecks: "infChecks"
-  of wStyleChecks: "styleChecks"
-  of wNonReloadable: "nonReloadable"
-  of wExecuteOnReload: "executeOnReload"
-  of wDeadCodeElimUnused: "deadCodeElim"
-  of wCompileTime: "compileTime"
-  of wFieldChecks: "fieldChecks"
-  of wLinearScanEnd: "linearScanEnd"
-  of wComputedGoto: "computedGoto"
-  of wInjectStmt: "injectStmt"
-  of wAsmNoStackFrame: "asmNoStackFrame"
-  of wImplicitStatic: "implicitStatic"
-  of wCodegenDecl: "codegenDecl"
-  of wLiftLocals: "liftLocals"
-  of wLocalPassc: "localPassc"
-  of wWarningAsError: "warningAsError"
-  else: specialWords[w]

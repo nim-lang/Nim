@@ -1360,19 +1360,6 @@ proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
   c.gABx(n, opcMarshalStore, 0, c.genType(n[1].typ))
   c.freeTemp(tmp)
 
-const
-  atomicTypes = {tyBool, tyChar,
-    tyUntyped, tyTyped, tyTypeDesc, tyStatic,
-    tyEnum,
-    tyOrdinal,
-    tyRange,
-    tyProc,
-    tyPointer, tyOpenArray,
-    tyString, tyCString,
-    tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-    tyFloat, tyFloat32, tyFloat64, tyFloat128,
-    tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
-
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
@@ -2200,7 +2187,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
         of opcJmp:
-          d = d + c.code[d].jmpDiff
+          d += c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
           # tjmp x, 23
@@ -2208,12 +2195,12 @@ proc optimizeJumps(c: PCtx; start: int) =
           # tjmp x, 12
           # -- we know 'x' is true, and so can jump to 12+13:
           if c.code[d].opcode == opc:
-            d = d + c.code[d].jmpDiff
+            d += c.code[d].jmpDiff
           else:
             # tjmp x, 23
             # fjmp x, 22
             # We know 'x' is true so skip to the next instruction:
-            d = d + 1
+            d += 1
         else: break
       if d != i + c.code[i].jmpDiff:
         c.finalJumpTarget(i, d - i)
@@ -2221,7 +2208,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       var iters = maxIterations
       while c.code[d].opcode == opcJmp and iters > 0:
-        d = d + c.code[d].jmpDiff
+        d += c.code[d].jmpDiff
         dec iters
       if c.code[d].opcode == opcRet:
         # optimize 'jmp to ret' to 'ret' here

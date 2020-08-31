@@ -1653,7 +1653,7 @@ template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n[1], a)
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
-  a.flags = a.flags - {lfIndirect} # this flag should not be propagated here (not just for HCR)
+  a.flags.excl lfIndirect # this flag should not be propagated here (not just for HCR)
   if d.k == locNone: getTemp(p, n.typ, d)
   genAssignment(p, d, a, {})
   gcUsage(p.config, n)

@@ -331,7 +331,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
-  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for c in CC: undefSymbol(conf.symbols, c.name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
@@ -353,7 +353,7 @@ proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for c in CC: undefSymbol(conf.symbols, c.name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))

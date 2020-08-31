@@ -238,7 +238,7 @@ proc processMagic(c: PContext, n: PNode, s: PSym) =
   var v: string
   if n[1].kind == nkIdent: v = n[1].ident.s
   else: v = expectStrLit(c, n)
-  for m in low(TMagic)..high(TMagic):
+  for m in TMagic:
     if substr($m, 1) == v:
       s.magic = m
       break
@@ -257,8 +257,8 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
   localError(c.config, n.info, "'on' or 'off' expected")
 
 proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
-  if isTurnedOn(c, n): resOptions = resOptions + op
-  else: resOptions = resOptions - op
+  if isTurnedOn(c, n): resOptions.incl op
+  else: resOptions.excl op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n):
