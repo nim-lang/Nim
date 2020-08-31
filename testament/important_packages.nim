@@ -14,7 +14,7 @@ pkg1 "argparse"
 pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
 #pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk", true
-pkg1 "bigints"
+pkg1 "bigints", url = "https://github.com/Araq/nim-bigints"
 pkg1 "binaryheap", false, "nim c -r binaryheap.nim"
 pkg1 "BipBuffer"
 # pkg1 "blscurve", true # pending https://github.com/status-im/nim-blscurve/issues/39

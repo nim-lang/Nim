@@ -69,3 +69,14 @@ let rangeVar = 0'u64 ..< limit
 doAssert repr(rangeVar) == """[a = 0,
 b = 0]
 """
+
+# bug #15210
+
+let a3 = not 0'u64
+var success = false
+try:
+  discard a3.int64
+except RangeDefect:
+  success = true
+
+doAssert success, "conversion should fail at runtime"
