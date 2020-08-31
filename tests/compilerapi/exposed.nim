@@ -1,3 +1,7 @@
+const overrideMsg = "implementation overridden by tcompilerapi.nim"
 
 proc addFloats*(x, y, z: float): float =
-  discard "implementation overridden by tcompilerapi.nim"
+  discard overrideMsg
+
+proc suspend*() =
+  discard overrideMsg

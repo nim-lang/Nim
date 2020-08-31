@@ -134,6 +134,10 @@ proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
+proc resume*(i: Interpreter): PNode =
+  let c = PCtx i.graph.vm
+  result = execFromCtx(c, c.pc + 1, c.tos)
+
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
               supportNimscript: bool) =

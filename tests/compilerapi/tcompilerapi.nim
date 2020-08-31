@@ -5,6 +5,9 @@ discard """
 my secret
 11
 12
+suspending
+resuming
+resumed
 '''
   joinable: "false"
 """
@@ -54,3 +57,23 @@ block issue9180:
 
   evalString("echo 10+1")
   evalString("echo 10+2")
+
+block suspend_and_resume: #15254
+  type VMSuspend = object of CatchableError
+
+  let std = findNimStdLibCompileTime()
+  var intr = createInterpreter("resumectx.nim", [std, parentDir(currentSourcePath),
+    std / "pure", std / "core"])
+
+  intr.implementRoutine("*", "exposed", "suspend", proc (a: VmArgs) =
+    echo "suspending"
+    raise newException(VMSuspend, "suspending VM")
+  )
+  intr.evalScript()
+  let suspendResumeProc = selectRoutine(intr, "testSuspendAndResume")
+
+  doAssertRaises(VMSuspend):
+    discard intr.callRoutine(suspendResumeProc, [])
+  echo "resuming"
+  discard intr.resume()
+  destroyInterpreter(intr)

@@ -525,6 +525,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var savedFrame: PStackFrame
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
+  defer:
+    # snapshot the stack and counter for resume support
+    c.pc = pc
+    c.tos = tos
   #echo "NEW RUN ------------------------"
   while true:
     #{.computedGoto.}
@@ -2076,6 +2080,9 @@ proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
   result = rawExecute(c, start, tos).regToNode
+
+proc execFromCtx*(c: PCtx, pc: int, tos: PStackFrame): PNode =
+  result = rawExecute(c, pc, tos).regToNode
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
   if sym.kind in routineKinds:

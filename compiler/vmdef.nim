@@ -261,8 +261,10 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    pc*: int
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+    tos*: PStackFrame
 
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
