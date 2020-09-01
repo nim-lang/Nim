@@ -826,12 +826,20 @@ when defineSsl:
       result = getPeerCertificates(socket.sslHandle)
 
   proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
-      ## Set the session id context, used for resuming handshakes
-      ## Must be unique to application.
-      ## sidCtx must be at most 32 characters in length.
-      if sidCtx.len > 32:
-        raiseSSLError("sessionIdContext must be shorter than 32 characters")
-      SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
+    ## Sets the session id context in which a session can be reused.
+    ## Used for permitting clients to reuse a session id instead of
+    ## doing a new handshake.
+    ##
+    ## TLS clients might attempt to resume a session using the session id context,
+    ## thus it must be set if verifyMode is set to CVerifyPeer or CVerifyPeerUseEnvVars,
+    ## otherwise the connection will fail and SslError will be raised if resumption occurs.
+    ##
+    ## - Only useful if set server-side.
+    ## - Should be unique per-application to prevent clients from malfunctioning.
+    ## - sidCtx must be at most 32 characters in length.
+    if sidCtx.len > 32:
+      raiseSSLError("sessionIdContext must be shorter than 32 characters")
+    SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
   
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
