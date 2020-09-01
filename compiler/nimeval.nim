@@ -10,9 +10,9 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils, passaux,
-  scriptconfig
+  options, sem, semdata, llstream, lineinfos, vm,
+  vmdef, modulegraphs, idents, os, pathutils,
+  passaux, scriptconfig
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -133,6 +133,11 @@ proc createInterpreter*(scriptName: string;
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
+
+proc registerErrorHook*(i: Interpreter, hook:
+                        proc (config: ConfigRef; info: TLineInfo; msg: string;
+                              severity: Severity) {.gcsafe.}) =
+  i.graph.config.structuredErrorHook = hook
 
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
