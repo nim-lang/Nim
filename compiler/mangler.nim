@@ -139,7 +139,7 @@ proc shouldAppendModuleName(s: PSym): bool =
     if s.owner == nil or s.owner.kind in {skModule, skPackage}:
       # the symbol is top-level; add the module name
       result = true
-    elif sfGlobal in s.flags:
+    elif {sfGlobal, sfGeneratedOp} * s.flags != {}:
       # the symbol is top-level; add the module name
       result = true
     elif s.kind in routineKinds:
@@ -364,9 +364,10 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
   when false: # just to irritate the god of minimal debugging output
-    if startsWith(conflict.name, "opr"):
-      #debug s
+    if startsWith($result, "eqdestroy__proc_5"):
+      debug s
       when m is BModule:
+        debug m.cfilename
         debug "module $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
       elif m is BProc:
