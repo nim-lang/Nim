@@ -290,7 +290,7 @@ else:
       skey.ident = pident
       skey.events = pevents
       skey.param = pparam
-      skey.data = data
+      skey.data = pdata
 
   when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
@@ -331,6 +331,8 @@ else:
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
   elif defined(nintendoswitch):
+    include ioselects/ioselectors_select
+  elif defined(freertos) or defined(lwip):
     include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll

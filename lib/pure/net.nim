@@ -20,7 +20,9 @@
 ## ====
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
-## compile your application with the ``-d:ssl`` flag.
+## compile your application with the ``-d:ssl`` flag. See the
+## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring%2Cstring>`_
+## procedure for additional details.
 ##
 ## Examples
 ## ========
@@ -36,9 +38,17 @@
 ##   var socket = newSocket()
 ##   socket.connect("google.com", Port(80))
 ##
+## For SSL, use the following example (and make sure to compile with ``-d:ssl``):
+##
+## .. code-block:: Nim
+##   var socket = newSocket()
+##   var ctx = newContext()
+##   wrapSocket(ctx, socket)
+##   socket.connect("google.com", Port(443))
+##
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
-## call the ``connect`` procedure. They can simply start sending data
-## immediately.
+## call the `connect <net.html#connect%2CSocket%2Cstring>`_ procedure. They can
+## simply start sending data immediately.
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -74,6 +84,9 @@ export Domain, SockType, Protocol
 
 const useWinVersion = defined(Windows) or defined(nimdoc)
 const defineSsl = defined(ssl) or defined(nimdoc)
+
+when useWinVersion:
+  from winlean import WSAESHUTDOWN
 
 when defineSsl:
   import openssl
@@ -113,7 +126,7 @@ when defineSsl:
 
 else:
   type
-    SslContext* = void # TODO: Workaround #4797.
+    SslContext* = ref object # TODO: Workaround #4797.
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
@@ -133,6 +146,7 @@ type
       sslNoHandshake: bool # True if needs handshake.
       sslHasPeekChar: bool
       sslPeekChar: char
+      sslNoShutdown: bool # True if shutdown shouldn't be done.
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
     sockType: SockType
@@ -173,7 +187,8 @@ when defined(nimHasStyleChecks):
   {.pop.}
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode): void {.gcsafe.}
+                  lastError = (-1).OSErrorCode,
+                  flags: set[SocketFlag] = {}): void {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -185,6 +200,7 @@ proc isDisconnectionError*(flags: set[SocketFlag],
        lastError.int32 == WSAECONNABORTED or
        lastError.int32 == WSAENETRESET or
        lastError.int32 == WSAEDISCON or
+       lastError.int32 == WSAESHUTDOWN or
        lastError.int32 == ERROR_NETNAME_DELETED)
   else:
     SocketFlag.SafeDisconn in flags and
@@ -722,6 +738,7 @@ when defineSsl:
     socket.sslHandle = SSL_new(socket.sslContext.context)
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
+    socket.sslNoShutdown = false
     if socket.sslHandle == nil:
       raiseSSLError()
 
@@ -818,7 +835,8 @@ proc getSocketError*(socket: Socket): OSErrorCode =
     raiseOSError(result, "No valid socket error code available")
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode) =
+                  lastError = (-1).OSErrorCode,
+                  flags: set[SocketFlag] = {}) =
   ## Raises an OSError based on the error code returned by ``SSL_get_error``
   ## (for SSL sockets) and ``osLastError`` otherwise.
   ##
@@ -826,6 +844,9 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ## error was caused by no data being available to be read.
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.
+  ##
+  ## If ``flags`` contains ``SafeDisconn``, no exception will be raised
+  ## when the error was caused by a peer disconnection.
   when defineSsl:
     if socket.isSsl:
       if err <= 0:
@@ -844,33 +865,39 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL:
-          var errStr = "IO error has occurred "
-          let sslErr = ERR_peek_last_error()
-          if sslErr == 0 and err == 0:
-            errStr.add "because an EOF was observed that violates the protocol"
-          elif sslErr == 0 and err == -1:
-            errStr.add "in the BIO layer"
-          else:
-            let errStr = $ERR_error_string(sslErr, nil)
-            raiseSSLError(errStr & ": " & errStr)
+          # SSL shutdown must not be done if a fatal error occurred.
+          socket.sslNoShutdown = true
           let osErr = osLastError()
-          raiseOSError(osErr, errStr)
+          if not flags.isDisconnectionError(osErr):
+            var errStr = "IO error has occurred "
+            let sslErr = ERR_peek_last_error()
+            if sslErr == 0 and err == 0:
+              errStr.add "because an EOF was observed that violates the protocol"
+            elif sslErr == 0 and err == -1:
+              errStr.add "in the BIO layer"
+            else:
+              let errStr = $ERR_error_string(sslErr, nil)
+              raiseSSLError(errStr & ": " & errStr)
+            raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
+          # SSL shutdown must not be done if a fatal error occurred.
+          socket.sslNoShutdown = true
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
 
   if err == -1 and not (when defineSsl: socket.isSsl else: false):
     var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
-    if async:
-      when useWinVersion:
-        if lastE.int32 == WSAEWOULDBLOCK:
-          return
-        else: raiseOSError(lastE)
-      else:
-        if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
-          return
-        else: raiseOSError(lastE)
-    else: raiseOSError(lastE)
+    if not flags.isDisconnectionError(lastE):
+      if async:
+        when useWinVersion:
+          if lastE.int32 == WSAEWOULDBLOCK:
+            return
+          else: raiseOSError(lastE)
+        else:
+          if lastE.int32 == EAGAIN or lastE.int32 == EWOULDBLOCK:
+            return
+          else: raiseOSError(lastE)
+      else: raiseOSError(lastE)
 
 proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
@@ -1018,25 +1045,111 @@ proc accept*(server: Socket, client: var owned(Socket),
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-proc close*(socket: Socket) =
+when defined(posix):
+  from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
+    sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
+
+template blockSigpipe(body: untyped): untyped =
+  ## Temporary block SIGPIPE within the provided code block. If SIGPIPE is
+  ## raised for the duration of the code block, it will be queued and will be
+  ## raised once the block ends.
+  ##
+  ## Within the block a `selectSigpipe()` template is provided which can be
+  ## used to remove SIGPIPE from the queue. Note that if SIGPIPE is **not**
+  ## raised at the time of call, it will block until SIGPIPE is raised.
+  ##
+  ## If SIGPIPE has already been blocked at the time of execution, the
+  ## signal mask is left as-is and `selectSigpipe()` will become a no-op.
+  ##
+  ## For convenience, this template is also available for non-POSIX system,
+  ## where `body` will be executed as-is.
+  when not defined(posix):
+    body
+  else:
+    template sigmask(how: cint, set, oset: var Sigset): untyped {.gensym.} =
+      ## Alias for pthread_sigmask or sigprocmask depending on the status
+      ## of --threads
+      when compileOption("threads"):
+        pthread_sigmask(how, set, oset)
+      else:
+        sigprocmask(how, set, oset)
+
+    var oldSet, watchSet: Sigset
+    if sigemptyset(oldSet) == -1:
+      raiseOSError(osLastError())
+    if sigemptyset(watchSet) == -1:
+      raiseOSError(osLastError())
+
+    if sigaddset(watchSet, SIGPIPE) == -1:
+      raiseOSError(osLastError(), "Couldn't add SIGPIPE to Sigset")
+
+    if sigmask(SIG_BLOCK, watchSet, oldSet) == -1:
+      raiseOSError(osLastError(), "Couldn't block SIGPIPE")
+
+    let alreadyBlocked = sigismember(oldSet, SIGPIPE) == 1
+
+    template selectSigpipe(): untyped {.used.} =
+      if not alreadyBlocked:
+        var signal: cint
+        let err = sigwait(watchSet, signal)
+        if err != 0:
+          raiseOSError(err.OSErrorCode, "Couldn't select SIGPIPE")
+        assert signal == SIGPIPE
+
+    try:
+      body
+    finally:
+      if not alreadyBlocked:
+        if sigmask(SIG_UNBLOCK, watchSet, oldSet) == -1:
+          raiseOSError(osLastError(), "Couldn't unblock SIGPIPE")
+
+proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
   ## Closes a socket.
+  ##
+  ## If `socket` is an SSL/TLS socket, this proc will also send a closure
+  ## notification to the peer. If `SafeDisconn` is in `flags`, failure to do so
+  ## due to disconnections will be ignored. This is generally safe in
+  ## practice. See
+  ## `here <https://security.stackexchange.com/a/82044>`_ for more details.
   try:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if SSL_in_init(socket.sslHandle) == 0:
+        if not socket.sslNoShutdown and SSL_in_init(socket.sslHandle) == 0:
           # As we are closing the underlying socket immediately afterwards,
           # it is valid, under the TLS standard, to perform a unidirectional
           # shutdown i.e not wait for the peers "close notify" alert with a second
           # call to SSL_shutdown
-          ErrClearError()
-          let res = SSL_shutdown(socket.sslHandle)
-          if res == 0:
-            discard
-          elif res != 1:
-            socketError(socket, res)
+          blockSigpipe:
+            ErrClearError()
+            let res = SSL_shutdown(socket.sslHandle)
+            if res == 0:
+              discard
+            elif res != 1:
+              let
+                err = osLastError()
+                sslError = SSL_get_error(socket.sslHandle, res)
+
+              # If a close notification is received, failures outside of the
+              # protocol will be returned as SSL_ERROR_ZERO_RETURN instead
+              # of SSL_ERROR_SYSCALL. This fact is deduced by digging into
+              # SSL_get_error() source code.
+              if sslError == SSL_ERROR_ZERO_RETURN or
+                 sslError == SSL_ERROR_SYSCALL:
+                when defined(posix) and not defined(macosx) and
+                     not defined(nimdoc):
+                  if err == EPIPE.OSErrorCode:
+                    # Clear the SIGPIPE that's been raised due to
+                    # the disconnection.
+                    selectSigpipe()
+                else:
+                  discard
+                if not flags.isDisconnectionError(err):
+                  socketError(socket, res, lastError = err, flags = flags)
+              else:
+                socketError(socket, res, lastError = err, flags = flags)
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
@@ -1312,9 +1425,9 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   if result < 0:
     data.setLen(0)
     let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError): return
-    socket.socketError(result, lastError = lastError)
-  data.setLen(result)
+    socket.socketError(result, lastError = lastError, flags = flags)
+  else:
+    data.setLen(result)
 
 proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
@@ -1388,8 +1501,9 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
-    socket.socketError(n, lastError = lastError)
+    if flags.isDisconnectionError(lastError):
+      setLen(line.string, 0)
+    socket.socketError(n, lastError = lastError, flags = flags)
 
   var waited: Duration
 
@@ -1456,7 +1570,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
     var addrLen = sizeof(sockAddress).SockLen
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-    
+
     if result != -1:
       data.setLen(result)
       address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
@@ -1520,8 +1634,7 @@ proc send*(socket: Socket, data: string,
   let sent = send(socket, cstring(data), data.len)
   if sent < 0:
     let lastError = osLastError()
-    if flags.isDisconnectionError(lastError): return
-    socketError(socket, lastError = lastError)
+    socketError(socket, lastError = lastError, flags = flags)
 
   if sent != data.len:
     raiseOSError(osLastError(), "Could not send all data.")
@@ -1839,6 +1952,10 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ##
   ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
+  ##
+  ## **Warning:** This procedure appears to be broken for SSL connections as of
+  ## Nim v1.0.2. Consider using the other `connect` procedure. See
+  ## https://github.com/nim-lang/Nim/issues/15215 for more info.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)

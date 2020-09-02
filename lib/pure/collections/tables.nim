@@ -131,7 +131,7 @@
 ##   let myString = "abracadabra"
 ##   let letterFrequencies = toCountTable(myString)
 ##   echo letterFrequencies
-##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
+##   # output: {'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
 ## and increasing each key's value with `inc proc
@@ -239,7 +239,7 @@ type
     ## <#newTable,int>`_.
 
 const
-  defaultInitialSize* = 64
+  defaultInitialSize* = 32
 
 # ------------------------------ helpers ---------------------------------
 
@@ -288,12 +288,6 @@ proc enlarge[A, B](t: var Table[A, B]) =
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -335,7 +329,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
     let b = toTable(a)
     assert b == {'a': 5, 'b': 9}.toTable
 
-  result = initTable[A, B](rightSize(pairs.len))
+  result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
@@ -490,7 +484,8 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: B) =
+proc add*[A, B](t: var Table[A, B], key: A, val: B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -498,6 +493,10 @@ proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## Use `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
+
+template tabMakeEmpty(i) = t.data[i].hcode = 0
+template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
+template tabCellHash(i)  = t.data[i].hcode
 
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
@@ -512,7 +511,7 @@ proc del*[A, B](t: var Table[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toTable
 
-  delImpl()
+  delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
@@ -540,7 +539,7 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   result = index >= 0
   if result:
     val = move(t.data[index].val)
-    delImplIdx(t, index)
+    delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
   ## Alias for:
@@ -749,7 +748,8 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator allValues*[A, B](t: Table[A, B]; key: A): B =
+iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
+    "Deprecated since v1.4; tables with duplicated keys are deprecated".} =
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
   ##
   ## Used if you have a table with duplicate keys (as a result of using
@@ -779,12 +779,6 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
@@ -974,7 +968,8 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: TableRef[A, B], key: A, val: B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -1260,12 +1255,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -1309,7 +1298,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
     let b = toOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.toOrderedTable
 
-  result = initOrderedTable[A, B](rightSize(pairs.len))
+  result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -1466,7 +1455,8 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -1771,12 +1761,6 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
   ##   an `OrderedTableRef` from a collection of `(key, value)` pairs
@@ -1803,7 +1787,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
     let b = newOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
-  result = newOrderedTable[A, B](rightSize(pairs.len))
+  result = newOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result.add(key, val)
 
 
@@ -1959,7 +1943,8 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -2218,19 +2203,6 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
-proc remove[A](t: var CountTable[A], key: A) =
-  var n: seq[tuple[key: A, val: int]]
-  newSeq(n, len(t.data))
-  var removed: bool
-  for i in countup(0, high(t.data)):
-    if t.data[i].val != 0:
-      if t.data[i].key != key:
-        ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
-      else:
-        removed = true
-  swap(t.data, n)
-  if removed: dec(t.counter)
-
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2244,18 +2216,12 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1)
+proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
 proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -2269,7 +2235,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## Creates a new count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = initCountTable[A](rightSize(keys.len))
+  result = initCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTable[A], key: A): int =
@@ -2287,6 +2253,10 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
+template cntMakeEmpty(i) = t.data[i].val = 0
+template cntCellEmpty(i) = t.data[i].val == 0
+template cntCellHash(i)  = hash(t.data[i].key)
+
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
@@ -2297,7 +2267,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
   if val == 0:
-    t.remove(key)
+    delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
     let h = rawGet(t, key)
     if h >= 0:
@@ -2305,11 +2275,8 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     else:
       insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
+proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
-  ##
-  ## ``val`` must be a positive number. If you need to decrement a value,
-  ## use a regular ``Table`` instead.
   runnableExamples:
     var a = toCountTable("aab")
     a.inc('a')
@@ -2320,9 +2287,15 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter)
+    if t.data[index].val == 0:
+      delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
-    insertImpl()
+    if val != 0:
+      insertImpl()
+
+proc len*[A](t: CountTable[A]): int =
+  ## Returns the number of keys in ``t``.
+  result = t.counter
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
@@ -2376,14 +2349,8 @@ proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
   ##   is in the table
   ctget(t, key, default)
 
-proc len*[A](t: CountTable[A]): int =
-  ## Returns the number of keys in ``t``.
-  result = t.counter
-
 proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
-  ##
-  ## O(n) complexity.
   ##
   ## See also:
   ## * `pop proc<#pop,CountTable[A],A,int>`_
@@ -2397,15 +2364,13 @@ proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
     a.del('c')
     assert a == toCountTable("aa")
 
-  remove(t, key)
+  delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
 
 proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
   ## unchanged.
-  ##
-  ## O(n) complexity.
   ##
   ## See also:
   ## * `del proc<#del,CountTable[A],A>`_
@@ -2423,7 +2388,7 @@ proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).}
   result = index >= 0
   if result:
     val = move(t.data[index].val)
-    remove(t, key)
+    delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
 
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
@@ -2617,12 +2582,6 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
@@ -2634,7 +2593,7 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
 proc newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
   ## Creates a new ref count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = newCountTable[A](rightSize(keys.len))
+  result = newCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTableRef[A], key: A): int =
@@ -2670,14 +2629,14 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     doAssert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): (A, int) =
+proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
   ## See also:
   ## * `largest proc<#largest,CountTableRef[A]>`_
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): (A, int) =
+proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the largest ``val``. Efficiency: O(n)
   ##
   ## See also:
@@ -2717,8 +2676,6 @@ proc len*[A](t: CountTableRef[A]): int =
 proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
-  ## O(n) complexity.
-  ##
   ## See also:
   ## * `pop proc<#pop,CountTableRef[A],A,int>`_
   ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
@@ -2729,8 +2686,6 @@ proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} 
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
   ## unchanged.
-  ##
-  ## O(n) complexity.
   ##
   ## See also:
   ## * `del proc<#del,CountTableRef[A],A>`_

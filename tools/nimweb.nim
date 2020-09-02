@@ -201,7 +201,7 @@ proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
     if fileExists(dir / addFileExt(p, ext)):
       s.add(dir / addFileExt(p, ext))
-    if existsDir(dir / p):
+    if dirExists(dir / p):
       walkDirRecursively(s, dir / p, ext)
 
 proc parseIniFile(c: var TConfigData) =
@@ -483,7 +483,7 @@ proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
     quit("[Error] cannot open: " & temp)
   var f: File
   var outfile = c.webUploadOutput / "$#.html" % file
-  if not existsDir(outfile.splitFile.dir):
+  if not dirExists(outfile.splitFile.dir):
     createDir(outfile.splitFile.dir)
   if open(f, outfile, fmWrite):
     writeLine(f, generateHTMLPage(c, file, title, content, rss, assetDir))

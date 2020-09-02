@@ -1301,6 +1301,9 @@ array constructor ``[]``. The element type of this array expression is
 inferred from the type of the first element. All other elements need to be
 implicitly convertible to this type.
 
+An array type can be defined using the `array[size, T]` syntax, or using
+`array[lo..hi, T]` for arrays that start at an index other than zero.
+
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
 allocating pieces of memory as items are added. A sequence ``S`` is always
@@ -3230,7 +3233,7 @@ has lots of advantages:
 Type conversions
 ----------------
 
-Syntactically a `type conversion` is like a procedure call, but a
+Syntactically a *type conversion* is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
 results in an exception (if it cannot be determined statically).
@@ -3265,15 +3268,26 @@ conversions too are now *always unchecked*.
 
 Type casts
 ----------
-Example:
+
+*Type casts* are a crude mechanism to interpret the bit pattern of an expression
+as if it would be of another type. Type casts are only needed for low-level
+programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
+  
+The target type of a cast must be a concrete type, for instance, a target type
+that is a type class (which is non-concrete) would be invalid:
 
-Type casts are a crude mechanism to interpret the bit pattern of
-an expression as if it would be of another type. Type casts are
-only needed for low-level programming and are inherently unsafe.
-
+.. code-block:: nim
+  type Foo = int or float
+  var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
+  
+Type casts should not be confused with *type conversions,* as mentioned in the
+prior section. Unlike type conversions, a type cast cannot change the underlying 
+bit pattern of the data being casted (aside from that the size of the target type
+may differ from the source type). Casting resembles *type punning* in other
+languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.
 
 The addr operator
 -----------------
@@ -5005,23 +5019,16 @@ delayed until template instantiation time:
     :status: 1
 
   template t(body: typed) =
+    proc p = echo "hey"
     block:
       body
 
   t:
-    var i = 1
-    echo i
+    p()  # fails with 'undeclared identifier: p'
 
-  t:
-    var i = 2  # fails with 'attempt to redeclare i'
-    echo i
-
-The above code fails with the mysterious error message that ``i`` has already
-been declared. The reason for this is that the ``var i = ...`` bodies need to
-be type-checked before they are passed to the ``body`` parameter and type
-checking in Nim implies symbol lookups. For the symbol lookups to succeed
-``i`` needs to be added to the current (i.e. outer) scope. After type checking
-these additions to the symbol table are not rolled back (for better or worse).
+The above code fails with the error message that ``p`` is not declared.
+The reason for this is that the ``p()`` body is type-checked before getting
+passed to the ``body`` parameter and type checking in Nim implies symbol lookups.
 The same code works with ``untyped`` as the passed body is not required to be
 type-checked:
 
@@ -5029,16 +5036,12 @@ type-checked:
     :test: "nim c $1"
 
   template t(body: untyped) =
+    proc p = echo "hey"
     block:
       body
 
   t:
-    var i = 1
-    echo i
-
-  t:
-    var i = 2  # compiles
-    echo i
+    p()  # compiles
 
 
 Varargs of untyped

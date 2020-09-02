@@ -17,22 +17,21 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccDefault,                # proc has no explicit calling convention
-    ccStdCall,                # procedure is stdcall
-    ccCDecl,                  # cdecl
-    ccSafeCall,               # safecall
-    ccSysCall,                # system call
-    ccInline,                 # proc should be inlined
-    ccNoInline,               # proc should not be inlined
-    ccFastCall,               # fastcall (pass parameters in registers)
-    ccThisCall,               # thiscall (parameters are pushed right-to-left)
-    ccClosure,                # proc has a closure
+    ccNimCall                 # nimcall, also the default
+    ccStdCall                 # procedure is stdcall
+    ccCDecl                   # cdecl
+    ccSafeCall                # safecall
+    ccSysCall                 # system call
+    ccInline                  # proc should be inlined
+    ccNoInline                # proc should not be inlined
+    ccFastCall                # fastcall (pass parameters in registers)
+    ccThisCall                # thiscall (parameters are pushed right-to-left)
+    ccClosure                 # proc has a closure
     ccNoConvention            # needed for generating proper C procs sometimes
 
-const
-  CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
-    "closure", "noconv"]
+const CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
+  "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
+  "closure", "noconv"]
 
 type
   TNodeKind* = enum # order is extremely important, because ranges are used
@@ -230,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 42 flags!
+  TSymFlag* = enum    # 43 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -294,6 +293,7 @@ type
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
+    sfSingleUsedTemp   # For temporaries that we know will only be used once
 
   TSymFlags* = set[TSymFlag]
 
@@ -559,6 +559,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfExplicitCallConv
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -615,7 +616,7 @@ var
 type
   TMagic* = enum # symbols that require compiler magic:
     mNone,
-    mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
+    mDefined, mDeclared, mDeclaredInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
     mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
@@ -658,7 +659,7 @@ type
     mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mReset,
+    mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -1361,7 +1362,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
   if a.storage == low(a.storage): a.storage = b.storage
-  a.flags = a.flags + b.flags
+  a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
 
@@ -1386,7 +1387,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
+      dest.sym.flags.incl src.sym.flags-{sfExported}
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
@@ -1493,8 +1494,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
-  owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
+  owner.flags.incl elem.flags * {tfHasMeta, tfTriggersCompileTime}
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
@@ -1840,6 +1840,11 @@ proc isImportedException*(t: PType; conf: ConfigRef): bool =
 proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "as"
 
+proc skipColon*(n: PNode): PNode =
+  result = n
+  if n.kind == nkExprColonExpr:
+    result = n[1]
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   # n.typ == nil: see issue #14802
   if n.kind == nkSym and n.typ != nil and n.typ.kind == tyStatic and n.typ.n == nil:
@@ -1859,6 +1864,10 @@ when false:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
+
+proc hasDisabledAsgn*(t: PType): bool =
+  t.attachedOps[attachedAsgn] != nil and sfError in t.attachedOps[attachedAsgn].flags
+
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 

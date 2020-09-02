@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <proc (x: int){.gcsafe, locks: 0.}>"
+  errormsg: "type mismatch: got <proc (x: int){.nimcall, gcsafe, locks: 0.}>"
   line: 12
 """
 

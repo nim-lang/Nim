@@ -150,25 +150,30 @@ else:
   template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
-proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared. `x` has to be an identifier or a qualified identifier.
-  ##
-  ## See also:
-  ## * `declaredInScope <#declaredInScope,untyped>`_
-  ##
-  ## This can be used to check whether a library provides a certain
-  ## feature or not:
-  ##
-  ## .. code-block:: Nim
-  ##   when not declared(strutils.toUpper):
-  ##     # provide our own toUpper proc here, because strutils is
-  ##     # missing it.
+when defined(nimHasDeclaredMagic):
+  proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared. `x` has to be an identifier or a qualified identifier.
+    ##
+    ## See also:
+    ## * `declaredInScope <#declaredInScope,untyped>`_
+    ##
+    ## This can be used to check whether a library provides a certain
+    ## feature or not:
+    ##
+    ## .. code-block:: Nim
+    ##   when not declared(strutils.toUpper):
+    ##     # provide our own toUpper proc here, because strutils is
+    ##     # missing it.
+else:
+  proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 
-proc declaredInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared in the current scope. `x` has to be an identifier.
+when defined(nimHasDeclaredMagic):
+  proc declaredInScope*(x: untyped): bool {.magic: "DeclaredInScope", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared in the current scope. `x` has to be an identifier.
+else:
+  proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
@@ -1127,12 +1132,9 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(js) and defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
-  programResult = 0
-elif hostOS != "standalone":
+when not defined(js) and hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## deprecated, prefer ``quit``
+    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
 
@@ -1426,8 +1428,8 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".} 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -1755,7 +1757,7 @@ when notJSnotNims:
 
 
 when defined(nimV2):
-  include system/refs_v2
+  include system/arc
 
 import system/assertions
 export assertions

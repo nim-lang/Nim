@@ -37,6 +37,26 @@
 ##                 VALUES ($1, $2, $3)""",
 ##           3)
 ##
+##
+## Unix Socket
+## ===========
+##
+## Using Unix sockets instead of TCP connection can
+## `improve performance up to 30% ~ 175% for some operations <https://momjian.us/main/blogs/pgblog/2012.html#June_6_2012>`_.
+##
+## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
+##
+## .. code-block:: Nim
+##   import db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
+##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
+##   echo db.getAllRows(sql"SELECT version();")
+##   db.close()
+##
+## The socket file path is operating system specific and distribution specific,
+## additional configuration may or may not be needed on your `postgresql.conf`.
+## The Postgres server must be on the same computer and only works for Unix-like operating systems.
+##
+##
 ## Examples
 ## ========
 ##
@@ -491,7 +511,7 @@ proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
                 args: varargs[string, `$`]): int64
                {.tags: [WriteDbEffect], since: (1, 3).}=
   ## executes the query (typically "INSERT") and returns the
-  ## generated ID for the row or -1 in case of an error. 
+  ## generated ID for the row or -1 in case of an error.
   var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
     args), 0, 0)
   if not isNil(x):
@@ -503,7 +523,7 @@ proc insert*(db: DbConn, query: SqlQuery, pkName: string,
              args: varargs[string, `$`]): int64
             {.tags: [WriteDbEffect], since: (1, 3).} =
   ## executes the query (typically "INSERT") and returns the
-  ## generated ID 
+  ## generated ID
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 

@@ -158,7 +158,7 @@ type
     ## CoroutineRef holds a pointer to actual coroutine object. Public API always returns
     ## CoroutineRef instead of CoroutinePtr in order to allow holding a reference to coroutine
     ## object while it can be safely deallocated by coroutine scheduler loop. In this case
-    ## Coroutine.reference.coro is set to nil. Public API checks for for it being nil and
+    ## Coroutine.reference.coro is set to nil. Public API checks for it being nil and
     ## gracefully fails if it is nil.
     coro: CoroutinePtr
 

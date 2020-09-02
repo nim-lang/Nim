@@ -729,6 +729,17 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
     else:
       putIntoDest(p, d, e, "(*$1)" % [rdLoc(a)], a.storage)
 
+proc cowBracket(p: BProc; n: PNode) =
+  if n.kind == nkBracketExpr and optSeqDestructors in p.config.globalOptions:
+    let strCandidate = n[0]
+    if strCandidate.typ.skipTypes(abstractInst).kind == tyString:
+      var a: TLoc
+      initLocExpr(p, strCandidate, a)
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+
+proc cow(p: BProc; n: PNode) {.inline.} =
+  if n.kind == nkHiddenAddr: cowBracket(p, n[0])
+
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e[0].typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr}:
@@ -1229,7 +1240,7 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
-      if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccDefault:
+      if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccNimCall:
         localError(p.module.config, a.lode.info,
           "the destructor that is turned into a finalizer needs " &
           "to have the 'nimcall' calling convention")
@@ -1642,7 +1653,7 @@ template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, n[1], a)
   a.r = ropecg(p.module, frmt, [rdLoc(a)])
-  a.flags = a.flags - {lfIndirect} # this flag should not be propagated here (not just for HCR)
+  a.flags.excl lfIndirect # this flag should not be propagated here (not just for HCR)
   if d.k == locNone: getTemp(p, n.typ, d)
   genAssignment(p, d, a, {})
   gcUsage(p.config, n)
@@ -1750,6 +1761,8 @@ proc genSwap(p: BProc, e: PNode, d: var TLoc) =
   # temp = a
   # a = b
   # b = temp
+  cowBracket(p, e[1])
+  cowBracket(p, e[2])
   var a, b, tmp: TLoc
   getTemp(p, skipTypes(e[1].typ, abstractVar), tmp)
   initLocExpr(p, e[1], a) # eval a
@@ -1783,9 +1796,9 @@ template binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc) =
   case int(getSize(p.config, skipTypes(e[1].typ, abstractVar)))
-  of 1: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&7U)))!=0)")
-  of 2: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&15U)))!=0)")
-  of 4: binaryExprIn(p, e, a, b, d, "(($1 &(1U<<((NU)($2)&31U)))!=0)")
+  of 1: binaryExprIn(p, e, a, b, d, "(($1 &((NU8)1<<((NU)($2)&7U)))!=0)")
+  of 2: binaryExprIn(p, e, a, b, d, "(($1 &((NU16)1<<((NU)($2)&15U)))!=0)")
+  of 4: binaryExprIn(p, e, a, b, d, "(($1 &((NU32)1<<((NU)($2)&31U)))!=0)")
   of 8: binaryExprIn(p, e, a, b, d, "(($1 &((NU64)1<<((NU)($2)&63U)))!=0)")
   else: binaryExprIn(p, e, a, b, d, "(($1[(NU)($2)>>3] &(1U<<((NU)($2)&7U)))!=0)")
 
@@ -1983,25 +1996,30 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
       checkUnsignedConversions notin p.config.legacyFeatures):
     discard "no need to generate a check because it was disabled"
   else:
-    let raiser =
-      case skipTypes(n.typ, abstractVarRange).kind
-      of tyUInt..tyUInt64, tyChar: "raiseRangeErrorU"
-      of tyFloat..tyFloat128: "raiseRangeErrorF"
-      else: "raiseRangeErrorI"
-    discard cgsym(p.module, raiser)
-    # This seems to be bug-compatible with Nim version 1 but what we
-    # should really do here is to check if uint64Value < high(int)
     let n0t = n[0].typ
-    let boundaryCast =
-      if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
-          (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
-        "(NI64)"
-      else:
-        ""
+
     # emit range check:
-    linefmt(p, cpsStmts, "if ($6($1) < $2 || $6($1) > $3){ $4($1, $2, $3); $5}$n",
-      [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
-      raiser, raiseInstr(p), boundaryCast])
+    if n0t.kind in {tyUInt, tyUInt64}:
+      linefmt(p, cpsStmts, "if ($1 > ($6)($3)){ #raiseRangeErrorNoArgs(); $5}$n",
+        [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
+        raiser, raiseInstr(p), getTypeDesc(p.module, n0t)])
+    else:
+      let raiser =
+        case skipTypes(n.typ, abstractVarRange).kind
+        of tyUInt..tyUInt64, tyChar: "raiseRangeErrorU"
+        of tyFloat..tyFloat128: "raiseRangeErrorF"
+        else: "raiseRangeErrorI"
+      discard cgsym(p.module, raiser)
+
+      let boundaryCast =
+        if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
+            (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
+          "(NI64)"
+        else:
+          ""
+      linefmt(p, cpsStmts, "if ($6($1) < $2 || $6($1) > $3){ $4($1, $2, $3); $5}$n",
+        [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
+        raiser, raiseInstr(p), boundaryCast])
   putIntoDest(p, d, n, "(($1) ($2))" %
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
@@ -2066,10 +2084,14 @@ proc skipAddr(n: PNode): PNode =
 
 proc genWasMoved(p: BProc; n: PNode) =
   var a: TLoc
-  initLocExpr(p, n[1].skipAddr, a)
-  resetLoc(p, a)
-  #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-  #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
+  let n1 = n[1].skipAddr
+  if p.withinBlockLeaveActions > 0 and notYetAlive(n1):
+    discard
+  else:
+    initLocExpr(p, n1, a)
+    resetLoc(p, a)
+    #linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
+    #  [addrLoc(p.config, a), getTypeDesc(p.module, a.t)])
 
 proc genMove(p: BProc; n: PNode; d: var TLoc) =
   var a: TLoc
@@ -2096,14 +2118,14 @@ proc genDestroy(p: BProc; n: PNode) =
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; $1.len = 0; }$n",
+        "}$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; $1.len = 0; }$n",
+        "}$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
@@ -2205,7 +2227,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
   of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
-  of mStrToStr, mUnown: expr(p, e[1], d)
+  of mStrToStr, mUnown, mIsolate: expr(p, e[1], d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2593,10 +2615,12 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
-      if sym.loc.r == nil:
-        # we now support undeclared 'skTemp' variables for easier
-        # transformations in other parts of the compiler:
-        assignLocalVar(p, n)
+      when false:
+        # this is more harmful than helpful.
+        if sym.loc.r == nil:
+          # we now support undeclared 'skTemp' variables for easier
+          # transformations in other parts of the compiler:
+          assignLocalVar(p, n)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
@@ -2671,9 +2695,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     expr(p, n[1][0], d)
   of nkObjDownConv: downConv(p, n, d)
   of nkObjUpConv: upConv(p, n, d)
-  of nkChckRangeF: genRangeChck(p, n, d)
-  of nkChckRange64: genRangeChck(p, n, d)
-  of nkChckRange: genRangeChck(p, n, d)
+  of nkChckRangeF, nkChckRange64, nkChckRange: genRangeChck(p, n, d)
   of nkStringToCString: convStrToCStr(p, n, d)
   of nkCStringToString: convCStrToStr(p, n, d)
   of nkLambdaKinds:
@@ -2693,9 +2715,11 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkReturnStmt: genReturnStmt(p, n)
   of nkBreakStmt: genBreakStmt(p, n)
   of nkAsgn:
+    cow(p, n[1])
     if nfPreventCg notin n.flags:
       genAsgn(p, n, fastAsgn=false)
   of nkFastAsgn:
+    cow(p, n[1])
     if nfPreventCg notin n.flags:
       # transf is overly aggressive with 'nkFastAsgn', so we work around here.
       # See tests/run/tcnstseq3 for an example that would fail otherwise.

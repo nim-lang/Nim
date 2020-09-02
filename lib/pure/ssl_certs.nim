@@ -81,7 +81,7 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
         if p.endsWith(".pem") or p.endsWith(".crt"):
           if fileExists(p):
             yield p
-        elif existsDir(p):
+        elif dirExists(p):
           for fn in joinPath(p, "*").walkFiles():
             yield fn
     else:

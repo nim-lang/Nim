@@ -8,7 +8,7 @@
 #
 
 when defined(js):
-  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
 ## Regular expression support for Nim.
 ##

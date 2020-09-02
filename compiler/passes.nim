@@ -126,7 +126,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
-    p: TParsers
+    p: Parser
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
@@ -164,7 +164,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     else:
       s = stream
     while true:
-      openParsers(p, fileIdx, s, graph.cache, graph.config)
+      openParser(p, fileIdx, s, graph.cache, graph.config)
 
       if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
         # XXX what about caching? no processing then? what if I change the
@@ -212,7 +212,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
         else:
           #echo "----- single\n", n
           if not processTopLevelStmt(graph, n, a): break
-      closeParsers(p)
+      closeParser(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)
     # id synchronization point for more consistent code generation:

@@ -582,6 +582,7 @@ table th {
 
 table th.docinfo-name {
     background-color: transparent;
+    text-align: right;
 }
 
 table tr:hover {

@@ -663,14 +663,14 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     internalError(c.config, "semRecordCase: discriminant is no symbol")
     return
   incl(a[0].sym.flags, sfDiscriminant)
-  var covered: Int128 = toInt128(0)
+  var covered = toInt128(0)
   var chckCovered = false
   var typ = skipTypes(a[0].typ, abstractVar-{tyTypeDesc})
   const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
   case typ.kind
   of shouldChckCovered:
     chckCovered = true
-  of tyFloat..tyFloat128, tyString, tyError:
+  of tyFloat..tyFloat128, tyError:
     discard
   of tyRange:
     if skipTypes(typ[0], abstractInst).kind in shouldChckCovered:
@@ -678,7 +678,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   of tyForward:
     errorUndeclaredIdentifier(c, n[0].info, typ.sym.name.s)
   elif not isOrdinalType(typ):
-    localError(c.config, n[0].info, "selector must be of an ordinal type, float or string")
+    localError(c.config, n[0].info, "selector must be of an ordinal type, float")
   if firstOrd(c.config, typ) != 0:
     localError(c.config, n.info, "low(" & $a[0].sym.name.s &
                                      ") must be 0 for discriminant")
@@ -744,6 +744,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       father.add n
     elif branch != nil:
       semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
+    elif father.kind in {nkElse, nkOfBranch}:
+      father.add newNodeI(nkRecList, n.info)
   of nkRecCase:
     semRecordCase(c, n, check, pos, father, rectype)
   of nkNilLit:
@@ -784,7 +786,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
          not hasCaseFields and f.loc.r == nil:
         f.loc.r = rope(f.name.s)
-        f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
+        f.flags.incl {sfImportc, sfExportc} * fieldOwner.flags
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(c.config, info, "attempt to redefine: '" & f.name.s & "'")
@@ -800,7 +802,9 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     if containsOrIncl(check, n.sym.name.id):
       localError(c.config, n.info, "attempt to redefine: '" & n.sym.name.s & "'")
     father.add n
-  of nkEmpty: discard
+  of nkEmpty:
+    if father.kind in {nkElse, nkOfBranch}:
+      father.add n
   else: illFormedAst(n, c.config)
 
 proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
@@ -1207,11 +1211,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a[^2], constraint)
-      let sym = getCurrOwner(c)
-      var owner = sym.owner
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
-        if not isMagic(sym):
+        if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
 
     if hasDefault:
@@ -1230,7 +1232,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if typ == nil:
         typ = def.typ
         if isEmptyContainer(typ):
-          localError(c.config, a.info, "cannot infer the type of parameter '" & a[0].ident.s & "'")
+          localError(c.config, a.info, "cannot infer the type of parameter '" & $a[0] & "'")
 
         if typ.kind == tyTypeDesc:
           # consider a proc such as:
@@ -1261,7 +1263,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       continue
 
     for j in 0..<a.len-2:
-      var arg = newSymG(skParam, a[j], c)
+      var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
@@ -1402,8 +1404,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
                [s.name.s, s.kind.toHumanStr])
     return newOrPrevType(tyError, prev, c)
 
-  var t = s.typ
-  if t.kind in {tyCompositeTypeClass, tyAlias} and t.base.kind == tyGenericBody:
+  var t = s.typ.skipTypes({tyAlias})
+  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
     t = t.base
 
   result = newOrPrevType(tyGenericInvocation, prev, c)

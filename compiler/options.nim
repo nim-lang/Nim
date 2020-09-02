@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths
+  prefixmatches, pathutils, nimpaths, tables
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -89,12 +89,12 @@ type                          # please make sure we have under 32 options
                               # implementation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
-    optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
+    optProfileVM              # enable VM profiler
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -162,6 +162,7 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
+    strictFuncs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -217,6 +218,13 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
+  ProfileInfo* = object
+    time*: float
+    count*: int
+
+  ProfileData* = ref object
+    data*: TableRef[TLineInfo, ProfileInfo]
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -227,6 +235,7 @@ type
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
+    arcToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
@@ -314,6 +323,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    vmProfileData*: ProfileData
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
@@ -362,7 +372,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck, optSinkInference}
+    optTrMacros, optStyleCheck}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -390,6 +400,9 @@ template newPackageCache*(): untyped =
                  else:
                    modeCaseSensitive)
 
+proc newProfileData(): ProfileData =
+  ProfileData(data: newTable[TLineInfo, ProfileInfo]())
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -398,6 +411,7 @@ proc newConfigRef*(): ConfigRef =
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
+    arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),
@@ -442,6 +456,7 @@ proc newConfigRef*(): ConfigRef =
     arguments: "",
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
+    vmProfileData: newProfileData(),
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
@@ -479,7 +494,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
-                            osAndroid, osNintendoSwitch}
+                            osAndroid, osNintendoSwitch, osFreeRTOS}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -495,6 +510,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
+    of "freertos":
+      result = conf.target.targetOS == osFreeRTOS
+    of "lwip":
+      result = conf.target.targetOS in {osFreeRTOS}
     of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
@@ -676,12 +695,10 @@ iterator nimbleSubs*(conf: ConfigRef; p: string): string =
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
-  let (head, tail) = splitPath(path.string)
-  result = getNimcacheDir(conf) / RelativeFile changeFileExt(tail, ext)
+  result = getNimcacheDir(conf) / RelativeFile path.string.splitPath.tail.changeFileExt(ext)
 
 proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
                                 createSubDir: bool = true): AbsoluteFile =
-  let (head, tail) = splitPath(f.string)
   let subdir = getNimcacheDir(conf)
   if createSubDir:
     try:
@@ -689,7 +706,7 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     except OSError:
       writeLine(stdout, "cannot create directory: " & subdir.string)
       quit(1)
-  result = subdir / RelativeFile tail
+  result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =

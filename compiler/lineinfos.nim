@@ -10,7 +10,7 @@
 ## This module contains the ``TMsgKind`` enum as well as the
 ## ``TLineInfo`` object.
 
-import ropes, tables, pathutils
+import ropes, tables, pathutils, hashes
 
 const
   explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
@@ -270,6 +270,9 @@ type
   ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
+
+proc hash*(i: TLineInfo): Hash =
+  hash (i.line.int, i.col.int, i.fileIndex.int)
 
 proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)

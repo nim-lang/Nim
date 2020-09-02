@@ -22,6 +22,7 @@ a[1]: 45
 x: some string
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
+0
 '''
 """
 
@@ -202,3 +203,37 @@ block tupleNewLitTests:
     # this `$` test is needed because tuple equality doesn't distinguish
     # between named vs unnamed tuples
   doAssert t() == (1, "foo", (), (1, ), (a1: 'x', a2: @["ba"]))
+
+from strutils import contains
+block getImplTransformed:
+  macro bar(a: typed): string =
+    # newLit a.getImpl.repr # this would be before code transformation
+    let b = a.getImplTransformed
+    newLit b.repr
+  template toExpand() =
+    for ai in 0..2: echo ai
+  proc baz(a=1): int =
+    defer: discard
+    toExpand()
+    12
+  const code = bar(baz)
+  # sanity check:
+  doAssert "finally" in code # `defer` is lowered to try/finally
+  doAssert "while" in code # `for` is lowered to `while`
+  doAssert "toExpand" notin code
+    # template is expanded (but that would already be the case with
+    # `a.getImpl.repr`, unlike the other transformations mentioned above
+
+
+# test macro resemming
+macro makeVar(): untyped =
+  quote:
+    var tensorY {.inject.}: int
+
+macro noop(a: typed): untyped =
+  a
+
+noop:
+  makeVar
+echo tensorY
+

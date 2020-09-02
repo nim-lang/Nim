@@ -28,8 +28,6 @@ proc getNimbleFile*(conf: ConfigRef; path: string): string =
         result = file
         break packageSearch
   # we also store if we didn't find anything:
-  when not defined(nimNoNilSeqs):
-    if result.isNil: result = ""
   for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
     conf.packageCache[d] = result
