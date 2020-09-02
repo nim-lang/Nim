@@ -11,7 +11,7 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 # packages A-M
 # pkg1 "alea", true
 pkg1 "argparse"
-pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
+# pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 #pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk", true
 pkg1 "bigints", url = "https://github.com/Araq/nim-bigints"
@@ -66,12 +66,12 @@ pkg1 "stint", false, "nim c -o:stintt -r stint.nim"
 
 # packages N-Z
 pkg2 "nake", false, "nim c nakefile.nim"
-pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
+# pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 # pkg2 "nesm", false, "nimble tests" # notice plural 'tests'
 # pkg2 "nico", true
 pkg2 "nicy", false, "nim c -r src/nicy.nim"
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
-pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
+# pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 pkg2 "nimes", true, "nim c src/nimes.nim"
 # pkg2 "nimfp", true, "nim c -o:nfp -r src/fp.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 pkg2 "nimgame2", true, "nim c nimgame2/nimgame.nim"
@@ -90,7 +90,7 @@ pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg2 "norm", true, "nim c -r tests/tsqliterows.nim"
 pkg2 "npeg", false, "nimble testarc"
-pkg2 "numericalnim", true, "nim c -r tests/test_integrate.nim"
+# pkg2 "numericalnim", true, "nim c -r tests/test_integrate.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 pkg2 "optionsutils"
 pkg2 "ormin", true, "nim c -o:orminn ormin.nim"
 # pkg2 "parsetoml"  # See https://github.com/nim-lang/Nim/pull/14887
