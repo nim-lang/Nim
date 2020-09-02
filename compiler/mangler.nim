@@ -178,7 +178,12 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     # omit this verbosity for now
     typeName(p, typ.lastSon, shorten = shorten)
   of tyProc, tyTuple:
-    if m.config.backend == backendCpp:
+    # gave up on making this work for now;
+    #
+    # the solution is probably to compose a name without regard to the
+    # symbol and then simply use a signature-derived value for the
+    # conflictKey of tuples and procs...
+    if true or m.config.backend == backendCpp:
       # these need a signature-based name so that type signatures match :-(
       shortKind(typ.kind) & $hashType(typ)
     else:
