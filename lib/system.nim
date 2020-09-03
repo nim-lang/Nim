@@ -1227,9 +1227,10 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## .. code-block:: Nim
   ##   var s: seq[string] = @["test2","test2"]
   ##   s.add("test") # s <- @[test2, test2, test]
-  let xl = x.len
-  setLen(x, xl + y.len)
-  for i in 0..high(y): x[xl+i] = y[i]
+  {.noSideEffect.}:
+    let xl = x.len
+    setLen(x, xl + y.len)
+    for i in 0..high(y): x[xl+i] = y[i]
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =

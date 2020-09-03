@@ -342,7 +342,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
   let destIsComplex = types.searchTypeFor(dest.typ, wrap)
 
   for t in targets:
-    if dest.kind != nkSym:
+    if dest.kind != nkSym and c.inNoSideEffectSection == 0:
       potentialMutation(c, t, dest.info)
 
     if destIsComplex:
