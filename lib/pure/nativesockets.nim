@@ -269,7 +269,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   let socketPort = if sockType == SOCK_RAW: "" else: $port
   var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
   if gaiResult != 0'i32:
-    when useWinVersion:
+    when useWinVersion or defined(freertos):
       raiseOSError(osLastError())
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))

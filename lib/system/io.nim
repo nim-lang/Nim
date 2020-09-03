@@ -269,7 +269,7 @@ when SupportIoctlInheritCtl:
 
   proc c_ioctl(fd: cint, request: cint): cint {.
     importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
-elif defined(posix) and not defined(nimscript):
+elif defined(posix) and not defined(lwip) and not defined(nimscript):
   var
     F_GETFD {.importc, header: "<fcntl.h>".}: cint
     F_SETFD {.importc, header: "<fcntl.h>".}: cint
@@ -336,6 +336,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     ## availability with `declared() <system.html#declared,untyped>`.
     when SupportIoctlInheritCtl:
       result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
+    elif defined(freertos):
+      result = true
     elif defined(posix):
       var flags = c_fcntl(f, F_GETFD)
       if flags == -1:
@@ -767,6 +769,10 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
+  const stdOutLock = not defined(windows) and not defined(android) and
+                     not defined(nintendoswitch) and not defined(freertos) and
+                     hostOS != "any"
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -775,7 +781,7 @@ when declared(stdout):
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
       # flockfile deadlocks some versions of Android 5.x.x
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
+      when stdOutLock:
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
@@ -789,7 +795,7 @@ when declared(stdout):
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
+      when stdOutLock:
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock
