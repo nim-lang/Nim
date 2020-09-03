@@ -137,7 +137,7 @@ proc shouldAppendModuleName(s: PSym): bool =
   ## are we going to apply top-level mangling semantics?
   assert not s.hasImmutableName
   case s.kind
-  of skForVar, skParam, skResult, skModule, skPackage, skTemp:
+  of skParam, skResult, skModule, skPackage, skTemp:
     result = false
   else:
     if s.owner == nil or s.owner.kind in {skModule, skPackage}:
@@ -146,6 +146,10 @@ proc shouldAppendModuleName(s: PSym): bool =
     elif {sfGlobal, sfGeneratedOp} * s.flags != {}:
       # the symbol is top-level; add the module name
       result = true
+    elif s.kind == skForVar:
+      # forvars get special handling due to the fact that they
+      # can, in rare and stupid cases, be globals...
+      result = false
     elif s.kind in routineKinds:
       if s.typ != nil:
 
