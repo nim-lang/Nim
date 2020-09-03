@@ -16,7 +16,7 @@ import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer,
 
 proc declareSelf(c: PContext; info: TLineInfo) =
   let ow = getCurrOwner(c)
-  let s = newSym(skType, getIdent(c.cache, "self"), ow, info)
+  let s = newSym(skType, getIdent(c.cache, "Self"), ow, info)
   s.typ = newType(tyTypeDesc, ow)
   s.typ.flags.incl {tfUnresolved, tfPacked}
   s.typ.add newType(tyEmpty, ow)

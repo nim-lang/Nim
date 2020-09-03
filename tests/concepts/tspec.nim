@@ -14,17 +14,17 @@ import hashes
 
 type
   Comparable = concept # no T, an atom
-    proc cmp(a, b: self): int
+    proc cmp(a, b: Self): int
 
   ToStringable = concept
-    proc `$`(a: self): string
+    proc `$`(a: Self): string
 
   Hashable = concept
-    proc hash(x: self): int
-    proc `==`(x, y: self): bool
+    proc hash(x: Self): int
+    proc `==`(x, y: Self): bool
 
   Swapable = concept
-    proc swap(x, y: var self)
+    proc swap(x, y: var Self)
 
 
 proc h(x: Hashable) =
@@ -52,7 +52,7 @@ when true:
 when true:
   type
     Iterable[Ix] = concept
-      iterator items(c: self): Ix
+      iterator items(c: Self): Ix
 
   proc g[Tu](it: Iterable[Tu]) =
     for x in it:
@@ -68,10 +68,10 @@ hs(4)
 
 type
   Indexable[T] = concept # has a T, a collection
-    proc `[]`(a: self; index: int): T # we need to describe how to infer 'T'
+    proc `[]`(a: Self; index: int): T # we need to describe how to infer 'T'
     # and then we can use the 'T' and it must match:
-    proc `[]=`(a: var self; index: int; value: T)
-    proc len(a: self): int
+    proc `[]=`(a: var Self; index: int; value: T)
+    proc len(a: Self): int
 
 proc indexOf[T](a: Indexable[T]; value: T) =
   echo "yes ", T
