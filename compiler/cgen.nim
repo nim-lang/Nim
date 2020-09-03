@@ -520,7 +520,6 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
-  assert p.prc == nil, "attempt to add global to `local` proc"
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
