@@ -124,6 +124,11 @@ proc hasImmutableName(s: PSym): bool =
   ## True if the symbol uses a name that must not change.
   const immut = {sfSystemModule, sfCompilerProc, sfImportc, sfExportc}
   if s != nil:
+    # special-casing FlowVars because they are special-cased in pragmas...
+    if sfCompilerProc in s.flags:
+      if not s.typ.isNil and s.typ.kind == tyGenericBody:
+        assert s.name.s == "FlowVar", "unexpected generic compiler proc"
+        return false
     result = immut * s.flags != {}
   # XXX: maybe sfGenSym means we can always mutate it?
   # XXX: is it immutable if we've already assigned it in sigConflicts?
