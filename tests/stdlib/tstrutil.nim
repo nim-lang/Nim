@@ -433,3 +433,21 @@ block:
   doAssert a == f1
   doAssert b == f2
   doAssert c == f3
+
+
+block:
+  let x = """
+    Hello
+
+      There
+  """.dedent()
+
+  # echo x
+  doAssert x == """
+Hello
+
+  There
+"""
+
+  doAssert dedent("") == ""
+  doAssert dedent("\n") == "\n"

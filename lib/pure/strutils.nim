@@ -1547,11 +1547,42 @@ proc unindent*(s: string): string
   runnableExamples:
     let x = """
       Hello
-      There
+        There
     """.unindent()
 
-    doAssert x == "Hello\nThere\n"
+    doAssert x == """
+    Hello
+    There
+    """
+
   unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
+
+func dedent*(str: string): string =
+  ## Remove common whitespace prefix from the string
+  runnableExamples:
+    let x = """
+      Hello
+        There
+    """.dedent()
+
+    doAssert x == """
+    Hello
+      There
+    """
+
+  let seplines = str.split("\n")
+  var indent = 1000
+  for line in seplines:
+    for idx, ch in line:
+      if ch notin {' '}:
+        indent = min(idx, indent)
+
+  for idx, line in seplines:
+    if idx != 0:
+      result.add "\n"
+
+    if line.len >= indent:
+      result.add line[indent .. ^1]
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
