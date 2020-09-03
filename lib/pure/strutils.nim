@@ -1566,9 +1566,9 @@ func dedent*(str: string): string =
     """.dedent()
 
     doAssert x == """
-    Hello
-      There
-    """
+  Hello
+    There
+  """
 
   let seplines = str.split("\n")
   var indent = 1000
@@ -1576,6 +1576,7 @@ func dedent*(str: string): string =
     for idx, ch in line:
       if ch notin {' '}:
         indent = min(idx, indent)
+        break
 
   for idx, line in seplines:
     if idx != 0:

@@ -451,3 +451,14 @@ Hello
 
   doAssert dedent("") == ""
   doAssert dedent("\n") == "\n"
+
+block:
+  let x = """
+    Hello
+      There
+  """.dedent()
+
+  doAssert x == """
+Hello
+  There
+"""
