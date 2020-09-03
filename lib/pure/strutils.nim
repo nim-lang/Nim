@@ -1524,7 +1524,18 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural, padding: string = " "): string
+proc indentation*(s: string): Natural =
+  ## Returns the amount of indentation that all lines of ``s`` have in common
+  ## (ignoring lines that consist only of whitespace).
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ': result = i; break
+  if result == int.high:
+    result = 0
+
+proc unindent*(s: string, count: Natural = indentation(s), padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
   ## Sometimes called `dedent`:idx:
@@ -1537,8 +1548,12 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
-    doAssert unindent("  First line\l   and second line", 3) ==
-             "First line\land second line"
+    let x = """
+      hello
+        there
+    """.unindent()
+
+    doAssert x == "Hello\n  There\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1552,24 +1567,6 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
         break
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
-
-proc unindent*(s: string): string
-    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
-  ## Removes all indentation composed of whitespace from each line in ``s``.
-  ##
-  ## See also:
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
-  runnableExamples:
-    let x = """
-      Hello
-      There
-    """.unindent()
-
-    doAssert x == "Hello\nThere\n"
-  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
