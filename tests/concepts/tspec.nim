@@ -5,7 +5,8 @@ discard """
 4
 1
 2
-3'''
+3
+yes int'''
   joinable: false
 """
 
@@ -49,9 +50,6 @@ when true:
 #dollar D(4)
 
 when true:
-  # Work on concepts
-  # Write article about ARC/ORC
-
   type
     Iterable[Ix] = concept
       iterator items(c: self): Ix
@@ -67,3 +65,17 @@ proc hs(x: Swapable) =
   swap y, y
 
 hs(4)
+
+type
+  Indexable[T] = concept # has a T, a collection
+    proc `[]`(a: self; index: int): T # we need to describe how to infer 'T'
+    # and then we can use the 'T' and it must match:
+    proc `[]=`(a: var self; index: int; value: T)
+    proc len(a: self): int
+
+proc indexOf[T](a: Indexable[T]; value: T) =
+  echo "yes ", T
+
+block:
+  var x = @[1, 2, 3]
+  indexOf(x, 4)

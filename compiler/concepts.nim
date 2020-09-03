@@ -56,6 +56,9 @@ type
     inferred: seq[(PType, PType)]
     marker: IntSet
     potentialImplementation: PType
+    magic: TMagic  # mArrGet and mArrPut is wrong in system.nim and
+                   # cannot be fixed that easily.
+                   # Thus we special case it here.
 
 proc existingBinding(m: MatchCon; key: PType): PType =
   for i in 0..<m.inferred.len:
@@ -75,6 +78,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       #let oldLen = m.inferred.len
       result = matchType(c, a, m.potentialImplementation, m)
       #m.inferred.setLen oldLen
+      #echo "A for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
     else:
       if a.kind == tyTypeDesc and f.len == a.len:
         for i in 0..<a.len:
@@ -95,25 +99,36 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
           m.inferred.setLen oldLen
           if result:
             m.inferred.add((f, ak))
+        elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCString, tyString}:
+          m.inferred.add((f, lastSon ak))
+          result = true
         else:
           m.inferred.add((f, ak))
           #echo "binding ", typeToString(ak), " to ", typeToString(f)
           result = true
       elif not m.marker.containsOrIncl(old.id):
         result = matchType(c, old, ak, m)
+        if m.magic == mArrPut and ak.kind == tyGenericParam:
+          result = true
+    #echo "B for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
 
   of tyVar, tySink, tyLent, tyOwned:
     # modifiers in the concept must be there in the actual implementation
     # too but not vice versa.
     if a.kind == f.kind:
       result = matchType(c, f.sons[0], a.sons[0], m)
+    elif m.magic == mArrPut:
+      result = matchType(c, f.sons[0], a, m)
     else:
       result = false
   of tyEnum, tyObject, tyDistinct:
     result = sameType(f, a)
-  of tyBool, tyChar, tyEmpty, tyString, tyCString, tyInt..tyUInt64, tyPointer, tyNil,
-     tyUntyped, tyTyped, tyVoid:
+  of tyEmpty, tyString, tyCString, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
+  of tyBool, tyChar, tyInt..tyUInt64:
+    let ak = a.skipTypes(ignorableForArgType)
+    result = ak.kind == f.kind or ak.kind == tyOrdinal or
+       (ak.kind == tyGenericParam and ak.len > 0 and ak[0].kind == tyOrdinal)
   of tyConcept:
     let oldLen = m.inferred.len
     let oldPotentialImplementation = m.potentialImplementation
@@ -213,7 +228,8 @@ proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bo
     var candidate = initIdentIter(ti, scope.symbols, name)
     while candidate != nil:
       if candidate.kind in kinds:
-        #echo "considering ", typeToString(candidate.typ)
+        #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
+        m.magic = candidate.magic
         if matchSym(c, candidate, n, m): return true
       candidate = nextIdentIter(ti, scope.symbols)
   result = false
@@ -257,7 +273,9 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable): boo
           if dest == nil or dest.kind != tyGenericParam: break
         if dest != nil:
           bindings.idTablePut(a, dest)
+          #echo "A bind ", a, " ", dest
       else:
         bindings.idTablePut(a, b)
+        #echo "B bind ", a, " ", b
     # we have a match, so bind 'arg' itself to 'concpt':
     bindings.idTablePut(concpt, arg)
