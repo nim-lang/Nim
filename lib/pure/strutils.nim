@@ -1531,7 +1531,9 @@ proc indentation*(s: string): Natural =
   for line in s.splitLines:
     for i, c in line:
       if i >= result: break
-      elif c != ' ': result = i; break
+      elif c != ' ':
+        result = i
+        break
   if result == int.high:
     result = 0
 
