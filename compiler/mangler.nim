@@ -135,8 +135,7 @@ proc hasImmutableName(s: PSym): bool =
 
 proc shouldAppendModuleName(s: PSym): bool =
   ## are we going to apply top-level mangling semantics?
-  if s.hasImmutableName:
-    return false
+  assert not s.hasImmutableName
   case s.kind
   of skForVar, skParam, skResult, skModule, skPackage, skTemp:
     result = false
@@ -272,6 +271,14 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
         result.add "_"
         result.add getSomeNameForModule(parent.module)
 
+    # for c-ish backends, "main" is already defined, of course
+    elif s.name.s == "main":
+      let parent = findPendingModule(m, s)
+      if parent != nil and sfMainModule in parent.module.flags:
+        # but we'll only worry about it for MainModule
+        result.add "_"
+        result.add getSomeNameForModule(parent.module)
+
     # something like `default` might need this check
     if (unlikely) result in m.config.cppDefines:
       result.add "_"
@@ -374,9 +381,10 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
   when false: # just to irritate the god of minimal debugging output
-    if startsWith($result, "eqdestroy__proc_5"):
+    if startsWith($result, "main"):
       debug s
       when m is BModule:
+        result = "/*" & $conflictKey(s) & "*/" & result
         debug m.cfilename
         debug "module $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
