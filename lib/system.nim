@@ -1284,22 +1284,23 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## .. code-block:: Nim
   ##  var i = @[1, 3, 5]
   ##  i.insert(99, 0) # i <- @[99, 1, 3, 5]
-  template defaultImpl =
-    let xl = x.len
-    setLen(x, xl+1)
-    var j = xl-1
-    while j >= i:
-      movingCopy(x[j+1], x[j])
-      dec(j)
-  when nimvm:
-    defaultImpl()
-  else:
-    when defined(js):
-      var it : T
-      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
-    else:
+  {.noSideEffect.}:
+    template defaultImpl =
+      let xl = x.len
+      setLen(x, xl+1)
+      var j = xl-1
+      while j >= i:
+        movingCopy(x[j+1], x[j])
+        dec(j)
+    when nimvm:
       defaultImpl()
-  x[i] = item
+    else:
+      when defined(js):
+        var it : T
+        {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
+      else:
+        defaultImpl()
+    x[i] = item
 
 when not defined(nimV2):
   proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
