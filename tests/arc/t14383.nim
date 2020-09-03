@@ -40,6 +40,6 @@ proc sinkArg(x: sink seq[string]) =
 proc varArg(lst: var seq[string]) = 
   sinkArg(lst)
 
-var a = @["a", "b"]
-varArg(a)
-echo a
+var x = @["a", "b"]
+varArg(x)
+echo x
