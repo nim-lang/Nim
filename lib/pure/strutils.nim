@@ -1547,13 +1547,9 @@ proc unindent*(s: string): string
   runnableExamples:
     let x = """
       Hello
-        There
-    """.unindent()
+        There""".unindent()
 
-    doAssert x == """
-    Hello
-    There
-    """
+    doAssert x == "Hello\nThere"
 
   unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
@@ -1562,13 +1558,9 @@ func dedent*(str: string): string =
   runnableExamples:
     let x = """
       Hello
-        There
-    """.dedent()
+        There""".dedent()
 
-    doAssert x == """
-  Hello
-    There
-  """
+    doAssert x == "Hello\n  There"
 
   let seplines = str.split("\n")
   var indent = 1000
