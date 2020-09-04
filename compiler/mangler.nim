@@ -34,6 +34,9 @@ import # stdlib imports
 
   std / [ strutils, tables, sets ]
 
+const
+  nimDebugMangle {.strdefine.} = ""
+
 type
   ModuleOrProc* = concept m
     m.sigConflicts is ConflictsTable
@@ -130,8 +133,6 @@ proc hasImmutableName(s: PSym): bool =
         assert s.name.s == "FlowVar", "unexpected generic compiler proc"
         return false
     result = immut * s.flags != {}
-  # XXX: maybe sfGenSym means we can always mutate it?
-  # XXX: is it immutable if we've already assigned it in sigConflicts?
 
 proc shouldAppendModuleName(s: PSym): bool =
   ## are we going to apply top-level mangling semantics?
@@ -255,7 +256,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
     result = mangle(s.name.s)
 
     # a gensym is a good sign that we can encounter a link collision
-    if {sfGenSym} * s.flags != {}:
+    if sfGenSym in s.flags:
       assert not s.hasImmutableName
       result.add "_"
       result.add $conflictKey(s)
@@ -338,7 +339,6 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
         counter = getConflictFromCache(g, s)
-        # FIXME: add a compiler pass to warm up the conflicts cache
         break
 
     # critically, we must check for conflicts at the source module
@@ -384,8 +384,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  when false: # just to irritate the god of minimal debugging output
-    if startsWith($result, "main"):
+  when nimDebugMangle != "":
+    if startsWith($result, nimDebugMangle):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
@@ -420,7 +420,11 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     result = typeName(p, t).rope
     let counter = getOrSet(p.sigConflicts, $result, conflictKey(t))
     result.maybeAppendCounter counter
-    #result.add "/*" & $key & "*/"
+
+    when nimDebugMangle != "":
+      if startsWith($result, nimDebugMangle):
+        debug typ
+        result.add "/*" & $key & "*/"
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
