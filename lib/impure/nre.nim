@@ -367,19 +367,21 @@ func contains*(pattern: CaptureBounds, name: string): bool =
 func contains*(pattern: Captures, name: string): bool =
   name in CaptureBounds(pattern)
 
-func checkNamedCaptured(pattern: RegexMatch, name: string): void =
+func checkNamedCaptured(pattern: RegexMatch, name: string) =
   if not (name in pattern.captureBounds):
     raise newException(KeyError, "Group '" & name & "' was not captured")
 
 func `[]`*(pattern: CaptureBounds, name: string): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  pattern.captureBounds[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captureBounds[pattern.pattern.captureNameToId[name]]
 
 func `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  return pattern.captures[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captures[pattern.pattern.captureNameToId[name]]
 
 template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
@@ -498,7 +500,7 @@ proc re*(pattern: string): Regex =
   initRegex(pattern, flags, study)
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
-  var myResult = RegexMatch(pattern : pattern, str : str)
+  var myResult = RegexMatch(pattern: pattern, str: str)
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
@@ -528,13 +530,13 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
     of pcre.ERROR_NULL:
       raise newException(AccessViolationDefect, "Expected non-null parameters")
     of pcre.ERROR_BADOPTION:
-      raise RegexInternalError(msg : "Unknown pattern flag. Either a bug or " &
+      raise RegexInternalError(msg: "Unknown pattern flag. Either a bug or " &
         "outdated PCRE.")
     of pcre.ERROR_BADUTF8, pcre.ERROR_SHORTUTF8, pcre.ERROR_BADUTF8_OFFSET:
-      raise InvalidUnicodeError(msg : "Invalid unicode byte sequence",
-        pos : myResult.pcreMatchBounds[0].a)
+      raise InvalidUnicodeError(msg: "Invalid unicode byte sequence",
+        pos: myResult.pcreMatchBounds[0].a)
     else:
-      raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
+      raise RegexInternalError(msg: "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
   ## Like ` ``find(...)`` <#proc-find>`_, but anchored to the start of the

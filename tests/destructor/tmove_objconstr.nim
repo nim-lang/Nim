@@ -2,7 +2,6 @@
 discard """
 output:  '''test created
 test destroyed 0
-Pony is dying!
 1
 2
 3

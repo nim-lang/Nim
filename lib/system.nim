@@ -150,25 +150,30 @@ else:
   template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
-proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared. `x` has to be an identifier or a qualified identifier.
-  ##
-  ## See also:
-  ## * `declaredInScope <#declaredInScope,untyped>`_
-  ##
-  ## This can be used to check whether a library provides a certain
-  ## feature or not:
-  ##
-  ## .. code-block:: Nim
-  ##   when not declared(strutils.toUpper):
-  ##     # provide our own toUpper proc here, because strutils is
-  ##     # missing it.
+when defined(nimHasDeclaredMagic):
+  proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared. `x` has to be an identifier or a qualified identifier.
+    ##
+    ## See also:
+    ## * `declaredInScope <#declaredInScope,untyped>`_
+    ##
+    ## This can be used to check whether a library provides a certain
+    ## feature or not:
+    ##
+    ## .. code-block:: Nim
+    ##   when not declared(strutils.toUpper):
+    ##     # provide our own toUpper proc here, because strutils is
+    ##     # missing it.
+else:
+  proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 
-proc declaredInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, compileTime.}
-  ## Special compile-time procedure that checks whether `x` is
-  ## declared in the current scope. `x` has to be an identifier.
+when defined(nimHasDeclaredMagic):
+  proc declaredInScope*(x: untyped): bool {.magic: "DeclaredInScope", noSideEffect, compileTime.}
+    ## Special compile-time procedure that checks whether `x` is
+    ## declared in the current scope. `x` has to be an identifier.
+else:
+  proc declaredInScope*(x: untyped): bool {.magic: "DefinedInScope", noSideEffect, compileTime.}
 
 proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory location.
@@ -1127,12 +1132,9 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(js) and defined(nodejs) and not defined(nimscript):
-  var programResult* {.importc: "process.exitCode".}: int
-  programResult = 0
-elif hostOS != "standalone":
+when not defined(js) and hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## deprecated, prefer ``quit``
+    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
 
@@ -1225,9 +1227,10 @@ proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## .. code-block:: Nim
   ##   var s: seq[string] = @["test2","test2"]
   ##   s.add("test") # s <- @[test2, test2, test]
-  let xl = x.len
-  setLen(x, xl + y.len)
-  for i in 0..high(y): x[xl+i] = y[i]
+  {.noSideEffect.}:
+    let xl = x.len
+    setLen(x, xl + y.len)
+    for i in 0..high(y): x[xl+i] = y[i]
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =
@@ -1281,22 +1284,23 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## .. code-block:: Nim
   ##  var i = @[1, 3, 5]
   ##  i.insert(99, 0) # i <- @[99, 1, 3, 5]
-  template defaultImpl =
-    let xl = x.len
-    setLen(x, xl+1)
-    var j = xl-1
-    while j >= i:
-      movingCopy(x[j+1], x[j])
-      dec(j)
-  when nimvm:
-    defaultImpl()
-  else:
-    when defined(js):
-      var it : T
-      {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
-    else:
+  {.noSideEffect.}:
+    template defaultImpl =
+      let xl = x.len
+      setLen(x, xl+1)
+      var j = xl-1
+      while j >= i:
+        movingCopy(x[j+1], x[j])
+        dec(j)
+    when nimvm:
       defaultImpl()
-  x[i] = item
+    else:
+      when defined(js):
+        var it : T
+        {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
+      else:
+        defaultImpl()
+    x[i] = item
 
 when not defined(nimV2):
   proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
@@ -1426,8 +1430,8 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".} 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -1755,7 +1759,7 @@ when notJSnotNims:
 
 
 when defined(nimV2):
-  include system/refs_v2
+  include system/arc
 
 import system/assertions
 export assertions

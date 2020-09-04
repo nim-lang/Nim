@@ -475,7 +475,7 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
     else:
       localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkBracket:
-    idx = idx - toInt64(firstOrd(g.config, x.typ))
+    idx -= toInt64(firstOrd(g.config, x.typ))
     if idx >= 0 and idx < x.len: result = x[int(idx)]
     else: localError(g.config, n.info, formatErrorIndexBound(idx, x.len-1) & $n)
   of nkStrLit..nkTripleStrLit:

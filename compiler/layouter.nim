@@ -35,7 +35,7 @@ type
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
-    lastTok: TTokType
+    lastTok: TokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
@@ -402,7 +402,7 @@ proc endsInAlpha(em: Emitter): bool =
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
-proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
+proc emitComment(em: var Emitter; tok: Token; dontIndent: bool) =
   var col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
@@ -417,7 +417,7 @@ proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
       inc col
     emitMultilineComment(em, lit, col, dontIndent)
 
-proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
+proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
   template wasExportMarker(em): bool =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 

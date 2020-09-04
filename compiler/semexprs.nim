@@ -33,7 +33,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
-  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, c.templInstCounter, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
@@ -955,8 +955,17 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
+          let typ = n[0].typ
           msg.add(">\nbut expected one of: \n" &
-              typeToString(n[0].typ))
+              typeToString(typ))
+          # prefer notin preferToResolveSymbols
+          # t.sym != nil
+          # sfAnon notin t.sym.flags
+          # t.kind != tySequence(It is tyProc)
+          if typ.sym != nil and sfAnon notin typ.sym.flags and 
+                                typ.kind == tyProc:
+            msg.add(" = " & 
+                typeToString(typ, preferDesc))
           localError(c.config, n.info, msg)
         return errorNode(c, n)
       result = nil
@@ -1194,17 +1203,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     elif sfGenSym in s.flags:
       # the owner should have been set by now by addParamOrResult
       internalAssert c.config, s.owner != nil
-      if c.p.wasForwarded:
-        # gensym'ed parameters that nevertheless have been forward declared
-        # need a special fixup:
-        let realParam = c.p.owner.typ.n[s.position+1]
-        internalAssert c.config, realParam.kind == nkSym and realParam.sym.kind == skParam
-        return newSymNode(c.p.owner.typ.n[s.position+1].sym, n.info)
-      elif c.p.owner.kind == skMacro:
-        # gensym'ed macro parameters need a similar hack (see bug #1944):
-        var u = searchInScopes(c, s.name)
-        internalAssert c.config, u != nil and u.kind == skParam and u.owner == s.owner
-        return newSymNode(u, n.info)
     result = newSymNode(s, n.info)
   of skVar, skLet, skResult, skForVar:
     if s.magic == mNimvm:
@@ -1856,29 +1854,32 @@ proc semYield(c: PContext, n: PNode): PNode =
   elif c.p.owner.typ[0] != nil:
     localError(c.config, n.info, errGenerated, "yield statement must yield a value")
 
-proc lookUpForDefined(c: PContext, i: PIdent, onlyCurrentScope: bool): PSym =
-  if onlyCurrentScope:
-    result = localSearchInScope(c, i)
-  else:
-    result = searchInScopes(c, i) # no need for stub loading
+proc semDefined(c: PContext, n: PNode): PNode =
+  checkSonsLen(n, 2, c.config)
+  # we replace this node by a 'true' or 'false' node:
+  result = newIntNode(nkIntLit, 0)
+  result.intVal = ord isDefined(c.config, considerQuotedIdent(c, n[1], n).s)
+  result.info = n.info
+  result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
+proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   case n.kind
-  of nkIdent:
-    result = lookUpForDefined(c, n.ident, onlyCurrentScope)
+  of nkIdent, nkAccQuoted:
+    result = if onlyCurrentScope:
+               localSearchInScope(c, considerQuotedIdent(c, n))
+             else:
+               searchInScopes(c, considerQuotedIdent(c, n))
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
     checkSonsLen(n, 2, c.config)
-    var m = lookUpForDefined(c, n[0], onlyCurrentScope)
+    var m = lookUpForDeclared(c, n[0], onlyCurrentScope)
     if m != nil and m.kind == skModule:
       let ident = considerQuotedIdent(c, n[1], n)
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
         result = strTableGet(m.tab, ident)
-  of nkAccQuoted:
-    result = lookUpForDefined(c, considerQuotedIdent(c, n), onlyCurrentScope)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -1887,15 +1888,11 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
     result = nil
 
-proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
+proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2, c.config)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if not onlyCurrentScope and considerQuotedIdent(c, n[0], n).s == "defined":
-    let d = considerQuotedIdent(c, n[1], n)
-    result.intVal = ord isDefined(c.config, d.s)
-  elif lookUpForDefined(c, n[1], onlyCurrentScope) != nil:
-    result.intVal = 1
+  result.intVal = ord lookUpForDeclared(c, n[1], onlyCurrentScope) != nil
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
@@ -2157,7 +2154,7 @@ proc instantiateCreateFlowVarCall(c: PContext; t: PType;
   # since it's an instantiation, we unmark it as a compilerproc. Otherwise
   # codegen would fail:
   if sfCompilerProc in result.flags:
-    result.flags = result.flags - {sfCompilerProc, sfExportc, sfImportc}
+    result.flags.excl {sfCompilerProc, sfExportc, sfImportc}
     result.loc.r = nil
 
 proc setMs(n: PNode, s: PSym): PNode =
@@ -2189,10 +2186,13 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = semTypeOf(c, n)
   of mDefined:
     markUsed(c, n.info, s)
-    result = semDefined(c, setMs(n, s), false)
-  of mDefinedInScope:
+    result = semDefined(c, setMs(n, s))
+  of mDeclared:
     markUsed(c, n.info, s)
-    result = semDefined(c, setMs(n, s), true)
+    result = semDeclared(c, setMs(n, s), false)
+  of mDeclaredInScope:
+    markUsed(c, n.info, s)
+    result = semDeclared(c, setMs(n, s), true)
   of mCompiles:
     markUsed(c, n.info, s)
     result = semCompiles(c, setMs(n, s), flags)

@@ -1297,7 +1297,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
-    if theProc.typ == nil or theProc.typ.callConv != ccDefault:
+    if theProc.typ == nil or theProc.typ.callConv != ccNimCall:
       localError(m.config, info,
         theProc.name.s & " needs to have the 'nimcall' calling convention")
 

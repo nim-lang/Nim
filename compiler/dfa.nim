@@ -280,7 +280,7 @@ proc patch(c: var Con, p: TPosition) =
   # patch with current index
   c.code[p.int].dest = checkedDistance(c.code.len - p.int)
 
-func gen(c: var Con; n: PNode)
+proc gen(c: var Con; n: PNode)
 
 proc popBlock(c: var Con; oldLen: int) =
   var exits: seq[TPosition]
@@ -628,7 +628,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
   result = n.kind == nkSym and n.sym.owner == owner and
-    owner.kind != skModule and
+    {sfGlobal, sfThread, sfCursor} * n.sym.flags == {} and
     (n.sym.kind != skParam or isSinkParam(n.sym)) # or n.sym.typ.kind == tyVar)
   # Note: There is a different move analyzer possible that checks for
   # consume(param.key); param.key = newValue  for all paths. Then code like
@@ -712,7 +712,7 @@ proc genVarSection(c: var Con; n: PNode) =
       if a.lastSon.kind != nkEmpty:
         genDef(c, a[0])
 
-func gen(c: var Con; n: PNode) =
+proc gen(c: var Con; n: PNode) =
   case n.kind
   of nkSym: genUse(c, n)
   of nkCallKinds:

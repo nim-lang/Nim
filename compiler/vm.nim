@@ -1233,7 +1233,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache)
+        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache, c.templInstCounter)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -2232,7 +2232,7 @@ proc errorNode(owner: PSym, n: PNode): PNode =
   result.typ = newType(tyError, owner)
   result.typ.flags.incl tfCheckedForDestructor
 
-proc evalMacroCall*(module: PSym; g: ModuleGraph;
+proc evalMacroCall*(module: PSym; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =
   if g.config.errorCounter > 0: return errorNode(module, n)
 
@@ -2253,6 +2253,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
   c.callsite = nOrig
+  c.templInstCounter = templInstCounter
   let start = genProc(c, sym)
 
   var tos = PStackFrame(prc: sym, comesFrom: 0, next: nil)

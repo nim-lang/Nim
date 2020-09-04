@@ -3080,14 +3080,15 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
-      result.permissions = {fpUserExec..fpOthersRead}
+      formalInfo.permissions = {fpUserExec..fpOthersRead}
 
     # Retrieve basic file kind
-    result.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
+    else:
+      formalInfo.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-      formalInfo.kind = succ(result.kind)
+      formalInfo.kind = succ(formalInfo.kind)
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
@@ -3100,7 +3101,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
     formalInfo.creationTime = rawInfo.st_ctim.toTime
 
-    result.permissions = {}
+    formalInfo.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
     checkAndIncludeMode(S_IWUSR, fpUserWrite)
     checkAndIncludeMode(S_IXUSR, fpUserExec)
@@ -3113,12 +3114,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    formalInfo.kind = pcFile
-    if S_ISDIR(rawInfo.st_mode):
-      formalInfo.kind = pcDir
-    elif S_ISLNK(rawInfo.st_mode):
-      assert(path != "") # symlinks can't occur for file handles
-      formalInfo.kind = getSymlinkFileKind(path)
+    formalInfo.kind =
+      if S_ISDIR(rawInfo.st_mode):
+        pcDir
+      elif S_ISLNK(rawInfo.st_mode):
+        assert(path != "") # symlinks can't occur for file handles
+        getSymlinkFileKind(path)
+      else:
+        pcFile
 
 when defined(js):
   when not declared(FileHandle):

@@ -331,7 +331,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
-  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for c in CC: undefSymbol(conf.symbols, c.name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
@@ -353,7 +353,7 @@ proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for c in CC: undefSymbol(conf.symbols, c.name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
@@ -429,7 +429,6 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
-  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
 
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
@@ -449,6 +448,8 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
   let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
 
 proc getCompileOptions(conf: ConfigRef): string =
   result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")

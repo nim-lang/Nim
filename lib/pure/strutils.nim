@@ -938,6 +938,31 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
+proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.noSideEffect.} =
+  const
+    HexChars = "0123456789ABCDEF"
+  var n = x
+  result = newString(len)
+  for j in countdown(len-1, 0):
+    result[j] = HexChars[int(n and 0xF)]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and handleNegative: n = not(BiggestUInt 0)
+
+proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## The resulting string will be exactly `len` characters long. No prefix like
+  ## ``0x`` is generated.
+  runnableExamples:
+    let
+      a = 62'u64
+      b = 4097'u64
+    doAssert a.toHex(3) == "03E"
+    doAssert b.toHex(3) == "001"
+    doAssert b.toHex(4) == "1001"
+  toHexImpl(x, len, false)
+
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation.
@@ -948,25 +973,19 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     let
       a = 62
       b = 4097
+      c = -8
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  const
-    HexChars = "0123456789ABCDEF"
-  var
-    n = x
-  result = newString(len)
-  for j in countdown(len-1, 0):
-    result[j] = HexChars[int(n and 0xF)]
-    n = n shr 4
-    # handle negative overflow
-    if n == 0 and x < 0: n = -1
+    doAssert c.toHex(6) == "FFFFF8"
+  toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
-proc toHex*[T: SomeInteger](x: T): string =
+proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
   ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
-  toHex(BiggestInt(x), T.sizeof * 2)
+    doAssert toHex(1984'i16) == "07C0"
+  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -2264,17 +2283,28 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-
-  var L = (s.len-1) div digits + s.len
-  result = newString(L)
+  result = newStringOfCap(s.len)
+  let hasPrefix = isDigit(s[s.low]) == false
+  var idx:int
+  if hasPrefix:
+    result.add s[s.low]
+    for i in (s.low + 1)..s.high:
+      idx = i
+      if not isDigit(s[i]):
+        result.add s[i]
+      else:
+        break
+  let partsLen = s.len - idx
+  var L = (partsLen-1) div digits + partsLen
+  result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(len(s)-1, 0):
+  for i in countdown(partsLen-1,0):
     if j == digits:
-      result[L] = sep
+      result[L + idx] = sep
       dec(L)
       j = 0
-    result[L] = s[i]
+    result[L + idx] = s[i + idx]
     inc(j)
     dec(L)
 

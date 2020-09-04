@@ -9,13 +9,12 @@ var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead
 
 
 # packages A-M
-pkg1 "alea", true
+# pkg1 "alea", true
 pkg1 "argparse"
 pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
-pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
-pkg1 "asyncmysql", true
+#pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk", true
-pkg1 "bigints"
+pkg1 "bigints", url = "https://github.com/Araq/nim-bigints"
 pkg1 "binaryheap", false, "nim c -r binaryheap.nim"
 pkg1 "BipBuffer"
 # pkg1 "blscurve", true # pending https://github.com/status-im/nim-blscurve/issues/39
@@ -30,7 +29,6 @@ pkg1 "chronicles", true, "nim c -o:chr -r chronicles.nim"
 when not defined(osx): # testdatagram.nim(560, 54): Check failed
   pkg1 "chronos", true, "nim c -r -d:release tests/testall"
 pkg1 "cligen", false, "nim c -o:cligenn -r cligen.nim"
-pkg1 "coco", true
 pkg1 "combparser"
 pkg1 "compactdict"
 pkg1 "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
@@ -45,7 +43,7 @@ pkg1 "gara"
 pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim"
 # pkg1 "gittyup", true, "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "glob"
-pkg1 "gnuplot"
+pkg1 "gnuplot", false, "nim c gnuplot.nim"
 pkg1 "hts", false, "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth", true
 pkg1 "illwill", false, "nimble examples"
@@ -69,7 +67,7 @@ pkg1 "stint", false, "nim c -o:stintt -r stint.nim"
 # packages N-Z
 pkg2 "nake", false, "nim c nakefile.nim"
 pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
-pkg2 "nesm"
+# pkg2 "nesm", false, "nimble tests" # notice plural 'tests'
 # pkg2 "nico", true
 pkg2 "nicy", false, "nim c -r src/nicy.nim"
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
@@ -86,7 +84,7 @@ pkg2 "nimpy", false, "nim c -r tests/nimfrompy.nim"
 pkg2 "nimquery"
 pkg2 "nimsl", true
 pkg2 "nimsvg"
-# pkg2 "nimterop", true
+pkg2 "nimterop", true, "nimble minitest"
 pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nimx", true, "nim c --threads:on test/main.nim"
 # pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
@@ -97,7 +95,7 @@ pkg2 "optionsutils"
 pkg2 "ormin", true, "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"
-pkg2 "plotly", true, "nim c --oldgensym:on examples/all.nim"
+pkg2 "plotly", true, "nim c examples/all.nim"
 pkg2 "pnm"
 pkg2 "polypbren"
 pkg2 "prologue", true, "nim c -d:release -r tests/test_compile/test_compile.nim"
@@ -121,7 +119,7 @@ pkg2 "tempdir"
 pkg2 "templates"
 pkg2 "tensordsl", false, "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg2 "terminaltables", false, "nim c src/terminaltables.nim"
-pkg2 "termstyle"
+pkg2 "termstyle", false, "nim c -r termstyle.nim"
 pkg2 "timeit"
 pkg2 "timezones"
 pkg2 "tiny_sqlite"
@@ -132,5 +130,5 @@ pkg2 "websocket", false, "nim c websocket.nim"
 # pkg2 "winim", true
 pkg2 "with"
 pkg2 "ws"
-pkg2 "yaml"
+pkg2 "yaml", false, "nim build"
 pkg2 "zero_functional", false, "nim c -r -d:nimWorkaround14447 test.nim"

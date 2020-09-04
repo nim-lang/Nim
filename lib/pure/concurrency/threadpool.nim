@@ -208,7 +208,7 @@ proc finished(fv: var FlowVarBaseObj) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc `=destroy`[T](fv: var FlowVarObj[T]) = 
+proc `=destroy`[T](fv: var FlowVarObj[T]) =
   finished(fv)
   `=destroy`(fv.blob)
 
@@ -321,15 +321,15 @@ var
   currentPoolSize: int
   maxPoolSize = MaxThreadPoolSize
   minPoolSize = 4
-  gSomeReady : Semaphore
+  gSomeReady: Semaphore
   readyWorker: ptr Worker
 
 # A workaround for recursion deadlock issue
 # https://github.com/nim-lang/Nim/issues/4597
 var
   numSlavesLock: Lock
-  numSlavesRunning {.guard: numSlavesLock}: int
-  numSlavesWaiting {.guard: numSlavesLock}: int
+  numSlavesRunning {.guard: numSlavesLock.}: int
+  numSlavesWaiting {.guard: numSlavesLock.}: int
   isSlave {.threadvar.}: bool
 
 numSlavesLock.initLock
@@ -464,7 +464,7 @@ proc pinnedSpawn*(id: ThreadId; call: sink typed): void {.magic: "Spawn".}
   ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
   ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
-template spawnX*(call): void =
+template spawnX*(call) =
   ## Spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread.
   ##

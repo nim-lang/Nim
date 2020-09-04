@@ -59,3 +59,24 @@ discard $(x1,)
 # bug #13698
 let n: csize = 1 # xxx should that be csize_t or is that essential here?
 doAssert $n.int32 == "1"
+
+# bug #14616
+
+let limit = 1'u64
+
+let rangeVar = 0'u64 ..< limit
+
+doAssert repr(rangeVar) == """[a = 0,
+b = 0]
+"""
+
+# bug #15210
+
+let a3 = not 0'u64
+var success = false
+try:
+  discard a3.int64
+except RangeDefect:
+  success = true
+
+doAssert success, "conversion should fail at runtime"

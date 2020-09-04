@@ -101,7 +101,7 @@
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
-- Add `ssl_config` module containing lists of secure ciphers as recommended by
+- Added a `ssl_config` module containing lists of secure ciphers as recommended by
   [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
 
 - `net.newContext` now defaults to the list of ciphers targeting
@@ -110,27 +110,28 @@
   users from the use of weak and insecure ciphers while still provides
   adequate compatibility with the majority of the Internet.
 
-- new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json
-  serialization/deserialization of custom types.
+- A new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` operations for json
+  serialization/deserialization of custom types was added.
 
-- new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
-- Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator`
+- A new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``
+  was added.
+- Added `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator`
   with `outLatex` output.
-- Add `os.normalizeExe`, e.g.: `koch` => `./koch`.
+- Added `os.normalizeExe`, e.g.: `koch` => `./koch`.
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720`
   to keep old behavior.
-- Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
-- Add `typetraits.elementType` to get element type of an iterable.
+- Added `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Added `typetraits.elementType` to get element type of an iterable.
 - `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
   `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
   `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
-- add `macros.extractDocCommentsAndRunnables` helper
+- Added `macros.extractDocCommentsAndRunnables` helper
 
 - `strformat.fmt` and `strformat.&` support `= specifier`. `fmt"{expr=}"` now
   expands to `fmt"expr={expr}"`.
 - deprecations: `os.existsDir` => `dirExists`, `os.existsFile` => `fileExists`
 
-- Add `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
+- Added `jsre` module, [Regular Expressions for the JavaScript target.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)
 - Made `maxLines` argument `Positive` in `logging.newRollingFileLogger`,
   because negative values will result in a new file being created for each logged
   line which doesn't make sense.
@@ -139,10 +140,40 @@
 - Tables, HashSets, SharedTables and deques don't require anymore that the passed
   initial size must be a power of two - this is done internally.
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
+  `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
+- Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
+
+- Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
+
+- Added `deques.toDeque`, which creates a deque from an openArray. The usage is
+  similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty deque and add items manually.
+  
+- `std/with`, `sugar.dup` now support object field assignment expression:
+  ```nim
+  import std/with
+
+  type Foo = object
+    x, y: int
+
+  var foo = Foo()
+  with foo:
+    x = 10
+    y = 20
+
+  echo foo
+  ```
+
+- Proc `math.round` is no longer deprecated. The advice to use `strformat` instead
+  cannot be applied to every use case. The limitations and the (lack of) reliability
+  of `round` are well documented.
 
 
 
 ## Language changes
+
+- The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
+  `wasMoved` calls where needed.
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.
   The discriminator value doesn't have to be a constant either. If you have a
@@ -215,6 +246,10 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
+- There is a new experimental feature called "strictFuncs" which makes the definition of
+  `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
+  for more information.
+
 
 ## Compiler changes
 
@@ -256,8 +291,13 @@ proc mydiv(a, b): int {.raises: [].} =
 - Removed the `--oldNewlines` switch.
 - Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
 - Removed the `--oldast` switch.
+- Removed the `--oldgensym` switch
 - `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is
   now "typed" instead of "stmt".
+- Sink inference is now disabled per default and has to enabled explicitly via
+  `--sinkInference:on`. *Note*: For the standard library sink inference remains
+  enabled. This change is most relevant for the `--gc:arc`, `--gc:orc` memory
+  management modes.
 
 
 ## Tool changes

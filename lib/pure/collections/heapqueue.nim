@@ -156,10 +156,10 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
-  if heap.len > 0 and heapCmp(heap[0], item):
-    swap(item, heap[0])
+  result = item
+  if heap.len > 0 and heapCmp(heap.data[0], item):
+    swap(result, heap.data[0])
     siftup(heap, 0)
-  return item
 
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Remove all elements from `heap`, making it empty.

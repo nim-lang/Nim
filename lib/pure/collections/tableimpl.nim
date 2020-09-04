@@ -78,22 +78,52 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template delImplIdx(t, i) =
+# delImplIdx is KnuthV3 Algo6.4R adapted to i=i+1 (from i=i-1) which has come to
+# be called "back shift delete".  It shifts elements in the collision cluster of
+# a victim backward to make things as-if the victim were never inserted in the
+# first place.  This is desirable to keep things "ageless" after many deletes.
+# It is trickier than you might guess since initial probe (aka "home") locations
+# of keys in a cluster may collide and since table addresses wrap around.
+#
+# A before-after diagram might look like ('.' means empty):
+#   slot:   0   1   2   3   4   5   6   7
+# before(1)
+#   hash1:  6   7   .   3   .   5   5   6  ; Really hash() and msk
+#   data1:  E   F   .   A   .   B   C   D  ; About to delete C @index 6
+# after(2)
+#   hash2:  7   .   .   3   .   5   6   6  ; Really hash() and msk
+#   data2:  F   .   .   A   .   B   D   E  ; After deletion of C
+#
+# This lowers total search depth over the whole table from 1+1+2+2+2+2=10 to 7.
+# Had the victim been B@5, C would need back shifting to slot 5.  Total depth is
+# always lowered by at least 1, e.g. victim A@3.  This is all quite fast when
+# empty slots are frequent (also needed to keep insert/miss searches fast) and
+# hash() is either fast or avoided (via `.hcode`).  It need not compare keys.
+#
+# delImplIdx realizes the above transformation, but only works for dense Linear
+# Probing, nextTry(h)=h+1.  This is not an important limitation since that's the
+# fastest sequence on any CPU made since the 1980s. { Performance analysis often
+# overweights "key cmp" neglecting cache behavior, giving bad ideas how big/slow
+# tables behave (when perf matters most!).  Comparing hcode first means usually
+# only 1 key cmp is needed for *any* seq.  Timing only predictable activity,
+# small tables, and/or integer keys often perpetuates such bad ideas. }
+
+template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
     block outer:
       while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
+        var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hcode = 0              # mark current EMPTY
+        makeEmpty(i)                     # mark current EMPTY
         t.data[i].key = default(type(t.data[i].key))
         t.data[i].val = default(type(t.data[i].val))
         while true:
           i = (i + 1) and msk            # increment mod table size
-          if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
+          if cellEmpty(i):               # end of collision cluster; So all done
             break outer
-          r = t.data[i].hcode and msk    # "home" location of key@i
+          r = cellHash(i) and msk        # initial probe index for key@slot i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
         when defined(js):
@@ -101,10 +131,19 @@ template delImplIdx(t, i) =
         else:
           t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
 
-template delImpl() {.dirty.} =
+template delImpl(makeEmpty, cellEmpty, cellHash) {.dirty.} =
   var hc: Hash
   var i = rawGet(t, key, hc)
-  delImplIdx(t, i)
+  delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+
+template delImplNoHCode(makeEmpty, cellEmpty, cellHash) {.dirty.} =
+  if t.dataLen > 0:
+    var i: Hash = hash(key) and maxHash(t)
+    while not cellEmpty(i):
+      if t.data[i].key == key:
+        delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+        break
+      i = nextTry(i, maxHash(t))
 
 template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:

@@ -454,6 +454,9 @@ Define                   Effect
                          path for the ``sh`` binary, in cases where it is not
                          located in the default location ``/bin/sh``.
 ``noSignalHandler``      Disable the crash handler from ``system.nim``.
+``globalSymbols``        Load all ``{.dynlib.}`` libraries with the ``RTLD_GLOBAL``
+                         flag on Posix systems to resolve symbols in subsequently
+                         loaded libraries.
 ======================   =========================================================
 
 

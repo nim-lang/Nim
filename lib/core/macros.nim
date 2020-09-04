@@ -140,10 +140,6 @@ const
 
 {.push warnings: off.}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
-  ## Constructs an identifier from the string `s`.
-
 proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
   "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
   ## Constructs an identifier from the string `s`.
@@ -281,9 +277,12 @@ else: # bootstrapping substitute
 
 {.pop.}
 
-when defined(nimSymImplTransform):
+when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
-    ## For a typed proc returns the AST after transformation pass.
+    ## For a typed proc returns the AST after transformation pass; this is useful
+    ## for debugging how the compiler transforms code (eg: `defer`, `for`) but
+    ## note that code transformations are implementation dependent and subject to change.
+    ## See an example in `tests/macros/tmacros_various.nim`.
 
 when defined(nimHasSymOwnerInMacro):
   proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
@@ -392,13 +391,6 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, de
   "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
 
 {.pop.}
-
-#proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
-# this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
-# can easily do:
-#   let bracket = semCheck([1, 2])
-#   let fake = semCheck(2.0)
-#   bracket[0] = fake  # constructs a mixed array with ints and floats!
 
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
@@ -829,14 +821,6 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   result = init
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
-
-{.push warnings: off.}
-
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated:
-  "Deprecated since v0.18.1; use one of 'nestList(NimNode, ...)' instead.".} =
-  nestList(newIdentNode(theProc), x)
-
-{.pop.}
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
@@ -1627,21 +1611,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       break
   if result.kind == nnkEmpty:
     error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
-
-
-when not defined(booting):
-  template emit*(e: static[string]): untyped {.deprecated.} =
-    ## Accepts a single string argument and treats it as nim code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nim
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: untyped {.gensym.} =
-      result = parseStmt(e)
-    payload()
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)

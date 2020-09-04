@@ -180,9 +180,8 @@ when defined(gcOrc):
   when defined(nimThinout):
     include cyclebreaker
   else:
-    include cyclicrefs_bacon
+    include orc
     #include cyclecollector
-    #include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:

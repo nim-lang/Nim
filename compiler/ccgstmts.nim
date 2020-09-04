@@ -1292,7 +1292,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       #    handler present or only handlers that did not match.
       linefmt(p, cpsStmts, "*nimErr_ = oldNimErrFin$1_;$n", [lab])
     endBlock(p)
-  if p.prc != nil: raiseExit(p)
+  raiseExit(p)
   if hasExcept: inc p.withinTryWithExcept
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
@@ -1498,7 +1498,7 @@ proc genPragma(p: BProc, n: PNode) =
     of wEmit: genEmit(p, it)
     of wInjectStmt:
       var p = newProc(nil, p.module)
-      p.options = p.options - {optLineTrace, optStackTrace}
+      p.options.excl {optLineTrace, optStackTrace}
       genStmts(p, it[1])
       p.module.injectStmt = p.s(cpsStmts)
     else: discard

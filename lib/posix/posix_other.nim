@@ -10,9 +10,14 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-const
-  hasSpawnH = true # should exist for every Posix system nowadays
-  hasAioH = defined(linux)
+when defined(freertos):
+  const
+    hasSpawnH = false # should exist for every Posix system nowadays
+    hasAioH = false
+else:
+  const
+    hasSpawnH = true # should exist for every Posix system nowadays
+    hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
   # On Linux:
@@ -397,21 +402,55 @@ type
   SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
-  SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
-              pure, final.} = object ## struct sockaddr
-    sa_family*: TSa_Family         ## Address family.
-    sa_data*: array[0..255, char] ## Socket address (variable-length data).
+when defined(lwip):
+  type
+    SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+                pure, final.} = object ## struct sockaddr
+      sa_len*: uint8         ## Address family.
+      sa_family*: TSa_Family         ## Address family.
+      sa_data*: array[0..255, char] ## Socket address (variable-length data).
+else:
+  type
+    SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+                pure, final.} = object ## struct sockaddr
+      sa_family*: TSa_Family         ## Address family.
+      sa_data*: array[0..255, char] ## Socket address (variable-length data).
 
+type
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
     sun_family*: TSa_Family         ## Address family.
     sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
 
-  Sockaddr_storage* {.importc: "struct sockaddr_storage",
-                       header: "<sys/socket.h>",
-                       pure, final.} = object ## struct sockaddr_storage
-    ss_family*: TSa_Family ## Address family.
 
+when defined(lwip):
+  when not defined(lwip6):
+    type
+      Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                          header: "<sys/socket.h>",
+                          pure, final.} = object ## struct sockaddr_storage
+        s2_len*: uint8 ## Address family.
+        ss_family*: TSa_Family ## Address family.
+        s2_data1*: array[2, char] ## Address family.
+        s2_data2*: array[3, uint32] ## Address family.
+  else:
+    type
+      Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                          header: "<sys/socket.h>",
+                          pure, final.} = object ## struct sockaddr_storage
+        s2_len*: uint8 ## Address family.
+        ss_family*: TSa_Family ## Address family.
+        s2_data1*: array[2, char] ## Address family.
+        s2_data2*: array[3, uint32] ## Address family.
+        s2_data3*: array[3, uint32] ## Address family.
+else:
+  type
+    Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                        header: "<sys/socket.h>",
+                        pure, final.} = object ## struct sockaddr_storage
+      ss_family*: TSa_Family ## Address family.
+
+type
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex
     if_index*: cint   ## Numeric index of the interface.
@@ -421,7 +460,7 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: int    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
@@ -530,13 +569,15 @@ type
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
-  TPollfd* {.importc: "struct pollfd", pure, final,
-             header: "<poll.h>".} = object ## struct pollfd
-    fd*: cint        ## The following descriptor being polled.
-    events*: cshort  ## The input event flags (see below).
-    revents*: cshort ## The output event flags (see below).
+when not defined(lwip):
+  type
+    TPollfd* {.importc: "struct pollfd", pure, final,
+              header: "<poll.h>".} = object ## struct pollfd
+      fd*: cint        ## The following descriptor being polled.
+      events*: cshort  ## The input event flags (see below).
+      revents*: cshort ## The output event flags (see below).
 
-  Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
+    Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -545,7 +586,10 @@ var
   timezone* {.importc, header: "<time.h>".}: int
 
 # Regenerate using detect.nim!
-include posix_other_consts
+when defined(lwip):
+  include posix_freertos_consts
+else:
+  include posix_other_consts
 
 when defined(linux):
   var

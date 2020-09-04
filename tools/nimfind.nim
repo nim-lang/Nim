@@ -195,8 +195,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     of cmdArgument:
       let info = p.key.split(':')
       if info.len == 3:
-        let (dir, file, ext) = info[0].splitFile()
-        conf.projectName = findProjectNimFile(conf, dir)
+        conf.projectName = findProjectNimFile(conf, info[0].splitFile.dir)
         if conf.projectName.len == 0: conf.projectName = info[0]
         try:
           conf.m.trackPos = newLineInfo(conf, AbsoluteFile info[0],

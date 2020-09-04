@@ -196,6 +196,9 @@ type
     innerText*: cstring
     textContent*: cstring
     style*: Style
+    baseURI*: cstring
+    parentElement*: Element
+    isConnected*: bool
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
@@ -224,6 +227,7 @@ type
 
   Element* = ref ElementObj
   ElementObj {.importc.} = object of NodeObj
+    className*: cstring
     classList*: ClassList
     checked*: bool
     defaultChecked*: bool
@@ -1320,6 +1324,26 @@ since (1, 3):
     FileReaderObj {.importc.} = object of EventTargetObj
 
     FileReaderState* = distinct range[0'u16..2'u16]
+    RootNodeOptions* = object of RootObj
+      composed*: bool
+    DocumentOrShadowRoot* {.importc.} = object of RootObj
+      activeElement*: Element
+      # styleSheets*: StyleSheetList 
+    ShadowRoot* = ref ShadowRootObj
+    ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
+      delegatesFocus*: bool
+      host*: Element
+      innerHTML*: cstring
+      mode*: cstring # "open" or "closed"
+    ShadowRootInit* = object of RootObj
+      mode*: cstring
+      delegatesFocus*: bool
+
+    HTMLSlotElement* = ref HTMLSlotElementObj
+    HTMLSlotElementObj {.importc.} = object of RootObj
+      name*: cstring
+    SlotOptions* = object of RootObj
+      flatten*: bool
 
   const
     fileReaderEmpty* = 0.FileReaderState
@@ -1481,6 +1505,7 @@ proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
 proc hasAttribute*(n: Node, attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
+proc normalize*(n: Node)
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
@@ -1490,6 +1515,25 @@ proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
 proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
+proc compareDocumentPosition*(n: Node, otherNode:Node): int
+proc lookupPrefix*(n: Node): cstring
+proc lookupNamespaceURI*(n: Node): cstring
+proc isDefaultNamespace*(n: Node): bool
+proc contains*(n: Node): bool
+proc isEqualNode*(n: Node): bool
+proc isSameNode*(n: Node): bool
+
+since (1, 3):
+  proc getRootNode*(n: Node,options: RootNodeOptions): Node
+
+  # DocumentOrShadowRoot
+  proc getSelection*(n: DocumentOrShadowRoot): Selection
+  proc elementFromPoint*(n: DocumentOrShadowRoot; x, y: float): Element
+
+  # shadow dom
+  proc attachShadow*(n: Element): ShadowRoot
+  proc assignedNodes*(n: HTMLSlotElement; options: SlotOptions): seq[Node]
+  proc assignedElements*(n: HTMLSlotElement; options: SlotOptions): seq[Element]
 
 # Document "methods"
 proc createAttribute*(d: Document, identifier: cstring): Node

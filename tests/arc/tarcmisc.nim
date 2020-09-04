@@ -3,6 +3,11 @@ discard """
 123xyzabc
 destroyed: false
 destroyed: false
+destroyed2: false
+destroyed2: false
+destroying variable: 2
+destroying variable: 1
+whiley ends :(
 1
 (x: "0")
 (x: "1")
@@ -16,8 +21,14 @@ destroyed: false
 (x: "9")
 (x: "10")
 0
+new line before - @['a']
+new line after - @['a']
+finalizer
+aaaaa
+hello
 closed
-destroying variable
+destroying variable: 20
+destroying variable: 10
 '''
   cmd: "nim c --gc:arc $file"
 """
@@ -40,11 +51,12 @@ type Variable = ref object
   value: int
 
 proc `=destroy`(self: var typeof(Variable()[])) =
-  echo "destroying variable"
+  echo "destroying variable: ",self.value
 
 proc newVariable(value: int): Variable =
   result = Variable()
   result.value = value
+  #echo "creating variable: ",result.value
 
 proc test(count: int) =
   var v {.global.} = newVariable(10)
@@ -57,6 +69,28 @@ proc test(count: int) =
 
 test(3)
 
+proc test2(count: int) =
+  #block: #XXX: Fails with block currently
+    var v {.global.} = newVariable(20)
+
+    var count = count - 1
+    if count == 0: return
+
+    test2(count)
+    echo "destroyed2: ", v.isNil
+
+test2(3)
+
+proc whiley =
+  var a = newVariable(1)
+  while true:
+    var b = newVariable(2)
+    if true: raise newException(CatchableError, "test")
+
+try:
+  whiley()
+except CatchableError:
+  echo "whiley ends :("
 
 #------------------------------------------------------------------------------
 # issue #13810
@@ -209,3 +243,107 @@ proc setParent(self: SimpleLoopB, parent: SimpleLoopB) =
 
 var l = SimpleLoopB()
 l.setParent(l)
+
+
+# bug #14968
+import times
+let currentTime = now().utc
+
+
+# bug #14994
+import sequtils
+var newLine = @['a']
+let indent = newSeq[char]()
+
+echo "new line before - ", newline
+
+newline.insert(indent, 0)
+
+echo "new line after - ", newline
+
+# bug #15044
+
+type
+  Test = ref object
+
+proc test: Test =
+  # broken
+  new(result, proc(x: Test) =
+    echo "finalizer"
+  )
+
+proc tdirectFinalizer =
+  discard test()
+
+tdirectFinalizer()
+
+
+# bug #14480
+proc hello(): int =
+  result = 42
+
+var leaves {.global.} = hello()
+doAssert leaves == 42
+
+# bug #15052
+
+proc mutstrings =
+  var data = "hello"
+  for c in data.mitems():
+    c = 'a'
+  echo data
+
+mutstrings()
+
+# bug #15038
+
+type
+  Machine = ref object
+    hello: string
+
+var machineTypes: seq[tuple[factory: proc(): Machine]]
+
+proc registerMachine(factory: proc(): Machine) =
+  var mCreator = proc(): Machine =
+    result = factory()
+
+  machineTypes.add((factory: mCreator))
+
+proc facproc(): Machine =
+  result = Machine(hello: "hello")
+
+registerMachine(facproc)
+
+proc createMachine =
+  for machine in machineTypes:
+    echo machine.factory().hello
+
+createMachine()
+
+# bug #15122
+
+import tables
+
+type
+  BENodeKind = enum
+    tkBytes,
+    tkList,
+    tkDict
+
+  BENode = object
+    case kind: BENodeKind
+    of tkBytes: strVal: string
+    of tkList: listVal: seq[BENode]
+    of tkDict: dictVal: Table[string, BENode]
+
+var data = {
+  "examples": {
+    "values": BENode(
+      kind: tkList,
+      listVal: @[BENode(kind: tkBytes, strVal: "test")]
+    )
+  }.toTable()
+}.toTable()
+
+# For ARC listVal is empty for some reason
+doAssert data["examples"]["values"].listVal[0].strVal == "test"

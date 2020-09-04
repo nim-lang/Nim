@@ -39,12 +39,12 @@ written as:
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x[i])
       dealloc(x.data)
-      x.data = nil
 
   proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
     # do nothing for self-assignments:
     if a.data == b.data: return
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
@@ -56,6 +56,7 @@ written as:
     # move assignment, optional.
     # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     a.data = b.data
@@ -120,7 +121,6 @@ The general pattern in ``=destroy`` looks like:
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
-      x.field = nil
 
 
 
@@ -149,6 +149,7 @@ The general pattern in ``=sink`` looks like:
 
   proc `=sink`(dest: var T; source: T) =
     `=destroy`(dest)
+    wasMoved(dest)
     dest.field = source.field
 
 
@@ -178,6 +179,7 @@ The general pattern in ``=`` looks like:
     # protect against self-assignments:
     if dest.field != source.field:
       `=destroy`(dest)
+      wasMoved(dest)
       dest.field = duplicateResource(source.field)
 
 
@@ -259,8 +261,14 @@ optimizations (and the current implementation does not).
 Sink parameter inference
 ========================
 
-The current implementation does a limited form of sink parameter
-inference. The `.nosinks`:idx: pragma can be used to disable this inference
+The current implementation can do a limited form of sink parameter
+inference. But it has to be enabled via `--sinkInference:on`, either
+on the command line or via a `push` pragma.
+
+To enable it for a section of code, one can
+use `{.push sinkInference: on.}`...`{.pop.}`.
+
+The `.nosinks`:idx: pragma can be used to disable this inference
 for a single routine:
 
 .. code-block:: nim
@@ -268,8 +276,6 @@ for a single routine:
   proc addX(x: T; child: T) {.nosinks.} =
     x.s.add child
 
-To disable it for a section of code, one can
-use `{.push sinkInference: off.}`...`{.pop.}`.
 
 The details of the inference algorithm are currently undocumented.
 
@@ -352,7 +358,8 @@ Destructor removal
 
 ``wasMoved(x);`` followed by a `=destroy(x)` operation cancel each other
 out. An implementation is encouraged to exploit this in order to improve
-efficiency and code sizes.
+efficiency and code sizes. The current implementation does perform this
+optimization.
 
 
 Self assignments
@@ -507,46 +514,28 @@ to be safe, but for ``ptr`` the compiler has to remain silent about possible
 problems.
 
 
-Owned refs
-==========
+Cursor inference / copy elision
+===============================
 
-**Note**: The ``owned`` type constructor is only available with
-the ``--newruntime`` compiler switch and is experimental.
+The current implementation also performs `.cursor` inference. Cursor inference is
+a form of copy elision.
 
+To see how and when we can do that, think about this question: In `dest = src` when
+do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
+afterwards. If `dest` is a local variable that is simple to analyse. And if `src` is a
+location derived from a formal parameter, we also know it is not mutated! In other
+words, we do a compile-time copy-on-write analysis.
 
-Let ``W`` be an ``owned ref`` type. Conceptually its hooks look like:
-
-.. code-block:: nim
-
-  proc `=destroy`(x: var W) =
-    if x != nil:
-      assert x.refcount == 0, "dangling unowned pointers exist!"
-      `=destroy`(x[])
-      x = nil
-
-  proc `=`(x: var W; y: W) {.error: "owned refs can only be moved".}
-
-  proc `=sink`(x: var W; y: W) =
-    `=destroy`(x)
-    bitwiseCopy x, y # raw pointer copy
-
-
-Let ``U`` be an unowned ``ref`` type. Conceptually its hooks look like:
+This means that "borrowed" views can be written naturally and without explicit pointer
+indirections:
 
 .. code-block:: nim
 
-  proc `=destroy`(x: var U) =
-    if x != nil:
-      dec x.refcount
-
-  proc `=`(x: var U; y: U) =
-    # Note: No need to check for self-assignments here.
-    if y != nil: inc y.refcount
-    if x != nil: dec x.refcount
-    bitwiseCopy x, y # raw pointer copy
-
-  proc `=sink`(x: var U, y: U) {.error.}
-  # Note: Moves are not available.
+  proc main(tab: Table[string, string]) =
+    let v = tab["key"] # inferred as .cursor because 'tab' is not mutated.
+    # no copy into 'v', no destruction of 'v'.
+    use(v)
+    useItAgain(v)
 
 
 Hook lifting

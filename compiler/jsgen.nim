@@ -602,8 +602,16 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
-  of mShlI: applyFormat("($1 << $2)", "($1 << $2)")
-  of mAshrI: applyFormat("($1 >> $2)", "($1 >> $2)")
+  of mShlI: 
+    if n[1].typ.size <= 4:
+      applyFormat("($1 << $2)", "($1 << $2)")
+    else:
+      applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
+  of mAshrI: 
+    if n[1].typ.size <= 4:
+      applyFormat("($1 >> $2)", "($1 >> $2)")
+    else:
+      applyFormat("Math.floor($1 / Math.pow(2,$2))", "Math.floor($1 / Math.pow(2,$2))")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
@@ -653,7 +661,7 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     useMagic(p, "nimFloatToString")
     applyFormat "cstrToNimstr(nimFloatToString($1))"
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
-  of mStrToStr, mUnown: applyFormat("$1", "$1")
+  of mStrToStr, mUnown, mIsolate: applyFormat("$1", "$1")
   else:
     assert false, $op
 
@@ -1069,6 +1077,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       elif b.typ == etyNone:
         internalAssert p.config, b.address == nil
         lineF(p, "$# = [$#, 0];$n", [a.address, b.res])
+      elif x.typ.kind == tyVar and y.typ.kind == tyPtr:
+        lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
+        lineF(p, "$1 = $2;$n", [a.address, b.res])
+        lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
       else:
         internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     else:
@@ -1318,7 +1330,12 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkObjDownConv:
     gen(p, n[0], r)
   of nkHiddenDeref:
-    gen(p, n[0][0], r)
+    gen(p, n[0], r)
+  of nkHiddenAddr:
+    gen(p, n[0], r)
+  of nkStmtListExpr:
+    if n.len == 1: gen(p, n[0], r)
+    else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
   else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
@@ -1689,7 +1706,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyObject:
     var initList: Rope
     createObjInitList(p, t, initIntSet(), initList)
-    result = ("{$1}") % [initList]
+    result = ("({$1})") % [initList]
     if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyLent, tyRef, tyPointer:
     if mapType(p, t) == etyBaseIndex:

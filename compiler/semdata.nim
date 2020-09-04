@@ -35,7 +35,6 @@ type
     inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
-    wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
@@ -85,6 +84,7 @@ type
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
+    templInstCounter*: ref int # gives every template instantiation a unique id
 
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
@@ -212,7 +212,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
   result.options = conf.options
-  result.defaultCC = ccDefault
+  result.defaultCC = ccNimCall
   result.dynlib = nil
   result.notes = conf.notes
   result.warningAsErrors = conf.warningAsErrors

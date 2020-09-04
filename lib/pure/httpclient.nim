@@ -245,7 +245,8 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ##
   ## A ``ValueError`` exception will be raised if the value is not an integer.
   var contentLengthHeader = response.headers.getOrDefault("Content-Length")
-  return contentLengthHeader.parseInt()
+  result = contentLengthHeader.parseInt()
+  doAssert(result >= 0 and result <= high(int32))
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
@@ -1033,6 +1034,11 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
+  ##
+  ## You need to make sure that the ``url`` doesn't contain any newline
+  ## characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
+
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
   var lastURL = url

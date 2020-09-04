@@ -469,9 +469,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       prefer
 
   proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+    result = ""
     let prefer = getPrefer(prefer)
     let t = typ
-    result = ""
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
          sfAnon notin t.sym.flags and t.kind != tySequence:
@@ -543,7 +543,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       else:
         result = "<invalid tyUserTypeClass>"
     of tyBuiltInTypeClass:
-      result = case t.base.kind:
+      result = case t.base.kind
         of tyVar: "var"
         of tyRef: "ref"
         of tyPtr: "ptr"
@@ -679,7 +679,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < t.len - 1: result.add(", ")
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
-      var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: CallingConvToStr[t.callConv]
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
@@ -729,7 +729,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       assert(t.n[0].kind == nkSym)
       result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
@@ -786,7 +786,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     assert(t.n[^1].kind == nkSym)
     result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = Zero
   of tyOrdinal:
@@ -936,7 +936,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
         discard
       of paramsIncompatible:
         result = paramsIncompatible
-      if (m.name.id != n.name.id):
+      if m.name.id != n.name.id:
         # BUGFIX
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
@@ -1070,7 +1070,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst, tyAlias})
+  while a.kind == tyUserTypeClass and tfResolved in a.flags:
+    a = skipTypes(a[^1], {tyGenericInst, tyAlias})
   var b = skipTypes(y, {tyGenericInst, tyAlias})
+  while b.kind == tyUserTypeClass and tfResolved in b.flags:
+    b = skipTypes(b[^1], {tyGenericInst, tyAlias})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
