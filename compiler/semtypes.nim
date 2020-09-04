@@ -915,6 +915,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
+      echo "semAnyRef ", "n: ", n, "i: ", i, "ni: ", ni
       if ni.kind == nkNilLit:
         isNilable = true
       else:
@@ -931,7 +932,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     addSonSkipIntLit(result, t, c.idgen)
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
-    #if not isNilable: result.flags.incl tfNotNil
+    if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
       if optOwnedRefs in c.config.globalOptions:
@@ -1561,6 +1562,8 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
+      if modifier == tyRef:
+        dummyType.flags.incl tfNotNil
       if modifier == tyTypeDesc:
         dummyType.flags.incl tfConceptMatchedTypeSym
         dummyType.flags.incl tfCheckedForDestructor
