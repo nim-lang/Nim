@@ -2577,7 +2577,7 @@ proc genHeader(): Rope =
     if (typeof Uint32Array === 'undefined') Uint32Array = Array;
     if (typeof Float32Array === 'undefined') Float32Array = Array;
     if (typeof Float64Array === 'undefined') Float64Array = Array;
-  """.format(VersionAsString))
+  """.unindent.format(VersionAsString))
 
 proc addHcrInitGuards(p: PProc, n: PNode,
                       moduleLoadedVar: Rope, inInitGuard: var bool) =
