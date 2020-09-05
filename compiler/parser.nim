@@ -1444,7 +1444,7 @@ proc parseExprStmt(p: var Parser): PNode =
         result.add(commandParam(p, isFirstParam, pmNormal))
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
-      result = newNode(nkCommand, a.info, @[a])
+      result = newTreeI(nkCommand, a.info, a)
       while true:
         result.add(commandParam(p, isFirstParam, pmNormal))
         if p.tok.tokType != tkComma: break
