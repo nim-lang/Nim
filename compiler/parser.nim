@@ -2174,7 +2174,7 @@ proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode =
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
-  of tkIf: result = if maybeExpr: parseIfExpr(p, nkIfExpr) else: parseIfOrWhen(p, nkIfStmt)
+  of tkIf: result = if maybeExpr: parseIfExpr(p, nkIfStmt) else: parseIfOrWhen(p, nkIfStmt)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=false)
