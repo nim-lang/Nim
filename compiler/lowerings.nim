@@ -369,14 +369,3 @@ proc genLen*(g: ModuleGraph; n: PNode): PNode =
     result[0] = newSymNode(getSysMagic(g, n.info, "len", mLengthSeq))
     result[1] = n
 
-proc hoistExpr*(varSection, expr: PNode, name: PIdent, owner: PSym): PSym =
-  result = newSym(skLet, name, owner, varSection.info, owner.options)
-  result.flags.incl sfHoisted
-  result.typ = expr.typ
-
-  var varDef = newNodeI(nkIdentDefs, varSection.info, 3)
-  varDef[0] = newSymNode(result)
-  varDef[1] = newNodeI(nkEmpty, varSection.info)
-  varDef[2] = expr
-
-  varSection.add varDef

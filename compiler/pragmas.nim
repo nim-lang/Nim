@@ -532,7 +532,7 @@ proc processLink(c: PContext, n: PNode) =
 proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
-    result = newNode(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
+    result = newNodeI(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
@@ -563,7 +563,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       a = c + 1
   else:
     illFormedAstLocal(n, con.config)
-    result = newNode(nkAsmStmt, n.info)
+    result = newNodeI(nkAsmStmt, n.info)
 
 proc pragmaEmit(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -626,7 +626,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
     invalidPragma(c, n)
 
   var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
-  userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
+  userPragma.ast = newTreeI(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
