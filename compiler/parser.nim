@@ -1155,7 +1155,29 @@ template nimprettyDontTouch(body) =
   when defined(nimpretty):
     dec p.em.keepIndents
 
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode
+proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
+  #| condExpr = expr colcom expr optInd
+  #|         ('elif' expr colcom expr optInd)*
+  #|          'else' colcom expr
+  #| ifExpr = 'if' condExpr
+  #| whenExpr = 'when' condExpr
+  result = newNodeP(kind, p)
+  while true:
+    getTok(p)                 # skip `if`, `when`, `elif`
+    var branch = newNodeP(nkElifExpr, p)
+    optInd(p, branch)
+    branch.add(parseExpr(p))
+    colcom(p, branch)
+    branch.add(parseStmt(p))
+    skipComment(p, branch)
+    result.add(branch)
+    if p.tok.tokType != tkElif: break
+  if p.tok.tokType == tkElse:
+    var branch = newNodeP(nkElseExpr, p)
+    eat(p, tkElse)
+    colcom(p, branch)
+    branch.add(parseStmt(p))
+    result.add(branch)
 
 proc parseExpr(p: var Parser): PNode =
   #| expr = (blockExpr
@@ -1499,7 +1521,7 @@ proc parseReturnOrRaise(p: var Parser, kind: TNodeKind): PNode =
     e = postExprBlocks(p, e)
     result.add(e)
 
-proc parseIfOrWhen(p: var Parser, kind: TNodeKind, maybeExpr = false): PNode =
+proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
   #| condStmt = expr colcom stmt COMMENT?
   #|            (IND{=} 'elif' expr colcom stmt)*
   #|            (IND{=} 'else' colcom stmt)?
@@ -1508,28 +1530,20 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind, maybeExpr = false): PNode =
   result = newNodeP(kind, p)
   while true:
     getTok(p)                 # skip `if`, `when`, `elif`
-    var branch = newNodeP(if maybeExpr: nkElifExpr else: nkElifBranch, p)
+    var branch = newNodeP(nkElifBranch, p)
     optInd(p, branch)
     branch.add(parseExpr(p))
     colcom(p, branch)
     branch.add(parseStmt(p))
     skipComment(p, branch)
     result.add(branch)
-    if not(p.tok.tokType == tkElif and (maybeExpr or sameOrNoInd(p))): break
-  if p.tok.tokType == tkElse and (maybeExpr or sameOrNoInd(p)):
-    var branch = newNodeP(if maybeExpr: nkElseExpr else: nkElse, p)
+    if p.tok.tokType != tkElif or not sameOrNoInd(p): break
+  if p.tok.tokType == tkElse and sameOrNoInd(p):
+    var branch = newNodeP(nkElse, p)
     eat(p, tkElse)
     colcom(p, branch)
     branch.add(parseStmt(p))
     result.add(branch)
-
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
-  #| condExpr = expr colcom expr optInd
-  #|         ('elif' expr colcom expr optInd)*
-  #|          'else' colcom expr
-  #| ifExpr = 'if' condExpr
-  #| whenExpr = 'when' condExpr
-  parseIfOrWhen(p, kind, maybeExpr = true)
 
 proc parseWhile(p: var Parser): PNode =
   #| whileStmt = 'while' expr colcom stmt
@@ -2160,7 +2174,7 @@ proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode =
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
-  of tkIf: result = parseIfOrWhen(p, nkIfStmt, maybeExpr)
+  of tkIf: result = if maybeExpr: parseIfExpr(p, nkIfExpr) else: parseIfOrWhen(p, nkIfStmt)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=false)
