@@ -151,7 +151,7 @@ else:
         importc: "free", header: "<stdlib.h>".}
 
     proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) =
-      L = cast[SysLock](csize_t(c_malloc(sizeof(SysLockObj))))
+      L = cast[SysLock](c_malloc(csize_t(sizeof(SysLockObj))))
       initSysLockAux(L[], attr)
 
     proc deinitSys(L: var SysLock) =
