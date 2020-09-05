@@ -14,6 +14,12 @@ must have been the wind..
 I'm there
 must have been the wind..
 I'm there
+symbol'a'symbol'a'
+symbol'b'symbol'b'
+symbol'a'symbol'b'
+symbol'a'9
+symbol'b'9
+symbol'a'0
 '''
 """
 import mdefaultprocparam
@@ -61,3 +67,17 @@ proc testCut =
   echo cut("I'm gone", 4) & "there"
 
 testCut()
+
+var a = "symbol'a'"
+var b = "symbol'b'"
+
+block:
+  echo p2(a)
+block:
+  echo p2(b)
+block:
+  echo p2(a, b)
+block:
+  echo p3(a)
+  echo p3(b)
+  echo p3(a, 0)

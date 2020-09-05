@@ -2578,7 +2578,7 @@ proc shouldBeBracketExpr(n: PNode): bool =
           n[0] = be
           return true
 
-proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: PNode): PNode =
+proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode) =
   # This takes care of complicated signatures such as:
   # proc foo(a: int, b = a)
   # proc bar(a: int, b: int, c = a + b)
@@ -2607,14 +2607,13 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: PNode): PN
         newNodeI(nkEmpty, letSection.info),
         call[paramPos])
 
-      call[paramPos] = newSymNode(hoistedVarSym)
-    #else: arg we are referring to is already a sym, wether introduced by hoisting or not doesn't matter, we simply reuse it
+      call[paramPos] = newSymNode(hoistedVarSym) # Refer the original arg to its hoisted sym
 
-    return call[paramPos]
+    # arg we refer to is a sym, wether introduced by hoisting or not doesn't matter, we simply reuse it
+    defExpr = call[paramPos]
   else:
     for i in 0..<defExpr.safeLen:
-      let hoisted = hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
-      if hoisted != nil: defExpr[i] = hoisted
+      hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
@@ -2751,8 +2750,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # See the notes in `hoistParamsUsedInDefault` for more details.
       var hoistedParams = newNodeI(nkLetSection, result.info)
       for i in 1..<result.len:
-        let hoisted = hoistParamsUsedInDefault(c, result, hoistedParams, result[i])
-        if hoisted != nil: result[i] = hoisted
+        hoistParamsUsedInDefault(c, result, hoistedParams, result[i])
       result = newTreeIT(nkStmtListExpr, result.info, result.typ, hoistedParams, result)
   of nkWhen:
     if efWantStmt in flags:
