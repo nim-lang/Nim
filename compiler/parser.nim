@@ -521,14 +521,14 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
   else:
     result = a
 
-proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode
+proc complexOrSimpleStmt(p: var Parser): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    result.add complexOrSimpleStmt(p, maybeExpr = true)
+    result.add if p.tok.tokType == tkIf: maybeExpr: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
     while true:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
@@ -2157,7 +2157,7 @@ proc simpleStmt(p: var Parser): PNode =
     else: result = p.emptyNode
   if result.kind notin {nkEmpty, nkCommentStmt}: skipComment(p, result)
 
-proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode =
+proc complexOrSimpleStmt(p: var Parser): PNode =
   #| complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
   #|                     | tryStmt | forStmt
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
@@ -2174,7 +2174,7 @@ proc complexOrSimpleStmt(p: var Parser, maybeExpr = false): PNode =
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
   case p.tok.tokType
-  of tkIf: result = if maybeExpr: parseIfExpr(p, nkIfStmt) else: parseIfOrWhen(p, nkIfStmt)
+  of tkIf: result = parseIfOrWhen(p, nkIfStmt)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
   of tkTry: result = parseTry(p, isExpr=false)
