@@ -1525,8 +1525,8 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     i.inc
 
 proc indentation*(s: string): Natural =
-  ## Returns the amount of indentation that all lines of ``s`` have in common
-  ## (ignoring lines that consist only of whitespace).
+  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## ignoring lines that consist only of whitespace.
   result = int.high
   for line in s.splitLines:
     for i, c in line:
