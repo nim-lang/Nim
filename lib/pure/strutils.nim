@@ -3145,7 +3145,8 @@ bar
     baz
   """.unindent(100) == "foo\nbar\nbaz\n"
 
-    doAssert """foo
+    doAssert """
+    foo
     foo
     bar
   """.unindent() == "foo\nfoo\nbar\n"
