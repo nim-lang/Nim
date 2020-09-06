@@ -1511,6 +1511,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
+  ## * `dedent proc<#unindent,string,Natural,string>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1537,25 +1538,25 @@ proc indentation*(s: string): Natural =
   if result == int.high:
     result = 0
 
-proc unindent*(s: string, count: Natural = indentation(s), padding: string = " "): string
+proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `dedent proc<#dedent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
     let x = """
-      hello
-        there
+      Hello
+        There
     """.unindent()
 
-    doAssert x == "Hello\n  There\n"
+    doAssert x == "Hello\nThere\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1569,6 +1570,30 @@ proc unindent*(s: string, count: Natural = indentation(s), padding: string = " "
         break
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
+
+proc dedent*(s: string, count: Natural = indentation(s)): string
+    {.noSideEffect, rtl, extern: "nsuDedent".} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
+  ## is that this by default only cuts off the amount of indentation that all
+  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ##
+  ## See also:
+  ## * `unindent proc<#unindent,string,Natural,string>`
+  ## * `align proc<#align,string,Natural,char>`_
+  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
+  ## * `spaces proc<#spaces,Natural>`_
+  ## * `indent proc<#indent,string,Natural,string>`_
+  runnableExamples:
+    let x = """
+      Hello
+        There
+    """.dedent()
+
+    doAssert x == "Hello\n  There\n"
+  unindent(s, count, padding)
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
@@ -3145,8 +3170,7 @@ bar
     baz
   """.unindent(100) == "foo\nbar\nbaz\n"
 
-    doAssert """
-    foo
+    doAssert """foo
     foo
     bar
   """.unindent() == "foo\nfoo\nbar\n"
