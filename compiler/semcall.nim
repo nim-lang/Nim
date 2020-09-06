@@ -493,11 +493,19 @@ proc updateDefaultParams(call: PNode) =
       call[i] = def
 
 proc getCallLineInfo(n: PNode): TLineInfo =
-  case n.kind
-  of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
-    getCallLineInfo(n[0])
-  of nkDotExpr: getCallLineInfo(n[1])
-  else: n.info
+  block:
+    case n.kind
+    of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
+      if len(n) > 0:
+        result = getCallLineInfo(n[0])
+        break
+    of nkDotExpr:
+      if len(n) > 1:
+        result = getCallLineInfo(n[1])
+        break
+    else:
+      discard
+    result = n.info
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =
