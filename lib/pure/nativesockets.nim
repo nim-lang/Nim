@@ -185,6 +185,17 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
 
+proc getProtoByName*(name: string): int =
+  when useWinVersion:
+    let protoent = winlean.getprotobyname(name.cstring)
+  else:
+    let protoent = posix.getprotobyname(name.cstring)
+  
+  if protoent == nil:
+    raise newException(OsError, "protocol not found")
+
+  result = protoent.p_proto.int
+
 proc close*(socket: SocketHandle) =
   ## closes a socket.
   when useWinVersion:
