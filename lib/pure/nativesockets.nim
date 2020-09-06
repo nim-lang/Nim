@@ -65,14 +65,14 @@ type
     SOCK_RAW = 3,      ## raw protocols atop the network layer.
     SOCK_SEQPACKET = 5 ## reliable sequenced packet service
 
-  Protocol* = enum    ## third argument to `socket` proc
-    IPPROTO_TCP = 6,  ## Transmission control protocol.
-    IPPROTO_UDP = 17, ## User datagram protocol.
-    IPPROTO_IP,       ## Internet protocol. Unsupported on Windows.
-    IPPROTO_IPV6,     ## Internet Protocol Version 6. Unsupported on Windows.
-    IPPROTO_RAW,      ## Raw IP Packets Protocol. Unsupported on Windows.
-    IPPROTO_ICMP      ## Control message protocol. Unsupported on Windows.
-    IPPROTO_ICMPV6    ## Control message protocol for IPv6. Unsupported on Windows.
+  Protocol* = enum     ## third argument to `socket` proc
+    IPPROTO_IP = 0,    ## Internet protocol.
+    IPPROTO_ICMP = 1   ## Control message protocol.
+    IPPROTO_TCP = 6,   ## Transmission control protocol.
+    IPPROTO_UDP = 17,  ## User datagram protocol.
+    IPPROTO_IPV6 = 41, ## Internet Protocol Version 6.
+    IPPROTO_ICMPV6     ## Control message protocol for IPv6. Unsupported on Windows.
+    IPPROTO_RAW,       ## Raw IP Packets Protocol. Unsupported on Windows.
 
   Servent* = object ## information about a service
     name*: string
