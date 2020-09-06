@@ -804,15 +804,33 @@ when defineSsl:
     result = newSeq[Certificate]()
     if SSL_get_verify_result(sslHandle) != X509_V_OK:
       return
-    let stack = SSL_get0_verified_chain(sslHandle)
-    if stack == nil:
-      return
-    let length = OPENSSL_sk_num(stack)
-    if length == 0:
-      return
-    for i in 0 .. length - 1:
-      let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
-      result.add(i2d_X509(x509))
+    when defined(libressl) or defined(openssl10):
+      let stack = SSL_get_peer_cert_chain(sslHandle)
+      if stack == nil:
+        return
+      # SSL_get_peer_cert_chain does not return the last peer certificate
+      # if called server-side
+      let leafCert = SSL_get_peer_certificate(sslHandle)
+      if leafCert == nil:
+        return
+      if sk_value(stack, 0) != leafCert:
+        sk_insert(stack, cast[pointer](leafCert), 0)
+      let length = sk_num(stack)
+      if length == 0:
+        return
+      for i in 0 .. length - 1:
+        let x509 = cast[PX509](sk_value(stack, i))
+        result.add i2d_X509(x509)
+    else:
+      let stack = SSL_get0_verified_chain(sslHandle)
+      if stack == nil:
+        return
+      let length = OPENSSL_sk_num(stack)
+      if length == 0:
+        return
+      for i in 0 .. length - 1:
+        let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
+        result.add(i2d_X509(x509))
 
   proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to

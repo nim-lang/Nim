@@ -437,8 +437,6 @@ proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_set_session_id_context*(context: SslCtx, sid_ctx: string, sid_ctx_len: int){.cdecl, dynlib: DLLSSLName, importc.}
-proc SSL_get0_verified_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName,
-    importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
@@ -506,10 +504,15 @@ proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
-
-proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
-    dynlib: DLLSSLName, importc.}
+when defined(libressl) or defined(openssl10):
+  proc sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
+  proc sk_value*(stack: PSTACK, index: int): pointer {.cdecl, dynlib: DLLSSLName, importc.}
+  proc sk_insert*(stack: PSTACK, data: pointer, idx: int) {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSL_get_peer_cert_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName, importc.}
+else:
+  proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
+  proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSL_get0_verified_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName, importc.}
 
 proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
     dynlib: DLLSSLName, importc.}
