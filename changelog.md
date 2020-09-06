@@ -148,7 +148,7 @@
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
-  
+
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -168,7 +168,12 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
+- New type: `cuintptr_t` - the same as `uintptr_t` in C.
 
+- `system/excpt`, `asyncfutures`: `-d:nimStackTraceOverride` now has exception
+  stack traces, with support for an efficient implementation that separates the
+  cheap stack unwinding step from the relatively expensive debugging info
+  collection that's done on demand.
 
 ## Language changes
 

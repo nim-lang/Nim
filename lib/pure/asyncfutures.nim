@@ -311,7 +311,12 @@ proc getHint(entry: StackTraceEntry): string =
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
-proc `$`*(entries: seq[StackTraceEntry]): string =
+proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
+  when defined(nimStackTraceOverride):
+    let entries = addDebuggingInfo(stackTraceEntries)
+  else:
+    let entries = stackTraceEntries
+
   result = ""
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
@@ -326,10 +331,10 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Format the entries.
   for entry in entries:
     if entry.procname.isNil:
-      if entry.line == -10:
+      if entry.line == reraisedFromBegin:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
-      else:
+      elif entry.line == reraisedFromEnd:
         indent.dec(2)
         result.add(spaces(indent) & "]#\n")
       continue

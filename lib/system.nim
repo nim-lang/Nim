@@ -1381,6 +1381,12 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
+  # There is a disparity on macOS where Nim's `uint` is `unsigned long long` and
+  # `uintptr_t` is `unsigned long`. Even though both data types are the same
+  # size (64 bits), clang++ refuses to do automatic conversion between them.
+  cuintptr_t* {.importc: "uintptr_t", nodecl.} = uint
+    ## This is the same as the type ``uintptr_t`` in *C*.
+
   cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
