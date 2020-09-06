@@ -39,17 +39,25 @@ type
     of dependsOn: parent: int
     of isRootOf: graphIndex: int
     sym: PSym
+    aliveStart, aliveEnd: int # the range for which the variable is alive.
 
   MutationInfo* = object
     param: PSym
     mutatedHere, connectedVia: TLineInfo
     flags: set[SubgraphFlag]
+    maxMutation, minConnection: int
+    mutations: seq[int]
 
   Partitions = object
+    abstractTime: int
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     unanalysableMutation, performCursorInference: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
+
+proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
+  #echo g.maxMutation, " ", g.minConnection, " ", g.param
+  g.maxMutation > g.minConnection
 
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
@@ -68,26 +76,30 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
 
 proc hasSideEffect(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
-    if g.flags == {isMutated, connectsConstParam}:
+    if g.flags == {isMutated, connectsConstParam} and mutationAfterConnection(g):
       info = g
       return true
   return false
 
 template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
 
-proc registerVariable(c: var Partitions; n: PNode) =
-  if n.kind == nkSym:
-    if isConstParam(n.sym):
-      c.s.add VarIndex(kind: isRootOf, graphIndex: c.graphs.len, sym: n.sym)
-      c.graphs.add MutationInfo(param: n.sym, mutatedHere: unknownLineInfo,
-                            connectedVia: unknownLineInfo, flags: {connectsConstParam})
-    else:
-      c.s.add VarIndex(kind: isEmptyRoot, sym: n.sym)
-
 proc variableId(c: Partitions; x: PSym): int {.inline.} =
   for i in 0 ..< c.s.len:
     if c.s[i].sym == x: return i
   return -1
+
+proc registerVariable(c: var Partitions; n: PNode) =
+  if n.kind == nkSym and variableId(c, n.sym) < 0:
+    if isConstParam(n.sym):
+      c.s.add VarIndex(kind: isRootOf, graphIndex: c.graphs.len, sym: n.sym,
+                       aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
+      c.graphs.add MutationInfo(param: n.sym, mutatedHere: unknownLineInfo,
+                            connectedVia: unknownLineInfo, flags: {connectsConstParam},
+                            maxMutation: -1, minConnection: high(int),
+                            mutations: @[])
+    else:
+      c.s.add VarIndex(kind: isEmptyRoot, sym: n.sym,
+                       aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
 
 proc root(v: var Partitions; start: int): int =
   result = start
@@ -101,7 +113,9 @@ proc root(v: var Partitions; start: int): int =
     while v.s[it].kind == dependsOn:
       let next = v.s[it].parent
       v.s[it] = VarIndex(kind: dependsOn, parent: result,
-                         sym: v.s[it].sym, flags: v.s[it].flags)
+                         sym: v.s[it].sym, flags: v.s[it].flags,
+                         aliveStart: v.s[it].aliveStart,
+                         aliveEnd: v.s[it].aliveEnd)
       it = next
 
 proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
@@ -111,16 +125,22 @@ proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
     case v.s[r].kind
     of isEmptyRoot:
       v.s[r] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len,
-                        sym: v.s[r].sym, flags: v.s[r].flags)
+                        sym: v.s[r].sym, flags: v.s[r].flags,
+                        aliveStart: v.s[r].aliveStart,
+                        aliveEnd: v.s[r].aliveEnd)
       v.graphs.add MutationInfo(param: if isConstParam(s): s else: nil, mutatedHere: info,
-                            connectedVia: unknownLineInfo, flags: {isMutated})
+                            connectedVia: unknownLineInfo, flags: {isMutated},
+                            maxMutation: v.abstractTime, minConnection: high(int),
+                            mutations: @[v.abstractTime])
     of isRootOf:
       let g = addr v.graphs[v.s[r].graphIndex]
       if g.param == nil and isConstParam(s):
         g.param = s
-      if g.mutatedHere == unknownLineInfo:
+      if v.abstractTime > g.maxMutation:
         g.mutatedHere = info
+        g.maxMutation = v.abstractTime
       g.flags.incl isMutated
+      g.mutations.add v.abstractTime
     else:
       assert false, "cannot happen"
   else:
@@ -150,24 +170,39 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
     # for now we always make 'rb' the slave and 'ra' the master:
     var rbFlags: set[SubgraphFlag] = {}
     var mutatedHere = unknownLineInfo
+    var mut = 0
+    var con = v.abstractTime
+    var gb: ptr MutationInfo = nil
     if v.s[rb].kind == isRootOf:
-      var gb = addr v.graphs[v.s[rb].graphIndex]
+      gb = addr v.graphs[v.s[rb].graphIndex]
       if param == nil: param = gb.param
       mutatedHere = gb.mutatedHere
       rbFlags = gb.flags
+      mut = gb.maxMutation
+      con = min(con, gb.minConnection)
 
-    v.s[rb] = VarIndex(kind: dependsOn, parent: ra, sym: v.s[rb].sym, flags: v.s[rb].flags)
+    v.s[rb] = VarIndex(kind: dependsOn, parent: ra, sym: v.s[rb].sym, flags: v.s[rb].flags,
+                       aliveStart: v.s[rb].aliveStart,
+                       aliveEnd: v.s[rb].aliveEnd)
     case v.s[ra].kind
     of isEmptyRoot:
-      v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[ra].sym, flags: v.s[ra].flags)
+      v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[ra].sym,
+                         flags: v.s[ra].flags,
+                         aliveStart: v.s[ra].aliveStart,
+                         aliveEnd: v.s[ra].aliveEnd)
       v.graphs.add MutationInfo(param: param, mutatedHere: mutatedHere,
-                            connectedVia: info, flags: paramFlags + rbFlags)
+                            connectedVia: info, flags: paramFlags + rbFlags,
+                            maxMutation: mut, minConnection: con,
+                            mutations: if gb != nil: gb.mutations else: @[])
     of isRootOf:
       var g = addr v.graphs[v.s[ra].graphIndex]
       if g.param == nil: g.param = param
       if g.mutatedHere == unknownLineInfo: g.mutatedHere = mutatedHere
+      g.minConnection = min(g.minConnection, con)
       g.connectedVia = info
       g.flags.incl paramFlags + rbFlags
+      if gb != nil:
+        g.mutations.add gb.mutations
     else:
       assert false, "cannot happen"
 
@@ -364,6 +399,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
       rhsIsSink(c, src)
 
 proc traverse(c: var Partitions; n: PNode) =
+  inc c.abstractTime
   case n.kind
   of nkLetSection, nkVarSection:
     for child in n:
@@ -384,10 +420,18 @@ proc traverse(c: var Partitions; n: PNode) =
     traverse(c, n[1])
     dec c.inAsgnSource
     deps(c, n[0], n[1])
-  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
+  of nkSym:
+    dec c.abstractTime
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
+      let id = variableId(c, n.sym)
+      if id >= 0:
+        c.s[id].aliveEnd = max(c.s[id].aliveEnd, c.abstractTime)
+
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+    dec c.abstractTime
     discard "do not follow the construct"
   of nkCallKinds:
     for child in n: traverse(c, child)
@@ -450,6 +494,14 @@ proc traverse(c: var Partitions; n: PNode) =
     inc c.inNoSideEffectSection, enforceNoSideEffects
     traverse(c, n.lastSon)
     dec c.inNoSideEffectSection, enforceNoSideEffects
+  of nkWhileStmt, nkForStmt, nkParForStmt:
+    for child in n: traverse(c, child)
+    # analyse loops twice so that 'abstractTime' suffices to detect cases
+    # like:
+    #   while cond:
+    #     mutate(graph)
+    #     connect(graph, cursorVar)
+    for child in n: traverse(c, child)
   else:
     for child in n: traverse(c, child)
 
@@ -464,6 +516,13 @@ proc mutatesNonVarParameters*(s: PSym; n: PNode; info: var MutationInfo): bool =
 
   traverse(par, n)
   result = hasSideEffect(par, info)
+
+proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
+  if isMutated in g.flags:
+    for m in g.mutations:
+      if m in v.aliveStart..v.aliveEnd:
+        return true
+  return false
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = Partitions(performCursorInference: true)
@@ -481,7 +540,7 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
-      if par.s[rid].kind == isRootOf and isMutated in par.graphs[par.s[rid].graphIndex].flags:
+      if par.s[rid].kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].graphIndex], par.s[i]):
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
