@@ -162,7 +162,8 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
-    strictFuncs
+    strictFuncs,
+    views
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
