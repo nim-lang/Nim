@@ -288,13 +288,14 @@ else:
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
 
-proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect,
+  deprecated: "Deprecated since v1.4; there should not be `high(value)`. Use `high(type)`.".}
   ## Returns the highest possible value of an ordinal value `x`.
   ##
   ## As a special semantic rule, `x` may also be a type identifier.
   ##
-  ## See also:
-  ## * `low(T) <#low,T>`_
+  ## **This proc is deprecated**, use this one instead:
+  ## * `high(typedesc) <#high,typedesc[T]>`_
   ##
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
@@ -360,12 +361,13 @@ proc high*(x: string): int {.magic: "High", noSideEffect.}
   ##  var str = "Hello world!"
   ##  high(str) # => 11
 
-proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect,
+  deprecated: "Deprecated since v1.4; there should not be `low(value)`. Use `low(type)`.".}
   ## Returns the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
-  ## See also:
-  ## * `high(T) <#high,T>`_
+  ## **This proc is deprecated**, use this one instead:
+  ## * `low(typedesc) <#low,typedesc[T]>`_
   ##
   ## .. code-block:: Nim
   ##  low(2) # => -9223372036854775808
