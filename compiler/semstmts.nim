@@ -531,7 +531,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     if c.matchedConcept != nil:
       typFlags.incl taConcept
-    typeAllowedCheck(c.config, a.info, typ, symkind, typFlags)
+    typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
     when false: liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
@@ -664,7 +664,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def.kind != nkNilLit:
       if c.matchedConcept != nil:
         typFlags.incl taConcept
-      typeAllowedCheck(c.config, a.info, typ, skConst, typFlags)
+      typeAllowedCheck(c, a.info, typ, skConst, typFlags)
 
     var b: PNode
     if a.kind == nkVarTuple:

@@ -228,9 +228,9 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 
-proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKind;
+proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
-  let t = typeAllowed(typ, kind, flags)
+  let t = typeAllowed(typ, kind, c, flags)
   if t != nil:
     var err: string
     if t == typ:
@@ -240,10 +240,10 @@ proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKi
     else:
       err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
               typeToString(typ), toHumanStr(kind)]
-    localError(conf, info, err)
+    localError(c.config, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
-  typeAllowedCheck(c.config, typ.n.info, typ, skProc)
+  typeAllowedCheck(c, typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
