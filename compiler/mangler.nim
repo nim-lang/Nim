@@ -320,17 +320,24 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   let key = $conflictKey(s)
 
   block:
+    var globalish = false  # true if we should treat this symbol as global
     when p is BModule:
       if g.config.symbolFiles != disabledSf:
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
         counter = getConflictFromCache(g, s)
         break
+    elif p is BProc:
+      # if it's nominally proc but has no proc symbol, then we'll use
+      # the module scope for conflict resolution; this solves a fun
+      # corner-case where we have a toplevel forVar in an inline iterator
+      if p.prc.isNil:
+        globalish = true
 
     # critically, we must check for conflicts at the source module
     # in the event a global symbol is actually foreign to `p`
     # NOTE: constants are effectively global
-    if sfGlobal in s.flags or s.kind == skConst:
+    if sfGlobal in s.flags or s.kind == skConst or globalish:
       var parent = findPendingModule(m, s)
       if parent != nil:   # javascript can yield nil here
         when parent is BModule:
