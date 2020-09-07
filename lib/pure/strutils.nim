@@ -1593,7 +1593,7 @@ proc dedent*(s: string, count: Natural = indentation(s)): string
     """.dedent()
 
     doAssert x == "Hello\n  There\n"
-  unindent(s, count, padding)
+  unindent(s, count, " ")
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
