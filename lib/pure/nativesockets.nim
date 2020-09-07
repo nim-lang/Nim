@@ -186,6 +186,7 @@ proc toSockType*(protocol: Protocol): SockType =
     SOCK_RAW
 
 proc getProtoByName*(name: string): int =
+  ## Returns a protocol code from the database that matches the protocol ``name``.
   when useWinVersion:
     let protoent = winlean.getprotobyname(name.cstring)
   else:

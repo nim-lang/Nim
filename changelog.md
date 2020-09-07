@@ -168,6 +168,9 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
+- Add `getprotobyname` to `winlean`. Add `getProtoByname` to `nativesockets` which returns a protocol code
+  from the database that matches the protocol `name`.
+
 
 
 ## Language changes
