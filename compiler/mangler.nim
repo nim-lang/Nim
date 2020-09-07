@@ -38,14 +38,7 @@ const
   nimDebugMangle {.strdefine.} = ""
 
 type
-  ModuleOrProc* = concept m
-    m.sigConflicts is ConflictsTable
-
-  BackendModule = concept m    ##
-    ## BModule in C or JavaScript backends
-    m.sigConflicts is ConflictsTable
-    m.module is PSym
-    m.config is ConfigRef
+  ModuleOrProc* = BProc or BModule
 
 template config(): ConfigRef = cache.modules.config
 
@@ -82,13 +75,6 @@ proc getSomeNameForModule*(m: PSym): string =
 proc findPendingModule*(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
-
-proc findPendingModule*[Js: BackendModule](m: Js; s: PSym): Js =
-  var ms = getModule(s)
-  if m.module.id == ms.id:
-    result = m
-  else:
-    discard "no way to determine pending module in javascript"
 
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords

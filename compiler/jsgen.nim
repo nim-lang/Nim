@@ -29,23 +29,21 @@ implements the required case distinction.
 
 
 import
-
-  ast, strutils, trees, magicsys, options, mangler, nversion, msgs, sets,
-  idents, types, tables, ropes, math, passes, ccgutils, wordrecg, json,
-  renderer, intsets, cgmeth, lowerings, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap
+  ast, strutils, trees, magicsys, options,
+  nversion, msgs, idents, types, tables,
+  ropes, math, passes, ccgutils, wordrecg, renderer,
+  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  transf, injectdestructors, sourcemap, json, sets
 
 
 from modulegraphs import ModuleGraph, PPassContext
 
 type
-  ConflictsTable* = Table[string, int]
-
   TJSGen = object of PPassContext
     module: PSym
     graph: ModuleGraph
     config: ConfigRef
-    sigConflicts: ConflictsTable
+    sigConflicts: CountTable[SigHash]
 
   BModule = ref TJSGen
   TJSTypeKind = enum       # necessary JS "types"
@@ -217,6 +215,25 @@ proc mapType(typ: PType): TJSTypeKind =
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
 
+proc idOrSig(s: PSym, currentModule: string,
+             sigCollisions: var CountTable[SigHash]): Rope =
+  ## this is the old idOrSig which was previously used for C and JS;
+  ## it is now used only for the Javascript backend.
+  if s.kind in routineKinds and s.typ != nil:
+    let sig = hashProc(s)
+    result = rope($sig)
+    let counter = sigCollisions.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    sigCollisions.inc(sig)
+  else:
+    let sig = hashNonProc(s)
+    result = rope($sig)
+    let counter = sigCollisions.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    sigCollisions.inc(sig)
+
 proc mangleName(m: BModule, s: PSym): Rope =
   proc validJsName(name: string): bool =
     result = true
@@ -258,7 +275,13 @@ proc mangleName(m: BModule, s: PSym): Rope =
       result = rope(x)
     # From ES5 on reserved words can be used as object field names
     if s.kind != skField:
-      result.add(idOrSig(m, s))
+      if m.config.hcrOn:
+        # When hot reloading is enabled, we must ensure that the names
+        # of functions and types will be preserved across rebuilds:
+        result.add(idOrSig(s, m.module.name.s, m.sigConflicts))
+      else:
+        result.add("_")
+        result.add(rope(s.id))
     s.loc.r = result
 
 proc escapeJSString(s: string): string =
@@ -2552,7 +2575,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
-  result.sigConflicts = initTable[string, int]()
+  result.sigConflicts = initCountTable[SigHash]()
   if g.backend == nil:
     g.backend = newGlobals()
   result.graph = g
@@ -2609,7 +2632,7 @@ proc genModule(p: PProc, n: PNode) =
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
-                          idOrSig(p.module, moduleSym)
+                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 
