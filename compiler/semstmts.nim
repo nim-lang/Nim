@@ -322,19 +322,16 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   result.options = c.config.options
 
   proc getLineInfo(n: PNode): TLineInfo =
-    block:
-      case n.kind
-      of nkPostfix:
-        if len(n) > 1:
-          result = getLineInfo(n[1])
-          break
-      of nkAccQuoted, nkPragmaExpr:
-        if len(n) > 0:
-          result = getLineInfo(n[0])
-          break
-      else:
-        discard
-      result = n.info
+    case n.kind
+    of nkPostfix:
+      if len(n) > 1:
+        return getLineInfo(n[1])
+    of nkAccQuoted, nkPragmaExpr:
+      if len(n) > 0:
+        return getLineInfo(n[0])
+    else:
+      discard
+    result = n.info
   let info = getLineInfo(n)
   suggestSym(c.config, info, result, c.graph.usageSym)
 
