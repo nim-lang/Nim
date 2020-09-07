@@ -528,7 +528,7 @@ proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    result.add if p.tok.tokType == tkIf: maybeExpr: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
+    result.add if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
     while true:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
