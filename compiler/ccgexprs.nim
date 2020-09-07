@@ -361,7 +361,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            "$1 = $2;$n",
            [rdLoc(dest), rdLoc(src)])
   of tySet:
-    if mapType(p.config, ty) == ctArray:
+    if mapSetType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
@@ -406,7 +406,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
          [addrLoc(p.config, dest), addrLocOrTemp(src),
          genTypeInfo(p.module, dest.t, dest.lode.info)])
   of tySet:
-    if mapType(p.config, ty) == ctArray:
+    if mapSetType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
@@ -679,7 +679,7 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  let mt = mapType(p.config, e[0].typ)
+  let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
@@ -747,7 +747,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
-  elif mapType(p.config, e[0].typ) == ctArray or isCppRef(p, e.typ):
+  elif mapType(p.config, e[0].typ, mapTypeChooser(e[0])) == ctArray or isCppRef(p, e.typ):
     expr(p, e[0], d)
   else:
     var a: TLoc
@@ -2814,7 +2814,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
     result.add "}"
     #result = rope"{}"
   of tySet:
-    if mapType(p.config, t) == ctArray: result = rope"{}"
+    if mapSetType(p.config, t) == ctArray: result = rope"{}"
     else: result = rope"0"
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)

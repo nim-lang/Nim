@@ -310,14 +310,19 @@ include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
 
+template mapTypeChooser(n: PNode): TSymKind =
+  (if n.kind == nkSym: n.sym.kind else: skVar)
+
+template mapTypeChooser(a: TLoc): TSymKind = mapTypeChooser(a.lode)
+
 proc addrLoc(conf: ConfigRef; a: TLoc): Rope =
   result = a.r
-  if lfIndirect notin a.flags and mapType(conf, a.t) != ctArray:
+  if lfIndirect notin a.flags and mapType(conf, a.t, mapTypeChooser(a)) != ctArray:
     result = "(&" & result & ")"
 
 proc byRefLoc(p: BProc; a: TLoc): Rope =
   result = a.r
-  if lfIndirect notin a.flags and mapType(p.config, a.t) != ctArray and not
+  if lfIndirect notin a.flags and mapType(p.config, a.t, mapTypeChooser(a)) != ctArray and not
       p.module.compileToCpp:
     result = "(&" & result & ")"
 
@@ -364,7 +369,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
         rawConstExpr(p, newNodeIT(nkType, a.lode.info, objType), tmp)
         linefmt(p, cpsStmts,
             "#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
-            [rdLoc(a), rdLoc(tmp), getTypeDesc(p.module, objType)])
+            [rdLoc(a), rdLoc(tmp), getTypeDesc(p.module, objType, mapTypeChooser(a))])
       else:
         rawConstExpr(p, newNodeIT(nkType, a.lode.info, t), tmp)
         genAssignment(p, a, tmp, {})
@@ -420,7 +425,8 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
       linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-              [addrLoc(p.config, loc), getTypeDesc(p.module, loc.t)])
+              [addrLoc(p.config, loc),
+              getTypeDesc(p.module, loc.t, mapTypeChooser(loc))])
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -431,14 +437,14 @@ proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
-      getTypeDesc(p.module, typ)])
+      getTypeDesc(p.module, typ, mapTypeChooser(loc))])
   else:
     if not isTemp or containsGarbageCollectedRef(loc.t):
       # don't use nimZeroMem for temporary values for performance if we can
       # avoid it:
       if not isImportedCppType(typ):
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
-                [addrLoc(p.config, loc), getTypeDesc(p.module, typ)])
+                [addrLoc(p.config, loc), getTypeDesc(p.module, typ, mapTypeChooser(loc))])
     genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
@@ -456,7 +462,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t, skVar), result.r])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -466,7 +472,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
+  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t, skVar), result.r, value])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -488,7 +494,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
-  result.add getTypeDesc(p.module, s.typ)
+  result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
     if sfRegister in s.flags: result.add(" register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
@@ -541,7 +547,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = nil
-      var td = getTypeDesc(p.module, s.loc.t)
+      var td = getTypeDesc(p.module, s.loc.t, skVar)
       if s.constraint.isNil:
         if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
@@ -687,7 +693,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       initLoc(dest, locTemp, lib.path, OnStack)
       dest.r = getTempName(m)
       appcg(m, m.s[cfsDynLibInit],"$1 $2;$n",
-           [getTypeDesc(m, lib.path.typ), rdLoc(dest)])
+           [getTypeDesc(m, lib.path.typ, skVar), rdLoc(dest)])
       expr(p, lib.path, dest)
 
       m.s[cfsVars].add(p.s(cpsLocals))
@@ -727,7 +733,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
       params.add(rdLoc(a))
       params.add(", ")
     let load = "\t$1 = ($2) ($3$4));$n" %
-        [tmp, getTypeDesc(m, sym.typ), params, makeCString($extname)]
+        [tmp, getTypeDesc(m, sym.typ, skVar), params, makeCString($extname)]
     var last = lastSon(n)
     if last.kind == nkHiddenStdConv: last = last[1]
     internalAssert(m.config, last.kind == nkStrLit)
@@ -741,8 +747,8 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   else:
     appcg(m, m.s[cfsDynLibInit],
         "\t$1 = ($2) #nimGetProcAddr($3, $4);$n",
-        [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString($extname)])
-  m.s[cfsVars].addf("$2 $1;$n", [sym.loc.r, getTypeDesc(m, sym.loc.t)])
+        [tmp, getTypeDesc(m, sym.typ, skVar), lib.name, makeCString($extname)])
+  m.s[cfsVars].addf("$2 $1;$n", [sym.loc.r, getTypeDesc(m, sym.loc.t, skVar)])
 
 proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
@@ -754,9 +760,9 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   inc(m.labels, 2)
   appcg(m, m.s[cfsDynLibInit],
       "$1 = ($2*) #nimGetProcAddr($3, $4);$n",
-      [tmp, getTypeDesc(m, sym.typ), lib.name, makeCString($extname)])
+      [tmp, getTypeDesc(m, sym.typ, skVar), lib.name, makeCString($extname)])
   m.s[cfsVars].addf("$2* $1;$n",
-      [sym.loc.r, getTypeDesc(m, sym.loc.t)])
+      [sym.loc.r, getTypeDesc(m, sym.loc.t, skVar)])
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   sym.loc.r = mangleDynLibProc(sym)
@@ -1187,7 +1193,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
         [getTypeDesc(q, sym.typ), actualConstName, genBracedInit(q.initProc, sym.ast, isConst = true)])
     if m.hcrOn:
       # generate the global pointer with the real name
-      q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r])
+      q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r])
       # register it (but ignore the boolean result of hcrRegisterGlobal)
       q.initProc.procSec(cpsLocals).addf(
         "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",
@@ -1201,13 +1207,13 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   if q != m and not containsOrIncl(m.declaredThings, sym.id):
     assert(sym.loc.r != nil)
     if m.hcrOn:
-      m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r]);
+      m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
       m.initProc.procSec(cpsLocals).addf(
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
-        getTypeDesc(m, sym.loc.t), getModuleDllPath(q, sym)])
+        getTypeDesc(m, sym.loc.t, skVar), getModuleDllPath(q, sym)])
     else:
       let headerDecl = "extern NIM_CONST $1 $2;$n" %
-          [getTypeDesc(m, sym.loc.t), sym.loc.r]
+          [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]
       m.s[cfsData].add(headerDecl)
       if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
         p.module.g.generatedHeader.s[cfsData].add(headerDecl)
@@ -1247,7 +1253,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
       if sym.kind in {skLet, skVar, skField, skForVar} and sym.alignment > 0:
         m.s[cfsVars].addf "NIM_ALIGN($1) ", [rope(sym.alignment)]
       m.s[cfsVars].add(if m.hcrOn: "static " else: "extern ")
-      m.s[cfsVars].add(getTypeDesc(m, sym.loc.t))
+      m.s[cfsVars].add(getTypeDesc(m, sym.loc.t, skVar))
       if m.hcrOn: m.s[cfsVars].add("*")
       if lfDynamicLib in sym.loc.flags: m.s[cfsVars].add("*")
       if sfRegister in sym.flags: m.s[cfsVars].add(" register")
@@ -1255,7 +1261,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
       m.s[cfsVars].addf(" $1;$n", [sym.loc.r])
       if m.hcrOn: m.initProc.procSec(cpsLocals).addf(
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
-        getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
+        getTypeDesc(m, sym.loc.t, skVar), getModuleDllPath(m, sym)])
 
 proc addNimDefines(result: var Rope; conf: ConfigRef) {.inline.} =
   result.addf("#define NIM_INTBITS $1\L", [
@@ -1613,10 +1619,10 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
   prc.typ.sym = nil
 
   if not containsOrIncl(m.declaredThings, prc.id):
-    m.s[cfsVars].addf("static $2 $1;$n", [prc.loc.r, getTypeDesc(m, prc.loc.t)])
+    m.s[cfsVars].addf("static $2 $1;$n", [prc.loc.r, getTypeDesc(m, prc.loc.t, skVar)])
 
   result = "\t$1 = ($2) $3($4, $5);$n" %
-      [tmp, getTypeDesc(m, prc.typ), getProcFunc.rope, handle.rope, makeCString(prefix & sym)]
+      [tmp, getTypeDesc(m, prc.typ, skVar), getProcFunc.rope, handle.rope, makeCString(prefix & sym)]
 
 proc genInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,

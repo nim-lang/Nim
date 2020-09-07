@@ -11,8 +11,7 @@
 ## for invalid types like 'openArray[var int]'.
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, semdata, types
+  intsets, ast, renderer, options, semdata, types
 
 type
   TTypeAllowedFlag* = enum
