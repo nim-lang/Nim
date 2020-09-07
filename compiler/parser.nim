@@ -523,6 +523,7 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
 
 proc complexOrSimpleStmt(p: var Parser): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
+proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
@@ -851,30 +852,6 @@ proc simpleExpr(p: var Parser, mode = pmNormal): PNode =
   result = simpleExprAux(p, -1, mode)
   when defined(nimpretty):
     dec p.em.doIndentMore
-
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
-  #| condExpr = expr colcom expr optInd
-  #|         ('elif' expr colcom expr optInd)*
-  #|          'else' colcom expr
-  #| ifExpr = 'if' condExpr
-  #| whenExpr = 'when' condExpr
-  result = newNodeP(kind, p)
-  while true:
-    getTok(p)                 # skip `if`, `when`, `elif`
-    var branch = newNodeP(nkElifExpr, p)
-    optInd(p, branch)
-    branch.add(parseExpr(p))
-    colcom(p, branch)
-    branch.add(parseStmt(p))
-    skipComment(p, branch)
-    result.add(branch)
-    if p.tok.tokType != tkElif: break
-  if p.tok.tokType == tkElse:
-    var branch = newNodeP(nkElseExpr, p)
-    eat(p, tkElse)
-    colcom(p, branch)
-    branch.add(parseStmt(p))
-    result.add(branch)
 
 proc parsePragma(p: var Parser): PNode =
   #| pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
@@ -1540,6 +1517,30 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
     if p.tok.tokType != tkElif or not sameOrNoInd(p): break
   if p.tok.tokType == tkElse and sameOrNoInd(p):
     var branch = newNodeP(nkElse, p)
+    eat(p, tkElse)
+    colcom(p, branch)
+    branch.add(parseStmt(p))
+    result.add(branch)
+
+proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
+  #| condExpr = expr colcom expr optInd
+  #|         ('elif' expr colcom expr optInd)*
+  #|          'else' colcom expr
+  #| ifExpr = 'if' condExpr
+  #| whenExpr = 'when' condExpr
+  result = newNodeP(kind, p)
+  while true:
+    getTok(p)                 # skip `if`, `when`, `elif`
+    var branch = newNodeP(nkElifExpr, p)
+    optInd(p, branch)
+    branch.add(parseExpr(p))
+    colcom(p, branch)
+    branch.add(parseStmt(p))
+    skipComment(p, branch)
+    result.add(branch)
+    if p.tok.tokType != tkElif: break
+  if p.tok.tokType == tkElse:
+    var branch = newNodeP(nkElseExpr, p)
     eat(p, tkElse)
     colcom(p, branch)
     branch.add(parseStmt(p))
