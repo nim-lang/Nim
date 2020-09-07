@@ -546,10 +546,10 @@ proc parsePar(p: var Parser): PNode =
   #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
   #|         | 'when' | 'var' | 'mixin'
   #| par = '(' optInd
-  #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
-  #|           | ';' complexOrSimpleStmt ^+ ';'
+  #|           ( &parKeyw (ifExpr | complexOrSimpleStmt) ^+ ';'
+  #|           | ';' (ifExpr | complexOrSimpleStmt) ^+ ';'
   #|           | pragmaStmt
-  #|           | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+  #|           | simpleExpr ( ('=' expr (';' (ifExpr | complexOrSimpleStmt) ^+ ';' )? )
   #|                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
   #|           optPar ')'
   #
