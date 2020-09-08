@@ -349,8 +349,8 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
-  let cachedUnion {.global.} = rope("union")
-  let cachedStruct {.global.} = rope("struct")
+  let cachedUnion = rope("union")
+  let cachedStruct = rope("struct")
   let t = t.skipTypes({tyAlias, tySink})
   if tfUnion in t.flags: cachedUnion
   else: cachedStruct
@@ -713,7 +713,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       addAbiCheck(m, t, result)
 
   result = getTypePre(m, t, sig)
-  if result != nil:
+  if result != nil and t.kind != tyOpenArray:
     excl(check, t.id)
     return
   case t.kind

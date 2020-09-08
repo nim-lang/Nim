@@ -271,13 +271,6 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
             [addrLoc(p.config, dest), addrLoc(p.config, src), genTypeInfo(p.module, dest.t, dest.lode.info)])
 
-proc reifiedOpenArray(n: PNode): bool {.inline.} =
-  let x = trees.getRoot(n)
-  if x != nil and x.kind == skParam:
-    result = false
-  else:
-    result = true
-
 proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
   assert d.k != locNone
   #  getTemp(p, d.t, d)
@@ -942,10 +935,16 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   let ty = skipTypes(arr.t, abstractVarRange)
   case ty.kind
   of tyOpenArray, tyVarargs:
-    linefmt(p, cpsStmts,
-      "if ($2-$1 != -1 && " &
-      "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
-      [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
+    if reifiedOpenArray(arr.lode):
+      linefmt(p, cpsStmts,
+        "if ($2-$1 != -1 && " &
+        "((NU)($1) >= (NU)($3.l) || (NU)($2) >= (NU)($3.l))){ #raiseIndexError(); $4}$n",
+        [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
+    else:
+      linefmt(p, cpsStmts,
+        "if ($2-$1 != -1 && " &
+        "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
+        [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
     linefmt(p, cpsStmts,
