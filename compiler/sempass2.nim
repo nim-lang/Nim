@@ -1243,8 +1243,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     effects[ensuresEffects] = ensuresSpec
 
   var mutationInfo = MutationInfo()
-  if strictFuncs in c.features and not t.hasSideEffect and t.hasDangerousAssign:
-    t.hasSideEffect = mutatesNonVarParameters(s, body, mutationInfo)
+  if {strictFuncs, views} * c.features != {}:
+    var partitions = computeGraphPartitions(s, body)
+    if not t.hasSideEffect and t.hasDangerousAssign:
+      t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:

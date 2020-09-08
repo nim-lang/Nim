@@ -48,7 +48,7 @@ type
     maxMutation, minConnection: int
     mutations: seq[int]
 
-  Partitions = object
+  Partitions* = object
     abstractTime: int
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
@@ -74,7 +74,7 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
       result.add config $ g.connectedVia
       result.add " is the statement that connected the mutation to the parameter"
 
-proc hasSideEffect(c: var Partitions; info: var MutationInfo): bool =
+proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
     if g.flags == {isMutated, connectsConstParam} and mutationAfterConnection(g):
       info = g
@@ -505,17 +505,16 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
-proc mutatesNonVarParameters*(s: PSym; n: PNode; info: var MutationInfo): bool =
-  var par = Partitions(performCursorInference: false)
+proc computeGraphPartitions*(s: PSym; n: PNode): Partitions =
+  result = Partitions(performCursorInference: false)
   if s.kind != skMacro:
     let params = s.typ.n
     for i in 1..<params.len:
-      registerVariable(par, params[i])
+      registerVariable(result, params[i])
     if resultPos < s.ast.safeLen:
-      registerVariable(par, s.ast[resultPos])
+      registerVariable(result, s.ast[resultPos])
 
-  traverse(par, n)
-  result = hasSideEffect(par, info)
+  traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   if isMutated in g.flags:
@@ -525,13 +524,7 @@ proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   return false
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = Partitions(performCursorInference: true)
-  if s.kind notin {skMacro, skModule}:
-    let params = s.typ.n
-    for i in 1..<params.len:
-      registerVariable(par, params[i])
-    if resultPos < s.ast.safeLen:
-      registerVariable(par, s.ast[resultPos])
+  var par = computeGraphPartitions(s, n)
 
   traverse(par, n)
   for i in 0 ..< par.s.len:
