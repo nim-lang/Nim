@@ -684,9 +684,8 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
   let sig = hashType(t)
   if kind == skParam:
     result = getTypeDescWeak(m, t[0], check, kind) & "*"
-    m.typeCache[sig] = result
   else:
-    result = cacheGetType(m.forwTypeCache, sig)
+    result = cacheGetType(m.typeCache, sig)
     if result == nil:
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
