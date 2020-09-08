@@ -271,6 +271,41 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
             [addrLoc(p.config, dest), addrLoc(p.config, src), genTypeInfo(p.module, dest.t, dest.lode.info)])
 
+proc reifiedOpenArray(n: PNode): bool {.inline.} =
+  let x = trees.getRoot(n)
+  if x != nil and x.kind == skParam:
+    result = false
+  else:
+    result = true
+
+proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
+  assert d.k != locNone
+  #  getTemp(p, d.t, d)
+
+  case a.t.skipTypes(abstractVar).kind
+  of tyOpenArray, tyVarargs:
+    if reifiedOpenArray(a.lode):
+      linefmt(p, cpsStmts, "$1.d = $2.d; $1.l = $2.l;$n",
+        [rdLoc(d), a.rdLoc])
+    else:
+      linefmt(p, cpsStmts, "$1.d = $2; $1.l = $2Len_0;$n",
+        [rdLoc(d), a.rdLoc])
+  of tySequence:
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  of tyArray:
+    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n",
+      [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
+  of tyString:
+    let etyp = skipTypes(a.t, abstractInst)
+    if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  else:
+    internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
+
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
@@ -349,7 +384,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
-    if containsGarbageCollectedRef(dest.t):
+    if reifiedOpenArray(dest.lode):
+      genOpenArrayConv(p, dest, src)
+    elif containsGarbageCollectedRef(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
            [addrLoc(p.config, dest), addrLoc(p.config, src),
@@ -926,8 +963,7 @@ proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
-  let xx = if x.kind == nkHiddenStdConv: x[1] else: x
-  if xx.kind == nkSym and xx.sym.kind == skParam:
+  if not reifiedOpenArray(x):
     # emit range check:
     if optBoundsCheck in p.options:
       linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
@@ -1685,8 +1721,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)+1", [rdLoc(b), rdLoc(c)]))
     else:
-      let xx = if a.kind == nkHiddenStdConv: a[1] else: a
-      if xx.kind == nkSym and xx.sym.kind == skParam:
+      if not reifiedOpenArray(a):
         if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
         else: unaryExpr(p, e, d, "$1Len_0")
       else:
@@ -2038,37 +2073,9 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
   putIntoDest(p, d, n, "(($1) ($2))" %
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
-proc genOpenArrayConv(p: BProc; e: PNode; d: var TLoc) =
-  var a: TLoc
-  initLocExpr(p, e[1], a)
-  if d.k == locNone:
-    getTemp(p, e.typ, d)
-
-  case e[1].typ.skipTypes(abstractVar).kind
-  of tyOpenArray, tyVarargs:
-    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $2Len_0;$n",
-      [rdLoc(d), a.rdLoc])
-  of tySequence:
-    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
-  of tyArray:
-    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n",
-      [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
-  of tyString:
-    let etyp = skipTypes(e.typ, abstractInst)
-    if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
-      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-
-    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
-      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
-  else:
-    internalError(p.config, e.info, "cannot handle " & $e[1].typ.kind)
-
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if destType.kind in {tyOpenArray, tyVarargs}:
-    genOpenArrayConv(p, e, d)
-  elif sameBackendType(destType, e[1].typ):
+  if sameBackendType(destType, e[1].typ):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
@@ -2855,6 +2862,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result.add getDefaultValue(p, t.sons[1], info)
     result.add "}"
     #result = rope"{}"
+  of tyOpenArray, tyVarargs:
+    result = rope"{NIM_NIL, 0}"
   of tySet:
     if mapSetType(p.config, t) == ctArray: result = rope"{}"
     else: result = rope"0"
