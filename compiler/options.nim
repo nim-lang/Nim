@@ -154,7 +154,7 @@ type
     destructor,
     notnil,
     dynamicBindSym,
-    forLoopMacros,
+    forLoopMacros, # not experimental anymore; remains here for backwards compatibility
     caseStmtMacros,
     codeReordering,
     compiletimeFFI,

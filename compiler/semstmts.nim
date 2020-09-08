@@ -890,9 +890,8 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
-  if forLoopMacros in c.features:
-    result = handleForLoopMacro(c, n, flags)
-    if result != nil: return result
+  result = handleForLoopMacro(c, n, flags)
+  if result != nil: return result
   openScope(c)
   result = n
   n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})
