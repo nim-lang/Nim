@@ -508,7 +508,7 @@ proc traverse(c: var Partitions; n: PNode) =
 
 proc computeGraphPartitions*(s: PSym; n: PNode): Partitions =
   result = Partitions(performCursorInference: false)
-  if s.kind != skMacro:
+  if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
       registerVariable(result, params[i])
