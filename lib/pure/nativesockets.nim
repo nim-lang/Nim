@@ -71,8 +71,8 @@ type
     IPPROTO_IP,       ## Internet protocol.
     IPPROTO_IPV6,     ## Internet Protocol Version 6.
     IPPROTO_RAW,      ## Raw IP Packets Protocol. Unsupported on Windows.
-    IPPROTO_ICMP      ## Control message protocol.
-    IPPROTO_ICMPV6    ## Control message protocol for IPv6.
+    IPPROTO_ICMP      ## Internet Control message protocol.
+    IPPROTO_ICMPV6    ## Internet Control message protocol for IPv6.
 
   Servent* = object ## information about a service
     name*: string
@@ -113,7 +113,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
 
 proc `$`*(p: Port): string {.borrow.}
-  ## returns the port number as a string
+  ## Returns the port number as a string
 
 proc toInt*(domain: Domain): cint
   ## Converts the Domain enum to a platform-dependent ``cint``.
@@ -200,7 +200,7 @@ proc toSockType*(protocol: Protocol): SockType =
     SOCK_RAW
 
 proc close*(socket: SocketHandle) =
-  ## closes a socket.
+  ## Closes a socket.
   when useWinVersion:
     discard winlean.closesocket(socket)
   else:
@@ -437,7 +437,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   result.setLen(x)
 
 proc getSockDomain*(socket: SocketHandle): Domain =
-  ## returns the socket's domain (AF_INET or AF_INET6).
+  ## Returns the socket's domain (AF_INET or AF_INET6).
   var name: Sockaddr_in6
   var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
@@ -450,7 +450,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
-  ## return the string representation of address within sockAddr
+  ## Returns the string representation of address within sockAddr
   if sockAddr.sa_family.cint == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family.cint == nativeAfInet6:
@@ -517,7 +517,7 @@ when defined(posix) and not defined(nimdoc):
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
 proc getSockName*(socket: SocketHandle): Port =
-  ## returns the socket's associated port number.
+  ## Returns the socket's associated port number.
   var name: Sockaddr_in
   when useWinVersion:
     name.sin_family = uint16(ord(AF_INET))
@@ -532,7 +532,7 @@ proc getSockName*(socket: SocketHandle): Port =
   result = Port(nativesockets.ntohs(name.sin_port))
 
 proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## returns the socket's local address and port number.
+  ## Returns the socket's local address and port number.
   ##
   ## Similar to POSIX's `getsockname`:idx:.
   case domain
@@ -569,7 +569,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
 proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## returns the socket's peer address and port number.
+  ## Returns the socket's peer address and port number.
   ##
   ## Similar to POSIX's `getpeername`:idx:
   case domain
