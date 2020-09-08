@@ -436,6 +436,7 @@ proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_CTX_set_session_id_context*(context: SslCtx, sid_ctx: string, sid_ctx_len: int){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get0_verified_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName,
     importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,

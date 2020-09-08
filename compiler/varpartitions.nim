@@ -523,6 +523,13 @@ proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
         return true
   return false
 
+proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
+  if isMutated in g.flags:
+    for m in g.mutations:
+      if m in v.aliveStart..v.aliveEnd:
+        return true
+  return false
+
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = computeGraphPartitions(s, n)
 

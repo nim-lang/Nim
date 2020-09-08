@@ -324,11 +324,14 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   proc getLineInfo(n: PNode): TLineInfo =
     case n.kind
     of nkPostfix:
-      getLineInfo(n[1])
+      if len(n) > 1:
+        return getLineInfo(n[1])
     of nkAccQuoted, nkPragmaExpr:
-      getLineInfo(n[0])
+      if len(n) > 0:
+        return getLineInfo(n[0])
     else:
-      n.info
+      discard
+    result = n.info
   let info = getLineInfo(n)
   suggestSym(c.config, info, result, c.graph.usageSym)
 
@@ -887,9 +890,8 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
-  if forLoopMacros in c.features:
-    result = handleForLoopMacro(c, n, flags)
-    if result != nil: return result
+  result = handleForLoopMacro(c, n, flags)
+  if result != nil: return result
   openScope(c)
   result = n
   n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})

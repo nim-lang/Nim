@@ -1283,7 +1283,7 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
   let g = c.graph
-  var effects = newNode(nkEffectList, n.info)
+  var effects = newNodeI(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
   t.isTopLevel = isTopLevel
