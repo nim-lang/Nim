@@ -5,6 +5,7 @@ discard """
 3
 2
 3'''
+  targets: "c cpp"
 """
 
 {.experimental: "views".}

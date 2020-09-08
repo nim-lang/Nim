@@ -329,7 +329,7 @@ proc containsTyRef*(typ: PType): bool =
   result = searchTypeFor(typ, isTyRef)
 
 proc isHiddenPointer(t: PType): bool =
-  result = t.kind in {tyString, tySequence}
+  result = t.kind in {tyString, tySequence, tyOpenArray, tyVarargs}
 
 proc containsHiddenPointer*(typ: PType): bool =
   # returns true if typ contains a string, table or sequence (all the things
