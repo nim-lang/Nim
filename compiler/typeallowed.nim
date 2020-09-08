@@ -186,3 +186,43 @@ proc typeAllowed*(t: PType, kind: TSymKind; c: PContext; flags: TTypeAllowedFlag
   # wrong!
   var marker = initIntSet()
   result = typeAllowedAux(marker, t, kind, c, flags)
+
+proc isViewTypeAux(marker: var IntSet, t: PType): bool
+
+proc isViewTypeNode(marker: var IntSet, n: PNode): bool =
+  case n.kind
+  of nkSym:
+    result = isViewTypeAux(marker, n.typ)
+  of nkOfBranch:
+    result = isViewTypeNode(marker, n.lastSon)
+  else:
+    for child in n:
+      result = isViewTypeNode(marker, child)
+      if result: break
+
+proc isViewTypeAux(marker: var IntSet, t: PType): bool =
+  if containsOrIncl(marker, t.id): return false
+  case t.kind
+  of tyVar, tyLent, tyVarargs, tyOpenArray:
+    result = true
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
+     tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic, tyFromExpr:
+    result = isViewTypeAux(marker, lastSon(t))
+  of tyTuple:
+    for i in 0..<t.len:
+      result = isViewTypeAux(marker, t[i])
+      if result: break
+  of tyObject:
+    result = false
+    if t.n != nil:
+      result = isViewTypeNode(marker, t.n)
+    if t[0] != nil:
+      result = result or isViewTypeAux(marker, t[0])
+  else:
+    # it doesn't matter what these types contain, 'ptr openArray' is not a
+    # view type!
+    result = false
+
+proc isViewType*(t: PType): bool =
+  var marker = initIntSet()
+  result = isViewTypeAux(marker, t)
