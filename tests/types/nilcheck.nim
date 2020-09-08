@@ -1,10 +1,13 @@
 import tables
 
+{.experimental: "notnil".}
+
 type
-  NonNilable* = ref object
+  Nilable* = ref object
     a*: int
+    b*: Nilable
     
-  Nilable* = nil NonNilable
+  NonNilable* = Nilable not nil
 
 # Nilable tests
 
@@ -55,6 +58,10 @@ proc test7(a: Nilable) =
 
 proc test8(a: NonNilable) =
   echo a.a # ok
+
+proc test9(a: Nilable) =
+  if not a.isNil: # and not a.b.isNil:
+    echo a.b.a # ok
 
 var nilable: Nilable
 # test1(nilable)
