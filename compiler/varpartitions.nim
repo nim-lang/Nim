@@ -506,8 +506,8 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
-proc computeGraphPartitions*(s: PSym; n: PNode): Partitions =
-  result = Partitions(performCursorInference: false)
+proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partitions =
+  result = Partitions(performCursorInference: cursorInference)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -533,9 +533,7 @@ proc checkBorrowedLocations*(par: var Partitions; config: ConfigRef) =
         localError(config, s.info, config $ par.graphs[par.s[rid].graphIndex])
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = computeGraphPartitions(s, n)
-
-  traverse(par, n)
+  var par = computeGraphPartitions(s, n, true)
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags == {} and v.sym.kind notin {skParam, skResult} and
