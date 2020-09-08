@@ -17,6 +17,7 @@ import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
+from typeallowed import isViewType
 
 type
   SubgraphFlag = enum
@@ -523,12 +524,13 @@ proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
         return true
   return false
 
-proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
-  if isMutated in g.flags:
-    for m in g.mutations:
-      if m in v.aliveStart..v.aliveEnd:
-        return true
-  return false
+proc checkBorrowedLocations*(par: var Partitions; config: ConfigRef) =
+  for i in 0 ..< par.s.len:
+    let s = par.s[i].sym
+    if s.kind != skParam and isViewType(s.typ):
+      let rid = root(par, i)
+      if par.s[rid].kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].graphIndex], par.s[i]):
+        localError(config, s.info, config $ par.graphs[par.s[rid].graphIndex])
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = computeGraphPartitions(s, n)

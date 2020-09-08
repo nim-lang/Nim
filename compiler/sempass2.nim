@@ -1247,6 +1247,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var partitions = computeGraphPartitions(s, body)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
+    checkBorrowedLocations(partitions, g.config)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
