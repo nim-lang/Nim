@@ -157,7 +157,10 @@ proc mapType(conf: ConfigRef; typ: PType; kind: TSymKind): TCTypeKind =
   of tyChar: result = ctChar
   of tyNil: result = ctPtr
   of tySet: result = mapSetType(conf, typ)
-  of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctArray
+  of tyOpenArray, tyVarargs:
+    if kind == skParam: result = ctArray
+    else: result = ctStruct
+  of tyArray, tyUncheckedArray: result = ctArray
   of tyObject, tyTuple: result = ctStruct
   of tyUserTypeClasses:
     doAssert typ.isResolvedUserTypeClass

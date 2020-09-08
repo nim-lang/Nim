@@ -925,13 +925,23 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
-  initLocExpr(p, y, b) # emit range check:
-  if optBoundsCheck in p.options:
-    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
-            [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
-  inheritLocation(d, a)
-  putIntoDest(p, d, n,
-              ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
+  initLocExpr(p, y, b)
+  let xx = if x.kind == nkHiddenStdConv: x[1] else: x
+  if xx.kind == nkSym and xx.sym.kind == skParam:
+    # emit range check:
+    if optBoundsCheck in p.options:
+      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
+              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+    inheritLocation(d, a)
+    putIntoDest(p, d, n,
+                ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
+  else:
+    if optBoundsCheck in p.options:
+      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.l)){ #raiseIndexError2($1,$2.l-1); $3}$n",
+              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+    inheritLocation(d, a)
+    putIntoDest(p, d, n,
+                ropecg(p.module, "$1.d[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
 
 proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1675,8 +1685,13 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)+1", [rdLoc(b), rdLoc(c)]))
     else:
-      if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
-      else: unaryExpr(p, e, d, "$1Len_0")
+      let xx = if a.kind == nkHiddenStdConv: a[1] else: a
+      if xx.kind == nkSym and xx.sym.kind == skParam:
+        if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
+        else: unaryExpr(p, e, d, "$1Len_0")
+      else:
+        if op == mHigh: unaryExpr(p, e, d, "($1.l-1)")
+        else: unaryExpr(p, e, d, "$1.l")
   of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
@@ -2023,9 +2038,37 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
   putIntoDest(p, d, n, "(($1) ($2))" %
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
+proc genOpenArrayConv(p: BProc; e: PNode; d: var TLoc) =
+  var a: TLoc
+  initLocExpr(p, e[1], a)
+  if d.k == locNone:
+    getTemp(p, e.typ, d)
+
+  case e[1].typ.skipTypes(abstractVar).kind
+  of tyOpenArray, tyVarargs:
+    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $2Len_0;$n",
+      [rdLoc(d), a.rdLoc])
+  of tySequence:
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  of tyArray:
+    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n",
+      [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
+  of tyString:
+    let etyp = skipTypes(e.typ, abstractInst)
+    if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  else:
+    internalError(p.config, e.info, "cannot handle " & $e[1].typ.kind)
+
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
-  if sameBackendType(destType, e[1].typ):
+  if destType.kind in {tyOpenArray, tyVarargs}:
+    genOpenArrayConv(p, e, d)
+  elif sameBackendType(destType, e[1].typ):
     expr(p, e[1], d)
   else:
     genSomeCast(p, e, d)
@@ -2253,13 +2296,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t)])
   of mOffsetOf:
     var dotExpr: PNode
-    block findDotExpr:
-      if e[1].kind == nkDotExpr:
-        dotExpr = e[1]
-      elif e[1].kind == nkCheckedFieldExpr:
-        dotExpr = e[1][0]
-      else:
-        internalError(p.config, e.info, "unknown ast")
+    if e[1].kind == nkDotExpr:
+      dotExpr = e[1]
+    elif e[1].kind == nkCheckedFieldExpr:
+      dotExpr = e[1][0]
+    else:
+      internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
     let tname = getTypeDesc(p.module, t)
     let member =

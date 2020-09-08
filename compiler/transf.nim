@@ -493,7 +493,8 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     else:
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
-    result = transform(c, n[1])
+    #result = transform(c, n[1])
+    result = transformSons(c, n)
     result.typ = takeType(n.typ, n[1].typ)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)

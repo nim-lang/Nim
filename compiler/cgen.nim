@@ -392,7 +392,7 @@ proc genRefAssign(p: BProc, dest, src: TLoc)
 
 proc isComplexValueType(t: PType): bool {.inline.} =
   let t = t.skipTypes(abstractInst + tyUserTypeClasses)
-  result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
+  result = t.kind in {tyArray, tySet, tyTuple, tyObject, tyOpenArray} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
 include ccgreset
