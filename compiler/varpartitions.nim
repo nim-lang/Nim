@@ -375,7 +375,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
   allRoots(src, sources)
 
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap) or isViewType(dest.typ)
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -526,13 +526,27 @@ proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
         return true
   return false
 
+proc cannotBorrow(config: ConfigRef; s: PSym; g: MutationInfo) =
+  var m = "cannot borrow " & s.name.s &
+    "; what it borrows from is potentially mutated"
+
+  if g.mutatedHere != unknownLineInfo:
+    m.add "\n"
+    m.add config $ g.mutatedHere
+    m.add " the mutation is here"
+  if g.connectedVia != unknownLineInfo:
+    m.add "\n"
+    m.add config $ g.connectedVia
+    m.add " is the statement that connected the mutation to the parameter"
+  localError(config, s.info, m)
+
 proc checkBorrowedLocations*(par: var Partitions; config: ConfigRef) =
   for i in 0 ..< par.s.len:
     let s = par.s[i].sym
     if s.kind != skParam and isViewType(s.typ):
       let rid = root(par, i)
       if par.s[rid].kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].graphIndex], par.s[i]):
-        localError(config, s.info, config $ par.graphs[par.s[rid].graphIndex])
+        cannotBorrow(config, s, par.graphs[par.s[rid].graphIndex])
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = computeGraphPartitions(s, n, true)
