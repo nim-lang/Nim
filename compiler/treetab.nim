@@ -10,7 +10,7 @@
 # Implements a table from trees to trees. Does structural equivalence checking.
 
 import
-  hashes, ast, astalgo, types
+  hashes, ast, astalgo, types, renderer
 
 proc hashTree*(n: PNode): Hash =
   if n.isNil:
@@ -20,7 +20,6 @@ proc hashTree*(n: PNode): Hash =
   of nkEmpty, nkNilLit, nkType:
     discard
   of nkIdent:
-    echo "what", "ident"
     result = result !& n.ident.h
   of nkSym:
     result = result !& n.sym.id
@@ -35,6 +34,9 @@ proc hashTree*(n: PNode): Hash =
   else:
     for i in 0..<n.len:
       result = result !& hashTree(n[i])
+  result = !$result
+  #echo "hashTree ", result
+  #echo n
 
 proc treesEquivalent(a, b: PNode): bool =
   if a == b:

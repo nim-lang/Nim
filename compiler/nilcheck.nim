@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lineinfos, strutils, sequtils, strformat, idents, treetab, hashes
+import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
 
 # 
 # Env: int => nilability
@@ -53,7 +53,7 @@ import ast, astalgo, renderer, ropes, types, intsets, tables, msgs, options, lin
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult
+  TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult, TSafe
   
   History = object
     info: TLineInfo
@@ -152,12 +152,25 @@ proc `$`(map: NilMap): string =
     result.add("###\n")
     for name, value in now.locals:
       result.add(&"  {name} {value}\n")
-  
+
+# symbol(result) -> resultId
+# symbol(result[]) -> resultId
+# symbol(result.a) -> !$(resultId !& a)
+# symbol(result.b) -> !$(resultId !& b)
+# what is sym id?
+
+# resultId vs result.sym.id : different ??
+# but the same actually
+# what about var result ??
+
 proc symbol(n: PNode): Symbol =
-  aecho n, n.kind
+  # echo n, n.kind
   case n.kind:
+  of nkIdent:
+    echo "ident?", $n
+    result = 0
   of nkSym:
-    if $n == "result":
+    if n.sym.kind == skResult: # credit to disruptek for showing me that
       result = resultId
     else:
       result = n.sym.id
@@ -165,7 +178,7 @@ proc symbol(n: PNode): Symbol =
     result = symbol(n[0])
   else:
     result = hashTree(n)
-  aecho result
+  # echo result
 
 using
   n: PNode
@@ -208,11 +221,12 @@ proc checkCall(n, conf, map): Check =
 template event(b: History): string =
   case b.kind:
   of TArg: "param with nilable type"
-  of TNil: "isNil"
+  of TNil: "it returns true for isNil"
   of TAssign: "assigns a value which might be nil"
   of TVarArg: "passes it as a var arg which might change to nil"
   of TResult: "it is nil by default"
   of TType: "it has ref type"
+  of TSafe: "it is safe here as it returns false for isNil"
 
 proc derefWarning(n, conf, map; maybe: bool) =
   var a = history(map, symbol(n))
@@ -221,7 +235,18 @@ proc derefWarning(n, conf, map; maybe: bool) =
   res.add("\n")
   for b in a:
     res.add("  " & event(b) & " on line " & $b.info.line & ":" & $b.info.col)
-  message(conf, n.info, warnNilCheck, res)
+  message(conf, n.info, warnStrictNotNil, res)
+
+proc handleNilability(check: Check; n, conf, map) =
+  # message
+  case check.nilability:
+  of Nil:
+    derefWarning(n, conf, map, false)
+  of MaybeNil:
+    derefWarning(n, conf, map, true)
+  else:
+    when defined(nilDebugInfo):
+      message(conf, n.info, hintUser, "can deref " & $n)
     
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
@@ -229,15 +254,8 @@ proc checkDeref(n, conf, map): Check =
   # check a
   result = check(n[0], conf, map)
   
-  # message
-  case result.nilability:
-  of Nil:
-    derefWarning(n[0], conf, map, false)
-  of MaybeNil:
-    derefWarning(n[0], conf, map, true)
-  else:
-    when defined(nilDebugInfo):
-      message(conf, n.info, hintUser, "can deref " & $n)
+  handleNilability(result, n, conf, map)
+
     
 proc checkRefExpr(n, conf; check: Check): Check =
   result = check
@@ -259,6 +277,8 @@ proc checkDotExpr(n, conf, map): Check =
 
 proc checkBracketExpr(n, conf, map): Check =
   result = check(n[0], conf, map)
+  # if might be deref: [] == *(a + index) for cstring
+  handleNilability(result, n[0], conf, map)
   result = check(n[1], conf, result.map)
   result = checkRefExpr(n, conf, result)
 
@@ -293,8 +313,10 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
   case target.kind:
   of nkNilLit:
     #result.map[t] = Nil
+    #echo "target ", t, " ", $target
     result.map.store(t, Nil, TAssign, target.info)
   else:
+    #echo "target ", t, " ", $target
     result.map.store(t, result.nilability, TAssign, target.info)
 
 proc checkReturn(n, conf, map): Check =
@@ -479,19 +501,19 @@ proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       result = newNilMap(map, if base: map else: map.base)
       let a = symbol(n[1])
-      result.store(a, if not isElse: Nil else: Safe, TNil, n.info)
+      result.store(a, if not isElse: Nil else: Safe, if not isElse: TNil else: TSafe, n.info)
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
     result = checkCondition(n[1], conf, map, not isElse, false)
   elif n.kind == nkInfix:
     result = checkInfix(n, conf, map).map
 
 proc checkResult(n, conf, map) =
-  let resultNilability = map[resultId] # "result"]
+  let resultNilability = map[resultId]
   case resultNilability:
   of Nil:
-    message(conf, n.info, warnNilCheck, "return value is nil")
+    message(conf, n.info, warnStrictNotNil, "return value is nil")
   of MaybeNil:
-    message(conf, n.info, warnNilCheck, "return value might be nil")
+    message(conf, n.info, warnStrictNotNil, "return value might be nil")
   of Safe:
     discard    
 
@@ -505,7 +527,7 @@ proc checkElseBranch(condition: PNode, n, conf, map): Check =
 # Faith!
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
-  aecho "n", n, " ", n.kind
+  # echo "n", n, " ", n.kind
   if map.isNil:
     echo "map nil ", n.kind
     writeStackTrace()
@@ -533,6 +555,8 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result.map = map
     for child in n:
       result = check(child, conf, result.map)
+    if n.kind in {nkObjConstr, nkTupleConstr}:
+      result.nilability = Safe
   of nkDotExpr:
     result = checkDotExpr(n, conf, map)
   of nkDerefExpr, nkHiddenDeref:
@@ -587,13 +611,14 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
     result = (Nil, map)
   
 proc typeNilability(typ: PType): Nilability =
-  if not typ.isNil:
-    aecho "type ", typ, " ", typ.flags
+  #if not typ.isNil:
+  #  echo ("type ", typ, " ", typ.flags, " ", typ.kind)
   if typ.isNil: # TODO is it ok
     Safe
   elif tfNotNil in typ.flags:
     Safe
-  elif typ.kind == tyRef:
+  elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
+    # tyVar ? tyVarargs ? tySink ? tyLent ? 
     MaybeNil
   else:
     Safe
@@ -604,8 +629,6 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
 
-  # if "nilcheck" notin filename:
-    # return
   # TODO
   for i, child in s.typ.n.sons:
     if i > 0:

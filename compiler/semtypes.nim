@@ -1746,9 +1746,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           if n[2].kind != nkNilLit:
             localError(c.config, n.info,
               "Invalid syntax. When used with a type, 'not' can be followed only by 'nil'")
-          if notnil notin c.features:
+          if notnil notin c.features and strictNotNil notin c.features:
             localError(c.config, n.info,
-              "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
+              "enable the 'not nil' annotation with {.experimental: \"notnil\".} or " &
+              "  the `strict not nil` annotation with {.experimental: \"strictNotNil\".} " &
+              "  the \"notnil\" one is going to be deprecated, so please use \"strictNotNil\"")
           let resolvedType = result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
           case resolvedType.kind
           of tyGenericParam, tyTypeDesc, tyFromExpr:

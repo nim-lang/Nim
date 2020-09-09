@@ -2,7 +2,8 @@ discard """
   errormsg: "type mismatch"
   line: 13
 """
-{.experimental: "notnil".}
+{.experimental: "strictNotNil".}
+
 type
   PObj = ref TObj not nil
   TObj = object
