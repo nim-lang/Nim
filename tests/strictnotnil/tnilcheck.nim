@@ -1,5 +1,10 @@
+discard """
+  disabled: "true"
+"""
+
+# TODO most tests skip for now
+
 import tables
-import system / ansi_c
 
 {.experimental: "strictNotNil".}
 
