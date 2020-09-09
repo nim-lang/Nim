@@ -1750,10 +1750,6 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
     yield t.data[h].val
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-
-
-
-
 # ---------------------------------------------------------------------------
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
