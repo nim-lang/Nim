@@ -15,7 +15,7 @@ tnilcheck.nim(196, 8) Warning: can't deref other, it is nil [StrictNotNil]
 tnilcheck.nim(209, 8) Warning: can't deref other, it might be nil [StrictNotNil]
 tnilcheck.nim(221, 8) Warning: can't deref other, it might be nil [StrictNotNil]
 '''
-
+action: "compile"
 
 
 
@@ -163,8 +163,8 @@ proc testNilablePtr(a: ptr int) =
 proc testNonNilPtr(a: ptr int not nil) =
   echo a[] # ok
 
-proc raiseCall: NonNilable =
-  raise newException(ValueError, "raise for test")
+proc raiseCall: NonNilable = # return value is nil
+  raise newException(ValueError, "raise for test") 
 
 proc testTryCatch(a: Nilable) =
   var other = a
@@ -220,10 +220,10 @@ proc testBlockScope(a: Nilable) =
     echo other.a # ok
   echo other.a # can't deref other: it might be nil
 
-# ask Araq about this
+# (ask Araq about this: not supported yet) ok we can't really get the nil value from here, so should be ok
 proc testDirectRaiseCall: NonNilable =
   var a = raiseCall()
-  result = NonNilable() # can't return result: it might be nil
+  result = NonNilable()
 
 proc testStmtList =
   var a = Nilable()

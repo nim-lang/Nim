@@ -11,6 +11,8 @@ import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, iden
 import astalgo
 
 # 
+# notes:
+# 
 # Env: int => nilability
 # a = b
 #   nilability a <- nilability b
@@ -34,8 +36,9 @@ import astalgo
 #   nilability result <- nilability b, if return type is not nil and result not safe, error
 # return b
 #   as result = b
-# try: a catch: b finally: c
+# try: a except: b finally: c
 #   in b and c env is union of all possible try first n lines, after union of a and b and c
+#   keep in mind canRaise and finally
 # case a: of b: c
 #   similar to if
 # call(arg)
@@ -49,6 +52,8 @@ import astalgo
 #   is equivalent to if something: .. else: remain
 # new(ref)
 #   ref becomes Safe
+# objConstr(a: b)
+#   returns safe
 # each check returns its nilability and map
 
 type
@@ -73,10 +78,13 @@ type
 
   Check = tuple[nilability: Nilability, map: NilMap]
 
+# useful to have known resultId so we can set it in the beginning and on return
 const resultId = -1
 
 proc check(n: PNode, conf: ConfigRef, map: NilMap): Check
 proc checkCondition(n: PNode, conf: ConfigRef, map: NilMap, isElse: bool, base: bool): NilMap
+
+# the NilMap structure
 
 proc newNilMap(previous: NilMap = nil, base: NilMap = nil): NilMap =
   result = NilMap(
@@ -102,8 +110,11 @@ proc history(map: NilMap, name: Symbol): seq[History] =
     now = now.previous
   return @[]
 
+# helpers for debugging
+
 import macros
 
+# echo-s only when nilDebugInfo is defined
 macro aecho*(a: varargs[untyped]): untyped =
   var e = nnkCall.newTree(ident"echo")
   for b in a:
@@ -112,8 +123,10 @@ macro aecho*(a: varargs[untyped]): untyped =
     when defined(nilDebugInfo):
       `e`
 
+# end of helpers for debugging
+
 proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  let text = if node.isNil: "?" else: $node
+  # let text = if node.isNil: "?" else: $node
   # echo "store " & text & " " & $symbol & " " & $value
   map.locals[symbol] = value
   map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
@@ -154,6 +167,7 @@ proc `$`(map: NilMap): string =
     for name, value in now.locals:
       result.add(&"  {name} {value}\n")
 
+
 # symbol(result) -> resultId
 # symbol(result[]) -> resultId
 # symbol(result.a) -> !$(resultId !& a)
@@ -164,8 +178,11 @@ proc `$`(map: NilMap): string =
 # but the same actually
 # what about var result ??
 
+
 proc symbol(n: PNode): Symbol =
-  # echo n, n.kind
+  ## returns a Symbol for each expression
+  ## the goal is to get an unique Symbol
+  ## but we have to ensure hashTree does it as we expect
   case n.kind:
   of nkIdent:
     # echo "ident?", $n
@@ -192,7 +209,7 @@ proc typeNilability(typ: PType): Nilability
 
 # maybe: if canRaise, return MaybeNil ?
 # no, because the target might be safe already
-# with or without an exceptionw
+# with or without an exception
 proc checkCall(n, conf, map): Check =
   var isNew = false
   result.map = map
@@ -213,9 +230,7 @@ proc checkCall(n, conf, map): Check =
         # echo result.map
 
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
-    # let b = $n[1]
     let b = symbol(n[1])
-    # result.map[b] = Safe
     result.map.store(b, Safe, TAssign, n[1].info, n[1])
     result.nilability = Safe
   else:
@@ -255,7 +270,6 @@ proc handleNilability(check: Check; n, conf, map) =
     
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
-
   # check a
   result = check(n[0], conf, map)
   
@@ -275,7 +289,6 @@ proc checkRefExpr(n, conf; check: Check): Check =
       result.map.store(key, MaybeNil, TType, n.info, n)
       result.nilability = MaybeNil
 
-
 proc checkDotExpr(n, conf, map): Check =
   result = check(n[0], conf, map)
   result = checkRefExpr(n, conf, result)
@@ -286,7 +299,6 @@ proc checkBracketExpr(n, conf, map): Check =
   handleNilability(result, n[0], conf, map)
   result = check(n[1], conf, result.map)
   result = checkRefExpr(n, conf, result)
-
 
 template union(l: Nilability, r: Nilability): Nilability =
   # echo "union ", l, " ", r
@@ -315,19 +327,15 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
     result = (typeNilability(target.typ), map)
   if result.map.isNil:
     result.map = map
-  let t = symbol(target) # $target
-  # echo "asgn ", assigned.kind, " ", assigned
-  # echo map
+  let t = symbol(target)
   case assigned.kind:
   of nkNilLit:
-    #echo "target ", t, " ", $target
     result.map.store(t, Nil, TAssign, target.info, target)
   else:
-    #echo "target ", t, " ", $target
     result.map.store(t, result.nilability, TAssign, target.info, target)
 
 proc checkReturn(n, conf, map): Check =
-  # return n same as result = n; return
+  # return n same as result = n; return ?
   result = check(n[0], conf, map)
   result.map.store(resultId, result.nilability, TAssign, n.info)
 
@@ -670,7 +678,8 @@ proc typeNilability(typ: PType): Nilability =
   elif tfNotNil in typ.flags:
     Safe
   elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
-    # tyVar ? tyVarargs ? tySink ? tyLent ? 
+    # tyVar ? tyVarargs ? tySink ? tyLent ?
+    # TODO spec? tests? 
     MaybeNil
   else:
     Safe
