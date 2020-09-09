@@ -518,8 +518,10 @@ proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partit
   traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
+  #echo "range ", v.aliveStart, " .. ", v.aliveEnd
   if isMutated in g.flags:
     for m in g.mutations:
+      #echo "mutation ", m
       if m in v.aliveStart..v.aliveEnd:
         return true
   return false
