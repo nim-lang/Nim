@@ -80,6 +80,8 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
+  SomeSet*[A] = HashSet[A] | OrderedSet[A]
+    ## Type union representing `HashSet` or `OrderedSet`.
 
 const
   defaultInitialSize* = 64
@@ -906,8 +908,6 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
-
-
 
 # -----------------------------------------------------------------------
 

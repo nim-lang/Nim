@@ -13,6 +13,8 @@
 # TODO: Clean up the exports a bit and everything else in general.
 
 import os, options
+import std/private/since
+
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -198,6 +200,18 @@ proc toSockType*(protocol: Protocol): SockType =
     SOCK_DGRAM
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
+
+proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
+  ## Returns a protocol code from the database that matches the protocol ``name``.
+  when useWinVersion:
+    let protoent = winlean.getprotobyname(name.cstring)
+  else:
+    let protoent = posix.getprotobyname(name.cstring)
+  
+  if protoent == nil:
+    raise newException(OsError, "protocol not found")
+
+  result = protoent.p_proto.int
 
 proc close*(socket: SocketHandle) =
   ## Closes a socket.

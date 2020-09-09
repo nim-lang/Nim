@@ -5469,8 +5469,8 @@ powerful programming construct that still suffices. So the "check list" is:
 (4) Else: Use a macro.
 
 
-For loop macros
----------------
+For loop macro
+--------------
 
 A macro that takes as its only input parameter an expression of the special
 type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
