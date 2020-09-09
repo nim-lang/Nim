@@ -1556,7 +1556,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

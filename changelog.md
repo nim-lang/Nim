@@ -250,6 +250,10 @@ proc mydiv(a, b): int {.raises: [].} =
   `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
   for more information.
 
+- "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
+  an experimental feature. In other words, you don't have to write pragma
+  `{.experimental: "forLoopMacros".}` if you want to use them.
+
 
 ## Compiler changes
 
