@@ -732,7 +732,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           result[i][0] = p(n[i][0], c, s, m)
           result[i][1] = p(n[i][1], c, s, m)
         else:
-          result[i] = p(n[i], c, s, m)          
+          result[i] = p(n[i], c, s, m)
       if mode == normal and isRefConstr:
         result = ensureDestruction(result, n, c, s)
     of nkCallKinds:
