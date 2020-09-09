@@ -1528,7 +1528,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
     elif x.kind == tyGenericInst and concpt.kind == tyConcept:
-      result = if concepts.conceptMatch(c.c, concpt, x, c.bindings): isGeneric
+      result = if concepts.conceptMatch(c.c, concpt, x, c.bindings, f): isGeneric
                else: isNone
     else:
       let genericBody = f[0]
@@ -1652,7 +1652,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isNone
 
   of tyConcept:
-    result = if concepts.conceptMatch(c.c, f, a, c.bindings): isGeneric
+    result = if concepts.conceptMatch(c.c, f, a, c.bindings, nil): isGeneric
              else: isNone
 
   of tyCompositeTypeClass:

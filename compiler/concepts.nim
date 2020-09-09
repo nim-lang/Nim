@@ -14,6 +14,9 @@
 import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer,
   types, intsets
 
+const
+  logBindings = false
+
 proc declareSelf(c: PContext; info: TLineInfo) =
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), ow, info)
@@ -77,6 +80,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     if isSelf(f):
       #let oldLen = m.inferred.len
       result = matchType(c, a, m.potentialImplementation, m)
+      #echo "self is? ", result, " ", a.kind, " ", a, " ", m.potentialImplementation, " ", m.potentialImplementation.kind
       #m.inferred.setLen oldLen
       #echo "A for ", result, " to ", typeToString(a), " to ", typeToString(m.potentialImplementation)
     else:
@@ -85,6 +89,12 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
           if not matchType(c, f[i], a[i], m): return false
         return true
 
+  of tyGenericInvocation:
+    if a.kind == tyGenericInst and a[0].kind == tyGenericBody:
+      if sameType(f[0], a[0]) and f.len == a.len-1:
+        for i in 1 ..< f.len:
+          if not matchType(c, f[i], a[i], m): return false
+        return true
   of tyGenericParam:
     let ak = a.skipTypes({tyVar, tySink, tyLent, tyOwned})
     if ak.kind in {tyTypeDesc, tyStatic} and not isSelf(ak):
@@ -98,11 +108,14 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
           result = matchType(c, f[0], a, m)
           m.inferred.setLen oldLen
           if result:
+            when logBindings: echo "A adding ", f, " ", ak
             m.inferred.add((f, ak))
         elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCString, tyString}:
+          when logBindings: echo "B adding ", f, " ", lastSon ak
           m.inferred.add((f, lastSon ak))
           result = true
         else:
+          when logBindings: echo "C adding ", f, " ", ak
           m.inferred.add((f, ak))
           #echo "binding ", typeToString(ak), " to ", typeToString(f)
           result = true
@@ -196,12 +209,11 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
   let can = candidate.typ.n
   let con = n[0].sym.typ.n
 
-  let common = min(can.len, con.len)
-
-  if can.len < common:
+  if can.len < con.len:
     # too few arguments, cannot be a match:
     return false
 
+  let common = min(can.len, con.len)
   for i in 1 ..< common:
     if not matchType(c, con[i].typ, can[i].typ, m):
       m.inferred.setLen oldLen
@@ -261,7 +273,7 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     # error was reported earlier.
     result = false
 
-proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable): bool =
+proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invocation: PType): bool =
   var m = MatchCon(inferred: @[], potentialImplementation: arg)
   result = conceptMatchNode(c, concpt.n.lastSon, m)
   if result:
@@ -273,9 +285,15 @@ proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable): boo
           if dest == nil or dest.kind != tyGenericParam: break
         if dest != nil:
           bindings.idTablePut(a, dest)
-          #echo "A bind ", a, " ", dest
+          when logBindings: echo "A bind ", a, " ", dest
       else:
         bindings.idTablePut(a, b)
-        #echo "B bind ", a, " ", b
+        when logBindings: echo "B bind ", a, " ", b
     # we have a match, so bind 'arg' itself to 'concpt':
     bindings.idTablePut(concpt, arg)
+    # invocation != nil means we have a non-atomic concept:
+    if invocation != nil and arg.kind == tyGenericInst and invocation.len == arg.len-1:
+      # bind even more generic parameters
+      assert invocation.kind == tyGenericInvocation
+      for i in 1 ..< invocation.len:
+        bindings.idTablePut(invocation[i], arg[i])

@@ -6,7 +6,8 @@ discard """
 1
 2
 3
-yes int'''
+yes int
+string int'''
   joinable: false
 """
 
@@ -79,3 +80,16 @@ proc indexOf[T](a: Indexable[T]; value: T) =
 block:
   var x = @[1, 2, 3]
   indexOf(x, 4)
+
+import tables, typetraits
+
+type
+  Dict[K, V] = concept
+    proc `[]`(s: Self; k: K): V
+    proc `[]=`(s: var Self; k: K; v: V)
+
+proc d[K2, V2](x: Dict[K2, V2]) =
+  echo K2, " ", V2
+
+var x = initTable[string, int]()
+d(x)
