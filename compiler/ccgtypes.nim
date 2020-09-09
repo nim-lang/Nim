@@ -568,7 +568,7 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
   else:
     result = cacheGetType(m.typeCache, sig)
     if result == nil:
-      result = getTypeName(m, t, sig)
+      result = getTypeName(m, t)
       m.typeCache[sig] = result
       let elemType = getTypeDescWeak(m, t[0], check, kind)
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
