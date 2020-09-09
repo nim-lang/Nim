@@ -1026,8 +1026,8 @@ proc genProcAux(m: BModule, prc: PSym) =
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
-    if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param, prc.typ[0])
+    if not param.typ.isCompileTimeOnly:
+      assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
