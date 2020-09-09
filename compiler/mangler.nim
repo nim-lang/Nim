@@ -34,9 +34,6 @@ import # stdlib imports
 
   std / [ strutils, tables, sets ]
 
-const
-  nimDebugMangle {.strdefine.} = ""
-
 type
   ModuleOrProc* = BProc or BModule
 
@@ -107,6 +104,8 @@ proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
     conflicts[key] = result
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym) =
+  ## We currently only use this to remove parameters from a conflict table
+  ## in a module so they can be added into the table in the proc itself.
   del m.sigConflicts, $conflictKey(s)
 
 proc hasImmutableName(s: PSym): bool =
@@ -216,7 +215,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
   block:
     case s.kind
     of skProc:
-      # anonymous closures are special for... reasons
+      # anonymous procs are special for... reasons
       if s.name.s == ":anonymous":
         result = "lambda_"
         result.add $conflictKey(s)
@@ -229,7 +228,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
         assert not s.hasImmutableName
         break
     of skIterator:
-      # iterators need a special treatment for linking reasons
+      # iterators need special treatment for linking reasons
       result = mangle(s.name.s)
       result.add "_"
       result.add $conflictKey(s)
@@ -306,6 +305,21 @@ else:
       result = id.parseInt
     assert result > 0
 
+proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
+  ## `true` if the symbol is presumed to be in module-level scope
+  ## for the purposes of conflict detection
+
+  # critically, we must check for conflicts at the source module
+  # in the event a global symbol is actually foreign to `p`
+  # NOTE: constants are effectively global
+  result = sfGlobal in s.flags or s.kind == skConst
+
+  when p is BProc:
+    # if it's nominally proc but has no proc symbol, then we'll use
+    # the module scope for conflict resolution; this solves a fun
+    # corner-case where we have a toplevel forVar in an inline iterator
+    result = result or p.prc.isNil
+
 proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int] =
   ## take a backend module or a procedure being generated and produce an
   ## appropriate name and the instances of its occurence, which may be
@@ -320,24 +334,14 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   let key = $conflictKey(s)
 
   block:
-    var globalish = false  # true if we should treat this symbol as global
     when p is BModule:
       if g.config.symbolFiles != disabledSf:
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
         counter = getConflictFromCache(g, s)
         break
-    elif p is BProc:
-      # if it's nominally proc but has no proc symbol, then we'll use
-      # the module scope for conflict resolution; this solves a fun
-      # corner-case where we have a toplevel forVar in an inline iterator
-      if p.prc.isNil:
-        globalish = true
 
-    # critically, we must check for conflicts at the source module
-    # in the event a global symbol is actually foreign to `p`
-    # NOTE: constants are effectively global
-    if sfGlobal in s.flags or s.kind == skConst or globalish:
+    if atModuleScope(p, s):
       var parent = findPendingModule(m, s)
       if parent != nil:   # javascript can yield nil here
         when parent is BModule:
@@ -377,8 +381,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  when nimDebugMangle != "":
-    if startsWith($result, nimDebugMangle):
+  when false:
+    if startsWith($result, "unlikely"):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
@@ -413,11 +417,9 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     result = typeName(p, t).rope
     let counter = getOrSet(p.sigConflicts, $result, conflictKey(t))
     result.maybeAppendCounter counter
-
-    when nimDebugMangle != "":
-      if startsWith($result, nimDebugMangle):
-        debug typ
-        result.add "/*" & $key & "*/"
+    if startsWith($result, "unlikely"):
+      debug typ
+      result.add "/*" & $key & "*/"
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
@@ -545,14 +547,15 @@ proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
 proc assignParam*(p: BProc, s: PSym; ret: PType) =
   ## Push the mangled name into the proc's sigConflicts so that we can
   ## make new local identifiers of the same name without colliding with it.
-  # It's very possible that the symbol is already in the module scope!
+
+  # It's likely that the symbol is already in the module scope!
   if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
-    purgeConflict(p.module, s)   # discard any existing counter for this sym
-    if s.kind != skResult:
-      s.loc.r = nil              # from the parent module as we move it local
-      s.loc.r = mangleName(p, s) # and force the new location like a punk
+    purgeConflict(p.module, s) # discard any existing counter for this sym
+    if s.kind == skResult:
+      s.loc.r = ~"result"        # just set it to result if it's skResult
     else:
-      s.loc.r = ~"result"        # or just set it to result if it's skResult
+      s.loc.r = nil              # critically, destroy the location
+      s.loc.r = mangleName(p, s) # then mangle it using the proc scope
   if s.loc.r == nil:
     internalError(p.config, s.info, "assignParam")
 

@@ -981,7 +981,6 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
-  var header = genProcHeader(p, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
@@ -1028,6 +1027,11 @@ proc genProcAux(m: BModule, prc: PSym) =
     let param = prc.typ.n[i].sym
     if not param.typ.isCompileTimeOnly:
       assignParam(p, param, prc.typ[0])
+
+  # only after we've assigned params should we generate the header, as the
+  # params may have been mangled (or, more likely, re-mangled)
+  var header = genProcHeader(p, prc)
+
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
