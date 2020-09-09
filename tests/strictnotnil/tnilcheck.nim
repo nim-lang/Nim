@@ -1,8 +1,61 @@
 discard """
-  disabled: "true"
+cmd: "nim check $options $file"
+nimout: '''
+tnilcheck.nim(77, 8) Warning: can't deref a, it might be nil [StrictNotNil]
+tnilcheck.nim(87, 10) Warning: can't deref a, it is nil [StrictNotNil]
+tnilcheck.nim(97, 8) Warning: can't deref a2, it might be nil [StrictNotNil]
+tnilcheck.nim(117, 10) Warning: can't deref b, it might be nil [StrictNotNil]
+tnilcheck.nim(120, 8) Warning: can't deref b, it might be nil [StrictNotNil]
+tnilcheck.nim(137, 11) Warning: can't deref a.field, it is nil [StrictNotNil]
+tnilcheck.nim(153, 8) Warning: can't deref a, it might be nil
+tnilcheck.nim(161, 9) Warning: can't deref a[], it might be nil [StrictNotNil]
+tnilcheck.nim(166, 1) Warning: return value is nil [StrictNotNil]
+tnilcheck.nim(175, 8) Warning: can't deref other, it might be nil [StrictNotNil]
+tnilcheck.nim(196, 8) Warning: can't deref other, it is nil [StrictNotNil]
+tnilcheck.nim(209, 8) Warning: can't deref other, it might be nil [StrictNotNil]
+tnilcheck.nim(221, 8) Warning: can't deref other, it might be nil [StrictNotNil]
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 
-# TODO most tests skip for now
+# TODO testament support #!
+#! -> $file({line} - 1, {column}) Warning: {msg}
 
 import tables
 
@@ -21,7 +74,8 @@ type
 
 # test deref
 proc testDeref(a: Nilable) =
-  echo a.a > 0 # can't deref a: it might be nil  
+  echo a.a > 0 
+       #! can't deref a: it might be nil  
 
 # test and
 proc testAnd(a: Nilable) =
@@ -30,7 +84,8 @@ proc testAnd(a: Nilable) =
 # test if else
 proc testIfElse(a: Nilable) =
   if a.isNil:
-    echo a.a # can't deref a: it is nil
+    echo a.a 
+         #! can't deref a: it is nil
   else:
     echo a.a # ok
 
@@ -107,6 +162,78 @@ proc testNilablePtr(a: ptr int) =
 
 proc testNonNilPtr(a: ptr int not nil) =
   echo a[] # ok
+
+proc raiseCall: NonNilable =
+  raise newException(ValueError, "raise for test")
+
+proc testTryCatch(a: Nilable) =
+  var other = a
+  try:
+    other = raiseCall()
+  except:
+    discard
+  echo other.a # can't deref other: it might be nil
+
+proc testTryCatchDetectNoRaise(a: Nilable) =
+  var other = Nilable()
+  try:
+    other = nil
+    other = a
+    other = Nilable()
+  except:
+    other = nil
+  echo other.a # ok
+
+proc testTryCatchDetectFinally =
+  var other = Nilable()
+  try:
+    other = nil
+    other = Nilable()
+  except:
+    other = Nilable()
+  finally:
+    other = nil
+  echo other.a # can't deref other: it is nil
+
+proc testTryCatchDetectNilableWithRaise(b: bool) =
+  var other = Nilable()
+  try:
+    if b:
+      other = nil
+    else:
+      other = Nilable()
+      var other2 = raiseCall()
+  except:
+    echo other.a # ok
+
+  echo other.a # can't deref a: it might be nil
+
+proc testRaise(a: Nilable) =
+  if a.isNil:
+    raise newException(ValueError, "a == nil")
+  echo a.a # ok
+
+proc testBlockScope(a: Nilable) =
+  var other = a
+  block:
+    var other = Nilable()
+    echo other.a # ok
+  echo other.a # can't deref other: it might be nil
+
+# ask Araq about this
+proc testDirectRaiseCall: NonNilable =
+  var a = raiseCall()
+  result = NonNilable() # can't return result: it might be nil
+
+proc testStmtList =
+  var a = Nilable()
+  block:
+    a = nil
+    a = Nilable()
+  echo a.a # ok
+
+# ok, but most calls maybe can raise
+# so this makes us mostly force initialization of result with a valid default
 
 # a -> Safe
 # a.field -> Safe
