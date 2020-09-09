@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import sequtils, parseutils, strutils, os, streams, parsecfg
-from hashes import hash
+import sequtils, parseutils, strutils, os, streams, parsecfg,
+  tables, hashes
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -90,6 +90,8 @@ type
     useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
+    inlineWarnings*: Table[int, string] # line information to warning message
+    inlineErrors*: Table[int, string] # line information to error message
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -116,14 +118,41 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc extractSpec(filename: string): string =
-  const tripleQuote = "\"\"\""
-  var x = readFile(filename).string
-  var a = x.find(tripleQuote)
-  var b = x.find(tripleQuote, a+3)
+proc extractSpec(filename: string; spec: var TSpec): string =
+  const
+    tripleQuote = "\"\"\""
+    inlineErrorMarker = "#[tt.error"
+    inlineWarningMarker = "#[tt.warning"
+    inlineEnd = "]#"
+  var s = readFile(filename).string
+
+  var i = 0
+  var a = -1
+  var b = -1
+  var currentLine = 1
+  while i < s.len:
+    if s.continuesWith(tripleQuote, i):
+      if a < 0: a = i
+      else: b = i
+    elif s[i] == '\n':
+      inc currentLine
+    elif s.continuesWith(inlineErrorMarker, i):
+      inc i, len(inlineErrorMarker)
+      let last = s.find(inlineEnd, i)
+      if last > 0:
+        spec.inlineErrors[currentLine] = strip s.substr(i, last-1)
+        spec.action = actionReject
+    elif s.continuesWith(inlineWarningMarker, i):
+      inc i, len(inlineWarningMarker)
+      let last = s.find(inlineEnd, i)
+      if last > 0:
+        spec.inlineWarnings[currentLine] = strip s.substr(i, last-1)
+    inc i
+
+  #!ERROR:
   # look for """ only in the first section
   if a >= 0 and b > a and a < 40:
-    result = x.substr(a+3, b-1).replace("'''", tripleQuote)
+    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
@@ -160,7 +189,7 @@ proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
-  let specStr = extractSpec(filename)
+  let specStr = extractSpec(filename, result)
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)

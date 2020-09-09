@@ -71,6 +71,9 @@ type
 let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
+  pegLineWarning =
+    peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Warning') ':' \s* {.*}"
+
   pegLineTemplate =
     peg"""
       {[^(]*} '(' {\d+} ', ' {\d+} ') '
@@ -388,6 +391,8 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
     if currentPos < 0:
       given.err = reMsgsDiffer
       break
+
+
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
