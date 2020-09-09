@@ -17,7 +17,11 @@ import ast, astalgo, semdata, lookups, lineinfos, idents, msgs, renderer,
 const
   logBindings = false
 
+## Code dealing with Concept declarations
+## --------------------------------------
+
 proc declareSelf(c: PContext; info: TLineInfo) =
+  ## adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
   let s = newSym(skType, getIdent(c.cache, "Self"), ow, info)
   s.typ = newType(tyTypeDesc, ow)
@@ -26,9 +30,13 @@ proc declareSelf(c: PContext; info: TLineInfo) =
   addDecl(c, s, info)
 
 proc isSelf*(t: PType): bool {.inline.} =
+  ## is this the magical 'Self' type?
   t.kind == tyTypeDesc and tfPacked in t.flags
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
+  ## Recursive helper for semantic checking for the concept declaration.
+  ## Currently we only support lists of statements containing 'proc'
+  ## declarations and the like.
   case n.kind
   of nkStmtList, nkStmtListExpr:
     result = shallowCopy(n)
@@ -46,6 +54,8 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
     result = n
 
 proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
+  ## Semantic checking for the concept declaration. Runs
+  ## when we process the concept itself, not its matching process.
   assert n.kind == nkTypeClassTy
   inc c.inConceptDecl
   openScope(c)
@@ -54,16 +64,22 @@ proc semConceptDeclaration*(c: PContext; n: PNode): PNode =
   rawCloseScope(c)
   dec c.inConceptDecl
 
+## Concept matching
+## ----------------
+
 type
-  MatchCon = object
-    inferred: seq[(PType, PType)]
-    marker: IntSet
-    potentialImplementation: PType
-    magic: TMagic  # mArrGet and mArrPut is wrong in system.nim and
-                   # cannot be fixed that easily.
-                   # Thus we special case it here.
+  MatchCon = object ## Context we pass around during concept matching.
+    inferred: seq[(PType, PType)] ## we need a seq here so that we can easily undo inferences \
+      ## that turned out to be wrong.
+    marker: IntSet ## Some protection against wild runaway recursions.
+    potentialImplementation: PType ## the concrete type that might match the concept we try to match.
+    magic: TMagic  ## mArrGet and mArrPut is wrong in system.nim and
+                   ## cannot be fixed that easily.
+                   ## Thus we special case it here.
 
 proc existingBinding(m: MatchCon; key: PType): PType =
+  ## checks if we bound the type variable 'key' already to some
+  ## concrete type.
   for i in 0..<m.inferred.len:
     if m.inferred[i][0] == key: return m.inferred[i][1]
   return nil
@@ -71,6 +87,9 @@ proc existingBinding(m: MatchCon; key: PType): PType =
 proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool
 
 proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
+  ## the heart of the concept matching process. 'f' is the formal parameter of some
+  ## routine inside the concept that we're looking for. 'a' is the formal parameter
+  ## of a routine that might match.
   const
     ignorableForArgType = {tyVar, tySink, tyLent, tyOwned, tyGenericInst, tyAlias, tyInferred}
   case f.kind
@@ -195,6 +214,8 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
     result = false
 
 proc matchReturnType(c: PContext; f, a: PType; m: var MatchCon): bool =
+  ## Like 'matchType' but with extra logic dealing with proc return types
+  ## which can be nil or the 'void' type.
   if f.isEmptyType:
     result = a.isEmptyType
   elif a == nil:
@@ -203,6 +224,9 @@ proc matchReturnType(c: PContext; f, a: PType; m: var MatchCon): bool =
     result = matchType(c, f, a, m)
 
 proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
+  ## Checks if 'candidate' matches 'n' from the concept body. 'n' is a nkProcDef
+  ## or similar.
+
   # watch out: only add bindings after a completely successful match.
   let oldLen = m.inferred.len
 
@@ -234,6 +258,8 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
   return true
 
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
+  ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
+  ## 'n' is the nkProcDef or similar from the concept that we try to match.
   let name = n[namePos].sym.name
   for scope in walkScopes(c.currentScope):
     var ti: TIdentIter
@@ -247,6 +273,8 @@ proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bo
   result = false
 
 proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
+  ## Traverse the concept's AST ('n') and see if every declaration inside 'n'
+  ## can be matched with the current scope.
   case n.kind
   of nkStmtList, nkStmtListExpr:
     for i in 0..<n.len:
@@ -274,6 +302,14 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     result = false
 
 proc conceptMatch*(c: PContext; concpt, arg: PType; bindings: var TIdTable; invocation: PType): bool =
+  ## Entry point from sigmatch. 'concpt' is the concept we try to match (here still a PType but
+  ## we extract its AST via 'concpt.n.lastSon'). 'arg' is the type that might fullfill the
+  ## concept's requirements. If so, we return true and fill the 'bindings' with pairs of
+  ## (typeVar, instance) pairs. ('typeVar' is usually simply written as a generic 'T'.)
+  ## 'invocation' can be nil for atomic concepts. For non-atomic concepts, it contains the
+  ## 'C[S, T]' parent type that we look for. We need this because we need to store bindings
+  ## for 'S' and 'T' inside 'bindings' on a successful match. It is very important that
+  ## we do not add any bindings at all on an unsuccessful match!
   var m = MatchCon(inferred: @[], potentialImplementation: arg)
   result = conceptMatchNode(c, concpt.n.lastSon, m)
   if result:
