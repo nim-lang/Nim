@@ -4,6 +4,7 @@ discard """
 hello
 hello
 @[4, 3, 2, 1]
+@["a", "b"]
 '''
 """
 
@@ -27,3 +28,18 @@ proc timSort(lst: var openArray[int]) =
 var a = @[4, 3, 2, 1]
 timSort(a)
 echo a
+
+
+#------------------------------------------------------------------------------
+# Issue #15238
+#------------------------------------------------------------------------------
+
+proc sinkArg(x: sink seq[string]) =
+  discard
+
+proc varArg(lst: var seq[string]) = 
+  sinkArg(lst)
+
+var x = @["a", "b"]
+varArg(x)
+echo x

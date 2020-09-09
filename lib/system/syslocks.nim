@@ -145,13 +145,13 @@ else:
       SysCond = ptr SysCondObj
 
     when not declared(c_malloc):
-      proc c_malloc(size: csize): pointer {.
+      proc c_malloc(size: csize_t): pointer {.
         importc: "malloc", header: "<stdlib.h>".}
       proc c_free(p: pointer) {.
         importc: "free", header: "<stdlib.h>".}
 
     proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) =
-      L = cast[SysLock](c_malloc(sizeof(SysLockObj)))
+      L = cast[SysLock](c_malloc(csize_t(sizeof(SysLockObj))))
       initSysLockAux(L[], attr)
 
     proc deinitSys(L: var SysLock) =
@@ -201,7 +201,7 @@ else:
 
     when defined(ios):
       proc initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
-        cond = cast[SysCond](c_malloc(sizeof(SysCondObj)))
+        cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
         initSysCondAux(cond[], cond_attr)
 
       proc deinitSysCond(cond: var SysCond) =

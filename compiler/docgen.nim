@@ -992,8 +992,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       # set the type so that the following analysis doesn't screw up:
       effects[i].typ = real[i].typ
 
-    result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
+    result = newTreeI(nkExprColonExpr, n.info, 
+      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects)
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym
@@ -1005,8 +1005,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
       effects.add params[i]
 
   if effects.len > 0:
-    result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(cache, pragmaName), n.info), effects])
+    result = newTreeI(nkExprColonExpr, n.info, 
+      newIdentNode(getIdent(cache, pragmaName), n.info), effects)
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return

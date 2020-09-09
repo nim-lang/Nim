@@ -1030,52 +1030,6 @@ but only the statement's selector expression is used to determine which
 macro to call.
 
 
-For loop macros
----------------
-
-A macro that takes as its only input parameter an expression of the special
-type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  import macros
-  {.experimental: "forLoopMacros".}
-
-  macro enumerate(x: ForLoopStmt): untyped =
-    expectKind x, nnkForStmt
-    # we strip off the first for loop variable and use
-    # it as an integer counter:
-    result = newStmtList()
-    result.add newVarStmt(x[0], newLit(0))
-    var body = x[^1]
-    if body.kind != nnkStmtList:
-      body = newTree(nnkStmtList, body)
-    body.add newCall(bindSym"inc", x[0])
-    var newFor = newTree(nnkForStmt)
-    for i in 1..x.len-3:
-      newFor.add x[i]
-    # transform enumerate(X) to 'X'
-    newFor.add x[^2][1]
-    newFor.add body
-    result.add newFor
-    # now wrap the whole macro in a block to create a new scope
-    result = quote do:
-      block: `result`
-
-  for a, b in enumerate(items([1, 2, 3])):
-    echo a, " ", b
-
-  # without wrapping the macro in a block, we'd need to choose different
-  # names for `a` and `b` here to avoid redefinition errors
-  for a, b in enumerate([1, 2, 3, 5]):
-    echo a, " ", b
-
-
-Currently for loop macros must be enabled explicitly
-via ``{.experimental: "forLoopMacros".}``.
-
-
 Term rewriting macros
 =====================
 
@@ -1880,5 +1834,57 @@ For example:
     # Error: 'mut' can have side effects
     # an object reachable from 'n' is potentially mutated
 
+
+The algorithm behind this analysis is currently not documented.
+
+
+View types
+==========
+
+A view type is a type that contains one of the following types:
+
+- ``var T`` (mutable view into ``T``)
+- ``lent T`` (immutable view into ``T``)
+- ``openArray[T]`` (pair of (pointer to array of ``T``, size))
+
+Since version 1.4 Nim allows view types to be used as local variables.
+This feature needs to be enabled via ``{.experimental: "views".}``.
+
+A local variable of a view type *borrows* from the locations and
+it is statically enforced that the view does not outlive the location
+it was borrowed from.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "views".}
+
+  proc take(a: openArray[int]) =
+    echo a.len
+
+  proc main(s: seq[int]) =
+    var x: openArray[int] = s # 'x' is a view into 's'
+    # it is checked that 'x' does not outlive 's' and
+    # that 's' is not mutated.
+    for i in 0 .. high(x):
+      echo x[i]
+    take(x)
+
+    take(x.toOpenArray(0, 1)) # slicing remains possible
+    let y = x  # create a view from a view
+    take y
+    # it is checked that 'y' does not outlive 'x' and
+    # that 'x' is not mutated as long as 'y' lives.
+
+
+  main(@[11, 22, 33])
+
+
+
+If a view type is used as a return type, the location must borrow from the
+first parameter that is passed to the proc.
+See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
+details about how this is done for ``var T``.
 
 The algorithm behind this analysis is currently not documented.

@@ -19,8 +19,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     # we produce a fake include statement for every slurped filename, so that
     # the module dependencies are accurate:
     discard conf.fileInfoIdx(AbsoluteFile filename)
-    appendToModule(module, newNode(nkIncludeStmt, info, @[
-      newStrNode(nkStrLit, filename)]))
+    appendToModule(module, newTreeI(nkIncludeStmt, info, newStrNode(nkStrLit, filename)))
   except IOError:
     localError(conf, info, "cannot open file: " & file)
     result = ""

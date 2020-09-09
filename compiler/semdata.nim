@@ -381,8 +381,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
-  result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n])
+  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
@@ -391,9 +390,8 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   result.sons = @[intType]
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
-  result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(0, intType),
-    makeStaticExpr(c, nMinusOne(c, n))])
+  result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
+    makeStaticExpr(c, nMinusOne(c, n)))
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
   tfUnresolved in t.flags
