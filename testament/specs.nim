@@ -122,8 +122,12 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+const
+  inlineErrorMarker = "#[tt."
+
 proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var TSpec): int =
-  result = i + len("#[tt.")
+  result = i + len(inlineErrorMarker)
+  inc col, len(inlineErrorMarker)
   var kind = ""
   while result < s.len and s[result] in IdentChars:
     kind.add s[result]
@@ -172,7 +176,6 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-    inlineErrorMarker = "#[tt."
   var s = readFile(filename).string
 
   var i = 0
