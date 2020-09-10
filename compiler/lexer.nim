@@ -950,6 +950,7 @@ proc getPrecedence*(tok: Token): int =
   of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs, tkFrom: result = 5
   of tkAnd: result = 4
   of tkOr, tkXor, tkPtr, tkRef: result = 3
+  of tkFor: result = 1
   else: return -10
 
 proc newlineFollows*(L: Lexer): bool =

@@ -269,7 +269,7 @@ proc isOperator(tok: Token): bool =
   ## Determines if the given token is an operator type token.
   tok.tokType in {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
                   tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
-                  tkOr, tkXor}
+                  tkOr, tkXor, tkFor}
 
 proc isUnary(tok: Token): bool =
   ## Check if the given token is a unary operator

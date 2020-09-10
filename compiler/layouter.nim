@@ -327,7 +327,8 @@ const
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-            tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd, tkOr, tkXor}
+            tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd, tkOr, tkXor,
+            tkFor}
 
 template goodCol(col): bool = col >= em.maxLineLen div 2
 
