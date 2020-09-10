@@ -87,8 +87,8 @@ proc isNimOrCKeyword*(w: PIdent): bool =
     false
 
 proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
-  ## add/get a mangled name from the conflicts table and return the number
-  ## of conflicts for that name at the time of its insertion
+  ## Add/get a mangled name from the conflicts table and return the number
+  ## of conflicts for that name at the time of its insertion.
   let key = $key
   result = getOrDefault(conflicts, key, -1)
   if result == -1:
@@ -100,7 +100,7 @@ proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
     else:
       # this is kinda important; only an idiot would omit it on his first try
       inc conflicts[name]
-    # cache the result
+    # cache the result associated with the key
     conflicts[key] = result
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym) =
@@ -120,7 +120,7 @@ proc hasImmutableName(s: PSym): bool =
     result = immut * s.flags != {}
 
 proc shouldAppendModuleName(s: PSym): bool =
-  ## are we going to apply top-level mangling semantics?
+  ## Are we going to apply top-level mangling semantics?
   assert not s.hasImmutableName
   case s.kind
   of skParam, skResult, skModule, skPackage, skTemp:
@@ -345,8 +345,6 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
               break
           # use or set the existing foreign counter for the key
           (name, counter) = getSetConflict(parent, s)
-          # use or set the existing foreign counter for the name
-          next = mgetOrPut(parent.sigConflicts, name, counter + 1)
           break
 
   # only write mangled names for c codegen
@@ -547,6 +545,9 @@ proc assignParam*(p: BProc, s: PSym; ret: PType) =
     purgeConflict(p.module, s) # discard any existing counter for this sym
     if s.kind == skResult:
       s.loc.r = ~"result"        # just set it to result if it's skResult
+      # record (and verify) the result in the local conflicts table
+      if getOrSet(p.sigConflicts, "result", conflictKey(s)) != 0:
+        internalError(p.config, s.info, "assignParam: shadowed result")
     else:
       s.loc.r = nil              # critically, destroy the location
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
