@@ -139,17 +139,6 @@ proc shouldAppendModuleName(s: PSym): bool =
       # forvars get special handling due to the fact that they
       # can, in rare and stupid cases, be globals...
       result = false
-    #[
-    elif s.kind in routineKinds:
-      if s.typ != nil:
-
-        # this minor hack is necessary to make tests/collections/thashes
-        # compile. The inlined hash function's original module is
-        # ambiguous so we end up generating duplicate names otherwise:
-
-        if s.typ.callConv == ccInline:
-          result = true
-    ]#
 
     # exports get their source module appended
     if sfExported in s.flags:
