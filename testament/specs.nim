@@ -62,6 +62,11 @@ type
     targetObjC = "ObjC"
     targetJS = "JS"
 
+  InlineError* = object
+    kind*: string
+    msg*: string
+    line*, col*: int
+
   TSpec* = object
     action*: TTestAction
     file*, cmd*: string
@@ -90,8 +95,7 @@ type
     useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
-    inlineWarnings*: Table[int, string] # line information to warning message
-    inlineErrors*: Table[int, string] # line information to error message
+    inlineErrors*: seq[InlineError] # line information to error message
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -118,38 +122,79 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var TSpec): int =
+  result = i + len("#[tt.")
+  var kind = ""
+  while result < s.len and s[result] in IdentChars:
+    kind.add s[result]
+    inc result
+    inc col
+
+  var caret = (line, -1)
+
+  template skipWhitespace =
+    while result < s.len and s[result] in Whitespace:
+      if s[result] == '\n':
+        col = 1
+        inc line
+      else:
+        inc col
+      inc result
+
+  skipWhitespace()
+  if result < s.len and s[result] == '^':
+    caret = (line-1, col)
+    inc result
+    inc col
+    skipWhitespace()
+
+  var msg = ""
+  while result < s.len-1:
+    if s[result] == '\n':
+      inc result
+      inc line
+      col = 1
+    elif s[result] == ']' and s[result+1] == '#':
+      while msg.len > 0 and msg[^1] in Whitespace:
+        setLen msg, msg.len - 1
+
+      inc result
+      inc col, 2
+      if kind == "Error": spec.action = actionReject
+      spec.unjoinable = true
+      spec.inlineErrors.add InlineError(kind: kind, msg: msg, line: caret[0], col: caret[1])
+      break
+    else:
+      msg.add s[result]
+      inc result
+      inc col
+
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-    inlineErrorMarker = "#[tt.error"
-    inlineWarningMarker = "#[tt.warning"
-    inlineEnd = "]#"
+    inlineErrorMarker = "#[tt."
   var s = readFile(filename).string
 
   var i = 0
   var a = -1
   var b = -1
-  var currentLine = 1
+  var line = 1
+  var col = 1
   while i < s.len:
     if s.continuesWith(tripleQuote, i):
       if a < 0: a = i
-      else: b = i
+      elif b < 0: b = i
+      inc i, 2
+      inc col
     elif s[i] == '\n':
-      inc currentLine
+      inc line
+      col = 1
     elif s.continuesWith(inlineErrorMarker, i):
-      inc i, len(inlineErrorMarker)
-      let last = s.find(inlineEnd, i)
-      if last > 0:
-        spec.inlineErrors[currentLine] = strip s.substr(i, last-1)
-        spec.action = actionReject
-    elif s.continuesWith(inlineWarningMarker, i):
-      inc i, len(inlineWarningMarker)
-      let last = s.find(inlineEnd, i)
-      if last > 0:
-        spec.inlineWarnings[currentLine] = strip s.substr(i, last-1)
+      i = extractErrorMsg(s, i, line, col, spec)
+    else:
+      inc col
     inc i
 
-  #!ERROR:
   # look for """ only in the first section
   if a >= 0 and b > a and a < 40:
     result = s.substr(a+3, b-1).replace("'''", tripleQuote)
