@@ -139,6 +139,7 @@ proc shouldAppendModuleName(s: PSym): bool =
       # forvars get special handling due to the fact that they
       # can, in rare and stupid cases, be globals...
       result = false
+    #[
     elif s.kind in routineKinds:
       if s.typ != nil:
 
@@ -148,6 +149,7 @@ proc shouldAppendModuleName(s: PSym): bool =
 
         if s.typ.callConv == ccInline:
           result = true
+    ]#
 
     # exports get their source module appended
     if sfExported in s.flags:
@@ -211,45 +213,45 @@ proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
         else:
           nom.add typeName(m, s.typ.sons[1], shorten = true)
 
+proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
+  ## `true` if the symbol is a source of link collisions; if so,
+  ## the name is set to a suitable mangle
+  name = ""
+  try:
+    case s.kind
+    of skProc:
+      # anonymous procs are special for... reasons
+      result = s.name.s == ":anonymous"
+      if result:
+        name.add "lambda_"
+      # var procs are fun
+      result = result or sfAddrTaken in s.flags
+      # closures are great for link collisions
+      result = result or tfCapturesEnv in s.typ.flags
+    of skIterator:
+      result = true
+    # a gensym is a good sign that we can encounter a link collision
+    elif sfGenSym in s.flags:
+      discard
+  finally:
+    if result:
+      if name.len == 0:
+        name = mangle(s.name.s)
+      name.add "_"
+      name.add $conflictKey(s)
+      assert not s.hasImmutableName
+
 proc mangle*(p: ModuleOrProc; s: PSym): string =
   # TODO: until we have a new backend ast, all mangles have to be done
   # identically
   let m = getem()
   block:
-    case s.kind
-    of skProc:
-      # anonymous procs are special for... reasons
-      if s.name.s == ":anonymous":
-        result = "lambda_"
-        result.add $conflictKey(s)
-        break
-      # closures are great for link collisions
-      elif sfAddrTaken in s.flags:
-        result = mangle(s.name.s)
-        result.add "_"
-        result.add $conflictKey(s)
-        assert not s.hasImmutableName
-        break
-    of skIterator:
-      # iterators need special treatment for linking reasons
-      result = mangle(s.name.s)
-      result.add "_"
-      result.add $conflictKey(s)
-      assert not s.hasImmutableName
+    if mayCollide(p, s, result):
+      # result is now populated with a mangled name
       break
-    else:
-      discard
 
     # otherwise, start off by using a name that doesn't suck
     result = mangle(s.name.s)
-
-    # a gensym is a good sign that we can encounter a link collision
-    if sfGenSym in s.flags:
-      assert not s.hasImmutableName
-      result.add "_"
-      result.add $conflictKey(s)
-      # let's just get out of here rather than making this any worse
-      return
 
   # some symbols have flags that preclude further mangling
   if not s.hasImmutableName:
