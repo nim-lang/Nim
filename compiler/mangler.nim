@@ -125,6 +125,9 @@ proc shouldAppendModuleName(s: PSym): bool =
   case s.kind
   of skParam, skResult, skModule, skPackage, skTemp:
     result = false
+  of skConst:
+    # NOTE: constants are effectively global
+    result = true
   else:
     if s.owner == nil or s.owner.kind in {skModule, skPackage}:
       # the symbol is top-level; add the module name
