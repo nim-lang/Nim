@@ -1390,14 +1390,11 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   discard getTypeDesc(p.module, t) # so that any fields are initialized
   var name: Rope
   if getTempName(p.module, n, name):
-    # duplication, but we cannot know if it's unnecessary
-    fillLoc(d, locData, n, name, OnStatic)
     # expression not found in the cache:
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
                              [getTypeDesc(p.module, t), name,
                               genBracedInit(p, n, isConst = true, t)])
-  else:
-    fillLoc(d, locData, n, name, OnStatic)
+  fillLoc(d, locData, n, name, OnStatic)
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
