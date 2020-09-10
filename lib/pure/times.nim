@@ -834,7 +834,16 @@ proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
 proc nanosecond*(time: Time): NanosecondRange =
   ## Get the fractional part of a ``Time`` as the number
   ## of nanoseconds of the second.
+  ##
+  ## To get the seconds (since ``1970-01-01T00:00:00Z``) of a ``Time``,
+  ## use ``toUnix`` proc.
   time.nanosecond
+
+proc seconds*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
+  ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
+  ##
+  ## This is an alias for `toUnix` proc.
+  t.seconds
 
 proc fromUnix*(unix: int64): Time
     {.benign, tags: [], raises: [], noSideEffect.} =
@@ -846,6 +855,7 @@ proc fromUnix*(unix: int64): Time
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
+  ##
   ## See also `toUnixFloat` for subsecond resolution.
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
