@@ -718,7 +718,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       if d.k in {locTemp, locNone}:
         # We already got a temp. Great, special case it:
         if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
-        pl.add(~"Result: ")
+        pl.add(~"result: ")
         pl.add(addrLoc(p.config, d))
         pl.add(~"];$n")
         line(p, cpsStmts, pl)
