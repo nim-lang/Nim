@@ -32,64 +32,76 @@ proc detectSeqVersion(m: BModule): int =
 
 # ----- Version 1: GC'ed strings and seqs --------------------------------
 
-proc genStringLiteralDataOnlyV1(m: BModule, s: string; pureLit: Rope) =
+proc genStringLiteralDataOnlyV1(m: BModule, s: string; name: Rope) =
+  ## define the string literal using the string and its name
   discard cgsym(m, "TGenericSeq")
   m.s[cfsData].addf("STRING_LITERAL($1, $2, $3);$n",
-                    [pureLit, makeCString(s), rope(s.len)])
+                    [name, makeCString(s), rope(s.len)])
 
 proc genStringLiteralDataOnlyV1(m: BModule, s: string): Rope =
+  ## all we have to work with is a string, so just grab a rando name
+  ## and insert it into the data section.  lame, i know.
   result = getTempName(m)
   genStringLiteralDataOnlyV1(m, s, result)
 
 proc genStringLiteralV1(m: BModule; n: PNode): Rope =
+  ## what we're doing here is basically generating the cast of a string
+  ## literal that may not be in the data section yet.
   if s.isNil:
+    # nil literals are really easy to handle; i love that about them
     result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])
   else:
-    # i'm telling you, it's super subtle
-    # (or maybe not, but i got bit twice)
-    if hasTempName(m, n):
-      var name = getTempName(m, n)
-      result = ropecg(m, "((#NimStringDesc*) &$1)", [name])
-    else:
-      # string literal not found in the cache:
-      result = ropecg(m, "((#NimStringDesc*) &$1)",
-                      [genStringLiteralDataOnlyV1(m, n.strVal)])
+    var name: Rope
+    # fetch a temp name from cache, if possible, else it'll be fresh
+    if getTempName(m, n, name):
+      # it's new; add it to the data section using the literal and name
+      genStringLiteralDataOnlyV1(m, n.strVal, name)
+    # here we simply provide the cast with the name of the literal
+    result = ropecg(m, "((#NimStringDesc*) &$1)", [name])
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
-proc genStringLiteralDataOnlyV2(m: BModule, s: string; pureLit: Rope;
+proc genStringLiteralDataOnlyV2(m: BModule, s: string; name: Rope;
                                 isConst: bool) =
+  ## stuff a string literal into the data section using a string and
+  ## the name to give the literal.  that is all.
   const codef = "static $4 struct {$n NI cap; NIM_CHAR data[$2+1];$n} " &
                 "$1 = { $2 | NIM_STRLIT_FLAG, $3 };$n"
-  m.s[cfsData].addf(codef, [pureLit, rope(s.len), makeCString(s),
+  m.s[cfsData].addf(codef, [name, rope(s.len), makeCString(s),
                             rope(if isConst: "const" else: "")])
 
 proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool): Rope =
-  const codef = "static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n"
-  var pureLit: Rope
-  # another very subtle one...  watch out!
-  if hasTempName(m, n):
-    pureLit = getTempName(m, n)
-  else:
-    pureLit = getTempName(m)
-    genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
+  ## what we're doing here is basically generating the cast of a string
+  ## literal that may not be in the data section yet.
+  var name: Rope
+  # fetch a temp name from cache, if possible, else it'll be fresh
+  if getTempName(m, n, name):
+    # it's new; add it to the data section using the literal and name
+    genStringLiteralDataOnlyV2(m, n.strVal, name, isConst)
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
+
+  # in contrast to V1, we only cache the raw literal and not the name
+  # from the data section itself; our result is that wrapped name
   result = getTempName(m)
-  m.s[cfsData].addf(codef, [result, rope(n.strVal.len), pureLit,
+  # here we are adding the wrapped literal into the data section
+  const codef = "static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n"
+  m.s[cfsData].addf(codef, [result, rope(n.strVal.len), name,
                             rope(if isConst: "const" else: "")])
 
 proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool): Rope =
-  var pureLit: Rope
-  # and yet another creepy case...
-  if hasTempName(m, n):
-    pureLit = getTempName(m, n)
-  else:
-    pureLit = getTempName(m)
+  ## this is a special lightweight version of genStringLiteralV2()
+  ## that is used for optSeqDestructors; we don't bother to retain
+  ## the wrapped symbol in the data section.
+  var name: Rope
+  # fetch a temp name from cache, if possible, else it'll be fresh
+  if getTempName(m, n, name):
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
-    genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
-  result = "{$1, (NimStrPayload*)&$2}" % [rope(n.strVal.len), pureLit]
+    # it's new; add it to the data section using the literal and name
+    genStringLiteralDataOnlyV2(m, n.strVal, name, isConst)
+  # here we simply provide the cast with the name(s) of the literal
+  result = "{$1, (NimStrPayload*)&$2}" % [rope(n.strVal.len), name]
 
 # ------ Version selector ---------------------------------------------------
 

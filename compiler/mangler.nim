@@ -428,7 +428,7 @@ template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
   m.tmpBase & $label & "_"
 
-proc hasTempName*(m: BModule; n: PNode): bool =
+proc hasTempName*(m: BModule; n: PNode): bool {.deprecated: "but why?".} =
   ## true if the module/proc has a temporary cached for the given node
   result = nodeTableGet(m.dataCache, n) != low(int)
 
