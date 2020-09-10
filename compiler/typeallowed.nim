@@ -57,7 +57,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
       result = t
-    elif t.kind == tyLent and kind != skResult:
+    elif t.kind == tyLent and kind != skResult and (views notin c.features):
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc})
@@ -68,10 +68,10 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if (kind != skParam and views notin c.features) or taIsOpenArray in flags: result = t
         else: result = typeAllowedAux(marker, t2[0], kind, c, flags+{taIsOpenArray})
       of tyUncheckedArray:
-        if kind != skParam: result = t
+        if kind != skParam and views notin c.features: result = t
         else: result = typeAllowedAux(marker, t2[0], kind, c, flags)
       else:
-        if kind notin {skParam, skResult}: result = t
+        if kind notin {skParam, skResult} and views notin c.features: result = t
         else: result = typeAllowedAux(marker, t2, kind, c, flags)
   of tyProc:
     if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
