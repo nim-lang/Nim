@@ -728,9 +728,6 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, s, m)
-        elif n[i].kind == nkRange:
-          result[i][0] = p(n[i][0], c, s, m)
-          result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
       if mode == normal and isRefConstr:
@@ -888,11 +885,14 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         else:
           result = passCopyToSink(result, c, s)
 
-    of nkDefer, nkRange:
+    of nkDefer:
       result = shallowCopy(n)
       for i in 0 ..< n.len:
         result[i] = p(n[i], c, s, normal)
-
+    of nkRange:
+      result = shallowCopy(n)
+      for i in 0 ..< n.len:
+        result[i] = p(n[i], c, s, mode)
     of nkBreakStmt:
       s.needsTry = true
       result = n
