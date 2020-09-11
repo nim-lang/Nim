@@ -224,7 +224,7 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
       result = true
     # a gensym is a good sign that we can encounter a link collision
     elif sfGenSym in s.flags:
-      discard
+      result = true
   finally:
     if result:
       if name.len == 0:
@@ -381,8 +381,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
-  when false:
-    if startsWith($result, "add_proc"):
+  when true:
+    if startsWith($result, "add_proc_system"):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
