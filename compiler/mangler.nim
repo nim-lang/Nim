@@ -242,6 +242,11 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
     # otherwise, start off by using a name that doesn't suck
     result = mangle(s.name.s)
 
+  # special-case TaintedString until we have a plan for it
+  when taintFree:
+    if s.kind == skType and result == "TaintedString":
+      result = "string"
+
   # some symbols have flags that preclude further mangling
   if not s.hasImmutableName:
 
