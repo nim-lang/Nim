@@ -1,5 +1,5 @@
 discard """
-  errormsg: "expression 'len(src) shl 1' is of type 'int' and has to be used (or discarded)"
+  errormsg: "expression 'len(src) shl 1' is of type 'int' and has to be discarded"
   line: 19
 """
 

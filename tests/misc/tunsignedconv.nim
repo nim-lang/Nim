@@ -82,7 +82,7 @@ let a3 = not 0'u64
 var success = false
 try:
   discard a3.int64
-except RangeDefect:
+except RangeError:
   success = true
 
 doAssert success, "conversion should fail at runtime"
