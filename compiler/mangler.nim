@@ -34,6 +34,9 @@ import # stdlib imports
 
   std / [ strutils, tables, sets ]
 
+const
+  taintFree = true
+
 type
   ModuleOrProc* = BProc or BModule
 
@@ -184,12 +187,12 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     else:
       mangle(p, typ.sym)
 
-template maybeAppendCounter(result: typed; count: int) =
+template maybeAddCounter(result: typed; count: int) =
   if count > 0:
     result.add "_"
     result.add $count
 
-proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
+proc maybeAddProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
   ## should we add the first argument's type to the mangle?
   if s.kind in routineKinds:
     if s.typ != nil:
@@ -251,7 +254,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
   if not s.hasImmutableName:
 
     # add the first argument to procs if possible
-    discard maybeAppendProcArgument(m, s, result)
+    discard maybeAddProcArgument(m, s, result)
 
     # add the module name if necessary, or if it helps avoid a clash
     if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
@@ -377,9 +380,9 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   ## produce a unique identity-or-signature for the given module and symbol
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
-  result.maybeAppendCounter conflict.counter
+  result.maybeAddCounter conflict.counter
   when false:
-    if startsWith($result, "unlikely"):
+    if startsWith($result, "add_proc"):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
@@ -413,7 +416,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     assert t != nil
     result = typeName(p, t).rope
     let counter = getOrSet(p.sigConflicts, $result, conflictKey(t))
-    result.maybeAppendCounter counter
+    result.maybeAddCounter counter
     if startsWith($result, "unlikely"):
       debug typ
       result.add "/*" & $key & "*/"
