@@ -192,18 +192,19 @@ template maybeAddCounter(result: typed; count: int) =
     result.add "_"
     result.add $count
 
-proc maybeAddProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
-  ## should we add the first argument's type to the mangle?
+proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
+  ## Should we add the first argument's type to the mangle?  If yes, DO IT.
   if s.kind in routineKinds:
     if s.typ != nil:
       result = s.typ.sons.len > 1
       if result:
-        nom.add "_"
+        name.add "_"
+        let param = s.typ.sons[1]  # 1st parameter
         # avoid including the conflictKey of param
-        if s.typ.sym == nil:
-          nom.add shortKind(s.typ.kind)
+        if param.sym == nil:
+          name.add shortKind(param.kind)
         else:
-          nom.add typeName(m, s.typ.sons[1], shorten = true)
+          name.add typeName(p, param, shorten = true)
 
 proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## `true` if the symbol is a source of link collisions; if so,
@@ -381,7 +382,7 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
-  when true:
+  when false:
     if startsWith($result, "add_proc_system"):
       debug s
       when m is BModule:
