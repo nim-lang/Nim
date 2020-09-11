@@ -218,7 +218,7 @@ proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
   ]#
   if s.color == colWhite and (s.rc and isCycleCandidate) == 0:
     s.setColor(colBlack)
-    when false:
+    when true:
       # optimized version (does not work)
       j.traceStack.add(s, desc)
       # this way of writing the loop means we can free all the nodes
@@ -233,6 +233,7 @@ proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
 
       for i in 0 ..< j.traceStack.len:
         free(j.traceStack.d[i][0], j.traceStack.d[i][1])
+      inc j.freed, j.traceStack.len
       j.traceStack.len = 0
     else:
       var subgraph: CellSeq
