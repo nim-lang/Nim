@@ -2298,7 +2298,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ##
   ## See also:
   ## * `largest proc<#largest,CountTable[A]>`_
-  assert t.len > 0
+  assert t.len > 0, "counttable is empty"
   var minIdx = -1
   for h in 0 .. high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
@@ -2311,7 +2311,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ##
   ## See also:
   ## * `smallest proc<#smallest,CountTable[A]>`_
-  assert t.len > 0
+  assert t.len > 0, "counttable is empty"
   var maxIdx = 0
   for h in 1 .. high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
