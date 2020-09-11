@@ -17,6 +17,7 @@ import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
+<<<<<<< HEAD
 import tables, treetab, strutils, sequtils
 
 type
@@ -39,10 +40,27 @@ type
   GraphId* = int
 
   VarIndexKind* = enum
+=======
+import tables, treetab
+
+type
+  Symbol = (int, PNode)
+
+  SubgraphFlag = enum
+    isMutated, # graph might be mutated
+    connectsConstParam, # graph is connected to a non-var parameter.
+
+  VarFlag = enum
+    ownsData,
+    preventCursor
+
+  VarIndexKind = enum
+>>>>>>> Work on mutation and aliasing: not finished
     isEmptyRoot,
     dependsOn,
     isRootOf
 
+<<<<<<< HEAD
   VarIndex* = object
     flags*: set[VarFlag]
     case kind*: VarIndexKind
@@ -68,6 +86,29 @@ type
   #DistinctSeq[T, U] = seq[U]
 #proc `[]`*[T, U](a: distinctSeq[T, U], b: T): U =
  # return cast[seq[U]](a)[b.int]
+=======
+  VarIndex = object
+    flags: set[VarFlag]
+    case kind: VarIndexKind
+    of isEmptyRoot: discard
+    of dependsOn: parent: int
+    of isRootOf: graphIndex: int
+    # sym: PSym
+    sym: Symbol
+
+
+  MutationInfo* = object
+    param: Symbol # PSym
+    mutatedHere, connectedVia: TLineInfo
+    flags: set[SubgraphFlag]
+
+  Partitions = object
+    s: seq[VarIndex]
+    graphs: seq[MutationInfo]
+    unanalysableMutation, performCursorInference: bool
+    inAsgnSource, inConstructor, inNoSideEffectSection: int
+    symbols: Table[Symbol, PSym]
+>>>>>>> Work on mutation and aliasing: not finished
 
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
@@ -84,6 +125,7 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
       result.add config $ g.connectedVia
       result.add " is the statement that connected the mutation to the parameter"
 
+<<<<<<< HEAD
 proc toTextGraph(config: ConfigRef, par: Partitions): string =
   # {a} ---18:9---> {b}
   # 
@@ -125,6 +167,8 @@ proc toTextGraph(config: ConfigRef, par: Partitions): string =
     # index : {a, b}
     result.add($index & " : {" & nodeSet.mapIt($it).join(", ") & "}\n")
 
+=======
+>>>>>>> Work on mutation and aliasing: not finished
 proc hasSideEffect(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
     if g.flags == {isMutated, connectsConstParam}:
@@ -134,6 +178,7 @@ proc hasSideEffect(c: var Partitions; info: var MutationInfo): bool =
 
 template isConstParam(a): bool = a[1].kind == nkSym and a[1].sym.kind == skParam and a[1].sym.typ.kind != tyVar
 
+<<<<<<< HEAD
 proc tracked(n: PNode): TrackedNode
   ## tracked : id and node for a node
 
@@ -159,6 +204,33 @@ proc variableId(c: Partitions; x: TrackedNode): VarId {.inline.} =
   return (-1).VarId
 
 proc root(v: var Partitions; start: int): VarId =
+=======
+proc symbol(n: PNode): Symbol
+  ## symbol : id and node for a node
+
+proc eq(a: Symbol, b: Symbol): bool =
+  ## symbols are equal when their id-s are equal
+  a[0] == b[0]
+
+const resultId = -1
+let noSymbol: Symbol = (-2, nil)
+
+proc registerVariable(c: var Partitions; n: PNode) =
+  #if n.kind == nkSym:
+  if isConstParam(symbol(n)):
+    c.s.add VarIndex(kind: isRootOf, graphIndex: c.graphs.len, sym: symbol(n))
+    c.graphs.add MutationInfo(param: symbol(n), mutatedHere: unknownLineInfo,
+                          connectedVia: unknownLineInfo, flags: {connectsConstParam})
+  else:
+    c.s.add VarIndex(kind: isEmptyRoot, sym: symbol(n))
+
+proc variableId(c: Partitions; x: Symbol): int {.inline.} =
+  for i in 0 ..< c.s.len:
+    if eq(c.s[i].sym, x): return i
+  return -1
+
+proc root(v: var Partitions; start: int): int =
+>>>>>>> Work on mutation and aliasing: not finished
   result = start
   var depth = 0
   while v.s[result].kind == dependsOn:
@@ -173,12 +245,17 @@ proc root(v: var Partitions; start: int): VarId =
                          sym: v.s[it].sym, flags: v.s[it].flags)
       it = next
 
+<<<<<<< HEAD
 proc potentialMutation(v: var Partitions; s: TrackedNode; info: TLineInfo) =
+=======
+proc potentialMutation(v: var Partitions; s: Symbol; info: TLineInfo) =
+>>>>>>> Work on mutation and aliasing: not finished
   let id = variableId(v, s)
   if id >= 0:
     let r = root(v, id)
     case v.s[r].kind
     of isEmptyRoot:
+<<<<<<< HEAD
       v.s[r] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len.GraphId,
                         sym: v.s[r].sym, flags: v.s[r].flags)
       # echo "potential"
@@ -187,6 +264,15 @@ proc potentialMutation(v: var Partitions; s: TrackedNode; info: TLineInfo) =
     of isRootOf:
       let g = addr v.graphs[v.s[r].graphIndex]
       if eq(g.param, noTrackedNode) and isConstParam(s):
+=======
+      v.s[r] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len,
+                        sym: v.s[r].sym, flags: v.s[r].flags)
+      v.graphs.add MutationInfo(param: if isConstParam(s): s else: noSymbol, mutatedHere: info,
+                            connectedVia: unknownLineInfo, flags: {isMutated})
+    of isRootOf:
+      let g = addr v.graphs[v.s[r].graphIndex]
+      if eq(g.param, noSymbol) and isConstParam(s):
+>>>>>>> Work on mutation and aliasing: not finished
         g.param = s
       if g.mutatedHere == unknownLineInfo:
         g.mutatedHere = info
@@ -197,43 +283,79 @@ proc potentialMutation(v: var Partitions; s: TrackedNode; info: TLineInfo) =
     v.unanalysableMutation = true
 
 
+<<<<<<< HEAD
 proc tracked(n: PNode): TrackedNode =
   ## returns a TrackedNode for each expression
+=======
+proc symbol(n: PNode): Symbol =
+  ## returns a Symbol for each expression
+>>>>>>> Work on mutation and aliasing: not finished
   ## the goal is to get an unique Symbol
   ## but we have to ensure hashTree does it as we expect
   case n.kind:
   of nkIdent:
     # echo "ident?", $n
+<<<<<<< HEAD
     result = noTrackedNode
+=======
+    result = noSymbol
+>>>>>>> Work on mutation and aliasing: not finished
   of nkSym:
     if n.sym.kind == skResult: # credit to disruptek for showing me that
       result = (resultId, n)
     else:
       result = (n.sym.id, n)
   of nkHiddenAddr, nkAddr:
+<<<<<<< HEAD
     result = tracked(n[0])
+=======
+    result = symbol(n[0])
+>>>>>>> Work on mutation and aliasing: not finished
   else:
     result = (hashTree(n), n)
   # echo result
 
 
 
+<<<<<<< HEAD
 proc connect(v: var Partitions; a, b: TrackedNode; info: TLineInfo) =
   let aid = variableId(v, a)
   if aid < 0:
     return
   let bid = variableId(v, b)
+=======
+proc connect(v: var Partitions; a, b: Symbol; info: TLineInfo) =
+  echo "a ", a, "b ", b
+  let aid = variableId(v, a)
+  echo aid
+  if aid < 0:
+    return
+  let bid = variableId(v, b)
+  echo bid
+>>>>>>> Work on mutation and aliasing: not finished
   if bid < 0:
     return
 
   let ra = root(v, aid)
   let rb = root(v, bid)
+<<<<<<< HEAD
   if ra != rb:
     var param: TrackedNode = noTrackedNode
     if isConstParam(a): param = a
     elif isConstParam(b): param = b
     let paramFlags =
       if not eq(param, noTrackedNode):
+=======
+  echo ra
+  echo rb
+  if ra != rb:
+    var param: Symbol = noSymbol
+    if isConstParam(a): param = a
+    elif isConstParam(b): param = b
+
+    let paramFlags =
+      if not eq(param, noSymbol):
+>>>>>>> Work on mutation and aliasing: not finished
         {connectsConstParam}
       else:
         {}
@@ -243,25 +365,38 @@ proc connect(v: var Partitions; a, b: TrackedNode; info: TLineInfo) =
     var mutatedHere = unknownLineInfo
     if v.s[rb].kind == isRootOf:
       var gb = addr v.graphs[v.s[rb].graphIndex]
+<<<<<<< HEAD
       if eq(param, noTrackedNode): param = gb.param
+=======
+      if eq(param, noSymbol): param = gb.param
+>>>>>>> Work on mutation and aliasing: not finished
       mutatedHere = gb.mutatedHere
       rbFlags = gb.flags
 
     v.s[rb] = VarIndex(kind: dependsOn, parent: ra, sym: v.s[rb].sym, flags: v.s[rb].flags)
     case v.s[ra].kind
     of isEmptyRoot:
+<<<<<<< HEAD
       v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len.GraphId, sym: v.s[ra].sym, flags: v.s[ra].flags)
+=======
+      v.s[ra] = VarIndex(kind: isRootOf, graphIndex: v.graphs.len, sym: v.s[ra].sym, flags: v.s[ra].flags)
+>>>>>>> Work on mutation and aliasing: not finished
       v.graphs.add MutationInfo(param: param, mutatedHere: mutatedHere,
                             connectedVia: info, flags: paramFlags + rbFlags)
     of isRootOf:
       var g = addr v.graphs[v.s[ra].graphIndex]
+<<<<<<< HEAD
       if eq(g.param, noTrackedNode): g.param = param
+=======
+      if eq(g.param, noSymbol): g.param = param
+>>>>>>> Work on mutation and aliasing: not finished
       if g.mutatedHere == unknownLineInfo: g.mutatedHere = mutatedHere
       g.connectedVia = info
       g.flags.incl paramFlags + rbFlags
     else:
       assert false, "cannot happen"
 
+<<<<<<< HEAD
 proc allRoots(n: PNode; result: var seq[TrackedNode]; followDotExpr = true) =
   case n.kind
   of nkSym:
@@ -272,6 +407,19 @@ proc allRoots(n: PNode; result: var seq[TrackedNode]; followDotExpr = true) =
    result.add(tracked(n))
   of nkDerefExpr, nkBracketExpr, nkHiddenDeref,
       nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
+=======
+proc allRoots(n: PNode; result: var seq[Symbol]; followDotExpr = true) =
+  case n.kind
+  of nkSym:
+    if n.sym.kind in {skParam, skVar, skTemp, skLet, skResult, skForVar}:
+      result.add(symbol(n))
+
+  of nkDotExpr:
+   result.add(symbol(n))
+  of nkDerefExpr, nkBracketExpr, nkHiddenDeref,
+      nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
+    # result.add(symbol(n))
+>>>>>>> Work on mutation and aliasing: not finished
     if followDotExpr:
      allRoots(n[0], result, followDotExpr)
 
@@ -290,6 +438,7 @@ proc allRoots(n: PNode; result: var seq[TrackedNode]; followDotExpr = true) =
     for i in 0..<n.len:
       allRoots(n[i], result, followDotExpr)
 
+<<<<<<< HEAD
   # a, b
   # call(a) # call(a: var int) Mutation
 
@@ -312,6 +461,8 @@ proc allRoots(n: PNode; result: var seq[TrackedNode]; followDotExpr = true) =
   # local: 0 graph: 1
   # a 1 
 
+=======
+>>>>>>> Work on mutation and aliasing: not finished
   of nkCallKinds:
     if n.typ != nil and n.typ.kind in {tyVar, tyLent}:
       if n.len > 1:
@@ -395,12 +546,20 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
         dest.flags.incl ownsData
       else:
         # otherwise it's just a dependency, nothing to worry about:
+<<<<<<< HEAD
         connect(c, dest.sym, tracked(n), n.info)
+=======
+        connect(c, dest.sym, symbol(n), n.info)
+>>>>>>> Work on mutation and aliasing: not finished
         # but a construct like ``[symbol]`` is dangerous:
         if c.inConstructor > 0: dest.flags.incl ownsData
 
   of nkDotExpr:
+<<<<<<< HEAD
     connect(c, dest.sym, tracked(n), n.info)
+=======
+    connect(c, dest.sym, symbol(n), n.info)
+>>>>>>> Work on mutation and aliasing: not finished
   of nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
     analyseAsgn(c, dest, n)
@@ -412,7 +571,11 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
       dest.flags.incl ownsData
     elif n.typ.kind in {tyLent, tyVar}:
       # we know the result is derived from the first argument:
+<<<<<<< HEAD
       var roots: seq[TrackedNode]
+=======
+      var roots: seq[Symbol]
+>>>>>>> Work on mutation and aliasing: not finished
       allRoots(n[1], roots)
       for r in roots:
         connect(c, dest.sym, r, n[1].info)
@@ -435,7 +598,11 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
     # something we cannot handle:
     dest.flags.incl preventCursor
 
+<<<<<<< HEAD
 proc noCursor(c: var Partitions, s: TrackedNode) =
+=======
+proc noCursor(c: var Partitions, s: Symbol) =
+>>>>>>> Work on mutation and aliasing: not finished
   let vid = variableId(c, s)
   if vid >= 0:
     c.s[vid].flags.incl preventCursor
@@ -444,14 +611,22 @@ proc rhsIsSink(c: var Partitions, n: PNode) =
   if n.kind == nkSym and n.typ.skipTypes(abstractInst-{tyOwned}).kind == tyRef:
     discard "do no pessimize simple refs further, injectdestructors.nim will prevent moving from it"
   else:
+<<<<<<< HEAD
     var roots: seq[TrackedNode]
+=======
+    var roots: seq[Symbol]
+>>>>>>> Work on mutation and aliasing: not finished
     allRoots(n, roots, followDotExpr = false)
     # let x = cursor? --> treat it like a sink parameter
     for r in roots:
       noCursor(c, r)
 
 proc deps(c: var Partitions; dest, src: PNode) =
+<<<<<<< HEAD
   var targets, sources: seq[TrackedNode]
+=======
+  var targets, sources: seq[Symbol]
+>>>>>>> Work on mutation and aliasing: not finished
   allRoots(dest, targets)
   allRoots(src, sources)
 
@@ -468,7 +643,11 @@ proc deps(c: var Partitions; dest, src: PNode) =
 
   if c.performCursorInference and src.kind != nkEmpty:
     if dest.kind == nkSym:
+<<<<<<< HEAD
       let vid = variableId(c, tracked(dest))
+=======
+      let vid = variableId(c, symbol(dest))
+>>>>>>> Work on mutation and aliasing: not finished
       if vid >= 0:
         analyseAsgn(c, c.s[vid], src)
         # do not borrow from a different local variable, this is easier
@@ -523,7 +702,11 @@ proc traverse(c: var Partitions; n: PNode) =
       if i < L:
         let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind in {tyVar, tySink, tyOwned}:
+<<<<<<< HEAD
           var roots: seq[TrackedNode]
+=======
+          var roots: seq[Symbol]
+>>>>>>> Work on mutation and aliasing: not finished
           allRoots(it, roots)
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
@@ -536,7 +719,11 @@ proc traverse(c: var Partitions; n: PNode) =
     when false:
       # XXX investigate if this is required, it doesn't look
       # like it is!
+<<<<<<< HEAD
       var roots: seq[TrackedNode]
+=======
+      var roots: seq[Symbol]
+>>>>>>> Work on mutation and aliasing: not finished
       allRoots(n[0], roots)
       for r in roots:
         potentialMutation(c, r, it.info)
@@ -549,7 +736,11 @@ proc traverse(c: var Partitions; n: PNode) =
           # we assume constructions with cursors are better without
           # the cursors because it's likely we can move then, see
           # test arc/topt_no_cursor.nim
+<<<<<<< HEAD
           noCursor(c, tracked(n[i]))
+=======
+          noCursor(c, symbol(n[i]))
+>>>>>>> Work on mutation and aliasing: not finished
 
   of nkObjConstr:
     for child in n: traverse(c, child)
@@ -560,7 +751,11 @@ proc traverse(c: var Partitions; n: PNode) =
           # we assume constructions with cursors are better without
           # the cursors because it's likely we can move then, see
           # test arc/topt_no_cursor.nim
+<<<<<<< HEAD
           noCursor(c, tracked(it))
+=======
+          noCursor(c, symbol(it))
+>>>>>>> Work on mutation and aliasing: not finished
 
   of nkPragmaBlock:
     let pragmaList = n[0]
@@ -610,6 +805,7 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
       else:
         v.sym[1].sym.flags.incl sfCursor
         #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags
+<<<<<<< HEAD
   
 proc loadPartitions*(s: PSym, n: PNode, config: ConfigRef): Partitions =
   result = Partitions(performCursorInference: true)
@@ -637,6 +833,8 @@ proc loadPartitions*(s: PSym, n: PNode, config: ConfigRef): Partitions =
   # b -> e
   #   -> d
   # g -> f
+=======
+>>>>>>> Work on mutation and aliasing: not finished
   # for i, v in par.s:
   #   echo v
   #   if par.graphs.len - 1 >= i:

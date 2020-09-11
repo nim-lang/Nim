@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
+import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes, varpartitions_symbol, sequtils
 import astalgo
 
 # 
@@ -59,7 +59,7 @@ import astalgo
 type
   Symbol = int
 
-  TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult, TSafe
+  TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult, TSafe, TAlias
   
   History = object
     info: TLineInfo
@@ -70,6 +70,8 @@ type
   NilMap* = ref object
     locals*:   Table[Symbol, Nilability]
     history*:  Table[Symbol, seq[History]]
+    aliases*:  Table[Symbol, Symbol]
+    aliasNodes*: Table[Symbol, PNode]
     previous*: NilMap
     base*:     NilMap
     top*:      NilMap
@@ -125,9 +127,71 @@ macro aecho*(a: varargs[untyped]): untyped =
 
 # end of helpers for debugging
 
+proc parentSubExprs(node: PNode): seq[PNode] =
+  if node.isNil:
+    return @[]
+  echo "parent ", node.kind
+  case node.kind:
+  of nkSym:
+    @[node]
+  of nkDotExpr:
+    parentSubExprs(node[0]).concat(@[node[1]])
+  of nkHiddenDeref:
+    parentSubExprs(node[0])
+  else:
+    @[]
+
+proc symbol(n: PNode): Symbol
+
+proc makeAlias(map: NilMap, a: PNode, b: PNode) =
+  let aSymbol = symbol(a)
+  let bSymbol = symbol(b)
+  map.aliases[aSymbol] = bSymbol
+  map.aliases[bSymbol] = aSymbol
+  map.aliasNodes[aSymbol] = b
+  map.aliasNodes[bSymbol] = a
+
+proc replaceAlias(node: PNode, original: PNode, alias: PNode): PNode =
+  case node.kind:
+  of nkSym:
+    if original.kind == nkSym and $node == $original:
+      return alias
+    else:
+      return node
+  of nkDotExpr:
+    if original.kind == nkDotExpr and $node == $original:
+      return alias
+    else:
+      return nkDotExpr.newTree(replaceAlias(node[0], original, alias), node[1])
+  else:
+    return node
+
+proc loadAliasNode(map: NilMap, symbol: Symbol): PNode =
+  var now = map
+  while not now.isNil:
+    if now.aliasNodes.hasKey(symbol):
+      return now.aliasNodes[symbol]
+    now = now.previous
+    
 proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  # let text = if node.isNil: "?" else: $node
+  let text = if node.isNil: "?" else: $node
   # echo "store " & text & " " & $symbol & " " & $value
+  if value == Nil:
+    echo "store " & text & " " & $symbol
+  # find out aliases
+  # alias.field 
+  for e in parentSubExprs(node):
+    echo "parent sub ", e
+    let eSymbol = symbol(e)
+    echo "symbol ", eSymbol
+    echo map.aliasNodes
+    let aliasNode = loadAliasNode(map, eSymbol)
+    if not aliasNode.isNil:
+      let aliasExpr = replaceAlias(node, e, aliasNode)
+      let aliasSymbol = symbol(aliasExpr)
+      echo "alias expr ", aliasNode, " ", aliasExpr
+      map.locals[aliasSymbol] = value
+      map.history.mgetOrPut(aliasSymbol, @[]).add(History(info: info, kind: TAlias, nilability: value))
   map.locals[symbol] = value
   map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
 
@@ -154,6 +218,10 @@ proc copyMap(map: NilMap): NilMap =
     result.locals[name] = value
   for name, value in map.history:
     result.history[name] = value
+  for a, b in map.aliases:
+    result.aliases[a] = b
+  for a, b in map.aliasNodes:
+    result.aliasNodes[a] = b
 
 proc `$`(map: NilMap): string =
   var now = map
@@ -166,6 +234,8 @@ proc `$`(map: NilMap): string =
     result.add("###\n")
     for name, value in now.locals:
       result.add(&"  {name} {value}\n")
+    for a, b in now.aliasNodes:
+      result.add(&"  alias {a} {b}\n")
 
 
 # symbol(result) -> resultId
@@ -204,8 +274,6 @@ using
   map: NilMap
 
 proc typeNilability(typ: PType): Nilability
-
-
 
 # maybe: if canRaise, return MaybeNil ?
 # no, because the target might be safe already
@@ -246,6 +314,7 @@ template event(b: History): string =
   of TResult: "it is nil by default"
   of TType: "it has ref type"
   of TSafe: "it is safe here as it returns false for isNil"
+  of TAlias: "it's alias changed here"
 
 proc derefWarning(n, conf, map; maybe: bool) =
   var a = history(map, symbol(n))
@@ -271,6 +340,7 @@ proc handleNilability(check: Check; n, conf, map) =
 proc checkDeref(n, conf, map): Check =
   # deref a : only if a is Safe
   # check a
+  echo "deref ", n[0]
   result = check(n[0], conf, map)
   
   handleNilability(result, n, conf, map)
@@ -279,12 +349,15 @@ proc checkDeref(n, conf, map): Check =
 proc checkRefExpr(n, conf; check: Check): Check =
   result = check
   if n.typ.kind != tyRef:
+    echo "not tyRef ", n.typ.kind
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
     let key = symbol(n)
     if result.map.hasKey(key):
+      echo "ref expr ", key, " ", result.map[key]
       result.nilability = result.map[key]
     else:
+      echo "maybe nil ref expr ", key, " ", MaybeNil
       # result.map[key] = MaybeNil
       result.map.store(key, MaybeNil, TType, n.info, n)
       result.nilability = MaybeNil
@@ -320,6 +393,15 @@ proc union(l: NilMap, r: NilMap): NilMap =
       # echo "history", name, value, r[name], h[^1].info.line
       result.store(name, union(value, r[name]), TAssign, h[^1].info)
 
+# a = b
+# a = c
+#
+# b -> a c -> a
+# a -> @[b, c]
+# {b, c, a}
+# a = e
+# a -> @[e]
+
 proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
   if assigned.kind != nkEmpty:
     result = check(assigned, conf, map)
@@ -333,6 +415,8 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
     result.map.store(t, Nil, TAssign, target.info, target)
   else:
     result.map.store(t, result.nilability, TAssign, target.info, target)
+    if target.kind in {nkSym, nkDotExpr}:
+      result.map.makeAlias(assigned, target)
 
 proc checkReturn(n, conf, map): Check =
   # return n same as result = n; return ?
@@ -669,7 +753,8 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   else:
     # echo n.kind
     result = (Nil, map)
-  
+  echo map
+
 proc typeNilability(typ: PType): Nilability =
   #if not typ.isNil:
   #  echo ("type ", typ, " ", typ.flags, " ", typ.kind)
@@ -678,6 +763,7 @@ proc typeNilability(typ: PType): Nilability =
   elif tfNotNil in typ.flags:
     Safe
   elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
+    # 
     # tyVar ? tyVarargs ? tySink ? tyLent ?
     # TODO spec? tests? 
     MaybeNil
@@ -698,7 +784,8 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
       map.store(symbol(child), typeNilability(child.typ), TArg, child.info, child)
 
   map.store(resultId, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
-  # echo "checking ", s.name.s, " ", filename
+  echo "checking ", s.name.s, " ", filename
+  # computeCursors(s, body, conf)
   let res = check(body, conf, map)
   if res.nilability == Safe and (not res.map.history.hasKey(resultId) or res.map.history[resultId].len <= 1):
     res.map.store(resultId, Safe, TAssign, s.ast.info)
