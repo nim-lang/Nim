@@ -130,7 +130,7 @@ macro aecho*(a: varargs[untyped]): untyped =
 proc parentSubExprs(node: PNode): seq[PNode] =
   if node.isNil:
     return @[]
-  echo "parent ", node.kind
+  # echo "parent ", node.kind
   case node.kind:
   of nkSym:
     @[node]
@@ -176,22 +176,22 @@ proc loadAliasNode(map: NilMap, symbol: Symbol): PNode =
 proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   let text = if node.isNil: "?" else: $node
   # echo "store " & text & " " & $symbol & " " & $value
-  if value == Nil:
-    echo "store " & text & " " & $symbol
+  # if value == Nil:
+  #   echo "store " & text & " " & $symbol
   # find out aliases
   # alias.field 
-  for e in parentSubExprs(node):
-    echo "parent sub ", e
-    let eSymbol = symbol(e)
-    echo "symbol ", eSymbol
-    echo map.aliasNodes
-    let aliasNode = loadAliasNode(map, eSymbol)
-    if not aliasNode.isNil:
-      let aliasExpr = replaceAlias(node, e, aliasNode)
-      let aliasSymbol = symbol(aliasExpr)
-      echo "alias expr ", aliasNode, " ", aliasExpr
-      map.locals[aliasSymbol] = value
-      map.history.mgetOrPut(aliasSymbol, @[]).add(History(info: info, kind: TAlias, nilability: value))
+  # for e in parentSubExprs(node):
+  #   # echo "parent sub ", e
+  #   let eSymbol = symbol(e)
+  #   # echo "symbol ", eSymbol
+  #   echo map.aliasNodes
+  #   let aliasNode = loadAliasNode(map, eSymbol)
+  #   if not aliasNode.isNil:
+  #     let aliasExpr = replaceAlias(node, e, aliasNode)
+  #     let aliasSymbol = symbol(aliasExpr)
+  #     # echo "alias expr ", aliasNode, " ", aliasExpr
+  #     map.locals[aliasSymbol] = value
+  #     map.history.mgetOrPut(aliasSymbol, @[]).add(History(info: info, kind: TAlias, nilability: value))
   map.locals[symbol] = value
   map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
 
@@ -279,11 +279,19 @@ proc typeNilability(typ: PType): Nilability
 # no, because the target might be safe already
 # with or without an exception
 proc checkCall(n, conf, map): Check =
+  # checks each call
+  # special case for new(T) -> result is always Safe
+  # for the others it depends on the return type of the call
+  # check args and handle possible mutations
+
   var isNew = false
   result.map = map
   for i, child in n:
     discard check(child, conf, map)
     if i > 0 and child.kind == nkHiddenAddr:
+      # var args make a new map with MaybeNil for our node
+      # as it might have been mutated
+      # TODO similar for normal refs and fields: find dependent exprs
       if child.typ.kind == tyVar and child.typ[0].kind == tyRef:
         # yes
         if not isNew:
@@ -317,6 +325,7 @@ template event(b: History): string =
   of TAlias: "it's alias changed here"
 
 proc derefWarning(n, conf, map; maybe: bool) =
+  ## a warning for potentially unsafe dereference
   var a = history(map, symbol(n))
   var res = ""
   res.add("can't deref " & $n & ", it " & (if maybe: "might be" else: "is") & " nil")
@@ -327,7 +336,8 @@ proc derefWarning(n, conf, map; maybe: bool) =
   message(conf, n.info, warnStrictNotNil, res)
 
 proc handleNilability(check: Check; n, conf, map) =
-  # message
+  ## handle the check:
+  ##   register a warning(error?) for Nil/MaybeNil
   case check.nilability:
   of Nil:
     derefWarning(n, conf, map, false)
@@ -338,35 +348,37 @@ proc handleNilability(check: Check; n, conf, map) =
       message(conf, n.info, hintUser, "can deref " & $n)
     
 proc checkDeref(n, conf, map): Check =
-  # deref a : only if a is Safe
-  # check a
-  echo "deref ", n[0]
+  ## check dereference: deref n should be ok only if n is Safe
   result = check(n[0], conf, map)
   
   handleNilability(result, n, conf, map)
 
     
 proc checkRefExpr(n, conf; check: Check): Check =
+  ## check ref expressions: TODO not sure when this happens
   result = check
   if n.typ.kind != tyRef:
-    echo "not tyRef ", n.typ.kind
+    # echo "not tyRef ", n.typ.kind
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
     let key = symbol(n)
     if result.map.hasKey(key):
-      echo "ref expr ", key, " ", result.map[key]
+      # echo "ref expr ", n, " ", key, " ", result.map[key]
+      echo result.map
       result.nilability = result.map[key]
     else:
-      echo "maybe nil ref expr ", key, " ", MaybeNil
+      # echo "maybe nil ref expr ", key, " ", MaybeNil
       # result.map[key] = MaybeNil
       result.map.store(key, MaybeNil, TType, n.info, n)
       result.nilability = MaybeNil
 
 proc checkDotExpr(n, conf, map): Check =
+  ## check dot expressions: make sure we can dereference the base
   result = check(n[0], conf, map)
   result = checkRefExpr(n, conf, result)
 
 proc checkBracketExpr(n, conf, map): Check =
+  ## check bracket expressions: make sure we can dereference the base
   result = check(n[0], conf, map)
   # if might be deref: [] == *(a + index) for cstring
   handleNilability(result, n[0], conf, map)
@@ -374,6 +386,7 @@ proc checkBracketExpr(n, conf, map): Check =
   result = checkRefExpr(n, conf, result)
 
 template union(l: Nilability, r: Nilability): Nilability =
+  ## unify two states
   # echo "union ", l, " ", r
   if l == r:
     l
@@ -381,6 +394,8 @@ template union(l: Nilability, r: Nilability): Nilability =
     MaybeNil
 
 proc union(l: NilMap, r: NilMap): NilMap =
+  ## unify two maps from different branches
+  ## combine their locals
   if l.isNil:
     return r
   elif r.isNil:
@@ -403,6 +418,8 @@ proc union(l: NilMap, r: NilMap): NilMap =
 # a -> @[e]
 
 proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
+  ## check assignment
+  ##   update map based on `assigned`
   if assigned.kind != nkEmpty:
     result = check(assigned, conf, map)
   else:
@@ -415,16 +432,22 @@ proc checkAsgn(target: PNode, assigned: PNode; conf, map): Check =
     result.map.store(t, Nil, TAssign, target.info, target)
   else:
     result.map.store(t, result.nilability, TAssign, target.info, target)
-    if target.kind in {nkSym, nkDotExpr}:
-      result.map.makeAlias(assigned, target)
+    # if target.kind in {nkSym, nkDotExpr}:
+    #  result.map.makeAlias(assigned, target)
 
 proc checkReturn(n, conf, map): Check =
+  ## check return
   # return n same as result = n; return ?
   result = check(n[0], conf, map)
   result.map.store(resultId, result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, conf, map): Check =
+  ## check for loops
+  ##   try to repeat the unification of the code twice
+  ##   to detect what can change after a several iterations
+  ##   approach based on discussions with Zahary/Araq
+  ##   similar approach used for other loops
   var m = map
   var map0 = map.copyMap()
   m = check(n.sons[2], conf, map).map.copyMap()
@@ -439,6 +462,8 @@ proc checkFor(n, conf, map): Check =
   result.nilability = Safe
 
 proc checkWhile(n, conf, map): Check =
+  ## check while loops
+  ##   try to repeat the unification of the code twice
   var m = checkCondition(n[0], conf, map, false, false)
   var map0 = map.copyMap()
   m = check(n.sons[1], conf, m).map
@@ -451,6 +476,11 @@ proc checkWhile(n, conf, map): Check =
   result.nilability = Safe
 
 proc checkInfix(n, conf, map): Check =
+  ## check infix operators
+  ##   a and b : map is based on a; next b
+  ##   a or b : map is an union of a and b's
+  ##   a == b : use checkCondition
+  ##   else: no change, just check args
   if n[0].kind == nkSym:
     var mapL: NilMap
     var mapR: NilMap
@@ -483,6 +513,8 @@ proc checkInfix(n, conf, map): Check =
   result.nilability = Safe
 
 proc checkIsNil(n, conf, map; isElse: bool = false): Check =
+  ## check isNil calls
+  ## update the map depending on if it is not isNil or isNil
   result.map = newNilMap(map)
   let value = n[1]
   let value2 = symbol(value)
@@ -637,18 +669,28 @@ proc directStop(n): bool =
   return false
 
 proc checkCondition(n, conf, map; isElse: bool, base: bool): NilMap =
+  ## check conditions : used for if, some infix operators
+  ##   isNil(a)
   if base:
     map.base = map
   result = map
   if n.kind == nkCall:
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       result = newNilMap(map, if base: map else: map.base)
+      # I assumed n[1] is a sym?
+      var nilability: Nilability
+      (nilability, result) = check(n[1], conf, result)
+
       let a = symbol(n[1])
       result.store(a, if not isElse: Nil else: Safe, if not isElse: TNil else: TSafe, n.info, n)
+    else:
+      discard
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
     result = checkCondition(n[1], conf, map, not isElse, false)
   elif n.kind == nkInfix:
     result = checkInfix(n, conf, map).map
+  else:
+    discard
 
 proc checkResult(n, conf, map) =
   let resultNilability = map[resultId]
@@ -753,7 +795,7 @@ proc check(n: PNode, conf: ConfigRef, map: NilMap): Check =
   else:
     # echo n.kind
     result = (Nil, map)
-  echo map
+  # echo map
 
 proc typeNilability(typ: PType): Nilability =
   #if not typ.isNil:
@@ -785,7 +827,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
 
   map.store(resultId, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
   echo "checking ", s.name.s, " ", filename
-  # computeCursors(s, body, conf)
+  var par = loadPartitions(s, body, conf) 
   let res = check(body, conf, map)
   if res.nilability == Safe and (not res.map.history.hasKey(resultId) or res.map.history[resultId].len <= 1):
     res.map.store(resultId, Safe, TAssign, s.ast.info)

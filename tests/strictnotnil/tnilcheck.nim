@@ -72,12 +72,25 @@ type
   Nilable2* = nil NonNilable
 
 
+# proc `[]`(a: Nilable, b: int): Nilable =
+#   nil
+
 proc testRootAliasField(a: Nilable) =
-  var aliasA = a
+  var aliasA = a # {aliasA, a} .. but here we should also add all the related expressions 
+  # {aliasA, a} {aliasA.field, a.field}
+  # but later they might diverge : we still keep them together
+  # but then do we need field level?
+  # kinda because it can be a.field = aliasA etc
+  # and what if a.a = a ?
+  # a.field = a
   if not a.isNil and not a.field.isNil:
-    aliasA.field = nil
-    # a.field = nil
+    aliasA.field = nil # {  }
+    # a.field = nil # aliasA.field # we should detect this happens
     echo a.field.a # can't deref a.field: it might be nil
+
+# proc testFieldNilCheck(a: Nilable) =
+#   if not a.field.isNil: # can't deref a: might be nil
+#     echo 0
 
 # # Nilable tests
 
@@ -147,8 +160,10 @@ proc testRootAliasField(a: Nilable) =
 
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash
-#   if not a.isNil:
-#     result = a
+#   var field = 0
+#   if not a.isNil and not a.field.isNil:
+#     # echo a.field.a
+#     echo a[field].a
 #   result = Nilable()
   
 # proc testSeparateShadowingResult(a: Nilable): Nilable =
@@ -249,6 +264,13 @@ proc testRootAliasField(a: Nilable) =
 #   callChange(a)
 #   echo a.field.a # can't deref a.field, it might be nil
 
+# var it = root;
+# while it != nil:
+#   baz(it)
+#   it = it.next
+  # quite different from:
+  # it = it.next.next
+
 # # ok, but most calls maybe can raise
 # # so this makes us mostly force initialization of result with a valid default
 
@@ -271,9 +293,9 @@ proc testRootAliasField(a: Nilable) =
 # #     globalA = nil
 # #     echo a.a # can't deref a: it might be nil
 
-# var nilable: Nilable
-# var withField = Nilable(a: 0, field: Nilable())
-# # testRootAliasField(withField)
+var nilable: Nilable
+var withField = Nilable(a: 0, field: Nilable())
+testRootAliasField(withField)
 # discard testUniqueHashTree(withField)
 # # test1(nilable)
 # # test10(globalA)
