@@ -183,7 +183,7 @@ proc getRoot*(n: PNode): PSym =
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
+      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
     result = getRoot(n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = getRoot(n[1])

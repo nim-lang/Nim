@@ -494,6 +494,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
+    #result = transformSons(c, n)
     result.typ = takeType(n.typ, n[1].typ)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
@@ -1106,6 +1107,9 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool): PNode =
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
+
+  #if prc.name.s == "main":
+  #  echo "transformed into ", renderTree(result, {renderIds})
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

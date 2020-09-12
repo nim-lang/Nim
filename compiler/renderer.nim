@@ -1035,7 +1035,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n, 1)
   of nkHiddenStdConv, nkHiddenSubConv:
     if n.len >= 2:
-      gsub(g, n[1])
+      when false:
+        # if {renderIds, renderIr} * g.flags != {}:
+        put(g, tkSymbol, "(conv)")
+        put(g, tkParLe, "(")
+        gsub(g, n[1])
+        put(g, tkParRi, ")")
+      else:
+        gsub(g, n[1])
     else:
       put(g, tkSymbol, "(wrong conv)")
   of nkHiddenCallConv:
