@@ -271,6 +271,34 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
             [addrLoc(p.config, dest), addrLoc(p.config, src), genTypeInfo(p.module, dest.t, dest.lode.info)])
 
+proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
+  assert d.k != locNone
+  #  getTemp(p, d.t, d)
+
+  case a.t.skipTypes(abstractVar).kind
+  of tyOpenArray, tyVarargs:
+    if reifiedOpenArray(a.lode):
+      linefmt(p, cpsStmts, "$1.d = $2.d; $1.l = $2.l;$n",
+        [rdLoc(d), a.rdLoc])
+    else:
+      linefmt(p, cpsStmts, "$1.d = $2; $1.l = $2Len_0;$n",
+        [rdLoc(d), a.rdLoc])
+  of tySequence:
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  of tyArray:
+    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n",
+      [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
+  of tyString:
+    let etyp = skipTypes(a.t, abstractInst)
+    if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+
+    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+      [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
+  else:
+    internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
+
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
   # the assignment operation in C.
@@ -349,7 +377,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyOpenArray, tyVarargs:
     # open arrays are always on the stack - really? What if a sequence is
     # passed to an open array?
-    if containsGarbageCollectedRef(dest.t):
+    if reifiedOpenArray(dest.lode):
+      genOpenArrayConv(p, dest, src)
+    elif containsGarbageCollectedRef(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
            [addrLoc(p.config, dest), addrLoc(p.config, src),
@@ -361,7 +391,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            "$1 = $2;$n",
            [rdLoc(dest), rdLoc(src)])
   of tySet:
-    if mapType(p.config, ty) == ctArray:
+    if mapSetType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
@@ -406,7 +436,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
          [addrLoc(p.config, dest), addrLocOrTemp(src),
          genTypeInfo(p.module, dest.t, dest.lode.info)])
   of tySet:
-    if mapType(p.config, ty) == ctArray:
+    if mapSetType(p.config, ty) == ctArray:
       linefmt(p, cpsStmts, "#nimCopyMem((void*)$1, (NIM_CONST void*)$2, $3);$n",
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
@@ -679,7 +709,7 @@ proc isCppRef(p: BProc; typ: PType): bool {.inline.} =
       tfVarIsPtr notin skipTypes(typ, abstractInstOwned).flags
 
 proc genDeref(p: BProc, e: PNode, d: var TLoc) =
-  let mt = mapType(p.config, e[0].typ)
+  let mt = mapType(p.config, e[0].typ, mapTypeChooser(e[0]))
   if mt in {ctArray, ctPtrToArray} and lfEnforceDeref notin d.flags:
     # XXX the amount of hacks for C's arrays is incredible, maybe we should
     # simply wrap them in a struct? --> Losing auto vectorization then?
@@ -747,7 +777,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     initLocExpr(p, e[0], a)
     putIntoDest(p, d, e, "&" & a.r, a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
-  elif mapType(p.config, e[0].typ) == ctArray or isCppRef(p, e.typ):
+  elif mapType(p.config, e[0].typ, mapTypeChooser(e[0])) == ctArray or isCppRef(p, e.typ):
     expr(p, e[0], d)
   else:
     var a: TLoc
@@ -905,10 +935,16 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   let ty = skipTypes(arr.t, abstractVarRange)
   case ty.kind
   of tyOpenArray, tyVarargs:
-    linefmt(p, cpsStmts,
-      "if ($2-$1 != -1 && " &
-      "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
-      [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
+    if reifiedOpenArray(arr.lode):
+      linefmt(p, cpsStmts,
+        "if ($2-$1 != -1 && " &
+        "((NU)($1) >= (NU)($3.l) || (NU)($2) >= (NU)($3.l))){ #raiseIndexError(); $4}$n",
+        [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
+    else:
+      linefmt(p, cpsStmts,
+        "if ($2-$1 != -1 && " &
+        "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
+        [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
     linefmt(p, cpsStmts,
@@ -925,13 +961,22 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
-  initLocExpr(p, y, b) # emit range check:
-  if optBoundsCheck in p.options:
-    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
-            [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
-  inheritLocation(d, a)
-  putIntoDest(p, d, n,
-              ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
+  initLocExpr(p, y, b)
+  if not reifiedOpenArray(x):
+    # emit range check:
+    if optBoundsCheck in p.options:
+      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
+              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+    inheritLocation(d, a)
+    putIntoDest(p, d, n,
+                ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
+  else:
+    if optBoundsCheck in p.options:
+      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.l)){ #raiseIndexError2($1,$2.l-1); $3}$n",
+              [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
+    inheritLocation(d, a)
+    putIntoDest(p, d, n,
+                ropecg(p.module, "$1.d[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
 
 proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1675,8 +1720,12 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         putIntoDest(p, d, e, ropecg(p.module, "($2)-($1)+1", [rdLoc(b), rdLoc(c)]))
     else:
-      if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
-      else: unaryExpr(p, e, d, "$1Len_0")
+      if not reifiedOpenArray(a):
+        if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
+        else: unaryExpr(p, e, d, "$1Len_0")
+      else:
+        if op == mHigh: unaryExpr(p, e, d, "($1.l-1)")
+        else: unaryExpr(p, e, d, "$1.l")
   of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
@@ -2253,13 +2302,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t)])
   of mOffsetOf:
     var dotExpr: PNode
-    block findDotExpr:
-      if e[1].kind == nkDotExpr:
-        dotExpr = e[1]
-      elif e[1].kind == nkCheckedFieldExpr:
-        dotExpr = e[1][0]
-      else:
-        internalError(p.config, e.info, "unknown ast")
+    if e[1].kind == nkDotExpr:
+      dotExpr = e[1]
+    elif e[1].kind == nkCheckedFieldExpr:
+      dotExpr = e[1][0]
+    else:
+      internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
     let tname = getTypeDesc(p.module, t)
     let member =
@@ -2813,8 +2861,10 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result.add getDefaultValue(p, t.sons[1], info)
     result.add "}"
     #result = rope"{}"
+  of tyOpenArray, tyVarargs:
+    result = rope"{NIM_NIL, 0}"
   of tySet:
-    if mapType(p.config, t) == ctArray: result = rope"{}"
+    if mapSetType(p.config, t) == ctArray: result = rope"{}"
     else: result = rope"0"
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)

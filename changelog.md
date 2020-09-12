@@ -4,6 +4,20 @@
 
 ## Standard library additions and changes
 
+- Added some enhancements to `std/jsonutils` module.
+  * Added a possibility to deserialize JSON arrays directly to `HashSet` and
+    `OrderedSet` types and respectively to serialize those types to JSON arrays
+    via `jsonutils.fromJson` and `jsonutils.toJson` procedures.
+  * Added a possibility to deserialize JSON `null` objects to Nim option objects
+    and respectively to serialize Nim option object to JSON object if `isSome`
+    or to JSON null object if `isNone` via `jsonutils.fromJson` and
+    `jsonutils.toJson` procedures.
+  * Added `Joptions` parameter to `jsonutils.fromJson` procedure currently
+    containing two boolean options `allowExtraKeys` and `allowMissingKeys`.
+    - If `allowExtraKeys` is `true` Nim's object to which the JSON is parsed is
+      not required to have a field for every JSON key.
+    - If `allowMissingKeys` is `true` Nim's object to which JSON is parsed is
+      allowed to have fields without corresponding JSON keys.
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Add `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
@@ -168,6 +182,9 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
+- Add `getprotobyname` to `winlean`. Add `getProtoByname` to `nativesockets` which returns a protocol code
+  from the database that matches the protocol `name`.
+
 
 
 ## Language changes
@@ -249,6 +266,10 @@ proc mydiv(a, b): int {.raises: [].} =
 - There is a new experimental feature called "strictFuncs" which makes the definition of
   `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
   for more information.
+
+- "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
+  an experimental feature. In other words, you don't have to write pragma
+  `{.experimental: "forLoopMacros".}` if you want to use them.
 
 
 ## Compiler changes

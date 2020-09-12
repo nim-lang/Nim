@@ -17,6 +17,7 @@ import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
+from typeallowed import isViewType
 
 type
   SubgraphFlag = enum
@@ -48,7 +49,7 @@ type
     maxMutation, minConnection: int
     mutations: seq[int]
 
-  Partitions = object
+  Partitions* = object
     abstractTime: int
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
@@ -74,7 +75,7 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
       result.add config $ g.connectedVia
       result.add " is the statement that connected the mutation to the parameter"
 
-proc hasSideEffect(c: var Partitions; info: var MutationInfo): bool =
+proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
     if g.flags == {isMutated, connectsConstParam} and mutationAfterConnection(g):
       info = g
@@ -374,7 +375,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
   allRoots(src, sources)
 
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap) or isViewType(dest.typ)
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -505,35 +506,50 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
-proc mutatesNonVarParameters*(s: PSym; n: PNode; info: var MutationInfo): bool =
-  var par = Partitions(performCursorInference: false)
-  if s.kind != skMacro:
+proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partitions =
+  result = Partitions(performCursorInference: cursorInference)
+  if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
-      registerVariable(par, params[i])
+      registerVariable(result, params[i])
     if resultPos < s.ast.safeLen:
-      registerVariable(par, s.ast[resultPos])
+      registerVariable(result, s.ast[resultPos])
 
-  traverse(par, n)
-  result = hasSideEffect(par, info)
+  traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
+  #echo "range ", v.aliveStart, " .. ", v.aliveEnd
   if isMutated in g.flags:
     for m in g.mutations:
+      #echo "mutation ", m
       if m in v.aliveStart..v.aliveEnd:
         return true
   return false
 
-proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = Partitions(performCursorInference: true)
-  if s.kind notin {skMacro, skModule}:
-    let params = s.typ.n
-    for i in 1..<params.len:
-      registerVariable(par, params[i])
-    if resultPos < s.ast.safeLen:
-      registerVariable(par, s.ast[resultPos])
+proc cannotBorrow(config: ConfigRef; s: PSym; g: MutationInfo) =
+  var m = "cannot borrow " & s.name.s &
+    "; what it borrows from is potentially mutated"
 
-  traverse(par, n)
+  if g.mutatedHere != unknownLineInfo:
+    m.add "\n"
+    m.add config $ g.mutatedHere
+    m.add " the mutation is here"
+  if g.connectedVia != unknownLineInfo:
+    m.add "\n"
+    m.add config $ g.connectedVia
+    m.add " is the statement that connected the mutation to the parameter"
+  localError(config, s.info, m)
+
+proc checkBorrowedLocations*(par: var Partitions; config: ConfigRef) =
+  for i in 0 ..< par.s.len:
+    let s = par.s[i].sym
+    if s.kind != skParam and isViewType(s.typ):
+      let rid = root(par, i)
+      if par.s[rid].kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].graphIndex], par.s[i]):
+        cannotBorrow(config, s, par.graphs[par.s[rid].graphIndex])
+
+proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
+  var par = computeGraphPartitions(s, n, true)
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags == {} and v.sym.kind notin {skParam, skResult} and

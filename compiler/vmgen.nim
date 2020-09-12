@@ -611,7 +611,7 @@ proc genField(c: PCtx; n: PNode): TRegister =
   if n.kind != nkSym or n.sym.kind != skField:
     globalError(c.config, n.info, "no field symbol")
   let s = n.sym
-  if s.position > high(result):
+  if s.position > high(typeof(result)):
     globalError(c.config, n.info,
         "too large offset! cannot generate code for: " & s.name.s)
   result = s.position

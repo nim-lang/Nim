@@ -141,6 +141,13 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
+proc reifiedOpenArray(n: PNode): bool {.inline.} =
+  let x = trees.getRoot(n)
+  if x != nil and x.kind == skParam:
+    result = false
+  else:
+    result = true
+
 proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
   var a: TLoc
 
@@ -174,7 +181,12 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       else:
         result = "($5*)($1)+(($2)-($4)), ($3)-($2)+1" %
           [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first), dest]
-    of tyOpenArray, tyVarargs, tyUncheckedArray, tyCString:
+    of tyOpenArray, tyVarargs:
+      if reifiedOpenArray(q[1]):
+        result = "($4*)($1.d)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+      else:
+        result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+    of tyUncheckedArray, tyCString:
       result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
     of tyString, tySequence:
       let atyp = skipTypes(a.t, abstractInst)
@@ -188,10 +200,13 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else:
       internalError(p.config, "openArrayLoc: " & typeToString(a.t))
   else:
-    initLocExpr(p, n, a)
+    initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n, a)
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:
-      result = "$1, $1Len_0" % [rdLoc(a)]
+      if reifiedOpenArray(n):
+        result = "$1.d, $1.l" % [rdLoc(a)]
+      else:
+        result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
       if formalType.skipTypes(abstractInst).kind in {tyVar} and ntyp.kind == tyString and
