@@ -218,21 +218,22 @@ proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
   ]#
   if s.color == colWhite and (s.rc and isCycleCandidate) == 0:
     s.setColor(colBlack)
-    when true:
+    when false:
       # optimized version (does not work)
       j.traceStack.add(s, desc)
       # this way of writing the loop means we can free all the nodes
       # afterwards avoiding the "use after free" bug in the paper.
       var i = 0
       while i < j.traceStack.len:
-        let (t, desc) = j.traceStack.d[j.traceStack.len-1]
+        let (t, desc) = j.traceStack.d[i]
         inc i
         if t.color == colWhite and (t.rc and isCycleCandidate) == 0:
           t.setColor(colBlack)
           trace(t, desc, j)
 
       for i in 0 ..< j.traceStack.len:
-        free(j.traceStack.d[i][0], j.traceStack.d[i][1])
+        if t.color == colBlack:
+          free(j.traceStack.d[i][0], j.traceStack.d[i][1])
       inc j.freed, j.traceStack.len
       j.traceStack.len = 0
     else:
