@@ -195,13 +195,13 @@ proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
-                                colorOutput = true): <//>ConsoleOutputFormatter =
+                                colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
   )
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
   when declared(stdout):
     # Reading settings
     # On a terminal this branch is executed
@@ -284,7 +284,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
