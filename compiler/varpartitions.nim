@@ -396,7 +396,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
             (src.sym.kind in {skLet, skParam, skForVar} and hasDisabledAsgn(src.sym.typ))):
           c.s[vid].flags.incl preventCursor
 
-    if hasDestructor(src.typ):
+    if src.kind == nkSym and hasDestructor(src.typ):
       rhsIsSink(c, src)
 
 proc traverse(c: var Partitions; n: PNode) =
