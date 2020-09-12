@@ -1784,7 +1784,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
   result = newOrderedTable[A, B](pairs.len)
-  for key, val in items(pairs): result.add(key, val)
+  for key, val in items(pairs): result[key] = val
 
 
 proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
@@ -2967,37 +2967,37 @@ when isMainModule:
   block: #5482
     var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var b = newOrderedTable[string, string](initialSize = 2)
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5482
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string](initialSize = 2)
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5487
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string]()         # notice, default size!
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5487
     var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var b = newOrderedTable[string, string]()         # notice, default size!
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block:
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var c = newOrderedTable[string, string]()         # notice, default size!
-    c.add("wrong?", "foo")
-    c.add("wrong?", "foo2")
+    c["wrong?"] = "foo"
+    c["wrong?"] = "foo2"
     assert a == b
     assert a == c
 
