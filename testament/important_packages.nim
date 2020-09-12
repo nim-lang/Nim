@@ -91,6 +91,6 @@ pkg "unicodeplus", true
 pkg "unpack"
 # pkg "winim", true
 pkg "with"
-pkg "ws"
+# pkg "ws"
 pkg "yaml"
 pkg "zero_functional", false, "nim c -r test.nim"
