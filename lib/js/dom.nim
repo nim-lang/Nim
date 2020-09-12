@@ -1591,10 +1591,10 @@ proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
 since (1, 3):
-  proc canShare*(self: Navigator; data: cstring): bool     ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/canShare
-  proc vibrate*(self: Navigator; pattern: cint)            ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
-  proc vibrate*(self: Navigator; pattern: openArray[cint]) ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
-  proc sendBeacon*(self: Navigator; url, data: cstring): bool ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
+  proc canShare*(self: Navigator; data: cstring): bool           ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/canShare
+  proc sendBeacon*(self: Navigator; url, data: cstring): bool    ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
+  proc vibrate*(self: Navigator; pattern: cint): bool            ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
+  proc vibrate*(self: Navigator; pattern: openArray[cint]): bool ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
   proc registerProtocolHandler*(self: Navigator; scheme, url, title: cstring) ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/registerProtocolHandler
 
 # ClassList "methods"
