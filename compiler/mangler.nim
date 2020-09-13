@@ -153,7 +153,9 @@ proc shortKind(k: TTypeKind): string =
   ## truncate types
   result = toLowerAscii($k)
   removePrefix(result, "ty")
-  if len(result) > 4:
+  if result == "sequence":
+    result = "seq"
+  elif len(result) > 4:
     result = split(result, {'e','i','o','u'}).join("")
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
