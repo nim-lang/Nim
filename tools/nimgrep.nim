@@ -83,9 +83,9 @@ var
   excludeDir: seq[Regex]
   useWriteStyled = true
   oneline = true
-  linesBefore = 0
-  linesAfter = 0
-  linesContext = 0
+  linesBefore: Natural = 0
+  linesAfter: Natural = 0
+  linesContext: Natural = 0
   colorTheme = "simple"
   newLine = false
 
