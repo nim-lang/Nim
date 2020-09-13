@@ -150,13 +150,17 @@ const
                            tyStatic, tyAlias, tySink, tyInferred}
 
 proc shortKind(k: TTypeKind): string =
-  ## truncate types
+  ## truncate longer type names
   result = toLowerAscii($k)
   removePrefix(result, "ty")
-  if result == "sequence":
-    result = "seq"
+  # TODO: currently, uint32 -> nt32 🙁
+  result = case result
+  of "sequence": "seq"
+  of "object": "obj"
+  of "array": "arr"
   elif len(result) > 4:
-    result = split(result, {'e','i','o','u'}).join("")
+    split(result, {'a', 'e','i','o','u'}).join("")
+  else: result
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
   let m = getem()
