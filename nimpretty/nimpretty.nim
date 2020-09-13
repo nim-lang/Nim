@@ -117,6 +117,7 @@ proc main =
       let infileBackup = infile & ".backup" # works with .nim or .nims
       echo "writing backup " & infile & " > " & infileBackup
       os.copyFile(source = infile, dest = infileBackup)
+    assert outfile.splitFile.ext in [".nim", ".nims"], "Output file must be .nim or .nims"
     prettyPrint(infile, outfile, opt)
 
 main()
