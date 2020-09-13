@@ -161,7 +161,8 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
   var typ = typ.skipTypes(irrelevantForBackend)
   result = case typ.kind
   of tySet, tySequence, tyTypeDesc, tyArray:
-    shortKind(typ.kind) & "_" & typeName(p, typ.lastSon, shorten = shorten)
+    # set[Enum] -> setEnum for "first word" shortening purposes
+    shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
   of tyVar, tyRef, tyPtr:
     # omit this verbosity for now
     typeName(p, typ.lastSon, shorten = shorten)
