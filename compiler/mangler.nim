@@ -151,25 +151,30 @@ const
 
 proc shortKind(k: TTypeKind): string =
   ## truncate longer type names
+  const vowels = {'a','e','i','o','u'}
   result = toLowerAscii($k)
   removePrefix(result, "ty")
   # TODO: currently, uint32 -> nt32 🙁
-  result = case result
-  of "sequence": "seq"
-  of "object": "obj"
-  of "array": "arr"
-  elif len(result) > 4:
-    split(result, {'a', 'e','i','o','u'}).join("")
+  result = case k
+  # handle der usual suspects especialment
+  of tySequence, tyObject, tyArray, tyString, tyTuple, tyOrdinal:
+    result[0 .. 2]
+  elif len(result) > 4:  # elide vowels to shrink it
+    if result[0] in vowels:
+      # if it starts with a vowel, keep that letter; think `Opnrry`
+      split(result[1..^1], vowels).join("")
+    else:
+      split(result, vowels).join("")
   else: result
 
 proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
   let m = getem()
   var typ = typ.skipTypes(irrelevantForBackend)
   result = case typ.kind
-  of tySet, tySequence, tyTypeDesc, tyArray:
+  of tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray:
     # set[Enum] -> setEnum for "first word" shortening purposes
     shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
-  of tyVar, tyRef, tyPtr:
+  of tyVar:
     # omit this verbosity for now
     typeName(p, typ.lastSon, shorten = shorten)
   of tyProc, tyTuple:
@@ -187,8 +192,12 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     if typ.sym == nil:
       shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
-      # do the complete mangle but only use the first "word"
-      mangle(p, typ.sym).split("_")[0]
+      if conflictKey(typ.sym.typ) == conflictKey(typ):
+        # deconstruct aliases so signatures can match
+        shortKind(typ.kind)
+      else:
+        # do the complete mangle but only use the first "word"
+        mangle(p, typ.sym).split("_")[0]
     else:
       mangle(p, typ.sym)
 
@@ -201,15 +210,11 @@ proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## Should we add the first argument's type to the mangle?  If yes, DO IT.
   if s.kind in routineKinds:
     if s.typ != nil:
-      result = s.typ.sons.len > 1
+      result = s.typ.sons.len >= 2
       if result:
         name.add "_"
-        let param = s.typ.sons[1]  # 1st parameter
-        # avoid including the conflictKey of param
-        if param.sym == nil:
-          name.add shortKind(param.kind)
-        else:
-          name.add typeName(p, param, shorten = true)
+        # avoid including the conflictKey of the 1st param
+        name.add typeName(p, s.typ.sons[1], shorten = true)
 
 proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## `true` if the symbol is a source of link collisions; if so,
