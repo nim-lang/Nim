@@ -7,7 +7,8 @@ discard """
 2
 3
 yes int
-string int'''
+string int
+true'''
   joinable: false
 """
 
@@ -93,3 +94,13 @@ proc d[K2, V2](x: Dict[K2, V2]) =
 
 var x = initTable[string, int]()
 d(x)
+
+
+type Monoid = concept
+  proc `+`(x, y: Self): Self
+  proc z(t: typedesc[Self]): Self
+
+proc z(x: typedesc[int]): int = 0
+
+echo(int is Monoid)
+

@@ -12,6 +12,8 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos
 
+from concepts import makeTypeDesc
+
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
