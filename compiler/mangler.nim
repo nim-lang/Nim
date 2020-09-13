@@ -34,9 +34,6 @@ import # stdlib imports
 
   std / [ strutils, tables, sets ]
 
-const
-  taintFree = true
-
 type
   ModuleOrProc* = BProc or BModule
 
@@ -183,7 +180,8 @@ proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
     if typ.sym == nil:
       shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
-      mangle(typ.sym.name.s)
+      # do the complete mangle but only use the first "word"
+      mangle(p, typ.sym).split("_")[0]
     else:
       mangle(p, typ.sym)
 
@@ -245,11 +243,6 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
 
     # otherwise, start off by using a name that doesn't suck
     result = mangle(s.name.s)
-
-  # special-case TaintedString until we have a plan for it
-  when taintFree:
-    if s.kind == skType and result == "TaintedString":
-      result = "string"
 
   # some symbols have flags that preclude further mangling
   if not s.hasImmutableName:
