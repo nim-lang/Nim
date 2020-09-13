@@ -2245,8 +2245,7 @@ proc parseStmt(p: var Parser): PNode =
           break
         p.hasProgress = false
         if p.tok.tokType in {tkElse, tkElif}:
-          parMessage(p, errInvalidIndentation)
-          getTok(p)
+          break # Allow this too, see tests/parser/tifexprs
 
         result.add complexOrSimpleStmt(p)
         if not p.hasProgress and p.tok.tokType == tkEof: break

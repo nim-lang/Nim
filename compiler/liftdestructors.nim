@@ -462,6 +462,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
+    # XXX: replace these with assertions.
     if t.assignment == nil:
       return # protect from recursion
     body.add newHookCall(c, t.assignment, x, y)
@@ -827,7 +828,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info)
 
-  result = symPrototype(g, typ, typ.owner, kind, info)
+  result = typ.attachedOps[kind]
+  if result == nil:
+    result = symPrototype(g, typ, typ.owner, kind, info)
+
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ)
   a.fn = result
 
@@ -947,9 +951,18 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   let lastAttached = if g.config.selectedGC == gcOrc: attachedDispose
                      else: attachedSink
 
+  # bug #15122: We need to produce all prototypes before entering the
+  # mind boggling recursion. Hacks like these imply we shoule rewrite
+  # this module.
+  var generics: array[attachedDestructor..attachedDispose, bool]
+  for k in attachedDestructor..lastAttached:
+    generics[k] = canon.attachedOps[k] != nil
+    if not generics[k]:
+      canon.attachedOps[k] = symPrototype(g, canon, canon.owner, k, info)
+
   # we generate the destructor first so that other operators can depend on it:
   for k in attachedDestructor..lastAttached:
-    if canon.attachedOps[k] == nil:
+    if not generics[k]:
       discard produceSym(g, c, canon, k, info)
     else:
       inst(canon.attachedOps[k], canon)

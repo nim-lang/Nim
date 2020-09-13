@@ -171,3 +171,24 @@ proc encodedQuery =
     elem.tt()
 
 encodedQuery()
+
+# bug #15147
+
+proc s(input: string): (string, string) =
+  result = (";", "")
+
+proc charmatch(input: string): (string, string) =
+  result = ("123", input[0 .. input.high])
+
+proc plus(input: string) =
+  var
+    lvalue, rvalue: string # cursors
+    lnext: string # must be cursor!!!
+    rnext: string # cursor
+  let lresult = charmatch(input)
+  (lvalue, lnext) = lresult
+
+  let rresult = s(lnext)
+  (rvalue, rnext) = rresult
+
+plus("123;")

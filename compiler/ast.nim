@@ -1355,8 +1355,8 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
       writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
-  if a.k == low(a.k): a.k = b.k
-  if a.storage == low(a.storage): a.storage = b.storage
+  if a.k == low(typeof(a.k)): a.k = b.k
+  if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
