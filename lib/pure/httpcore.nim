@@ -230,7 +230,9 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     if cmpIgnoreCase(result.key, "cookie") == 0:
-      result.value.add line[i + 1 .. ^1]
+      inc(i)
+      if i < len(line):
+        result.value.add line[i + 1 .. ^1]
     else:
       i += parseList(line, result.value, i)
   elif result.key.len > 0:
