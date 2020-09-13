@@ -50,12 +50,12 @@ proc testTogether(infiles: seq[string]) =
 
 let allFiles = toSeq(walkFiles(dir / "*.nim"))
 for t in allFiles:
-  test(t, "pretty")
+  test(t, ".pretty.nim")
   # also test that pretty(pretty(x)) == pretty(x)
-  test(t.changeFileExt("pretty"), "pretty2")
+  test(t.changeFileExt(".pretty.nim"), ".pretty2.nim")
 
-  removeFile(t.changeFileExt("pretty"))
-  removeFile(t.changeFileExt("pretty2"))
+  removeFile(t.changeFileExt(".pretty.nim"))
+  removeFile(t.changeFileExt(".pretty2.nim"))
 
 testTogether(allFiles)
 removeDir(outputdir)
