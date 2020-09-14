@@ -40,6 +40,10 @@ suite "httpcore":
     doAssert parseHeader("cookie: foo, bar, prologue") == ("cookie", @["foo, bar, prologue"])
     doAssert parseHeader("cookie: foo, bar, prologue, starlight") == ("cookie", @["foo, bar, prologue, starlight"])
 
+    doAssert parseHeader("cookie:   foo, bar") ==  ("cookie", @["foo, bar"])
+    doAssert parseHeader("cookie:  foo, bar, prologue") == ("cookie", @["foo, bar, prologue"])
+    doAssert parseHeader("cookie:   foo, bar, prologue, starlight") == ("cookie", @["foo, bar, prologue, starlight"])
+
     doAssert parseHeader("Cookie: foo, bar") == (key: "Cookie", value: @["foo, bar"])
     doAssert parseHeader("Cookie: foo, bar, prologue") == (key: "Cookie", value: @["foo, bar, prologue"])
     doAssert parseHeader("Cookie: foo, bar, prologue, starlight") == (key: "Cookie", value: @["foo, bar, prologue, starlight"])
