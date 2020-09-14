@@ -334,6 +334,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
                    weakDep=false) =
   let m = getem()
   params = nil
+  echo "enter proc params"
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
     rettype = ~"void"
   else:
@@ -387,6 +388,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   if params == nil: params.add("void)")
   else: params.add(")")
   params = "(" & params
+  echo "exit proc params"
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
@@ -664,10 +666,11 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
             gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
               name: t.sym.name.s, values: vals))
   of tyProc:
-    result = getTypeName(m, origTyp)
-    m.typeCache[sig] = result
+    # handle proc params first so that we can mangle the proc symbol later
     var rettype, desc: Rope
     genProcParams(p, t, rettype, desc, check, true, true)
+    result = getTypeName(m, origTyp)
+    m.typeCache[sig] = result
     if not isImportedType(t):
       if t.callConv != ccClosure: # procedure vars may need a closure!
         m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
@@ -787,7 +790,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
           discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
-    result = typeName(m, t).rope
+    result = getTypeName(m, t)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
@@ -818,9 +821,10 @@ proc getClosureType(p: BProc, t: PType, kind: TClosureTypeKind): Rope =
   let m = p.module
   assert t.kind == tyProc
   var check = initIntSet()
-  result = getTempName(m)
+  # handle proc params first so that we can mangle the proc symbol later
   var rettype, desc: Rope
   genProcParams(p, t, rettype, desc, check, declareEnvironment=kind != clHalf)
+  result = getTempName(m)
   if not isImportedType(t):
     if t.callConv != ccClosure or kind != clFull:
       m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
@@ -867,8 +871,13 @@ proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
-  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  echo "gen proc header for ", prc.name.s
   genProcParams(p, prc.typ, rettype, params, check)
+  echo "fill loc in genheader"
+
+  # make sure we mangle the proc name after having mangled the 1st param
+  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  echo "mangle ", prc.name.s, " into ", $prc.loc.r
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")

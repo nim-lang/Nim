@@ -56,7 +56,7 @@ template conflictKey(s: BProc): int =
 
 proc mangle*(p: ModuleOrProc; s: PSym): string
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope
-proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string
+proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string
 
 proc getSomeNameForModule*(m: PSym): string =
   assert m.kind == skModule
@@ -146,6 +146,9 @@ proc shouldAppendModuleName(s: PSym): bool =
       result = true
 
 const
+  irrelevantForNaming* = {tyGenericBody, tyGenericInst, tyOwned,
+                          tyGenericInvocation, # tyAlias, # tyDistinct,
+                          tyStatic, tyRange, tySink, tyInferred}
   irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
                            tyGenericInvocation, tyDistinct, tyRange,
                            tyStatic, tyAlias, tySink, tyInferred}
@@ -173,6 +176,7 @@ proc shortKind(k: TTypeKind): string =
 
 proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## compose a type name for a type that has an unusable symbol
+  var typ = typ.skipTypes(irrelevantForBackend)
   case typ.kind
   of unwrapTypeArg:
     # set[Enum] -> setEnum for "first word" shortening purposes
@@ -195,9 +199,9 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   else:
     shortKind(typ.kind)
 
-proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
+proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## Come up with a name for any PType; shorten makes it shorter. 😉
-  var typ = typ.skipTypes(irrelevantForBackend)
+  var typ = typ.skipTypes(irrelevantForNaming)
   if typ.sym == nil:
     # there's no symbol, so we have to come up with our own name...
     naiveTypeName(p, typ, shorten = shorten)
@@ -394,8 +398,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
-  when false:
-    if "setChar" in $result: #startsWith($result, "setChar"):
+  when true:
+    if "TaintedString" in $result: #startsWith($result, "setChar"):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
@@ -410,6 +414,11 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
 
 proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   ## produce a useful name for the given type, obvs
+  when false:
+    if typ.loc.r != nil:
+      echo "reuse type name ", $typ.loc.r
+      return typ.loc.r
+
   let m = getem()
   var key = $conflictKey(typ)
   block found:
@@ -421,20 +430,27 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
         # the symbol might need mangling, first
         result = mangleName(p, t.sym)
         break found
-      elif t.kind in irrelevantForBackend:
+      elif t.kind in irrelevantForNaming:
         t = t.lastSon    # continue into more precise types
       else:
         break            # this looks like a good place to stop
 
     # we'll use the module-level conflicts because, c'mon, it's a type
     assert t != nil
-    result = typeName(m, t).rope
-    let counter = getOrSet(m.sigConflicts, $result, conflictKey(t))
+    let name = typeName(m, t)
+    let counter = getOrSet(m.sigConflicts, name, conflictKey(typ))
+    result = name.rope
     result.maybeAddCounter counter
-    when false:
-      if startsWith($result, "setChar"):
+    #assert typ.loc.r == nil
+    #typ.loc.r = result
+    when true:
+      if "TaintedString" in $result:
+        echo "type mangle:"
         debug typ
+        echo "type mangle used:"
+        debug t
         result.add "/*" & $key & "*/"
+        echo "type mangle result: ", $result
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
@@ -496,6 +512,10 @@ proc mangleName*(p: ModuleOrProc; s: PSym): Rope =
   ## Mangle the symbol name and set a new location rope for it, returning
   ## same.  Has no effect if the symbol already has a location rope.
   if s.loc.r == nil:
+    when false:
+      if s.kind == skProc:
+        writeStackTrace()
+        quit(1)
     when p is BModule:
       # skParam is valid for global object fields with proc types
       #assert s.kind notin {skParam, skResult}
@@ -559,13 +579,24 @@ proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
   if result == nil:
     internalError(m.config, field.info, "mangleRecFieldName")
 
-proc assignParam*(p: BProc, s: PSym; ret: PType) =
+proc mangleParamName*(m: BModule; s: PSym): Rope =
+  ## we should be okay with just a simple mangle here for prototype
+  ## purposes; the real meat happens in assignParam later...
+  if s.loc.r == nil:
+    s.loc.r = mangle(m, s).rope
+    echo "mangled ", s.name.s, " param into ", $s.loc.r
+  result = s.loc.r
+  if result == nil:
+    internalError(m.config, s.info, "mangleParamName")
+
+proc mangleParamName*(p: BProc; s: PSym): Rope =
   ## Push the mangled name into the proc's sigConflicts so that we can
   ## make new local identifiers of the same name without colliding with it.
 
   # It's likely that the symbol is already in the module scope!
   if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
-    purgeConflict(p.module, s) # discard any existing counter for this sym
+    # discard any existing counter for this sym from the module scope
+    purgeConflict(p.module, s)
     if s.kind == skResult:
       s.loc.r = ~"result"        # just set it to result if it's skResult
       # record (and verify) the result in the local conflicts table
@@ -574,20 +605,12 @@ proc assignParam*(p: BProc, s: PSym; ret: PType) =
     else:
       s.loc.r = nil              # critically, destroy the location
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
-  if s.loc.r == nil:
-    internalError(p.config, s.info, "assignParam")
-
-proc mangleParamName*(p: BProc; s: PSym): Rope =
-  ## mangle a param name when we actually have the target proc
-  result = mangleName(p, s)
+    if p.prc == nil:
+      echo "mangled ", s.name.s, " param from nil proc into ", $s.loc.r
+    else:
+      echo "mangled ", s.name.s, " param from ", p.prc.name.s, " into ", $s.loc.r
+  result = s.loc.r
   if result == nil:
     internalError(p.config, s.info, "mangleParamName")
 
-proc mangleParamName*(m: BModule; s: PSym): Rope =
-  ## we should be okay with just a simple mangle here for prototype
-  ## purposes; the real meat happens in assignParam later...
-  if s.loc.r == nil:
-    s.loc.r = mangle(m, s).rope
-  result = s.loc.r
-  if result == nil:
-    internalError(m.config, s.info, "mangleParamName")
+proc assignParam*(p: BProc, s: PSym; ret: PType) = discard

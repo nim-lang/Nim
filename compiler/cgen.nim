@@ -1125,28 +1125,24 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     discard cgsym(m, prc.name.s)
     return
   if lfNoDecl in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
     genProcPrototype(m, prc)
+    # after the prototype/header for mangling reasons...
+    fillProcLoc(m, prc.ast[namePos])
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
     # a check for ``m.declaredThings``.
     if not containsOrIncl(m.declaredThings, prc.id):
-      #if prc.loc.k == locNone:
+      genProcPrototype(m, prc)
+      genProcAux(m, prc)
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
       fillProcLoc(findPendingModule(m, prc), prc.ast[namePos])
-      #elif {sfExportc, sfImportc} * prc.flags == {}:
-      #  # reset name to restore consistency in case of hashing collisions:
-      #  echo "resetting ", prc.id, " by ", m.module.name.s
-      #  prc.loc.r = nil
-      #  prc.loc.r = mangleName(m, prc)
-      genProcPrototype(m, prc)
-      genProcAux(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
     genProcPrototype(m, prc)
+    # after the prototype/header for mangling reasons...
+    fillProcLoc(q, prc.ast[namePos])
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       symInDynamicLib(q, prc)
       # register the procedure even though it is in a different dynamic library and will not be
@@ -1159,7 +1155,6 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc.ast[namePos])
     # generate a getProc call to initialize the pointer for this
     # externally-to-the-current-module defined proc, also important
     # to do the declaredProtos check before the call to genProcPrototype
@@ -1174,10 +1169,13 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       if isReloadable(m, prc):
         genProcPrototype(q, prc)
       genProcAux(q, prc)
+    # after the prototype/header for mangling reasons...
+    fillProcLoc(q, prc.ast[namePos])
   else:
-    fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
+    # after the prototype/header for mangling reasons...
+    fillProcLoc(m, prc.ast[namePos])
 
 proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
