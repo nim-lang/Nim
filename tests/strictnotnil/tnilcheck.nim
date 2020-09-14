@@ -83,6 +83,23 @@ proc testRootAliasField(a: Nilable) =
   # kinda because it can be a.field = aliasA etc
   # and what if a.a = a ?
   # a.field = a
+  # {a aliasA: 2} # beginning of NilMap : 1 current: 3 => hm, or just
+  # on mutation : see if current abstract time maps to a mutation 
+  # and update nilmap expr-s related to that in map
+  # but return all the other elements in set? 
+  # hm different then find if a and b match
+  # so here a might have mutated .. but not really, as it cant have been re-assigned
+  # but let's for now simulate this is also a mutation for easier test
+  # in the future tho the problem remains
+  # a.field and aliasA.field : we can just gather all those in a pre-traversal
+  # or more correctly in partitions: we should havee
+  # {aliasA} {a} {a.field} {aliasA.field} {a.field.a} "expr used"
+  # and now we end {aliasA, a} but this can just generate
+  # {aliasA.field, a.field} (and all other similar child expr-s)
+  # so after we get mutation {aliasA.field, a.field} and it makes it
+  # MaybeNil # nil for graph updates with MaybeNil other elements because
+  # liberal analysis
+  # now we get a.field might be nil
   if not a.isNil and not a.field.isNil:
     aliasA.field = nil # {  }
     # a.field = nil # aliasA.field # we should detect this happens
