@@ -56,6 +56,7 @@ template conflictKey(s: BProc): int =
 
 proc mangle*(p: ModuleOrProc; s: PSym): string
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope
+proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string
 
 proc getSomeNameForModule*(m: PSym): string =
   assert m.kind == skModule
@@ -148,6 +149,9 @@ const
   irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
                            tyGenericInvocation, tyDistinct, tyRange,
                            tyStatic, tyAlias, tySink, tyInferred}
+  threeLetterShorties = {tyRef, tySequence, tyObject, tyTuple, tyArray,
+                         tyPtr, tyString, tySet, tyOrdinal, tyTypeDesc}
+  unwrapTypeArg = {tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray}
 
 proc shortKind(k: TTypeKind): string =
   ## truncate longer type names
@@ -157,7 +161,7 @@ proc shortKind(k: TTypeKind): string =
   # TODO: currently, uint32 -> nt32 🙁
   result = case k
   # handle der usual suspects especialment
-  of tySequence, tyObject, tyArray, tyString, tyTuple, tyOrdinal:
+  of threeLetterShorties:
     result[0 .. 2]
   elif len(result) > 4:  # elide vowels to shrink it
     if result[0] in vowels:
@@ -167,39 +171,42 @@ proc shortKind(k: TTypeKind): string =
       split(result, vowels).join("")
   else: result
 
-proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
-  let m = getem()
-  var typ = typ.skipTypes(irrelevantForBackend)
-  result = case typ.kind
-  of tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray:
+proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
+  ## compose a type name for a type that has an unusable symbol
+  case typ.kind
+  of unwrapTypeArg:
     # set[Enum] -> setEnum for "first word" shortening purposes
     shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
   of tyVar:
-    # omit this verbosity for now
+    # omit this verbosity for now and simply discard the var
     typeName(p, typ.lastSon, shorten = shorten)
   of tyProc, tyTuple:
-    # gave up on making this work for now;
-    #
-    # the solution is probably to compose a name without regard to the
-    # symbol and then simply use a signature-derived value for the
-    # conflictKey of tuples and procs...
-    if true or m.config.backend == backendCpp:
-      # these need a signature-based name so that type signatures match :-(
-      shortKind(typ.kind) & $hashType(typ)
-    else:
-      shortKind(typ.kind) & "_" & $conflictKey(typ)
+    # these can figure into the signature though they may not be exported
+    # as types, so signature won't match when it comes time to link
+
+    # these are not just a c++ problem... m.config.backend == backendCpp:
+
+    # best idea i can come up with is a global registry where we simply
+    # record the first introduction of an otherwise unknown signature and
+    # always reuse it
+
+    # these need a signature-based name so that type signatures match :-(
+    shortKind(typ.kind) & $hashType(typ)
   else:
-    if typ.sym == nil:
-      shortKind(typ.kind) & "_" & $conflictKey(typ)
-    elif shorten:
-      if conflictKey(typ.sym.typ) == conflictKey(typ):
-        # deconstruct aliases so signatures can match
-        shortKind(typ.kind)
-      else:
-        # do the complete mangle but only use the first "word"
-        mangle(p, typ.sym).split("_")[0]
-    else:
-      mangle(p, typ.sym)
+    shortKind(typ.kind)
+
+proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
+  ## Come up with a name for any PType; shorten makes it shorter. 😉
+  var typ = typ.skipTypes(irrelevantForBackend)
+  if typ.sym == nil:
+    # there's no symbol, so we have to come up with our own name...
+    naiveTypeName(p, typ, shorten = shorten)
+  elif shorten:
+    # do the complete mangle but only use the first "word"
+    mangle(p, typ.sym).split("_")[0]
+  else:
+    # use the complete type symbol mangle
+    mangle(p, typ.sym)
 
 template maybeAddCounter(result: typed; count: int) =
   if count > 0:
@@ -388,7 +395,7 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
   when false:
-    if startsWith($result, "add_proc_system"):
+    if "setChar" in $result: #startsWith($result, "setChar"):
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
@@ -419,13 +426,15 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
       else:
         break            # this looks like a good place to stop
 
+    # we'll use the module-level conflicts because, c'mon, it's a type
     assert t != nil
-    result = typeName(p, t).rope
-    let counter = getOrSet(p.sigConflicts, $result, conflictKey(t))
+    result = typeName(m, t).rope
+    let counter = getOrSet(m.sigConflicts, $result, conflictKey(t))
     result.maybeAddCounter counter
-    if startsWith($result, "unlikely"):
-      debug typ
-      result.add "/*" & $key & "*/"
+    when false:
+      if startsWith($result, "setChar"):
+        debug typ
+        result.add "/*" & $key & "*/"
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
