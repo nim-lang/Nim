@@ -469,7 +469,7 @@ block:
 block:
   type
     #TilesetCT[n: static[int]] = int
-    TilesetCT[N] = int
+    TilesetCT[N] = distinct int
     TilesetRT = int
     #Tileset = TilesetCT | TilesetRT
 
