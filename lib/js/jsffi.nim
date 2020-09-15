@@ -458,6 +458,14 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
 # Macro to build a lambda using JavaScript's `this`
 # from a proc, `this` being the first argument.
 
+proc replaceSyms(n: NimNode): NimNode =
+  if n.kind == nnkSym: 
+    result = newIdentNode($n)
+  else: 
+    result = n
+    for i in 0..<n.len:
+      result[i] = replaceSyms(n[i])
+
 macro bindMethod*(procedure: typed): auto =
   ## Takes the name of a procedure and wraps it into a lambda missing the first
   ## argument, which passes the JavaScript builtin ``this`` as the first
@@ -491,7 +499,7 @@ macro bindMethod*(procedure: typed): auto =
         getImpl(procedure)
       else:
         procedure
-    args = rawProc[3]
+    args = rawProc[3].copyNimTree.replaceSyms
     thisType = args[1][1]
     params = newNimNode(nnkFormalParams).add(args[0])
     body = newNimNode(nnkLambda)
