@@ -537,7 +537,7 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
-when notJSnotNims and not defined(nimV2):
+when notJSnotNims:
   include "system/hti"
 
 type
@@ -1718,16 +1718,16 @@ when not defined(js) and hasThreadSupport and hostOS != "standalone":
 
 when not defined(js) and defined(nimV2):
   type
-    TNimNode {.compilerproc.} = object # to keep the code generator simple
     DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
-    TNimType {.compilerproc.} = object
+    TNimTypeV2 {.compilerproc.} = object
       destructor: pointer
       size: int
       align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
-    PNimType = ptr TNimType
+      typeInfoV1: pointer # for backwards compat, usually nil
+    PNimTypeV2 = ptr TNimTypeV2
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"

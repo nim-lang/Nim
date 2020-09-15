@@ -609,7 +609,10 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
         appcg(m, result, " {$n", [])
       else:
-        appcg(m, result, " {$n#TNimType* m_type;$n", [])
+        if optTinyRtti in m.config.globalOptions:
+          appcg(m, result, " {$n#TNimTypeV2* m_type;$n", [])
+        else:
+          appcg(m, result, " {$n#TNimType* m_type;$n", [])
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
@@ -1004,7 +1007,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
 
 # ------------------ type info generation -------------------------------------
 
-proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope
+proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope
 proc getNimNode(m: BModule): Rope =
   result = "$1[$2]" % [m.typeNodesName, rope(m.typeNodes)]
   inc(m.typeNodes)
@@ -1067,7 +1070,7 @@ proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
     if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
       base = rope("0")
     else:
-      base = genTypeInfo(m, x, info)
+      base = genTypeInfoV1(m, x, info)
   else:
     base = rope("0")
   genTypeInfoAuxBase(m, typ, origType, name, base, info)
@@ -1126,7 +1129,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
         "$1.len = $7;$n", [expr, getTypeDesc(m, origType), field.loc.r,
-                           genTypeInfo(m, field.typ, info),
+                           genTypeInfoV1(m, field.typ, info),
                            makeCString(field.name.s),
                            tmp, rope(L)])
     m.s[cfsData].addf("TNimNode* $1[$2];$n", [tmp, rope(L+1)])
@@ -1163,7 +1166,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
           "$1.name = $5;$n", [expr, getTypeDesc(m, origType),
-          field.loc.r, genTypeInfo(m, field.typ, info), makeCString(field.name.s)])
+          field.loc.r, genTypeInfoV1(m, field.typ, info), makeCString(field.name.s)])
   else: internalError(m.config, n.info, "genObjectFields")
 
 proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo) =
@@ -1198,7 +1201,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
           "$1.offset = offsetof($2, Field$3);$n" &
           "$1.typ = $4;$n" &
           "$1.name = \"Field$3\";$n",
-           [tmp2, getTypeDesc(m, origType), rope(i), genTypeInfo(m, a, info)])
+           [tmp2, getTypeDesc(m, origType), rope(i), genTypeInfoV1(m, a, info)])
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
          [expr, rope(typ.len), tmp])
   else:
@@ -1255,7 +1258,7 @@ proc genSetInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
        [tmp, rope(firstOrd(m.config, typ)), tiNameForHcr(m, name)])
 
 proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
-  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfo(m, typ[1], info), info)
+  genTypeInfoAuxBase(m, typ, typ, name, genTypeInfoV1(m, typ[1], info), info)
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
@@ -1273,13 +1276,14 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
-proc declareNimType(m: BModule, str: Rope, ownerModule: PSym) =
+proc declareNimType(m: BModule, name: string; str: Rope, ownerModule: PSym) =
+  let nr = rope(name)
   if m.hcrOn:
-    m.s[cfsData].addf("static TNimType* $1;$n", [str])
-    m.s[cfsTypeInit1].addf("\t$1 = (TNimType*)hcrGetGlobal($2, \"$1\");$n",
-          [str, getModuleDllPath(m, ownerModule)])
+    m.s[cfsData].addf("static $* $1;$n", [str, nr])
+    m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
+          [str, getModuleDllPath(m, ownerModule), nr])
   else:
-    m.s[cfsData].addf("extern TNimType $1;$n", [str])
+    m.s[cfsData].addf("extern $2 $1;$n", [str, nr])
 
 proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   var res = "|"
@@ -1327,7 +1331,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
         internalError(m.config, info, "no attached trace proc found")
     result = rope("NIM_NIL")
 
-proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
+proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
   if t.kind == tyObject:
     if incompleteType(t):
@@ -1337,8 +1341,8 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
   else:
     typeName = rope("NIM_NIL")
 
-  discard cgsym(m, "TNimType")
-  m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
+  discard cgsym(m, "TNimTypeV2")
+  m.s[cfsData].addf("N_LIB_PRIVATE TNimTypeV2 $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)
@@ -1347,7 +1351,43 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 
-proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
+proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
+  let origType = t
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
+
+  let prefixTI = if m.hcrOn: "(" else: "(&"
+
+  let sig = hashType(origType)
+  result = m.typeInfoMarkerV2.getOrDefault(sig)
+  if result != nil:
+    return prefixTI.rope & result & ")".rope
+
+  let marker = m.g.typeInfoMarkerV2.getOrDefault(sig)
+  if marker.str != nil:
+    discard cgsym(m, "TNimTypeV2")
+    declareNimType(m, "TNimTypeV2", marker.str, marker.owner)
+    # also store in local type section:
+    m.typeInfoMarkerV2[sig] = marker.str
+    return prefixTI.rope & marker.str & ")".rope
+
+  result = "NTIv2$1_" % [rope($sig)]
+  m.typeInfoMarkerV2[sig] = result
+
+  let owner = t.skipTypes(typedescPtrs).owner.getModule
+  if owner != m.module:
+    # make sure the type info is created in the owner module
+    assert m.g.modules[owner.position] != nil
+    discard genTypeInfoV2(m.g.modules[owner.position], origType, info)
+    # reference the type info as extern here
+    discard cgsym(m, "TNimTypeV2")
+    declareNimType(m, "TNimTypeV2", result, owner)
+    return prefixTI.rope & result & ")".rope
+
+  m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
+  genTypeInfoV2Impl(m, t, origType, result, info)
+  result = prefixTI.rope & result & ")".rope
+
+proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
 
@@ -1362,7 +1402,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   if marker.str != nil:
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    declareNimType(m, marker.str, marker.owner)
+    declareNimType(m, "TNimType", marker.str, marker.owner)
     # also store in local type section:
     m.typeInfoMarker[sig] = marker.str
     return prefixTI.rope & marker.str & ")".rope
@@ -1374,63 +1414,66 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   if owner != m.module:
     # make sure the type info is created in the owner module
     assert m.g.modules[owner.position] != nil
-    discard genTypeInfo(m.g.modules[owner.position], origType, info)
+    discard genTypeInfoV1(m.g.modules[owner.position], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    declareNimType(m, result, owner)
+    declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
 
-  if optTinyRtti in m.config.globalOptions:
-    genTypeInfoV2(m, t, origType, result, info)
-  else:
-    case t.kind
-    of tyEmpty, tyVoid: result = rope"0"
-    of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
+  case t.kind
+  of tyEmpty, tyVoid: result = rope"0"
+  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
+    genTypeInfoAuxBase(m, t, t, result, rope"0", info)
+  of tyStatic:
+    if t.n != nil: result = genTypeInfoV1(m, lastSon t, info)
+    else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
+  of tyUserTypeClasses:
+    internalAssert m.config, t.isResolvedUserTypeClass
+    return genTypeInfoV1(m, t.lastSon, info)
+  of tyProc:
+    if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0", info)
-    of tyStatic:
-      if t.n != nil: result = genTypeInfo(m, lastSon t, info)
-      else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
-    of tyUserTypeClasses:
-      internalAssert m.config, t.isResolvedUserTypeClass
-      return genTypeInfo(m, t.lastSon, info)
-    of tyProc:
-      if t.callConv != ccClosure:
-        genTypeInfoAuxBase(m, t, t, result, rope"0", info)
-      else:
-        let x = fakeClosureType(m, t.owner)
-        genTupleInfo(m, x, x, result, info)
-    of tySequence:
-      genTypeInfoAux(m, t, t, result, info)
-      if optSeqDestructors notin m.config.globalOptions:
-        if m.config.selectedGC >= gcMarkAndSweep:
-          let markerProc = genTraverseProc(m, origType, sig)
-          m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
-    of tyRef:
-      genTypeInfoAux(m, t, t, result, info)
+    else:
+      let x = fakeClosureType(m, t.owner)
+      genTupleInfo(m, x, x, result, info)
+  of tySequence:
+    genTypeInfoAux(m, t, t, result, info)
+    if optSeqDestructors notin m.config.globalOptions:
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
-    of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
-    of tyArray: genArrayInfo(m, t, result, info)
-    of tySet: genSetInfo(m, t, result, info)
-    of tyEnum: genEnumInfo(m, t, result, info)
-    of tyObject:
-      genObjectInfo(m, t, origType, result, info)
-    of tyTuple:
-      # if t.n != nil: genObjectInfo(m, t, result)
-      # else:
-      # BUGFIX: use consistently RTTI without proper field names; otherwise
-      # results are not deterministic!
-      genTupleInfo(m, t, origType, result, info)
-    else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
+  of tyRef:
+    genTypeInfoAux(m, t, t, result, info)
+    if m.config.selectedGC >= gcMarkAndSweep:
+      let markerProc = genTraverseProc(m, origType, sig)
+      m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
+  of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
+  of tyArray: genArrayInfo(m, t, result, info)
+  of tySet: genSetInfo(m, t, result, info)
+  of tyEnum: genEnumInfo(m, t, result, info)
+  of tyObject:
+    genObjectInfo(m, t, origType, result, info)
+  of tyTuple:
+    # if t.n != nil: genObjectInfo(m, t, result)
+    # else:
+    # BUGFIX: use consistently RTTI without proper field names; otherwise
+    # results are not deterministic!
+    genTupleInfo(m, t, origType, result, info)
+  else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
 
   if t.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
   elif origType.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
+
+  if optTinyRtti in m.config.globalOptions and t.kind == tyObject:
+    let v2info = genTypeInfoV2(m, origType, info)
+    addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2;", [
+      v2info, result])
+
   result = prefixTI.rope & result & ")".rope
 
 proc genTypeSection(m: BModule, n: PNode) =

@@ -165,10 +165,10 @@ template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
-  let d = cast[ptr PNimType](p)[].destructor
+  let d = cast[ptr PNimTypeV2](p)[].destructor
   if d != nil: cast[DestructorProc](d)(p)
   when false:
-    cstderr.rawWrite cast[ptr PNimType](p)[].name
+    cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
     cstderr.rawWrite "\n"
     if d == nil:
       cstderr.rawWrite "bah, nil\n"
@@ -226,11 +226,11 @@ template tearDownForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
   discard
 
-proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
+proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
   result = strstr(obj.name, subclass) != nil
 
-proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
+proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
   if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

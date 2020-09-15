@@ -360,7 +360,10 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
       while s.kind == tyObject and s[0] != nil:
         r.add(".Sup")
         s = skipTypes(s[0], skipPtrs)
-    linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
+    if optTinyRtti in p.config.globalOptions:
+      linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfoV2(p.module, t, a.lode.info)])
+    else:
+      linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfoV1(p.module, t, a.lode.info)])
   of frEmbedded:
     if optTinyRtti in p.config.globalOptions:
       var tmp: TLoc
@@ -376,7 +379,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     else:
       # worst case for performance:
       var r = if mode == constructObj: addrLoc(p.config, a) else: rdLoc(a)
-      linefmt(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t, a.lode.info)])
+      linefmt(p, section, "#objectInit($1, $2);$n", [r, genTypeInfoV1(p.module, t, a.lode.info)])
 
   if isException(t):
     var r = rdLoc(a)
@@ -417,7 +420,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       specializeReset(p, loc)
       when false:
         linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-                [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
+                [addrLoc(p.config, loc), genTypeInfoV1(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
