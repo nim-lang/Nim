@@ -468,9 +468,9 @@ block:
 
 block:
   type
-    TilesetCT[n: static int] = int
+    #TilesetCT[n: static int] = int
     TilesetRT = int
-    Tileset = TilesetCT | TilesetRT
+    #Tileset = TilesetCT | TilesetRT
 
   #func prepareTileset(tileset: var Tileset) = discard
 
