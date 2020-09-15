@@ -146,9 +146,9 @@ proc shouldAppendModuleName(s: PSym): bool =
       result = true
 
 const
-  irrelevantForNaming* = {tyGenericBody, tyGenericInst, tyOwned,
-                          tyGenericInvocation, # tyAlias, # tyDistinct,
-                          tyStatic, tyRange, tySink, tyInferred}
+  irrelevantForNaming = {tyGenericBody, tyGenericInst, tyOwned,
+                         tyGenericInvocation, tyAlias, # tyDistinct,
+                         tyVar, tyStatic, tyRange, tySink, tyInferred}
   irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
                            tyGenericInvocation, tyDistinct, tyRange,
                            tyStatic, tyAlias, tySink, tyInferred}
@@ -413,12 +413,8 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
            if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
 
 proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
-  ## produce a useful name for the given type, obvs
-  when false:
-    if typ.loc.r != nil:
-      echo "reuse type name ", $typ.loc.r
-      return typ.loc.r
-
+  ## produce a useful name for the given type;
+  ## this is what codegen uses exclusively
   let m = getem()
   var key = $conflictKey(typ)
   block found:
@@ -441,10 +437,8 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     let counter = getOrSet(m.sigConflicts, name, conflictKey(typ))
     result = name.rope
     result.maybeAddCounter counter
-    #assert typ.loc.r == nil
-    #typ.loc.r = result
     when true:
-      if "TaintedString" in $result:
+      if typ.sym != nil and typ.sym.name.s == "TaintedString":
         echo "type mangle:"
         debug typ
         echo "type mangle used:"
