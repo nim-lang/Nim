@@ -186,6 +186,7 @@
   from the database that matches the protocol `name`.
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
+- Add missing methods to `dom.Window` like `getRandomValues`, etc.
 
 
 ## Language changes
