@@ -1279,7 +1279,7 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 proc declareNimType(m: BModule, name: string; str: Rope, ownerModule: PSym) =
   let nr = rope(name)
   if m.hcrOn:
-    m.s[cfsData].addf("static $* $1;$n", [str, nr])
+    m.s[cfsData].addf("static $2* $1;$n", [str, nr])
     m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
           [str, getModuleDllPath(m, ownerModule), nr])
   else:

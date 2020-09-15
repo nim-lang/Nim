@@ -14,7 +14,7 @@ joinable: false pending https://github.com/nim-lang/Nim/issues/9754
 
 import marshal
 
-template testit(x) = discard $$to[type(x)]($$x)
+template testit(x) = discard $$to[typeof(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
   ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
