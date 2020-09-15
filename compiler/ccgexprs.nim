@@ -2646,7 +2646,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
-        genProcPrototype(p.module, sym)
+        genProcPrototype(p, sym)
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
