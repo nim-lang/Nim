@@ -64,16 +64,18 @@ type
   History = object
     info: TLineInfo
     nilability: Nilability
-    kind: TransitionKind    
+    kind: TransitionKind
+    node: PNode
 
   NilCheckerContext = ref object
     abstractTime: AbstractTime
     partitions: Partitions
+    symbolGraphs: Table[Symbol, GraphIndex]
     config: ConfigRef
 
   NilMap* = ref object
-    locals*:   Table[Symbol, Nilability]
-    history*:  Table[Symbol, seq[History]]
+    locals*:   Table[GraphIndex, Nilability]
+    history*:  Table[GraphIndex, seq[History]]
     # aliases*:  Table[Symbol, Symbol]
     # aliasNodes*: Table[Symbol, PNode]
     previous*: NilMap
@@ -99,21 +101,21 @@ proc newNilMap(previous: NilMap = nil, base: NilMap = nil): NilMap =
     base: base)
   result.top = if previous.isNil: result else: previous.top
 
-proc `[]`(map: NilMap, name: Symbol): Nilability =
+proc `[]`(map: NilMap, graphIndex: GraphIndex): Nilability =
   var now = map
   while not now.isNil:
-    if now.locals.hasKey(name):
-      return now.locals[name]
+    if now.locals.hasKey(graphIndex):
+      return now.locals[graphIndex]
     now = now.previous
   return Safe
 
-proc history(map: NilMap, name: Symbol): seq[History] =
+proc history(map: NilMap, graphIndex: GraphIndex): seq[History] =
   var now = map
   var h: seq[History] = @[]
   while not now.isNil:
-    if now.history.hasKey(name):
+    if now.history.hasKey(graphIndex):
       # h = h.concat(now.history[name])
-      return now.history[name]
+      return now.history[graphIndex]
     now = now.previous
   return @[]
 
@@ -185,7 +187,7 @@ proc symbol(n: PNode): Symbol
 #       return now.aliasNodes[symbol]
 #     now = now.previous
     
-proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
+proc store(map: NilMap, graphIndex: GraphIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   let text = if node.isNil: "?" else: $node
   # echo "store " & text & " " & $symbol & " " & $value
   # if value == Nil:
@@ -204,32 +206,33 @@ proc store(map: NilMap, symbol: Symbol, value: Nilability, kind: TransitionKind,
   #     # echo "alias expr ", aliasNode, " ", aliasExpr
   #     map.locals[aliasSymbol] = value
   #     map.history.mgetOrPut(aliasSymbol, @[]).add(History(info: info, kind: TAlias, nilability: value))
-  map.locals[symbol] = value
-  map.history.mgetOrPut(symbol, @[]).add(History(info: info, kind: kind, nilability: value))
+  map.locals[graphIndex] = value
+  map.history.mgetOrPut(graphIndex, @[]).add(History(info: info, kind: kind, node: node, nilability: value))
+  
 
-proc hasKey(map: NilMap, name: Symbol): bool =
+proc hasKey(map: NilMap, graphIndex: GraphIndex): bool =
   var now = map
   result = false
   while not now.isNil:
-    if now.locals.hasKey(name):
+    if now.locals.hasKey(graphIndex):
       return true
     now = now.previous
 
-iterator pairs(map: NilMap): (Symbol, Nilability) =
+iterator pairs(map: NilMap): (GraphIndex, Nilability) =
   var now = map
   while not now.isNil:
-    for name, value in now.locals:
-      yield (name, value)
+    for graphIndex, value in now.locals:
+      yield (graphIndex, value)
     now = now.previous
 
 proc copyMap(map: NilMap): NilMap =
   if map.isNil:
     return nil
   result = newNilMap(map.previous.copyMap())
-  for name, value in map.locals:
-    result.locals[name] = value
-  for name, value in map.history:
-    result.history[name] = value
+  for graphIndex, value in map.locals:
+    result.locals[graphIndex] = value
+  for graphIndex, value in map.history:
+    result.history[graphIndex] = value
   # for a, b in map.aliases:
   #   result.aliases[a] = b
   # for a, b in map.aliasNodes:
@@ -244,8 +247,8 @@ proc `$`(map: NilMap): string =
   for i in countdown(stack.len - 1, 0):
     now = stack[i]
     result.add("###\n")
-    for name, value in now.locals:
-      result.add(&"  {name} {value}\n")
+    for graphIndex, value in now.locals:
+      result.add(&"  {graphIndex} {value}\n")
     # for a, b in now.aliasNodes:
     #   result.add(&"  alias {a} {b}\n")
 
@@ -260,6 +263,16 @@ proc `$`(map: NilMap): string =
 # but the same actually
 # what about var result ??
 
+const noGraphIndex = -1
+
+proc graph(ctx: NilCheckerContext, symbol: Symbol): GraphIndex =
+  if ctx.symbolGraphs.hasKey(symbol):
+    return ctx.symbolGraphs[symbol]
+  else:
+    return noGraphIndex
+
+proc graph(ctx: NilCheckerContext, n: PNode): GraphIndex =
+  ctx.graph(symbol(n))
 
 proc symbol(n: PNode): Symbol =
   ## returns a Symbol for each expression
@@ -340,7 +353,7 @@ template event(b: History): string =
   
 proc derefWarning(n, ctx, map; maybe: bool) =
   ## a warning for potentially unsafe dereference
-  var a = history(map, symbol(n))
+  var a = history(map, ctx.graph(n))
   var res = ""
   res.add("can't deref " & $n & ", it " & (if maybe: "might be" else: "is") & " nil")
   if a.len > 0:
@@ -410,17 +423,21 @@ template union(l: Nilability, r: Nilability): Nilability =
 proc union(l: NilMap, r: NilMap): NilMap =
   ## unify two maps from different branches
   ## combine their locals
+  
   if l.isNil:
     return r
   elif r.isNil:
     return l
+  
   result = newNilMap(l.base)
-  for name, value in l:
-    if r.hasKey(name) and not result.locals.hasKey(name):
-      var h = history(r, name)
+    
+  # TODO locals ?
+  for graphIndex, value in l:
+    if r.hasKey(graphIndex) and not result.locals.hasKey(graphIndex):
+      var h = history(r, graphIndex)
       assert h.len > 0
       # echo "history", name, value, r[name], h[^1].info.line
-      result.store(name, union(value, r[name]), TAssign, h[^1].info)
+      result.store(graphIndex, union(value, r[graphIndex]), TAssign, h[^1].info)
 
 # a = b
 # a = c
@@ -438,9 +455,11 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
     result = check(assigned, ctx, map)
   else:
     result = (typeNilability(target.typ), map)
+  # a.b.c = field, a.b is Safe, a.b.c nil: ok, so we should
+  discard check(target, ctx, map)
   if result.map.isNil:
     result.map = map
-  let t = symbol(target)
+  let t = ctx.graph(target)
   case assigned.kind:
   of nkNilLit:
     result.map.store(t, Nil, TAssign, target.info, target)
@@ -453,7 +472,7 @@ proc checkReturn(n, ctx, map): Check =
   ## check return
   # return n same as result = n; return ?
   result = check(n[0], ctx, map)
-  result.map.store(resultId, result.nilability, TAssign, n.info)
+  result.map.store(ctx.graph(resultId), result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, ctx, map): Check =
@@ -466,7 +485,7 @@ proc checkFor(n, ctx, map): Check =
   var map0 = map.copyMap()
   m = check(n.sons[2], ctx, map).map.copyMap()
   if n[0].kind == nkSym:
-    m.store(symbol(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
+    m.store(ctx.graph(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
   var map1 = m.copyMap()
   var check2 = check(n.sons[2], ctx, m)
   var map2 = check2.map
@@ -545,8 +564,8 @@ proc checkIsNil(n, ctx, map; isElse: bool = false): Check =
   ## update the map depending on if it is not isNil or isNil
   result.map = newNilMap(map)
   let value = n[1]
-  let value2 = symbol(value)
-  result.map.store(symbol(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
+  # let value2 = symbol(value)
+  result.map.store(ctx.graph(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
 
 proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
   var name = case magic:
@@ -716,10 +735,10 @@ proc reverse(kind: TransitionKind): TransitionKind =
 
 proc reverseDirect(map: NilMap): NilMap =
   result = map.copyMap()
-  for symbol, local in result.locals:
-    result.locals[symbol] = reverse(local)
-    result.history[symbol][^1].kind = reverse(result.history[symbol][^1].kind)
-    result.history[symbol][^1].nilability = result.locals[symbol]
+  for graphIndex, local in result.locals:
+    result.locals[graphIndex] = reverse(local)
+    result.history[graphIndex][^1].kind = reverse(result.history[graphIndex][^1].kind)
+    result.history[graphIndex][^1].nilability = result.locals[graphIndex]
 
 proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ## check conditions : used for if, some infix operators
@@ -734,6 +753,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   # TODO dont inc abstractTime for `of` / `else` artificcial nodes
   if n.kind == nkCall:
     inc ctx.abstractTime # nkCall
+    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkCall " & $n
 
     for element in n:
       result = check(element, ctx, result).map
@@ -741,15 +761,17 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:    
       result = newNilMap(map, map.base) # if base: map else: map.base)
 
-      let a = symbol(n[1])
+      let a = ctx.graph(n[1])
       result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n)
     else:
       result = newNilMap(map, map.base)
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
     inc ctx.abstractTime # nkPrefix
+    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkPrefix " & $n
     result = checkCondition(n[1], ctx, map, not reverse, false)
   elif n.kind == nkInfix:
     inc ctx.abstractTime # nkInfix
+    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkInfix " & $n
     result = checkInfix(n, ctx, map).map
   else:
     result = check(n, ctx, map).map
@@ -803,14 +825,16 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     # update all potential aliases to MaybeNil
     # because they might not be always aliased:
     # we might have false positive in a liberal analysis
-    for element in graph.elements:
-      let elementSymbol = symbol(element)
-      map.store(
-        elementSymbol,
-        MaybeNil,
-        TPotentialAlias,
-        n.info,
-        element)
+    #for element in graph.elements:
+    # let elementGraph = 
+    assert graph.elements.len > 0
+    let element = graph.elements[0]
+    map.store(
+      graphIndex,
+      MaybeNil,
+      TPotentialAlias,
+      n.info,
+      element)
 
   case n.kind:
   of nkSym:
@@ -915,6 +939,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
 
   
 
+
   
   # echo map
 
@@ -933,6 +958,12 @@ proc typeNilability(typ: PType): Nilability =
   else:
     Safe
 
+
+proc toSymbolGraphs(partitions: Partitions): Table[Symbol, GraphIndex] =
+  for graphIndex, graph in partitions.graphs:
+    for element in graph.elements:
+      result[symbol(element)] = graphIndex
+
 proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   var map = newNilMap()
   let line = s.ast.info.line
@@ -942,22 +973,20 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   echo toTextGraph(conf, partitions)
   
   # TODO
-  var context = NilCheckerContext(partitions: partitions, config: conf)
+  var context = NilCheckerContext(partitions: partitions, symbolGraphs: toSymbolGraphs(partitions), config: conf)
   for i, child in s.typ.n.sons:
     if i > 0:
       if child.kind != nkSym:
         continue
-      map.store(symbol(child), typeNilability(child.typ), TArg, child.info, child)
+      map.store(context.graph(child), typeNilability(child.typ), TArg, child.info, child)
 
-  map.store(resultId, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+  map.store(context.graph(resultId), if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
     
-  #inc context.abstractTime # function ? seems we start from 1?
   echo "checking ", s.name.s, " ", filename
-  # var par = loadPartitions(s, body, conf) 
-  
 
   let res = check(body, context, map)
-  if res.nilability == Safe and (not res.map.history.hasKey(resultId) or res.map.history[resultId].len <= 1):
-    res.map.store(resultId, Safe, TAssign, s.ast.info)
+  let resultGraphIndex = context.graph(resultId)
+  if res.nilability == Safe and (not res.map.history.hasKey(resultGraphIndex) or res.map.history[resultGraphIndex].len <= 1):
+    res.map.store(resultGraphIndex, Safe, TAssign, s.ast.info)
   if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
     checkResult(s.ast, context, res.map)

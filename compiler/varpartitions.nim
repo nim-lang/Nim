@@ -669,6 +669,11 @@ proc traverse(c: var Partitions; n: PNode) =
     deps(c, n[0], n[1])
   of nkSym:
     dec c.abstractTime
+    echo "dec"
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
+      let id = variableId(c, n.sym)
+      if id >= 0:
+        c.s[id].aliveEnd = max(c.s[id].aliveEnd, c.abstractTime)
 
   of nodesToIgnoreSet:
     dec c.abstractTime
