@@ -1744,3 +1744,15 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
   proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+
+  proc getRandomValues*(w: Window; arrai: var openArray[int8]):   var openArray[int8]   {.importcpp: "#.crypto.getRandomValues(Int8Array.from(#))"  .}
+  proc getRandomValues*(w: Window; arrai: var openArray[uint8]):  var openArray[uint8]  {.importcpp: "#.crypto.getRandomValues(Uint8Array.from(#))" .}
+  proc getRandomValues*(w: Window; arrai: var openArray[int16]):  var openArray[int16]  {.importcpp: "#.crypto.getRandomValues(Int16Array.from(#))" .}
+  proc getRandomValues*(w: Window; arrai: var openArray[uint16]): var openArray[uint16] {.importcpp: "#.crypto.getRandomValues(Uint16Array.from(#))".}
+  proc getRandomValues*(w: Window; arrai: var openArray[int32]):  var openArray[int32]  {.importcpp: "#.crypto.getRandomValues(Int32Array.from(#))" .}
+  proc getRandomValues*(w: Window; arrai: var openArray[uint32]): var openArray[uint32] {.importcpp: "#.crypto.getRandomValues(Uint16Array.from(#))".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+    ##
+    ## .. code-block::nim
+    ##   var ara_ara = [0.int8, 1.int8, 9.int8, 42.int8, 99.int8] # Array of int8
+    ##   echo window.getRandomValues(ara_ara)
