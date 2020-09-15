@@ -136,9 +136,8 @@ type
     cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
-    gcHooks,
-    gcRefc, gcV2, gcGo
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
+    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 

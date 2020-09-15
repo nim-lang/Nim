@@ -1441,10 +1441,9 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if optSeqDestructors notin m.config.globalOptions:
-      if m.config.selectedGC >= gcMarkAndSweep:
-        let markerProc = genTraverseProc(m, origType, sig)
-        m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
+    if m.config.selectedGC >= gcMarkAndSweep:
+      let markerProc = genTraverseProc(m, origType, sig)
+      m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
     if m.config.selectedGC >= gcMarkAndSweep:
@@ -1471,7 +1470,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
   if optTinyRtti in m.config.globalOptions and t.kind == tyObject:
     let v2info = genTypeInfoV2(m, origType, info)
-    addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2;", [
+    addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2; $2.typeInfoV2 = (void*)$1;$n", [
       v2info, result])
 
   result = prefixTI.rope & result & ")".rope

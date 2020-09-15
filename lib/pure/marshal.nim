@@ -51,16 +51,15 @@
 ## * `json module <json.html>`_
 
 const unsupportedPlatform =
-  when defined(nimV2): "new runtime"
-  elif defined(js): "javascript"
+  when defined(js): "javascript"
   elif defined(nimscript): "nimscript"
   else: ""
 
 when unsupportedPlatform != "":
   {.error: "marshal module is not supported in " & unsupportedPlatform & """.
-Please use alternative packages for serialization. 
-It is possible to reimplement this module using generics and type traits. 
-Please contribute new implementation.""".}
+Please use alternative packages for serialization.
+It is possible to reimplement this module using generics and type traits.
+Please contribute a new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 

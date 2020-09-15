@@ -41,7 +41,7 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
     result = nil
 
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    noSideEffect, raises: [].} =
+    noSideEffect, raises: [], compilerRtl.} =
   {.noSideEffect.}:
     template `+!`(p: pointer, s: int): pointer =
       cast[pointer](cast[int](p) +% s)
