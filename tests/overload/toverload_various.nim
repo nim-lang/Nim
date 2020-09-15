@@ -468,7 +468,8 @@ block:
 
 block:
   type
-    TilesetCT[n: static[int]] = int
+    #TilesetCT[n: static[int]] = int
+    TilesetCT[N] = int
     TilesetRT = int
     #Tileset = TilesetCT | TilesetRT
 
