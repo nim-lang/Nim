@@ -641,6 +641,12 @@ proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
 
 proc traverse(c: var Partitions; n: PNode) =
   inc c.abstractTime
+  
+  # cpp
+  # javascript
+
+  echo "varpartitions : ", c.abstractTime, " ", n.kind, " ", n
+
   case n.kind
   of nkLetSection, nkVarSection:
     for child in n:

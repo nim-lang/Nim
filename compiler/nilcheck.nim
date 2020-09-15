@@ -89,7 +89,7 @@ type
 const resultId = -1
 
 proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check
-proc checkCondition(n: PNode, ctx: NilCheckerContext, map: NilMap, isElse: bool, base: bool): NilMap
+proc checkCondition(n: PNode, ctx: NilCheckerContext, map: NilMap, reverse: bool, base: bool): NilMap
 
 # the NilMap structure
 
@@ -132,19 +132,26 @@ macro aecho*(a: varargs[untyped]): untyped =
 
 # end of helpers for debugging
 
-proc parentSubExprs(node: PNode): seq[PNode] =
-  if node.isNil:
-    return @[]
-  # echo "parent ", node.kind
-  case node.kind:
-  of nkSym:
-    @[node]
-  of nkDotExpr:
-    parentSubExprs(node[0]).concat(@[node[1]])
-  of nkHiddenDeref:
-    parentSubExprs(node[0])
-  else:
-    @[]
+proc timeNode(n: PNode): bool =
+  ## based on varpartitions
+  n.kind notin {nkSym, nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
+      nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+      nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
+
+# proc parentSubExprs(node: PNode): seq[PNode] =
+#   if node.isNil:
+#     return @[]
+#   # echo "parent ", node.kind
+#   case node.kind:
+#   of nkSym:
+#     @[node]
+#   of nkDotExpr:
+#     parentSubExprs(node[0]).concat(@[node[1]])
+#   of nkHiddenDeref:
+#     parentSubExprs(node[0])
+#   else:
+#     @[]
 
 proc symbol(n: PNode): Symbol
 
@@ -294,6 +301,7 @@ proc checkCall(n, ctx, map): Check =
   result.map = map
   for i, child in n:
     discard check(child, ctx, map)
+    echo "after check"
     if i > 0 and child.kind == nkHiddenAddr:
       # var args make a new map with MaybeNil for our node
       # as it might have been mutated
@@ -493,9 +501,9 @@ proc checkWhile(n, ctx, map): Check =
   result.map = union(map0, map1)
   result.map = union(result.map, map2)
   result.nilability = Safe
-
+  
 proc checkInfix(n, ctx, map): Check =
-  ## check infix operators
+  ## check infix operators in condition
   ##   a and b : map is based on a; next b
   ##   a or b : map is an union of a and b's
   ##   a == b : use checkCondition
@@ -523,6 +531,7 @@ proc checkInfix(n, ctx, map): Check =
           result.map = checkCondition(n[2], ctx, map, false, false)
         elif $n[1] == "false":
           result.map = checkCondition(n[2], ctx, map, true, false)
+      
       if result.map.isNil:
         result.map = map
     else:
@@ -572,7 +581,7 @@ proc infixEq(l: PNode, r: PNode): PNode =
 proc infixOr(l: PNode, r: PNode): PNode =
   infix(l, r, mOr)
 
-proc checkBranch(condition: PNode, n, ctx, map; isElse: bool = false): Check
+proc checkBranch(n, ctx, map): Check
 
 proc checkCase(n, ctx, map): Check =
   # case a:
@@ -598,11 +607,13 @@ proc checkCase(n, ctx, map): Check =
         a = test
       else:
         a = infixOr(a, test)
-      let (newNilability, newMap) = checkBranch(test, code, ctx, map.copyMap())
+      let conditionMap = checkCondition(test, ctx, map.copyMap(), false, false)
+      let (newNilability, newMap) = checkBranch(code, ctx, conditionMap)
       result.map = union(result.map, newMap)
       result.nilability = union(result.nilability, newNilability)
     of nkElse:
-      let (newNilability, newMap) = checkBranch(prefixNot(a), child[0], ctx, map.copyMap())
+      let mapElse = checkCondition(prefixNot(a), ctx, map.copyMap(), false, false)
+      let (newNilability, newMap) = checkBranch(child[0], ctx, mapElse)
       result.map = union(result.map, newMap)
       result.nilability = union(result.nilability, newNilability)
     else:
@@ -674,6 +685,10 @@ proc checkTry(n, ctx, map): Check =
   result = (Safe, newMap)
 
 proc directStop(n): bool =
+  ## if the node contains a direct stop
+  ## as a continue/break/raise/return: then it means
+  ## it is possible ..
+  ## lets ignore this for now?
   case n.kind:
   of nkStmtList:
     for child in n:
@@ -687,29 +702,59 @@ proc directStop(n): bool =
     aecho n.kind
   return false
 
-proc checkCondition(n, ctx, map; isElse: bool, base: bool): NilMap =
+proc reverse(value: Nilability): Nilability =
+  case value:
+  of Nil: Safe
+  of MaybeNil: MaybeNil
+  of Safe: Nil
+
+proc reverse(kind: TransitionKind): TransitionKind =
+  case kind:
+  of TNil: TSafe
+  of TSafe: TNil
+  else: raise newException(ValueError, "expected TNil or TSafe")
+
+proc reverseDirect(map: NilMap): NilMap =
+  result = map.copyMap()
+  for symbol, local in result.locals:
+    result.locals[symbol] = reverse(local)
+    result.history[symbol][^1].kind = reverse(result.history[symbol][^1].kind)
+    result.history[symbol][^1].nilability = result.locals[symbol]
+
+proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ## check conditions : used for if, some infix operators
   ##   isNil(a)
-  if base:
-    map.base = map
+  ##   it returns a new map: you need to reverse all the direct elements for else
+
+  # check that the condition is valid
+  
+  #if base:
+  #  map.base = map
   result = map
+  # TODO dont inc abstractTime for `of` / `else` artificcial nodes
   if n.kind == nkCall:
-    if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
-      result = newNilMap(map, if base: map else: map.base)
-      # I assumed n[1] is a sym?
-      var nilability: Nilability
-      (nilability, result) = check(n[1], ctx, result)
+    inc ctx.abstractTime # nkCall
+
+    for element in n:
+      result = check(element, ctx, result).map
+
+    if n[0].kind == nkSym and n[0].sym.magic == mIsNil:    
+      result = newNilMap(map, map.base) # if base: map else: map.base)
 
       let a = symbol(n[1])
-      result.store(a, if not isElse: Nil else: Safe, if not isElse: TNil else: TSafe, n.info, n)
+      result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n)
     else:
-      discard
+      result = newNilMap(map, map.base)
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
-    result = checkCondition(n[1], ctx, map, not isElse, false)
+    inc ctx.abstractTime # nkPrefix
+    result = checkCondition(n[1], ctx, map, not reverse, false)
   elif n.kind == nkInfix:
+    inc ctx.abstractTime # nkInfix
     result = checkInfix(n, ctx, map).map
   else:
-    discard
+    result = check(n, ctx, map).map
+    result = newNilMap(map, map.base)
+    
 
 proc checkResult(n, ctx, map) =
   let resultNilability = map[resultId]
@@ -721,12 +766,9 @@ proc checkResult(n, ctx, map) =
   of Safe:
     discard    
 
-proc checkBranch(condition: PNode, n, ctx, map; isElse: bool = false): Check =
-  let childMap = checkCondition(condition, ctx, map, isElse, base=true)
-  result = check(n, ctx, childMap)
+proc checkBranch(n, ctx, map): Check =
+  result = check(n, ctx, map)
 
-proc checkElseBranch(condition: PNode, n, ctx, map): Check =
-  checkBranch(condition, n, ctx, map, isElse=true)
 
 # Faith!
 
@@ -739,11 +781,40 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   # look in varpartitions: imporant to change abstractTime in
   # compatible way
   var oldAbstractTime = ctx.abstractTime
-  inc ctx.abstractTime
+  if timeNode(n):
+    inc ctx.abstractTime
+
+  var isMutating = false
+  var mutatingGraphIndices: seq[GraphIndex] = @[]
+  # set: we should have most 1 of each index
+  if ctx.abstractTime != oldAbstractTime:
+    for i, graph in ctx.partitions.graphs:
+      for m in graph.mutations:
+        
+        if ctx.abstractTime - 1 == m and oldAbstractTime <= m:
+          mutatingGraphIndices.add(i)
+          break
+        elif m > ctx.abstractTime:
+          break
+  
+  echo "nilcheck : abstractTime " & $ctx.abstractTime & " mutating " & $mutatingGraphIndices & " node " & $n.kind & " " & $n
+  for graphIndex in mutatingGraphIndices:
+    var graph = ctx.partitions.graphs[graphIndex]
+    # update all potential aliases to MaybeNil
+    # because they might not be always aliased:
+    # we might have false positive in a liberal analysis
+    for element in graph.elements:
+      let elementSymbol = symbol(element)
+      map.store(
+        elementSymbol,
+        MaybeNil,
+        TPotentialAlias,
+        n.info,
+        element)
+
   case n.kind:
   of nkSym:
     aecho symbol(n), map
-    dec ctx.abstractTime
     result = (nilability: map[symbol(n)], map: map)
   of nkCallKinds:
     aecho "call", n
@@ -775,26 +846,39 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkAddr, nkHiddenAddr:
     result = check(n.sons[0], ctx, map)
   of nkIfStmt, nkIfExpr:
-    var mapR: NilMap = map.copyMap()
-    var nilabilityR: Nilability = Safe
-    let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[0], n.sons[0].sons[1], ctx, map.copyMap())
-    # echo "if ", n.sons[0].sons[1]
-    var isDirect = false
-    if n.sons.len > 1:
-      (nilabilityR, mapR) = checkElseBranch(n.sons[0].sons[0], n.sons[1], ctx, map.copyMap())
-    else:
-      mapR = checkCondition(n.sons[0].sons[0], ctx, mapR, true, true)
-      nilabilityR = Safe
-      if directStop(n[0][1]):
-        isDirect = true
-        result.map = mapR
-        result.nilability = nilabilityR
+    ## check branches based on condition
+    var mapIf: NilMap = map.copyMap()
+    #var nilabilityR: Nilability = Safe
+    
+    # first visit the condition
+    inc ctx.abstractTime # nkElif
+    echo "nilcheck : abstractTime " & $ctx.abstractTime & " " & $n.kind & " " & $n[0]
 
-    #echo "other", mapL, mapR
-    if not isDirect:
+    var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)    
+
+    #var isDirect = false
+    
+    
+    if n.sons.len > 1:
+      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
+      let mapElse = reverseDirect(mapCondition)
+      let (nilabilityR, mapR) = checkBranch(n.sons[1], ctx, mapElse)
       result.map = union(mapL, mapR)
       result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
-    #echo "result", result
+    else:
+      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
+      result.map = union(mapIf, mapL)
+      result.nilability = Safe
+      #if directStop(n[0][1]):
+      #  isDirect = true
+      #  result.map = mapR
+      #  result.nilability = nilabilityR
+
+    #echo "other", mapL, mapR
+    #if not isDirect:
+    #  result.map = union(mapL, mapR)
+    #  result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
+
   of nkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
   of nkVarSection:
@@ -814,50 +898,22 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = checkTry(n, ctx, map)
   of nkWhileStmt:
     result = checkWhile(n, ctx, map)
-  of nkNilLit:
-    result = (Nil, map)
-  of nkIntLit:
-    result = (Safe, map)
-  of nkNone, #..pred(nkSym), succ(nkSym)..pred(nkNilLit):
-   nkTypeSection, nkProcDef, nkConverterDef,
+  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
-  
-    # TODO check if those are the same nodes as in varpartitions
-    dec ctx.abstractTime
-    # echo n.kind
+    
+    discard "don't follow this : same as varpartitions"
     result = (Nil, map)
   else:
-    result = (Nil, map)
+    var elementMap = map.copyMap()
+    var nilability = Safe
+    for element in n:
+      (nilability, elementMap) = check(element, ctx, elementMap)
 
-  var isMutating = false
-  var mutatingGraphIndices: seq[GraphIndex] = @[]
-  # set: we should have most 1 of each index
-  if ctx.abstractTime != oldAbstractTime:
-    for i, graph in ctx.partitions.graphs:
-      for m in graph.mutations:
-        if m >= ctx.abstractTime and oldAbstractTime < m:
-          mutatingGraphIndices.add(i)
-          break
-        elif m > ctx.abstractTime:
-          break
+    result = (Nil, elementMap)
+
   
-  echo "nilcheck : abstractTime " & $ctx.abstractTime & " mutating " & $mutatingGraphIndices & " node " & $n.kind
-  for graphIndex in mutatingGraphIndices:
-    var graph = ctx.partitions.graphs[graphIndex]
-    # update all potential aliases to MaybeNil
-    # because they might not be always aliased:
-    # we might have false positive in a liberal analysis
-    for element in graph.elements:
-      let elementSymbol = symbol(element)
-      map.store(
-        elementSymbol,
-        MaybeNil,
-        TPotentialAlias,
-        n.info,
-        element)
-
 
   
   # echo map
@@ -884,6 +940,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
 
   echo toTextGraph(conf, partitions)
+  
   # TODO
   var context = NilCheckerContext(partitions: partitions, config: conf)
   for i, child in s.typ.n.sons:
@@ -893,8 +950,12 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
       map.store(symbol(child), typeNilability(child.typ), TArg, child.info, child)
 
   map.store(resultId, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+    
+  #inc context.abstractTime # function ? seems we start from 1?
   echo "checking ", s.name.s, " ", filename
   # var par = loadPartitions(s, body, conf) 
+  
+
   let res = check(body, context, map)
   if res.nilability == Safe and (not res.map.history.hasKey(resultId) or res.map.history[resultId].len <= 1):
     res.map.store(resultId, Safe, TAssign, s.ast.info)
