@@ -468,7 +468,7 @@ block:
 
 block:
   type
-    TilesetCT[n: static int] = int
+    TilesetCT[n: static[int]] = int
     TilesetRT = int
     #Tileset = TilesetCT | TilesetRT
 
