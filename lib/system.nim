@@ -447,10 +447,6 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## There is a reason why the default assignment does a deep copy of sequences
   ## and strings.
 
-
-proc copy[T](x: T): T {.noSideEffect, magic: "ShallowCopy".}
-
-
 when defined(nimArrIdx):
   # :array|openArray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
