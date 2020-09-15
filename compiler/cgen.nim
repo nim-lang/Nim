@@ -588,6 +588,7 @@ proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)
+proc genProcPrototype(p: BProc, sym: PSym)
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
@@ -1090,7 +1091,10 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
            sym.magic == mNone and
            m.config.backend == backendCpp)
 
-proc genProcPrototype(m: BModule, sym: PSym) =
+proc genProcPrototype(m: BModule; sym: PSym) {.deprecated: "that's a stupid idea".} = discard
+
+proc genProcPrototype(p: BProc; sym: PSym) =
+  let m = p.module
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags: return
   if lfDynamicLib in sym.loc.flags:
