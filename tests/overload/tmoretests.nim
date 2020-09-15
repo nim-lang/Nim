@@ -11,9 +11,9 @@ block:
 
   func prepareTileset(tileset: var Tileset) = discard
 
-  func prepareTileset(tileset: Tileset): Tileset =
-    result = tileset
-    result.prepareTileset
+  #func prepareTileset(tileset: Tileset): Tileset =
+  #  result = tileset
+  #  result.prepareTileset
 
   var parsedTileset: TilesetRT
   prepareTileset(parsedTileset)
