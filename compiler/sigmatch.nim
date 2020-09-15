@@ -1091,8 +1091,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   template considerPreviousT(body: untyped) =
     var prev = PType(idTableGet(c.bindings, f))
-    if prev == nil: body
-    #if prev == nil or prev == f: body
+    if prev == nil or prev == f: body
     else: return typeRel(c, prev, a)
 
   case a.kind

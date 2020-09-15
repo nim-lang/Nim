@@ -468,16 +468,15 @@ block:
 
 block:
   type
-    #TilesetCT[n: static[int]] = int
-    TilesetCT[N] = distinct int
+    TilesetCT[n: static[int]] = distinct int
     TilesetRT = int
-    #Tileset = TilesetCT | TilesetRT
+    Tileset = TilesetCT | TilesetRT
 
-  #func prepareTileset(tileset: var Tileset) = discard
+  func prepareTileset(tileset: var Tileset) = discard
 
-  #func prepareTileset(tileset: Tileset): Tileset =
-  #  result = tileset
-  #  result.prepareTileset
+  func prepareTileset(tileset: Tileset): Tileset =
+    result = tileset
+    result.prepareTileset
 
-  #var parsedTileset: TilesetRT
-  #prepareTileset(parsedTileset)
+  var parsedTileset: TilesetRT
+  prepareTileset(parsedTileset)
