@@ -388,7 +388,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   if params == nil: params.add("void)")
   else: params.add(")")
   params = "(" & params
-  echo "exit proc params"
+  echo "exit proc params ", $params
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
@@ -874,7 +874,10 @@ proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
   echo "gen proc header for ", prc.name.s
   genProcParams(p, prc.typ, rettype, params, check)
   echo "fill loc in genheader"
-
+  if prc.loc.r == nil:
+    echo "proc ", prc.name.s, " at ", cast[uint](prc), " is fresh"
+  else:
+    echo "proc ", prc.name.s, " at ", cast[uint](prc), " REUSES ", $prc.loc.r
   # make sure we mangle the proc name after having mangled the 1st param
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   echo "mangle ", prc.name.s, " into ", $prc.loc.r

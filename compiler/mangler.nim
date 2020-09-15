@@ -146,15 +146,21 @@ proc shouldAppendModuleName(s: PSym): bool =
       result = true
 
 const
-  irrelevantForNaming = {tyGenericBody, tyGenericInst, tyOwned,
-                         tyGenericInvocation, tyAlias, # tyDistinct,
-                         tyVar, tyStatic, tyRange, tySink, tyInferred}
   irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
                            tyGenericInvocation, tyDistinct, tyRange,
                            tyStatic, tyAlias, tySink, tyInferred}
   threeLetterShorties = {tyRef, tySequence, tyObject, tyTuple, tyArray,
                          tyPtr, tyString, tySet, tyOrdinal, tyTypeDesc}
   unwrapTypeArg = {tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray}
+
+when true:
+  const
+    irrelevantForNaming = irrelevantForBackend + {tyVar}
+else:
+  const
+    irrelevantForNaming = {tyGenericBody, tyGenericInst, tyOwned,
+                           tyGenericInvocation, tyAlias, # tyDistinct,
+                           tyVar, tyStatic, tyRange, tySink, tyInferred}
 
 proc shortKind(k: TTypeKind): string =
   ## truncate longer type names
@@ -403,7 +409,7 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
       debug s
       when m is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
-        debug m.cfilename
+        debug m.cfilename.string
         debug "module $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
       elif m is BProc:
@@ -575,10 +581,14 @@ proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
 
 proc mangleParamName*(m: BModule; s: PSym): Rope =
   ## we should be okay with just a simple mangle here for prototype
-  ## purposes; the real meat happens in assignParam later...
+  ## purposes; the real meat happens when we're called with BProc...
   if s.loc.r == nil:
-    s.loc.r = mangle(m, s).rope
-    echo "mangled ", s.name.s, " param into ", $s.loc.r
+    if s.kind == skResult:
+      s.loc.r = ~"result"
+    else:
+      s.loc.r = mangleName(m, s)
+    echo "naive param mangle of ", s.name.s, " at ", cast[uint](s), " into ", $s.loc.r
+
   result = s.loc.r
   if result == nil:
     internalError(m.config, s.info, "mangleParamName")
@@ -600,9 +610,9 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
       s.loc.r = nil              # critically, destroy the location
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
     if p.prc == nil:
-      echo "mangled ", s.name.s, " param from nil proc into ", $s.loc.r
+      echo "mangled ", s.name.s, " at ", cast[uint](s), " from nil proc into ", $s.loc.r
     else:
-      echo "mangled ", s.name.s, " param from ", p.prc.name.s, " into ", $s.loc.r
+      echo "mangled ", s.name.s, " at ", cast[uint](s), " from ", p.prc.name.s, " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
     internalError(p.config, s.info, "mangleParamName")
