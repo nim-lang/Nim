@@ -40,7 +40,7 @@ template setColor(c, col) =
 proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  h.setColor colPurple # mark as potential cycle!
+  #h.setColor colPurple # mark as potential cycle!
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
@@ -74,6 +74,19 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
+
+  when false:
+    cstderr.rawWrite desc.name
+    cstderr.rawWrite " "
+    if desc.disposeImpl == nil:
+      cstderr.rawWrite "lacks dispose"
+      if desc.traceImpl != nil:
+        cstderr.rawWrite ", but has trace\n"
+      else:
+        cstderr.rawWrite ", and lacks trace\n"
+    else:
+      cstderr.rawWrite "has dispose!\n"
+
   nimRawDispose(p)
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl.} =
@@ -342,8 +355,8 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       #cprintf("[DESTROY] %p\n", p)
     else:
       dec cell.rc, rcIncrement
-    if cell.color == colPurple:
-      rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
+    #if cell.color == colPurple:
+    rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:
@@ -353,5 +366,5 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerR
       #cprintf("[DESTROY] %p %s\n", p, desc.name)
     else:
       dec cell.rc, rcIncrement
-    if cell.color == colPurple:
-      rememberCycle(result, cell, desc)
+    #if cell.color == colPurple:
+    rememberCycle(result, cell, desc)

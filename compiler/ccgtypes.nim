@@ -1323,9 +1323,9 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     genProc(m, theProc)
     result = theProc.loc.r
   else:
-    if op == attachedTrace and m.config.selectedGC == gcOrc and
-        containsGarbageCollectedRef(t):
-      when false:
+    when false:
+      if op == attachedTrace and m.config.selectedGC == gcOrc and
+          containsGarbageCollectedRef(t):
         # unfortunately this check is wrong for an object type that only contains
         # .cursor fields like 'Node' inside 'cycleleak'.
         internalError(m.config, info, "no attached trace proc found")
