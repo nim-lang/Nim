@@ -408,7 +408,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
-        "if possible, rearrange your program's control flow to prevent it") % $n)
+         "if possible, rearrange your program's control flow to prevent it or use 'copy($1)' to hint the compiler it is intentional") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(n.typ))

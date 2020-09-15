@@ -264,6 +264,11 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
   wasMoved(x)
 
+func copy*[T](x: T): T =
+  ## make explicit copy of the argument `x`, used to signal to the compiler
+  ## the copy is intentional
+  result = x
+
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
   array*[I, T]{.magic: "Array".}      ## Generic type to construct
@@ -441,6 +446,10 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## Be careful with the changed semantics though!
   ## There is a reason why the default assignment does a deep copy of sequences
   ## and strings.
+
+
+proc copy[T](x: T): T {.noSideEffect, magic: "ShallowCopy".}
+
 
 when defined(nimArrIdx):
   # :array|openArray|string|seq|cstring|tuple
