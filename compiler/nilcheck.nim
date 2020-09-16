@@ -738,8 +738,7 @@ proc checkBranch(n, ctx, map): Check =
 
 proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   if map.isNil:
-    localError(ctx.config, n.info, "map is nil: something went wrong in nilcheck")
-    quit 1
+    internalError(ctx.config, n.info, "map is nil: something went wrong in nilcheck")
   # look in varpartitions: imporant to change abstractTime in
   # compatible way
   var oldAbstractTime = ctx.abstractTime
@@ -928,6 +927,6 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   # check for nilability result
   # (ANotNil, BNotNil) : 
   # do we check on asgn nilability at all?
-  
+
   if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
     checkResult(s.ast, context, res.map)
