@@ -264,7 +264,7 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
   wasMoved(x)
 
-func copy*[T](x: T): T =
+func copy*[T](x: T): T {.inline.} =
   ## make explicit copy of the argument `x`, used to signal to the compiler
   ## the copy is intentional
   result = x
