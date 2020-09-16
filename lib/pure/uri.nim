@@ -142,6 +142,69 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
+proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] =
+  ## Decode a URL query string into a set of (key, value) parameters.
+  ##
+  ## **See also:**
+  ## * `decodeUrl proc<#decodeUrl,string>`_
+  runnableExamples:
+    assert decodeQuery() == {:}
+    assert decodeQuery("a=1&b=2") == {"a": "1", "b": "2"}
+    assert decodeQuery("a=1&b") == {"a": "1", "b": ""}
+
+  var
+    name = ""
+    buffer = ""
+    encodedchar = ""
+
+  var pairs = newSeq[(string, string)]()
+
+  proc getPair(name, buffer: string): (string, string) =
+    return if name.len == 0 and buffer.len > 0: (buffer, "")
+      elif name.len > 0: (name, buffer)
+      else: ("", "")
+
+  for c in urlQuery:
+
+    if c == '&':
+      let (key, value) = getPair(name, buffer)
+      if key.len > 0:
+        pairs.add((key, value))
+      name = ""
+      buffer = ""
+      continue
+
+    if c == '=':
+      name = buffer
+      buffer = ""
+      continue
+
+    if encodedchar.len > 1:
+      encodedchar.add(c)
+      if (encodedchar.len - 1) mod 3 == 0:
+        let decodedchar = chr(fromHex[int](encodedchar))
+        if decodedchar != '\x00':
+          buffer.add(decodedchar)
+          encodedchar = ""
+          continue
+      continue
+
+    if c == '%':
+      encodedchar.add("0x")
+      continue
+
+    if c == '+':
+      buffer.add(' ')
+      continue
+
+    buffer.add(c)
+
+  let (key, value) = getPair(name, buffer)
+  if key.len > 0:
+    pairs.add((key, value))
+
+  return pairs
+
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
@@ -708,7 +771,7 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
 
-  # encodeQuery tests
+  # encodeQuery/decodeQuery tests
   block:
     doAssert encodeQuery({:}) == ""
     doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
@@ -718,6 +781,11 @@ when isMainModule:
     doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
+
+    doAssert decodeQuery("") == {:}
+    doAssert decodeQuery("foo=bar") == {"foo": "bar"}
+    doAssert decodeQuery("foo=bar+%26+baz") == {"foo": "bar & baz"}
+    doAssert decodeQuery("foo") == {"foo": ""}
 
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
