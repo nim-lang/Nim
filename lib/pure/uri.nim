@@ -59,7 +59,7 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
-    kind: IpKind # not expose it for compatiblility.
+    kind: IpKind # not expose it for compatibility.
 
 proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
