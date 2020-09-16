@@ -1,6 +1,5 @@
 discard """
-cmd: "nim check $file"
-action: "reject"
+cmd: "nim check --warningAsError:StrictNotNil $file"
 """
 
 import tables
@@ -23,65 +22,27 @@ type
 
 # Nilable tests
 
-proc testFieldNilCheck(a: Nilable) =
-  if not a.field.isNil: #[tt.Warning
-         ^ can't deref a, it might be nil
-  ]#
-    echo 0
 
 
-# test deref
-proc testDeref(a: Nilable) =
-  echo a.a > 0 #[tt.Warning
-       ^ can't deref a, it might be nil
-  ]#
+# # test and
+proc testAnd(a: Nilable) =
+  echo not a.isNil and a.a > 0 # ok
 
 
+# test else branch and inferring not isNil
+# proc testElse(a: Nilable, b: int) =
+#   if a.isNil:
+#     echo 0
+#   else:
+#     echo a.a
 
-# # test if else
-proc testIfElse(a: Nilable) =
-  if a.isNil:
-    echo a.a #[tt.Warning
-         ^ can't deref a, it is nil
-    ]#
-  else:
-    echo a.a # ok
+# test that here we can infer that n can't be nil anymore
+proc testNotNilAfterAssign(a: Nilable, b: int) =
+  var n = a # 1: MaybeNil 2: Safe
+  if n.isNil: # 1: Nil 2: Safe
+    n = Nilable() # 1: Safe 2: Safe 
+  echo n.a # ok
 
-proc testAssignUnify(a: Nilable, b: int) =
-  var a2 = a
-  if b == 0:
-    a2 = Nilable()
-  echo a2.a #[tt.Warning
-       ^ can't deref a2, it might be nil
-  ]#
-
-# TODO ok this fails: fix the unifying logic
-# # test assign in branch and unifiying that with the main block after end of branch
-proc testAssignUnifyNil(a: Nilable, b: int) =
-  var a2 = a
-  if b == 0:
-    a2 = nil
-  echo a2.a #[tt.Warning
-       ^ can't deref a2, it might be nil
-  ]#
-
-# test loop
-proc testForLoop(a: Nilable) =
-  var b = Nilable()
-  for i in 0 .. 5:
-    echo b.a # can't deref b: it might be nil
-    if i == 2:
-      b = a
-  echo b.a # can't defer b: it might be nil
-
-# TODO implement this after discussion
-# proc testResultCompoundNonNilableElement(a: Nilable): (NonNilable, NonNilable) = #[t t.Warning
-#      ^ result might be not initialized, so it or an element might be nil
-# ]#
-#   if not a.isNil:
-#     result[0] = a #[t t.Warning
-#                 ^ can't assign nilable to non nilable: it might be nil
-#     #]
 
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok
@@ -93,28 +54,6 @@ proc testForLoop(a: Nilable) =
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field
 
-# TODO when dot expr support is there
-
-# proc testRootAliasField(a: Nilable) =
-#   var aliasA = a
-#   if not a.isNil and not a.field.isNil:
-#     aliasA.field = nil
-#     # a.field = nil
-#     # aliasA = nil 
-#     echo a.field.a # [tt.Warning
-#          ^ can't deref a.field, it might be nil
-#     ]#
-
-proc callVar(a: var Nilable) =
-  a = nil
-
-proc testVarAlias(a: Nilable) =
-  var aliasA = a
-  if not a.isNil:
-    callVar(aliasA)
-    echo a.a #[tt.Warning
-         ^ can't deref a, it might be nil
-    ]#
 
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash
@@ -202,7 +141,7 @@ proc testVarAlias(a: Nilable) =
 #     echo other.a # ok
 #   echo other.a # can't deref other: it might be nil
 
-# ok we can't really get the nil value from here, so should be ok
+# # (ask Araq about this: not supported yet) ok we can't really get the nil value from here, so should be ok
 # proc testDirectRaiseCall: NonNilable =
 #   var a = raiseCall()
 #   result = NonNilable()
@@ -222,29 +161,6 @@ proc testVarAlias(a: Nilable) =
 #   callChange(a)
 #   echo a.field.a # can't deref a.field, it might be nil
 
-# var it = root;
-# while it != nil:
-#   baz(it)
-#   it = it.next
-  # quite different from:
-  # it = it.next.next
-
-# # ok, but most calls maybe can raise
-# # so this makes us mostly force initialization of result with a valid default
-
-# # a -> Safe
-# # a.field -> Safe
-# # aliasA -> Safe
-# # aliasA.field -> Nil
-# # aliasA = a => aliased dependency
-# # so now aliasA.field -> update dependencies:
-# # aliasA.field.* : none
-# # aliasA.field aliases : none
-# # aliasA aliases : a
-# # a.field -> Nil
-
-# # var globalA = Nilable()
-
 # # proc test10(a: Nilable) =
 # #   if not a.isNil and not a.b.isNil:
 # #     c_memset(globalA.addr, 0, globalA.sizeOf.csize_t)
@@ -253,11 +169,3 @@ proc testVarAlias(a: Nilable) =
 
 var nilable: Nilable
 var withField = Nilable(a: 0, field: Nilable())
-# testRootAliasField(withField)
-# discard testUniqueHashTree(withField)
-# # test1(nilable)
-# # test10(globalA)
-
-
-
-

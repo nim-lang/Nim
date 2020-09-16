@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes, sequtils, varpartitions
-import astalgo
+import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes, varpartitions
 
 # 
 # notes:
@@ -144,7 +143,7 @@ proc `$`(map: NilMap): string
     
 proc store(map: NilMap, graphIndex: GraphIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   let text = if node.isNil: "?" else: $node
-  #echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
+  # echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
   map.locals[graphIndex] = value
   map.history.mgetOrPut(graphIndex, @[]).add(History(info: info, kind: kind, node: node, nilability: value))
   
@@ -179,7 +178,7 @@ proc `$`(map: NilMap): string =
   while not now.isNil:
     stack.add(now)
     now = now.previous
-  for i in countdown(stack.len - 1, 0):
+  for i in 0 .. stack.len - 1:
     now = stack[i]
     result.add("###\n")
     for graphIndex, value in now.locals:
@@ -702,7 +701,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
       # result = newNilMap(map, map.base) # if base: map else: map.base)
 
       let a = ctx.graph(n[1])
-      result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n)
+      result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
     else:
       discard
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
@@ -823,14 +822,15 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
 
     if n.sons.len > 1:
-      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
+      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
       let mapElse = reverseDirect(mapCondition)
       let (nilabilityR, mapR) = checkBranch(n.sons[1], ctx, mapElse)
       result.map = union(mapL, mapR)
       result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
     else:
-      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
-      result.map = union(mapIf, mapL)
+      let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
+      let mapNoIf = reverseDirect(mapCondition)
+      result.map = union(mapNoIf, mapL)
       result.nilability = Safe
       #if directStop(n[0][1]):
       #  result.map = mapR
