@@ -809,10 +809,17 @@ template foldl*(sequence, operation: untyped): untyped =
       multiplication = foldl(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldl(words, a & b)
+      procs = @["proc", "Is", "Also", "Fine"]
+
+
+    proc foo(acc, cur: string): string =
+      result = acc & cur
+
     assert addition == 25, "Addition is (((5)+9)+11)"
     assert subtraction == -15, "Subtraction is (((5)-9)-11)"
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
+    assert foldl(procs, foo(a, b)) == "procIsAlsoFine"
 
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
