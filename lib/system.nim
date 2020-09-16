@@ -264,11 +264,6 @@ proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
   wasMoved(x)
 
-func copy*[T](x: T): T {.inline.} =
-  ## make explicit copy of the argument `x`, used to signal to the compiler
-  ## the copy is intentional
-  result = x
-
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
   array*[I, T]{.magic: "Array".}      ## Generic type to construct
