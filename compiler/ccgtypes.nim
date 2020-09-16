@@ -12,7 +12,7 @@
 import sighashes, modulegraphs, mangler
 from lowerings import createObj
 
-proc genProcHeader(p: BProc, prc: PSym, asPtr: bool = false): Rope
+proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope
 
 when false:
   proc hashOwner(s: PSym): SigHash =
@@ -856,11 +856,9 @@ proc isReloadable(m: BModule, prc: PSym): bool =
 proc isNonReloadable(m: BModule, prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope {.deprecated: "that's a stupid idea".} = discard
-
-proc genProcHeader(p: BProc, prc: PSym, asPtr: bool = false): Rope =
+proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
   ## generate the header for the proc; parameters, proc name, etc.
-  let m = p.module
+  let m = getem()
   var
     rettype, params: Rope
   # using static is needed for inline procs
@@ -882,7 +880,7 @@ proc genProcHeader(p: BProc, prc: PSym, asPtr: bool = false): Rope =
   else:
     echo "proc ", prc.name.s, " at ", cast[uint](prc), " REUSES ", $prc.loc.r
   # make sure we mangle the proc name after having mangled the 1st param
-  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(p, prc), OnUnknown)
   echo "mangle ", prc.name.s, " into ", $prc.loc.r
 
   # handle the 2 options for hotcodereloading codegen - function pointer

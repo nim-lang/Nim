@@ -587,8 +587,7 @@ proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
-proc genProcPrototype(m: BModule, sym: PSym)
-proc genProcPrototype(p: BProc, sym: PSym)
+proc genProcPrototype(p: ModuleOrProc, sym: PSym)
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
@@ -1091,12 +1090,10 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
            sym.magic == mNone and
            m.config.backend == backendCpp)
 
-proc genProcPrototype(m: BModule; sym: PSym) {.deprecated: "that's a stupid idea".} = discard
-
-proc genProcPrototype(p: BProc; sym: PSym) =
-  let m = p.module
+proc genProcPrototype(p: ModuleOrProc; sym: PSym) =
+  let m = getem()
   useHeader(m, sym)
-  if lfNoDecl in sym.loc.flags: return
+  assert lfNoDecl notin sym.loc.flags, "just useHeader and done"
   if lfDynamicLib in sym.loc.flags:
     if getModule(sym).id != m.module.id and
         not containsOrIncl(m.declaredThings, sym.id):
@@ -1108,7 +1105,7 @@ proc genProcPrototype(p: BProc; sym: PSym) =
              [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
   elif not containsOrIncl(m.declaredProtos, sym.id):
     let asPtr = isReloadable(m, sym)
-    var header = genProcHeader(m, sym, asPtr)
+    var header = genProcHeader(p, sym, asPtr)
     if not asPtr:
       if isNoReturn(m, sym) and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
         header = "__declspec(noreturn) " & header
@@ -1123,13 +1120,12 @@ proc genProcPrototype(p: BProc; sym: PSym) =
 # TODO: figure out how to rename this - it DOES generate a forward declaration
 proc genProcNoForward(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
-    fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
+    fillProcLoc(m, prc.ast[namePos])
     # dependency to a compilerproc:
     discard cgsym(m, prc.name.s)
-    return
-  if lfNoDecl in prc.loc.flags:
-    genProcPrototype(m, prc)
+  elif lfNoDecl in prc.loc.flags:
+    useHeader(m, prc)
     # after the prototype/header for mangling reasons...
     fillProcLoc(m, prc.ast[namePos])
   elif prc.typ.callConv == ccInline:
