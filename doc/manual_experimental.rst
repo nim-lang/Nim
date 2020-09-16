@@ -321,42 +321,6 @@ scope. Therefore, the following will *fail to compile:*
   a()
 
 
-Automatic self insertions
-=========================
-
-**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
-
-Starting with version 0.14 of the language, Nim supports ``field`` as a
-shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
-or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
-statement pragma (instead of ``self`` any other identifier can be used too).
-This pragma is active for the rest of the module:
-
-.. code-block:: nim
-  type
-    Parent = object of RootObj
-      parentField: int
-    Child = object of Parent
-      childField: int
-
-  {.this: self.}
-  proc sumFields(self: Child): int =
-    result = parentField + childField
-    # is rewritten to:
-    # result = self.parentField + self.childField
-
-In addition to fields, routine applications are also rewritten, but only
-if no other interpretation of the call is possible:
-
-.. code-block:: nim
-  proc test(self: Child) =
-    echo childField, " ", sumFields()
-    # is rewritten to:
-    echo self.childField, " ", sumFields(self)
-    # but NOT rewritten to:
-    echo self, self.childField, " ", sumFields(self)
-
-
 Named argument overloading
 ==========================
 

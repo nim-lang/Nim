@@ -40,7 +40,7 @@ template setColor(c, col) =
 proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  h.setColor colPurple # mark as potential cycle!
+  #h.setColor colPurple # mark as potential cycle!
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
@@ -50,6 +50,7 @@ type
     traceStack: CellSeq
     when useJumpStack:
       jumpStack: CellSeq   # Lins' jump stack in order to speed up traversals
+    toFree: CellSeq
     freed, touched: int
 
 proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
@@ -73,6 +74,19 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
 
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
+
+  when false:
+    cstderr.rawWrite desc.name
+    cstderr.rawWrite " "
+    if desc.disposeImpl == nil:
+      cstderr.rawWrite "lacks dispose"
+      if desc.traceImpl != nil:
+        cstderr.rawWrite ", but has trace\n"
+      else:
+        cstderr.rawWrite ", and lacks trace\n"
+    else:
+      cstderr.rawWrite "has dispose!\n"
+
   nimRawDispose(p)
 
 proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
@@ -207,6 +221,11 @@ proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
             t.setColor(colWhite)
             trace(t, desc, j)
 
+when false:
+  proc writeCell(msg: cstring; s: Cell) =
+    cfprintf(cstderr, "%s %p root index: %ld; RC: %ld; color: %ld\n",
+      msg, s, s.rootIdx, s.rc shr rcShift, s.color)
+
 proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
   #[
   proc collectWhite(s: Cell) =
@@ -218,37 +237,14 @@ proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
   ]#
   if s.color == colWhite and (s.rc and isCycleCandidate) == 0:
     s.setColor(colBlack)
-    when false:
-      # optimized version (does not work)
-      j.traceStack.add(s, desc)
-      # this way of writing the loop means we can free all the nodes
-      # afterwards avoiding the "use after free" bug in the paper.
-      var i = 0
-      while i < j.traceStack.len:
-        let (t, desc) = j.traceStack.d[j.traceStack.len-1]
-        inc i
-        if t.color == colWhite and (t.rc and isCycleCandidate) == 0:
-          t.setColor(colBlack)
-          trace(t, desc, j)
-
-      for i in 0 ..< j.traceStack.len:
-        free(j.traceStack.d[i][0], j.traceStack.d[i][1])
-      j.traceStack.len = 0
-    else:
-      var subgraph: CellSeq
-      init subgraph
-      subgraph.add(s, desc)
-      trace(s, desc, j)
-      while j.traceStack.len > 0:
-        let (t, desc) = j.traceStack.pop()
-        if t.color == colWhite and (t.rc and isCycleCandidate) == 0:
-          subgraph.add(t, desc)
-          t.setColor(colBlack)
-          trace(t, desc, j)
-      for i in 0 ..< subgraph.len:
-        free(subgraph.d[i][0], subgraph.d[i][1])
-      inc j.freed, subgraph.len
-      deinit subgraph
+    j.toFree.add(s, desc)
+    trace(s, desc, j)
+    while j.traceStack.len > 0:
+      let (t, desc) = j.traceStack.pop()
+      if t.color == colWhite and (t.rc and isCycleCandidate) == 0:
+        j.toFree.add(t, desc)
+        t.setColor(colBlack)
+        trace(t, desc, j)
 
 proc collectCyclesBacon(j: var GcEnv) =
   # pretty direct translation from
@@ -269,10 +265,17 @@ proc collectCyclesBacon(j: var GcEnv) =
   for i in 0 ..< roots.len:
     scan(roots.d[i][0], roots.d[i][1], j)
 
+  init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
     s.rc = s.rc and not isCycleCandidate
     collectWhite(s, roots.d[i][1], j)
+
+  for i in 0 ..< j.toFree.len:
+    free(j.toFree.d[i][0], j.toFree.d[i][1])
+
+  inc j.freed, j.toFree.len
+  deinit j.toFree
   #roots.len = 0
 
 const
@@ -283,6 +286,9 @@ var
 
 proc collectCycles() =
   ## Collect cycles.
+  when false:
+    cfprintf(cstderr, "[collectCycles] begin\n")
+
   var j: GcEnv
   init j.traceStack
   when useJumpStack:
@@ -304,17 +310,18 @@ proc collectCycles() =
   # we touched. If we're effective, we can reset the threshold:
   if j.freed * 2 >= j.touched:
     rootsThreshold = defaultThreshold
-  else:
+  elif rootsThreshold < high(int) div 4:
     rootsThreshold = rootsThreshold * 3 div 2
   when false:
-    cprintf("[collectCycles] freed %ld new threshold %ld\n", j.freed, rootsThreshold)
+    cfprintf(cstderr, "[collectCycles] freed %ld new threshold %ld\n", j.freed, rootsThreshold)
 
 proc registerCycle(s: Cell; desc: PNimType) =
+  if roots.len >= rootsThreshold:
+    collectCycles()
   if roots.d == nil: init(roots)
   s.rootIdx = roots.len
   add(roots, s, desc)
-  if roots.len >= rootsThreshold:
-    collectCycles()
+  #writeCell("[added root]", s)
 
 proc GC_fullCollect* =
   ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
@@ -348,8 +355,8 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       #cprintf("[DESTROY] %p\n", p)
     else:
       dec cell.rc, rcIncrement
-    if cell.color == colPurple:
-      rememberCycle(result, cell, cast[ptr PNimType](p)[])
+    #if cell.color == colPurple:
+    rememberCycle(result, cell, cast[ptr PNimType](p)[])
 
 proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
   if p != nil:
@@ -359,5 +366,5 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl
       #cprintf("[DESTROY] %p %s\n", p, desc.name)
     else:
       dec cell.rc, rcIncrement
-    if cell.color == colPurple:
-      rememberCycle(result, cell, desc)
+    #if cell.color == colPurple:
+    rememberCycle(result, cell, desc)
