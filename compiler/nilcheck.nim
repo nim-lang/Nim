@@ -140,11 +140,11 @@ proc timeNode(n: PNode): bool =
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
 
 proc symbol(n: PNode): Symbol
-
+proc `$`(map: NilMap): string
     
 proc store(map: NilMap, graphIndex: GraphIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   let text = if node.isNil: "?" else: $node
-  # echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
+  #echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
   map.locals[graphIndex] = value
   map.history.mgetOrPut(graphIndex, @[]).add(History(info: info, kind: kind, node: node, nilability: value))
   
@@ -184,7 +184,7 @@ proc `$`(map: NilMap): string =
     result.add("###\n")
     for graphIndex, value in now.locals:
       result.add(&"  {graphIndex} {value}\n")
-
+  result.add "### end\n"
 
 # symbol(result) -> resultId
 # symbol(result[]) -> resultId
@@ -391,8 +391,11 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
     result = check(assigned, ctx, map)
   else:
     result = (typeNilability(target.typ), map)
-  # a.b.c = field, a.b is Safe, a.b.c nil: ok, so we should
+  
+  # we need to visit and check those, but we don't use the result for now
+  # is it possible to somehow have another event happen here?
   discard check(target, ctx, map)
+  
   if result.map.isNil:
     result.map = map
   let t = ctx.graph(target)
@@ -400,6 +403,7 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
   of nkNilLit:
     result.map.store(t, Nil, TAssign, target.info, target)
   else:
+    # echo "nilability ", $target, " ", $result.nilability
     result.map.store(t, result.nilability, TAssign, target.info, target)
     # if target.kind in {nkSym, nkDotExpr}:
     #  result.map.makeAlias(assigned, target)
@@ -685,22 +689,22 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   
   #if base:
   #  map.base = map
-  result = map
   # TODO dont inc abstractTime for `of` / `else` artificcial nodes
   if n.kind == nkCall:
     inc ctx.abstractTime # nkCall
     # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkCall " & $n
 
+    result = newNilMap(map, map.base)
     for element in n:
       result = check(element, ctx, result).map
 
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:    
-      result = newNilMap(map, map.base) # if base: map else: map.base)
+      # result = newNilMap(map, map.base) # if base: map else: map.base)
 
       let a = ctx.graph(n[1])
       result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n)
     else:
-      result = newNilMap(map, map.base)
+      discard
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
     inc ctx.abstractTime # nkPrefix
     # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkPrefix " & $n
@@ -708,11 +712,13 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   elif n.kind == nkInfix:
     inc ctx.abstractTime # nkInfix
     # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkInfix " & $n
-    result = checkInfix(n, ctx, map).map
+    result = newNilMap(map, map.base)
+    result = checkInfix(n, ctx, result).map
   else:
     result = check(n, ctx, map).map
     result = newNilMap(map, map.base)
-    
+  assert not result.isNil
+  assert not result.previous.isNil
 
 proc checkResult(n, ctx, map) =
   let resultNilability = map[ctx.graph(resultId)]
@@ -815,7 +821,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     inc ctx.abstractTime # nkElif
     # echo "nilcheck : abstractTime " & $ctx.abstractTime & " " & $n.kind & " " & $n[0]
 
-    var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)    
+    var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
 
     if n.sons.len > 1:
       let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
@@ -830,6 +836,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       #if directStop(n[0][1]):
       #  result.map = mapR
       #  result.nilability = nilabilityR
+      #echo "if one branch " & " " & $mapCondition & " " & $mapIf & " " & $mapL & " " & $result.map & " " & $mapL.previous
 
 
   of nkAsgn:

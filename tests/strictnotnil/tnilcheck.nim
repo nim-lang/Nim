@@ -50,15 +50,23 @@ proc testIfElse(a: Nilable) =
   else:
     echo a.a # ok
 
+proc testAssignUnify(a: Nilable, b: int) =
+  var a2 = a
+  if b == 0:
+    a2 = Nilable()
+  echo a2.a #[tt.Warning
+       ^ can't deref a2, it might be nil
+  ]#
+
 # TODO ok this fails: fix the unifying logic
 # # test assign in branch and unifiying that with the main block after end of branch
-# proc testAssignUnify(a: Nilable, b: int) =
-#   var a2 = a
-#   if b == 0:
-#     a2 = Nilable()
-#   echo a2.a # [tt.Warning
-#        ^ can't deref a2, it might be nil
-#   ]#
+proc testAssignUnifyNil(a: Nilable, b: int) =
+  var a2 = a
+  if b == 0:
+    a2 = nil
+  echo a2.a #[tt.Warning
+       ^ can't deref a2, it might be nil
+  ]#
 
 # # test else branch and inferring not isNil
 # proc testElse(a: Nilable, b: int) =

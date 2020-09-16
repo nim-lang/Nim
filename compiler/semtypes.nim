@@ -915,7 +915,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
-      echo "semAnyRef ", "n: ", n, "i: ", i, "ni: ", ni
+      # echo "semAnyRef ", "n: ", n, "i: ", i, "ni: ", ni
       if ni.kind == nkNilLit:
         isNilable = true
       else:
