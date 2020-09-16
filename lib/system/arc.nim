@@ -59,12 +59,6 @@ type
 
   Cell = ptr RefHeader
 
-template `+!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) +% s)
-
-template `-!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) -% s)
-
 template head(p: pointer): Cell =
   cast[Cell](cast[int](p) -% sizeof(RefHeader))
 
@@ -131,6 +125,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   inc head(p).rc, rcIncrement
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
+
+proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+  # This is only used by the old RTTI mechanism and we know
+  # that 'dest[]' is nil and needs no destruction. Which is really handy
+  # as we cannot destroy the object reliably if it's an object of unknown
+  # compile-time type.
+  dest[] = src
+  if src != nil: nimIncRef src
 
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =

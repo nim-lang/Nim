@@ -89,7 +89,7 @@ when not defined(gcDestructors):
     const GenericSeqSize = (2 * sizeof(int))
 
 else:
-  include seqs_v2_reimpl
+  include system/seqs_v2_reimpl
 
 when not defined(js):
   template rawType(x: Any): PNimType =
@@ -288,8 +288,7 @@ proc len*(x: Any): int =
     result = x.rawType.size div x.rawType.base.size
   of tySequence:
     when defined(gcDestructors):
-      var s = cast[ptr NimSeqV2Reimpl](x.value)
-      result = s.len
+      result = cast[ptr NimSeqV2Reimpl](x.value).len
     else:
       let pgenSeq = cast[PGenSeq](cast[ppointer](x.value)[])
       if isNil(pgenSeq):
