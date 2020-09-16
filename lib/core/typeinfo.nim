@@ -271,7 +271,7 @@ proc setPointer*(x: Any, y: pointer) =
   ## ``akPointer``, ``akSequence``.
   assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
                             tySequence, tyProc}
-  cast[ppointer](x.value)[] = y
+  genericAssign(x.value, y, x.rawType)
 
 proc fieldsAux(p: pointer, n: ptr TNimNode,
                ret: var seq[tuple[name: cstring, any: Any]]) =
