@@ -3816,13 +3816,10 @@ Overloading of the subscript operator
 The ``[]`` subscript operator for arrays/openarrays/sequences can be overloaded.
 
 
-Multi-methods
+Methods
 =============
 
-**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-``--multimethods:on`` when compiling.
-
-Procedures always use static dispatch. Multi-methods use dynamic
+Procedures always use static dispatch. Methods use dynamic
 dispatch. For dynamic dispatch to work on an object it should be a reference
 type.
 
@@ -3869,6 +3866,35 @@ the effects that a call to ``m`` might cause.
 
 **Note**: Starting from Nim 0.20, generic methods are deprecated.
 
+Multi-methods
+--------------
+
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
+In a multi-method all parameters that have an object type are used for the dispatching:
+
+.. code-block:: nim
+    :test: "nim c --multiMethods:on $1"
+
+  type
+    Thing = ref object of RootObj
+    Unit = ref object of Thing
+      x: int
+
+  method collide(a, b: Thing) {.inline.} =
+    quit "to override!"
+
+  method collide(a: Thing, b: Unit) {.inline.} =
+    echo "1"
+
+  method collide(a: Unit, b: Thing) {.inline.} =
+    echo "2"
+
+  var a, b: Unit
+  new a
+  new b
+  collide(a, b) # output: 2
 
 Inhibit dynamic method resolution via procCall
 -----------------------------------------------
