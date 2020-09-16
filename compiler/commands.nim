@@ -891,6 +891,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optProfileVM}, arg, pass, info)
   of "sinkinference":
     processOnOffSwitch(conf, {optSinkInference}, arg, pass, info)
+  of "cursorinference":
+    # undocumented, for debugging purposes only:
+    processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
   of "panics":
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:

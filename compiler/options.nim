@@ -41,6 +41,7 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optNilSeqs,
     optSinkInference          # 'sink T' inference
+    optCursorInference
 
 
   TOptions* = set[TOption]
@@ -373,7 +374,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck}
+    optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
