@@ -1294,8 +1294,7 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   let typ = typ.getTypeInst[1]
   let impl = typ.getImpl[2]
   expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
-                                                  bindSym"nimIdentNormalize"))
+  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
   var fStr = "" # string of current field
