@@ -427,9 +427,14 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
             [addrLoc(p.config, dest), addrLocOrTemp(src),
             genTypeInfoV1(p.module, dest.t, dest.lode.info)])
   of tySequence, tyString:
-    linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
-            [addrLoc(p.config, dest), rdLoc(src),
-            genTypeInfoV1(p.module, dest.t, dest.lode.info)])
+    if optTinyRtti in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
+              [addrLoc(p.config, dest), addrLocOrTemp(src),
+              genTypeInfoV1(p.module, dest.t, dest.lode.info)])
+    else:
+      linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
+              [addrLoc(p.config, dest), rdLoc(src),
+              genTypeInfoV1(p.module, dest.t, dest.lode.info)])
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
          "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
