@@ -19,8 +19,6 @@
 ## work with the types' AST representation at compile time. See, for example,
 ## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative
 ## approach to storing arbitrary types at runtime, consider using generics.
-##
-##
 
 {.push hints: off.}
 
@@ -84,15 +82,14 @@ when not defined(gcDestructors):
       when defined(gogc):
         elemSize: int
     PGenSeq = ptr TGenericSeq
-else:
-  type
-    NimSeqPayloadReimpl = object
-      cap: int
-      data: pointer
 
-    NimSeqV2Reimpl = object
-      len: int
-      p: ptr NimSeqPayloadReimpl
+  when defined(gogc):
+    const GenericSeqSize = (3 * sizeof(int))
+  else:
+    const GenericSeqSize = (2 * sizeof(int))
+
+else:
+  include seqs_v2_reimpl
 
 when not defined(js):
   template rawType(x: Any): PNimType =
@@ -101,13 +98,9 @@ when not defined(js):
   template `rawType=`(x: var Any, p: PNimType) =
     x.rawTypePtr = cast[pointer](p)
 
-when defined(gogc):
-  const GenericSeqSize = (3 * sizeof(int))
-else:
-  const GenericSeqSize = (2 * sizeof(int))
+proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
 
 when not defined(gcDestructors):
-  proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
   proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.
     importCompilerProc.}
   proc incrSeq(seq: PGenSeq, elemSize, elemAlign: int): PGenSeq {.importCompilerProc.}
@@ -267,10 +260,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if i >=% x.rawType.size div bs:
       raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
-    when defined(gcDestructors):
-      copyMem(x.value +!! i*bs, y.value, y.rawType.size)
-    else:
-      genericAssign(x.value +!! i*bs, y.value, y.rawType)
+    genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
     when defined(gcDestructors):
       var s = cast[ptr NimSeqV2Reimpl](x.value)
@@ -280,7 +270,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
       let ba = x.rawType.base.align
       let headerSize = align(sizeof(int), ba)
       assert y.rawType == x.rawType.base
-      copyMem(s.p +!! (headerSize+i*bs), y.value, bs)
+      genericAssign(s.p +!! (headerSize+i*bs), y.value, y.rawType)
     else:
       var s = cast[ppointer](x.value)[]
       if s == nil: raise newException(ValueError, "sequence is nil")
@@ -321,20 +311,23 @@ proc isNil*(x: Any): bool =
   assert x.rawType.kind in {tyCString, tyRef, tyPtr, tyPointer, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
+const
+  pointerLike = when defined(gcDestructors): {tyCString, tyRef, tyPtr, tyPointer, tyProc}
+                else: {tyString, tyCString, tyRef, tyPtr, tyPointer,
+                            tySequence, tyProc}
+
 proc getPointer*(x: Any): pointer =
   ## retrieve the pointer value out of `x`. ``x`` needs to be of kind
   ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
-                            tySequence, tyProc}
+  assert x.rawType.kind in pointerLike
   result = cast[ppointer](x.value)[]
 
 proc setPointer*(x: Any, y: pointer) =
   ## sets the pointer value of `x`. ``x`` needs to be of kind
   ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
-  assert x.rawType.kind in {tyString, tyCString, tyRef, tyPtr, tyPointer,
-                            tySequence, tyProc}
+  assert x.rawType.kind in pointerLike
   cast[ppointer](x.value)[] = y
 
 proc fieldsAux(p: pointer, n: ptr TNimNode,
@@ -415,10 +408,7 @@ proc `[]=`*(x: Any, fieldName: string, value: Any) =
   var n = getFieldNode(x.value, t.node, fieldName)
   if n != nil:
     assert n.typ == value.rawType
-    when defined(gcDestructors):
-      copyMem(x.value +!! n.offset, value.value, value.rawType.size)
-    else:
-      genericAssign(x.value +!! n.offset, value.value, value.rawType)
+    genericAssign(x.value +!! n.offset, value.value, value.rawType)
   else:
     raise newException(ValueError, "invalid field name: " & fieldName)
 
@@ -448,10 +438,7 @@ proc `[]=`*(x, y: Any) =
   ## dereference operation for the any `x` that represents a ptr or a ref.
   assert x.rawType.kind in {tyRef, tyPtr}
   assert y.rawType == x.rawType.base
-  when defined(gcDestructors):
-    copyMem(cast[ppointer](x.value)[], y.value, y.rawType.size)
-  else:
-    genericAssign(cast[ppointer](x.value)[], y.value, y.rawType)
+  genericAssign(cast[ppointer](x.value)[], y.value, y.rawType)
 
 proc getInt*(x: Any): int =
   ## retrieve the int value out of `x`. `x` needs to represent an int.
@@ -690,12 +677,11 @@ proc getCString*(x: Any): cstring =
   assert x.rawType.kind == tyCString
   result = cast[ptr cstring](x.value)[]
 
-when not defined(gcDestructors):
-  proc assign*(x, y: Any) =
-    ## copies the value of `y` to `x`. The assignment operator for ``Any``
-    ## does NOT do this; it performs a shallow copy instead!
-    assert y.rawType == x.rawType
-    genericAssign(x.value, y.value, y.rawType)
+proc assign*(x, y: Any) =
+  ## copies the value of `y` to `x`. The assignment operator for ``Any``
+  ## does NOT do this; it performs a shallow copy instead!
+  assert y.rawType == x.rawType
+  genericAssign(x.value, y.value, y.rawType)
 
 iterator elements*(x: Any): int =
   ## iterates over every element of `x` that represents a Nim bitset.

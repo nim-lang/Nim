@@ -2271,29 +2271,28 @@ when notJSnotNims:
   else:
     const GenericSeqSize = (2 * sizeof(int))
 
-  when not defined(nimV2):
-    proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
-      sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-      var d: uint
-      var a = cast[uint](aa)
-      case n.typ.size
-      of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
-      of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
-      of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
-      of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
-      else:
-        d = 0'u
-        sysAssert(false, "getDiscriminant: invalid n.typ.size")
-      return d
+  proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
+    sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
+    var d: uint
+    var a = cast[uint](aa)
+    case n.typ.size
+    of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
+    of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
+    of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
+    of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
+    else:
+      d = 0'u
+      sysAssert(false, "getDiscriminant: invalid n.typ.size")
+    return d
 
-    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
-      var discr = getDiscriminant(aa, n)
-      if discr < cast[uint](n.len):
-        result = n.sons[discr]
-        if result == nil: result = n.sons[n.len]
-        # n.sons[n.len] contains the ``else`` part (but may be nil)
-      else:
-        result = n.sons[n.len]
+  proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
+    var discr = getDiscriminant(aa, n)
+    if discr < cast[uint](n.len):
+      result = n.sons[discr]
+      if result == nil: result = n.sons[n.len]
+      # n.sons[n.len] contains the ``else`` part (but may be nil)
+    else:
+      result = n.sons[n.len]
 
 when notJSnotNims and hasAlloc:
   {.push profiler: off.}
@@ -2305,8 +2304,8 @@ when notJSnotNims and hasAlloc:
   {.pop.}
 
   include "system/strmantle"
-  when not usesDestructors:
-    include "system/assign"
+  include "system/assign"
+
   when not defined(nimV2):
     include "system/repr"
 
@@ -2862,7 +2861,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hasAlloc and notJSnotNims and not usesDestructors:
+when hasAlloc and notJSnotNims:
   # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.

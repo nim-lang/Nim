@@ -22,7 +22,8 @@ type
     cap: int
     data: UncheckedArray[T]
 
-  NimSeqV2*[T] = object
+  NimSeqV2[T] = object # \
+    # if you change this implementation, also change seqs_v2_reimpl.nim!
     len: int
     p: ptr NimSeqPayload[T]
 
