@@ -52,10 +52,14 @@ include includes/decode_helpers
 type
   Url* = distinct string
 
+  IpKind* = enum
+    IPv4, IPv6
+
   Uri* = object
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
+    kind: IpKind # not expose it for compatiblility.
 
 proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
@@ -170,6 +174,7 @@ proc parseAuthority(authority: string, result: var Uri) =
         inPort = true
     of '[':
       inIPv6 = true
+      result.kind = IPv6
     of ']':
       inIPv6 = false
     else:
@@ -208,10 +213,24 @@ proc initUri*(): Uri =
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
+proc initUri*(kind: IpKind): Uri {.since: (1, 3, 5).} =
+  ## Initializes a URI with ``scheme``, ``username``, ``password``,
+  ## ``hostname``, ``port``, ``path``, ``query``, ``anchor`` and ``kind``.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  runnableExamples:
+    var uri2: Uri
+    assert initUri(kind = IPv4) == uri2
+  result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
+                path: "", query: "", anchor: "", kind: kind)
+
 proc resetUri(uri: var Uri) =
   for f in uri.fields:
     when f is string:
       f.setLen(0)
+    elif f is IpKind:
+      f = IPv4
     else:
       f = false
 
@@ -452,9 +471,17 @@ proc `$`*(u: Uri): string =
       result.add(u.password)
     result.add("@")
   if u.hostname.endsWith('/'):
-    result.add(u.hostname[0..^2])
+    case u.kind
+    of IpKind.IPv4:
+      result.add(u.hostname[0 .. ^2])
+    of IpKind.IPv6:
+      result.add("[" & u.hostname[0 .. ^2] & "]")
   else:
-    result.add(u.hostname)
+    case u.kind
+    of IpKind.IPv4:
+      result.add(u.hostname)
+    of IpKind.Ipv6:
+      result.add("[" & u.hostname & "]")
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)
