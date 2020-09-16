@@ -1,62 +1,7 @@
 discard """
-cmd: "nim check $options $file"
-nimout: '''
-tnilcheck.nim(77, 8) Warning: can't deref a, it might be nil [StrictNotNil]
-tnilcheck.nim(87, 10) Warning: can't deref a, it is nil [StrictNotNil]
-tnilcheck.nim(97, 8) Warning: can't deref a2, it might be nil [StrictNotNil]
-tnilcheck.nim(117, 10) Warning: can't deref b, it might be nil [StrictNotNil]
-tnilcheck.nim(120, 8) Warning: can't deref b, it might be nil [StrictNotNil]
-tnilcheck.nim(137, 11) Warning: can't deref a.field, it is nil [StrictNotNil]
-tnilcheck.nim(153, 8) Warning: can't deref a, it might be nil
-tnilcheck.nim(161, 9) Warning: can't deref a[], it might be nil [StrictNotNil]
-tnilcheck.nim(166, 1) Warning: return value is nil [StrictNotNil]
-tnilcheck.nim(175, 8) Warning: can't deref other, it might be nil [StrictNotNil]
-tnilcheck.nim(196, 8) Warning: can't deref other, it is nil [StrictNotNil]
-tnilcheck.nim(209, 8) Warning: can't deref other, it might be nil [StrictNotNil]
-tnilcheck.nim(221, 8) Warning: can't deref other, it might be nil [StrictNotNil]
-tnilcheck.nim(242, 8) Warning: can't deref a.field, it might be nil [StrictNotNil]
-'''
-action: "compile"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+cmd: "nim check $file"
+action: "reject"
 """
-
-# TODO testament support #!
-#! -> $file({line} - 1, {column}) Warning: {msg}
 
 import tables
 
@@ -75,46 +20,22 @@ type
 # proc `[]`(a: Nilable, b: int): Nilable =
 #   nil
 
-proc testRootAliasField(a: Nilable) =
-  var aliasA = a # {aliasA, a} .. but here we should also add all the related expressions 
-  # {aliasA, a} {aliasA.field, a.field}
-  # but later they might diverge : we still keep them together
-  # but then do we need field level?
-  # kinda because it can be a.field = aliasA etc
-  # and what if a.a = a ?
-  # a.field = a
-  # {a aliasA: 2} # beginning of NilMap : 1 current: 3 => hm, or just
-  # on mutation : see if current abstract time maps to a mutation 
-  # and update nilmap expr-s related to that in map
-  # but return all the other elements in set? 
-  # hm different then find if a and b match
-  # so here a might have mutated .. but not really, as it cant have been re-assigned
-  # but let's for now simulate this is also a mutation for easier test
-  # in the future tho the problem remains
-  # a.field and aliasA.field : we can just gather all those in a pre-traversal
-  # or more correctly in partitions: we should havee
-  # {aliasA} {a} {a.field} {aliasA.field} {a.field.a} "expr used"
-  # and now we end {aliasA, a} but this can just generate
-  # {aliasA.field, a.field} (and all other similar child expr-s)
-  # so after we get mutation {aliasA.field, a.field} and it makes it
-  # MaybeNil # nil for graph updates with MaybeNil other elements because
-  # liberal analysis
-  # now we get a.field might be nil
-  if not a.isNil and not a.field.isNil:
-    aliasA.field = nil # {  }
-    # a.field = nil # aliasA.field # we should detect this happens
-    echo a.field.a # can't deref a.field: it might be nil
 
-# proc testFieldNilCheck(a: Nilable) =
-#   if not a.field.isNil: # can't deref a: might be nil
-#     echo 0
+# Nilable tests
 
-# # Nilable tests
+proc testFieldNilCheck(a: Nilable) =
+  if not a.field.isNil: #[tt.Warning
+         ^ can't deref a, it might be nil
+  ]#
+    echo 0
 
-# # test deref
-# proc testDeref(a: Nilable) =
-#   echo a.a > 0 
-#        #! can't deref a: it might be nil  
+
+# test deref
+proc testDeref(a: Nilable) =
+  echo a.a > 0 #[tt.Warning
+       ^ can't deref a, it might be nil
+  ]#
+
 
 # # test and
 # proc testAnd(a: Nilable) =
@@ -168,12 +89,28 @@ proc testRootAliasField(a: Nilable) =
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field
 
+# TODO when dot expr support is there
+
 # proc testRootAliasField(a: Nilable) =
 #   var aliasA = a
 #   if not a.isNil and not a.field.isNil:
 #     aliasA.field = nil
-#     a.field = nil
-#     echo a.field.a # can't deref a.field: it might be nil
+#     # a.field = nil
+#     # aliasA = nil 
+#     echo a.field.a # [tt.Warning
+#          ^ can't deref a.field, it might be nil
+#     ]#
+
+proc callVar(a: var Nilable) =
+  a = nil
+
+proc testVarAlias(a: Nilable) =
+  var aliasA = a
+  if not a.isNil:
+    callVar(aliasA)
+    echo a.a #[tt.Warning
+         ^ can't deref a, it might be nil
+    ]#
 
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash
@@ -312,7 +249,7 @@ proc testRootAliasField(a: Nilable) =
 
 var nilable: Nilable
 var withField = Nilable(a: 0, field: Nilable())
-testRootAliasField(withField)
+# testRootAliasField(withField)
 # discard testUniqueHashTree(withField)
 # # test1(nilable)
 # # test10(globalA)

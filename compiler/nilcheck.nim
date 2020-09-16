@@ -76,8 +76,6 @@ type
   NilMap* = ref object
     locals*:   Table[GraphIndex, Nilability]
     history*:  Table[GraphIndex, seq[History]]
-    # aliases*:  Table[Symbol, Symbol]
-    # aliasNodes*: Table[Symbol, PNode]
     previous*: NilMap
     base*:     NilMap
     top*:      NilMap
@@ -141,71 +139,12 @@ proc timeNode(n: PNode): bool =
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
 
-# proc parentSubExprs(node: PNode): seq[PNode] =
-#   if node.isNil:
-#     return @[]
-#   # echo "parent ", node.kind
-#   case node.kind:
-#   of nkSym:
-#     @[node]
-#   of nkDotExpr:
-#     parentSubExprs(node[0]).concat(@[node[1]])
-#   of nkHiddenDeref:
-#     parentSubExprs(node[0])
-#   else:
-#     @[]
-
 proc symbol(n: PNode): Symbol
 
-# proc makeAlias(map: NilMap, a: PNode, b: PNode) =
-#   let aSymbol = symbol(a)
-#   let bSymbol = symbol(b)
-#   map.aliases[aSymbol] = bSymbol
-#   map.aliases[bSymbol] = aSymbol
-#   map.aliasNodes[aSymbol] = b
-#   map.aliasNodes[bSymbol] = a
-
-# proc replaceAlias(node: PNode, original: PNode, alias: PNode): PNode =
-#   case node.kind:
-#   of nkSym:
-#     if original.kind == nkSym and $node == $original:
-#       return alias
-#     else:
-#       return node
-#   of nkDotExpr:
-#     if original.kind == nkDotExpr and $node == $original:
-#       return alias
-#     else:
-#       return nkDotExpr.newTree(replaceAlias(node[0], original, alias), node[1])
-#   else:
-#     return node
-
-# proc loadAliasNode(map: NilMap, symbol: Symbol): PNode =
-#   var now = map
-#   while not now.isNil:
-#     if now.aliasNodes.hasKey(symbol):
-#       return now.aliasNodes[symbol]
-#     now = now.previous
     
 proc store(map: NilMap, graphIndex: GraphIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   let text = if node.isNil: "?" else: $node
-  # echo "store " & text & " " & $symbol & " " & $value
-  # if value == Nil:
-  #   echo "store " & text & " " & $symbol
-  # find out aliases
-  # alias.field 
-  # for e in parentSubExprs(node):
-  #   # echo "parent sub ", e
-  #   let eSymbol = symbol(e)
-  #   # echo "symbol ", eSymbol
-  #   echo map.aliasNodes
-  #   let aliasNode = loadAliasNode(map, eSymbol)
-  #   if not aliasNode.isNil:
-  #     let aliasExpr = replaceAlias(node, e, aliasNode)
-  #     let aliasSymbol = symbol(aliasExpr)
-  #     # echo "alias expr ", aliasNode, " ", aliasExpr
-  #     map.locals[aliasSymbol] = value
-  #     map.history.mgetOrPut(aliasSymbol, @[]).add(History(info: info, kind: TAlias, nilability: value))
+  # echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
   map.locals[graphIndex] = value
   map.history.mgetOrPut(graphIndex, @[]).add(History(info: info, kind: kind, node: node, nilability: value))
   
@@ -233,10 +172,6 @@ proc copyMap(map: NilMap): NilMap =
     result.locals[graphIndex] = value
   for graphIndex, value in map.history:
     result.history[graphIndex] = value
-  # for a, b in map.aliases:
-  #   result.aliases[a] = b
-  # for a, b in map.aliasNodes:
-  #   result.aliasNodes[a] = b
 
 proc `$`(map: NilMap): string =
   var now = map
@@ -249,8 +184,6 @@ proc `$`(map: NilMap): string =
     result.add("###\n")
     for graphIndex, value in now.locals:
       result.add(&"  {graphIndex} {value}\n")
-    # for a, b in now.aliasNodes:
-    #   result.add(&"  alias {a} {b}\n")
 
 
 # symbol(result) -> resultId
@@ -269,10 +202,14 @@ proc graph(ctx: NilCheckerContext, symbol: Symbol): GraphIndex =
   if ctx.symbolGraphs.hasKey(symbol):
     return ctx.symbolGraphs[symbol]
   else:
-    return noGraphIndex
+    # TODO: maybe index all in partitions
+    # or is this faster/smaller
+    # a unique non-real graph index for symbols which are not in graph
+    return noGraphIndex - 1 - symbol
 
 proc graph(ctx: NilCheckerContext, n: PNode): GraphIndex =
-  ctx.graph(symbol(n))
+  result = ctx.graph(symbol(n))
+  # echo "graph " & $n & " " & $result
 
 proc symbol(n: PNode): Symbol =
   ## returns a Symbol for each expression
@@ -314,11 +251,12 @@ proc checkCall(n, ctx, map): Check =
   result.map = map
   for i, child in n:
     discard check(child, ctx, map)
-    echo "after check"
+    
     if i > 0 and child.kind == nkHiddenAddr:
       # var args make a new map with MaybeNil for our node
       # as it might have been mutated
       # TODO similar for normal refs and fields: find dependent exprs
+    
       if child.typ.kind == tyVar and child.typ[0].kind == tyRef:
         # yes
         if not isNew:
@@ -330,8 +268,7 @@ proc checkCall(n, ctx, map): Check =
         # echo "  ", symbol(child)
         let a = symbol(child)
         result.map.store(a, MaybeNil, TVarArg, n.info, child)
-        # echo result.map
-
+    
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
     let b = symbol(n[1])
     result.map.store(b, Safe, TAssign, n[1].info, n[1])
@@ -388,10 +325,9 @@ proc checkRefExpr(n, ctx; check: Check): Check =
     # echo "not tyRef ", n.typ.kind
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
-    let key = symbol(n)
+    let key = ctx.graph(n)
     if result.map.hasKey(key):
       # echo "ref expr ", n, " ", key, " ", result.map[key]
-      echo result.map
       result.nilability = result.map[key]
     else:
       # echo "maybe nil ref expr ", key, " ", MaybeNil
@@ -753,7 +689,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   # TODO dont inc abstractTime for `of` / `else` artificcial nodes
   if n.kind == nkCall:
     inc ctx.abstractTime # nkCall
-    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkCall " & $n
+    # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkCall " & $n
 
     for element in n:
       result = check(element, ctx, result).map
@@ -767,11 +703,11 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
       result = newNilMap(map, map.base)
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
     inc ctx.abstractTime # nkPrefix
-    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkPrefix " & $n
+    # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkPrefix " & $n
     result = checkCondition(n[1], ctx, map, not reverse, false)
   elif n.kind == nkInfix:
     inc ctx.abstractTime # nkInfix
-    echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkInfix " & $n
+    # echo "nilcheck : abstractTime " & $ctx.abstractTime & " nkInfix " & $n
     result = checkInfix(n, ctx, map).map
   else:
     result = check(n, ctx, map).map
@@ -779,7 +715,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
     
 
 proc checkResult(n, ctx, map) =
-  let resultNilability = map[resultId]
+  let resultNilability = map[ctx.graph(resultId)]
   case resultNilability:
   of Nil:
     message(ctx.config, n.info, warnStrictNotNil, "return value is nil")
@@ -795,10 +731,8 @@ proc checkBranch(n, ctx, map): Check =
 # Faith!
 
 proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
-  # echo "n", n, " ", n.kind
   if map.isNil:
-    echo "map nil ", n.kind
-    writeStackTrace()
+    localError(ctx.config, n.info, "map is nil: something went wrong in nilcheck")
     quit 1
   # look in varpartitions: imporant to change abstractTime in
   # compatible way
@@ -808,18 +742,21 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
 
   var isMutating = false
   var mutatingGraphIndices: seq[GraphIndex] = @[]
+  
   # set: we should have most 1 of each index
   if ctx.abstractTime != oldAbstractTime:
     for i, graph in ctx.partitions.graphs:
-      for m in graph.mutations:
-        
-        if ctx.abstractTime - 1 == m and oldAbstractTime <= m:
-          mutatingGraphIndices.add(i)
+      for (m, level) in graph.mutations:
+        if level == ReAssignment:
+          if ctx.abstractTime - 1 == m and oldAbstractTime <= m:
+            mutatingGraphIndices.add(i)
+            break
+        if m > ctx.abstractTime:
           break
-        elif m > ctx.abstractTime:
-          break
-  
-  echo "nilcheck : abstractTime " & $ctx.abstractTime & " mutating " & $mutatingGraphIndices & " node " & $n.kind & " " & $n
+    
+  # ok so mutating should include re-assignment?
+  # and just
+  # echo "nilcheck : abstractTime " & $ctx.abstractTime & " mutating " & $mutatingGraphIndices & " node " & $n.kind & " " & $n
   for graphIndex in mutatingGraphIndices:
     var graph = ctx.partitions.graphs[graphIndex]
     # update all potential aliases to MaybeNil
@@ -839,7 +776,8 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   case n.kind:
   of nkSym:
     aecho symbol(n), map
-    result = (nilability: map[symbol(n)], map: map)
+    # echo "sym ", n
+    result = (nilability: map[ctx.graph(n)], map: map)
   of nkCallKinds:
     aecho "call", n
     if n.sons[0].kind == nkSym:
@@ -872,17 +810,13 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkIfStmt, nkIfExpr:
     ## check branches based on condition
     var mapIf: NilMap = map.copyMap()
-    #var nilabilityR: Nilability = Safe
     
     # first visit the condition
     inc ctx.abstractTime # nkElif
-    echo "nilcheck : abstractTime " & $ctx.abstractTime & " " & $n.kind & " " & $n[0]
+    # echo "nilcheck : abstractTime " & $ctx.abstractTime & " " & $n.kind & " " & $n[0]
 
     var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)    
 
-    #var isDirect = false
-    
-    
     if n.sons.len > 1:
       let (nilabilityL, mapL) = checkBranch(n.sons[0].sons[1], ctx, mapCondition)
       let mapElse = reverseDirect(mapCondition)
@@ -894,14 +828,9 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       result.map = union(mapIf, mapL)
       result.nilability = Safe
       #if directStop(n[0][1]):
-      #  isDirect = true
       #  result.map = mapR
       #  result.nilability = nilabilityR
 
-    #echo "other", mapL, mapR
-    #if not isDirect:
-    #  result.map = union(mapL, mapR)
-    #  result.nilability = if n.kind == nkIfStmt: Safe else: union(nilabilityL, nilabilityR)
 
   of nkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
@@ -970,7 +899,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
 
-  echo toTextGraph(conf, partitions)
+  # echo toTextGraph(conf, partitions)
   
   # TODO
   var context = NilCheckerContext(partitions: partitions, symbolGraphs: toSymbolGraphs(partitions), config: conf)
@@ -982,7 +911,7 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
 
   map.store(context.graph(resultId), if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
     
-  echo "checking ", s.name.s, " ", filename
+  # echo "checking ", s.name.s, " ", filename
 
   let res = check(body, context, map)
   let resultGraphIndex = context.graph(resultId)
