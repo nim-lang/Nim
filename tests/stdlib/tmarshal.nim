@@ -89,8 +89,8 @@ var instance1 = Person(name: "Cletus", age: 12,
                        bio: "Я Cletus",
                        blob: "ABC\x80")
 echo($$instance1)
-echo(to[Person]($$instance1).bio == instance1.bio)
-echo(to[Person]($$instance1).blob == instance1.blob)
+echo(to[Person]($$instance1).bio == instance1.bio) # true
+echo(to[Person]($$instance1).blob == instance1.blob) # true
 
 # bug 5757
 

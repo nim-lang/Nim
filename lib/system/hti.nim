@@ -98,7 +98,7 @@ type
     finalizer*: pointer # the finalizer for the type
     marker*: proc (p: pointer, op: int) {.nimcall, benign, tags: [], raises: [].} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign, tags: [], raises: [].}
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       typeInfoV2*: pointer
     when defined(nimTypeNames):
       name: cstring

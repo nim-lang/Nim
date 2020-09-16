@@ -61,7 +61,7 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
   sysAssert(mt != nil, "genericAssignAux 2")
   case mt.kind
   of tyString:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var x = cast[ptr NimStringV2](dest)
       var s2 = cast[ptr NimStringV2](s)[]
       nimAsgnStrV2(x[], s2)
@@ -74,7 +74,7 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       else:
         unsureAsgnRef(x, copyString(cast[NimString](s2)))
   of tySequence:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       deepSeqAssignImpl(genericAssignAux, shallow)
     else:
       var s2 = cast[PPointer](src)[]
@@ -111,7 +111,7 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
     genericAssignAux(dest, src, mt.node, shallow)
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var pint = cast[ptr PNimTypeV2](dest)
       #chckObjAsgn(cast[ptr PNimTypeV2](src)[].typeInfoV2, mt)
       pint[] = cast[PNimTypeV2](mt.typeInfoV2)
@@ -204,7 +204,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
   of tyObject:
     # iterate over any structural type
     # here we have to init the type field:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var pint = cast[ptr PNimTypeV2](dest)
       pint[] = cast[PNimTypeV2](typ.typeInfoV2)
     else:
@@ -240,14 +240,14 @@ proc genericReset(dest: pointer, mt: PNimType) =
   of tyRef:
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyString:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var s = cast[ptr NimStringV2](dest)
       frees(s[])
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)
   of tySequence:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var s = cast[ptr NimSeqV2Reimpl](dest)
       if s.p != nil:
         deallocShared(s.p)
@@ -259,7 +259,7 @@ proc genericReset(dest: pointer, mt: PNimType) =
   of tyObject:
     genericResetAux(dest, mt.node)
     # also reset the type field for tyObject, for correct branch switching!
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var pint = cast[ptr PNimTypeV2](dest)
       pint[] = nil
     else:

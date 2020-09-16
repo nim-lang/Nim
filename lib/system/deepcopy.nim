@@ -90,7 +90,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
   sysAssert(mt != nil, "genericDeepCopyAux 2")
   case mt.kind
   of tyString:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       var x = cast[ptr NimStringV2](dest)
       var s2 = cast[ptr NimStringV2](s)[]
       nimAsgnStrV2(x[], s2)
@@ -102,7 +102,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
       else:
         unsureAsgnRef(x, copyDeepString(cast[NimString](s2)))
   of tySequence:
-    when defined(gcDestructors):
+    when defined(nimSeqsV2):
       deepSeqAssignImpl(genericDeepCopyAux, tab)
     else:
       var s2 = cast[PPointer](src)[]
@@ -159,7 +159,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
             sysAssert realType == mt, " types do differ"
           # this version should work for any possible GC:
           let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
-          let z = when defined(gcDestructors): nimNewObj(typ.size) else: newObj(mt, typ.size)
+          let z = when defined(nimSeqsV2): nimNewObj(typ.size) else: newObj(mt, typ.size)
           unsureAsgnRef(cast[PPointer](dest), z)
           tab.put(s2, z)
           genericDeepCopyAux(z, s2, typ, tab)
@@ -176,11 +176,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerproc.} =
-  when not defined(gcDestructors): GC_disable()
+  when not defined(nimSeqsV2): GC_disable()
   var tab = initPtrTable()
   genericDeepCopyAux(dest, src, mt, tab)
   deinit tab
-  when not defined(gcDestructors): GC_enable()
+  when not defined(nimSeqsV2): GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   # also invoked for 'string'
