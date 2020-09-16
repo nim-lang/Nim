@@ -1674,7 +1674,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
                                a.storage)
   gcUsage(p.config, e)
 
-proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope): Rope =
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope; enforceV1 = false): Rope =
   result = rdLoc(a)
   var t = skipTypes(a.t, abstractInst)
   while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
@@ -1688,19 +1688,14 @@ proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope): Rope =
       result.add(".Sup")
       t = skipTypes(t[0], skipPtrs)
   result.add ".m_type"
+  if optTinyRtti in p.config.globalOptions and enforceV1:
+    result.add "->typeInfoV1"
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   discard cgsym(p.module, "TNimType")
   let t = e[1].typ
-  if isFinal(t):
-    # ordinary static type information
-    putIntoDest(p, d, e, genTypeInfoV1(p.module, t, e.info))
-  else:
-    var a: TLoc
-    initLocExpr(p, e[1], a)
-    var nilCheck = Rope(nil)
-    # use the dynamic type stored at offset 0:
-    putIntoDest(p, d, e, rdMType(p, a, nilCheck))
+  # ordinary static type information
+  putIntoDest(p, d, e, genTypeInfoV1(p.module, t, e.info))
 
 proc genGetTypeInfoV2(p: BProc, e: PNode, d: var TLoc) =
   let t = e[1].typ
