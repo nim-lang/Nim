@@ -90,27 +90,35 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
   sysAssert(mt != nil, "genericDeepCopyAux 2")
   case mt.kind
   of tyString:
-    var x = cast[PPointer](dest)
-    var s2 = cast[PPointer](s)[]
-    if s2 == nil:
-      unsureAsgnRef(x, s2)
+    when defined(nimSeqsV2):
+      var x = cast[ptr NimStringV2](dest)
+      var s2 = cast[ptr NimStringV2](s)[]
+      nimAsgnStrV2(x[], s2)
     else:
-      unsureAsgnRef(x, copyDeepString(cast[NimString](s2)))
+      var x = cast[PPointer](dest)
+      var s2 = cast[PPointer](s)[]
+      if s2 == nil:
+        unsureAsgnRef(x, s2)
+      else:
+        unsureAsgnRef(x, copyDeepString(cast[NimString](s2)))
   of tySequence:
-    var s2 = cast[PPointer](src)[]
-    var seq = cast[PGenericSeq](s2)
-    var x = cast[PPointer](dest)
-    if s2 == nil:
-      unsureAsgnRef(x, s2)
-      return
-    sysAssert(dest != nil, "genericDeepCopyAux 3")
-    unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[ByteAddress](cast[PPointer](dest)[])
-    for i in 0..seq.len-1:
-      genericDeepCopyAux(
-        cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
-        cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
-        mt.base, tab)
+    when defined(nimSeqsV2):
+      deepSeqAssignImpl(genericDeepCopyAux, tab)
+    else:
+      var s2 = cast[PPointer](src)[]
+      var seq = cast[PGenericSeq](s2)
+      var x = cast[PPointer](dest)
+      if s2 == nil:
+        unsureAsgnRef(x, s2)
+        return
+      sysAssert(dest != nil, "genericDeepCopyAux 3")
+      unsureAsgnRef(x, newSeq(mt, seq.len))
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      for i in 0..seq.len-1:
+        genericDeepCopyAux(
+          cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
+          cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
+          mt.base, tab)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -151,7 +159,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
             sysAssert realType == mt, " types do differ"
           # this version should work for any possible GC:
           let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
-          let z = newObj(mt, typ.size)
+          let z = when defined(nimSeqsV2): nimNewObj(typ.size) else: newObj(mt, typ.size)
           unsureAsgnRef(cast[PPointer](dest), z)
           tab.put(s2, z)
           genericDeepCopyAux(z, s2, typ, tab)
@@ -168,11 +176,11 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     copyMem(dest, src, mt.size)
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerproc.} =
-  GC_disable()
+  when not defined(nimSeqsV2): GC_disable()
   var tab = initPtrTable()
   genericDeepCopyAux(dest, src, mt, tab)
   deinit tab
-  GC_enable()
+  when not defined(nimSeqsV2): GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   # also invoked for 'string'

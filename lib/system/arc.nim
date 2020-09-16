@@ -59,12 +59,6 @@ type
 
   Cell = ptr RefHeader
 
-template `+!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) +% s)
-
-template `-!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) -% s)
-
 template head(p: pointer): Cell =
   cast[Cell](cast[int](p) -% sizeof(RefHeader))
 
@@ -132,6 +126,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
+proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+  # This is only used by the old RTTI mechanism and we know
+  # that 'dest[]' is nil and needs no destruction. Which is really handy
+  # as we cannot destroy the object reliably if it's an object of unknown
+  # compile-time type.
+  dest[] = src
+  if src != nil: nimIncRef src
+
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =
     ## Returns the ref's ID if the ref was already deallocated. This
@@ -165,10 +167,10 @@ template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
-  let d = cast[ptr PNimType](p)[].destructor
+  let d = cast[ptr PNimTypeV2](p)[].destructor
   if d != nil: cast[DestructorProc](d)(p)
   when false:
-    cstderr.rawWrite cast[ptr PNimType](p)[].name
+    cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
     cstderr.rawWrite "\n"
     if d == nil:
       cstderr.rawWrite "bah, nil\n"
@@ -226,11 +228,11 @@ template tearDownForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
   discard
 
-proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
+proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
   result = strstr(obj.name, subclass) != nil
 
-proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
+proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
   if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

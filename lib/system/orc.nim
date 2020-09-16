@@ -53,7 +53,7 @@ type
     toFree: CellSeq
     freed, touched: int
 
-proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
+proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
@@ -65,7 +65,7 @@ else:
     let p = s +! sizeof(RefHeader)
     cprintf("[%s] name %s RC %ld\n", str, p, s.rc shr rcShift)
 
-proc free(s: Cell; desc: PNimType) {.inline.} =
+proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
   let p = s +! sizeof(RefHeader)
@@ -89,7 +89,7 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
 
   nimRawDispose(p)
 
-proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
@@ -99,7 +99,7 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(head p[], cast[ptr PNimType](p[])[])
+    j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
 
 var
   roots {.threadvar.}: CellSeq
@@ -115,7 +115,7 @@ proc unregisterCycle(s: Cell) =
   roots.d[idx][0].rootIdx = idx
   dec roots.len
 
-proc scanBlack(s: Cell; desc: PNimType; j: var GcEnv) =
+proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc scanBlack(s: Cell) =
     setColor(s, colBlack)
@@ -135,7 +135,7 @@ proc scanBlack(s: Cell; desc: PNimType; j: var GcEnv) =
       t.setColor colBlack
       trace(t, desc, j)
 
-proc markGray(s: Cell; desc: PNimType; j: var GcEnv) =
+proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc markGray(s: Cell) =
     if s.color != colGray:
@@ -163,7 +163,7 @@ proc markGray(s: Cell; desc: PNimType; j: var GcEnv) =
         inc j.touched
         trace(t, desc, j)
 
-proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
+proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc scan(s: Cell) =
     if s.color == colGray:
@@ -226,7 +226,7 @@ when false:
     cfprintf(cstderr, "%s %p root index: %ld; RC: %ld; color: %ld\n",
       msg, s, s.rootIdx, s.rc shr rcShift, s.color)
 
-proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
+proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc collectWhite(s: Cell) =
     if s.color == colWhite and not buffered(s):
@@ -315,7 +315,7 @@ proc collectCycles() =
   when false:
     cfprintf(cstderr, "[collectCycles] freed %ld new threshold %ld\n", j.freed, rootsThreshold)
 
-proc registerCycle(s: Cell; desc: PNimType) =
+proc registerCycle(s: Cell; desc: PNimTypeV2) =
   if roots.len >= rootsThreshold:
     collectCycles()
   if roots.d == nil: init(roots)
@@ -334,7 +334,7 @@ proc GC_enableMarkAndSweep() =
 proc GC_disableMarkAndSweep() =
   rootsThreshold = high(int)
 
-proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimType) {.noinline.} =
+proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
     if (s.rc and isCycleCandidate) != 0:
       s.rc = s.rc and not isCycleCandidate
@@ -356,9 +356,9 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
     else:
       dec cell.rc, rcIncrement
     #if cell.color == colPurple:
-    rememberCycle(result, cell, cast[ptr PNimType](p)[])
+    rememberCycle(result, cell, cast[ptr PNimTypeV2](p)[])
 
-proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
+proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
