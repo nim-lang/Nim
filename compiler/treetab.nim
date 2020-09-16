@@ -10,7 +10,7 @@
 # Implements a table from trees to trees. Does structural equivalence checking.
 
 import
-  hashes, ast, astalgo, types, renderer
+  hashes, ast, astalgo, types
 
 proc hashTree*(n: PNode): Hash =
   if n.isNil:

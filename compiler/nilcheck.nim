@@ -924,5 +924,10 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
   let resultGraphIndex = context.graph(resultId)
   if res.nilability == Safe and (not res.map.history.hasKey(resultGraphIndex) or res.map.history[resultGraphIndex].len <= 1):
     res.map.store(resultGraphIndex, Safe, TAssign, s.ast.info)
+  
+  # check for nilability result
+  # (ANotNil, BNotNil) : 
+  # do we check on asgn nilability at all?
+  
   if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
     checkResult(s.ast, context, res.map)
