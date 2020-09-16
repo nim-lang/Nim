@@ -38,23 +38,27 @@ proc testDeref(a: Nilable) =
 
 
 # # test and
-# proc testAnd(a: Nilable) =
-#   echo not a.isNil and a.a > 0 # ok
+proc testAnd(a: Nilable) =
+  echo not a.isNil and a.a > 0 # ok
 
 # # test if else
-# proc testIfElse(a: Nilable) =
-#   if a.isNil:
-#     echo a.a 
-#          #! can't deref a: it is nil
-#   else:
-#     echo a.a # ok
+proc testIfElse(a: Nilable) =
+  if a.isNil:
+    echo a.a #[tt.Warning
+         ^ can't deref a, it is nil
+    ]#
+  else:
+    echo a.a # ok
 
+# TODO ok this fails: fix the unifying logic
 # # test assign in branch and unifiying that with the main block after end of branch
 # proc testAssignUnify(a: Nilable, b: int) =
 #   var a2 = a
 #   if b == 0:
 #     a2 = Nilable()
-#   echo a2.a # can't deref a2: it might be nil
+#   echo a2.a # [tt.Warning
+#        ^ can't deref a2, it might be nil
+#   ]#
 
 # # test else branch and inferring not isNil
 # proc testElse(a: Nilable, b: int) =
