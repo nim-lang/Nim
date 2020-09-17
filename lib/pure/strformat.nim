@@ -305,6 +305,9 @@ Nim ``strformat`` supports Backslash ``\``:
 
   echo fmt"""{ "yep\nope" }"""  ## Works Ok.
 
+This is a feature of the triple string literals, not of ``strformat`` itself,
+but they can be used togheter to support the Backslash ``\`` on ``strformat``.
+
 
 Backtick and whitespace support
 ===============================
