@@ -466,6 +466,7 @@ block:
   #type
   #  f0 = proc(x:Foo)
 
+
 block:
   type
     TilesetCT[n: static[int]] = distinct int
@@ -480,3 +481,28 @@ block:
 
   var parsedTileset: TilesetRT
   prepareTileset(parsedTileset)
+
+
+block:
+  proc p1[T,U: SomeInteger|SomeFloat](x: T, y: U): int|float =
+    when T is SomeInteger and U is SomeInteger:
+      result = int(x) + int(y)
+    else:
+      result = float(x) + float(y)
+  doAssert(p1(1,2) == 3)
+  doAssert(p1(1.0,2) == 3.0)
+  doAssert(p1(1,2.0) == 3.0)
+  doAssert(p1(1.0,2.0) == 3.0)
+
+  type Foo[T,U] = U
+  template F[T,U](t: typedesc[T], x: U): untyped = Foo[T,U](x)
+  proc p2[T; U,V:Foo[T,SomeNumber]](x: U, y: V): T =
+    T(x) + T(y)
+  #proc p2[T; U:Foo[T,SomeNumber], V:Foo[not T,SomeNumber]](x: U, y: V): T =
+  #  T(x) + T(y)
+  doAssert(p2(F(int,1),F(int,2)) == 3)
+  doAssert(p2(F(float,1),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1),F(float,2.0)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
+  #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)

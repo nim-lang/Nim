@@ -82,6 +82,7 @@ type
   TTypeRelFlag* = enum
     trDontBind
     trNoCovariance
+    trBindGenericParam  # bind tyGenericParam even with trDontBind
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
@@ -1665,6 +1666,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isGeneric
 
   of tyGenericParam:
+    let doBindGP = doBind or trBindGenericParam in flags
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
       if c.callee.kind == tyGenericBody and not c.typedescMatched:
@@ -1689,7 +1691,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = typeRel(c, f.base, aa, flags)
             if result > isGeneric: result = isGeneric
         elif c.isNoCall:
-          if doBind:
+          if doBindGP:
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
             put(c, f, concrete)
@@ -1700,8 +1702,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
         if f.len > 0 and f[0].kind != tyNone:
           let oldInheritancePenalty = c.inheritancePenalty
-          result = typeRel(c, f[0], a, flags)
-          if doBind and result notin {isNone, isGeneric}:
+          result = typeRel(c, f[0], a, flags + {trDontBind,trBindGenericParam})
+          if doBindGP and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
             put(c, f, concrete)
@@ -1729,7 +1731,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           concrete = concreteType(c, a, f)
           if concrete == nil:
             return isNone
-        if doBind:
+        if doBindGP:
           put(c, f, concrete)
       elif result > isGeneric:
         result = isGeneric
