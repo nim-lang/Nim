@@ -1700,7 +1700,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # check if 'T' has a constraint as in 'proc p[T: Constraint](x: T)'
         if f.len > 0 and f[0].kind != tyNone:
           let oldInheritancePenalty = c.inheritancePenalty
-          result = typeRel(c, f[0], a, flags + {trDontBind})
+          result = typeRel(c, f[0], a, flags)
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a, f)
             if concrete == nil: return isNone
