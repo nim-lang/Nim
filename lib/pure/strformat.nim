@@ -83,7 +83,7 @@ Formatting floats
 Debugging strings
 =================
 
-``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the expression, 
+``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the expression,
 an equal sign and the results of evaluated expression.
 
 .. code-block:: nim
@@ -93,7 +93,7 @@ an equal sign and the results of evaluated expression.
     doAssert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
 
     let x = "hello"
-    doAssert fmt"{x=}" == "x=hello" 
+    doAssert fmt"{x=}" == "x=hello"
     doAssert fmt"{x =}" == "x =hello"
 
     let y = 3.1415926
@@ -294,6 +294,29 @@ expansion order and hygienic templates. But since we generally want to
 keep the hygienicness of ``myTemplate``, and we do not want ``arg1``
 to be injected into the context where ``myTemplate`` is expanded,
 everything is wrapped in a ``block``.
+
+
+Backslash support
+=================
+
+Different from Python F-string, Nim ``strformat`` supports Backslash ``\``:
+
+.. code-block:: nim
+
+  echo fmt"""{ "yep\nope" }""" ## Works Ok.
+
+
+Backtick and whitespace support
+===============================
+
+Contrary to Python F-string, you can choose a custom character pair to open and close
+the formatting inside the string just passing the ``char`` as argument,
+and using characters like backtick and whitespace is supported:
+
+.. code-block:: nim
+
+  let variable = 42
+  assert fmt(" variable`{variable}", ' ', '`') == "42{variable}" ## Works Ok.
 
 
 Future directions
