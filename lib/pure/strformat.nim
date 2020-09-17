@@ -299,7 +299,7 @@ everything is wrapped in a ``block``.
 Backslash support
 =================
 
-Nim ``strformat`` supports Backslash ``\``:
+Nim ``strformat`` supports Backslash ``\``, thanks to triple string literals:
 
 .. code-block:: nim
 
