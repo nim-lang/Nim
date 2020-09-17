@@ -79,6 +79,20 @@ type
     base*:     NilMap
     top*:      NilMap
 
+# iterate through it
+# but also updating expr-s ?
+# we just preindex all the expressions
+# and update only those, not all possible
+# so we do keep dependent , not only sets
+# and we can maybe reuse it for initialization
+# so we don't visit the other ones
+# now we have invisible ones!
+# a <- b # a.field1 ? b.field1 unknown? so depends on type!
+# but first look for a set ..
+# iterate through their children, those who have equal paths
+# unify sets
+# if no existing other expr: just based on type
+
   Nilability* = enum Safe, MaybeNil, Nil
 
   Check = tuple[nilability: Nilability, map: NilMap]
@@ -907,6 +921,24 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, partitions: Partitions) =
 
   # echo toTextGraph(conf, partitions)
   
+  # even here: just change the set thing
+  # but now the set points to something else?
+  # maybe just move the symbol to a new set
+  # yes
+  # or just support both?
+  # {a, b}
+  # a = nil
+  # {b} {a} 
+  # now b's set is here
+  # a's set is there
+  # but if we do not b.isNil:
+  # we have it for the set already
+  # but now we do stuff like b = nil
+  # so we just make {} {a} {b}
+  # but what about symbol
+  # {a, b}
+  # a = nil
+  # {b} {a}
   # TODO
   var context = NilCheckerContext(partitions: partitions, symbolGraphs: toSymbolGraphs(partitions), config: conf)
   for i, child in s.typ.n.sons:
