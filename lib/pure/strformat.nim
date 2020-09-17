@@ -299,24 +299,24 @@ everything is wrapped in a ``block``.
 Backslash support
 =================
 
-Different from Python F-string, Nim ``strformat`` supports Backslash ``\``:
+Nim ``strformat`` supports Backslash ``\``:
 
 .. code-block:: nim
 
-  echo fmt"""{ "yep\nope" }""" ## Works Ok.
+  echo fmt"""{ "yep\nope" }"""  ## Works Ok.
 
 
 Backtick and whitespace support
 ===============================
 
-Contrary to Python F-string, you can choose a custom character pair to open and close
+You can choose a custom character pair to open and close
 the formatting inside the string just passing the ``char`` as argument,
 and using characters like backtick and whitespace is supported:
 
 .. code-block:: nim
 
   let variable = 42
-  assert fmt(" variable`{variable}", ' ', '`') == "42{variable}" ## Works Ok.
+  assert fmt(" variable`{variable}", ' ', '`') == "42{variable}"  ## Works Ok.
 
 
 Future directions
