@@ -39,6 +39,7 @@
 
 import strutils, parseutils, base64
 include includes/decode_helpers
+import std/private/since
 
 type
   Url* = distinct string
