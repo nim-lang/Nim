@@ -54,7 +54,7 @@ type
     when defined(gcOrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
-    when defined(nimArcDebug):
+    when defined(nimArcDebug) or defined(nimArcIds):
       refId: int
 
   Cell = ptr RefHeader
@@ -72,6 +72,8 @@ when defined(nimArcDebug):
 
   var gRefId: int
   var freedCells: CellSet
+elif defined(nimArcIds):
+  var gRefId: int
 
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
@@ -85,7 +87,7 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  when defined(nimArcDebug):
+  when defined(nimArcDebug) or defined(nimArcIds):
     head(result).refId = gRefId
     atomicInc gRefId
   when traceCollector:
