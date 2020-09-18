@@ -166,17 +166,11 @@ proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] {.since: (1, 3).
     buffer = ""
     encodedchar = ""
 
-  proc getPair(name, buffer: string): (string, string) =
-    if name.len == 0 and buffer.len > 0: (buffer, "")
-    elif name.len > 0: (name, buffer)
-    else: ("", "")
-
   for c in urlQuery:
 
     if c == '&':
-      let (key, value) = getPair(name, buffer)
-      if key.len > 0:
-        result.add((key, value))
+      if name.len == 0 and buffer.len > 0: result.add (buffer, "")
+      elif name.len > 0: result.add (name, buffer)
       name = ""
       buffer = ""
     elif c == '=':
@@ -196,9 +190,8 @@ proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] {.since: (1, 3).
     else:
       buffer.add(c)
 
-  let (key, value) = getPair(name, buffer)
-  if key.len > 0:
-    result.add((key, value))
+  if name.len == 0 and buffer.len > 0: result.add (buffer, "")
+  elif name.len > 0: result.add (name, buffer)
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
