@@ -1347,7 +1347,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
                                                                                                                    
       when false: trackWrites(s, body)
   if strictNotNil in c.features and s.kind == skProc:
-    checkNil(s, body, g.config, partitions)
+    checkNil(s, body, g.config)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

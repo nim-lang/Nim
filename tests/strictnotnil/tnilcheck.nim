@@ -23,11 +23,6 @@ type
 
 # Nilable tests
 
-proc testFieldNilCheck(a: Nilable) =
-  if not a.field.isNil: #[tt.Warning
-         ^ can't deref a, it might be nil
-  ]#
-    echo 0
 
 
 # test deref
@@ -55,6 +50,7 @@ proc testAssignUnify(a: Nilable, b: int) =
        ^ can't deref a2, it might be nil
   ]#
 
+
 # TODO ok this fails: fix the unifying logic
 # # test assign in branch and unifiying that with the main block after end of branch
 proc testAssignUnifyNil(a: Nilable, b: int) =
@@ -69,10 +65,14 @@ proc testAssignUnifyNil(a: Nilable, b: int) =
 proc testForLoop(a: Nilable) =
   var b = Nilable()
   for i in 0 .. 5:
-    echo b.a # can't deref b: it might be nil
+    echo b.a #[tt.Warning
+         ^ can't deref b, it might be nil
+    ]#
     if i == 2:
       b = a
-  echo b.a # can't defer b: it might be nil
+  echo b.a #[tt.Warning
+       ^ can't deref b, it might be nil
+  ]#
 
 # TODO implement this after discussion
 # proc testResultCompoundNonNilableElement(a: Nilable): (NonNilable, NonNilable) = #[t t.Warning
@@ -93,8 +93,6 @@ proc testForLoop(a: Nilable) =
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field
 
-# TODO when dot expr support is there
-
 # proc testRootAliasField(a: Nilable) =
 #   var aliasA = a
 #   if not a.isNil and not a.field.isNil:
@@ -105,16 +103,17 @@ proc testForLoop(a: Nilable) =
 #          ^ can't deref a.field, it might be nil
 #     ]#
 
-proc callVar(a: var Nilable) =
-  a = nil
+# TODO after alias support
+#proc callVar(a: var Nilable) =
+#  a = nil
 
-proc testVarAlias(a: Nilable) =
-  var aliasA = a
-  if not a.isNil:
-    callVar(aliasA)
-    echo a.a #[tt.Warning
-         ^ can't deref a, it might be nil
-    ]#
+# proc testVarAlias(a: Nilable) =
+#   var aliasA = a
+#   if not a.isNil:
+#     callVar(aliasA)
+#     echo a.a #[ tt.Warning
+#          ^ can't deref a, it might be nil
+#     ]#
 
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash

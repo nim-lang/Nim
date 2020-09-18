@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes, varpartitions
+import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
 
 # IMPORTANT: notes not up to date, i'll update this comment again
 # 
@@ -61,7 +61,10 @@ type
   Symbol = int
 
   ## the index of an expression in the pre-indexed sequence of those
-  ExprIndex = int
+  ExprIndex = int16
+
+  ## the set index
+  SetIndex = int
 
   ## transition kind:
   ##   what was the reason for changing the nilability of an expression
@@ -93,9 +96,6 @@ type
     sets*:     seq[set[ExprIndex]] ## disjoint sets with the aliased expressions
     parent*:   NilMap ## the parent map
     base*:     NilMap ## the root map
-
-
-    
 
 # NilMap: 
 # zahary:
@@ -137,7 +137,11 @@ type
   ## we have maybe nil and nil, so we can differentiate between
   ## cases where we know for sure a value is nil and not
   ## otherwise we can have Safe, MaybeNil
-  Nilability* = enum Safe, MaybeNil, Nil
+  ## Parent: is because we just use a sequence with the same length
+  ## instead of a table, and we need to check if something was initialized
+  ## at all: if Parent is set, then you need to check the parent nilability
+  ## if the parent is nil, then for now we return MaybeNil
+  Nilability* = enum Parent, Safe, MaybeNil, Nil
 
   ## check
   Check = object
@@ -146,7 +150,8 @@ type
 
 
 # useful to have known resultId so we can set it in the beginning and on return
-const resultId = -1
+const resultId: Symbol = -1
+const resultExprIndex: ExprIndex = 0
 
 proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check
 proc checkCondition(n: PNode, ctx: NilCheckerContext, map: NilMap, reverse: bool, base: bool): NilMap
@@ -159,25 +164,29 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
     expressionsCount = count
   elif not parent.isNil:
     expressionsCount = parent.expressions.len
+  # echo "count ", expressionsCount
   result = NilMap(
-    expressions: newSeq[Nilability](count),
-    history: newSeq[History](count),
-    sets: newSeq[SetIndex](count),
+    expressions: newSeq[Nilability](expressionsCount),
+    history: newSeq[seq[History]](expressionsCount),
+    sets: newSeq[set[ExprIndex]](expressionsCount),
     parent: parent)
+  # if not parent.isNil:
+  #   # optimize []?
+  #   result.expressions = parent.expressions
+  #   result.history = parent.history
+  #   result.sets = parent.sets
   result.base = if parent.isNil: result else: parent.base
 
 proc `[]`(map: NilMap, index: ExprIndex): Nilability =
-  if index < map.expressions.len:
-    map.expressions[index]
-  else:
+  if index < 0 or index >= map.expressions.len:
     # TODO what if it's bigger? assert?
-    Safe
-  # var now = map
-  # while not now.isNil:
-  #   if now.locals.hasKey(graphIndex):
-  #     return now.locals[graphIndex]
-  #   now = now.previous
-  # return Safe
+    return MaybeNil
+  var now = map
+  while not now.isNil:
+    if now.expressions[index] != Parent:
+      return now.expressions[index.int]
+    now = now.parent
+  return MaybeNil
 
 proc history(map: NilMap, index: ExprIndex): seq[History] =
   if index < map.expressions.len:
@@ -198,13 +207,13 @@ proc history(map: NilMap, index: ExprIndex): seq[History] =
 import macros
 
 # echo-s only when nilDebugInfo is defined
-macro aecho*(a: varargs[untyped]): untyped =
-  var e = nnkCall.newTree(ident"echo")
-  for b in a:
-    e.add(b)
-  result = quote:
-    when defined(nilDebugInfo):
-      `e`
+# macro aecho*(a: varargs[untyped]): untyped =
+#   var e = nnkCall.newTree(ident"echo")
+#   for b in a:
+#     e.add(b)
+#   result = quote:
+#     when defined(nilDebugInfo):
+#       `e`
 
 # end of helpers for debugging
 
@@ -219,8 +228,7 @@ proc symbol(n: PNode): Symbol
 proc `$`(map: NilMap): string
     
 proc store(map: NilMap, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  let text = if node.isNil: "?" else: $node
-  # echo "store " & $graphIndex & " " & text & " " & $value & " " & $kind
+  # let text = if node.isNil: "?" else: $node
   map.expressions[index] = value
   map.history[index].add(History(info: info, kind: kind, node: node, nilability: value))
   
@@ -234,10 +242,10 @@ proc store(map: NilMap, index: ExprIndex, value: Nilability, kind: TransitionKin
 #     now = now.previous
 
 iterator pairs(map: NilMap): (ExprIndex, Nilability) =
-  for index, value in now.expressions:
-    yield (index, value)
-  # var now = map
-  # while not now.isNil:
+  for index, value in map.expressions:
+    yield (index.ExprIndex, map[index.ExprIndex])
+  #var now = map
+  #while not now.isNil:
   #   for graphIndex, value in now.locals:
   #     yield (graphIndex, value)
   #   now = now.previous
@@ -289,7 +297,14 @@ const noExprIndex = -1
 #     return noGraphIndex - 1 - symbol
 
 proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
-  ctx.symbolIndices[symbol(n)]
+  let a = symbol(n)
+  if ctx.symbolIndices.hasKey(a):
+    return ctx.symbolIndices[a]
+  else:
+    internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
+    # return noExprIndex
+    # 
+  #ctx.symbolIndices[symbol(n)]
 
 proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
   result = map.sets[ctx.index(n)]
@@ -310,7 +325,7 @@ proc symbol(n: PNode): Symbol =
     result = symbol(n[0])
   else:
     result = hashTree(n)
-  # echo result
+  # echo "symbol ", n, " ", n.kind, " ", result
 
 using
   n: PNode
@@ -397,7 +412,7 @@ proc checkDeref(n, ctx, map): Check =
   ## check dereference: deref n should be ok only if n is Safe
   result = check(n[0], ctx, map)
   
-  handleNilability(result, n, ctx, map)
+  handleNilability(result, n[0], ctx, map)
 
     
 proc checkRefExpr(n, ctx; check: Check): Check =
@@ -432,29 +447,42 @@ template union(l: Nilability, r: Nilability): Nilability =
   else:
     MaybeNil
 
-proc union(l: NilMap, r: NilMap): NilMap =
+proc findCommonParent(l: NilMap, r: NilMap): NilMap =
+  result = l.parent
+  while not result.isNil:
+    var rparent = r.parent
+    while not rparent.isNil:    
+      if result == rparent:
+        return result
+      rparent = rparent.parent
+    result = result.parent
+
+proc union(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
   ## unify two maps from different branches
   ## combine their locals
   ## what if they are from different parts of the same tree
   ## e.g.
   ## a -> b -> c
-  ##   -> 
-  ## for now assume same
+  ##   -> b1 
+  ## common then?
+  ## 
   if l.isNil:
     return r
   elif r.isNil:
     return l
   
-  result = newNilMap(common)
-    
+  var common = findCommonParent(l, r)
+  result = newNilMap(common, ctx.expressions.len)
+  
   # TODO locals ?
-  for index, value in l.expressions:
+  for index, value in l:
     #if r.hasKey(graphIndex) and not result.locals.hasKey(graphIndex):
-    var h = history(r, index)
-    assert h.len > 0
+    var h = history(r, index.ExprIndex)
+    var info = if h.len > 0: h[^1].info else: TLineInfo(line: 0) # assert h.len > 0
     # echo "history", name, value, r[name], h[^1].info.line
-    result.store(graphIndex, union(value, r[graphIndex]), TAssign, h[^1].info)
+    result.store(index.ExprIndex, union(value, r[index.ExprIndex]), TAssign, info)
 
+  
 # a = b
 # a = c
 #
@@ -470,7 +498,7 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
   if assigned.kind != nkEmpty:
     result = check(assigned, ctx, map)
   else:
-    result = (typeNilability(target.typ), map)
+    result = Check(nilability: typeNilability(target.typ), map: map)
   
   # we need to visit and check those, but we don't use the result for now
   # is it possible to somehow have another event happen here?
@@ -478,21 +506,22 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
   
   if result.map.isNil:
     result.map = map
-  let t = ctx.index(target)
-  case assigned.kind:
-  of nkNilLit:
-    result.map.store(t, Nil, TAssign, target.info, target)
-  else:
-    # echo "nilability ", $target, " ", $result.nilability
-    result.map.store(t, result.nilability, TAssign, target.info, target)
-    # if target.kind in {nkSym, nkDotExpr}:
-    #  result.map.makeAlias(assigned, target)
+  if target.kind == nkSym:
+    let t = ctx.index(target)
+    case assigned.kind:
+    of nkNilLit:
+      result.map.store(t, Nil, TAssign, target.info, target)
+    else:
+      # echo "nilability ", $target, " ", $result.nilability
+      result.map.store(t, result.nilability, TAssign, target.info, target)
+      # if target.kind in {nkSym, nkDotExpr}:
+      #  result.map.makeAlias(assigned, target)
 
 proc checkReturn(n, ctx, map): Check =
   ## check return
   # return n same as result = n; return ?
   result = check(n[0], ctx, map)
-  result.map.store(ctx.index(resultId), result.nilability, TAssign, n.info)
+  result.map.store(resultExprIndex, result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, ctx, map): Check =
@@ -510,8 +539,8 @@ proc checkFor(n, ctx, map): Check =
   var check2 = check(n.sons[2], ctx, m)
   var map2 = check2.map
   
-  result.map = union(map0, map1)
-  result.map = union(result.map, map2)
+  result.map = ctx.union(map0, map1)
+  result.map = ctx.union(result.map, map2)
   result.nilability = Safe
 
 # while code:
@@ -537,8 +566,8 @@ proc checkWhile(n, ctx, map): Check =
   var check2 = check(n.sons[1], ctx, m)
   var map2 = check2.map
   
-  result.map = union(map0, map1)
-  result.map = union(result.map, map2)
+  result.map = ctx.union(map0, map1)
+  result.map = ctx.union(result.map, map2)
   result.nilability = Safe
   
 proc checkInfix(n, ctx, map): Check =
@@ -555,7 +584,7 @@ proc checkInfix(n, ctx, map): Check =
       mapR = checkCondition(n[2], ctx, map, false, false)
     case n[0].sym.magic:
     of mOr:
-      result.map = union(mapL, mapR)
+      result.map = ctx.union(mapL, mapR)
     of mAnd:
       result.map = checkCondition(n[1], ctx, map, false, false)
       result.map = checkCondition(n[2], ctx, result.map, false, false)
@@ -648,13 +677,13 @@ proc checkCase(n, ctx, map): Check =
         a = infixOr(a, test)
       let conditionMap = checkCondition(test, ctx, map.copyMap(), false, false)
       let newCheck = checkBranch(code, ctx, conditionMap)
-      result.map = union(result.map, newCheck.map)
+      result.map = ctx.union(result.map, newCheck.map)
       result.nilability = union(result.nilability, newCheck.nilability)
     of nkElse:
       let mapElse = checkCondition(prefixNot(a), ctx, map.copyMap(), false, false)
       let newCheck = checkBranch(child[0], ctx, mapElse)
-      result.map = union(result.map, newCheck.map)
-      result.nilability = union(result.nilability, newCheck.map)
+      result.map = ctx.union(result.map, newCheck.map)
+      result.nilability = union(result.nilability, newCheck.nilability)
     else:
       discard
 
@@ -700,7 +729,7 @@ proc checkTry(n, ctx, map): Check =
   #   else:
   #     newMap = childMap
   let tryCheck = check(n[0], ctx, currentMap)
-  newMap = union(tryMap, tryCheck.map)
+  newMap = ctx.union(currentMap, tryCheck.map)
   canRaise = n[0].canRaise
   
   var afterTryMap = newMap
@@ -708,22 +737,22 @@ proc checkTry(n, ctx, map): Check =
     if a > 0:
       case branch.kind:
       of nkFinally:
-        newMap = union(afterTryMap, newMap)
-        let (_, childMap) = check(branch[0], ctx, newMap)
-        newMap = union(newMap, childMap)
+        newMap = ctx.union(afterTryMap, newMap)
+        let childCheck = check(branch[0], ctx, newMap)
+        newMap = ctx.union(newMap, childCheck.map)
         hasFinally = true
       of nkExceptBranch:        
         if canRaise:
-          let (_, childMap) = check(branch[^1], ctx, newMap)
-          newMap = union(newMap, childMap)
+          let childCheck = check(branch[^1], ctx, newMap)
+          newMap = ctx.union(newMap, childCheck.map)
       else:
         discard
   if not hasFinally:
     # we might have not hit the except branches
-    newMap = union(afterTryMap, newMap)
-  result = (Safe, newMap)
+    newMap = ctx.union(afterTryMap, newMap)
+  result = Check(nilability: Safe, map: newMap)
 
-proc direcStop(n): bool =
+proc directStop(n): bool =
   ## if the node contains a direct stop
   ## as a continue/break/raise/return: then it means
   ## it is possible ..
@@ -738,7 +767,7 @@ proc direcStop(n): bool =
   of nkIfStmt, nkElse:
     return false
   else:
-    aecho n.kind
+    discard
   return false
 
 proc reverse(value: Nilability): Nilability =
@@ -746,6 +775,7 @@ proc reverse(value: Nilability): Nilability =
   of Nil: Safe
   of MaybeNil: MaybeNil
   of Safe: Nil
+  of Parent: Parent
 
 proc reverse(kind: TransitionKind): TransitionKind =
   case kind:
@@ -757,14 +787,16 @@ proc reverseDirect(map: NilMap): NilMap =
   result = map.copyMap()
   for index, value in result.expressions:
     result.expressions[index] = reverse(value)
-    result.history[index][^1].kind = reverse(result.history[index][^1].kind)
-    result.history[index][^1].nilability = result.expressions[index]
+    if result.history[index].len > 0:
+      result.history[index][^1].kind = reverse(result.history[index][^1].kind)
+      result.history[index][^1].nilability = result.expressions[index]
 
 proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ## check conditions : used for if, some infix operators
   ##   isNil(a)
   ##   it returns a new map: you need to reverse all the direct elements for else
 
+  # echo "condition ", n
   if n.kind == nkCall:
     result = newNilMap(map)
     for element in n:
@@ -772,6 +804,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
 
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
       let a = ctx.index(n[1])
+      # echo "n[1] ", n[1], " ", a
       result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
     else:
       discard
@@ -784,16 +817,16 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
     result = check(n, ctx, map).map
     result = newNilMap(map)
   assert not result.isNil
-  assert not result.previous.isNil
+  assert not result.parent.isNil
 
 proc checkResult(n, ctx, map) =
-  let resultNilability = map[ctx.index(resultId)]
+  let resultNilability = map[resultExprIndex]
   case resultNilability:
   of Nil:
     message(ctx.config, n.info, warnStrictNotNil, "return value is nil")
   of MaybeNil:
     message(ctx.config, n.info, warnStrictNotNil, "return value might be nil")
-  of Safe:
+  of Safe, Parent:
     discard    
 
 proc checkBranch(n, ctx, map): Check =
@@ -831,14 +864,13 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   #     TPotentialAlias,
   #     n.info,
   #     element)
-
+  # echo "n ", n, " ", n.kind
   case n.kind:
   of nkSym:
-    aecho symbol(n), map
     # echo "sym ", n
-    result = (nilability: map[ctx.index(n)], map: map)
+    result = Check(nilability: map[ctx.index(n)], map: map)
+    # echo "after sym"
   of nkCallKinds:
-    aecho "call", n
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
       case callSym.magic:
@@ -879,12 +911,12 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
       let mapElse = reverseDirect(mapCondition)
       let r = checkBranch(n.sons[1], ctx, mapElse)
-      result.map = union(l.map, r.map)
+      result.map = ctx.union(l.map, r.map)
       result.nilability = if n.kind == nkIfStmt: Safe else: union(l.nilability, r.nilability)
     else:
       let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
       let mapNoIf = reverseDirect(mapCondition)
-      result.map = union(mapNoIf, l.map)
+      result.map = ctx.union(mapNoIf, l.map)
       result.nilability = Safe
       #if directStop(n[0][1]):
       #  result.map = mapR
@@ -897,7 +929,6 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkVarSection:
     result.map = map
     for child in n:
-      aecho child.kind
       result = checkAsgn(child[0], child[2], ctx, result.map)
   of nkForStmt:
     result = checkFor(n, ctx, map)
@@ -917,24 +948,20 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
     
     discard "don't follow this : same as varpartitions"
-    result = Check(nilablity: Nil, map: map)
+    result = Check(nilability: Nil, map: map)
   else:
     var elementMap = map.copyMap()
-    var nilability = Safe
+    var elementCheck: Check
+    elementCheck.map = elementMap
     for element in n:
-      (nilability, elementMap) = check(element, ctx, elementMap)
+      elementCheck = check(element, ctx, elementCheck.map)
 
-    result = Check(nilability: Nil, map: elementMap)
-
-  
+    result = Check(nilability: Nil, map: elementCheck.map)
 
 
   
-  # echo map
-
+  
 proc typeNilability(typ: PType): Nilability =
-  #if not typ.isNil:
-  #  echo ("type ", typ, " ", typ.flags, " ", typ.kind)
   if typ.isNil: # TODO is it ok
     Safe
   elif tfNotNil in typ.flags:
@@ -947,13 +974,44 @@ proc typeNilability(typ: PType): Nilability =
   else:
     Safe
 
+proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
+  # echo "visit node ", node
+  case node.kind:
+  of nkSym:
+    let nodeSymbol = symbol(node)
+    if not ctx.symbolIndices.hasKey(nodeSymbol):
+      ctx.symbolIndices[nodeSymbol] = ctx.expressions.len.ExprIndex
+      ctx.expressions.add(node)
+  of nkEmpty, nkNilLit, nkType, nkIdent, nkCharLit .. nkUInt64Lit, nkFloatLit .. nkFloat64Lit, nkStrLit .. nkTripleStrLit:
+    discard
+  else:
+    for element in node:
+      ctx.preVisitNode(element, conf)
+
+proc preVisit(ctx: NilCheckerContext, s: PSym, body: PNode, conf: ConfigRef) =
+  ctx.symbolIndices = {resultId: resultExprIndex}.toTable()
+  var cache = newIdentCache()
+  ctx.expressions = @[newIdentNode(cache.getIdent("result"), s.ast.info)]
+  for i, arg in s.typ.n.sons:
+    if i > 0:
+      if arg.kind != nkSym:
+        continue
+      let argSymbol = symbol(arg)
+      if not ctx.symbolIndices.hasKey(argSymbol):
+        ctx.symbolIndices[argSymbol] = ctx.expressions.len.ExprIndex
+        ctx.expressions.add(arg)
+  ctx.preVisitNode(body, conf)
+  # echo ctx.symbolIndices
+  # echo ctx.expressions
+
 proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   let line = s.ast.info.line
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
 
   var context = NilCheckerContext(config: conf)
-  context.preVisit(body)
+  context.preVisit(s, body, conf)
+  # echo "after"
   var map = newNilMap(nil, context.symbolIndices.len)
   
   # TODO
@@ -963,14 +1021,13 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
         continue
       map.store(context.index(child), typeNilability(child.typ), TArg, child.info, child)
 
-  map.store(context.index(resultId), if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+  map.store(resultExprIndex, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
     
   # echo "checking ", s.name.s, " ", filename
 
   let res = check(body, context, map)
-  let resultIndex = context.index(resultId)
-  if res.nilability == Safe and res.map.history[resultIndex].len <= 1:
-    res.map.store(resultIndex, Safe, TAssign, s.ast.info)
+  if res.nilability == Safe and res.map.history[resultExprIndex].len <= 1:
+    res.map.store(resultExprIndex, Safe, TAssign, s.ast.info)
   
   # check for nilability result
   # (ANotNil, BNotNil) : 
