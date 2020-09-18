@@ -68,7 +68,7 @@ const
 when defined(nimArcDebug):
   include cellsets
 
-  const traceId = 7739 # 1037
+  const traceId = 20 # 1037
 
   var gRefId: int
   var freedCells: CellSet
@@ -90,6 +90,9 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when defined(nimArcDebug) or defined(nimArcIds):
     head(result).refId = gRefId
     atomicInc gRefId
+    if head(result).refId == traceId:
+      writeStackTrace()
+      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).rc shr rcShift)
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
@@ -112,6 +115,10 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   when defined(nimArcDebug):
     head(result).refId = gRefId
     atomicInc gRefId
+    if head(result).refId == traceId:
+      writeStackTrace()
+      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).rc shr rcShift)
+
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
