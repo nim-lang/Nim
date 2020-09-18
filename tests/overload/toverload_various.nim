@@ -469,7 +469,7 @@ block:
 
 block:
   type
-    TilesetCT[n: static[int]] = distinct int
+    TilesetCT[n: static int] = int
     TilesetRT = int
     Tileset = TilesetCT | TilesetRT
 
@@ -482,6 +482,20 @@ block:
   var parsedTileset: TilesetRT
   prepareTileset(parsedTileset)
 
+block:
+  type
+    TilesetCT[n: static int] = distinct int
+    TilesetRT = int
+    Tileset = TilesetCT | TilesetRT
+
+  func prepareTileset(tileset: var Tileset) = discard
+
+  func prepareTileset(tileset: Tileset): Tileset =
+    result = tileset
+    result.prepareTileset
+
+  var parsedTileset: TilesetRT
+  prepareTileset(parsedTileset)
 
 block:
   proc p1[T,U: SomeInteger|SomeFloat](x: T, y: U): int|float =
