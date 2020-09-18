@@ -41,6 +41,7 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
   #h.setColor colPurple # mark as potential cycle!
+  h.setColor colBlack
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
@@ -101,6 +102,11 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
 
+template orcAssert(cond, msg) =
+  if not cond:
+    cfprintf(cstderr, "[Bug!] %s\n", msg)
+    quit 1
+
 var
   roots {.threadvar.}: CellSeq
 
@@ -115,6 +121,11 @@ proc unregisterCycle(s: Cell) =
   roots.d[idx][0].rootIdx = idx
   dec roots.len
 
+when false:
+  proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
+    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld\n",
+      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color)
+
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc scanBlack(s: Cell) =
@@ -126,14 +137,17 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   ]#
   debug "scanBlack", s
   s.setColor colBlack
+  let until = j.traceStack.len
   trace(s, desc, j)
-  while j.traceStack.len > 0:
+  #writeCell("root still alive", s, desc)
+  while j.traceStack.len > until:
     let (t, desc) = j.traceStack.pop()
     inc t.rc, rcIncrement
     debug "incRef", t
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
+      #writeCell("child still alive", t, desc)
 
 proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
@@ -148,6 +162,7 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color != colGray:
     s.setColor colGray
     inc j.touched
+    orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
@@ -195,6 +210,7 @@ proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
             when traceCollector:
               cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
 
+      orcAssert(j.traceStack.len == 0, "scan: trace stack not empty")
       s.setColor(colWhite)
       trace(s, desc, j)
       while j.traceStack.len > 0:
@@ -236,6 +252,8 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
       free(s) # watch out, a bug here!
   ]#
   if s.color == colWhite and (s.rc and isCycleCandidate) == 0:
+    orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
+
     s.setColor(colBlack)
     j.toFree.add(s, desc)
     trace(s, desc, j)
@@ -261,6 +279,7 @@ proc collectCyclesBacon(j: var GcEnv) =
       collectWhite(s)
   ]#
   for i in 0 ..< roots.len:
+    #writeCell("root", roots.d[i][0], roots.d[i][1])
     markGray(roots.d[i][0], roots.d[i][1], j)
   for i in 0 ..< roots.len:
     scan(roots.d[i][0], roots.d[i][1], j)
@@ -279,7 +298,7 @@ proc collectCyclesBacon(j: var GcEnv) =
   #roots.len = 0
 
 const
-  defaultThreshold = 10_000
+  defaultThreshold = when defined(nimAdaptiveOrc): 128 else: 10_000
 
 var
   rootsThreshold = defaultThreshold
@@ -309,11 +328,16 @@ proc collectCycles() =
   # we're effective when we collected 50% or more of the nodes
   # we touched. If we're effective, we can reset the threshold:
   if j.freed * 2 >= j.touched:
-    rootsThreshold = defaultThreshold
+    when defined(nimAdaptiveOrc):
+      rootsThreshold = max(rootsThreshold div 2, 16)
+    else:
+      rootsThreshold = defaultThreshold
+    #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
   elif rootsThreshold < high(int) div 4:
     rootsThreshold = rootsThreshold * 3 div 2
   when false:
-    cfprintf(cstderr, "[collectCycles] freed %ld new threshold %ld\n", j.freed, rootsThreshold)
+    cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld\n", j.freed, rootsThreshold, j.touched,
+      getOccupiedMem())
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
   if roots.len >= rootsThreshold:
@@ -328,10 +352,10 @@ proc GC_fullCollect* =
   ## collector.
   collectCycles()
 
-proc GC_enableMarkAndSweep() =
+proc GC_enableMarkAndSweep*() =
   rootsThreshold = defaultThreshold
 
-proc GC_disableMarkAndSweep() =
+proc GC_disableMarkAndSweep*() =
   rootsThreshold = high(int)
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
@@ -345,6 +369,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
     #s.setColor colGreen  # XXX This is wrong!
     if (s.rc and isCycleCandidate) == 0:
       s.rc = s.rc or isCycleCandidate
+      s.setColor colBlack
       registerCycle(s, desc)
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
