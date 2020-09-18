@@ -142,7 +142,7 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] =
+proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] {.since: (1, 3).} =
   ## Decode a URL query string into a set of (key, value) parameters.
   ##
   ## **See also:**
