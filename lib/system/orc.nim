@@ -26,6 +26,8 @@ const
   jumpStackFlag = 0b1000
   colorMask = 0b011
 
+  logOrc = defined(nimArcIds)
+
 type
   TraceProc = proc (p, env: pointer) {.nimcall, benign.}
   DisposeProc = proc (p: pointer) {.nimcall, benign.}
@@ -59,19 +61,17 @@ proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-when true:
-  template debug(str: cstring; s: Cell) = discard
-else:
-  proc debug(str: cstring; s: Cell) =
-    let p = s +! sizeof(RefHeader)
-    cprintf("[%s] name %s RC %ld\n", str, p, s.rc shr rcShift)
+when logOrc:
+  proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
+    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld\n",
+      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color)
 
 proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld\n", s, s.rc shr rcShift, s.color)
   let p = s +! sizeof(RefHeader)
 
-  debug("free", s)
+  when logOrc: writeCell("free", s, desc)
 
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
@@ -90,13 +90,13 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   nimRawDispose(p)
 
-proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], desc)
 
-proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
@@ -121,11 +121,6 @@ proc unregisterCycle(s: Cell) =
   roots.d[idx][0].rootIdx = idx
   dec roots.len
 
-when false:
-  proc writeCell(msg: cstring; s: Cell; desc: PNimTypeV2) =
-    cfprintf(cstderr, "%s %s %ld root index: %ld; RC: %ld; color: %ld\n",
-      msg, desc.name, s.refId, s.rootIdx, s.rc shr rcShift, s.color)
-
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
   proc scanBlack(s: Cell) =
@@ -135,19 +130,17 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
       if t.color != colBlack:
         scanBlack(t)
   ]#
-  debug "scanBlack", s
   s.setColor colBlack
   let until = j.traceStack.len
   trace(s, desc, j)
-  #writeCell("root still alive", s, desc)
+  when logOrc: writeCell("root still alive", s, desc)
   while j.traceStack.len > until:
     let (t, desc) = j.traceStack.pop()
     inc t.rc, rcIncrement
-    debug "incRef", t
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
-      #writeCell("child still alive", t, desc)
+      when logOrc: writeCell("child still alive", t, desc)
 
 proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
@@ -278,8 +271,11 @@ proc collectCyclesBacon(j: var GcEnv) =
       s.buffered = false
       collectWhite(s)
   ]#
+  when logOrc:
+    for i in 0 ..< roots.len:
+      writeCell("root", roots.d[i][0], roots.d[i][1])
+
   for i in 0 ..< roots.len:
-    #writeCell("root", roots.d[i][0], roots.d[i][1])
     markGray(roots.d[i][0], roots.d[i][1], j)
   for i in 0 ..< roots.len:
     scan(roots.d[i][0], roots.d[i][1], j)
@@ -305,7 +301,7 @@ var
 
 proc collectCycles() =
   ## Collect cycles.
-  when false:
+  when logOrc:
     cfprintf(cstderr, "[collectCycles] begin\n")
 
   var j: GcEnv
@@ -335,7 +331,7 @@ proc collectCycles() =
     #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
   elif rootsThreshold < high(int) div 4:
     rootsThreshold = rootsThreshold * 3 div 2
-  when false:
+  when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem())
 

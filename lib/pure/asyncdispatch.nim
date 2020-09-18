@@ -1247,9 +1247,13 @@ else:
       # Descriptor is still present in the queue.
       case event
       of Event.Read:
-        fdData.readList = newList & fdData.readList
+        let oldReadList = move fdData.readList
+        fdData.readList = move newList
+        fdData.readList.add oldReadList
       of Event.Write:
-        fdData.writeList = newList & fdData.writeList
+        let oldWriteList = move fdData.writeList
+        fdData.writeList = move newList
+        fdData.writeList.add oldWriteList
       else:
         assert false, "Cannot process callbacks for " & $event
 
