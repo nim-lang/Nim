@@ -1,21 +1,16 @@
-discard """
-  output: "ha/home/a1xyz/usr/bin"
-"""
 # test the new strutils module
 
 import
   strutils
 
-import macros
-
 template rejectParse(e) =
   try:
     discard e
-    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+    raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
 
 proc testStrip() =
-  write(stdout, strip("  ha  "))
+  doAssert strip("  ha  ") == "ha"
 
 proc testRemoveSuffix =
   var s = "hello\n\r"
@@ -143,8 +138,9 @@ proc main() =
   testStrip()
   testRemoveSuffix()
   testRemovePrefix()
-  for p in split("/home/a1:xyz:/usr/bin", {':'}):
-    write(stdout, p)
+  var ret: seq[string] # or use `toSeq`
+  for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
+  doAssert ret == @["/home/a1", "xyz", "/usr/bin"]
 
 proc testDelete =
   var s = "0123456789ABCDEFGH"
@@ -154,24 +150,6 @@ proc testDelete =
   assert s == "01236789ABCDEFG"
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
-
-proc testIsAlphaNumeric =
-  assert isAlphaNumeric("abcdABC1234") == true
-  assert isAlphaNumeric("a") == true
-  assert isAlphaNumeric("abcABC?1234") == false
-  assert isAlphaNumeric("abcABC 1234") == false
-  assert isAlphaNumeric(".") == false
-
-testIsAlphaNumeric()
-
-proc testIsDigit =
-  assert isDigit("1") == true
-  assert isDigit("1234") == true
-  assert isDigit("abcABC?1234") == false
-  assert isDigit(".") == false
-  assert isDigit(":") == false
-
-testIsDigit()
 
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10
@@ -189,14 +167,56 @@ proc testFind =
 
 proc testRFind =
   assert "0123456789ABCDEFGAH".rfind('A') == 17
-  assert "0123456789ABCDEFGAH".rfind('A', 13) == 10
-  assert "0123456789ABCDEFGAH".rfind('H', 13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
   assert "0123456789ABCDEFGAH".rfind("A") == 17
-  assert "0123456789ABCDEFGAH".rfind("A", 13) == 10
-  assert "0123456789ABCDEFGAH".rfind("H", 13) == -1
+  assert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
-  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
-  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
+  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
+  assert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
+  assert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
+  assert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
+
+proc testTrimZeros() =
+  var x = "1200"
+  x.trimZeros()
+  assert x == "1200"
+  x = "120.0"
+  x.trimZeros()
+  assert x == "120"
+  x = "0."
+  x.trimZeros()
+  assert x == "0"
+  x = "1.0e2"
+  x.trimZeros()
+  assert x == "1e2"
+  x = "78.90"
+  x.trimZeros()
+  assert x == "78.9"
+  x = "1.23e4"
+  x.trimZeros()
+  assert x == "1.23e4"
+  x = "1.01"
+  x.trimZeros()
+  assert x == "1.01"
+  x = "1.1001"
+  x.trimZeros()
+  assert x == "1.1001"
+  x = "0.0"
+  x.trimZeros()
+  assert x == "0"
+  x = "0.01"
+  x.trimZeros()
+  assert x == "0.01"
+  x = "1e0"
+  x.trimZeros()
+  assert x == "1e0"
 
 proc testSplitLines() =
   let fixture = "a\nb\rc\r\nd"
@@ -257,6 +277,7 @@ proc testParseInts =
 testDelete()
 testFind()
 testRFind()
+testTrimZeros()
 testSplitLines()
 testCountLines()
 testParseInts()
@@ -266,21 +287,16 @@ assert(insertSep($232) == "232")
 assert(insertSep($12345, ',') == "12,345")
 assert(insertSep($0) == "0")
 
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
-assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
-assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
-assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
-assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
-assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
-assert(editDistance("main", "malign") == 2)
-
 assert "/1/2/3".rfind('/') == 4
-assert "/1/2/3".rfind('/', 1) == 0
+assert "/1/2/3".rfind('/', last=1) == 0
 assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
 assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
+
+assert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
+assert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
+assert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
 
 assert "".parseHexStr == ""
 assert "00Ff80".parseHexStr == "\0\xFF\x80"
@@ -300,7 +316,7 @@ assert "".toHex == ""
 assert "\x00\xFF\x80".toHex == "00FF80"
 assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
-assert(' '.repeat(8)== "        ")
+assert(' '.repeat(8) == "        ")
 assert(" ".repeat(8) == "        ")
 assert(spaces(8) == "        ")
 
@@ -332,3 +348,90 @@ when true:
 
 main()
 #OUT ha/home/a1xyz/usr/bin
+
+
+# `parseEnum`, ref issue #14030
+# check enum defined at top level
+type
+  Foo = enum
+    A = -10
+    B = "bb"
+    C = (-5, "ccc")
+    D = 15
+    E = "ee" # check that we count enum fields correctly
+
+block:
+  let a = parseEnum[Foo]("A")
+  let b = parseEnum[Foo]("bb")
+  let c = parseEnum[Foo]("ccc")
+  let d = parseEnum[Foo]("D")
+  let e = parseEnum[Foo]("ee")
+  doAssert a == A
+  doAssert b == B
+  doAssert c == C
+  doAssert d == D
+  doAssert e == E
+  try:
+    let f = parseEnum[Foo]("Bar")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Foo]("Bar", A)
+  doAssert g == A
+
+block:
+  # check enum defined in block
+  type
+    Bar = enum
+      V
+      W = "ww"
+      X = (3, "xx")
+      Y = 10
+      Z = "zz" # check that we count enum fields correctly
+
+  let a = parseEnum[Bar]("V")
+  let b = parseEnum[Bar]("ww")
+  let c = parseEnum[Bar]("xx")
+  let d = parseEnum[Bar]("Y")
+  let e = parseEnum[Bar]("zz")
+  doAssert a == V
+  doAssert b == W
+  doAssert c == X
+  doAssert d == Y
+  doAssert e == Z
+  try:
+    let f = parseEnum[Bar]("Baz")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Bar]("Baz", V)
+  doAssert g == V
+
+block:
+  # check ambiguous enum fails to parse
+  type
+    Ambig = enum
+      f1 = "A"
+      f2 = "B"
+      f3 = "A"
+
+  doAssert not compiles((let a = parseEnum[Ambig]("A")))
+
+block:
+  # check almost ambiguous enum
+  type
+    AlmostAmbig = enum
+      f1 = "someA"
+      f2 = "someB"
+      f3 = "SomeA"
+
+  let a = parseEnum[AlmostAmbig]("someA")
+  let b = parseEnum[AlmostAmbig]("someB")
+  let c = parseEnum[AlmostAmbig]("SomeA")
+  doAssert a == f1
+  doAssert b == f2
+  doAssert c == f3

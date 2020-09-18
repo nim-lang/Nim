@@ -79,8 +79,22 @@ block EmptyTuple:
 block Arrow:
   let text = "foo;bar;baz;"
   var idx = 0
-  var res = ""
   doAssert scanp(text, idx, +(~{';','\0'} -> (discard $_)), ';')
   doAssert scanp(text, idx, +(~{';','\0'} -> (discard $_)), ';')
   doAssert scanp(text, idx, +(~{';','\0'} -> (discard $_)), ';')
   doAssert scanp(text, idx, +(~{';','\0'} -> (discard $_)), ';') == false
+
+
+block issue15064:
+  var nick1, msg1: string
+  doAssert scanf("<abcd> a", "<$+> $+", nick1, msg1)
+  doAssert nick1 == "abcd"
+  doAssert msg1 == "a"
+
+  var nick2, msg2: string
+  doAssert(not scanf("<abcd> ", "<$+> $+", nick2, msg2))
+
+  var nick3, msg3: string
+  doAssert scanf("<abcd> ", "<$+> $*", nick3, msg3)
+  doAssert nick3 == "abcd"
+  doAssert msg3 == ""

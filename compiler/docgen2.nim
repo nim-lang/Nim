@@ -11,8 +11,7 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos,
-  pathutils
+  options, ast, msgs, passes, docgen, lineinfos, pathutils
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -23,8 +22,8 @@ type
     config: ConfigRef
   PGen = ref TGen
 
-template shouldProcess(g): bool =
-  (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+proc shouldProcess(g: PGen): bool =
+  (optWholeProject in g.doc.conf.globalOptions and g.module.getnimblePkgId == g.doc.conf.mainPackageId) or
       sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
@@ -63,7 +62,7 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   g.module = module
   g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config, ext)
+      graph.cache, graph.config, ext, module)
   d.hasToc = true
   g.doc = d
   result = g

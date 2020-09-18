@@ -27,7 +27,7 @@ Package level objects
 Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
 other modules as an `incomplete`:idx: object type. This feature allows to
-break up recursive type dependencies accross module boundaries. Incomplete
+break up recursive type dependencies across module boundaries. Incomplete
 object types are always passed ``byref`` and can only be used in pointer like
 contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
 not yet know the size of the object. To complete an incomplete object
@@ -104,7 +104,7 @@ cannot have the type ``void``.
 Covariance
 ==========
 
-Covariance in Nim can be introduced only though pointer-like types such
+Covariance in Nim can be introduced only through pointer-like types such
 as ``ptr`` and ``ref``. Sequence, Array and OpenArray types, instantiated
 with pointer-like types will be considered covariant if and only if they
 are also immutable. The introduction of a ``var`` modifier or additional
@@ -203,45 +203,141 @@ useful only when interfacing with imported types having such semantics.
 Automatic dereferencing
 =======================
 
-If the `experimental mode <#pragmas-experimental-pragma>`_ is active and no other match
-is found, the first argument ``a`` is dereferenced automatically if it's a
-pointer type and overloading resolution is tried with ``a[]`` instead.
-
-
-Automatic self insertions
-=========================
-
-**Note**: The ``.this`` pragma is deprecated and should not be used anymore.
-
-Starting with version 0.14 of the language, Nim supports ``field`` as a
-shortcut for ``self.field`` comparable to the `this`:idx: keyword in Java
-or C++. This feature has to be explicitly enabled via a ``{.this: self.}``
-statement pragma (instead of ``self`` any other identifier can be used too).
-This pragma is active for the rest of the module:
+Automatic dereferencing is performed for the first argument of a routine call.
+This feature has to be only enabled via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
-  type
-    Parent = object of RootObj
-      parentField: int
-    Child = object of Parent
-      childField: int
+  {.experimental: "implicitDeref".}
 
-  {.this: self.}
-  proc sumFields(self: Child): int =
-    result = parentField + childField
-    # is rewritten to:
-    # result = self.parentField + self.childField
+  proc depth(x: NodeObj): int = ...
 
-In addition to fields, routine applications are also rewritten, but only
-if no other interpretation of the call is possible:
+  var
+    n: Node
+  new(n)
+  echo n.depth
+  # no need to write n[].depth either
+
+Code reordering
+===============
+
+The code reordering feature can implicitly rearrange procedure, template, and
+macro definitions along with variable declarations and initializations at the top
+level scope so that, to a large extent, a programmer should not have to worry
+about ordering definitions correctly or be forced to use forward declarations to
+preface definitions inside a module.
+
+..
+   NOTE: The following was documentation for the code reordering precursor,
+   which was {.noForward.}.
+
+   In this mode, procedure definitions may appear out of order and the compiler
+   will postpone their semantic analysis and compilation until it actually needs
+   to generate code using the definitions. In this regard, this mode is similar
+   to the modus operandi of dynamic scripting languages, where the function
+   calls are not resolved until the code is executed. Here is the detailed
+   algorithm taken by the compiler:
+
+   1. When a callable symbol is first encountered, the compiler will only note
+   the symbol callable name and it will add it to the appropriate overload set
+   in the current scope. At this step, it won't try to resolve any of the type
+   expressions used in the signature of the symbol (so they can refer to other
+   not yet defined symbols).
+
+   2. When a top level call is encountered (usually at the very end of the
+   module), the compiler will try to determine the actual types of all of the
+   symbols in the matching overload set. This is a potentially recursive process
+   as the signatures of the symbols may include other call expressions, whose
+   types will be resolved at this point too.
+
+   3. Finally, after the best overload is picked, the compiler will start
+   compiling the body of the respective symbol. This in turn will lead the
+   compiler to discover more call expressions that need to be resolved and steps
+   2 and 3 will be repeated as necessary.
+
+   Please note that if a callable symbol is never used in this scenario, its
+   body will never be compiled. This is the default behavior leading to best
+   compilation times, but if exhaustive compilation of all definitions is
+   required, using ``nim check`` provides this option as well.
+
+Example:
 
 .. code-block:: nim
-  proc test(self: Child) =
-    echo childField, " ", sumFields()
-    # is rewritten to:
-    echo self.childField, " ", sumFields(self)
-    # but NOT rewritten to:
-    echo self, self.childField, " ", sumFields(self)
+
+  {.experimental: "codeReordering".}
+
+  proc foo(x: int) =
+    bar(x)
+
+  proc bar(x: int) =
+    echo(x)
+
+  foo(10)
+
+Variables can also be reordered as well. Variables that are *initialized* (i.e.
+variables that have their declaration and assignment combined in a single
+statement) can have their entire initialization statement reordered. Be wary of
+what code is executed at the top level:
+
+.. code-block:: nim
+  {.experimental: "codeReordering".}
+
+  proc a() =
+    echo(foo)
+
+  var foo = 5
+
+  a() # outputs: "5"
+
+..
+   TODO: Let's table this for now. This is an *experimental feature* and so the
+   specific manner in which ``declared`` operates with it can be decided in
+   eventuality, because right now it works a bit weirdly.
+
+   The values of expressions involving ``declared`` are decided *before* the
+   code reordering process, and not after. As an example, the output of this
+   code is the same as it would be with code reordering disabled.
+
+   .. code-block:: nim
+     {.experimental: "codeReordering".}
+
+     proc x() =
+       echo(declared(foo))
+
+     var foo = 4
+
+     x() # "false"
+
+It is important to note that reordering *only* works for symbols at top level
+scope. Therefore, the following will *fail to compile:*
+
+.. code-block:: nim
+  {.experimental: "codeReordering".}
+
+  proc a() =
+    b()
+    proc b() =
+      echo("Hello!")
+
+  a()
+
+
+Named argument overloading
+==========================
+
+Routines with the same type signature can be called differently if a parameter
+has different names. This does not need an ``experimental`` switch, but is an
+unstable feature.
+
+.. code-block::nim
+  proc foo(x: int) =
+    echo "Using x: ", x
+  proc foo(y: int) =
+    echo "Using y: ", y
+
+  foo(x = 2)
+  # Using x: 2
+  foo(y = 2)
+  # Using y: 2
 
 
 Do notation
@@ -266,7 +362,7 @@ calls can use the ``do`` keyword:
 ``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 In calls using the command syntax, the do block will bind to the immediately
-preceeding expression, transforming it in a call.
+preceding expression, transforming it in a call.
 
 ``do`` with parentheses is an anonymous ``proc``; however a ``do`` without
 parentheses is just a block of code. The ``do`` notation can be used to
@@ -338,6 +434,36 @@ This operator will be matched against assignments to missing fields.
 .. code-block:: nim
   a.b = c # becomes `.=`(a, b, c)
 
+
+Not nil annotation
+==================
+
+**Note:** This is an experimental feature. It can be enabled with
+``{.experimental: "notnil"}``.
+
+All types for which ``nil`` is a valid value can be annotated with the ``not
+nil`` annotation to exclude ``nil`` as a valid value:
+
+.. code-block:: nim
+  {.experimental: "notnil"}
+
+  type
+    PObject = ref TObj not nil
+    TProc = (proc (x, y: int)) not nil
+
+  proc p(x: PObject) =
+    echo "not nil"
+
+  # compiler catches this:
+  p(nil)
+
+  # and also this:
+  var x: PObject
+  p(x)
+
+The compiler ensures that every code path initializes variables which contain
+non-nilable pointers. The details of this analysis are still to be specified
+here.
 
 
 Concepts
@@ -588,7 +714,7 @@ type is an instance of it:
 
   type
     Functor[A] = concept f
-      type MatchedGenericType = genericHead(f.type)
+      type MatchedGenericType = genericHead(typeof(f))
         # `f` will be a value of a type such as `Option[T]`
         # `MatchedGenericType` will become the `Option` type
 
@@ -621,7 +747,7 @@ matched to a concrete type:
 
       t1 < t2 is bool
 
-      type TimeSpan = type(t1 - t2)
+      type TimeSpan = typeof(t1 - t2)
       TimeSpan * int is TimeSpan
       TimeSpan + TimeSpan is TimeSpan
 
@@ -649,7 +775,7 @@ object inheritance syntax involving the ``of`` keyword:
 
 .. code-block:: nim
   type
-    Graph = concept g, type G of EqualyComparable, Copyable
+    Graph = concept g, type G of EquallyComparable, Copyable
       type
         VertexType = G.VertexType
         EdgeType = G.EdgeType
@@ -776,11 +902,12 @@ object inheritance syntax involving the ``of`` keyword:
 Type bound operations
 =====================
 
-There are 3 operations that are bound to a type:
+There are 4 operations that are bound to a type:
 
 1. Assignment
-2. Destruction
-3. Deep copying for communication between threads
+2. Moves
+3. Destruction
+4. Deep copying for communication between threads
 
 These operations can be *overridden* instead of *overloaded*. This means the
 implementation is automatically lifted to structured types. For instance if type
@@ -792,78 +919,8 @@ bound to ``T`` and not to ``ref T``. This also means that one cannot override
 ``deepCopy`` for both ``ptr T`` and ``ref T`` at the same time; instead a
 helper distinct or object type has to be used for one pointer type.
 
-
-operator `=`
-------------
-
-This operator is the assignment operator. Note that in the contexts
-``result = expr``, ``parameter = defaultValue`` or for
-parameter passing no assignment is performed. For a type ``T`` that has an
-overloaded assignment operator ``var v = T()`` is rewritten
-to ``var v: T; v = T()``; in other words ``var`` and ``let`` contexts do count
-as assignments.
-
-The assignment operator needs to be attached to an object or distinct
-type ``T``. Its signature has to be ``(var T, T)``. Example:
-
-.. code-block:: nim
-  type
-    Concrete = object
-      a, b: string
-
-  proc `=`(d: var Concrete; src: Concrete) =
-    shallowCopy(d.a, src.a)
-    shallowCopy(d.b, src.b)
-    echo "Concrete '=' called"
-
-  var x, y: array[0..2, Concrete]
-  var cA, cB: Concrete
-
-  var cATup, cBTup: tuple[x: int, ha: Concrete]
-
-  x = y
-  cA = cB
-  cATup = cBTup
-
-
-
-destructors
------------
-
-A destructor must have a single parameter with a concrete type (the name of a
-generic type is allowed too). The name of the destructor has to be ``=destroy``.
-
-``=destroy(v)`` will be automatically invoked for every local stack
-variable ``v`` that goes out of scope.
-
-If a structured type features a field with destructable type and
-the user has not provided an explicit implementation, a destructor for the
-structured type will be automatically generated. Calls to any base class
-destructors in both user-defined and generated destructors will be inserted.
-
-A destructor is attached to the type it destructs.
-
-.. code-block:: nim
-  type
-    MyObj = object
-      x, y: int
-      p: pointer
-
-  proc `=destroy`(o: var MyObj) =
-    if o.p != nil: dealloc o.p
-
-  proc open: MyObj =
-    result = MyObj(x: 1, y: 2, p: alloc(3))
-
-  proc work(o: MyObj) =
-    echo o.x
-    # No destructor invoked here for 'o' as 'o' is a parameter.
-
-  proc main() =
-    # destructor automatically invoked at the end of the scope:
-    var x = open()
-    # valid: pass 'x' to some other proc:
-    work(x)
+Assignments, moves and destruction are specified in
+the `destructors <destructors.html>`_ document.
 
 
 deepCopy
@@ -883,7 +940,58 @@ This mechanism will be used by most data structures that support shared memory
 like channels to implement thread safe automatic memory management.
 
 The builtin ``deepCopy`` can even clone closures and their environments. See
-the documentation of `spawn`_ for details.
+the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
+
+
+Case statement macros
+=====================
+
+A macro that needs to be called `match`:idx: can be used to rewrite
+``case`` statements in order to implement `pattern matching`:idx: for
+certain types. The following example implements a simplistic form of
+pattern matching for tuples, leveraging the existing equality operator
+for tuples (as provided in ``system.==``):
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  {.experimental: "caseStmtMacros".}
+
+  import macros
+
+  macro match(n: tuple): untyped =
+    result = newTree(nnkIfStmt)
+    let selector = n[0]
+    for i in 1 ..< n.len:
+      let it = n[i]
+      case it.kind
+      of nnkElse, nnkElifBranch, nnkElifExpr, nnkElseExpr:
+        result.add it
+      of nnkOfBranch:
+        for j in 0..it.len-2:
+          let cond = newCall("==", selector, it[j])
+          result.add newTree(nnkElifBranch, cond, it[^1])
+      else:
+        error "'match' cannot handle this node", it
+    echo repr result
+
+  case ("foo", 78)
+  of ("foo", 78): echo "yes"
+  of ("bar", 88): echo "no"
+  else: discard
+
+
+Currently case statement macros must be enabled explicitly
+via ``{.experimental: "caseStmtMacros".}``.
+
+``match`` macros are subject to overload resolution. First the
+``case``'s selector expression is used to determine which ``match``
+macro to call. To this macro is then passed the complete ``case``
+statement body and the macro is evaluated.
+
+In other words, the macro needs to transform the full ``case`` statement
+but only the statement's selector expression is used to determine which
+macro to call.
 
 
 Term rewriting macros
@@ -1589,6 +1697,26 @@ having unknown lock level as well:
       g.memberProc()
 
 
+noRewrite pragma
+----------------
+
+Term rewriting macros and templates are currently greedy and
+they will rewrite as long as there is a match.
+There was no way to ensure some rewrite happens only once,
+eg. when rewriting term to same term plus extra content.
+
+``noRewrite`` pragma can actually prevent further rewriting on marked code,
+e.g. with given example ``echo("ab")`` will be rewritten just once:
+
+.. code-block:: nim
+  template pwnEcho{echo(x)}(x: expr) =
+    {.noRewrite.}: echo("pwned!")
+
+  echo "ab"
+
+``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
+
+
 Taint mode
 ==========
 
@@ -1615,11 +1743,11 @@ Aliasing restrictions in parameter passing
 ==========================================
 
 **Note**: The aliasing restrictions are currently not enforced by the
-implementation and need to be fleshed out futher.
+implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
-at runtime. An "output parameter" is a parameter of type ``var T``, an input
-parameter is any parameter that is not of type ``var``.
+at runtime. An "output parameter" is a parameter of type ``var T``,
+an input parameter is any parameter that is not of type ``var``.
 
 1. Two output parameters should never be aliased.
 2. An input and an output parameter should not be aliased.
@@ -1634,3 +1762,93 @@ via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different
 
 5. A global or thread local variable (or a location derived from such a location)
    can only passed to a parameter of a ``.noSideEffect`` proc.
+
+
+Strict funcs
+============
+
+Since version 1.4 a stricter definition of "side effect" is available. In addition
+to the existing rule that a side effect is calling a function with side effects
+the following rule is also enforced:
+
+Any mutation to an object does count as a side effect if that object is reachable
+via a parameter that is not declared as a ``var`` parameter.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "strictFuncs".}
+
+  type
+    Node = ref object
+      le, ri: Node
+      data: string
+
+  func len(n: Node): int =
+    # valid: len does not have side effects
+    var it = n
+    while it != nil:
+      inc result
+      it = it.ri
+
+  func mut(n: Node) =
+    let m = n # is the statement that connected the mutation to the parameter
+    m.data = "yeah" # the mutation is here
+    # Error: 'mut' can have side effects
+    # an object reachable from 'n' is potentially mutated
+
+
+The algorithm behind this analysis is currently not documented.
+
+
+View types
+==========
+
+A view type is a type that contains one of the following types:
+
+- ``var T`` (mutable view into ``T``)
+- ``lent T`` (immutable view into ``T``)
+- ``openArray[T]`` (pair of (pointer to array of ``T``, size))
+
+Since version 1.4 Nim allows view types to be used as local variables.
+This feature needs to be enabled via ``{.experimental: "views".}``.
+
+A local variable of a view type *borrows* from the locations and
+it is statically enforced that the view does not outlive the location
+it was borrowed from.
+
+For example:
+
+.. code-block:: nim
+
+  {.experimental: "views".}
+
+  proc take(a: openArray[int]) =
+    echo a.len
+
+  proc main(s: seq[int]) =
+    var x: openArray[int] = s # 'x' is a view into 's'
+    # it is checked that 'x' does not outlive 's' and
+    # that 's' is not mutated.
+    for i in 0 .. high(x):
+      echo x[i]
+    take(x)
+
+    take(x.toOpenArray(0, 1)) # slicing remains possible
+    let y = x  # create a view from a view
+    take y
+    # it is checked that 'y' does not outlive 'x' and
+    # that 'x' is not mutated as long as 'y' lives.
+
+
+  main(@[11, 22, 33])
+
+
+
+If a view type is used as a return type, the location must borrow from the
+first parameter that is passed to the proc.
+See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
+details about how this is done for ``var T``.
+
+The algorithm behind this analysis is currently not documented.

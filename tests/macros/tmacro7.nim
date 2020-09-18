@@ -1,18 +1,19 @@
 discard """
-  output: '''calling!stuff
+output: '''
+calling!stuff
 calling!stuff
 '''
-  joinable: false
+disabled: true
 """
 
+# this test modifies an already semchecked ast (bad things happen)
+# this test relies on the bug #4547
 # issue #7792
 
 import macros
 
-
 proc callProc(str: string) =
   echo "calling!" & str
-
 
 macro testMacro(code: typed): untyped =
   let stmtList = newNimNode(nnkStmtList)
@@ -27,11 +28,9 @@ macro testMacro(code: typed): untyped =
 
   result = newEmptyNode()
 
-
 proc main() {.testMacro.} =
   echo "test"
   echo "test2"
-
 
 when isMainModule:
   main()

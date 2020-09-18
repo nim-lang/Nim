@@ -9,7 +9,7 @@
 
 ## This module contains a simple persistent id generator.
 
-import idents, strutils, os, options, pathutils
+import idents, strutils, options, pathutils
 
 var gFrontEndId*: int
 

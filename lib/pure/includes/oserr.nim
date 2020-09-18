@@ -31,7 +31,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
   ## * `osLastError proc <#osLastError>`_
   runnableExamples:
-    when defined(posix):
+    when defined(linux):
       assert osErrorMsg(OSErrorCode(0)) == ""
       assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
       assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"
@@ -57,8 +57,10 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
 
-proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
-  ## Raises an `OSError exception <system.html#OSError>`_.
+proc newOSError*(
+  errorCode: OSErrorCode, additionalInfo = ""
+): owned(ref OSError) {.noinline.} =
+  ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
   ## The ``errorCode`` will determine the
   ## message, `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_ will be used
@@ -82,7 +84,14 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
     e.msg.addQuoted additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"
-  raise e
+  return e
+
+proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
+  ## Raises an `OSError exception <system.html#OSError>`_.
+  ##
+  ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn
+  ## how the exception object is created.
+  raise newOSError(errorCode, additionalInfo)
 
 {.push stackTrace:off.}
 proc osLastError*(): OSErrorCode {.sideEffect.} =

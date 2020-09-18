@@ -120,6 +120,11 @@ ifeq ($(ucpu),ppc64)
 endif
 ifeq ($(ucpu),powerpc)
   mycpu = powerpc
+  ifeq ($(myos),freebsd)
+    mycpu = $(shell sh -c 'uname -p | tr "[:upper:]" "[:lower:]"')
+    CFLAGS += -m64
+    LDFLAGS += -m64
+  endif
 endif
 ifeq ($(ucpu),ppc)
   mycpu = ppc

@@ -69,8 +69,8 @@ macro foo2() =
   echo zz
 
   var ww = -9
-  var vv = ww.uint
-  var kk = vv.uint32
+  var vv = cast[uint](ww)
+  var kk = cast[uint32](vv)
   echo kk
 
 foo()

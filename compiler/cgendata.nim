@@ -10,8 +10,8 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
-  tables, ndi, lineinfos, pathutils, modulegraphs
+  ast, ropes, options, intsets,
+  tables, ndi, lineinfos, pathutils, modulegraphs, sets
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -25,10 +25,10 @@ type
                               # this is needed for strange type generation
                               # reasons
     cfsFieldInfo,             # section for field information
-    cfsTypeInfo,              # section for type information
+    cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
-    cfsVars,                  # section for C variable declarations
     cfsData,                  # section for C constant data
+    cfsVars,                  # section for C variable declarations
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
     cfsDatInitProc,           # section for the C datInit proc
@@ -58,22 +58,27 @@ type
     id*: int                  # the ID of the label; positive means that it
     label*: Rope              # generated text for the label
                               # nil if label is not used
-    sections*: TCProcSections # the code beloging
+    sections*: TCProcSections # the code belonging
     isLoop*: bool             # whether block is a loop
     nestedTryStmts*: int16    # how many try statements is it nested into
     nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
 
+  TCProcFlag* = enum
+    beforeRetNeeded,
+    threadVarAccessed,
+    hasCurFramePointer,
+    noSafePoints,
+    nimErrorFlagAccessed,
+    nimErrorFlagDeclared,
+    nimErrorFlagDisabled
+
   TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
-    beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
-    threadVarAccessed*: bool  # true if the proc already accessed some threadvar
-    hasCurFramePointer*: bool # true if _nimCurFrame var needed to recover after
-                              # exception is generated
-    noSafePoints*: bool       # the proc doesn't use safe points in exception handling
+    flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block
@@ -86,21 +91,20 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
-    maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     splitDecls*: int          # > 0 if we are in some context for C++ that
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
-    gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: Rope        # the struct {} we put the GC markers into
+    withinTryWithExcept*: int # required for goto based exception handling
+    withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
-  Codegenflag* = enum
+  CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
     usesThreadVars,     # true if the module uses a thread var
     frameDeclared,      # hack for ROD support so that we don't declare
@@ -114,12 +118,11 @@ type
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
     mapping*: Rope             # the generated mapping file (if requested)
     modules*: seq[BModule]     # list of all compiled modules
-    modules_closed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
+    modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
-    breakPointId*: int
-    breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCacheWithOwner
+    typeInfoMarkerV2*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
@@ -137,22 +140,27 @@ type
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
-    flags*: set[Codegenflag]
+    flags*: set[CodegenFlag]
     module*: PSym
     filename*: AbsoluteFile
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
+    typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
+                              # would be ideal but for some reason enums
+                              # don't seem to get cached so it'd generate
+                              # 1 ABI check per occurence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
+    typeInfoMarkerV2*: TypeCache
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
-    inHcrInitGuard*: bool     # We are currently withing a HCR reloading guard.
+    inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
     dataCache*: TNodeTable
     typeNodes*, nimTypes*: int # used for type info generation
@@ -174,7 +182,7 @@ proc includeHeader*(this: BModule; header: string) =
 
 proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block
-  result = p.blocks[p.blocks.len-1].sections[s]
+  result = p.blocks[^1].sections[s]
 
 proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
@@ -184,8 +192,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module
-  if prc != nil: result.options = prc.options
-  else: result.options = module.config.options
+  result.options = if prc != nil: prc.options
+                   else: module.config.options
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
@@ -196,6 +204,6 @@ proc newModuleList*(g: ModuleGraph): BModuleList =
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
-  for m in g.modules_closed:
+  for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m

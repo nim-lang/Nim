@@ -78,7 +78,7 @@ proc getFirstValue[K,V](m : Map[K,V]): V =
   for i in m.valuesSeq:
     return i
 
-  raise newException(RangeError, "no values")
+  raise newException(RangeDefect, "no values")
 
 proc useConceptProcInGeneric[K, V](t: Table[K, V]): V =
   return t.getFirstValue

@@ -12,8 +12,7 @@ foo = bar                     # No error if assigned directly
 
 # bug #2250
 
-import
-    math, strutils
+import math
 
 type
     Meters = float

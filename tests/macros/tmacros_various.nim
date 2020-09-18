@@ -9,6 +9,7 @@ Infix
       Ident "b"
       Ident "cint"
   NilLit
+macrocache ok
 '''
 
   output: '''
@@ -21,11 +22,12 @@ a[1]: 45
 x: some string
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
+0
 '''
 """
 
 
-import macros, sugar
+import macros, sugar, macrocache
 
 
 block tdump:
@@ -142,3 +144,104 @@ const cnst1 = bilookups(pairs)
 echo cnst1
 const cnst2 = bilookups2({"key": "val", "keyB": "2"})
 echo cnst2
+
+
+
+# macrocache #11404
+const
+  mcTable = CacheTable"nimTest"
+  mcSeq = CacheSeq"nimTest"
+  mcCounter = CacheCounter"nimTest"
+
+static:
+  doAssert(mcCounter.value == 0) # CacheCounter.value
+  mcCounter.inc                  # CacheCounter.inc
+  doAssert(mcCounter.value == 1) # CacheCounter.value
+
+  let a = newLit(1)
+  let b = newLit(2)
+  let c = newLit(3)
+  let d = newLit(4)
+
+  mcSeq.add a # CacheSeq.add
+  mcSeq.add b # CacheSeq.add
+  mcSeq.add c # CacheSeq.add
+
+  doAssert(mcSeq.len == 3)  # CacheSeq.len
+  #doAssert(c in mcSeq)      # CacheSeq.contains
+  #doAssert(d notin mcSeq)   # CacheSeq.contains
+
+  mcSeq.incl d              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  mcSeq.incl c              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  doAssert(mcSeq[3] == d)   # CacheSeq.[]
+
+  #doAssert(mcSeq.pop() == d)# CacheSeq.pop
+  #doAssert(mcSeq.len == 3)  # CacheSeq.len
+
+  doAssert(mcTable.len == 0)  # CacheTable.len
+  mcTable["a"] = a            # CacheTable.[]=
+  doAssert(mcTable.len == 1)  # CacheTable.len
+
+  doAssert(mcTable["a"] == a) # CacheTable.[]
+  #doAssert("a" in mcTable)    # CacheTable.contains
+  #doAssert(mcTable.hasKey("a"))# CacheTable.hasKey
+
+  for k, v in mcTable:  # CacheTable.items
+    doAssert(k == "a")
+    doAssert(v == a)
+
+  echo "macrocache ok"
+
+block tupleNewLitTests:
+  macro t(): untyped =
+    result = newLit (1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))
+  doAssert $t() == """(1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))"""
+    # this `$` test is needed because tuple equality doesn't distinguish
+    # between named vs unnamed tuples
+  doAssert t() == (1, "foo", (), (1, ), (a1: 'x', a2: @["ba"]))
+
+from strutils import contains
+block getImplTransformed:
+  macro bar(a: typed): string =
+    # newLit a.getImpl.repr # this would be before code transformation
+    let b = a.getImplTransformed
+    newLit b.repr
+  template toExpand() =
+    for ai in 0..2: echo ai
+  proc baz(a=1): int =
+    defer: discard
+    toExpand()
+    12
+  const code = bar(baz)
+  # sanity check:
+  doAssert "finally" in code # `defer` is lowered to try/finally
+  doAssert "while" in code # `for` is lowered to `while`
+  doAssert "toExpand" notin code
+    # template is expanded (but that would already be the case with
+    # `a.getImpl.repr`, unlike the other transformations mentioned above
+
+
+# test macro resemming
+macro makeVar(): untyped =
+  quote:
+    var tensorY {.inject.}: int
+
+macro noop(a: typed): untyped =
+  a
+
+noop:
+  makeVar
+echo tensorY
+
+macro xbenchmark(body: typed): untyped =
+  result = body
+
+xbenchmark:
+  proc fastSHA(inputtest: string) =
+    discard inputtest
+  fastSHA("hey")
+

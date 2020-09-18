@@ -17,3 +17,13 @@ proc toByteArrayBE*[T: SomeInteger](num: T): ByteArrayBE[sizeof(T)]=
 
 let a = 12345.toByteArrayBE
 echo a[^2 .. ^1] # to make it work on both 32-bit and 64-bit
+
+#---------------------------------------------------------------------
+
+type
+  Payload = object
+    something: int
+    vals: UncheckedArray[int]
+
+static:
+  doAssert(compiles(offsetOf(Payload, vals)))

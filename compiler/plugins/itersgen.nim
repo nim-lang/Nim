@@ -9,9 +9,7 @@
 
 ## Plugin to transform an inline iterator into a data structure.
 
-import ".." / [ast, astalgo,
-  magicsys, lookups, semdata,
-  lambdalifting, msgs]
+import ".." / [ast, lookups, semdata, lambdalifting, msgs]
 
 proc iterToProcImpl*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
@@ -44,5 +42,5 @@ proc iterToProcImpl*(c: PContext, n: PNode): PNode =
               pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
               pragmas = orig[pragmasPos], exceptions = c.graph.emptyNode)
 
-  prc.ast.add iter.sym.ast.sons[resultPos]
+  prc.ast.add iter.sym.ast[resultPos]
   addInterfaceDecl(c, prc)

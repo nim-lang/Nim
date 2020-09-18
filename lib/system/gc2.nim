@@ -193,12 +193,12 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   markAsEscaped(cell)
   add(gch.additionalRoots, cell)
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -210,10 +210,10 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
       break
     dec(i)
 
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} =
   discard "can we do some freeing here?"
 
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} =
   discard "can we do some freeing here?"
 
 template markGrey(x: PCell) =
@@ -225,7 +225,7 @@ template markGrey(x: PCell) =
     x.setColor(rcGrey)
     add(gch.greyStack, x)
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -238,9 +238,9 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef marks 'src' as grey only if dest is not on the
-  # stack. It is used by the code generator if it cannot decide wether a
+  # stack. It is used by the code generator if it cannot decide whether a
   # reference is in the stack or not (this can happen for var parameters).
   if src != nil:
     let s = usrToCell(src)
@@ -291,8 +291,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
       var s = cast[PGenericSeq](d)
       if s != nil:
         for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+          forAllChildrenAux(cast[pointer](d +% align(GenericSeqSize, cell.typ.base.align) +% i *% cell.typ.base.size), cell.typ.base, op)
     else: discard
 
 {.push stackTrace: off, profiler:off.}
@@ -359,7 +358,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+  let size = addInt(align(GenericSeqSize, typ.base.align), mulInt(len, typ.base.size))
   result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
@@ -378,11 +377,13 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
   var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-  var elemSize = 1
-  if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+  var elemSize, elemAlign = 1
+  if ol.typ.kind != tyString:
+    elemSize = ol.typ.base.size
+    elemAlign = ol.typ.base.align
   incTypeSize ol.typ, newsize
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len*elemSize
   copyMem(res, ol, oldsize + sizeof(Cell))
   zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
           newsize-oldsize)

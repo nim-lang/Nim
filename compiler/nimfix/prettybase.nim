@@ -8,9 +8,7 @@
 #
 
 import strutils except Letters
-import lexbase, streams
 import ".." / [ast, msgs, lineinfos, idents, options, linter]
-from os import splitFile
 
 proc replaceDeprecated*(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PIdent) =
   let line = sourceLine(conf, info)

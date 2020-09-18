@@ -19,12 +19,13 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt,
-  scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  commands, options, msgs,
+  extccomp, strutils, os, main, parseopt,
+  idents, lineinfos, cmdlinehelper,
   pathutils
 
-include nodejs
+from std/browsers import openDefaultBrowser
+from nodejs import findNodeJs
 
 when hasTinyCBackend:
   import tccgen
@@ -33,31 +34,37 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
-proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
-  when defined(unix):
-    if os.isAbsolute(f.string): result = f
-    else: result = AbsoluteFile("./" & f.string)
-  else:
-    result = f
-
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
+
+  config.commandLine.setLen 0
+    # bugfix: otherwise, config.commandLine ends up duplicated
+
   while true:
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
-      if p.key == " ":
+    of cmdLongOption, cmdShortOption:
+      config.commandLine.add " "
+      config.commandLine.addCmdPrefix p.kind
+      config.commandLine.add p.key.quoteShell # quoteShell to be future proof
+      if p.val.len > 0:
+        config.commandLine.add ':'
+        config.commandLine.add p.val.quoteShell
+
+      if p.key == "": # `-` was passed to indicate main project is stdin
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
         processSwitch(pass, p, config)
     of cmdArgument:
+      config.commandLine.add " "
+      config.commandLine.add p.key.quoteShell
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
+        config.arguments.len > 0 and config.command.normalize notin ["run", "e", "r"]:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
@@ -73,18 +80,30 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   if not self.loadConfigsAndRunMainCommand(cache, conf): return
-  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
     if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
+      tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
-    var ex = quoteShell conf.absOutFile
-    if conf.cmd == cmdCompileToJS:
-      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
+    let output = conf.absOutFile
+    case conf.cmd
+    of cmdCompileToBackend:
+      var cmdPrefix = ""
+      case conf.backend
+      of backendC, backendCpp, backendObjc: discard
+      of backendJs: cmdPrefix = findNodeJs() & " "
+      else: doAssert false, $conf.backend
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+    of cmdDoc, cmdRst2html:
+      if conf.arguments.len > 0:
+        # reserved for future use
+        rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
+      openDefaultBrowser($output)
     else:
-      execExternalProgram(conf, ex & ' ' & conf.arguments)
+      # support as needed
+      rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000

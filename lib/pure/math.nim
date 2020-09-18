@@ -35,7 +35,7 @@
 ##   # nan   (use `complex` module)
 ##
 ## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 ##
 ## **See also:**
 ## * `complex module<complex.html>`_ for complex numbers and their
@@ -43,15 +43,17 @@
 ## * `rationals module<rationals.html>`_ for rational numbers and their
 ##   mathematical operations
 ## * `fenv module<fenv.html>`_ for handling of floating-point rounding
-##   and exceptions (overflow, zero-devide, etc.)
+##   and exceptions (overflow, zero-divide, etc.)
 ## * `random module<random.html>`_ for fast and tiny random number generator
 ## * `mersenne module<mersenne.html>`_ for Mersenne twister random number generator
 ## * `stats module<stats.html>`_ for statistical analysis
-## * `strformat module<strformat>`_ for formatting floats for print
+## * `strformat module<strformat.html>`_ for formatting floats for print
+## * `system module<system.html>`_ Some very basic and trivial math operators
+##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
-include "system/inclrtl"
-{.push debugger:off .} # the user does not want to trace a part
+import std/private/since
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 import bitops
@@ -85,7 +87,9 @@ proc fac*(n: int): int =
     doAssert fac(4) == 24
     doAssert fac(10) == 3628800
   const factTable =
-    when sizeof(int) == 4:
+    when sizeof(int) == 2:
+      createFactTable[5]()
+    elif sizeof(int) == 4:
       createFactTable[13]()
     else:
       createFactTable[21]()
@@ -93,39 +97,41 @@ proc fac*(n: int): int =
   assert(n < factTable.len, $n & " is too large to look up in the table")
   factTable[n]
 
-{.push checks:off, line_dir:off, stack_trace:off.}
+{.push checks: off, line_dir: off, stack_trace: off.}
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 const
-  PI* = 3.1415926535897932384626433 ## The circle constant PI (Ludolph's number)
-  TAU* = 2.0 * PI ## The circle constant TAU (= 2 * PI)
-  E* = 2.71828182845904523536028747 ## Euler's number
+  PI* = 3.1415926535897932384626433          ## The circle constant PI (Ludolph's number)
+  TAU* = 2.0 * PI                            ## The circle constant TAU (= 2 * PI)
+  E* = 2.71828182845904523536028747          ## Euler's number
 
-  MaxFloat64Precision* = 16 ## Maximum number of meaningful digits
-                            ## after the decimal point for Nim's
-                            ## ``float64`` type.
-  MaxFloat32Precision* = 8  ## Maximum number of meaningful digits
-                            ## after the decimal point for Nim's
-                            ## ``float32`` type.
-  MaxFloatPrecision* = MaxFloat64Precision ## Maximum number of
-                                           ## meaningful digits
-                                           ## after the decimal point
-                                           ## for Nim's ``float`` type.
-  RadPerDeg = PI / 180.0 ## Number of radians per degree
+  MaxFloat64Precision* = 16                  ## Maximum number of meaningful digits
+                                             ## after the decimal point for Nim's
+                                             ## ``float64`` type.
+  MaxFloat32Precision* = 8                   ## Maximum number of meaningful digits
+                                             ## after the decimal point for Nim's
+                                             ## ``float32`` type.
+  MaxFloatPrecision* = MaxFloat64Precision   ## Maximum number of
+                                             ## meaningful digits
+                                             ## after the decimal point
+                                             ## for Nim's ``float`` type.
+  MinFloatNormal* = 2.225073858507201e-308   ## Smallest normal number for Nim's
+                                             ## ``float`` type. (= 2^-1022).
+  RadPerDeg = PI / 180.0                     ## Number of radians per degree
 
 type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
                      ## This is the type that is returned by
                      ## `classify proc <#classify,float>`_.
-    fcNormal,    ## value is an ordinary nonzero floating point value
-    fcSubnormal, ## value is a subnormal (a very small) floating point value
-    fcZero,      ## value is zero
-    fcNegZero,   ## value is the negative zero
-    fcNan,       ## value is Not-A-Number (NAN)
-    fcInf,       ## value is positive infinity
-    fcNegInf     ## value is negative infinity
+    fcNormal,        ## value is an ordinary nonzero floating point value
+    fcSubnormal,     ## value is a subnormal (a very small) floating point value
+    fcZero,          ## value is zero
+    fcNegZero,       ## value is the negative zero
+    fcNan,           ## value is Not-A-Number (NAN)
+    fcInf,           ## value is positive infinity
+    fcNegInf         ## value is negative infinity
 
 proc classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -136,6 +142,7 @@ proc classify*(x: float): FloatClass =
     doAssert classify(0.0) == fcZero
     doAssert classify(0.3/0.0) == fcInf
     doAssert classify(-0.3/0.0) == fcNegInf
+    doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
@@ -147,8 +154,9 @@ proc classify*(x: float): FloatClass =
     if x > 0.0: return fcInf
     else: return fcNegInf
   if x != x: return fcNan
+  if abs(x) < MinFloatNormal:
+    return fcSubnormal
   return fcNormal
-  # XXX: fcSubnormal is not detected!
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
@@ -186,18 +194,7 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 4)
   result = result or (result shr 2)
   result = result or (result shr 1)
-  result += 1 + ord(x<=0)
-
-proc countBits32*(n: int32): int {.noSideEffect, deprecated:
-  "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
-  runnableExamples:
-    doAssert countBits32(7) == 3
-    doAssert countBits32(8) == 1
-    doAssert countBits32(15) == 4
-    doAssert countBits32(16) == 1
-    doAssert countBits32(17) == 2
-
-  bitops.countSetBits(n)
+  result += 1 + ord(x <= 0)
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in ``x``.
@@ -255,7 +252,7 @@ proc cumsum*[T](x: var openArray[T]) =
   for i in 1 ..< x.len: x[i] = x[i-1] + x[i]
 
 {.push noSideEffect.}
-when not defined(JS): # C
+when not defined(js): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## Computes the square root of ``x``.
@@ -298,6 +295,9 @@ else: # JS
   proc sqrt*(x: float32): float32 {.importc: "Math.sqrt", nodecl.}
   proc sqrt*(x: float64): float64 {.importc: "Math.sqrt", nodecl.}
 
+  proc cbrt*(x: float32): float32 {.importc: "Math.cbrt", nodecl.}
+  proc cbrt*(x: float64): float64 {.importc: "Math.cbrt", nodecl.}
+
   proc ln*(x: float32): float32 {.importc: "Math.log", nodecl.}
   proc ln*(x: float64): float64 {.importc: "Math.log", nodecl.}
 
@@ -318,7 +318,7 @@ proc log*[T: SomeFloat](x, base: T): T =
   ##  echo log(8.0, -2.0) ## nan
   ln(x) / ln(base)
 
-when not defined(JS): # C
+when not defined(js): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of ``x``.
@@ -469,7 +469,8 @@ when not defined(JS): # C
     ## .. code-block:: nim
     ##  echo arctan(1.0) ## 0.7853981633974483
     ##  echo radToDeg(arctan(1.0)) ## 45.0
-  proc arctan2*(y, x: float32): float32 {.importc: "atan2f", header: "<math.h>".}
+  proc arctan2*(y, x: float32): float32 {.importc: "atan2f",
+      header: "<math.h>".}
   proc arctan2*(y, x: float64): float64 {.importc: "atan2", header: "<math.h>".}
     ## Calculate the arc tangent of ``y`` / ``x``.
     ##
@@ -514,7 +515,7 @@ else: # JS
   proc arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
   proc arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
   proc arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
-  proc arctan2*[T: float32|float64](y, x: T): T {.importC: "Math.atan2", nodecl.}
+  proc arctan2*[T: float32|float64](y, x: T): T {.importc: "Math.atan2", nodecl.}
 
   proc arcsinh*[T: float32|float64](x: T): T {.importc: "Math.asinh", nodecl.}
   proc arccosh*[T: float32|float64](x: T): T {.importc: "Math.acosh", nodecl.}
@@ -550,7 +551,7 @@ proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
 
 const windowsCC89 = defined(windows) and defined(bcc)
 
-when not defined(JS): # C
+when not defined(js): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## Computes the hypotenuse of a right-angle triangle with ``x`` and
@@ -578,12 +579,18 @@ when not defined(JS): # C
     proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
     proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
       ## Computes the `error function <https://en.wikipedia.org/wiki/Error_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
     proc erfc*(x: float32): float32 {.importc: "erfcf", header: "<math.h>".}
     proc erfc*(x: float64): float64 {.importc: "erfc", header: "<math.h>".}
       ## Computes the `complementary error function <https://en.wikipedia.org/wiki/Error_function#Complementary_error_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
       ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
+      ##
+      ## Note: Not available for JS backend.
       ##
       ## See also:
       ## * `lgamma proc <#lgamma,float64>`_ for a natural log of gamma function
@@ -593,14 +600,11 @@ when not defined(JS): # C
       ##  echo gamma(4.0)  # 6.0
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
-    proc tgamma*(x: float32): float32
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgammaf", header: "<math.h>".}
-    proc tgamma*(x: float64): float64
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead", importc: "tgamma", header: "<math.h>".}
-      ## The gamma function
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
+      ##
+      ## Note: Not available for JS backend.
       ##
       ## See also:
       ## * `gamma proc <#gamma,float64>`_ for gamma function
@@ -728,10 +732,6 @@ when not defined(JS): # C
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead", importc: "fmod", header: "<math.h>".}
-    ## Computes the remainder of ``x`` divided by ``y``.
-
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
     ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
@@ -748,7 +748,7 @@ when not defined(JS): # C
 else: # JS
   proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
   proc hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
-  proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
+  proc pow*(x, y: float32): float32 {.importc: "Math.pow", nodecl.}
   proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
@@ -768,7 +768,7 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.deprecated: "use strformat module instead".} =
+proc round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold
@@ -826,7 +826,7 @@ proc floorMod*[T: SomeNumber](x, y: T): T =
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
-when not defined(JS):
+when not defined(js):
   proc c_frexp*(x: float32, exponent: var int32): float32 {.
     importc: "frexp", header: "<math.h>".}
   proc c_frexp*(x: float64, exponent: var int32): float64 {.
@@ -957,7 +957,7 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x: T, y: Natural): T =
+proc `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use
@@ -1043,6 +1043,19 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
+proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
+  ## Computes the greatest common (positive) divisor of the elements of ``x``.
+  ##
+  ## See also:
+  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  runnableExamples:
+    doAssert gcd(@[13.5, 9.0]) == 4.5
+  result = x[0]
+  var i = 1
+  while i < x.len:
+    result = gcd(result, x[i])
+    inc(i)
+
 proc lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   ##
@@ -1053,16 +1066,26 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
+proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
+  ## Computes the least common multiple of the elements of ``x``.
+  ##
+  ## See also:
+  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  runnableExamples:
+    doAssert lcm(@[24, 30]) == 120
+  result = x[0]
+  var i = 1
+  while i < x.len:
+    result = lcm(result, x[i])
+    inc(i)
 
-
-when isMainModule and not defined(JS) and not windowsCC89:
+when isMainModule and not defined(js) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)
 
   # check gamma function
   assert(gamma(5.0) == 24.0) # 4!
-  assert($tgamma(5.0) == $24.0) # 4!
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
@@ -1084,20 +1107,6 @@ when isMainModule:
     doAssert round(-54.652) ==~ -55.0
     doAssert round(-54.352) ==~ -54.0
     doAssert round(0.0) ==~ 0.0
-    # Round to positive decimal places
-    doAssert round(-547.652, 1) ==~ -547.7
-    doAssert round(547.652, 1) ==~ 547.7
-    doAssert round(-547.652, 2) ==~ -547.65
-    doAssert round(547.652, 2) ==~ 547.65
-    # Round to negative decimal places
-    doAssert round(547.652, -1) ==~ 550.0
-    doAssert round(547.652, -2) ==~ 500.0
-    doAssert round(547.652, -3) ==~ 1000.0
-    doAssert round(547.652, -4) ==~ 0.0
-    doAssert round(-547.652, -1) ==~ -550.0
-    doAssert round(-547.652, -2) ==~ -500.0
-    doAssert round(-547.652, -3) ==~ -1000.0
-    doAssert round(-547.652, -4) ==~ 0.0
 
   block: # splitDecimal() tests
     doAssert splitDecimal(54.674).intpart ==~ 54.0
@@ -1156,7 +1165,7 @@ when isMainModule:
   block: # fac() tests
     try:
       discard fac(-1)
-    except AssertionError:
+    except AssertionDefect:
       discard
 
     doAssert fac(0) == 1

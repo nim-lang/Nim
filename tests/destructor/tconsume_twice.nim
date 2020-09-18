@@ -1,7 +1,7 @@
 discard """
   cmd: "nim c --newruntime $file"
-  errormsg: "sink parameter `a` is already consumed at tconsume_twice.nim(11, 10)"
-  line: 13
+  errormsg: "'=' is not available for type <owned Foo>; requires a copy because it's not the last read of 'a'; another read is done here: tconsume_twice.nim(13, 10); routine: consumeTwice"
+  line: 11
 """
 type
   Foo = ref object

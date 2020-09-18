@@ -1,5 +1,3 @@
-import typetraits
-
 template reject(e) =
   static: assert(not compiles(e))
 

@@ -14,7 +14,7 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
 const
@@ -185,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)
@@ -251,12 +251,12 @@ proc walkDirRecursively(s: var seq[string], root, explicit: string,
 
 proc addFiles(s: var seq[string], patterns: seq[string]) =
   for p in items(patterns):
-    if existsDir(p):
+    if dirExists(p):
       walkDirRecursively(s, p, p, false)
     else:
       var i = 0
       for f in walkPattern(p):
-        if existsDir(f):
+        if dirExists(f):
           walkDirRecursively(s, f, p, false)
         elif not ignoreFile(f, p, false):
           add(s, unixToNativePath(f))
@@ -505,12 +505,21 @@ proc writeInstallScripts(c: var ConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
     inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
+template gatherFiles(fun, libpath, outDir) =
+  block:
+    template copySrc(src) =
+      let dst = outDir / extractFilename(src)
+      when false: echo (dst, dst)
+      fun(src, dst)
+
+    for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
+    # commenting out for now, see discussion in https://github.com/nim-lang/Nim/pull/13413
+    # copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
+
 proc srcdist(c: var ConfigData) =
-  if not existsDir(getOutputDir(c) / "c_code"):
-    createDir(getOutputDir(c) / "c_code")
-  for x in walkFiles(c.libpath / "lib/*.h"):
-    when false: echo(getOutputDir(c) / "c_code" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
+  let cCodeDir = getOutputDir(c) / "c_code"
+  if not dirExists(cCodeDir): createDir(cCodeDir)
+  gatherFiles(copyFile, c.libpath, cCodeDir)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
@@ -523,7 +532,7 @@ proc srcdist(c: var ConfigData) =
       if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA
       elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA
       var dir = getOutputDir(c) / buildDir(osA, cpuA)
-      if existsDir(dir): removeDir(dir)
+      if dirExists(dir): removeDir(dir)
       createDir(dir)
       var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
                  "--gen_mapping --cc:gcc --skipUserCfg" &
@@ -603,8 +612,9 @@ when haveZipLib:
       addFile(z, proj / makeFile, "build" / makeFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
-      for f in walkFiles(c.libpath / "lib/*.h"):
-        addFile(z, proj / "c_code" / extractFilename(f), f)
+
+      template addFileAux(src, dst) = addFile(z, dst, src)
+      gatherFiles(addFileAux, c.libpath, proj / "c_code")
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
@@ -629,13 +639,13 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
   proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
     when false: echo "Copying ", src, " to ", dest
-    if not existsFile(src):
+    if not fileExists(src):
       echo "[Warning] Source file doesn't exist: ", src
     let destDir = dest.splitFile.dir
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
-  if not windowsZip and not existsFile("build" / buildBatFile):
+  if not windowsZip and not fileExists("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
          "./koch csource -d:release.")
 
@@ -647,8 +657,8 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     processFile(proj / makeFile, "build" / makeFile)
     processFile(proj / installShFile, installShFile)
     processFile(proj / deinstallShFile, deinstallShFile)
-    for f in walkFiles(c.libpath / "lib/*.h"):
-      processFile(proj / "c_code" / extractFilename(f), f)
+    template processFileAux(src, dst) = processFile(dst, src)
+    gatherFiles(processFileAux, c.libpath, proj / "c_code")
     for osA in 1..c.oses.len:
       for cpuA in 1..c.cpus.len:
         var dir = buildDir(osA, cpuA)
@@ -698,8 +708,8 @@ RunProgram="tools\downloader.exe"
 # -- prepare build files for .deb creation
 
 proc debDist(c: var ConfigData) =
-  if not existsFile(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
-  if not existsFile(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
+  if not fileExists(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
+  if not fileExists(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
 
   if c.debOpts.shortDesc == "": quit("shortDesc must be set in the .ini file.")
   if c.debOpts.licenses.len == 0:
@@ -722,8 +732,7 @@ proc debDist(c: var ConfigData) =
   copyNimDist(makeFile, makeFile)
   copyNimDist(installShFile, installShFile)
   createDir(workingDir / upstreamSource / "build")
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    copyNimDist(f, "build" / extractFilename(f))
+  gatherFiles(copyNimDist, c.libpath, "build")
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = buildDir(osA, cpuA)

@@ -69,7 +69,7 @@ proc regSetValue(key: HKEY, lpSubKey, lpValueName: WideCString,
                  dwType: int32; lpData: WideCString; cbData: int32): int32 {.
   importc: "RegSetKeyValueW", dynlib: "Advapi32.dll", stdcall.}
 
-proc setUnicodeValue*(path, key, val: string; handle: HKey) =
+proc setUnicodeValue*(path, key, val: string; handle: HKEY) =
   let hh = newWideCString path
   let kk = newWideCString key
   let vv = newWideCString val

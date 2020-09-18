@@ -36,8 +36,19 @@
 ##      assert res.port == "4343"
 ##    else:
 ##      echo "Wrong format"
+##
+## Data URI Base64
+## ---------------
+##
+## .. code-block::nim
+##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
-import strutils, parseutils
+import std/private/since
+
+import strutils, parseutils, base64
+include includes/decode_helpers
+
 type
   Url* = distinct string
 
@@ -46,7 +57,7 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-proc encodeUrl*(s: string, usePlus=true): string =
+proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
@@ -75,12 +86,13 @@ proc encodeUrl*(s: string, usePlus=true): string =
       add(result, '%')
       add(result, toHex(ord(c), 2))
 
-proc decodeUrl*(s: string, decodePlus=true): string =
+proc decodeUrl*(s: string, decodePlus = true): string =
   ## Decodes a URL according to RFC3986.
   ##
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
   ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
+  ## If ``xx`` is not a valid hexadecimal value, it is left intact.
   ##
   ## As a special rule, when the value of ``decodePlus`` is true, ``+``
   ## characters are converted to a space.
@@ -90,13 +102,9 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
-    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
-  proc handleHexChar(c: char, x: var int) {.inline.} =
-    case c
-    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-    else: assert(false)
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
+        false) == "https://nim-lang.org/this is a test"
+    assert decodeUrl("abc%xyz") == "abc%xyz"
 
   result = newString(s.len)
   var i = 0
@@ -104,11 +112,7 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   while i < s.len:
     case s[i]
     of '%':
-      var x = 0
-      handleHexChar(s[i+1], x)
-      handleHexChar(s[i+2], x)
-      inc(i, 2)
-      result[j] = chr(x)
+      result[j] = decodePercent(s, i)
     of '+':
       if decodePlus:
         result[j] = ' '
@@ -119,7 +123,8 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(j)
   setLen(result, j)
 
-proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true): string =
+proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
+    omitEq = true): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
   ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
@@ -133,7 +138,7 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus=true, omitEq=true)
   ## **See also:**
   ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
-    assert encodeQuery({:}) == ""
+    assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
   for elem in query:
@@ -198,8 +203,8 @@ proc initUri*(): Uri =
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
-    var uri: Uri
-    assert initUri() == uri
+    var uri2: Uri
+    assert initUri() == uri2
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
@@ -369,7 +374,8 @@ proc combine*(uris: varargs[Uri]): Uri =
   ## **See also:**
   ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"), parseUri("manual.html"))
+    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"),
+        parseUri("manual.html"))
     assert foo.hostname == "nim-lang.org"
     assert foo.path == "/docs/manual.html"
   result = uris[0]
@@ -445,7 +451,7 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  if u.hostname.endswith('/'):
+  if u.hostname.endsWith('/'):
     result.add(u.hostname[0..^2])
   else:
     result.add(u.hostname)
@@ -462,6 +468,18 @@ proc `$`*(u: Uri): string =
   if u.anchor.len > 0:
     result.add("#")
     result.add(u.anchor)
+
+proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
+  ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
+  ##
+  ## **See also:**
+  ## * `mimetypes <mimetypes.html>`_ for `mime` argument
+  ## * https://tools.ietf.org/html/rfc2397
+  ## * https://en.wikipedia.org/wiki/Data_URI_scheme
+  runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
+  result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
 
 when isMainModule:
   block:
@@ -716,11 +734,11 @@ when isMainModule:
     doAssert encodeQuery({:}) == ""
     doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
     doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
-    doAssert encodeQuery({"foo": "bar & baz"}, usePlus=false) == "foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus = false) == "foo=bar%20%26%20baz"
     doAssert encodeQuery({"foo": ""}) == "foo"
-    doAssert encodeQuery({"foo": ""}, omitEq=false) == "foo="
+    doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
-    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq=false) == "a=1&b=&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
 
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
@@ -731,5 +749,18 @@ when isMainModule:
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
       doAssert foo == foo1
+
+  block dataUriBase64:
+    doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
+    doAssert getDataUri(" ", "text/plain") == "data:text/plain;charset=utf-8;base64,IA=="
+    doAssert getDataUri("c\xf7>", "text/plain") == "data:text/plain;charset=utf-8;base64,Y/c+"
+    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+    doAssert getDataUri("leasure.", "text/plain") == "data:text/plain;charset=utf-8;base64,bGVhc3VyZS4="
+    doAssert getDataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
+    doAssert(getDataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
+    doAssert(getDataUri("""The present is theirs
+      The future, for which I really worked, is mine.""", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
 
   echo("All good!")

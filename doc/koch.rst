@@ -35,19 +35,20 @@ options:
   By default a debug version is created, passing this option will
   force a release build, which is much faster and should be preferred
   unless you are debugging the compiler.
--d:useLinenoise
+-d:nimUseLinenoise
   Use the linenoise library for interactive mode (not needed on Windows).
 
 After compilation is finished you will hopefully end up with the nim
 compiler in the ``bin`` directory. You can add Nim's ``bin`` directory to
-your ``$PATH`` or use the `install command`_ to place it where it will be
+your ``$PATH`` or use the install command to place it where it will be
 found.
 
 csource command
 ---------------
 
 The `csource`:idx: command builds the C sources for installation. It accepts
-the same options as you would pass to the `boot command`_.
+the same options as you would pass to the `boot command
+<#commands-boot-command>`_.
 
 temp command
 ------------
@@ -55,7 +56,7 @@ temp command
 The temp command builds the Nim compiler but with a different final name
 (``nim_temp``), so it doesn't overwrite your normal compiler. You can use
 this command to test different options, the same you would issue for the `boot
-command`_.
+command <#commands-boot-command>`_.
 
 test command
 ------------
@@ -76,7 +77,7 @@ https://nim-lang.org.
 
 By default the documentation will be built in parallel using the number of
 available CPU cores. If any documentation build sub commands fail, they will
-be rerun in serial fashion so that meaninful error output can be gathered for
+be rerun in serial fashion so that meaningful error output can be gathered for
 inspection. The ``--parallelBuild:n`` switch or configuration option can be
 used to force a specific number of parallel jobs or run everything serially
 from the start (``n == 1``).

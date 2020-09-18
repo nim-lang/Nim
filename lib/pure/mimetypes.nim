@@ -967,6 +967,7 @@ const mimes* = {
   "niff": "image/x-niff",
   "nim": "text/nim",
   "nimble": "text/nimble",
+  "nimf": "text/nim",
   "nims": "text/nim",
   "nitf": "application/vnd.nitf",
   "nix": "application/x-mix-transfer",
@@ -1913,21 +1914,24 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## ``mimetype`` and ``ext`` are lowercased before registering on ``mimedb``.
   assert ext.strip.len > 0, "ext argument can not be empty string"
   assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
-  mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
+  {.noSideEffect.}:
+    mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
 
 runnableExamples:
-  var m = newMimetypes()
-  assert m.getMimetype("mp4") == "video/mp4"
-  assert m.getExt("text/html") == "html"
-  ## Values can be uppercase too.
-  assert m.getMimetype("MP4") == "video/mp4"
-  assert m.getExt("TEXT/HTML") == "html"
-  ## If values are invalid then ``default`` is returned.
-  assert m.getMimetype("INVALID") == "text/plain"
-  assert m.getExt("INVALID/NONEXISTENT") == "txt"
-  assert m.getMimetype("") == "text/plain"
-  assert m.getExt("") == "txt"
-  ## Register new Mimetypes.
-  m.register(ext="fakext", mimetype="text/fakelang")
-  assert m.getMimetype("fakext") == "text/fakelang"
-  assert m.getMimetype("FaKeXT") == "text/fakelang"
+  static:
+    block:
+      var m = newMimetypes()
+      doAssert m.getMimetype("mp4") == "video/mp4"
+      doAssert m.getExt("text/html") == "html"
+      ## Values can be uppercase too.
+      doAssert m.getMimetype("MP4") == "video/mp4"
+      doAssert m.getExt("TEXT/HTML") == "html"
+      ## If values are invalid then ``default`` is returned.
+      doAssert m.getMimetype("INVALID") == "text/plain"
+      doAssert m.getExt("INVALID/NONEXISTENT") == "txt"
+      doAssert m.getMimetype("") == "text/plain"
+      doAssert m.getExt("") == "txt"
+      ## Register new Mimetypes.
+      m.register(ext = "fakext", mimetype = "text/fakelang")
+      doAssert m.getMimetype("fakext") == "text/fakelang"
+      doAssert m.getMimetype("FaKeXT") == "text/fakelang"

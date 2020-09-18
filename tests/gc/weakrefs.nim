@@ -19,8 +19,15 @@ var
 proc finalizer(x: StrongObject) =
   valid.excl(x.id)
 
+when defined(gcDestructors):
+  proc `=destroy`(x: var TMyObject) =
+    valid.excl(x.id)
+
 proc create: StrongObject =
-  new(result, finalizer)
+  when defined(gcDestructors):
+    new(result)
+  else:
+    new(result, finalizer)
   result.id = gid
   valid.incl(gid)
   inc gid

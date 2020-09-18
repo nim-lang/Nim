@@ -12,11 +12,12 @@
 
 const nimIncremental* = defined(nimIncremental)
 
-import options, lineinfos, pathutils
+import options, lineinfos
 
 when nimIncremental:
-  import ast, msgs, intsets, btrees, db_sqlite, std / sha1
+  import ast, msgs, intsets, btrees, db_sqlite, std / sha1, pathutils
   from strutils import parseInt
+  from os import isAbsolute
 
   type
     Writer* = object
@@ -47,7 +48,7 @@ when nimIncremental:
 
   proc hashFileCached*(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile): string =
     result = msgs.getHash(conf, fileIdx)
-    if result.len == 0:
+    if result.len == 0 and isAbsolute(string fullpath):
       result = $secureHashFile(string fullpath)
       msgs.setHash(conf, fileIdx, result)
 
