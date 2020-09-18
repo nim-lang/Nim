@@ -169,8 +169,8 @@ proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] {.since: (1, 3).
   for c in urlQuery:
 
     if c == '&':
-      if name.len == 0 and buffer.len > 0: result.add (buffer, "")
-      elif name.len > 0: result.add (name, buffer)
+      if name.len > 0: result.add (name, buffer)
+      elif buffer.len > 0: result.add (buffer, "")
       name = ""
       buffer = ""
     elif c == '=':
@@ -190,8 +190,8 @@ proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] {.since: (1, 3).
     else:
       buffer.add(c)
 
-  if name.len == 0 and buffer.len > 0: result.add (buffer, "")
-  elif name.len > 0: result.add (name, buffer)
+  if name.len > 0: result.add (name, buffer)
+  elif buffer.len > 0: result.add (buffer, "")
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
