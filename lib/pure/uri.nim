@@ -157,53 +157,39 @@ proc decodeQuery*(urlQuery: string = ""): seq[(string, string)] =
     buffer = ""
     encodedchar = ""
 
-  var pairs = newSeq[(string, string)]()
-
   proc getPair(name, buffer: string): (string, string) =
-    return if name.len == 0 and buffer.len > 0: (buffer, "")
-      elif name.len > 0: (name, buffer)
-      else: ("", "")
+    if name.len == 0 and buffer.len > 0: (buffer, "")
+    elif name.len > 0: (name, buffer)
+    else: ("", "")
 
   for c in urlQuery:
 
     if c == '&':
       let (key, value) = getPair(name, buffer)
       if key.len > 0:
-        pairs.add((key, value))
+        result.add((key, value))
       name = ""
       buffer = ""
-      continue
-
-    if c == '=':
+    elif c == '=':
       name = buffer
       buffer = ""
-      continue
-
-    if encodedchar.len > 1:
+    elif encodedchar.len > 1:
       encodedchar.add(c)
       if (encodedchar.len - 1) mod 3 == 0:
         let decodedchar = chr(fromHex[int](encodedchar))
         if decodedchar != '\x00':
           buffer.add(decodedchar)
           encodedchar = ""
-          continue
-      continue
-
-    if c == '%':
+    elif c == '%':
       encodedchar.add("0x")
-      continue
-
-    if c == '+':
+    elif c == '+':
       buffer.add(' ')
-      continue
-
-    buffer.add(c)
+    else:
+      buffer.add(c)
 
   let (key, value) = getPair(name, buffer)
   if key.len > 0:
-    pairs.add((key, value))
-
-  return pairs
+    result.add((key, value))
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
