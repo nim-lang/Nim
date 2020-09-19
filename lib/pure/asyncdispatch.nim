@@ -290,7 +290,7 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc setGlobalDispatcher*(disp: owned PDispatcher) =
+  proc setGlobalDispatcher*(disp: sink PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
@@ -1217,10 +1217,12 @@ else:
     withData(selector, fd.int, fdData):
       case event
       of Event.Read:
-        shallowCopy(curList, fdData.readList)
+        #shallowCopy(curList, fdData.readList)
+        curList = move fdData.readList
         fdData.readList = newSeqOfCap[Callback](InitCallbackListSize)
       of Event.Write:
-        shallowCopy(curList, fdData.writeList)
+        #shallowCopy(curList, fdData.writeList)
+        curList = move fdData.writeList
         fdData.writeList = newSeqOfCap[Callback](InitCallbackListSize)
       else:
         assert false, "Cannot process callbacks for " & $event
@@ -1232,8 +1234,7 @@ else:
     for cb in curList:
       if eventsExtinguished:
         newList.add(cb)
-        continue
-      if not cb(fd):
+      elif not cb(fd):
         # Callback wants to be called again.
         newList.add(cb)
         # This callback has returned with EAGAIN, so we don't need to
@@ -1246,9 +1247,13 @@ else:
       # Descriptor is still present in the queue.
       case event
       of Event.Read:
-        fdData.readList = newList & fdData.readList
+        let oldReadList = move fdData.readList
+        fdData.readList = move newList
+        fdData.readList.add oldReadList
       of Event.Write:
-        fdData.writeList = newList & fdData.writeList
+        let oldWriteList = move fdData.writeList
+        fdData.writeList = move newList
+        fdData.writeList.add oldWriteList
       else:
         assert false, "Cannot process callbacks for " & $event
 
@@ -1259,15 +1264,15 @@ else:
       result.readCbListCount = -1
       result.writeCbListCount = -1
 
-  template processCustomCallbacks(ident: untyped) =
+  proc processCustomCallbacks(p: PDispatcher; fd: AsyncFD) =
     # Process pending custom event callbacks. Custom events are
     # {Event.Timer, Event.Signal, Event.Process, Event.Vnode}.
     # There can be only one callback registered with one descriptor,
     # so there is no need to iterate over list.
     var curList: seq[Callback]
 
-    withData(p.selector, ident.int, adata) do:
-      shallowCopy(curList, adata.readList)
+    withData(p.selector, fd.int, adata) do:
+      curList = move adata.readList
       adata.readList = newSeqOfCap[Callback](InitCallbackListSize)
 
     let newLength = len(curList)
@@ -1277,7 +1282,7 @@ else:
     if not cb(fd.AsyncFD):
       newList.add(cb)
 
-    withData(p.selector, ident.int, adata) do:
+    withData(p.selector, fd.int, adata) do:
       # descriptor still present in queue.
       adata.readList = newList & adata.readList
       if len(adata.readList) == 0:
@@ -1308,10 +1313,6 @@ else:
 
   proc runOnce(timeout = 500): bool =
     let p = getGlobalDispatcher()
-    when ioselSupportedPlatform:
-      let customSet = {Event.Timer, Event.Signal, Event.Process,
-                       Event.Vnode}
-
     if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
@@ -1346,9 +1347,11 @@ else:
         result = true
 
       when ioselSupportedPlatform:
+        const customSet = {Event.Timer, Event.Signal, Event.Process,
+                           Event.Vnode}
         if (customSet * events) != {}:
           isCustomEvent = true
-          processCustomCallbacks(fd)
+          processCustomCallbacks(p, fd)
           result = true
 
       # because state `data` can be modified in callback we need to update
@@ -1612,7 +1615,7 @@ proc drain*(timeout = 500) =
   var curTimeout = timeout
   let start = now()
   while hasPendingOperations():
-    discard runOnce(curTimeout) 
+    discard runOnce(curTimeout)
     curTimeout -= (now() - start).inMilliseconds.int
     if curTimeout < 0:
       break

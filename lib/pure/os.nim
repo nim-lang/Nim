@@ -2826,12 +2826,19 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
 
   when defined(freebsd):
     const KERN_PROC_PATHNAME = 12
+  elif defined(netbsd):
+    const KERN_PROC_ARGS = 48
+    const KERN_PROC_PATHNAME = 5
   else:
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize_t(0)
-    var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
+
+    when defined(netbsd):
+      var req = [CTL_KERN.cint, KERN_PROC_ARGS.cint, -1.cint, KERN_PROC_PATHNAME.cint]
+    else:
+      var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
 
     # first call to get the required length
     var res = sysctl(addr req[0], 4, nil, addr pathLength, nil, 0)
@@ -2984,13 +2991,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if result.len > 0:
       result = result.expandFilename
   else:
-    when defined(linux) or defined(aix) or defined(netbsd):
+    when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
-    elif defined(freebsd) or defined(dragonfly):
+    elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
