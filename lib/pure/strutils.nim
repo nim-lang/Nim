@@ -1511,7 +1511,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
-  ## * `dedent proc<#unindent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural,string>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
