@@ -1198,6 +1198,11 @@ else:
     let p = getGlobalDispatcher()
     not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
 
+  proc prependSeq(dest: var seq[Callback]; src: sink seq[Callback]) =
+    let old = move dest
+    dest = src
+    dest.add old
+
   proc processBasicCallbacks(
     fd: AsyncFD, event: Event
   ): tuple[readCbListCount, writeCbListCount: int] =
@@ -1246,14 +1251,8 @@ else:
     withData(selector, fd.int, fdData) do:
       # Descriptor is still present in the queue.
       case event
-      of Event.Read:
-        let oldReadList = move fdData.readList
-        fdData.readList = move newList
-        fdData.readList.add oldReadList
-      of Event.Write:
-        let oldWriteList = move fdData.writeList
-        fdData.writeList = move newList
-        fdData.writeList.add oldWriteList
+      of Event.Read: prependSeq(fdData.readList, newList)
+      of Event.Write: prependSeq(fdData.writeList, newList)
       else:
         assert false, "Cannot process callbacks for " & $event
 
