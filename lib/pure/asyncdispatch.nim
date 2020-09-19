@@ -1251,8 +1251,8 @@ else:
     withData(selector, fd.int, fdData) do:
       # Descriptor is still present in the queue.
       case event
-      of Event.Read: combineSeqs(fdData.readList, newList)
-      of Event.Write: combineSeqs(fdData.writeList, newList)
+      of Event.Read: prependSeq(fdData.readList, newList)
+      of Event.Write: prependSeq(fdData.writeList, newList)
       else:
         assert false, "Cannot process callbacks for " & $event
 
