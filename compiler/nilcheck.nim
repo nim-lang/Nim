@@ -170,6 +170,9 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
     history: newSeq[seq[History]](expressionsCount),
     sets: newSeq[set[ExprIndex]](expressionsCount),
     parent: parent)
+  if parent.isNil:
+    for i, expr in result.expressions:
+      result.sets[i] = {i.ExprIndex}
   # if not parent.isNil:
   #   # optimize []?
   #   result.expressions = parent.expressions
@@ -228,7 +231,9 @@ proc symbol(n: PNode): Symbol
 proc `$`(map: NilMap): string
     
 proc store(map: NilMap, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  # let text = if node.isNil: "?" else: $node
+  
+#  if kind == TPotentialAlias:
+
   map.expressions[index] = value
   map.history[index].add(History(info: info, kind: kind, node: node, nilability: value))
   
@@ -297,6 +302,7 @@ const noExprIndex = -1
 #     return noGraphIndex - 1 - symbol
 
 proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
+  # echo "n ", n, " ", n.kind
   let a = symbol(n)
   if ctx.symbolIndices.hasKey(a):
     return ctx.symbolIndices[a]
@@ -309,6 +315,7 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
 proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
   result = map.sets[ctx.index(n)]
 
+# proc aliasSetIndex
 proc symbol(n: PNode): Symbol =
   ## returns a Symbol for each expression
   ## the goal is to get an unique Symbol
@@ -387,7 +394,9 @@ template event(b: History): string =
   
 proc derefWarning(n, ctx, map; maybe: bool) =
   ## a warning for potentially unsafe dereference
-  var a = history(map, ctx.index(n))
+  var a: seq[History]
+  if n.kind == nkSym:
+    a = history(map, ctx.index(n))
   var res = ""
   res.add("can't deref " & $n & ", it " & (if maybe: "might be" else: "is") & " nil")
   if a.len > 0:
@@ -421,8 +430,13 @@ proc checkRefExpr(n, ctx; check: Check): Check =
   if n.typ.kind != tyRef:
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
-    let key = ctx.index(n)
-    result.nilability = result.map[key]
+    echo "ref key ", n, " ", n.kind
+    if n.kind == nkSym:
+      let key = ctx.index(n)
+      result.nilability = result.map[key]
+    else:
+      echo "maybe nil"
+      result.nilability = MaybeNil
       # result.map.store(key, MaybeNil, TType, n.info, n)
       # result.nilability = MaybeNil
 
@@ -796,16 +810,18 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ##   isNil(a)
   ##   it returns a new map: you need to reverse all the direct elements for else
 
-  # echo "condition ", n
   if n.kind == nkCall:
     result = newNilMap(map)
     for element in n:
       result = check(element, ctx, result).map
 
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
-      let a = ctx.index(n[1])
-      # echo "n[1] ", n[1], " ", a
-      result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
+      if n[1].kind == nkSym:
+        let a = ctx.index(n[1])
+        # echo "n[1] ", n[1], " ", a
+        result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
+      else:
+        discard
     else:
       discard
   elif n.kind == nkPrefix and n[0].kind == nkSym and n[0].sym.magic == mNot:
@@ -864,7 +880,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   #     TPotentialAlias,
   #     n.info,
   #     element)
-  # echo "n ", n, " ", n.kind
+  # echo "check n ", n, " ", n.kind
   case n.kind:
   of nkSym:
     # echo "sym ", n

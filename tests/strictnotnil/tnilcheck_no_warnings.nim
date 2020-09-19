@@ -44,6 +44,21 @@ proc testNotNilAfterAssign(a: Nilable, b: int) =
     n = Nilable() # 1: Safe 2: Safe 
   echo n.a # ok
 
+proc callVar(a: var Nilable) =
+   a = nil
+
+proc testVarAlias(a: Nilable) = # a: 0 aliasA: 1 {0} {1} 
+  var aliasA = a # {0, 1} 0 MaybeNil 1 MaybeNil
+  if not a.isNil: # {0, 1} 0 Safe 1 Safe
+    callVar(aliasA) # {0, 1} 0 MaybeNil 1 MaybeNil
+    # if aliasA stops being in alias: it might be nil, but then a is still not nil
+    # if not: it cant be nil as it still points here
+    echo a.a # ok 
+
+proc testAliasCheck(a: Nilable) =
+  var aliasA = a
+  if not a.isNil:
+    echo aliasA.a # ok
 
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok

@@ -104,17 +104,29 @@ proc testForLoop(a: Nilable) =
 #     ]#
 
 # TODO after alias support
-#proc callVar(a: var Nilable) =
-#  a = nil
+proc callVar(a: var Nilable) =
+  a.field = nil
 
-# proc testVarAlias(a: Nilable) =
-#   var aliasA = a
-#   if not a.isNil:
-#     callVar(aliasA)
+
+# TODO ptr support
+# proc testPtrAlias(a: Nilable) =
+#   # pointer to a: hm.
+#   # alias to a?
+#   var ptrA = a.unsafeAddr # {0, 1} 
+#   if not a.isNil: # {0, 1}
+#     ptrA[] = nil # {0, 1} 0: MaybeNil 1: MaybeNil
 #     echo a.a #[ tt.Warning
 #          ^ can't deref a, it might be nil
 #     ]#
 
+proc testFieldAlias(a: Nilable) =
+  var b = a # {0, 1} {2} 
+  if not a.isNil and not a.field.isNil: # {0, 1} {2}
+    callVar(b) # {0, 1} {2} 0: Safe 1: Safe
+    echo a.field.a #[tt.Warning
+          ^ can't deref a.field, it might be nil
+    ]#
+#
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash
 #   var field = 0
@@ -252,6 +264,9 @@ proc testForLoop(a: Nilable) =
 
 var nilable: Nilable
 var withField = Nilable(a: 0, field: Nilable())
+var a = Nilable()
+# testPtrAlias(a)
+testFieldAlias(a)
 # testRootAliasField(withField)
 # discard testUniqueHashTree(withField)
 # # test1(nilable)
