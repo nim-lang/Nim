@@ -230,11 +230,11 @@ proc decode*(s: string): string =
 
   template inputChar(x: untyped) =
     let x = int decodeTable[ord(s[inputIndex])]
-    inc inputIndex
     if x == invalidChar:
       raise newException(ValueError,
         "Invalid base64 format character `" & s[inputIndex] &
         "` (ord " & $s[inputIndex].ord & ") at location " & $inputIndex & ".")
+    inc inputIndex
 
   template outputChar(x: untyped) =
     result[outputIndex] = char(x and 255)
