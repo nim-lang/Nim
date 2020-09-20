@@ -103,9 +103,10 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
     j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
 
 template orcAssert(cond, msg) =
-  if not cond:
-    cfprintf(cstderr, "[Bug!] %s\n", msg)
-    quit 1
+  when logOrc:
+    if not cond:
+      cfprintf(cstderr, "[Bug!] %s\n", msg)
+      quit 1
 
 var
   roots {.threadvar.}: CellSeq

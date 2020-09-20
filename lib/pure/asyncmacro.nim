@@ -14,21 +14,20 @@ import macros, strutils, asyncfutures
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
-  let retFutUnown = unown retFutureSym
 
   var nameIterVar = iteratorNameSym
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
-        var next = unown nameIterVar()
+        var next = nameIterVar()
         # Continue while the yielded future is already finished.
         while (not next.isNil) and next.finished:
-          next = unown nameIterVar()
+          next = nameIterVar()
           if nameIterVar.finished:
             break
 
         if next == nil:
-          if not retFutUnown.finished:
+          if not retFutureSym.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
             raise newException(AssertionDefect, msg % strName)
@@ -39,12 +38,12 @@ template createCb(retFutureSym, iteratorNameSym,
             {.pop.}
     except:
       futureVarCompletions
-      if retFutUnown.finished:
+      if retFutureSym.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
         # That test explains it better than I can here.
         raise
       else:
-        retFutUnown.fail(getCurrentException())
+        retFutureSym.fail(getCurrentException())
   identName()
 
 proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
