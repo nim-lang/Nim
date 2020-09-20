@@ -459,7 +459,6 @@ proc traverse(c: var Partitions; n: PNode) =
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
               for r in roots: potentialMutation(c, r, it.info)
-          else:
             for r in roots: noCursor(c, r)
 
   of nkAddr, nkHiddenAddr:

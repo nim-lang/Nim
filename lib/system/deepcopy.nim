@@ -140,7 +140,10 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
       unsureAsgnRef(cast[PPointer](dest), s2)
     elif mt.base.deepcopy != nil:
       let z = mt.base.deepcopy(s2)
-      unsureAsgnRef(cast[PPointer](dest), z)
+      when defined(nimSeqsV2):
+        cast[PPointer](dest)[] = z
+      else:
+        unsureAsgnRef(cast[PPointer](dest), z)
     else:
       let z = tab.get(s2)
       if z == nil:
@@ -157,10 +160,16 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
             let x = usrToCell(s2)
             let realType = x.typ
             sysAssert realType == mt, " types do differ"
-          # this version should work for any possible GC:
-          let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
-          let z = when defined(nimSeqsV2): nimNewObj(typ.size) else: newObj(mt, typ.size)
-          unsureAsgnRef(cast[PPointer](dest), z)
+          when defined(nimSeqsV2):
+            let typ = if mt.base.kind == tyObject: cast[PNimType](cast[ptr PNimTypeV2](s2)[].typeInfoV1)
+                      else: mt.base
+            let z = nimNewObj(typ.size)
+            cast[PPointer](dest)[] = z
+          else:
+            # this version should work for any other GC:
+            let typ = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[] else: mt.base
+            let z = newObj(mt, typ.size)
+            unsureAsgnRef(cast[PPointer](dest), z)
           tab.put(s2, z)
           genericDeepCopyAux(z, s2, typ, tab)
       else:
