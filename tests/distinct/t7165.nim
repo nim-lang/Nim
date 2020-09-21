@@ -1,11 +1,3 @@
-discard """
-  cmd:      "nim c --styleCheck:hint --panics:on $options $file"
-  targets:  "c"
-  nimout:   ""
-  action:   "compile"
-  exitcode: 0
-  timeout:  60.0
-"""
 
 type
   Table[K, V] = object
