@@ -358,12 +358,14 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   # check if the starting count is specified:
   var countStart = if x[^2].len == 2: newLit(0) else: x[^2][1]
   result = newStmtList()
-  # we strip off the first for loop variable and use it as an integer counter:
-  result.add newVarStmt(x[0], countStart)
+  # We strip off the first for loop variable and use it as an integer counter.
+  # We must immediately decrement it by one, because it gets incremented before
+  # the loop body - to be able to use the final expression in other macros.
+  result.add newVarStmt(x[0], infix(countStart, "-", newLit(1)))
   var body = x[^1]
   if body.kind != nnkStmtList:
     body = newTree(nnkStmtList, body)
-  body.add newCall(bindSym"inc", x[0])
+  body.insert(0, newCall(bindSym"inc", x[0]))
   var newFor = newTree(nnkForStmt)
   for i in 1..x.len-3:
     newFor.add x[i]
