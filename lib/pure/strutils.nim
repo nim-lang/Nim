@@ -82,6 +82,7 @@ when defined(nimVmExportFixed):
   export toLower, toUpper
 
 include "system/inclrtl"
+import std/private/since
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -1525,19 +1526,6 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc indentation*(s: string): Natural =
-  ## Returns the amount of indentation all lines of ``s`` have in common,
-  ## ignoring lines that consist only of whitespace.
-  result = int.high
-  for line in s.splitLines:
-    for i, c in line:
-      if i >= result: break
-      elif c != ' ':
-        result = i
-        break
-  if result == int.high:
-    result = 0
-
 proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
@@ -1571,8 +1559,21 @@ proc unindent*(s: string, count: Natural = int.high, padding: string = " "): str
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
+proc indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## ignoring lines that consist only of whitespace.
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ':
+        result = i
+        break
+  if result == int.high:
+    result = 0
+
 proc dedent*(s: string, count: Natural = indentation(s)): string
-    {.noSideEffect, rtl, extern: "nsuDedent".} =
+    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
   ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
   ## is that this by default only cuts off the amount of indentation that all
