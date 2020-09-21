@@ -173,6 +173,8 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
   if parent.isNil:
     for i, expr in result.expressions:
       result.sets[i] = {i.ExprIndex}
+  else:
+    result.sets = parent.sets
   # if not parent.isNil:
   #   # optimize []?
   #   result.expressions = parent.expressions
@@ -229,14 +231,103 @@ import macros
 
 proc symbol(n: PNode): Symbol
 proc `$`(map: NilMap): string
-    
-proc store(map: NilMap, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  
-#  if kind == TPotentialAlias:
 
+proc symbol(n: PNode): Symbol =
+  ## returns a Symbol for each expression
+  ## the goal is to get an unique Symbol
+  ## but we have to ensure hashTree does it as we expect
+  case n.kind:
+  of nkIdent:
+    result = 0
+  of nkSym:
+    if n.sym.kind == skResult: # credit to disruptek for showing me that
+      result = resultId
+    else:
+      result = n.sym.id
+  of nkHiddenAddr, nkAddr:
+    result = symbol(n[0])
+  else:
+    result = hashTree(n)
+  # echo "symbol ", n, " ", n.kind, " ", result
+
+
+const noExprIndex = -1
+
+# proc graph(ctx: NilCheckerContext, symbol: Symbol): GraphIndex =
+#   if ctx.symbolGraphs.hasKey(symbol):
+#     return ctx.symbolGraphs[symbol]
+#   else:
+#     # TODO: maybe index all in partitions
+#     # or is this faster/smaller
+#     # a unique non-real graph index for symbols which are not in graph
+#     return noGraphIndex - 1 - symbol
+
+proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
+  # echo "n ", n, " ", n.kind
+  let a = symbol(n)
+  if ctx.symbolIndices.hasKey(a):
+    return ctx.symbolIndices[a]
+  else:
+    internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
+    # return noExprIndex
+    # 
+  #ctx.symbolIndices[symbol(n)]
+
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
+  result = map.sets[ctx.index(n)]
+
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): set[ExprIndex] =
+  result = map.sets[index]
+    
+proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
+  
   map.expressions[index] = value
   map.history[index].add(History(info: info, kind: kind, node: node, nilability: value))
-  
+  #echo node, " ", index, " ", value
+  #for a, b in map.sets:
+  #  echo a, " ", b
+  # echo map
+  var exprAliases = aliasSet(ctx, map, index)
+  for a in exprAliases:
+    if a != index:
+      # echo "alias ", a, " ", index
+      map.expressions[a] = value
+      map.history[a].add(History(info: info, kind: TPotentialAlias, node: node, nilability: value))
+
+proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
+  var targetIndex = ctx.index(target)
+  var targetSet = map.sets[targetIndex]
+  if targetSet.len > 1:
+    var other: ExprIndex
+    
+    for element in targetSet:
+      if element != targetIndex:
+        # other = element
+        # break
+        map.sets[element].excl(targetIndex)
+    map.sets[targetIndex] = {targetIndex}
+
+proc move(ctx: NilCheckerContext, map: NilMap, target: PNode, assigned: PNode) =
+  var targetIndex = ctx.index(target)
+  var assignedIndex: ExprIndex
+  var targetSet = map.sets[targetIndex] 
+  var assignedSet: set[ExprIndex]
+  if assigned.kind == nkSym:
+    assignedIndex = ctx.index(assigned)
+    assignedSet = map.sets[assignedIndex]
+  else:
+    assignedIndex = noExprIndex
+    assignedSet = {}
+  if assignedIndex == noExprIndex:
+    moveOut(ctx, map, target)
+  elif targetSet != assignedSet:
+    for element in targetSet:
+      map.sets[element].excl(targetIndex)
+    # TODO ref? map.sets[targetIndex].excl(targetIndex)
+    for element in assignedSet:
+      map.sets[element].incl(targetIndex)
+    # TODO ref? map.sets[assignedIndex].incl(targetIndex)
+    map.sets[targetIndex] = map.sets[assignedIndex]
 
 # proc hasKey(map: NilMap, ): bool =
 #   var now = map
@@ -290,49 +381,7 @@ proc `$`(map: NilMap): string =
 # but the same actually
 # what about var result ??
 
-const noExprIndex = -1
 
-# proc graph(ctx: NilCheckerContext, symbol: Symbol): GraphIndex =
-#   if ctx.symbolGraphs.hasKey(symbol):
-#     return ctx.symbolGraphs[symbol]
-#   else:
-#     # TODO: maybe index all in partitions
-#     # or is this faster/smaller
-#     # a unique non-real graph index for symbols which are not in graph
-#     return noGraphIndex - 1 - symbol
-
-proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
-  # echo "n ", n, " ", n.kind
-  let a = symbol(n)
-  if ctx.symbolIndices.hasKey(a):
-    return ctx.symbolIndices[a]
-  else:
-    internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
-    # return noExprIndex
-    # 
-  #ctx.symbolIndices[symbol(n)]
-
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
-  result = map.sets[ctx.index(n)]
-
-# proc aliasSetIndex
-proc symbol(n: PNode): Symbol =
-  ## returns a Symbol for each expression
-  ## the goal is to get an unique Symbol
-  ## but we have to ensure hashTree does it as we expect
-  case n.kind:
-  of nkIdent:
-    result = 0
-  of nkSym:
-    if n.sym.kind == skResult: # credit to disruptek for showing me that
-      result = resultId
-    else:
-      result = n.sym.id
-  of nkHiddenAddr, nkAddr:
-    result = symbol(n[0])
-  else:
-    result = hashTree(n)
-  # echo "symbol ", n, " ", n.kind, " ", result
 
 using
   n: PNode
@@ -371,11 +420,12 @@ proc checkCall(n, ctx, map): Check =
         # echo "  ", child
         # echo "  ", symbol(child)
         let a = ctx.index(child)
-        result.map.store(a, MaybeNil, TVarArg, n.info, child)
+        moveOut(ctx, result.map, child)
+        result.map.store(ctx, a, MaybeNil, TVarArg, n.info, child)
     
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
     let b = ctx.index(n[1])
-    result.map.store(b, Safe, TAssign, n[1].info, n[1])
+    result.map.store(ctx, b, Safe, TAssign, n[1].info, n[1])
     result.nilability = Safe
   else:
     result.nilability = typeNilability(n.typ)
@@ -494,7 +544,7 @@ proc union(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
     var h = history(r, index.ExprIndex)
     var info = if h.len > 0: h[^1].info else: TLineInfo(line: 0) # assert h.len > 0
     # echo "history", name, value, r[name], h[^1].info.line
-    result.store(index.ExprIndex, union(value, r[index.ExprIndex]), TAssign, info)
+    result.store(ctx, index.ExprIndex, union(value, r[index.ExprIndex]), TAssign, info)
 
   
 # a = b
@@ -522,20 +572,22 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
     result.map = map
   if target.kind == nkSym:
     let t = ctx.index(target)
+    move(ctx, map, target, assigned)
     case assigned.kind:
     of nkNilLit:
-      result.map.store(t, Nil, TAssign, target.info, target)
+      result.map.store(ctx, t, Nil, TAssign, target.info, target)
     else:
       # echo "nilability ", $target, " ", $result.nilability
-      result.map.store(t, result.nilability, TAssign, target.info, target)
+      result.map.store(ctx, t, result.nilability, TAssign, target.info, target)
       # if target.kind in {nkSym, nkDotExpr}:
       #  result.map.makeAlias(assigned, target)
-
+    
+    
 proc checkReturn(n, ctx, map): Check =
   ## check return
   # return n same as result = n; return ?
   result = check(n[0], ctx, map)
-  result.map.store(resultExprIndex, result.nilability, TAssign, n.info)
+  result.map.store(ctx, resultExprIndex, result.nilability, TAssign, n.info)
 
 
 proc checkFor(n, ctx, map): Check =
@@ -548,7 +600,7 @@ proc checkFor(n, ctx, map): Check =
   var map0 = map.copyMap()
   m = check(n.sons[2], ctx, map).map.copyMap()
   if n[0].kind == nkSym:
-    m.store(ctx.index(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
+    m.store(ctx, ctx.index(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
   var map1 = m.copyMap()
   var check2 = check(n.sons[2], ctx, m)
   var map2 = check2.map
@@ -628,7 +680,7 @@ proc checkIsNil(n, ctx, map; isElse: bool = false): Check =
   result.map = newNilMap(map)
   let value = n[1]
   # let value2 = symbol(value)
-  result.map.store(ctx.index(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
+  result.map.store(ctx, ctx.index(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
 
 proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
   var name = case magic:
@@ -795,6 +847,7 @@ proc reverse(kind: TransitionKind): TransitionKind =
   case kind:
   of TNil: TSafe
   of TSafe: TNil
+  of TPotentialAlias: TPotentialAlias
   else: raise newException(ValueError, "expected TNil or TSafe")
 
 proc reverseDirect(map: NilMap): NilMap =
@@ -819,7 +872,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
       if n[1].kind == nkSym:
         let a = ctx.index(n[1])
         # echo "n[1] ", n[1], " ", a
-        result.store(a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
+        result.store(ctx, a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
       else:
         discard
     else:
@@ -1035,15 +1088,15 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
     if i > 0:
       if child.kind != nkSym:
         continue
-      map.store(context.index(child), typeNilability(child.typ), TArg, child.info, child)
+      map.store(context, context.index(child), typeNilability(child.typ), TArg, child.info, child)
 
-  map.store(resultExprIndex, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+  map.store(context, resultExprIndex, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
     
   # echo "checking ", s.name.s, " ", filename
 
   let res = check(body, context, map)
   if res.nilability == Safe and res.map.history[resultExprIndex].len <= 1:
-    res.map.store(resultExprIndex, Safe, TAssign, s.ast.info)
+    res.map.store(context, resultExprIndex, Safe, TAssign, s.ast.info)
   
   # check for nilability result
   # (ANotNil, BNotNil) : 

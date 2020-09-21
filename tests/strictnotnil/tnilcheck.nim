@@ -103,9 +103,19 @@ proc testForLoop(a: Nilable) =
 #          ^ can't deref a.field, it might be nil
 #     ]#
 
+
+proc testAliasChanging(a: Nilable) =
+  var b = a
+  var aliasA = b
+  b = Nilable()
+  if not b.isNil:
+    echo aliasA.a #[tt.Warning
+         ^ can't deref aliasA, it might be nil
+    ]#
+
 # TODO after alias support
-proc callVar(a: var Nilable) =
-  a.field = nil
+#proc callVar(a: var Nilable) =
+#  a.field = nil
 
 
 # TODO ptr support
@@ -119,13 +129,16 @@ proc callVar(a: var Nilable) =
 #          ^ can't deref a, it might be nil
 #     ]#
 
-proc testFieldAlias(a: Nilable) =
-  var b = a # {0, 1} {2} 
-  if not a.isNil and not a.field.isNil: # {0, 1} {2}
-    callVar(b) # {0, 1} {2} 0: Safe 1: Safe
-    echo a.field.a #[tt.Warning
-          ^ can't deref a.field, it might be nil
-    ]#
+# TODO field stuff
+# currently it just doesnt support dot, so accidentally it shows a warning but because that
+# not alias i think
+# proc testFieldAlias(a: Nilable) =
+#   var b = a # {0, 1} {2} 
+#   if not a.isNil and not a.field.isNil: # {0, 1} {2}
+#     callVar(b) # {0, 1} {2} 0: Safe 1: Safe
+#     echo a.field.a #[ tt.Warning
+#           ^ can't deref a.field, it might be nil
+#     ]#
 #
 # proc testUniqueHashTree(a: Nilable): Nilable =
 #   # TODO what would be a clash
@@ -266,7 +279,7 @@ var nilable: Nilable
 var withField = Nilable(a: 0, field: Nilable())
 var a = Nilable()
 # testPtrAlias(a)
-testFieldAlias(a)
+# testFieldAlias(a)
 # testRootAliasField(withField)
 # discard testUniqueHashTree(withField)
 # # test1(nilable)
