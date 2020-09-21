@@ -93,7 +93,7 @@ type
   NilMap* = ref object
     expressions*:  seq[Nilability] ## the expressions with the same order as in NilCheckerContext
     history*:  seq[seq[History]] ## history for each of them
-    sets*:     seq[set[ExprIndex]] ## disjoint sets with the aliased expressions
+    sets*:     seq[ref set[ExprIndex]] ## disjoint sets with the aliased expressions
     parent*:   NilMap ## the parent map
     base*:     NilMap ## the root map
 
@@ -168,13 +168,17 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
   result = NilMap(
     expressions: newSeq[Nilability](expressionsCount),
     history: newSeq[seq[History]](expressionsCount),
-    sets: newSeq[set[ExprIndex]](expressionsCount),
+    sets: newSeq[ref set[ExprIndex]](expressionsCount),
     parent: parent)
   if parent.isNil:
     for i, expr in result.expressions:
-      result.sets[i] = {i.ExprIndex}
+      new(result.sets[i])
+      result.sets[i][] = {i.ExprIndex}
   else:
-    result.sets = parent.sets
+    for i, exprs in parent.sets:
+      new(result.sets[i])
+      result.sets[i][] = exprs[]
+    # result.sets = parent.sets
   # if not parent.isNil:
   #   # optimize []?
   #   result.expressions = parent.expressions
@@ -273,10 +277,10 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
     # 
   #ctx.symbolIndices[symbol(n)]
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): ref set[ExprIndex] =
   result = map.sets[ctx.index(n)]
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): set[ExprIndex] =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): ref set[ExprIndex] =
   result = map.sets[index]
     
 proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
@@ -288,7 +292,7 @@ proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilabil
   #  echo a, " ", b
   # echo map
   var exprAliases = aliasSet(ctx, map, index)
-  for a in exprAliases:
+  for a in exprAliases[]:
     if a != index:
       # echo "alias ", a, " ", index
       map.expressions[a] = value
@@ -297,36 +301,39 @@ proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilabil
 proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
   var targetIndex = ctx.index(target)
   var targetSet = map.sets[targetIndex]
-  if targetSet.len > 1:
+  if targetSet[].len > 1:
     var other: ExprIndex
     
-    for element in targetSet:
+    for element in targetSet[]:
       if element != targetIndex:
-        # other = element
-        # break
-        map.sets[element].excl(targetIndex)
-    map.sets[targetIndex] = {targetIndex}
+        other = element
+        break
+        # map.sets[element].excl(targetIndex)
+    map.sets[other][].excl(targetIndex)
+    map.sets[targetIndex][] = {targetIndex}
 
 proc move(ctx: NilCheckerContext, map: NilMap, target: PNode, assigned: PNode) =
   var targetIndex = ctx.index(target)
   var assignedIndex: ExprIndex
   var targetSet = map.sets[targetIndex] 
-  var assignedSet: set[ExprIndex]
+  var assignedSet: ref set[ExprIndex]
   if assigned.kind == nkSym:
     assignedIndex = ctx.index(assigned)
     assignedSet = map.sets[assignedIndex]
   else:
     assignedIndex = noExprIndex
-    assignedSet = {}
+    assignedSet = nil
   if assignedIndex == noExprIndex:
     moveOut(ctx, map, target)
   elif targetSet != assignedSet:
-    for element in targetSet:
-      map.sets[element].excl(targetIndex)
-    # TODO ref? map.sets[targetIndex].excl(targetIndex)
-    for element in assignedSet:
-      map.sets[element].incl(targetIndex)
-    # TODO ref? map.sets[assignedIndex].incl(targetIndex)
+    #for element in targetSet:
+    #  map.sets[element].excl(targetIndex)
+    # TODO ref? 
+    map.sets[targetIndex][].excl(targetIndex)
+    #for element in assignedSet:
+    #  map.sets[element].incl(targetIndex)
+    # TODO ref? 
+    map.sets[assignedIndex][].incl(targetIndex)
     map.sets[targetIndex] = map.sets[assignedIndex]
 
 # proc hasKey(map: NilMap, ): bool =
