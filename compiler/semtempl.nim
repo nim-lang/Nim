@@ -662,7 +662,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
   elif n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, "implementation of '$1' expected" % s.name.s)
-  var proto = searchForProc(c, c.currentScope, s)
+  var (proto, _) = searchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
   else:
