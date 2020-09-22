@@ -10,6 +10,8 @@
 # Exception handling code. Carefully coded so that tiny programs which do not
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
+import stacktraces
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -133,20 +135,6 @@ const
   hasSomeStackTrace = NimStackTrace or defined(nimStackTraceOverride) or
     (defined(nativeStackTrace) and nativeStackTraceSupported)
 
-when defined(nimStackTraceOverride):
-  type StackTraceOverrideProc* = proc (): string {.nimcall, noinline, benign, raises: [], tags: [].}
-    ## Procedure type for overriding the default stack trace.
-
-  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string {.noinline.} =
-    result = "Stack trace override procedure not registered.\n"
-
-  proc registerStackTraceOverride*(overrideProc: StackTraceOverrideProc) =
-    ## Override the default stack trace inside rawWriteStackTrace() with your
-    ## own procedure.
-    stackTraceOverrideGetTraceback = overrideProc
-
-  proc auxWriteStackTraceWithOverride(s: var string) =
-    add(s, stackTraceOverrideGetTraceback())
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -164,13 +152,13 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
   when not hasThreadSupport:
     var
-      tempAddresses: array[0..127, pointer] # should not be alloc'd on stack
+      tempAddresses: array[maxStackTraceLines, pointer] # should not be alloc'd on stack
       tempDlInfo: TDl_info
 
   proc auxWriteStackTraceWithBacktrace(s: var string) =
     when hasThreadSupport:
       var
-        tempAddresses: array[0..127, pointer] # but better than a threadvar
+        tempAddresses: array[maxStackTraceLines, pointer] # but better than a threadvar
         tempDlInfo: TDl_info
     # This is allowed to be expensive since it only happens during crashes
     # (but this way you don't need manual stack tracing)
@@ -198,11 +186,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
 when hasSomeStackTrace and not hasThreadSupport:
   var
-    tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
-
-const
-  reraisedFromBegin = -10
-  reraisedFromEnd = -100
+    tempFrames: array[maxStackTraceLines, PFrame] # should not be alloc'd on stack
 
 template reraisedFrom(z): untyped =
   StackTraceEntry(procname: nil, line: z, filename: nil)
@@ -253,7 +237,12 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
       for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
-proc `$`(s: seq[StackTraceEntry]): string =
+proc `$`(stackTraceEntries: seq[StackTraceEntry]): string =
+  when defined(nimStackTraceOverride):
+    let s = addDebuggingInfo(stackTraceEntries)
+  else:
+    let s = stackTraceEntries
+
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:
     if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
@@ -265,7 +254,7 @@ when hasSomeStackTrace:
   proc auxWriteStackTrace(f: PFrame, s: var string) =
     when hasThreadSupport:
       var
-        tempFrames: array[0..127, PFrame] # but better than a threadvar
+        tempFrames: array[maxStackTraceLines, PFrame] # but better than a threadvar
     const
       firstCalls = 32
     var
@@ -324,7 +313,9 @@ when hasSomeStackTrace:
       add(s, "No stack traceback available\n")
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      auxWriteStackTraceWithOverride(s)
+    elif NimStackTrace:
       auxWriteStackTrace(framePtr, s)
     else:
       s = @[]
@@ -463,7 +454,12 @@ proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     when defined(nimStackTraceOverride):
-      e.trace = @[]
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      else:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTraceWithOverride(e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
     elif NimStackTrace:
       if e.trace.len == 0:
         rawWriteStackTrace(e.trace)
