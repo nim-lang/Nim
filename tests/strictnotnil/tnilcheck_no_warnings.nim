@@ -60,12 +60,12 @@ proc testAliasCheck(a: Nilable) =
   if not a.isNil:
     echo aliasA.a # ok
 
+proc testFieldCheck(a: Nilable) =
+  if not a.isNil and not a.field.isNil:
+    echo a.field.a # ok
+
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok
-
-# proc testFieldCheck(a: Nilable) =
-#   if not a.isNil and not a.field.isNil:
-#     echo a.field.a # ok
 
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field

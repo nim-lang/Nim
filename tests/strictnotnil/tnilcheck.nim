@@ -87,9 +87,6 @@ proc testForLoop(a: Nilable) =
 #   echo a.a # ok
 
 
-# proc testFieldCheck(a: Nilable) =
-#   if not a.isNil and not a.field.isNil:
-#     echo a.field.a # ok
 
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field
@@ -254,13 +251,26 @@ proc testAliasChanging(a: Nilable) =
 #     a = Nilable()
 #   echo a.a # ok
 
-# proc callChange(a: Nilable) =
-#   a.field = nil
+proc callChange(a: Nilable) =
+  if not a.isNil:
+    a.field = nil
 
-# proc testCallAlias =
-#   var a = Nilable(field: Nilable())
-#   callChange(a)
-#   echo a.field.a # can't deref a.field, it might be nil
+proc testCallChangeField =
+  var a = Nilable()
+  a.field = Nilable()
+  callChange(a)
+  echo a.field.a #[tt.Warning
+        ^ can't deref a.field, it might be nil
+       ]#
+
+proc testReassignVarWithField =
+  var a = Nilable()
+  a.field = Nilable()
+  echo a.field.a # ok
+  a = Nilable()
+  echo a.field.a #[tt.Warning
+        ^ can't deref a.field, it might be nil
+        ]#
 
 # var it = root;
 # while it != nil:
