@@ -28,7 +28,6 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-
 proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
@@ -85,4 +84,3 @@ when false:
                                 fn.ast[genericParamsPos]):
             if paramsFitBorrow(fn.typ.n, result.typ.n): return
         result = NextIdentIter(it, scope.symbols)
-
