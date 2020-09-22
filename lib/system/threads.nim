@@ -41,6 +41,8 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
+## 
+## deinitLock(L)
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
