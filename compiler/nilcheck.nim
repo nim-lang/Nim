@@ -554,13 +554,14 @@ proc checkCall(n, ctx, map): Check =
         result.map.store(ctx, a, MaybeNil, TVarArg, n.info, child)
         storeDependants(ctx, result.map, child, MaybeNil)
       elif child.typ.kind == tyRef:
-        let a = ctx.index(child)
-        if ctx.dependants[a].len > 0:
-          if not isNew:
-            result.map = newNilMap(map)
-            isNew = true
-          moveOutDependants(ctx, result.map, child)
-          storeDependants(ctx, result.map, child, MaybeNil)
+        if child.kind in {nkSym, nkDotExpr}:
+          let a = ctx.index(child)
+          if ctx.dependants[a].len > 0:
+            if not isNew:
+              result.map = newNilMap(map)
+              isNew = true
+            moveOutDependants(ctx, result.map, child)
+            storeDependants(ctx, result.map, child, MaybeNil)
         
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
     # new hidden deref?
@@ -1115,7 +1116,8 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
       for i, child in n:
         result = check(child, ctx, result.map)
         if i > 0:
-          elements.add((child[0], result.nilability))
+          if child.kind == nkExprColonExpr:
+            elements.add((child[0], result.nilability))
       result.elements = elements
       result.nilability = Safe
     else:
@@ -1212,11 +1214,13 @@ proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
       ctx.symbolIndices[nodeSymbol] = ctx.expressions.len
       ctx.expressions.add(node)
     if node.kind == nkDotExpr:
-      if node.typ.kind == tyRef and tfNotNil notin node.typ.flags:
+      if not node.typ.isNil and node.typ.kind == tyRef and tfNotNil notin node.typ.flags:
         let index = ctx.symbolIndices[nodeSymbol]
         var baseIndex = noExprIndex
         # deref usually?
-        let baseSymbol = symbol(node[0][0])
+        # ok, we hit another case
+        var base = if node[0].kind != nkSym: node[0][0] else: node[0]
+        let baseSymbol = symbol(base)
         if not ctx.symbolIndices.hasKey(baseSymbol):
           baseIndex = ctx.expressions.len # next visit should add it
         else:
