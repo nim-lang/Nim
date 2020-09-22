@@ -1754,17 +1754,21 @@ proc semReturn(c: PContext, n: PNode): PNode =
   if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or
       (not c.p.owner.typ.isNil and isClosureIterator(c.p.owner.typ)):
     if n[0].kind != nkEmpty:
-      # transform ``return expr`` to ``result = expr; return``
-      if c.p.resultSym != nil:
+      if n[0].kind == nkAsgn and n[0][0].kind == nkSym and c.p.resultSym == n[0][0].sym:
+        discard "return is already transformed"
+      elif c.p.resultSym != nil:
+        # transform ``return expr`` to ``result = expr; return``
         var a = newNodeI(nkAsgn, n[0].info)
         a.add newSymNode(c.p.resultSym)
         a.add n[0]
-        n[0] = semAsgn(c, a)
-        # optimize away ``result = result``:
-        if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym:
-          n[0] = c.graph.emptyNode
-      else:
+        n[0] = a
+      else:        
         localError(c.config, n.info, errNoReturnTypeDeclared)
+        return
+      result[0] = semAsgn(c, n[0])
+      # optimize away ``result = result``:
+      if result[0][1].kind == nkSym and result[0][1].sym == c.p.resultSym:
+        result[0] = c.graph.emptyNode
   else:
     localError(c.config, n.info, "'return' not allowed here")
 

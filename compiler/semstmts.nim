@@ -1430,16 +1430,19 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
-proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
+proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   if owner == skMacro or t != nil:
-    var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), info)
-    s.typ = t
-    incl(s.flags, sfUsed)
-    addParamOrResult(c, s, owner)
-    c.p.resultSym = s
-
-proc addResultNode(c: PContext, n: PNode) =
-  if c.p.resultSym != nil: n.add newSymNode(c.p.resultSym)
+    if n.len > resultPos and n[resultPos] != nil:
+      if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+        localError(c.config, n.info, "incorrect result proc symbol")
+      c.p.resultSym = n[resultPos].sym
+    else:
+      var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), n.info)
+      s.typ = t
+      incl(s.flags, sfUsed)
+      c.p.resultSym = s
+      n.add newSymNode(c.p.resultSym)
+    addParamOrResult(c, c.p.resultSym, owner)
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
@@ -1563,8 +1566,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX not good enough; see tnamedparamanonproc.nim
     if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
       pushProcCon(c, s)
-      addResult(c, s.typ[0], n.info, skProc)
-      addResultNode(c, n)
+      addResult(c, n, s.typ[0], skProc)
       s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
       trackProc(c, s, s.ast[bodyPos])
       popProcCon(c)
@@ -1606,8 +1608,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   pushOwner(c, s)
   addParams(c, params, skProc)
   pushProcCon(c, s)
-  addResult(c, n.typ[0], n.info, skProc)
-  addResultNode(c, n)
+  addResult(c, n, n.typ[0], skProc)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
@@ -1637,11 +1638,9 @@ proc activate(c: PContext, n: PNode) =
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.kind == skMacro:
     let resultType = sysTypeFromName(c.graph, n.info, "NimNode")
-    addResult(c, resultType, n.info, s.kind)
-    addResultNode(c, n)
+    addResult(c, n, resultType, s.kind)
   elif s.typ[0] != nil and not isInlineIterator(s.typ):
-    addResult(c, s.typ[0], n.info, s.kind)
-    addResultNode(c, n)
+    addResult(c, n, s.typ[0], s.kind)
 
 proc canonType(c: PContext, t: PType): PType =
   if t.kind == tySequence:

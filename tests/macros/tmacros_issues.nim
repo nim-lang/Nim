@@ -480,3 +480,20 @@ func expMin: float
 func expMin: float {.aadMin.} = 1
 
 echo expMin()
+
+
+# issue #15389
+block double_sem_for_procs:
+
+  macro aad(fns: varargs[typed]): typed =
+    result = newStmtList()
+    for fn in fns:
+      result.add fn
+
+  func exp(x: float): float {.aad.} =
+    var x1 = min(max(x, -708.4), 709.8)
+    if x1 > 0.0:
+      return x1 + 1.0
+    result = 10.0
+
+  discard exp(5.0)
