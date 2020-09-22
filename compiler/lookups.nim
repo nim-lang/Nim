@@ -91,7 +91,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
 
-proc isShadowScope*(s: PScope): bool = s.parent != nil and s.parent.depthLevel == s.depthLevel
+proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   var scope = c.currentScope
