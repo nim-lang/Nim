@@ -64,6 +64,10 @@ proc testFieldCheck(a: Nilable) =
   if not a.isNil and not a.field.isNil:
     echo a.field.a # ok
 
+proc testTrackField =
+  var a = Nilable(field: Nilable())
+  echo a.field.a # ok
+
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok
 

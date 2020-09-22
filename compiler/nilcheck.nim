@@ -338,7 +338,7 @@ proc symbol(n: PNode): Symbol =
     result = symbol(n[0])
   else:
     result = hashTree(n).Symbol
-  # echo "symbol ", n, " ", n.kind, " ", result
+  # echo "symbol ", n, " ", n.kind, " ", result.int
 
 func `$`(map: NilMap): string =
   var now = map
@@ -725,7 +725,7 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
       storeDependants(ctx, map, target, MaybeNil)
       if assigned.kind in {nkObjConstr, nkTupleConstr}:
         for (element, value) in result.elements:
-          var elementNode = nkDotExpr.newTree(target, element)
+          var elementNode = nkDotExpr.newTree(nkHiddenDeref.newTree(target), element)
           if symbol(elementNode) in ctx.symbolIndices:
             var elementIndex = ctx.index(elementNode)
             result.map.store(ctx, elementIndex, value, TAssign, target.info, elementNode)
@@ -1109,10 +1109,13 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result.map = map
     if n.kind in {nkObjConstr, nkTupleConstr}:
       # TODO deeper nested elements?
+      # A(field: B()) #
+      # field: Safe -> 
       var elements: seq[(PNode, Nilability)]
-      for child in n:
+      for i, child in n:
         result = check(child, ctx, result.map)
-        elements.add((child, result.nilability))
+        if i > 0:
+          elements.add((child[0], result.nilability))
       result.elements = elements
       result.nilability = Safe
     else:

@@ -272,6 +272,7 @@ proc testReassignVarWithField =
         ^ can't deref a.field, it might be nil
         ]#
 
+
 # var it = root;
 # while it != nil:
 #   baz(it)
