@@ -2814,7 +2814,7 @@ else:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
-when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
+when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>

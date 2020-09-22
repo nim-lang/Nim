@@ -187,10 +187,15 @@
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
-- `system/excpt`, `asyncfutures`: `-d:nimStackTraceOverride` now has exception
-  stack traces, with support for an efficient implementation that separates the
-  cheap stack unwinding step from the relatively expensive debugging info
-  collection that's done on demand.
+- Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
+  ```nim
+  import strutils
+  echo dedent """
+    This
+      is
+        cool!
+    """
+  ``` 
 
 ## Language changes
 
