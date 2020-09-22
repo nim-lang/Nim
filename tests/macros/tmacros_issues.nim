@@ -421,7 +421,6 @@ func exp*(x: float): float {.aad.} =
   result = x1 + 1.0
   result
 
- 
 template check_accuracy(f: untyped, rng: Slice[float], n: int, verbose = false): auto =
 
   proc check_accuracy: tuple[avg_ulp: float, max_ulp: int] {.gensym.} =
@@ -441,11 +440,43 @@ template check_accuracy(f: untyped, rng: Slice[float], n: int, verbose = false):
 
 discard check_accuracy(exp, -730.0..709.4, 4)
 
+# And without forward decl
+macro aad2*(fns: varargs[typed]): typed =
+  result = newStmtList()
+  for fn in fns:
+    captured_funcs.add fn[0]
+    result.add fn
+
+func exp2*(x: float): float {.aad2.} =
+  var x1 = min(max(x, -708.4), 709.8)
+  var result: float   ## looks weird because it is taken from template expansion
+  result = x1 + 1.0
+  result
+
+template check_accuracy2(f: untyped, rng: Slice[float], n: int, verbose = false): auto =
+
+  proc check_accuracy2: tuple[avg_ulp: float, max_ulp: int] {.gensym.} =
+    let k = (rng.b - rng.a) / (float) n
+    var
+      res, x: float
+      i, max_ulp = 0
+      avg_ulp = 0.0
+
+    x = rng.a
+    while (i < n):
+      res = f(x)
+      i.inc
+      x = x + 0.001
+    (avg_ulp, max_ulp)
+  check_accuracy2()
+
+discard check_accuracy2(exp2, -730.0..709.4, 4)
+
 # And minimized:
-macro aad(fn: typed): typed = fn
+macro aadMin(fn: typed): typed = fn
 
-func exp: float
+func expMin: float
 
-func exp: float {.aad.} = 1
+func expMin: float {.aadMin.} = 1
 
-echo exp()
+echo expMin()
