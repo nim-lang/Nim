@@ -39,6 +39,7 @@ true
 false
 true
 false
+1
 '''
 """
 
@@ -403,3 +404,11 @@ testEvenOdd5()
 # it works, because the forward decl and definition share the symbol and the compiler is forgiving here
 #testEvenOdd6() #Don't test it though, the compiler may become more strict in the future
 
+# bug #15385
+macro aad(fn: typed): typed = fn
+
+func exp: float
+
+func exp: float {.aad.} = 1
+
+echo exp()
