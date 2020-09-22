@@ -186,7 +186,12 @@
   from the database that matches the protocol `name`.
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
+- New type: `cuintptr_t` - the same as `uintptr_t` in C.
 
+- `system/excpt`, `asyncfutures`: `-d:nimStackTraceOverride` now has exception
+  stack traces, with support for an efficient implementation that separates the
+  cheap stack unwinding step from the relatively expensive debugging info
+  collection that's done on demand.
 
 ## Language changes
 

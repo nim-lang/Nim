@@ -71,6 +71,11 @@ type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
                      excHandler: PSafePoint, currException: ref Exception]
 
+const
+  reraisedFromBegin* = -10
+  reraisedFromEnd* = -100
+  maxStackTraceLines = 128
+
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
   return (gcFramePtr, framePtr, excHandler, currException)
 
@@ -138,19 +143,67 @@ const
     (defined(nativeStackTrace) and nativeStackTraceSupported)
 
 when defined(nimStackTraceOverride):
-  type StackTraceOverrideProc* = proc (): string {.nimcall, noinline, benign, raises: [], tags: [].}
-    ## Procedure type for overriding the default stack trace.
+  ## Procedure types for overriding the default stack trace.
+  type
+    StackTraceOverrideGetTracebackProc* = proc (): string {.
+      nimcall, noinline, benign, raises: [], tags: [].}
+    StackTraceOverrideGetProgramCountersProc* = proc (maxLength: cint): seq[cuintptr_t] {.
+      nimcall, noinline, benign, raises: [], tags: [].}
+    StackTraceOverrideGetDebuggingInfoProc* =
+      proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
+        nimcall, noinline, benign, raises: [], tags: [].}
 
-  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string {.noinline.} =
-    result = "Stack trace override procedure not registered.\n"
+  # Default procedures (not normally used, because people opting in on this
+  # override are supposed to register their own versions).
+  var
+    stackTraceOverrideGetTraceback: StackTraceOverrideGetTracebackProc =
+      proc (): string {.nimcall, noinline, benign, raises: [], tags: [].} =
+        result = "Stack trace override procedure not registered.\n"
+    stackTraceOverrideGetProgramCounters: StackTraceOverrideGetProgramCountersProc =
+      proc (maxLength: cint): seq[cuintptr_t] {.nimcall, noinline, benign, raises: [], tags: [].} =
+        discard
+    stackTraceOverrideGetDebuggingInfo: StackTraceOverrideGetDebuggingInfoProc =
+      proc (programCounters: seq[cuintptr_t], maxLength: cint): seq[StackTraceEntry] {.
+        nimcall, noinline, benign, raises: [], tags: [].} =
+          discard
 
-  proc registerStackTraceOverride*(overrideProc: StackTraceOverrideProc) =
+  # Custom procedure registration.
+  proc registerStackTraceOverride*(overrideProc: StackTraceOverrideGetTracebackProc) =
     ## Override the default stack trace inside rawWriteStackTrace() with your
     ## own procedure.
     stackTraceOverrideGetTraceback = overrideProc
+  proc registerStackTraceOverrideGetProgramCounters*(overrideProc: StackTraceOverrideGetProgramCountersProc) =
+    stackTraceOverrideGetProgramCounters = overrideProc
+  proc registerStackTraceOverrideGetDebuggingInfo*(overrideProc: StackTraceOverrideGetDebuggingInfoProc) =
+    stackTraceOverrideGetDebuggingInfo = overrideProc
 
+  # Custom stack trace manipulation.
   proc auxWriteStackTraceWithOverride(s: var string) =
     add(s, stackTraceOverrideGetTraceback())
+
+  proc auxWriteStackTraceWithOverride(s: var seq[StackTraceEntry]) =
+    let programCounters = stackTraceOverrideGetProgramCounters(maxStackTraceLines)
+    if s.len == 0:
+      s = newSeqOfCap[StackTraceEntry](programCounters.len)
+    for programCounter in programCounters:
+      s.add(StackTraceEntry(programCounter: cast[uint](programCounter)))
+
+  # We may have more stack trace lines in the output, due to inlined procedures.
+  proc addDebuggingInfo*(s: seq[StackTraceEntry]): seq[StackTraceEntry] =
+    var programCounters: seq[cuintptr_t]
+    # We process program counters in groups from complete stack traces, because
+    # we have logic that keeps track of certain functions being inlined or not.
+    for entry in s:
+      if entry.procname.isNil and entry.programCounter != 0:
+        programCounters.add(cast[cuintptr_t](entry.programCounter))
+      elif entry.procname.isNil and (entry.line == reraisedFromBegin or entry.line == reraisedFromEnd):
+        result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
+        programCounters = @[]
+        result.add(entry)
+      else:
+        result.add(entry)
+    if programCounters.len > 0:
+      result.add(stackTraceOverrideGetDebuggingInfo(programCounters, maxStackTraceLines))
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -168,13 +221,13 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
   when not hasThreadSupport:
     var
-      tempAddresses: array[0..127, pointer] # should not be alloc'd on stack
+      tempAddresses: array[maxStackTraceLines, pointer] # should not be alloc'd on stack
       tempDlInfo: TDl_info
 
   proc auxWriteStackTraceWithBacktrace(s: var string) =
     when hasThreadSupport:
       var
-        tempAddresses: array[0..127, pointer] # but better than a threadvar
+        tempAddresses: array[maxStackTraceLines, pointer] # but better than a threadvar
         tempDlInfo: TDl_info
     # This is allowed to be expensive since it only happens during crashes
     # (but this way you don't need manual stack tracing)
@@ -202,11 +255,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
 when hasSomeStackTrace and not hasThreadSupport:
   var
-    tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
-
-const
-  reraisedFromBegin = -10
-  reraisedFromEnd = -100
+    tempFrames: array[maxStackTraceLines, PFrame] # should not be alloc'd on stack
 
 template reraisedFrom(z): untyped =
   StackTraceEntry(procname: nil, line: z, filename: nil)
@@ -253,7 +302,12 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
       for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
-proc `$`(s: seq[StackTraceEntry]): string =
+proc `$`(stackTraceEntries: seq[StackTraceEntry]): string =
+  when defined(nimStackTraceOverride):
+    let s = addDebuggingInfo(stackTraceEntries)
+  else:
+    let s = stackTraceEntries
+
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:
     if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
@@ -265,7 +319,7 @@ when hasSomeStackTrace:
   proc auxWriteStackTrace(f: PFrame, s: var string) =
     when hasThreadSupport:
       var
-        tempFrames: array[0..127, PFrame] # but better than a threadvar
+        tempFrames: array[maxStackTraceLines, PFrame] # but better than a threadvar
     const
       firstCalls = 32
     var
@@ -324,7 +378,9 @@ when hasSomeStackTrace:
       add(s, "No stack traceback available\n")
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      auxWriteStackTraceWithOverride(s)
+    elif NimStackTrace:
       auxWriteStackTrace(framePtr, s)
     else:
       s = @[]
@@ -468,7 +524,12 @@ proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     when defined(nimStackTraceOverride):
-      e.trace = @[]
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      else:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTraceWithOverride(e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
     elif NimStackTrace:
       if e.trace.len == 0:
         rawWriteStackTrace(e.trace)
