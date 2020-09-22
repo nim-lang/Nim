@@ -86,6 +86,7 @@ proc testForLoop(a: Nilable) =
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok
 
+
 # proc testFieldCheck(a: Nilable) =
 #   if not a.isNil and not a.field.isNil:
 #     echo a.field.a # ok
@@ -112,6 +113,21 @@ proc testAliasChanging(a: Nilable) =
     echo aliasA.a #[tt.Warning
          ^ can't deref aliasA, it might be nil
     ]#
+
+# TODO
+# proc testAliasUnion(a: Nilable) =
+#   var a2 = a
+#   var b = a2
+#   if a.isNil:
+#     b = Nilable()
+#     a2 = nil
+#   else:
+#     a2 = Nilable()
+#     b = a2
+#   if not b.isNil:
+#     echo a2.a #[ tt.Warning
+#          ^ can't deref a2, it might be nil
+#     ]#
 
 # TODO after alias support
 #proc callVar(a: var Nilable) =

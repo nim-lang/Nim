@@ -272,6 +272,7 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
   if ctx.symbolIndices.hasKey(a):
     return ctx.symbolIndices[a]
   else:
+    echo ctx.expressions, " ", n.kind
     internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
     # return noExprIndex
     # 
@@ -431,8 +432,10 @@ proc checkCall(n, ctx, map): Check =
         result.map.store(ctx, a, MaybeNil, TVarArg, n.info, child)
     
   if n[0].kind == nkSym and n[0].sym.magic == mNew:
-    let b = ctx.index(n[1])
-    result.map.store(ctx, b, Safe, TAssign, n[1].info, n[1])
+    # new hidden deref?
+    var value = if n[1].kind == nkHiddenDeref: n[1][0] else: n[1]
+    let b = ctx.index(value)
+    result.map.store(ctx, b, Safe, TAssign, value.info, value)
     result.nilability = Safe
   else:
     result.nilability = typeNilability(n.typ)
@@ -553,7 +556,8 @@ proc union(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
     # echo "history", name, value, r[name], h[^1].info.line
     result.store(ctx, index.ExprIndex, union(value, r[index.ExprIndex]), TAssign, info)
 
-  
+# sets ..
+# a, b in   
 # a = b
 # a = c
 #
@@ -855,7 +859,9 @@ proc reverse(kind: TransitionKind): TransitionKind =
   of TNil: TSafe
   of TSafe: TNil
   of TPotentialAlias: TPotentialAlias
-  else: raise newException(ValueError, "expected TNil or TSafe")
+  else: 
+    kind
+    # raise newException(ValueError, "expected TNil or TSafe")
 
 proc reverseDirect(map: NilMap): NilMap =
   result = map.copyMap()
