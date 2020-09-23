@@ -230,8 +230,6 @@ proc resetUri(uri: var Uri) =
   for f in uri.fields:
     when f is string:
       f.setLen(0)
-    elif f is bool:
-      f = false
     else:
       f = false
 
