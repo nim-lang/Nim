@@ -1754,19 +1754,21 @@ proc semReturn(c: PContext, n: PNode): PNode =
   if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or
       (not c.p.owner.typ.isNil and isClosureIterator(c.p.owner.typ)):
     if n[0].kind != nkEmpty:
-      if c.p.resultSym != nil:
+      if n[0].kind == nkAsgn and n[0][0].kind == nkSym and c.p.resultSym == n[0][0].sym:
+        discard "return is already transformed"
+      elif c.p.resultSym != nil:
         # transform ``return expr`` to ``result = expr; return``
-        var asgn = newNodeI(nkAsgn, n[0].info)
-        asgn.add newSymNode(c.p.resultSym)
-        asgn.add n[0]        
-        asgn = semAsgn(c, asgn)
-        if asgn[1].kind == nkSym and asgn[1].sym == c.p.resultSym:
-          # optimize away ``result = result``:
-          result = newTreeI(nkReturnStmt, n.info, c.graph.emptyNode)
-        else:
-          result = newTreeI(nkStmtList, n.info, asgn, newTreeI(nkReturnStmt, n.info, c.graph.emptyNode))        
+        var a = newNodeI(nkAsgn, n[0].info)
+        a.add newSymNode(c.p.resultSym)
+        a.add n[0]
+        n[0] = a
       else:        
         localError(c.config, n.info, errNoReturnTypeDeclared)
+        return
+      result[0] = semAsgn(c, n[0])
+      # optimize away ``result = result``:
+      if result[0][1].kind == nkSym and result[0][1].sym == c.p.resultSym:
+        result[0] = c.graph.emptyNode
   else:
     localError(c.config, n.info, "'return' not allowed here")
 
