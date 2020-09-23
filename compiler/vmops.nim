@@ -243,6 +243,8 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
 
+  registerCallback c, "stdlib.raiseslists.getRaisesList",
+
   if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)
   else:
