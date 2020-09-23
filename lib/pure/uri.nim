@@ -224,8 +224,12 @@ proc initUri*(kind: IpKind): Uri {.since: (1, 3, 5).} =
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
-    var uri2: Uri
-    assert initUri(kind = IPv4) == uri2
+    var uriIpv6: Uri
+
+    let org = "udp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
+    parseUri(org, uriIpv6)
+    doAssert uriIpv6.hostname == "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    doAssert $uriIpv6 == org
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "", kind: kind)
 
