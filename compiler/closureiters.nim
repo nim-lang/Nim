@@ -133,6 +133,21 @@ import
   renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos
 
 type
+  BlockKind = enum
+    bkBlock
+    bkWhile
+    bkTry
+
+  Block = object
+    case kind: BlockKind
+    of bkWhile:
+      entry: PNode
+    of bkBlock:
+      label: PNode
+    else:
+      discard
+    exit: PNode
+
   Ctx = object
     g: ModuleGraph
     fn: PSym
@@ -142,7 +157,6 @@ type
     curExcSym: PSym # Current exception
 
     states: seq[PNode] # The resulting states. Every state is an nkState node.
-    blockLevel: int # Temp used to transform break and continue stmts
     stateLoopLabel: PSym # Label to break on, when jumping between states.
     exitStateIdx: int # index of the last state
     tempVarId: int # unique name counter
@@ -152,6 +166,7 @@ type
     curExcHandlingState: int # Negative for except, positive for finally
     nearestFinally: int # Index of the nearest finally block. For try/except it
                     # is their finally. For finally it is parent finally. Otherwise -1
+    blockStack: seq[Block] # Stack of nkBlocks and nkWhiles
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -256,45 +271,6 @@ proc hasYields(n: PNode): bool =
       if c.hasYields:
         result = true
         break
-
-proc transformBreaksAndContinuesInWhile(ctx: var Ctx, n: PNode, before, after: PNode): PNode =
-  result = n
-  case n.kind
-  of nkSkip:
-    discard
-  of nkWhileStmt: discard # Do not recurse into nested whiles
-  of nkContinueStmt:
-    result = before
-  of nkBlockStmt:
-    inc ctx.blockLevel
-    result[1] = ctx.transformBreaksAndContinuesInWhile(result[1], before, after)
-    dec ctx.blockLevel
-  of nkBreakStmt:
-    if ctx.blockLevel == 0:
-      result = after
-  else:
-    for i in 0..<n.len:
-      n[i] = ctx.transformBreaksAndContinuesInWhile(n[i], before, after)
-
-proc transformBreaksInBlock(ctx: var Ctx, n: PNode, label, after: PNode): PNode =
-  result = n
-  case n.kind
-  of nkSkip:
-    discard
-  of nkBlockStmt, nkWhileStmt:
-    inc ctx.blockLevel
-    result[1] = ctx.transformBreaksInBlock(result[1], label, after)
-    dec ctx.blockLevel
-  of nkBreakStmt:
-    if n[0].kind == nkEmpty:
-      if ctx.blockLevel == 0:
-        result = after
-    else:
-      if label.kind == nkSym and n[0].sym == label.sym:
-        result = after
-  else:
-    for i in 0..<n.len:
-      n[i] = ctx.transformBreaksInBlock(n[i], label, after)
 
 proc newNullifyCurExc(ctx: var Ctx, info: TLineInfo): PNode =
   # :curEcx = nil
@@ -860,22 +836,18 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
   of nkSkip: discard
 
   of nkStmtList, nkStmtListExpr:
-    result = addGotoOut(result, gotoOut)
+    result = shallowCopy(n)
     for i in 0..<n.len:
       if n[i].hasYields:
         # Create a new split
         let go = newNodeI(nkGotoState, n[i].info)
-        n[i] = ctx.transformClosureIteratorBody(n[i], go)
+        discard ctx.newState(n[i], go)
+        result[i] = ctx.transformClosureIteratorBody(n[i], go)
+      else:
+        result[i] = ctx.transformClosureIteratorBody(n[i], gotoOut)
 
-        let s = newNodeI(nkStmtList, n[i + 1].info)
-        for j in i + 1..<n.len:
-          s.add(n[j])
-
-        n.sons.setLen(i + 1)
-        discard ctx.newState(s, go)
-        if ctx.transformClosureIteratorBody(s, gotoOut) != s:
-          internalError(ctx.g.config, "transformClosureIteratorBody != s")
-        break
+    if result.len == 0 or result[^1].kind != nkGotoState:
+      result.add(gotoOut)
 
   of nkYieldStmt:
     result = newNodeI(nkStmtList, n.info)
@@ -920,8 +892,10 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
 
     var body = addGotoOut(n[1], result)
 
-    body = ctx.transformBreaksAndContinuesInWhile(body, result, gotoOut)
+    ctx.blockStack.add(Block(kind: bkWhile, entry: result, exit: gotoOut))
+    # body = ctx.transformBreaksAndContinuesInWhile(body, result, gotoOut)
     body = ctx.transformClosureIteratorBody(body, result)
+    discard ctx.blockStack.pop()
 
     elifBranch.add(body)
     ifNode.add(elifBranch)
@@ -932,8 +906,36 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
 
   of nkBlockStmt:
     result[1] = addGotoOut(result[1], gotoOut)
-    result[1] = ctx.transformBreaksInBlock(result[1], result[0], gotoOut)
+
+    ctx.blockStack.add(Block(kind: bkBlock, label: result[0], exit: gotoOut))
     result[1] = ctx.transformClosureIteratorBody(result[1], gotoOut)
+    discard ctx.blockStack.pop()
+
+  of nkBreakStmt:
+    assert(ctx.blockStack.len > 0)
+    let label = n[0]
+    if n[0].kind == nkEmpty:
+      result = ctx.blockStack[^1].exit
+    elif label.kind == nkSym:
+      var targetBlkIdx = -1
+      for i in countdown(ctx.blockStack.high, ctx.blockStack.low):
+        if ctx.blockStack[i].kind == bkBlock and ctx.blockStack[i].label.sym == label.sym:
+          targetBlkIdx = i
+          break
+      assert(targetBlkIdx != -1)
+      result = ctx.blockStack[targetBlkIdx].exit
+
+    # TODO: Insert finallies before result
+
+  of nkContinueStmt:
+    assert(ctx.blockStack.len > 0)
+    var targetBlkIdx = -1
+    for i in countdown(ctx.blockStack.high, ctx.blockStack.low):
+      if ctx.blockStack[i].kind == bkWhile:
+        targetBlkIdx = i
+        break
+    assert(targetBlkIdx != -1)
+    result = ctx.blockStack[targetBlkIdx].entry
 
   of nkTryStmt, nkHiddenTryStmt:
     # See explanation above about how this works
@@ -999,7 +1001,9 @@ proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode
       if ctx.transformClosureIteratorBody(finallyBody, gotoOut) != finallyBody:
         internalError(ctx.g.config, "transformClosureIteratorBody != finallyBody")
 
-  of nkGotoState, nkForStmt:
+  of nkGotoState:
+    discard "already did 'result = n' above"
+  of nkForStmt:
     internalError(ctx.g.config, "closure iter " & $n.kind)
 
   else:
@@ -1110,6 +1114,8 @@ proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode =
     discard
   of nkGotoState:
     result = copyTree(n)
+    if n.len == 0:
+      echo "bah ", n.id
     result[0].intVal = ctx.skipEmptyStates(result[0].intVal.int)
   else:
     for i in 0..<n.len:
@@ -1330,3 +1336,5 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   # echo "exception table:"
   # for i, e in ctx.exceptionTable:
   #   echo i, " -> ", e
+  if fn.name.s == "fIter":
+    echo renderTree(result, {renderIds})
