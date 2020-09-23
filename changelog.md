@@ -197,7 +197,7 @@
     """
   ``` 
 
-- Add `IpKind` and `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
+- Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
 ## Language changes
 
