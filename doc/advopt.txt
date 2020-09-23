@@ -11,9 +11,9 @@ Advanced commands:
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //genDepend               generate a DOT file containing the
-                          module dependency graph
+                            module dependency graph
   //dump                    dump all defined conditionals and search paths
-                          see also: --dump.format:json (useful with: ` | jq`)
+                            see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
 Runtime checks (see -x):
