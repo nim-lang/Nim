@@ -187,6 +187,8 @@
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
+- Add `IpKind` and `initUri(kind: IpKind)` to uri, now it supports ipv6.
+
 
 ## Language changes
 

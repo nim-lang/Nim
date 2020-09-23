@@ -49,11 +49,15 @@ import std/private/since
 import strutils, parseutils, base64
 include includes/decode_helpers
 
+
+
+when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5):
+  type
+    IpKind* = enum
+      IPv4, IPv6
+
 type
   Url* = distinct string
-
-  IpKind* = enum
-    IPv4, IPv6
 
   Uri* = object
     scheme*, username*, password*: string
