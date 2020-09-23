@@ -335,6 +335,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
+
 when isMainModule:
   since (1, 1):
     block dup_with_field:

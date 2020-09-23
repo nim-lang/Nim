@@ -187,6 +187,15 @@
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
+- Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
+  ```nim
+  import strutils
+  echo dedent """
+    This
+      is
+        cool!
+    """
+  ``` 
 
 ## Language changes
 
