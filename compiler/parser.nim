@@ -583,7 +583,10 @@ proc parsePar(p: var Parser): PNode =
     semiStmtList(p, result)
   elif p.tok.tokType == tkCurlyDotLe:
     result.add(parseStmtPragma(p))
-  elif p.tok.tokType != tkParRi:
+  elif p.tok.tokType == tkParRi:
+    # Empty tuple '()'
+    result.transitionSonsKind(nkTupleConstr)
+  else:
     var a = simpleExpr(p)
     if p.tok.tokType == tkDo:
       result = postExprBlocks(p, a)

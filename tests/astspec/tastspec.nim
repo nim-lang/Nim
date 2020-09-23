@@ -345,6 +345,7 @@ static:
       (a: 1, b: 2, c: 3)
       (1,)
       (a: 1)
+      ()
 
     for it in ast:
       echo it.lispRepr
@@ -361,6 +362,8 @@ static:
         echo "one tuple ok"
       of nnkTupleConstr(nnkExprColonExpr(ident"a", nnkIntLit(intVal = 1))):
         echo "named one tuple ok"
+      of nnkTupleConstr():
+       echo "empty tuple ok"
 
   ## Curly braces
 
