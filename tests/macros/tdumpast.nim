@@ -48,3 +48,9 @@ macro fun3(): untyped =
     int | float | array | seq | object | ptr | pointer | float32
   doAssert n.repr == "int | float | array | seq | object | ptr | pointer | float32", n.repr
 fun3()
+
+macro fun4() =
+  let n = quote do:
+    (a: 1)
+  doAssert n.repr == "(a: 1)", n.repr
+fun4()
