@@ -237,3 +237,11 @@ noop:
   makeVar
 echo tensorY
 
+macro xbenchmark(body: typed): untyped =
+  result = body
+
+xbenchmark:
+  proc fastSHA(inputtest: string) =
+    discard inputtest
+  fastSHA("hey")
+

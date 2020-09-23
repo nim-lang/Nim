@@ -91,13 +91,15 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
 
+proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
+
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
-  result = strTableGet(c.currentScope.symbols, s)
-  var shadow = c.currentScope
-  while result == nil and shadow.parent != nil and shadow.depthLevel == shadow.parent.depthLevel:
+  var scope = c.currentScope
+  result = strTableGet(scope.symbols, s)
+  while result == nil and scope.isShadowScope:
     # We are in a shadow scope, check in the parent too
-    result = strTableGet(shadow.parent.symbols, s)
-    shadow = shadow.parent
+    scope = scope.parent
+    result = strTableGet(scope.symbols, s)
 
 proc searchInScopes*(c: PContext, s: PIdent): PSym =
   for scope in walkScopes(c.currentScope):

@@ -848,6 +848,18 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     """
   else:
     htmlOut = "<img src=\"$1\"$2/>"
+
+  # support for `:target:` links for images:
+  var target = esc(d.target, getFieldValue(n, "target").strip())
+  if target.len > 0:
+    # `htmlOut` needs to be of the following format for link to work for images:
+    # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
+    var htmlOutWithLink = ""
+    dispA(d.target, htmlOutWithLink,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [htmlOut, target])
+    htmlOut = htmlOutWithLink
+
   dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
         [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)

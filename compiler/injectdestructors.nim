@@ -1006,7 +1006,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
-  computeCursors(owner, n, g.config)
+  if optCursorInference in g.config.options:
+    computeCursors(owner, n, g.config)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

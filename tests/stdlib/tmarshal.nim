@@ -14,7 +14,7 @@ joinable: false pending https://github.com/nim-lang/Nim/issues/9754
 
 import marshal
 
-template testit(x) = discard $$to[type(x)]($$x)
+template testit(x) = discard $$to[typeof(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
   ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
@@ -89,8 +89,8 @@ var instance1 = Person(name: "Cletus", age: 12,
                        bio: "Я Cletus",
                        blob: "ABC\x80")
 echo($$instance1)
-echo(to[Person]($$instance1).bio == instance1.bio)
-echo(to[Person]($$instance1).blob == instance1.blob)
+echo(to[Person]($$instance1).bio == instance1.bio) # true
+echo(to[Person]($$instance1).blob == instance1.blob) # true
 
 # bug 5757
 

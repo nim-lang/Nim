@@ -435,3 +435,25 @@ block:
   doAssert a == f1
   doAssert b == f2
   doAssert c == f3
+
+block:
+  assert 0 == indentation """
+hey
+  low
+    there
+"""
+  assert 2 == indentation """
+  hey
+    low
+      there
+"""
+  assert 2 == indentation """  hey
+    low
+      there
+"""
+  assert 2 == indentation """  hey
+    low
+      there"""
+  assert 0 == indentation ""
+  assert 0 == indentation "  \n  \n"
+  assert 0 == indentation "    "

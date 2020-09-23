@@ -52,7 +52,8 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
       s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
       s.p.cap = newCap
 
-proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
+proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inline.} =
+  #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
   s.p.data[s.len] = c
   s.p.data[s.len+1] = '\0'

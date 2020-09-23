@@ -10,13 +10,13 @@
 # Cell seqs for cyclebreaker and cyclicrefs_v2.
 
 type
-  CellTuple = (PT, PNimType)
+  CellTuple = (PT, PNimTypeV2)
   CellArray = ptr UncheckedArray[CellTuple]
   CellSeq = object
     len, cap: int
     d: CellArray
 
-proc add(s: var CellSeq, c: PT; t: PNimType) {.inline.} =
+proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
     when defined(useMalloc):
@@ -51,6 +51,6 @@ proc deinit(s: var CellSeq) =
   s.len = 0
   s.cap = 0
 
-proc pop(s: var CellSeq): (PT, PNimType) =
+proc pop(s: var CellSeq): (PT, PNimTypeV2) =
   result = s.d[s.len-1]
   dec s.len

@@ -189,6 +189,15 @@
 
 - Add `IpKind` and `initUri(kind: IpKind)` to uri, now it supports ipv6.
 
+- Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
+  ```nim
+  import strutils
+  echo dedent """
+    This
+      is
+        cool!
+    """
+  ``` 
 
 ## Language changes
 

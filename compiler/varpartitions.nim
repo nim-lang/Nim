@@ -392,9 +392,18 @@ proc deps(c: var Partitions; dest, src: PNode) =
         analyseAsgn(c, c.s[vid], src)
         # do not borrow from a different local variable, this is easier
         # than tracking reassignments, consider 'var cursor = local; local = newNode()'
-        if src.kind == nkSym and (src.sym.kind in {skVar, skResult, skTemp} or
+        if src.kind == nkSym:
+          if (src.sym.kind in {skVar, skResult, skTemp} or
             (src.sym.kind in {skLet, skParam, skForVar} and hasDisabledAsgn(src.sym.typ))):
-          c.s[vid].flags.incl preventCursor
+            c.s[vid].flags.incl preventCursor
+          elif src.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
+            # XXX: we need to compute variable alive ranges before doing anything else:
+            let srcid = variableId(c, src.sym)
+            if srcid >= 0 and preventCursor in c.s[srcid].flags:
+              # you cannot borrow from a local that lives shorter than 'vid':
+              if c.s[srcid].aliveStart > c.s[vid].aliveStart or
+                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd:
+                c.s[vid].flags.incl preventCursor
 
     if src.kind == nkSym and hasDestructor(src.typ):
       rhsIsSink(c, src)
@@ -450,7 +459,6 @@ proc traverse(c: var Partitions; n: PNode) =
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
               for r in roots: potentialMutation(c, r, it.info)
-          else:
             for r in roots: noCursor(c, r)
 
   of nkAddr, nkHiddenAddr:
