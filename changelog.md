@@ -187,8 +187,6 @@
 
 - Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
-- Add `IpKind` and `initUri(kind: IpKind)` to uri, now it supports ipv6.
-
 - Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
   ```nim
   import strutils
@@ -198,6 +196,8 @@
         cool!
     """
   ``` 
+
+- Add `IpKind` and `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
 ## Language changes
 
