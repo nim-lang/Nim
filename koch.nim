@@ -481,7 +481,7 @@ proc temp(args: string) =
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
-      "js" notin programArgs:
+      "js" notin programArgs and "rst2html" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)

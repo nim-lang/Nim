@@ -992,7 +992,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       # set the type so that the following analysis doesn't screw up:
       effects[i].typ = real[i].typ
 
-    result = newTreeI(nkExprColonExpr, n.info, 
+    result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects)
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
@@ -1005,7 +1005,7 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
       effects.add params[i]
 
   if effects.len > 0:
-    result = newTreeI(nkExprColonExpr, n.info, 
+    result = newTreeI(nkExprColonExpr, n.info,
       newIdentNode(getIdent(cache, pragmaName), n.info), effects)
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
