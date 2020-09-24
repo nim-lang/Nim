@@ -591,7 +591,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     if n[0].kind == nkSym:
       let vid = variableId(c, n[0].sym)
       if vid >= 0:
-        c.s[vid].flags.incl isReassigned
+        c.s[vid].flags.incl preventCursor
 
   of nkPragmaBlock:
     computeLiveRanges(c, n.lastSon)
