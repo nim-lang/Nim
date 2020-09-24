@@ -410,20 +410,22 @@ proc deps(c: var Partitions; dest, src: PNode) =
             # do not borrow from a global variable or from something with a
             # disabled assignment operator.
             c.s[vid].flags.incl preventCursor
+            when false: echo "A not a cursor: ", dest.sym, " ", s
           else:
             let srcid = variableId(c, s)
             if srcid >= 0:
               if s.kind notin {skResult, skParam} and (
-                  c.s[srcid].aliveStart > c.s[vid].aliveStart or
                   c.s[srcid].aliveEnd < c.s[vid].aliveEnd):
                 # you cannot borrow from a local that lives shorter than 'vid':
+                when false: echo "B not a cursor ", dest.sym, " ", c.s[srcid].aliveEnd, " ", c.s[vid].aliveEnd
                 c.s[vid].flags.incl preventCursor
               elif {isReassigned, preventCursor} * c.s[srcid].flags != {}:
                 # you cannot borrow from something that is re-assigned:
+                when false: echo "C not a cursor ", dest.sym, " ", c.s[srcid].flags
                 c.s[vid].flags.incl preventCursor
 
-    if src.kind == nkSym and hasDestructor(src.typ):
-      rhsIsSink(c, src)
+    #if src.kind == nkSym and hasDestructor(src.typ):
+    #  rhsIsSink(c, src)
 
 const
   nodesToIgnoreSet = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
@@ -571,6 +573,19 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     discard "do not follow the construct"
   of nkCallKinds:
     for child in n: computeLiveRanges(c, child)
+
+    let parameters = n[0].typ
+    let L = if parameters != nil: parameters.len else: 0
+
+    for i in 1..<n.len:
+      let it = n[i]
+      if it.kind == nkSym and i < L:
+        let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
+        if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
+          let vid = variableId(c, it.sym)
+          if vid >= 0:
+            c.s[vid].flags.incl isReassigned
+
   of nkPragmaBlock:
     computeLiveRanges(c, n.lastSon)
   of nkWhileStmt, nkForStmt, nkParForStmt:
@@ -633,7 +648,7 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = computeGraphPartitions(s, n, true)
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
-    if v.flags == {} and v.sym.kind notin {skParam, skResult} and
+    if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
