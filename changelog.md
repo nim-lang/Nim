@@ -197,6 +197,8 @@
     """
   ``` 
 
+- Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
+
 ## Language changes
 
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
