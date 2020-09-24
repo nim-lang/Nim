@@ -110,6 +110,9 @@ proc registerVariable(c: var Partitions; n: PNode) =
                             connectedVia: unknownLineInfo, flags: {connectsConstParam},
                             maxMutation: -1, minConnection: high(int),
                             mutations: @[])
+    elif n.sym.kind == skResult:
+      c.s.add VarIndex(kind: isEmptyRoot, sym: n.sym,
+                       aliveStart: high(int), aliveEnd: c.abstractTime)
     else:
       c.s.add VarIndex(kind: isEmptyRoot, sym: n.sym,
                        aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
@@ -567,6 +570,8 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
       let id = variableId(c, n.sym)
       if id >= 0:
         c.s[id].aliveEnd = max(c.s[id].aliveEnd, c.abstractTime)
+        if n.sym.kind == skResult:
+          c.s[id].aliveStart = min(c.s[id].aliveStart, c.abstractTime)
 
   of nodesToIgnoreSet:
     dec c.abstractTime
@@ -621,7 +626,7 @@ proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partit
   traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
-  #echo "range ", v.aliveStart, " .. ", v.aliveEnd
+  #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym
   if isMutated in g.flags:
     for m in g.mutations:
       #echo "mutation ", m
@@ -643,7 +648,7 @@ proc cannotBorrow(config: ConfigRef; s: PSym; g: MutationInfo) =
     m.add " is the statement that connected the mutation to the parameter"
   localError(config, s.info, m)
 
-proc checkBorrowedLocations*(par: var Partitions; config: ConfigRef) =
+proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef) =
   for i in 0 ..< par.s.len:
     let s = par.s[i].sym
     if s.kind != skParam and isViewType(s.typ):
