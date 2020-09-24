@@ -586,6 +586,13 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
           if vid >= 0:
             c.s[vid].flags.incl isReassigned
 
+  of nkAddr, nkHiddenAddr:
+    computeLiveRanges(c, n[0])
+    if n[0].kind == nkSym:
+      let vid = variableId(c, n[0].sym)
+      if vid >= 0:
+        c.s[vid].flags.incl isReassigned
+
   of nkPragmaBlock:
     computeLiveRanges(c, n.lastSon)
   of nkWhileStmt, nkForStmt, nkParForStmt:
