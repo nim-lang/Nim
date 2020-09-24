@@ -1102,6 +1102,8 @@ proc whichSection(p: RstParser): RstNodeKind =
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnHeadline
+    elif p.tok[p.idx].symbol == "```":
+      result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
     elif p.tok[p.idx].symbol == "::":
