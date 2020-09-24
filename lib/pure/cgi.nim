@@ -105,10 +105,10 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   while i < data.len:
     setLen(name, 0) # reuse memory
     i = parseData(data, i, name)
-    if i >= data.len or data[i] != '=': cgiError("'=' expected")
-    inc(i) # skip '='
     setLen(value, 0) # reuse memory
-    i = parseData(data, i, value)
+    if i < data.len and data[i] == '=':
+      inc(i) # skip '='
+      i = parseData(data, i, value)
     yield (name.TaintedString, value.TaintedString)
     if i < data.len:
       if data[i] == '&': inc(i)

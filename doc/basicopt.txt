@@ -3,11 +3,11 @@
     nim command [options] [projectfile] [arguments]
 
 Command:
-  //compile, c                compile project with default code generator (C)
-  //r                         compile to $nimcache/projname, run with [arguments]
-                              using backend specified by `--backend` (default: c)
-  //doc                       generate the documentation for inputfile for
-                              backend specified by `--backend` (default: c)
+  //compile, c              compile project with default code generator (C)
+  //r                       compile to $nimcache/projname, run with [arguments]
+                            using backend specified by `--backend` (default: c)
+  //doc                     generate the documentation for inputfile for
+                            backend specified by `--backend` (default: c)
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)

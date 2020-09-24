@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "27d1063febe3055252103cacb11787ac83893416" # master
+  NimbleStableCommit = "26167cd3b7671006c8bd38cbef8708431ddf8687" # master
   FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
 
 when not defined(windows):
@@ -481,7 +481,7 @@ proc temp(args: string) =
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
-      "js" notin programArgs:
+      "js" notin programArgs and "rst2html" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)

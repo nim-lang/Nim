@@ -162,7 +162,7 @@
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
-  
+
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -185,7 +185,19 @@
 - Add `getprotobyname` to `winlean`. Add `getProtoByname` to `nativesockets` which returns a protocol code
   from the database that matches the protocol `name`.
 
+- Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
+- Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
+  ```nim
+  import strutils
+  echo dedent """
+    This
+      is
+        cool!
+    """
+  ``` 
+
+- Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
 ## Language changes
 

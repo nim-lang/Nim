@@ -13,6 +13,17 @@
 ## algorithm.
 ## The used data structure is "union find" with path compression.
 
+## We perform two passes over the AST:
+## - Pass one (``computeLiveRanges``): collect livetimes of local
+##   variables and whether they are potentially re-assigned.
+## - Pass two (``traverse``): combine local variables to abstract "graphs".
+##   Strict func checking: Ensure that graphs that are connected to
+##   const parameters are not mutated.
+##   Cursor inference: Ensure that potential cursors are not
+##     borrowed from locations that are connected to a graph
+##     that is mutated during the liveness of the cursor.
+##     (We track all possible mutations of a graph.)
+
 import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
@@ -26,7 +37,8 @@ type
 
   VarFlag = enum
     ownsData,
-    preventCursor
+    preventCursor,
+    isReassigned
 
   VarIndexKind = enum
     isEmptyRoot,
@@ -266,36 +278,38 @@ proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
   else:
     discard "nothing to do"
 
-proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
+proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
+  ## Analyse if 'n' is an expression that owns the data, if so mark 'dest'
+  ## with 'ownsData'.
   case n.kind
   of nkEmpty, nkCharLit..nkNilLit:
     # primitive literals including the empty are harmless:
     discard
 
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkCast, nkConv:
-    analyseAsgn(c, dest, n[1])
+    destMightOwn(c, dest, n[1])
 
   of nkIfStmt, nkIfExpr:
     for i in 0..<n.len:
-      analyseAsgn(c, dest, n[i].lastSon)
+      destMightOwn(c, dest, n[i].lastSon)
 
   of nkCaseStmt:
     for i in 1..<n.len:
-      analyseAsgn(c, dest, n[i].lastSon)
+      destMightOwn(c, dest, n[i].lastSon)
 
   of nkStmtList, nkStmtListExpr:
     if n.len > 0:
-      analyseAsgn(c, dest, n[^1])
+      destMightOwn(c, dest, n[^1])
 
   of nkClosure:
     for i in 1..<n.len:
-      analyseAsgn(c, dest, n[i])
+      destMightOwn(c, dest, n[i])
     # you must destroy a closure:
     dest.flags.incl ownsData
 
   of nkObjConstr:
     for i in 1..<n.len:
-      analyseAsgn(c, dest, n[i])
+      destMightOwn(c, dest, n[i])
     if hasDestructor(n.typ):
       # you must destroy a ref object:
       dest.flags.incl ownsData
@@ -303,7 +317,7 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
   of nkCurly, nkBracket, nkPar, nkTupleConstr:
     inc c.inConstructor
     for son in n:
-      analyseAsgn(c, dest, son)
+      destMightOwn(c, dest, son)
     dec c.inConstructor
     if n.typ.skipTypes(abstractInst).kind == tySequence:
       # you must destroy a sequence:
@@ -322,7 +336,7 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
 
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
-    analyseAsgn(c, dest, n[0])
+    destMightOwn(c, dest, n[0])
 
   of nkCallKinds:
     if hasDestructor(n.typ):
@@ -348,7 +362,7 @@ proc analyseAsgn(c: var Partitions; dest: var VarIndex; n: PNode) =
           # list of dependencies via the 'hasDestructor' check for
           # the root's symbol.
           if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
-            analyseAsgn(c, dest, n[i])
+            destMightOwn(c, dest, n[i])
 
   else:
     # something we cannot handle:
@@ -389,15 +403,36 @@ proc deps(c: var Partitions; dest, src: PNode) =
     if dest.kind == nkSym:
       let vid = variableId(c, dest.sym)
       if vid >= 0:
-        analyseAsgn(c, c.s[vid], src)
-        # do not borrow from a different local variable, this is easier
-        # than tracking reassignments, consider 'var cursor = local; local = newNode()'
-        if src.kind == nkSym and (src.sym.kind in {skVar, skResult, skTemp} or
-            (src.sym.kind in {skLet, skParam, skForVar} and hasDisabledAsgn(src.sym.typ))):
-          c.s[vid].flags.incl preventCursor
+        destMightOwn(c, c.s[vid], src)
+        if src.kind == nkSym:
+          let s = src.sym
+          if {sfGlobal, sfThread} * s.flags != {} or hasDisabledAsgn(s.typ):
+            # do not borrow from a global variable or from something with a
+            # disabled assignment operator.
+            c.s[vid].flags.incl preventCursor
+            when false: echo "A not a cursor: ", dest.sym, " ", s
+          else:
+            let srcid = variableId(c, s)
+            if srcid >= 0:
+              if s.kind notin {skResult, skParam} and (
+                  c.s[srcid].aliveEnd < c.s[vid].aliveEnd):
+                # you cannot borrow from a local that lives shorter than 'vid':
+                when false: echo "B not a cursor ", dest.sym, " ", c.s[srcid].aliveEnd, " ", c.s[vid].aliveEnd
+                c.s[vid].flags.incl preventCursor
+              elif {isReassigned, preventCursor} * c.s[srcid].flags != {}:
+                # you cannot borrow from something that is re-assigned:
+                when false: echo "C not a cursor ", dest.sym, " ", c.s[srcid].flags
+                c.s[vid].flags.incl preventCursor
 
-    if src.kind == nkSym and hasDestructor(src.typ):
-      rhsIsSink(c, src)
+    #if src.kind == nkSym and hasDestructor(src.typ):
+    #  rhsIsSink(c, src)
+
+const
+  nodesToIgnoreSet = {nkNone..pred(nkSym), succ(nkSym)..nkNilLit,
+    nkTypeSection, nkProcDef, nkConverterDef,
+    nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
+    nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
 
 proc traverse(c: var Partitions; n: PNode) =
   inc c.abstractTime
@@ -409,11 +444,11 @@ proc traverse(c: var Partitions; n: PNode) =
       if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
         if child.len-2 != last.len: return
         for i in 0..<child.len-2:
-          registerVariable(c, child[i])
+          #registerVariable(c, child[i])
           deps(c, child[i], last[i])
       else:
         for i in 0..<child.len-2:
-          registerVariable(c, child[i])
+          #registerVariable(c, child[i])
           deps(c, child[i], last)
   of nkAsgn, nkFastAsgn:
     traverse(c, n[0])
@@ -423,15 +458,8 @@ proc traverse(c: var Partitions; n: PNode) =
     deps(c, n[0], n[1])
   of nkSym:
     dec c.abstractTime
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
-      let id = variableId(c, n.sym)
-      if id >= 0:
-        c.s[id].aliveEnd = max(c.s[id].aliveEnd, c.abstractTime)
 
-  of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
-      nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
-      nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+  of nodesToIgnoreSet:
     dec c.abstractTime
     discard "do not follow the construct"
   of nkCallKinds:
@@ -450,7 +478,6 @@ proc traverse(c: var Partitions; n: PNode) =
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
               for r in roots: potentialMutation(c, r, it.info)
-          else:
             for r in roots: noCursor(c, r)
 
   of nkAddr, nkHiddenAddr:
@@ -506,6 +533,79 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
+proc computeLiveRanges(c: var Partitions; n: PNode) =
+  # first pass: Compute live ranges for locals.
+  # **Watch out!** We must traverse the tree like 'traverse' does
+  # so that the 'c.abstractTime' is consistent.
+  inc c.abstractTime
+  case n.kind
+  of nkLetSection, nkVarSection:
+    for child in n:
+      let last = lastSon(child)
+      computeLiveRanges(c, last)
+      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
+        if child.len-2 != last.len: return
+        for i in 0..<child.len-2:
+          registerVariable(c, child[i])
+          #deps(c, child[i], last[i])
+      else:
+        for i in 0..<child.len-2:
+          registerVariable(c, child[i])
+          #deps(c, child[i], last)
+
+  of nkAsgn, nkFastAsgn:
+    computeLiveRanges(c, n[0])
+    computeLiveRanges(c, n[1])
+    if n[0].kind == nkSym:
+      let vid = variableId(c, n[0].sym)
+      if vid >= 0:
+        c.s[vid].flags.incl isReassigned
+
+  of nkSym:
+    dec c.abstractTime
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
+      let id = variableId(c, n.sym)
+      if id >= 0:
+        c.s[id].aliveEnd = max(c.s[id].aliveEnd, c.abstractTime)
+
+  of nodesToIgnoreSet:
+    dec c.abstractTime
+    discard "do not follow the construct"
+  of nkCallKinds:
+    for child in n: computeLiveRanges(c, child)
+
+    let parameters = n[0].typ
+    let L = if parameters != nil: parameters.len else: 0
+
+    for i in 1..<n.len:
+      let it = n[i]
+      if it.kind == nkSym and i < L:
+        let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
+        if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
+          let vid = variableId(c, it.sym)
+          if vid >= 0:
+            c.s[vid].flags.incl isReassigned
+
+  of nkAddr, nkHiddenAddr:
+    computeLiveRanges(c, n[0])
+    if n[0].kind == nkSym:
+      let vid = variableId(c, n[0].sym)
+      if vid >= 0:
+        c.s[vid].flags.incl preventCursor
+
+  of nkPragmaBlock:
+    computeLiveRanges(c, n.lastSon)
+  of nkWhileStmt, nkForStmt, nkParForStmt:
+    for child in n: computeLiveRanges(c, child)
+    # analyse loops twice so that 'abstractTime' suffices to detect cases
+    # like:
+    #   while cond:
+    #     mutate(graph)
+    #     connect(graph, cursorVar)
+    for child in n: computeLiveRanges(c, child)
+  else:
+    for child in n: computeLiveRanges(c, child)
+
 proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partitions =
   result = Partitions(performCursorInference: cursorInference)
   if s.kind notin {skModule, skMacro}:
@@ -515,6 +615,9 @@ proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partit
     if resultPos < s.ast.safeLen:
       registerVariable(result, s.ast[resultPos])
 
+  computeLiveRanges(result, n)
+  # resart the timer for the second pass:
+  result.abstractTime = 0
   traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
@@ -552,7 +655,7 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
   var par = computeGraphPartitions(s, n, true)
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
-    if v.flags == {} and v.sym.kind notin {skParam, skResult} and
+    if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
