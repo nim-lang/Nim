@@ -347,3 +347,34 @@ var data = {
 
 # For ARC listVal is empty for some reason
 doAssert data["examples"]["values"].listVal[0].strVal == "test"
+
+
+
+
+###############################################################################
+# bug #15405
+import parsexml
+const test_xml_str = "<A><B>value</B></A>"
+var stream = newStringStream(test_xml_str)
+var xml: XmlParser
+open(xml, stream, "test")
+var xml2 = deepCopy(xml)
+
+proc text_parser(xml: var XmlParser) = 
+  var test_passed = false
+  while true:
+    xml.next()
+    case xml.kind
+    of xmlElementStart:
+      if xml.elementName == "B":
+        xml.next()
+        if xml.kind == xmlCharData and xml.charData == "value":
+          test_passed = true
+     
+    of xmlEof: break
+    else: discard
+  xml.close()
+  doAssert(test_passed)
+
+text_parser(xml)
+text_parser(xml2)
