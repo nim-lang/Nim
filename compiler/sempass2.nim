@@ -1248,7 +1248,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
     if views in c.features:
-      checkBorrowedLocations(partitions, g.config)
+      checkBorrowedLocations(partitions, body, g.config)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
