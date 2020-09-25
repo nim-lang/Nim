@@ -1233,7 +1233,13 @@ when defined(gcDestructors):
     {.noSideEffect.}:
       let xl = x.len
       setLen(x, xl + y.len)
-      for i in 0..high(y): x[xl+i] = move y[i]
+      for i in 0..high(y):
+        when nimvm:
+          # workaround the fact that the VM does not yet
+          # handle sink parameters properly:
+          x[xl+i] = y[i]
+        else:
+          x[xl+i] = move y[i]
 else:
   proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
     ## Generic proc for adding a container `y` to a container `x`.
