@@ -1351,8 +1351,8 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 
-  if t.kind == tyObject and t.len > 0:
-    discard genTypeInfoV1(m, origType, info)
+  if t.kind == tyObject and t.len > 0 and t[0] != nil:
+    discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
@@ -1444,12 +1444,12 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
