@@ -8,6 +8,8 @@ Hello
 2
 0
 List
+@["4", "5", "6", "", "", "a", ""]
+@["", "", "a", ""]
 '''
   cmd: '''nim c --gc:arc $file'''
 """
@@ -162,10 +164,21 @@ type
     case kind: TagKind
     of List:
       values: seq[Tag]
-    of Compound: 
+    of Compound:
       compound: Table[string, Tag]
 
 var a = Tag(kind: List)
 var b = a
 echo a.kind
 var c = a
+
+proc testAdd(i: int; yyy: openArray[string]) =
+  var x: seq[string]
+  x.add [$i, $(i+1), $(i+2)]
+  x.add yyy
+  echo x
+
+var y = newSeq[string](4)
+y[2] = "a"
+testAdd(4, y)
+echo y

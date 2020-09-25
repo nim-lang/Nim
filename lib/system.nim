@@ -1215,24 +1215,51 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
-  ## Generic proc for adding a container `y` to a container `x`.
-  ##
-  ## For containers that have an order, `add` means *append*. New generic
-  ## containers should also call their adding proc `add` for consistency.
-  ## Generic code becomes much easier to write if the Nim naming scheme is
-  ## respected.
-  ##
-  ## See also:
-  ## * `& proc <#&,seq[T][T],seq[T][T]>`_
-  ##
-  ## .. code-block:: Nim
-  ##   var s: seq[string] = @["test2","test2"]
-  ##   s.add("test") # s <- @[test2, test2, test]
-  {.noSideEffect.}:
-    let xl = x.len
-    setLen(x, xl + y.len)
-    for i in 0..high(y): x[xl+i] = y[i]
+when defined(gcDestructors):
+  proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
+    ## Generic proc for adding a container `y` to a container `x`.
+    ##
+    ## For containers that have an order, `add` means *append*. New generic
+    ## containers should also call their adding proc `add` for consistency.
+    ## Generic code becomes much easier to write if the Nim naming scheme is
+    ## respected.
+    ##
+    ## See also:
+    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test") # s <- @[test2, test2, test]
+    {.noSideEffect.}:
+      let xl = x.len
+      setLen(x, xl + y.len)
+      for i in 0..high(y):
+        when nimvm:
+          # workaround the fact that the VM does not yet
+          # handle sink parameters properly:
+          x[xl+i] = y[i]
+        else:
+          x[xl+i] = move y[i]
+else:
+  proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+    ## Generic proc for adding a container `y` to a container `x`.
+    ##
+    ## For containers that have an order, `add` means *append*. New generic
+    ## containers should also call their adding proc `add` for consistency.
+    ## Generic code becomes much easier to write if the Nim naming scheme is
+    ## respected.
+    ##
+    ## See also:
+    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test") # s <- @[test2, test2, test]
+    {.noSideEffect.}:
+      let xl = x.len
+      setLen(x, xl + y.len)
+      for i in 0..high(y): x[xl+i] = y[i]
+
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =
