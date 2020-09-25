@@ -67,7 +67,7 @@ local turn on/off
 ---------------------
 
 You can still turn off nil checking on function/module level by using a ``{.strictNotNil: off}.`` pragma.
-Note: test that/TODO.
+Note: test that/TODO for code/manual.
 
 nilability state
 -----------------

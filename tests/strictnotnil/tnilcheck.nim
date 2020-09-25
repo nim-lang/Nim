@@ -42,6 +42,37 @@ proc testIfElse(a: Nilable) =
   else:
     echo a.a # ok
 
+proc testIfReturn(a: Nilable) =
+  if not a.isNil:
+    return
+  echo a.a #[tt.Warning
+       ^ can't deref a, it is nil
+  ]#
+
+proc testIfBreak(a: seq[Nilable]) =
+  for b in a:
+    if not b.isNil:
+      break
+    echo b.a #[tt.Warning
+         ^ can't deref b, it is nil
+    ]#
+
+proc testIfContinue(a: seq[Nilable]) =
+  for b in a:
+    if not b.isNil:
+      continue
+    echo b.a #[tt.Warning
+         ^ can't deref b, it is nil
+    ]#
+
+proc testIfRaise(a: Nilable) =
+  if not a.isNil:
+    raise newException(ValueError, "")
+  echo a.a #[tt.Warning
+       ^ can't deref a, it is nil
+  ]#
+
+
 proc testAssignUnify(a: Nilable, b: int) =
   var a2 = a
   if b == 0:

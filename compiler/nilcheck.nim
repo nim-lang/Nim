@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
-import sequtils, strutils
+import sequtils, strutils, std / sets
 
 # IMPORTANT: notes not up to date, i'll update this comment again
 # 
@@ -48,6 +48,7 @@ import sequtils, strutils
 #   if arg is ref, assume it's MaybeNil after call
 # loop
 #   union of env for 0, 1, 2 iterations as Herb Sutter's paper
+#   why 2?
 # return
 #   if something: stop (break return etc)
 #   is equivalent to if something: .. else: remain
@@ -77,12 +78,12 @@ proc setLen[T, U](a: var SeqOfDistinct[T, U], length: T) =
   ((seq[U])(a)).setLen(length.Natural)
 
 
-# TODO: possible? 
-#proc newSeqOfDistinct[T, U](length: T = 0.T): SeqOfDistinct[T, U] =
-  #(SeqOfDistinct[T, U])(newSeq[U](length.int))
+proc newSeqOfDistinct[T, U](length: T = 0.T): SeqOfDistinct[T, U] =
+  (SeqOfDistinct[T, U])(newSeq[U](length.int))
 
 func newSeqOfDistinct[T, U](length: int = 0): SeqOfDistinct[T, U] =
   # newSeqOfDistinct(length.T)
+  # ? newSeqOfDistinct[T, U](length.T)
   (SeqOfDistinct[T, U])(newSeq[U](length))
 
 iterator items[T, U](a: SeqOfDistinct[T, U]): U =
@@ -99,6 +100,9 @@ func `$`[T, U](a: SeqOfDistinct[T, U]): string =
 proc add*[T, U](a: var SeqOfDistinct[T, U], value: U) =
   ((seq[U])(a)).add(value)
 
+# sets HashSet
+# 
+
 type
   ## a hashed representation of a node: should be equal for structurally equal nodes
   Symbol = distinct int
@@ -113,7 +117,6 @@ type
   ##   what was the reason for changing the nilability of an expression
   ##   useful for error messages and showing why an expression is being detected as nil / maybe nil
   TransitionKind = enum TArg, TAssign, TType, TNil, TVarArg, TResult, TSafe, TPotentialAlias, TDependant
-  
 
   ## keep history for each transition
   History = object
@@ -129,7 +132,8 @@ type
     # symbolGraphs: Table[Symbol, ]
     symbolIndices: Table[Symbol, ExprIndex] ## index for each symbol
     expressions: SeqOfDistinct[ExprIndex, PNode] ## a sequence of pre-indexed expressions
-    dependants: SeqOfDistinct[ExprIndex, set[ExprIndex]] ## expr indices for expressions which are compound and based on others
+    dependants: SeqOfDistinct[ExprIndex, IntSet] ## expr indices for expressions which are compound and based on others
+    warningLocations: HashSet[TLineInfo] ## warning locations to check we don't warn twice for stuff like warnings in for loops
     config: ConfigRef ## the config of the compiler
 
   ## a map that is containing the current nilability for usually a branch
@@ -139,9 +143,9 @@ type
     history:  SeqOfDistinct[ExprIndex, seq[History]] ## history for each of them
     # what about gc and refs?
     setIndices: SeqOfDistinct[ExprIndex, SetIndex] ## set indices for each expression
-    sets:     SeqOfDistinct[SetIndex, set[ExprIndex]] ## disjoint sets with the aliased expressions
+    sets:     SeqOfDistinct[SetIndex, IntSet] ## disjoint sets with the aliased expressions
     parent:   NilMap ## the parent map
-    base:     NilMap ## the root map
+    # base:     NilMap ## the root map
 
 # NilMap: 
 # zahary:
@@ -258,7 +262,9 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
   if parent.isNil:
     for i, expr in result.expressions:
       result.setIndices[i] = i.SetIndex
-      result.sets.add({i})
+      var newSet = initIntSet()
+      newSet.incl(i.int)
+      result.sets.add(newSet)
   else:
     for i, exprs in parent.sets:
       result.sets.add(exprs)
@@ -270,11 +276,10 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
   #   result.expressions = parent.expressions
   #   result.history = parent.history
   #   result.sets = parent.sets
-  result.base = if parent.isNil: result else: parent.base
+  # result.base = if parent.isNil: result else: parent.base
 
 proc `[]`(map: NilMap, index: ExprIndex): Nilability =
   if index < 0.ExprIndex or index >= map.expressions.len:
-    # TODO what if it's bigger? assert?
     return MaybeNil
   var now = map
   while not now.isNil:
@@ -375,7 +380,7 @@ proc namedSetsDebugInfo(ctx: NilCheckerContext, map: NilMap): string =
   for index, setIndex in map.setIndices:
     var aliasSet = map.sets[setIndex]
     result.add("{")
-    let expressions = aliasSet.mapIt($ctx.expressions[it])
+    let expressions = aliasSet.mapIt($ctx.expressions[it.ExprIndex])
     result.add(join(expressions, ", "))
     result.add("} ")
   result.add("\n")
@@ -387,15 +392,6 @@ proc namedMapAndSetsDebugInfo(ctx: NilCheckerContext, map: NilMap): string =
 
 const noExprIndex = (-1).ExprIndex
 const noSetIndex = (-1).SetIndex
-
-# proc graph(ctx: NilCheckerContext, symbol: Symbol): GraphIndex =
-#   if ctx.symbolGraphs.hasKey(symbol):
-#     return ctx.symbolGraphs[symbol]
-#   else:
-#     # TODO: maybe index all in partitions
-#     # or is this faster/smaller
-#     # a unique non-real graph index for symbols which are not in graph
-#     return noGraphIndex - 1 - symbol
 
 proc `==`(a: Symbol, b: Symbol): bool =
   a.int == b.int
@@ -415,10 +411,10 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
     # 
   #ctx.symbolIndices[symbol(n)]
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): set[ExprIndex] =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): IntSet =
   result = map.sets[map.setIndices[ctx.index(n)]]
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): set[ExprIndex] =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): IntSet =
   result = map.sets[map.setIndices[index]]
     
 proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
@@ -433,10 +429,13 @@ proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilabil
 
   var exprAliases = aliasSet(ctx, map, index)
   for a in exprAliases:
-    if a != index:
+    if a.ExprIndex != index:
       #echo "alias ", a, " ", index
-      map.expressions[a] = value
-      map.history[a].add(History(info: info, kind: TPotentialAlias, node: node, nilability: value))
+      map.expressions[a.ExprIndex] = value
+      if value == Safe:
+        map.history[a.ExprIndex] = @[]
+      else:
+        map.history[a.ExprIndex].add(History(info: info, kind: TPotentialAlias, node: node, nilability: value))
 
 proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
   #echo "move out ", target
@@ -448,23 +447,25 @@ proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
       var other: ExprIndex
     
       for element in targetSet:
-        if element != targetIndex:
-          other = element
+        if element.ExprIndex != targetIndex:
+          other = element.ExprIndex
           break
           # map.sets[element].excl(targetIndex)
-      map.sets[map.setIndices[other]].excl(targetIndex)
-      map.sets.add({targetIndex})
+      map.sets[map.setIndices[other]].excl(targetIndex.int)
+      var newSet = initIntSet()
+      newSet.incl(targetIndex.int)
+      map.sets.add(newSet)
       map.setIndices[targetIndex] = map.sets.len - 1.SetIndex
 
 proc moveOutDependants(ctx: NilCheckerContext, map: NilMap, node: PNode) =
   let index = ctx.index(node)
   for dependant in ctx.dependants[index]:
-    moveOut(ctx, map, ctx.expressions[dependant])
+    moveOut(ctx, map, ctx.expressions[dependant.ExprIndex])
 
 proc storeDependants(ctx: NilCheckerContext, map: NilMap, node: PNode, value: Nilability) =
   let index = ctx.index(node)
   for dependant in ctx.dependants[index]:
-    map.store(ctx, dependant, value, TDependant, node.info, node)
+    map.store(ctx, dependant.ExprIndex, value, TDependant, node.info, node)
 
 proc move(ctx: NilCheckerContext, map: NilMap, target: PNode, assigned: PNode) =
   #echo "move ", target, " ", assigned
@@ -481,14 +482,8 @@ proc move(ctx: NilCheckerContext, map: NilMap, target: PNode, assigned: PNode) =
   if assignedIndex == noExprIndex:
     moveOut(ctx, map, target)
   elif targetSetIndex != assignedSetIndex:
-    #for element in targetSet:
-    #  map.sets[element].excl(targetIndex)
-    # TODO ref? 
-    map.sets[targetSetIndex].excl(targetIndex)
-    #for element in assignedSet:
-    #  map.sets[element].incl(targetIndex)
-    # TODO ref? 
-    map.sets[assignedSetIndex].incl(targetIndex)
+    map.sets[targetSetIndex].excl(targetIndex.int)
+    map.sets[assignedSetIndex].incl(targetIndex.int)
     map.setIndices[targetIndex] = assignedSetIndex
 
 # proc hasKey(map: NilMap, ): bool =
@@ -537,7 +532,7 @@ proc checkCall(n, ctx, map): Check =
     if i > 0:
       # var args make a new map with MaybeNil for our node
       # as it might have been mutated
-      # TODO similar for normal refs and fields: find dependent exprs
+      # TODO similar for normal refs and fields: find dependent exprs: brackets
       
       if child.kind == nkHiddenAddr and child.typ.kind == tyVar and child.typ[0].kind == tyRef:
         # yes
@@ -570,7 +565,11 @@ proc checkCall(n, ctx, map): Check =
     result.map.store(ctx, b, Safe, TAssign, value.info, value)
     result.nilability = Safe
   else:
-    result.nilability = typeNilability(n.typ)
+    # echo "n ", n, " ", n.typ.isNil
+    if not n.typ.isNil:
+      result.nilability = typeNilability(n.typ)
+    else:
+      result.nilability = Safe
   # echo result.map
 
 template event(b: History): string =
@@ -587,6 +586,9 @@ template event(b: History): string =
   
 proc derefWarning(n, ctx, map; maybe: bool) =
   ## a warning for potentially unsafe dereference
+  if n.info in ctx.warningLocations:
+    return
+  ctx.warningLocations.incl(n.info)
   var a: seq[History]
   if n.kind == nkSym:
     a = history(map, ctx.index(n))
@@ -648,7 +650,6 @@ proc checkBracketExpr(n, ctx, map): Check =
 
 template union(l: Nilability, r: Nilability): Nilability =
   ## unify two states
-  # echo "union ", l, " ", r
   if l == r:
     l
   else:
@@ -681,7 +682,6 @@ proc union(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
   var common = findCommonParent(l, r)
   result = newNilMap(common, ctx.expressions.len.int)
   
-  # TODO locals ?
   for index, value in l:
     #if r.hasKey(graphIndex) and not result.locals.hasKey(graphIndex):
     var h = history(r, index)
@@ -746,15 +746,16 @@ proc checkFor(n, ctx, map): Check =
   ##   approach based on discussions with Zahary/Araq
   ##   similar approach used for other loops
   var m = map
-  var map0 = map.copyMap()
+  var map0 = map
+  echo namedMapDebugInfo(ctx, map)
   m = check(n.sons[2], ctx, map).map.copyMap()
   if n[0].kind == nkSym:
     m.store(ctx, ctx.index(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
-  var map1 = m.copyMap()
+  # echo namedMapDebugInfo(ctx, map)
   var check2 = check(n.sons[2], ctx, m)
   var map2 = check2.map
   
-  result.map = ctx.union(map0, map1)
+  result.map = ctx.union(map0, m)
   result.map = ctx.union(result.map, map2)
   result.nilability = Safe
 
@@ -967,15 +968,16 @@ proc checkTry(n, ctx, map): Check =
     newMap = ctx.union(afterTryMap, newMap)
   result = Check(nilability: Safe, map: newMap)
 
-proc directStop(n): bool =
+proc hasUnstructuredControlFlowJump(n): bool =
   ## if the node contains a direct stop
   ## as a continue/break/raise/return: then it means
-  ## it is possible ..
-  ## lets ignore this for now?
+  ## we should reverse some of the map in the code after the condition
+  ## similar to else
+  # echo "n ", n, " ", n.kind
   case n.kind:
   of nkStmtList:
     for child in n:
-      if directStop(child):
+      if hasUnstructuredControlFlowJump(child):
         return true
   of nkReturnStmt, nkBreakStmt, nkContinueStmt, nkRaiseStmt:
     return true
@@ -1014,16 +1016,23 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ##   isNil(a)
   ##   it returns a new map: you need to reverse all the direct elements for else
 
+  echo "condition ", n, " ", n.kind
   if n.kind == nkCall:
     result = newNilMap(map)
     for element in n:
-      result = check(element, ctx, result).map
+      if element.kind == nkHiddenDeref and n[0].kind == nkSym and n[0].sym.magic == mIsNil:
+        result = check(element[0], ctx, result).map
+      else:
+        result = check(element, ctx, result).map
 
     if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
-      if n[1].kind in {nkSym, nkDotExpr}:
-        let a = ctx.index(n[1])
-        # echo "n[1] ", n[1], " ", a
-        result.store(ctx, a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, n[1])
+      # isNil(arg)
+      var arg = n[1]
+      while arg.kind == nkHiddenDeref:
+        arg = arg[0]
+      if arg.kind in {nkSym, nkDotExpr}:
+        let a = ctx.index(arg)
+        result.store(ctx, a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, arg)
       else:
         discard
     else:
@@ -1056,40 +1065,12 @@ proc checkBranch(n, ctx, map): Check =
 # Faith!
 
 proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
-  if map.isNil:
-    internalError(ctx.config, n.info, "map is nil: something went wrong in nilcheck")
+  assert not map.isNil
   
-  # var oldAbstractTime = ctx.abstractTime
-  # if timeNode(n):
-  #   inc ctx.abstractTime
-
-  # var isMutating = false
-  # var mutatingGraphIndices: seq[GraphIndex] = @[]
-  
-  # ok so mutating should include re-assignment?
-  # and just
-  # echo "nilcheck : abstractTime " & $ctx.abstractTime & " mutating " & $mutatingGraphIndices & " node " & $n.kind & " " & $n
-  # for graphIndex in mutatingGraphIndices:
-  #   var graph = ctx.partitions.graphs[graphIndex]
-  #   # update all potential aliases to MaybeNil
-  #   # because they might not be always aliased:
-  #   # we might have false positive in a liberal analysis
-  #   #for element in graph.elements:
-  #   # let elementGraph = 
-  #   assert graph.elements.len > 0
-  #   let element = graph.elements[0]
-  #   map.store(
-  #     graphIndex,
-  #     MaybeNil,
-  #     TPotentialAlias,
-  #     n.info,
-  #     element)
   # echo "check n ", n, " ", n.kind
   case n.kind:
   of nkSym:
-    # echo "sym ", n
     result = Check(nilability: map[ctx.index(n)], map: map)
-    # echo "after sym"
   of nkCallKinds:
     if n.sons[0].kind == nkSym:
       let callSym = n.sons[0].sym
@@ -1135,11 +1116,10 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     var mapIf: NilMap = map.copyMap()
     
     # first visit the condition
-    # echo "nilcheck : abstractTime " & $ctx.abstractTime & " " & $n.kind & " " & $n[0]
-
+    
     var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
 
-    if n.sons.len > 1:
+    if n.sons.len > 1: # nkIf elif else 
       let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
       let mapElse = reverseDirect(mapCondition)
       let r = checkBranch(n.sons[1], ctx, mapElse)
@@ -1148,8 +1128,14 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     else:
       let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
       let mapNoIf = reverseDirect(mapCondition)
-      result.map = ctx.union(mapNoIf, l.map)
-      result.nilability = Safe
+      if hasUnstructuredControlFlowJump(n[0][1]):
+        echo "unstructured flow "
+        echo namedMapAndSetsDebugInfo(ctx, mapNoIf)
+        result.map = mapNoIf
+        result.nilability = Safe
+      else:
+        result.map = ctx.union(mapNoIf, l.map)
+        result.nilability = Safe
       #if directStop(n[0][1]):
       #  result.map = mapR
       #  result.nilability = nilabilityR
@@ -1182,6 +1168,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     discard "don't follow this : same as varpartitions"
     result = Check(nilability: Nil, map: map)
   else:
+
     var elementMap = map.copyMap()
     var elementCheck: Check
     elementCheck.map = elementMap
@@ -1194,9 +1181,8 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   
   
 proc typeNilability(typ: PType): Nilability =
-  if typ.isNil: # TODO is it ok
-    Safe
-  elif tfNotNil in typ.flags:
+  assert not typ.isNil
+  if tfNotNil in typ.flags:
     Safe
   elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
     # 
@@ -1227,7 +1213,7 @@ proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
           baseIndex = ctx.symbolIndices[baseSymbol]
         if ctx.dependants.len <= baseIndex:
           ctx.dependants.setLen(baseIndex + 1.ExprIndex)
-        ctx.dependants[baseIndex].incl(index)
+        ctx.dependants[baseIndex].incl(index.int)
   case node.kind:
   of nkSym, nkEmpty, nkNilLit, nkType, nkIdent, nkCharLit .. nkUInt64Lit, nkFloatLit .. nkFloat64Lit, nkStrLit .. nkTripleStrLit:
     discard
@@ -1242,8 +1228,8 @@ proc preVisit(ctx: NilCheckerContext, s: PSym, body: PNode, conf: ConfigRef) =
   ctx.symbolIndices = {resultId: resultExprIndex}.toTable()
   var cache = newIdentCache()
   ctx.expressions = SeqOfDistinct[ExprIndex, PNode](@[newIdentNode(cache.getIdent("result"), s.ast.info)])
-  var emptySet: set[ExprIndex]
-  ctx.dependants = SeqOfDistinct[ExprIndex, set[ExprIndex]](@[emptySet])
+  var emptySet: IntSet # set[ExprIndex]
+  ctx.dependants = SeqOfDistinct[ExprIndex, IntSet](@[emptySet])
   for i, arg in s.typ.n.sons:
     if i > 0:
       if arg.kind != nkSym:
@@ -1269,7 +1255,6 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   # echo "after"
   var map = newNilMap(nil, context.symbolIndices.len)
   
-  # TODO
   for i, child in s.typ.n.sons:
     if i > 0:
       if child.kind != nkSym:
