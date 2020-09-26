@@ -44,15 +44,17 @@ var
 var
   lresult
   lvalue
+  lnext
   _
 `=`(lresult, [123])
-var lnext_cursor: string
 _ = (
   let blitTmp = lresult
   blitTmp, ";")
 lvalue = _[0]
-lnext_cursor = _[1]
+lnext = _[1]
 `=sink`(result.value, move lvalue)
+`=destroy`(lnext)
+`=destroy_1`(lvalue)
 -- end of expandArc ------------------------
 --expandArc: tt
 
