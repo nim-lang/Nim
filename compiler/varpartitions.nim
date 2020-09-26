@@ -100,7 +100,7 @@ proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
 
 template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
 
-proc variableId(c: Partitions; x: PSym): int {.inline.} =
+proc variableId(c: Partitions; x: PSym): int =
   for i in 0 ..< c.s.len:
     if c.s[i].sym == x: return i
   return -1
@@ -120,6 +120,9 @@ proc registerParam(c: var Partitions; n: PNode) =
                           connectedVia: unknownLineInfo, flags: {connectsConstParam},
                           maxMutation: -1, minConnection: high(int),
                           mutations: @[])
+  else:
+    c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
+                     aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
 
 proc registerVariable(c: var Partitions; n: PNode) =
   if n.kind == nkSym and variableId(c, n.sym) < 0:
