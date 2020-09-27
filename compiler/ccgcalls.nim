@@ -148,9 +148,44 @@ proc reifiedOpenArray(n: PNode): bool {.inline.} =
   else:
     result = true
 
-proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
-  var a: TLoc
+proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): Rope =
+  var a, b, c: TLoc
+  initLocExpr(p, q[1], a)
+  initLocExpr(p, q[2], b)
+  initLocExpr(p, q[3], c)
+  # but first produce the required index checks:
+  if optBoundsCheck in p.options:
+    genBoundsCheck(p, a, b, c)
+  let ty = skipTypes(a.t, abstractVar+{tyPtr})
+  let dest = getTypeDesc(p.module, destType)
+  case ty.kind
+  of tyArray:
+    let first = toInt64(firstOrd(p.config, ty))
+    if first == 0:
+      result = "($4*)(($1)+($2)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+    else:
+      result = "($5*)($1)+(($2)-($4)), ($3)-($2)+1" %
+        [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first), dest]
+  of tyOpenArray, tyVarargs:
+    if reifiedOpenArray(q[1]):
+      result = "($4*)($1.d)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+    else:
+      result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+  of tyUncheckedArray, tyCString:
+    result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
+  of tyString, tySequence:
+    let atyp = skipTypes(a.t, abstractInst)
+    if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
+        optSeqDestructors in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+    if atyp.kind in {tyVar} and not compileToCpp(p.module):
+      result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
+    else:
+      result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
+  else:
+    internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
+proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
   var q = skipConv(n)
   var skipped = false
   while q.kind == nkStmtListExpr and q.len > 0:
@@ -164,42 +199,9 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         for i in 0..<q.len-1:
           genStmts(p, q[i])
         q = q.lastSon
-    var b, c: TLoc
-    initLocExpr(p, q[1], a)
-    initLocExpr(p, q[2], b)
-    initLocExpr(p, q[3], c)
-    # but first produce the required index checks:
-    if optBoundsCheck in p.options:
-      genBoundsCheck(p, a, b, c)
-    let ty = skipTypes(a.t, abstractVar+{tyPtr})
-    let dest = getTypeDesc(p.module, n.typ[0])
-    case ty.kind
-    of tyArray:
-      let first = toInt64(firstOrd(p.config, ty))
-      if first == 0:
-        result = "($4*)(($1)+($2)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-      else:
-        result = "($5*)($1)+(($2)-($4)), ($3)-($2)+1" %
-          [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first), dest]
-    of tyOpenArray, tyVarargs:
-      if reifiedOpenArray(q[1]):
-        result = "($4*)($1.d)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-      else:
-        result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-    of tyUncheckedArray, tyCString:
-      result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-    of tyString, tySequence:
-      let atyp = skipTypes(a.t, abstractInst)
-      if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions:
-        linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-      if atyp.kind in {tyVar} and not compileToCpp(p.module):
-        result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
-      else:
-        result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
-    else:
-      internalError(p.config, "openArrayLoc: " & typeToString(a.t))
+    result = genOpenArraySlice(p, q, formalType, n.typ[0])
   else:
+    var a: TLoc
     initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n, a)
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:

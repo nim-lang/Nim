@@ -1762,7 +1762,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
         a.add newSymNode(c.p.resultSym)
         a.add n[0]
         n[0] = a
-      else:        
+      else:
         localError(c.config, n.info, errNoReturnTypeDeclared)
         return
       result[0] = semAsgn(c, n[0])
@@ -2060,7 +2060,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
                   else:
                     identNodeSym.newSymNode
   quotes[1] = newTreeI(nkCall, n.info, identNode, newStrNode(nkStrLit, "result"))
-  result = newTreeI(nkCall, n.info, 
+  result = newTreeI(nkCall, n.info,
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)
