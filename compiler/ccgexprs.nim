@@ -2215,6 +2215,14 @@ proc genDispose(p: BProc; n: PNode) =
       # destructor, but it uses the runtime type. Afterwards the memory is freed:
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
+proc genSlice(p: BProc; e: PNode; d: var TLoc) =
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  if d.k == locNone: getTemp(p, e.typ, d)
+  linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n", [rdLoc(d), x, y])
+  when false:
+    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
+      "'toOpenArray' is only valid within a call expression")
+
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
@@ -2396,9 +2404,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
-  of mSlice:
-    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
-      "'toOpenArray' is only valid within a call expression")
+  of mSlice: genSlice(p, e, d)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
