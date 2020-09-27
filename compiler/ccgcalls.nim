@@ -171,7 +171,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
         lengthExpr)
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(q[1]):
-      result = ("($3*)($1.d)+($2)" % [rdLoc(a), rdLoc(b), dest],
+      result = ("($3*)($1.Field0)+($2)" % [rdLoc(a), rdLoc(b), dest],
                 lengthExpr)
     else:
       result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
@@ -215,7 +215,10 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:
       if reifiedOpenArray(n):
-        result = "$1.d, $1.l" % [rdLoc(a)]
+        if a.t.kind in {tyVar, tyLent}:
+          result = "$1->Field0, $1->Field1" % [rdLoc(a)]
+        else:
+          result = "$1.Field0, $1.Field1" % [rdLoc(a)]
       else:
         result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
