@@ -1831,8 +1831,10 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
         else:
           localError(c.config, n[0].info, errXExpected, "tuple constructor")
   else:
-    if isViewType(t):
-      n[0] = takeImplicitAddr(c, n[0], false)
+    when false:
+      # XXX investigate what we really need here.
+      if isViewType(t):
+        n[0] = takeImplicitAddr(c, n[0], false)
 
 proc semYield(c: PContext, n: PNode): PNode =
   result = n
