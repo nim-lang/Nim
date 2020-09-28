@@ -1764,6 +1764,21 @@ via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different
    can only passed to a parameter of a ``.noSideEffect`` proc.
 
 
+Noalias annotation
+==================
+
+Since version 1.4 of the Nim compiler, there is a ``.noalias`` annotation for variables
+and parameters. It is mapped directly to C/C++'s ``restrict`` keyword and means that
+the underlying pointer is pointing to a unique location in memory, no other aliases to
+this location exist. It is *unchecked* that this alias restriction is followed, if the
+restriction is violated, the backend optimizer is free to miscompile the code.
+This is an **unsafe** language feature.
+
+Ideally in later versions of the language, the restriction will be enforced at
+compile time. (Which is also why the name ``noalias`` was choosen instead of a more
+verbose name like ``unsafeAssumeNoAlias``.)
+
+
 Strict funcs
 ============
 

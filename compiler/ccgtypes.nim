@@ -474,6 +474,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     else:
       params.add(getTypeDescAux(m, param.typ, check, skParam))
     params.add(~" ")
+    if sfNoalias in param.flags:
+      params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ

@@ -195,7 +195,7 @@
       is
         cool!
     """
-  ``` 
+  ```
 
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
@@ -282,6 +282,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
   an experimental feature. In other words, you don't have to write pragma
   `{.experimental: "forLoopMacros".}` if you want to use them.
+
+- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
+  performance this keyword can enable.
 
 
 ## Compiler changes
