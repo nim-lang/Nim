@@ -638,7 +638,7 @@ type
     cmds: seq[string]
     idx: int
     kind*: CmdLineKind        ## The detected command line token
-    key*, val*: string        ## Key and value pair; the key is the option
+    key*, val*: TaintedString ## Key and value pair; the key is the option
                               ## or the argument, and the value is not "" if
                               ## the option was given a value
 
@@ -654,7 +654,7 @@ type
     cmds: seq[string]
     idx: int
     kind*: CmdLineKind        ## The detected command line token
-    key*, val*: string        ## Key and value pair; the key is the option
+    key*, val*: TaintedString ## Key and value pair; the key is the option
                               ## or the argument, and the value is not "" if
                               ## the option was given a value
 
