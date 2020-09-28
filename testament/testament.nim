@@ -119,7 +119,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   close instream
 
   result.exitCode =  -1
-  var line = newStringOfCap(120).TaintedString
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
       result.output.string.add(line.string)
@@ -158,7 +158,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   var x = newStringOfCap(120)
   result.nimout = ""
   while true:
-    if outp.readLine(x.TaintedString):
+    if outp.readLine(x):
       result.nimout.add(x & "\n")
       if x =~ pegOfInterest:
         # `err` should contain the last error/warning message
@@ -207,7 +207,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   result.output = ""
   result.line = -1
   while true:
-    if outp.readLine(x.TaintedString):
+    if outp.readLine(x):
       result.nimout.add(x & "\n")
     elif not running(p):
       break
