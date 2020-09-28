@@ -44,32 +44,32 @@ proc testNotNilAfterAssign(a: Nilable, b: int) =
     n = Nilable() # n: Safe a: MaybeNil
   echo n.a # ok
 
-# proc callVar(a: var Nilable) =
-#    a = nil
+proc callVar(a: var Nilable) =
+   a = nil
 
-# proc testVarAlias(a: Nilable) = # a: 0 aliasA: 1 {0} {1} 
-#   var aliasA = a # {0, 1} 0 MaybeNil 1 MaybeNil
-#   if not a.isNil: # {0, 1} 0 Safe 1 Safe
-#     callVar(aliasA) # {0, 1} 0 MaybeNil 1 MaybeNil
-#     # if aliasA stops being in alias: it might be nil, but then a is still not nil
-#     # if not: it cant be nil as it still points here
-#     echo a.a # ok 
+proc testVarAlias(a: Nilable) = # a: 0 aliasA: 1 {0} {1} 
+  var aliasA = a # {0, 1} 0 MaybeNil 1 MaybeNil
+  if not a.isNil: # {0, 1} 0 Safe 1 Safe
+    callVar(aliasA) # {0, 1} 0 MaybeNil 1 MaybeNil
+    # if aliasA stops being in alias: it might be nil, but then a is still not nil
+    # if not: it cant be nil as it still points here
+    echo a.a # ok 
 
-# proc testAliasCheck(a: Nilable) =
-#   var aliasA = a
-#   if not a.isNil:
-#     echo aliasA.a # ok
+proc testAliasCheck(a: Nilable) =
+  var aliasA = a
+  if not a.isNil:
+    echo aliasA.a # ok
 
-# proc testFieldCheck(a: Nilable) =
-#   if not a.isNil and not a.field.isNil:
-#     echo a.field.a # ok
+proc testFieldCheck(a: Nilable) =
+  if not a.isNil and not a.field.isNil:
+    echo a.field.a # ok
 
-# proc testTrackField =
-#   var a = Nilable(field: Nilable())
-#   echo a.field.a # ok
+proc testTrackField =
+  var a = Nilable(field: Nilable())
+  echo a.field.a # ok
 
-# proc testNonNilDeref(a: NonNilable) =
-#   echo a.a # ok
+proc testNonNilDeref(a: NonNilable) =
+  echo a.a # ok
 
 # # not only calls: we can use partitions for dependencies for field aliases
 # # so we can detect on change what does this affect or was this mutated between us and the original field
@@ -83,26 +83,26 @@ proc testNotNilAfterAssign(a: Nilable, b: int) =
 #     echo a[field].a
 #   result = Nilable()
   
-# proc testSeparateShadowingResult(a: Nilable): Nilable =
-#   result = Nilable()
-#   if not a.isNil:
-#     var result: Nilable = nil
-#   echo result.a
+proc testSeparateShadowingResult(a: Nilable): Nilable =
+  result = Nilable()
+  if not a.isNil:
+    var result: Nilable = nil
+  echo result.a
 
 
-# proc testCStringDeref(a: cstring) =
-#   echo a[0] # can't deref a: it might be nil
+#proc testCStringDeref(a: cstring) =
+#  echo a[0] # can't deref a: it might be nil
 
-# proc testNonNilCString(a: cstring not nil) =
-#   echo a[0] # ok
+proc testNonNilCString(a: cstring not nil) =
+  echo a[0] # ok
 
 # proc testNilablePtr(a: ptr int) =
 #   if not a.isNil:
 #     echo a[] # ok
 #   echo a[] # can't deref a: it might be nil
 
-# proc testNonNilPtr(a: ptr int not nil) =
-#   echo a[] # ok
+proc testNonNilPtr(a: ptr int not nil) =
+  echo a[] # ok
 
 # proc raiseCall: NonNilable = # return value is nil
 #   raise newException(ValueError, "raise for test") 
@@ -149,10 +149,10 @@ proc testNotNilAfterAssign(a: Nilable, b: int) =
 
 #   echo other.a # can't deref a: it might be nil
 
-# proc testRaise(a: Nilable) =
-#   if a.isNil:
-#     raise newException(ValueError, "a == nil")
-#   echo a.a # ok
+proc testRaise(a: Nilable) =
+  if a.isNil:
+    raise newException(ValueError, "a == nil")
+  echo a.a # ok
 
 # proc testBlockScope(a: Nilable) =
 #   var other = a
@@ -166,12 +166,21 @@ proc testNotNilAfterAssign(a: Nilable, b: int) =
 #   var a = raiseCall()
 #   result = NonNilable()
 
-# proc testStmtList =
-#   var a = Nilable()
-#   block:
-#     a = nil
-#     a = Nilable()
-#   echo a.a # ok
+proc testStmtList =
+  var a = Nilable()
+  block:
+    a = nil
+    a = Nilable()
+  echo a.a # ok
+
+proc testItemDerefNoWarning(a: var seq[Nilable]) =
+  a[0] = Nilable() # good: now .. if we dont track, how do we know 
+  echo a[0].a # ok
+  var b = 1
+
+  const c = 0
+  a[c] = Nilable()
+  echo a[0].a # ok
 
 # proc callChange(a: Nilable) =
 #   a.field = nil

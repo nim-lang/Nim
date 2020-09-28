@@ -403,6 +403,9 @@ proc `==`(a: Symbol, b: Symbol): bool =
 func `$`(a: Symbol): string =
   $(a.int)
 
+template isConstBracket(n: PNode): bool =
+  n.kind == nkBracketExpr and n[1].kind in nkLiterals 
+
 proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
   # echo "n ", n, " ", n.kind
   let a = symbol(n)
@@ -415,11 +418,14 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
     # 
   #ctx.symbolIndices[symbol(n)]
 
+
 proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): IntSet =
   result = map.sets[map.setIndices[ctx.index(n)]]
 
 proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): IntSet =
   result = map.sets[map.setIndices[index]]
+
+
     
 proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
   
@@ -550,7 +556,7 @@ proc checkCall(n, ctx, map): Check =
         result.map.store(ctx, a, MaybeNil, TVarArg, n.info, child)
         storeDependants(ctx, result.map, child, MaybeNil)
       elif child.typ.kind == tyRef:
-        if child.kind in {nkSym, nkDotExpr}:
+        if child.kind in {nkSym, nkDotExpr} or isConstBracket(child):
           let a = ctx.index(child)
           if ctx.dependants[a].len > 0:
             if not isNew:
@@ -634,14 +640,15 @@ proc checkRefExpr(n, ctx; check: Check): Check =
     result.nilability = typeNilability(n.typ)
   elif tfNotNil notin n.typ.flags:
     # echo "ref key ", n, " ", n.kind
-    if n.kind in {nkSym, nkDotExpr}:
+    if n.kind in {nkSym, nkDotExpr} or isConstBracket(n):
       let key = ctx.index(n)
       result.nilability = result.map[key]
-    else:
-      # echo "maybe nil"
+    elif n.kind == nkBracketExpr:
+      # sometimes false positive
       result.nilability = MaybeNil
-      # result.map.store(key, MaybeNil, TType, n.info, n)
-      # result.nilability = MaybeNil
+    else:
+      # sometimes maybe false positive
+      result.nilability = MaybeNil
 
 proc checkDotExpr(n, ctx, map): Check =
   ## check dot expressions: make sure we can dereference the base
@@ -655,6 +662,8 @@ proc checkBracketExpr(n, ctx, map): Check =
   handleNilability(result, n[0], ctx, map)
   result = check(n[1], ctx, result.map)
   result = checkRefExpr(n, ctx, result)
+  # echo n, " ", result.nilability
+  
 
 template union(l: Nilability, r: Nilability): Nilability =
   ## unify two states
@@ -762,7 +771,7 @@ proc checkAsgn(target: PNode, assigned: PNode; ctx, map): Check =
   
   if result.map.isNil:
     result.map = map
-  if target.kind in {nkSym, nkDotExpr}:
+  if target.kind in {nkSym, nkDotExpr} or isConstBracket(target):
     let t = ctx.index(target)
     move(ctx, map, target, assigned)
     case assigned.kind:
@@ -843,9 +852,7 @@ proc checkIf(n, ctx, map): Check =
       # so we don't do an union with afterLayer
       # layerHistory has the effect of mapIf and (not condition)
       result.map = layerHistory
-      result.nilability = Safe 
-    #echo "if one branch " & " " & $mapCondition & " " & $mapIf & " " & $mapL & " " & $result.map & " " & $mapL.previous
-
+      result.nilability = Safe
 
 proc checkFor(n, ctx, map): Check =
   ## check for loops
@@ -1191,7 +1198,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
       var arg = n[1]
       while arg.kind == nkHiddenDeref:
         arg = arg[0]
-      if arg.kind in {nkSym, nkDotExpr}:
+      if arg.kind in {nkSym, nkDotExpr} or isConstBracket(arg):
         let a = ctx.index(arg)
         result.store(ctx, a, if not reverse: Nil else: Safe, if not reverse: TNil else: TSafe, n.info, arg)
       else:
@@ -1329,13 +1336,14 @@ proc typeNilability(typ: PType): Nilability =
 
 proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
   # echo "visit node ", node
-  if node.kind in {nkSym, nkDotExpr}:
+  if node.kind in {nkSym, nkDotExpr} or isConstBracket(node):
     let nodeSymbol = symbol(node)
     if not ctx.symbolIndices.hasKey(nodeSymbol):
       ctx.symbolIndices[nodeSymbol] = ctx.expressions.len
       ctx.expressions.add(node)
-    if node.kind == nkDotExpr:
-      if not node.typ.isNil and node.typ.kind == tyRef and tfNotNil notin node.typ.flags:
+    if node.kind in {nkDotExpr, nkBracketExpr}:
+      if node.kind == nkDotExpr and (not node.typ.isNil and node.typ.kind == tyRef and tfNotNil notin node.typ.flags) or
+         node.kind == nkBracketExpr:
         let index = ctx.symbolIndices[nodeSymbol]
         var baseIndex = noExprIndex
         # deref usually?

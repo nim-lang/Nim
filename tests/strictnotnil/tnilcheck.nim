@@ -332,6 +332,40 @@ proc testReassignVarWithField =
         ]#
 
 
+proc testItemDeref(a: var seq[Nilable]) =
+  echo a[0].a #[tt.Warning
+        ^ can't deref a[0], it might be nil
+       ]#
+  a[0] = Nilable() # good: now .. if we dont track, how do we know 
+  echo a[0].a # ok
+  echo a[1].a #[tt.Warning
+        ^ can't deref a[1], it might be nil
+  ]#
+  var b = 1
+  if a[b].isNil:
+    echo a[1].a #[tt.Warning
+          ^ can't deref a[1], it might be nil
+    ]#
+    var c = 0
+    echo a[c].a #[tt.Warning
+          ^ can't deref a[c], it might be nil
+    ]#
+
+  # known false positive
+  if not a[b].isNil:
+    echo a[b].a #[tt.Warning
+          ^ can't deref a[b], it might be nil
+    ]#
+
+  const c = 0
+  if a[c].isNil:
+    echo a[0].a #[tt.Warning
+          ^ can't deref a[0], it is nil
+    ]#
+  a[c] = Nilable()
+  echo a[0].a # ok
+
+
 # # var it = root;
 # # while it != nil:
 # #   baz(it)
