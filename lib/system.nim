@@ -1078,7 +1078,6 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  taintMode = false
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
@@ -1101,7 +1100,7 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-type TaintedString* = string ## **Deprecated** since 1.3, do not use.
+type TaintedString* {.deprecated: "Deprecated since 1.3; Use string instead.".} = string ## **Deprecated** since 1.3, do not use.
 
 
 when defined(profiler) and not defined(nimscript):
