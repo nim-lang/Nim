@@ -1950,7 +1950,7 @@ uses. The algorithm performs two traversals over the AST of the procedure or glo
 section of code that uses a view variable. No fixpoint iterations are performed, the
 complexity of the analysis is O(N) where N is the number of nodes of the AST.
 
-The first pass over the AST computes the lifetime or each local variable based on
+The first pass over the AST computes the lifetime of each local variable based on
 a notion of an "abstract time", in the implementation it's a simple integer that is
 incremented for every visited node.
 
@@ -1986,3 +1986,6 @@ and ``b`` the location that is borrowed from.
 - If ``v`` is a mutable view, ``b`` has to be a mutable location.
 - During ``v``'s lifetime, ``G(b)`` can only be modified by ``v`` (and only if
   ``v`` is a mutable view).
+- If ``v`` is ``result`` then ``b`` has to be a location derived from the first
+  formal parameter.
+
