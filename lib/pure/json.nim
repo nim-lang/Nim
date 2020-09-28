@@ -322,6 +322,18 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   if keyVals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
+  
+proc `%`*(t: tuple): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  result = newJObject()
+  for name,value in t.fieldPairs:
+    result[name] = %value
+
+proc `%`*(a: openArray[tuple]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
+  result = newJArray()
+  for t in a:
+      result.add(%t)
 
 template `%`*(j: JsonNode): JsonNode = j
 
