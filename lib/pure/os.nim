@@ -2691,7 +2691,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
@@ -2725,7 +2725,7 @@ when defined(nimdoc):
 
 elif defined(nimscript): discard
 elif defined(nintendoswitch) or weirdTarget:
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -2748,17 +2748,17 @@ elif defined(windows):
       ownParsedArgv = true
     result = ownArgv.len-1
 
-  proc paramStr*(i: int): TaintedString {.rtl, extern: "nos$1",
+  proc paramStr*(i: int): string {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
-    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return ownArgv[i]
     raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
-  proc paramStr*(i: int): TaintedString =
+  proc paramStr*(i: int): string =
     raise newException(OSError, "paramStr is not implemented on Genode")
 
   proc paramCount*(): int =
@@ -2771,9 +2771,9 @@ elif not defined(createNimRtl) and
     cmdCount {.importc: "cmdCount".}: cint
     cmdLine {.importc: "cmdLine".}: cstringArray
 
-  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
+    if i < cmdCount and i >= 0: return $cmdLine[i]
     raise newException(IndexDefect, formatErrorIndexBound(i, cmdCount-1))
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
@@ -2781,7 +2781,7 @@ elif not defined(createNimRtl) and
     result = cmdCount-1
 
 when declared(paramCount) or defined(nimdoc):
-  proc commandLineParams*(): seq[TaintedString] =
+  proc commandLineParams*(): seq[string] =
     ## Convenience proc which returns the command line parameters.
     ##
     ## This returns **only** the parameters. If you want to get the application
@@ -2810,7 +2810,7 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 else:
-  proc commandLineParams*(): seq[TaintedString] {.error:
+  proc commandLineParams*(): seq[string] {.error:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 

@@ -774,13 +774,13 @@ block: # issue #9458
     Option[T] = object
       val: T
       has: bool
-    
+
     Bar = object
 
   proc none(T: typedesc): Option[T] =
     discard
 
-  proc foo[T](self: T; x: Option[Bar] = Bar.none) = 
+  proc foo[T](self: T; x: Option[Bar] = Bar.none) =
     discard
 
   foo(1)
@@ -834,7 +834,7 @@ proc getBar(x: string): Bar =
       Bar(foo: none[seq[Foo]](),
           s: "")
 
-proc fakeReadLine(): TaintedString = "hey"
+proc fakeReadLine(): string = "hey"
 
 echo getBar(fakeReadLine()) # causes error
 

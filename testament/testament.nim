@@ -99,7 +99,7 @@ proc getFileDir(filename: string): string =
 
 proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
 

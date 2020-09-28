@@ -86,7 +86,7 @@ proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
   ## Receives a line of data from the socket connected to the
   ## SMTP server.
   ##

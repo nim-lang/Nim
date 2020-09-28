@@ -1078,7 +1078,7 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  taintMode = compileOption("taintmode")
+  taintMode = false
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
@@ -1101,22 +1101,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-when taintMode:
-  type TaintedString* = distinct string ## A distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual_experimental.html#taint-mode>`_
-                                        ## for details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
+type TaintedString* = string ## **Deprecated** since 1.3, do not use.
 
-  proc len*(s: TaintedString): int {.borrow.}
-else:
-  type TaintedString* = string          ## A distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual_experimental.html#taint-mode>`_
-                                        ## for details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
 
 when defined(profiler) and not defined(nimscript):
   proc nimProfile() {.compilerproc, noinline.}

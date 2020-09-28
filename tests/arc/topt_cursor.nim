@@ -28,7 +28,7 @@ block :tmp:
   try:
     var res
     try:
-      res = TaintedString(newStringOfCap(80))
+      res = newStringOfCap(80)
       block :tmp_1:
         while readLine(f, res):
           x_cursor = res

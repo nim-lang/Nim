@@ -319,7 +319,7 @@ proc replTcp(x: ThreadParams) {.thread.} =
   else:
     server.bindAddr(x.port, x.address)
     server.listen()
-  var inp = "".TaintedString
+  var inp = ""
   var stdoutSocket: Socket
   while true:
     accept(server, stdoutSocket)

@@ -68,7 +68,6 @@ type                          # please make sure we have under 32 options
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
-    optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code

@@ -840,7 +840,7 @@ when defineSsl:
     if sidCtx.len > 32:
       raiseSSLError("sessionIdContext must be shorter than 32 characters")
     SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
-  
+
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
   ## the last error stored in the socket object.
@@ -1490,7 +1490,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
+proc readLine*(socket: Socket, line: var string, timeout = -1,
                flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
@@ -1548,7 +1548,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
-               maxLength = MaxLineLength): TaintedString =
+               maxLength = MaxLineLength): string =
   ## Reads a line of data from ``socket``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -1566,7 +1566,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
-  result = "".TaintedString
+  result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
 proc recvFrom*(socket: Socket, data: var string, length: int,

@@ -26,7 +26,7 @@ type
     baseReadLineImpl: typeof(StreamObj.readLineImpl)
     baseReadDataImpl: typeof(StreamObj.readDataImpl)
 
-proc posReadLine[T](s: Stream, line: var TaintedString): bool =
+proc posReadLine[T](s: Stream, line: var string): bool =
   var s = PipeOutStream[T](s)
   assert s.baseReadLineImpl != nil
 

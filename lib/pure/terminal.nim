@@ -769,7 +769,7 @@ proc getch*(): char =
 when defined(windows):
   from unicode import toUTF8, Rune, runeLenAt
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``! Returns ``false`` if the end of the file has been reached,
@@ -795,7 +795,7 @@ when defined(windows):
 else:
   import termios
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     password.string.setLen(0)
     let fd = stdin.getFileHandle()
@@ -809,9 +809,9 @@ else:
     stdout.write "\n"
     discard fd.tcSetAttr(TCSADRAIN, old.addr)
 
-proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
+proc readPasswordFromStdin*(prompt = "password: "): string =
   ## Reads a password from stdin without printing it.
-  result = TaintedString("")
+  result = ""
   discard readPasswordFromStdin(prompt, result)
 
 

@@ -85,7 +85,7 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: TaintedString] =
+iterator decodeData*(data: string): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   proc parseData(data: string, i: int, field: var string): int =
@@ -109,13 +109,13 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
     if i < data.len and data[i] == '=':
       inc(i) # skip '='
       i = parseData(data, i, value)
-    yield (name.TaintedString, value.TaintedString)
+    yield (name, value)
     if i < data.len:
       if data[i] == '&': inc(i)
       else: cgiError("'&' expected")
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
-       {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
+       {methodNone, methodPost, methodGet}): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, an `ECgi` exception is raised.
@@ -328,10 +328,10 @@ proc setCookie*(name, value: string) =
 var
   gcookies {.threadvar.}: StringTableRef
 
-proc getCookie*(name: string): TaintedString =
+proc getCookie*(name: string): string =
   ## Gets a cookie. If no cookie of `name` exists, "" is returned.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
-  result = TaintedString(gcookies.getOrDefault(name))
+  result = gcookies.getOrDefault(name)
 
 proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.

@@ -329,7 +329,7 @@ skLet
     let
       text = "some text"
     --> col 2: $MODULE.text
-        col 3: TaintedString
+        col 3: string
         col 7: ""
 
 
