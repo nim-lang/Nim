@@ -338,19 +338,19 @@ block:
 
   test(it, 0, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5)
 
-block:
-  iterator it(): int {.closure.} =
-    var i = 5
-    template foo(): bool =
-      yield i
-      true
+# block:
+#   iterator it(): int {.closure.} =
+#     var i = 5
+#     template foo(): bool =
+#       yield i
+#       true
 
-    while foo():
-      dec i
-      if i == 0:
-        break
+#     while foo():
+#       dec i
+#       if i == 0:
+#         break
 
-  test(it, 5, 4, 3, 2, 1)
+#   test(it, 5, 4, 3, 2, 1)
 
 block: # Short cirquits
   iterator it(): int {.closure.} =
@@ -483,5 +483,12 @@ block: # nnkChckRange
 
   test(it, 1, 2, 3)
 
-echo "ok"
+# block: #15243
+#   iterator it(): int {.closure.} =
+#     block:
+#       defer: yield 2
+#       break
 
+#   test(it, 2)
+
+echo "ok"
