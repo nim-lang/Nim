@@ -333,7 +333,7 @@ proc `%`*(a: openArray[tuple]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
   result = newJArray()
   for t in a:
-      result.add(%t)
+    result.add(%t)
 
 template `%`*(j: JsonNode): JsonNode = j
 
