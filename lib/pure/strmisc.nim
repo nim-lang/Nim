@@ -11,6 +11,7 @@
 ## used in comparison to `strutils <strutils.html>`_.
 
 import strutils
+import std/private/since
 
 proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect.} =
   ## Expand tab characters in `s` replacing them by spaces.
@@ -84,6 +85,41 @@ proc rpartition*(s: string, sep: string): (string, string, string)
     doAssert rpartition("foofoobar", "bar") == ("foofoo", "bar", "")
 
   return partition(s, sep, right = true)
+
+func parseFloatThousandSep*(s: string; thousandSep = ','; floatSep = '.'): float {.since: (1, 3).} =
+  ## Convenience func for `parseFloat` but it can take 2 `char` separators,
+  ## one is **likely** the thousands separator, other is **likely** the floating point,
+  ## but if both separators are swapped it can still parse correctly, see the examples,
+  ## this is designed to parse floats as found in the wild formatted for humans.
+  ##
+  ## See also:
+  ## * `strutils <strutils.html>`_
+  runnableExamples:
+    doAssert parseFloatThousandSep("0") == 0.0
+    doAssert parseFloatThousandSep("0.0") == 0.0
+    doAssert parseFloatThousandSep("1.0") == 1.0
+    doAssert parseFloatThousandSep("-1.0") == -1.0
+    doAssert parseFloatThousandSep("1.000") == 1.0
+    doAssert parseFloatThousandSep("1,000") == 1.0
+    doAssert parseFloatThousandSep("10,000.000") == 10000.0
+    doAssert parseFloatThousandSep("10.000,000") == 10.0
+    doAssert parseFloatThousandSep("1,000,000.000") == 1000000.0
+    doAssert parseFloatThousandSep("1.000.000,000") == 1000000.0
+    doAssert parseFloatThousandSep("0000000000000001.00,0,000,00000,,00") == 1.0
+    doAssert parseFloatThousandSep("0000000000000001,00.0.000.00000..00") == 1.0
+    doAssert parseFloatThousandSep("000,1.000,,,,,,,,,,,,,,000,,,,,0000") == 1.0
+    doAssert parseFloatThousandSep("000.1,000..............000.....0000") == 1.0
+    doAssert parseFloatThousandSep("1'000'000.000", thousandSep = '\'') == 1000000.0
+    doAssert parseFloatThousandSep("1_000_000.000", thousandSep = '_') == 1000000.0
+  result =
+    if thousandSep in s and s.count(floatSep) == 1:      # 1,000,000.0  1.000,000
+      parseFloat(s.replace($thousandSep, ""))
+    elif floatSep in s and s.count(thousandSep) == 1:    # 1.000.000,000
+      parseFloat(s.replace($floatSep, "").replace(thousandSep, floatSep))
+    elif floatSep notin s and s.count(thousandSep) == 1: # 100,000
+      parseFloat(s.replace(thousandSep, floatSep))
+    else: parseFloat(s)                                  # 1.0
+
 
 when isMainModule:
   doAssert expandTabs("\t", 4) == "    "

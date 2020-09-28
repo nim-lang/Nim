@@ -195,9 +195,11 @@
       is
         cool!
     """
-  ``` 
+  ```
 
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
+- Add `strmisc.parseFloatThousandSep` designed to parse floats as found in the wild formatted for humans.
+
 
 ## Language changes
 
