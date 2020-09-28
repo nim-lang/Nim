@@ -494,6 +494,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
+    #result = transformSons(c, n)
     result.typ = takeType(n.typ, n[1].typ)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
@@ -886,43 +887,6 @@ proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
     else:
       result = n
 
-proc hoistParamsUsedInDefault(c: PTransf, call, letSection, defExpr: PNode): PNode =
-  # This takes care of complicated signatures such as:
-  # proc foo(a: int, b = a)
-  # proc bar(a: int, b: int, c = a + b)
-  #
-  # The recursion may confuse you. It performs two duties:
-  #
-  # 1) extracting all referenced params from default expressions
-  #    into a let section preceding the call
-  #
-  # 2) replacing the "references" within the default expression
-  #    with these extracted skLet symbols.
-  #
-  # The first duty is carried out directly in the code here, while the second
-  # duty is activated by returning a non-nil value. The caller is responsible
-  # for replacing the input to the function with the returned non-nil value.
-  # (which is the hoisted symbol)
-  if defExpr.kind == nkSym:
-    if defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
-      let paramPos = defExpr.sym.position + 1
-
-      if call[paramPos].kind == nkSym and sfHoisted in call[paramPos].sym.flags:
-        # Already hoisted, we still need to return it in order to replace the
-        # placeholder expression in the default value.
-        return call[paramPos]
-
-      let hoistedVarSym = hoistExpr(letSection,
-                                    call[paramPos],
-                                    getIdent(c.graph.cache, genPrefix),
-                                    c.transCon.owner).newSymNode
-      call[paramPos] = hoistedVarSym
-      return hoistedVarSym
-  else:
-    for i in 0..<defExpr.safeLen:
-      let hoisted = hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
-      if hoisted != nil: defExpr[i] = hoisted
-
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
     var oldDeferAnchor: PNode
@@ -989,16 +953,6 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkBreakStmt: result = transformBreak(c, n)
   of nkCallKinds:
     result = transformCall(c, n)
-    var call = result
-    if nfDefaultRefsParam in call.flags:
-      # We've found a default value that references another param.
-      # See the notes in `hoistParamsUsedInDefault` for more details.
-      var hoistedParams = newNodeI(nkLetSection, call.info, 0)
-      for i in 1..<call.len:
-        let hoisted = hoistParamsUsedInDefault(c, call, hoistedParams, call[i])
-        if hoisted != nil: call[i] = hoisted
-      result = newTree(nkStmtListExpr, hoistedParams, call)
-      result.typ = call.typ
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
   of nkDerefExpr, nkHiddenDeref:
@@ -1153,6 +1107,9 @@ proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool): PNode =
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
+
+  #if prc.name.s == "main":
+  #  echo "transformed into ", renderTree(result, {renderIds})
 
 proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:

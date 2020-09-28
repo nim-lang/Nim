@@ -37,3 +37,5 @@ proc traverse(root: Node) =
     jt = ri
 
 traverse(nil)
+
+# XXX: This optimization is not sound

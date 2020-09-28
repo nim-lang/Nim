@@ -22,7 +22,8 @@ type
     cap: int
     data: UncheckedArray[T]
 
-  NimSeqV2*[T] = object
+  NimSeqV2*[T] = object # \
+    # if you change this implementation, also change seqs_v2_reimpl.nim!
     len: int
     p: ptr NimSeqPayload[T]
 
@@ -40,12 +41,15 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   else:
     result = nil
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
-    noSideEffect, raises: [].} =
-  {.noSideEffect.}:
-    template `+!`(p: pointer, s: int): pointer =
-      cast[pointer](cast[int](p) +% s)
+template `+!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) +% s)
 
+template `-!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) -% s)
+
+proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
+    noSideEffect, raises: [], compilerRtl.} =
+  {.noSideEffect.}:
     let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     if addlen <= 0:
       result = p

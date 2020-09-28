@@ -312,10 +312,6 @@ const
     # the compiler will avoid printing such names
     # in user messages.
 
-  sfHoisted* = sfForward
-    # an expression was hoised to an anonymous variable.
-    # the flag is applied to the var/let symbol
-
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
   sfReorder* = sfForward
@@ -684,7 +680,7 @@ type
     mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
-    mInstantiationInfo, mGetTypeInfo,
+    mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf, mNodeId
@@ -1121,8 +1117,45 @@ proc newNode*(kind: TNodeKind): PNode =
       writeStackTrace()
     inc gNodeId
 
+proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
+  result = PNode(kind: kind, info: info)
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
+      writeStackTrace()
+    inc gNodeId
+
+proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
+  result = PNode(kind: kind, info: info)
+  if children > 0:
+    newSeq(result.sons, children)
+  when defined(useNodeIds):
+    result.id = gNodeId
+    if result.id == nodeIdToDebug:
+      echo "KIND ", result.kind
+      writeStackTrace()
+    inc gNodeId
+
+proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
+  result = newNode(kind)
+  result.info = info
+  result.typ = typ
+
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
+  if children.len > 0:
+    result.info = children[0].info
+  result.sons = @children
+
+proc newTreeI*(kind: TNodeKind; info: TLineInfo; children: varargs[PNode]): PNode =
+  result = newNodeI(kind, info)
+  if children.len > 0:
+    result.info = children[0].info
+  result.sons = @children
+
+proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[PNode]): PNode =
+  result = newNodeIT(kind, info, typ)
   if children.len > 0:
     result.info = children[0].info
   result.sons = @children
@@ -1227,43 +1260,6 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.typ = sym.typ
   result.info = info
 
-proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
-  result = PNode(kind: kind, info: info)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
-
-proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
-  result = PNode(kind: kind, info: info)
-  if children > 0:
-    newSeq(result.sons, children)
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
-
-proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
-              typ: PType = nil): PNode =
-  # XXX use shallowCopy here for ownership transfer:
-  result = PNode(kind: kind, info: info, typ: typ)
-  result.sons = sons
-  when defined(useNodeIds):
-    result.id = gNodeId
-    if result.id == nodeIdToDebug:
-      echo "KIND ", result.kind
-      writeStackTrace()
-    inc gNodeId
-
-proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
-  result = newNode(kind)
-  result.info = info
-  result.typ = typ
-
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
   result = newNode(kind)
   result.intVal = intVal
@@ -1360,8 +1356,8 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
       writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
-  if a.k == low(a.k): a.k = b.k
-  if a.storage == low(a.storage): a.storage = b.storage
+  if a.k == low(typeof(a.k)): a.k = b.k
+  if a.storage == low(typeof(a.storage)): a.storage = b.storage
   a.flags.incl b.flags
   if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r

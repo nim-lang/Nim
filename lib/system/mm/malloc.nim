@@ -65,8 +65,10 @@ proc growObj(old: pointer, newsize: int): pointer =
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-  dest[] = src
+when not defined(gcDestructors):
+  proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
+    dest[] = src
+
 proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
   dest[] = src
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,

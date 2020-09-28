@@ -1243,8 +1243,12 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     effects[ensuresEffects] = ensuresSpec
 
   var mutationInfo = MutationInfo()
-  if strictFuncs in c.features and not t.hasSideEffect and t.hasDangerousAssign:
-    t.hasSideEffect = mutatesNonVarParameters(s, body, mutationInfo)
+  if {strictFuncs, views} * c.features != {}:
+    var partitions = computeGraphPartitions(s, body)
+    if not t.hasSideEffect and t.hasDangerousAssign:
+      t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
+    if views in c.features:
+      checkBorrowedLocations(partitions, body, g.config)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
@@ -1281,7 +1285,7 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
   let g = c.graph
-  var effects = newNode(nkEffectList, n.info)
+  var effects = newNodeI(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
   t.isTopLevel = isTopLevel

@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "a3e1267265965fc79a50b66999b660e0920db8cd" # master
+  NimbleStableCommit = "26167cd3b7671006c8bd38cbef8708431ddf8687" # master
   FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
 
 when not defined(windows):
@@ -201,7 +201,8 @@ proc bundleWinTools(args: string) =
 
 proc bundleFusion(latest: bool) =
   let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
+                  allowBundled = true)
   copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
 
 proc zip(latest: bool; args: string) =
@@ -481,7 +482,7 @@ proc temp(args: string) =
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
-      "js" notin programArgs:
+      "js" notin programArgs and "rst2html" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)

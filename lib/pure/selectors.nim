@@ -255,7 +255,7 @@ else:
     IOSelectorsException* = object of CatchableError
 
     ReadyKey* = object
-      fd* : int
+      fd*: int
       events*: set[Event]
       errorCode*: OSErrorCode
 

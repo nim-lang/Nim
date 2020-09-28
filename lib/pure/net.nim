@@ -1061,7 +1061,7 @@ proc accept*(server: Socket, client: var owned(Socket),
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-when defined(posix):
+when defined(posix) and not defined(lwip):
   from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
     sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
 
@@ -1079,7 +1079,7 @@ template blockSigpipe(body: untyped): untyped =
   ##
   ## For convenience, this template is also available for non-POSIX system,
   ## where `body` will be executed as-is.
-  when not defined(posix):
+  when not defined(posix) or defined(lwip):
     body
   else:
     template sigmask(how: cint, set, oset: var Sigset): untyped {.gensym.} =
