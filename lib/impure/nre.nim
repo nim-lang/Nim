@@ -386,7 +386,7 @@ func `[]`*(pattern: Captures, name: string): string =
 template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     if key in pattern:
-        result[key] = pattern[key]
+      result[key] = pattern[key]
 
 func toTable*(pattern: Captures): Table[string, string] =
   result = initTable[string, string]()
