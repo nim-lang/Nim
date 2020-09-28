@@ -327,6 +327,9 @@ import macros
 
 proc symbol(n: PNode): Symbol
 func `$`(map: NilMap): string
+proc reverseDirect(map: NilMap): NilMap
+proc checkBranch(n: PNode, ctx: NilCheckerContext, map: NilMap): Check
+proc hasUnstructuredControlFlowJump(n: PNode): bool
 
 proc symbol(n: PNode): Symbol =
   ## returns a Symbol for each expression
@@ -784,6 +787,66 @@ proc checkReturn(n, ctx, map): Check =
   result.map.store(ctx, resultExprIndex, result.nilability, TAssign, n.info)
 
 
+proc checkIf(n, ctx, map): Check =
+  ## check branches based on condition
+  var mapIf: NilMap = map
+  
+  # first visit the condition
+  
+  # the structure is not If(Elif(Elif, Else), Else)
+  # it is
+  # If(Elif, Elif, Else)
+
+  var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
+
+  # the state of the conditions: negating conditions before the current one
+  var layerHistory = newNilMap(mapIf)
+  # the state after branch effects
+  var afterLayer: NilMap
+  # the result nilability for expressions
+  var nilability = Safe
+  
+  for branch in n.sons:
+    var branchConditionLayer = newNilMap(layerHistory)
+    var branchLayer: NilMap
+    var code: PNode
+    if branch.kind in {nkIfStmt, nkElifBranch}:
+      var mapCondition = checkCondition(branch[0], ctx, branchConditionLayer, false, true)
+      let reverseMapCondition = reverseDirect(mapCondition)
+      layerHistory = ctx.add(layerHistory, reverseMapCondition)
+      branchLayer = mapCondition
+      code = branch[1]
+    else:
+      branchLayer = layerHistory
+      code = branch
+        
+    let branchCheck = checkBranch(code, ctx, branchLayer)
+    # handles nil afterLayer -> returns branchCheck.map
+    afterLayer = ctx.union(afterLayer, branchCheck.map)
+    nilability = if n.kind == nkIfStmt: Safe else: union(nilability, branchCheck.nilability)
+  if n.sons.len > 1:
+    result.map = afterLayer
+    result.nilability = nilability
+  else:
+    if not hasUnstructuredControlFlowJump(n[0][1]):
+      # here it matters what happend inside, because
+      # we might continue in the parent branch after entering this one
+      # either we enter the branch, so we get mapIf and effect of branch -> afterLayer
+      # or we dont , so we get mapIf and (not condition) effect -> layerHistory
+      result.map = ctx.union(layerHistory, afterLayer)
+      result.nilability = Safe # no expr?
+    else:
+      # similar to else: because otherwise we are jumping out of 
+      # the branch, so no union with the mapIf (we dont continue if the condition was true)
+      # here it also doesn't matter for the parent branch what happened in the branch, e.g. assigning to nil
+      # as if we continue there, we haven't entered the branch probably
+      # so we don't do an union with afterLayer
+      # layerHistory has the effect of mapIf and (not condition)
+      result.map = layerHistory
+      result.nilability = Safe 
+    #echo "if one branch " & " " & $mapCondition & " " & $mapIf & " " & $mapL & " " & $result.map & " " & $mapL.previous
+
+
 proc checkFor(n, ctx, map): Check =
   ## check for loops
   ##   try to repeat the unification of the code twice
@@ -910,7 +973,6 @@ proc infixEq(l: PNode, r: PNode): PNode =
 proc infixOr(l: PNode, r: PNode): PNode =
   infix(l, r, mOr)
 
-proc checkBranch(n, ctx, map): Check
 
 proc checkCase(n, ctx, map): Check =
   # case a:
@@ -1013,7 +1075,7 @@ proc checkTry(n, ctx, map): Check =
     newMap = ctx.union(afterTryMap, newMap)
   result = Check(nilability: Safe, map: newMap)
 
-proc hasUnstructuredControlFlowJump(n): bool =
+proc hasUnstructuredControlFlowJump(n: PNode): bool =
   ## if the node contains a direct stop
   ## as a continue/break/raise/return: then it means
   ## we should reverse some of the map in the code after the condition
@@ -1159,7 +1221,7 @@ proc checkResult(n, ctx, map) =
   of Safe, Parent:
     discard    
 
-proc checkBranch(n, ctx, map): Check =
+proc checkBranch(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   result = check(n, ctx, map)
 
 
@@ -1214,65 +1276,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkAddr, nkHiddenAddr:
     result = check(n.sons[0], ctx, map)
   of nkIfStmt, nkIfExpr:
-    ## check branches based on condition
-    var mapIf: NilMap = map
-    
-    # first visit the condition
-    
-    # the structure is not If(Elif(Elif, Else), Else)
-    # it is
-    # If(Elif, Elif, Else)
-
-    var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
-
-    # the state of the conditions: negating conditions before the current one
-    var layerHistory = newNilMap(mapIf)
-    # the state after branch effects
-    var afterLayer: NilMap
-    # the result nilability for expressions
-    var nilability = Safe
-    
-    for branch in n.sons:
-      var branchConditionLayer = newNilMap(layerHistory)
-      var branchLayer: NilMap
-      var code: PNode
-      if branch.kind in {nkIfStmt, nkElifBranch}:
-        var mapCondition = checkCondition(branch[0], ctx, branchConditionLayer, false, true)
-        let reverseMapCondition = reverseDirect(mapCondition)
-        layerHistory = ctx.add(layerHistory, reverseMapCondition)
-        branchLayer = mapCondition
-        code = branch[1]
-      else:
-        branchLayer = layerHistory # afterLayer
-        code = branch
-          
-      let branchCheck = checkBranch(code, ctx, branchLayer)
-      # handles nil afterLayer -> returns branchCheck.map
-      afterLayer = ctx.union(afterLayer, branchCheck.map)
-      nilability = if n.kind == nkIfStmt: Safe else: union(nilability, branchCheck.nilability)
-    if n.sons.len > 1:
-      result.map = afterLayer
-      result.nilability = nilability
-    else:
-      if not hasUnstructuredControlFlowJump(n[0][1]):
-        # here it matters what happend inside, because
-        # we might continue in the parent branch after entering this one
-        # either we enter the branch, so we get mapIf and effect of branch -> afterLayer
-        # or we dont , so we get mapIf and (not condition) effect -> layerHistory
-        result.map = ctx.union(layerHistory, afterLayer)
-        result.nilability = Safe # no expr?
-      else:
-        # similar to else: because otherwise we are jumping out of 
-        # the branch, so no union with the mapIf (we dont continue if the condition was true)
-        # here it also doesn't matter for the parent branch what happened in the branch, e.g. assigning to nil
-        # as if we continue there, we haven't entered the branch probably
-        # so we don't do an union with afterLayer
-        # layerHistory has the effect of mapIf and (not condition)
-        result.map = layerHistory
-        result.nilability = Safe 
-      #echo "if one branch " & " " & $mapCondition & " " & $mapIf & " " & $mapL & " " & $result.map & " " & $mapL.previous
-
-
+    result = checkIf(n, ctx, map)
   of nkAsgn:
     result = checkAsgn(n[0], n[1], ctx, map)
   of nkVarSection:
