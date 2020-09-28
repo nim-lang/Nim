@@ -191,7 +191,9 @@ type
   ## instead of a table, and we need to check if something was initialized
   ## at all: if Parent is set, then you need to check the parent nilability
   ## if the parent is nil, then for now we return MaybeNil
-  Nilability* = enum Parent, Safe, MaybeNil, Nil
+  ## unreachable is the result of add(Safe, Nil) and others
+  ## it is a result of no states left, so it's usually e.g. in unreachable else branches?
+  Nilability* = enum Parent, Safe, MaybeNil, Nil, Unreachable
 
   ## check
   Check = object
@@ -253,7 +255,6 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
     expressionsCount = count
   elif not parent.isNil:
     expressionsCount = parent.expressions.len.int
-  # echo "count ", expressionsCount
   result = NilMap(
     expressions: newSeqOfDistinct[ExprIndex, Nilability](expressionsCount),
     history: newSeqOfDistinct[ExprIndex, seq[History]](expressionsCount),
@@ -540,9 +541,6 @@ proc checkCall(n, ctx, map): Check =
           result.map = newNilMap(map)
           isNew = true
         # result.map[$child] = MaybeNil
-        # echo "MaybeNil arg"
-        # echo "  ", child
-        # echo "  ", symbol(child)
         let a = ctx.index(child)
         moveOut(ctx, result.map, child)
         moveOutDependants(ctx, result.map, child)
@@ -584,7 +582,7 @@ template event(b: History): string =
   of TPotentialAlias: "it might be changed directly or through an alias"
   of TDependant: "it might be changed because its base might be changed"
   
-proc derefWarning(n, ctx, map; maybe: bool) =
+proc derefWarning(n, ctx, map; kind: Nilability) =
   ## a warning for potentially unsafe dereference
   if n.info in ctx.warningLocations:
     return
@@ -593,7 +591,12 @@ proc derefWarning(n, ctx, map; maybe: bool) =
   if n.kind == nkSym:
     a = history(map, ctx.index(n))
   var res = ""
-  res.add("can't deref " & $n & ", it " & (if maybe: "might be" else: "is") & " nil")
+  var issue = case kind:
+      of Nil: "it is nil"
+      of MaybeNil: "it might be nil"
+      of Unreachable: "it is unreachable"
+      else: ""
+  res.add("can't deref " & $n & ", " & issue)
   if a.len > 0:
     res.add("\n")
   for b in a:
@@ -605,9 +608,11 @@ proc handleNilability(check: Check; n, ctx, map) =
   ##   register a warning(error?) for Nil/MaybeNil
   case check.nilability:
   of Nil:
-    derefWarning(n, ctx, map, false)
+    derefWarning(n, ctx, map, Nil)
   of MaybeNil:
-    derefWarning(n, ctx, map, true)
+    derefWarning(n, ctx, map, MaybeNil)
+  of Unreachable:
+    derefWarning(n, ctx, map, Unreachable)
   else:
     when defined(nilDebugInfo):
       message(ctx.config, n.info, hintUser, "can deref " & $n)
@@ -655,6 +660,22 @@ template union(l: Nilability, r: Nilability): Nilability =
   else:
     MaybeNil
 
+template add(l: Nilability, r: Nilability): Nilability =
+  if l == r: # Safe Safe -> Safe etc
+    l
+  elif l == Parent: # Parent Safe -> Safe etc
+    r
+  elif r == Parent:  # Safe Parent -> Safe etc
+    l
+  elif l == Unreachable or r == Unreachable: # Safe Unreachable -> Unreachable etc
+    Unreachable
+  elif l == MaybeNil: # Safe MaybeNil -> Safe etc
+    r
+  elif r == MaybeNil: # MaybeNil Nil -> Nil etc
+    l
+  else: # Safe Nil -> Unreachable etc
+    Unreachable
+
 proc findCommonParent(l: NilMap, r: NilMap): NilMap =
   result = l.parent
   while not result.isNil:
@@ -679,15 +700,39 @@ proc union(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
   elif r.isNil:
     return l
   
-  var common = findCommonParent(l, r)
+  let common = findCommonParent(l, r)
   result = newNilMap(common, ctx.expressions.len.int)
   
   for index, value in l:
     #if r.hasKey(graphIndex) and not result.locals.hasKey(graphIndex):
-    var h = history(r, index)
-    var info = if h.len > 0: h[^1].info else: TLineInfo(line: 0) # assert h.len > 0
+    let h = history(r, index)
+    let info = if h.len > 0: h[^1].info else: TLineInfo(line: 0) # assert h.len > 0
     # echo "history", name, value, r[name], h[^1].info.line
     result.store(ctx, index, union(value, r[index]), TAssign, info)
+
+proc add(ctx: NilCheckerContext, l: NilMap, r: NilMap): NilMap =
+  #echo "add "
+  #echo namedMapDebugInfo(ctx, l)
+  #echo " : "
+  #echo namedMapDebugInfo(ctx, r)
+  if l.isNil:
+    return r
+  elif r.isNil:
+    return l
+
+  let common = findCommonParent(l, r)
+  result = newNilMap(common, ctx.expressions.len.int)
+
+  for index, value in l:
+    let h = history(r, index)
+    let info = if h.len > 0: h[^1].info else: TLineInfo(line: 0)
+    # TODO: refactor and also think: is TAssign a good one
+    result.store(ctx, index, add(value, r[index]), TAssign, info)
+
+  #echo "result"
+  #echo namedMapDebugInfo(ctx, result)
+  #echo ""
+  #echo ""
 
 # sets ..
 # a, b in   
@@ -745,9 +790,9 @@ proc checkFor(n, ctx, map): Check =
   ##   to detect what can change after a several iterations
   ##   approach based on discussions with Zahary/Araq
   ##   similar approach used for other loops
-  var m = map
-  var map0 = map
-  echo namedMapDebugInfo(ctx, map)
+  var m = map.copyMap()
+  var map0 = map.copyMap()
+  #echo namedMapDebugInfo(ctx, map)
   m = check(n.sons[2], ctx, map).map.copyMap()
   if n[0].kind == nkSym:
     m.store(ctx, ctx.index(n[0]), typeNilability(n[0].typ), TAssign, n[0].info)
@@ -981,7 +1026,7 @@ proc hasUnstructuredControlFlowJump(n): bool =
         return true
   of nkReturnStmt, nkBreakStmt, nkContinueStmt, nkRaiseStmt:
     return true
-  of nkIfStmt, nkElse:
+  of nkIfStmt, nkIfExpr, nkElifExpr, nkElse:
     return false
   else:
     discard
@@ -993,6 +1038,7 @@ proc reverse(value: Nilability): Nilability =
   of MaybeNil: MaybeNil
   of Safe: Nil
   of Parent: Parent
+  of Unreachable: Unreachable
 
 proc reverse(kind: TransitionKind): TransitionKind =
   case kind:
@@ -1004,6 +1050,59 @@ proc reverse(kind: TransitionKind): TransitionKind =
     # raise newException(ValueError, "expected TNil or TSafe")
 
 proc reverseDirect(map: NilMap): NilMap =
+  # we create a new layer
+  # reverse the values only in this layer:
+  # because conditions should've stored their changes there
+  # b: Safe (not b.isNil)
+  # b: Parent Parent
+  # b: Nil (b.isNil)  
+
+  # layer block
+  # [ Parent ] [ Parent ]
+  #   if -> if state 
+  #   layer -> reverse
+  #   older older0 new
+  #   older new
+  #  [ b Nil ] [ Parent ]
+  #  elif
+  #  [ b Nil, c Nil] [ Parent ]
+  #  
+
+  # if b.isNil: 
+  #   # [ b Safe]
+  #   c = A() # Safe
+  # elif not b.isNil: 
+  #   # [ b Safe ] + [b Nil] MaybeNil Unreachable
+  #   # Unreachable defer can't deref b, it is unreachable
+  #   discard
+  # else:
+  #   b 
+
+  
+#  if 
+
+
+
+  # if: we just pass the map with a new layer for its block
+  # elif: we just pass the original map but with a new layer is the reverse of the previous popped layer (?)
+  # elif: 
+  # else: we just pass the original map but with a new layer which is initialized as the reverse of the
+  #   top layer of else
+  # else:
+  #    
+  # [ b MaybeNil ] [b Parent] [b Parent] [b Safe] [b Nil] []
+  # Safe
+  # c == 1
+  # b Parent
+  # c == 2
+  # b Parent
+  # not b.isNil
+  # b Safe
+  # c == 3
+  # b Nil
+  # (else)
+  # b Nil
+
   result = map.copyMap()
   for index, value in result.expressions:
     result.expressions[index] = reverse(value)
@@ -1016,7 +1115,7 @@ proc checkCondition(n, ctx, map; reverse: bool, base: bool): NilMap =
   ##   isNil(a)
   ##   it returns a new map: you need to reverse all the direct elements for else
 
-  echo "condition ", n, " ", n.kind
+  # echo "condition ", n, " ", n.kind
   if n.kind == nkCall:
     result = newNilMap(map)
     for element in n:
@@ -1055,6 +1154,8 @@ proc checkResult(n, ctx, map) =
     message(ctx.config, n.info, warnStrictNotNil, "return value is nil")
   of MaybeNil:
     message(ctx.config, n.info, warnStrictNotNil, "return value might be nil")
+  of Unreachable:
+    message(ctx.config, n.info, warnStrictNotNil, "return value is unreachable")
   of Safe, Parent:
     discard    
 
@@ -1068,6 +1169,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   assert not map.isNil
   
   # echo "check n ", n, " ", n.kind
+  # echo "map ", namedMapDebugInfo(ctx, map)
   case n.kind:
   of nkSym:
     result = Check(nilability: map[ctx.index(n)], map: map)
@@ -1113,32 +1215,61 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
     result = check(n.sons[0], ctx, map)
   of nkIfStmt, nkIfExpr:
     ## check branches based on condition
-    var mapIf: NilMap = map.copyMap()
+    var mapIf: NilMap = map
     
     # first visit the condition
     
+    # the structure is not If(Elif(Elif, Else), Else)
+    # it is
+    # If(Elif, Elif, Else)
+
     var mapCondition = checkCondition(n.sons[0].sons[0], ctx, mapIf, false, true)
 
-    if n.sons.len > 1: # nkIf elif else 
-      let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
-      let mapElse = reverseDirect(mapCondition)
-      let r = checkBranch(n.sons[1], ctx, mapElse)
-      result.map = ctx.union(l.map, r.map)
-      result.nilability = if n.kind == nkIfStmt: Safe else: union(l.nilability, r.nilability)
-    else:
-      let l = checkBranch(n.sons[0].sons[1], ctx, mapCondition.copyMap())
-      let mapNoIf = reverseDirect(mapCondition)
-      if hasUnstructuredControlFlowJump(n[0][1]):
-        echo "unstructured flow "
-        echo namedMapAndSetsDebugInfo(ctx, mapNoIf)
-        result.map = mapNoIf
-        result.nilability = Safe
+    # the state of the conditions: negating conditions before the current one
+    var layerHistory = newNilMap(mapIf)
+    # the state after branch effects
+    var afterLayer: NilMap
+    # the result nilability for expressions
+    var nilability = Safe
+    
+    for branch in n.sons:
+      var branchConditionLayer = newNilMap(layerHistory)
+      var branchLayer: NilMap
+      var code: PNode
+      if branch.kind in {nkIfStmt, nkElifBranch}:
+        var mapCondition = checkCondition(branch[0], ctx, branchConditionLayer, false, true)
+        let reverseMapCondition = reverseDirect(mapCondition)
+        layerHistory = ctx.add(layerHistory, reverseMapCondition)
+        branchLayer = mapCondition
+        code = branch[1]
       else:
-        result.map = ctx.union(mapNoIf, l.map)
-        result.nilability = Safe
-      #if directStop(n[0][1]):
-      #  result.map = mapR
-      #  result.nilability = nilabilityR
+        branchLayer = layerHistory # afterLayer
+        code = branch
+          
+      let branchCheck = checkBranch(code, ctx, branchLayer)
+      # handles nil afterLayer -> returns branchCheck.map
+      afterLayer = ctx.union(afterLayer, branchCheck.map)
+      nilability = if n.kind == nkIfStmt: Safe else: union(nilability, branchCheck.nilability)
+    if n.sons.len > 1:
+      result.map = afterLayer
+      result.nilability = nilability
+    else:
+      if not hasUnstructuredControlFlowJump(n[0][1]):
+        # here it matters what happend inside, because
+        # we might continue in the parent branch after entering this one
+        # either we enter the branch, so we get mapIf and effect of branch -> afterLayer
+        # or we dont , so we get mapIf and (not condition) effect -> layerHistory
+        result.map = ctx.union(layerHistory, afterLayer)
+        result.nilability = Safe # no expr?
+      else:
+        # similar to else: because otherwise we are jumping out of 
+        # the branch, so no union with the mapIf (we dont continue if the condition was true)
+        # here it also doesn't matter for the parent branch what happened in the branch, e.g. assigning to nil
+        # as if we continue there, we haven't entered the branch probably
+        # so we don't do an union with afterLayer
+        # layerHistory has the effect of mapIf and (not condition)
+        result.map = layerHistory
+        result.nilability = Safe 
       #echo "if one branch " & " " & $mapCondition & " " & $mapIf & " " & $mapL & " " & $result.map & " " & $mapL.previous
 
 
@@ -1252,7 +1383,6 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
 
   var context = NilCheckerContext(config: conf)
   context.preVisit(s, body, conf)
-  # echo "after"
   var map = newNilMap(nil, context.symbolIndices.len)
   
   for i, child in s.typ.n.sons:

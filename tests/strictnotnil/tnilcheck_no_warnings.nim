@@ -39,34 +39,34 @@ proc testAnd(a: Nilable) =
 
 # test that here we can infer that n can't be nil anymore
 proc testNotNilAfterAssign(a: Nilable, b: int) =
-  var n = a # 1: MaybeNil 2: Safe
-  if n.isNil: # 1: Nil 2: Safe
-    n = Nilable() # 1: Safe 2: Safe 
+  var n = a # a: MaybeNil n: MaybeNil
+  if n.isNil: # n: Safe a: MaybeNil
+    n = Nilable() # n: Safe a: MaybeNil
   echo n.a # ok
 
-proc callVar(a: var Nilable) =
-   a = nil
+# proc callVar(a: var Nilable) =
+#    a = nil
 
-proc testVarAlias(a: Nilable) = # a: 0 aliasA: 1 {0} {1} 
-  var aliasA = a # {0, 1} 0 MaybeNil 1 MaybeNil
-  if not a.isNil: # {0, 1} 0 Safe 1 Safe
-    callVar(aliasA) # {0, 1} 0 MaybeNil 1 MaybeNil
-    # if aliasA stops being in alias: it might be nil, but then a is still not nil
-    # if not: it cant be nil as it still points here
-    echo a.a # ok 
+# proc testVarAlias(a: Nilable) = # a: 0 aliasA: 1 {0} {1} 
+#   var aliasA = a # {0, 1} 0 MaybeNil 1 MaybeNil
+#   if not a.isNil: # {0, 1} 0 Safe 1 Safe
+#     callVar(aliasA) # {0, 1} 0 MaybeNil 1 MaybeNil
+#     # if aliasA stops being in alias: it might be nil, but then a is still not nil
+#     # if not: it cant be nil as it still points here
+#     echo a.a # ok 
 
-proc testAliasCheck(a: Nilable) =
-  var aliasA = a
-  if not a.isNil:
-    echo aliasA.a # ok
+# proc testAliasCheck(a: Nilable) =
+#   var aliasA = a
+#   if not a.isNil:
+#     echo aliasA.a # ok
 
-proc testFieldCheck(a: Nilable) =
-  if not a.isNil and not a.field.isNil:
-    echo a.field.a # ok
+# proc testFieldCheck(a: Nilable) =
+#   if not a.isNil and not a.field.isNil:
+#     echo a.field.a # ok
 
-proc testTrackField =
-  var a = Nilable(field: Nilable())
-  echo a.field.a # ok
+# proc testTrackField =
+#   var a = Nilable(field: Nilable())
+#   echo a.field.a # ok
 
 # proc testNonNilDeref(a: NonNilable) =
 #   echo a.a # ok
