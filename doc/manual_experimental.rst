@@ -1814,17 +1814,48 @@ For example:
     # an object reachable from 'n' is potentially mutated
 
 
-The algorithm behind this analysis is currently not documented.
+The algorithm behind this analysis is decribed in
+the `view types section <#view-types-algorithm>`_.
 
 
 View types
 ==========
 
-A view type is a type that contains one of the following types:
+**Note**:  ``--experimental:views`` is more effective
+with ``--experimental:strictFuncs``.
+
+A view type is a type that is or contains one of the following types:
 
 - ``var T`` (mutable view into ``T``)
 - ``lent T`` (immutable view into ``T``)
 - ``openArray[T]`` (pair of (pointer to array of ``T``, size))
+
+For exampe:
+
+.. code-block:: nim
+
+  type
+    View1 = var int
+    View2 = openArray[byte]
+    View3 = lent string
+    View4 = Table[openArray[char], int]
+
+
+Exceptions to this rule are types constructed via ``ptr`` or ``proc``.
+For example, the following types are **not** view types:
+
+.. code-block:: nim
+
+  type
+    NotView1 = proc (x: openArray[int])
+    NotView2 = ptr openArray[char]
+    NotView3 = ptr array[4, var int]
+
+
+A *mutable* view type is a type that is or contains a ``var T`` type,
+an *immutable* view type is a view type that is not a mutable view type.
+
+A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
 Since version 1.4 Nim allows view types to be used as local variables.
 This feature needs to be enabled via ``{.experimental: "views".}``.
@@ -1860,10 +1891,98 @@ For example:
   main(@[11, 22, 33])
 
 
+A local variable of a view type can borrow from a location
+derived from a parameter, another local variable, a global ``const`` or ``let``
+symbol or a thread-local ``var``. **Note**: It is currently not defined what
+exactly "is derived from" means.
 
-If a view type is used as a return type, the location must borrow from the
-first parameter that is passed to the proc.
+If a view type is used as a return type, the location must borrow from a location
+that is derived from the first parameter that is passed to the proc.
 See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
 details about how this is done for ``var T``.
 
-The algorithm behind this analysis is currently not documented.
+A mutable view can borrow from a mutable location, an immutable view can borrow
+from both a mutable or an immutable location.
+
+For the duration of the borrow operation, no mutations to the borrowed locations
+may be performed except via the potentially mutable view that borrowed from the
+location:
+
+.. code-block:: nim
+
+  {.experimental: "views".}
+
+  type
+    Obj = object
+      field: string
+
+  proc dangerous(s: var seq[Obj]) =
+    let v: lent Obj = s[0]
+    s.setLen 0  # prevented at compile-time!
+    echo v.field
+
+
+The *duration* of a borrow is the span of commands beginning from the assignment
+to the view and ending with the last usage of the view.
+
+The scope of the view does not matter:
+
+.. code-block:: nim
+
+  proc valid(s: var seq[Obj]) =
+    let v: lent Obj = s[0]  # begin of borrow
+    echo v.field            # end of borrow
+    s.setLen 0  # valid because 'v' isn't used afterwards
+
+
+The analysis requires as much precision about mutations as is reasonably obtainable,
+so it is more effective with the experimental `strict funcs <#strict-funcs>`_
+feature. In other words ``--experimental:views`` works better
+with ``--experimental:strictFuncs``.
+
+
+
+Algorithm
+---------
+
+The following section is an outline of the algorithm that the current implementation
+uses. The algorithm performs two traversals over the AST of the procedure or global
+section of code that uses a view variable. No fixpoint iterations are performed, the
+complexity of the analysis is O(N) where N is the number of nodes of the AST.
+
+The first pass over the AST computes the lifetime or each local variable based on
+a notion of an "abstract time", in the implementation it's a simple integer that is
+incremented for every visited node.
+
+In the second pass information about the underlying object "graphs" is computed.
+Let ``v`` be a parameter or a local variable. Let ``G(v)`` be the graph
+that ``v`` belongs to. A graph is defined by the set of variables that belong
+to the graph. Initially for all ``v``: ``G(v) = {v}``. Every variable can only
+be part of a single graph.
+
+Assignments like ``a = b`` "connect" two variables, both variables end up in the
+same graph ``{a, b} = G(a) = G(b)``. Unfortunately, the pattern to look for is
+much more complex than that and can involve multiple assignment targets
+and sources::
+
+  f(x, y) = g(a, b)
+
+connects ``x`` and ``y`` to ``a`` and ``b``: ``G(x) = G(y) = G(a) = G(b) = {x, y, a, b}``.
+A type based alias analysis rules out some of these combinations, for example
+a ``string`` value cannot possibly be connected to a ``seq[int]``.
+
+A pattern like ``v[] = value`` or ``v.field = value`` marks ``G(v)`` as mutated.
+After the second pass a set of disjoint graphs was computed.
+
+For strict functions it is then enforced that there is no graph that is both mutated
+and has an element that is an immutable parameter (that is a parameter that is not
+of type ``var T``).
+
+For borrow checking a different set of checks is performed. Let ``v`` be the view
+and ``b`` the location that is borrowed from.
+
+- The lifetime of ``v`` must not exceed ``b``'s lifetime. Note: The lifetime of
+  a parameter is the complete proc body.
+- If ``v`` is a mutable view, ``b`` has to be a mutable location.
+- During ``v``'s lifetime, ``G(b)`` can only be modified by ``v`` (and only if
+  ``v`` is a mutable view).
