@@ -220,8 +220,13 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
   of tyLent, tyVarargs, tyOpenArray:
     result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
-     tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic, tyFromExpr:
+     tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:
     result = classifyViewTypeAux(marker, lastSon(t))
+  of tyFromExpr:
+    if t.len > 0:
+      result = classifyViewTypeAux(marker, lastSon(t))
+    else:
+      result = noView
   of tyTuple:
     result = noView
     for i in 0..<t.len:
