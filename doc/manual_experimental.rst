@@ -1814,7 +1814,7 @@ For example:
     # an object reachable from 'n' is potentially mutated
 
 
-The algorithm behind this analysis is decribed in
+The algorithm behind this analysis is described in
 the `view types section <#view-types-algorithm>`_.
 
 
@@ -1830,7 +1830,7 @@ A view type is a type that is or contains one of the following types:
 - ``lent T`` (immutable view into ``T``)
 - ``openArray[T]`` (pair of (pointer to array of ``T``, size))
 
-For exampe:
+For example:
 
 .. code-block:: nim
 
@@ -1939,7 +1939,6 @@ The analysis requires as much precision about mutations as is reasonably obtaina
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
 feature. In other words ``--experimental:views`` works better
 with ``--experimental:strictFuncs``.
-
 
 
 Algorithm
