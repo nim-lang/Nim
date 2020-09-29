@@ -86,39 +86,135 @@ proc rpartition*(s: string, sep: string): (string, string, string)
 
   return partition(s, sep, right = true)
 
-func parseFloatThousandSep*(s: string; thousandSep = ','; floatSep = '.'): float {.since: (1, 3).} =
-  ## Convenience func for `parseFloat` but it can take 2 `char` separators,
-  ## one is **likely** the thousands separator, other is **likely** the floating point,
-  ## but if both separators are swapped it can still parse correctly, see the examples,
+
+template parseFloatThousandSepImpl(s: var string; sep: static char; decimalDot: static char): float =
+  assert sep notin {'-', ' '} and decimalDot notin {'-', ' '} and sep != decimalDot
+
+  template bail(m: string) =
+    raise newException(ValueError, "Invalid float containing thousand separators, " & m)
+
+  if likely(s.len > 1): # Allow "0" thats valid, is 0.0
+    var idx, successive: int
+    var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
+    while idx < s.len:
+      case s[idx]
+      of '0' .. '9':  # Digits
+        if hasAnySep and successive > 2:
+          bail("more than 3 digits between thousand separators.")
+        else:
+          lastWasSep = false
+          lastWasDot = false
+          inc successive
+          inc idx
+      of sep:  # Thousands separator
+        if idx == 0:
+          bail("string starts with thousand separator.")
+        elif lastWasSep:
+          bail("two separators in a row.")
+        elif afterDot:
+          bail("separator found after decimal dot.")
+        else:
+          s.delete(idx, idx)
+          lastWasSep = true
+          hasAnySep = true
+          successive = 0
+      of decimalDot:
+        if idx == 0:  # Wont allow .1
+          bail("string starts with decimal dot.")
+        elif hasAnySep and successive != 3:
+          bail("not 3 successive digits before decimal point, despite larger 1000.")
+        else:
+          when decimalDot != '.':
+            s[idx] = '.'  # Replace decimalDot to '.' so parseFloat can take it.
+          successive = 0
+          lastWasDot = true
+          afterDot = true
+          inc idx
+      of '-':  # Allow negative float
+        if unlikely(isNegative):  # Wont allow ---1.0
+          bail("string must not contain more than 1 '-' character.")
+        else:
+          isNegative = true
+          inc idx
+      else:
+        bail("invalid character in float: " & $s[idx])
+  parseFloat(s)
+
+
+func parseFloatThousandSep*(s: string; sep: static char = ','; decimalDot: static char = '.'): float {.since: (1, 3).} =
+  ## Convenience func for `parseFloat` which allows for thousand separators,
   ## this is designed to parse floats as found in the wild formatted for humans.
+  ##
+  ## The following assumptions and requirements must be met:
+  ## - String must not be empty.
+  ## - String must be stripped of trailing and leading whitespaces.
+  ## - `sep` must not be `'-'` nor `' '`.
+  ## - `decimalDot` must not be `'-'` nor `' '`.
+  ## - `sep` and `decimalDot` must be different.
+  ## - No separator before a digit.
+  ## - First separator can be anywhere after first digit, but no more than 3 characters.
+  ## - There has to be 3 digits between successive separators.
+  ## - There has to be 3 digits between the last separator and the decimal dot.
+  ## - No separator after decimal dot.
+  ## - No duplicate separators.
+  ## - Floats without separator allowed.
   ##
   ## See also:
   ## * `strutils <strutils.html>`_
   runnableExamples:
     doAssert parseFloatThousandSep("0") == 0.0
+    doAssert parseFloatThousandSep("-0") == -0.0
     doAssert parseFloatThousandSep("0.0") == 0.0
     doAssert parseFloatThousandSep("1.0") == 1.0
+    doAssert parseFloatThousandSep("-0.0") == -0.0
     doAssert parseFloatThousandSep("-1.0") == -1.0
     doAssert parseFloatThousandSep("1.000") == 1.0
-    doAssert parseFloatThousandSep("1,000") == 1.0
+    doAssert parseFloatThousandSep("-1.000") == -1.0
+    doAssert parseFloatThousandSep("1,000") == 1000.0
+    doAssert parseFloatThousandSep("-1,000") == -1000.0
     doAssert parseFloatThousandSep("10,000.000") == 10000.0
-    doAssert parseFloatThousandSep("10.000,000") == 10.0
     doAssert parseFloatThousandSep("1,000,000.000") == 1000000.0
-    doAssert parseFloatThousandSep("1.000.000,000") == 1000000.0
-    doAssert parseFloatThousandSep("0000000000000001.00,0,000,00000,,00") == 1.0
-    doAssert parseFloatThousandSep("0000000000000001,00.0.000.00000..00") == 1.0
-    doAssert parseFloatThousandSep("000,1.000,,,,,,,,,,,,,,000,,,,,0000") == 1.0
-    doAssert parseFloatThousandSep("000.1,000..............000.....0000") == 1.0
-    doAssert parseFloatThousandSep("1'000'000.000", thousandSep = '\'') == 1000000.0
-    doAssert parseFloatThousandSep("1_000_000.000", thousandSep = '_') == 1000000.0
-  result =
-    if thousandSep in s and s.count(floatSep) == 1:      # 1,000,000.0  1.000,000
-      parseFloat(s.replace($thousandSep, ""))
-    elif floatSep in s and s.count(thousandSep) == 1:    # 1.000.000,000
-      parseFloat(s.replace($floatSep, "").replace(thousandSep, floatSep))
-    elif floatSep notin s and s.count(thousandSep) == 1: # 100,000
-      parseFloat(s.replace(thousandSep, floatSep))
-    else: parseFloat(s)                                  # 1.0
+    doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
+    doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
+    doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
+  var copiedString = s
+  parseFloatThousandSepImpl(copiedString, sep, decimalDot)
+
+
+func parseFloatThousandSep*(s: var string; sep: static char = ','; decimalDot: static char = '.'): float {.since: (1, 3).} =
+  ## In-place version of `parseFloatThousandSep`, does not copy the string internally.
+  runnableExamples:
+    var a = "0"
+    doAssert parseFloatThousandSep(a) == 0.0
+    var b = "-0"
+    doAssert parseFloatThousandSep(b) == -0.0
+    var c = "0.0"
+    doAssert parseFloatThousandSep(c) == 0.0
+    var d = "1.0"
+    doAssert parseFloatThousandSep(d) == 1.0
+    var e = "-0.0"
+    doAssert parseFloatThousandSep(e) == -0.0
+    var f = "-1.0"
+    doAssert parseFloatThousandSep(f) == -1.0
+    var g = "1.000"
+    doAssert parseFloatThousandSep(g) == 1.0
+    var h = "-1.000"
+    doAssert parseFloatThousandSep(h) == -1.0
+    var i = "1,000"
+    doAssert parseFloatThousandSep(i) == 1000.0
+    var j = "-1,000"
+    doAssert parseFloatThousandSep(j) == -1000.0
+    var k = "10,000.000"
+    doAssert parseFloatThousandSep(k) == 10000.0
+    var l = "1,000,000.000"
+    doAssert parseFloatThousandSep(l) == 1000000.0
+    var m = "10,000,000.000"
+    doAssert parseFloatThousandSep(m) == 10000000.0
+    var n = "10.000,0"
+    doAssert parseFloatThousandSep(n, '.', ',') == 10000.0
+    var o = "1'000'000,000"
+    doAssert parseFloatThousandSep(o, '\'', ',') == 1000000.0
+  parseFloatThousandSepImpl(s, sep, decimalDot)
 
 
 when isMainModule:
