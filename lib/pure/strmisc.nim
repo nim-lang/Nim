@@ -107,7 +107,7 @@ template parseFloatThousandSepImpl(s: var string; sep: static char; decimalDot: 
           inc successive
           inc idx
       of sep:  # Thousands separator
-        if idx == 0:
+        if unlikely(isNegative and idx == 1 or idx == 0):
           bail("string starts with thousand separator.")
         elif lastWasSep:
           bail("two separators in a row.")
@@ -119,7 +119,7 @@ template parseFloatThousandSepImpl(s: var string; sep: static char; decimalDot: 
           hasAnySep = true
           successive = 0
       of decimalDot:
-        if idx == 0:  # Wont allow .1
+        if unlikely(isNegative and idx == 1 or idx == 0):  # Wont allow .1
           bail("string starts with decimal dot.")
         elif hasAnySep and successive != 3:
           bail("not 3 successive digits before decimal point, despite larger 1000.")
