@@ -8,7 +8,8 @@
 #
 
 ## Partition variables into different graphs. Used for
-## Nim's write tracking and also for the cursor inference.
+## Nim's write tracking, borrow checking and also for the
+## cursor inference.
 ## The algorithm is a reinvention / variation of Steensgaard's
 ## algorithm.
 ## The used data structure is "union find" with path compression.
@@ -23,12 +24,28 @@
 ##     borrowed from locations that are connected to a graph
 ##     that is mutated during the liveness of the cursor.
 ##     (We track all possible mutations of a graph.)
+##
+## See https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm
+## for a high-level description of how borrow checking works.
 
 import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
 from typeallowed import classifyViewType, ViewTypeKind
+
+type
+  AbstractTime = distinct int
+
+const
+  MaxTime = AbstractTime high(int)
+  MinTime = AbstractTime(-1)
+
+proc `<=`(a, b: AbstractTime): bool {.borrow.}
+proc `<`(a, b: AbstractTime): bool {.borrow.}
+
+proc inc(x: var AbstractTime; diff = 1) {.borrow.}
+proc dec(x: var AbstractTime; diff = 1) {.borrow.}
 
 type
   SubgraphFlag = enum
@@ -56,21 +73,23 @@ type
     flags: set[VarFlag]
     sym: PSym
     reassignedTo: int
-    aliveStart, aliveEnd: int # the range for which the variable is alive.
+    aliveStart, aliveEnd: AbstractTime # the range for which the variable is alive.
+    borrowsFrom: seq[int] # indexes into Partitions.s
 
   MutationInfo* = object
     param: PSym
     mutatedHere, connectedVia: TLineInfo
     flags: set[SubgraphFlag]
-    maxMutation, minConnection: int
-    mutations: seq[int]
+    maxMutation, minConnection: AbstractTime
+    mutations: seq[AbstractTime]
 
   Partitions* = object
-    abstractTime: int
+    abstractTime: AbstractTime
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
     unanalysableMutation, performCursorInference: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
+    owner: PSym
 
 proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
   #echo g.maxMutation, " ", g.minConnection, " ", g.param
@@ -108,7 +127,7 @@ proc variableId(c: Partitions; x: PSym): int =
 proc registerResult(c: var Partitions; n: PNode) =
   if n.kind == nkSym:
     c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
-                      aliveStart: high(int), aliveEnd: c.abstractTime)
+                      aliveStart: MaxTime, aliveEnd: c.abstractTime)
 
 proc registerParam(c: var Partitions; n: PNode) =
   assert n.kind == nkSym
@@ -118,7 +137,7 @@ proc registerParam(c: var Partitions; n: PNode) =
                       aliveStart: c.abstractTime, aliveEnd: c.abstractTime)
     c.graphs.add MutationInfo(param: n.sym, mutatedHere: unknownLineInfo,
                           connectedVia: unknownLineInfo, flags: {connectsConstParam},
-                          maxMutation: -1, minConnection: high(int),
+                          maxMutation: MinTime, minConnection: MaxTime,
                           mutations: @[])
   else:
     c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: n.sym, reassignedTo: 0,
@@ -152,7 +171,7 @@ proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
       v.s[r].con = Connection(kind: isRootOf, graphIndex: v.graphs.len)
       v.graphs.add MutationInfo(param: if isConstParam(s): s else: nil, mutatedHere: info,
                             connectedVia: unknownLineInfo, flags: {isMutated},
-                            maxMutation: v.abstractTime, minConnection: high(int),
+                            maxMutation: v.abstractTime, minConnection: MaxTime,
                             mutations: @[v.abstractTime])
     of isRootOf:
       let g = addr v.graphs[v.s[r].con.graphIndex]
@@ -192,7 +211,7 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
     # for now we always make 'rb' the slave and 'ra' the master:
     var rbFlags: set[SubgraphFlag] = {}
     var mutatedHere = unknownLineInfo
-    var mut = 0
+    var mut = AbstractTime 0
     var con = v.abstractTime
     var gb: ptr MutationInfo = nil
     if v.s[rb].con.kind == isRootOf:
@@ -222,6 +241,58 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
         g.mutations.add gb.mutations
     else:
       assert false, "cannot happen"
+
+proc pathExpr(node: PNode; owner: PSym): PSym =
+  #[ From the spec:
+
+  - ``source`` itself is a path expression.
+  - Container access like ``e[i]`` is a path expression.
+  - Tuple access ``e[0]`` is a path expression.
+  - Object field access ``e.field`` is a path expression.
+  - ``system.toOpenArray(e, ...)`` is a path expression.
+  - Pointer dereference ``e[]`` is a path expression.
+  - An address ``addr e``, ``unsafeAddr e`` is a path expression.
+  - A type conversion ``T(e)`` is a path expression.
+  - A cast expression ``cast[T](e)`` is a path expression.
+  - ``f(e, ...)`` is a path expression if ``f``'s return type is a view type.
+    Because the view can only have been borrowed from ``e``, we then know
+    that owner of ``f(e, ...)`` is ``e``.
+
+  Returns the owner of the path expression. Returns ``nil``
+  if it is not a valid path expression.
+  ]#
+  var n = node
+  result = nil
+  while true:
+    case n.kind
+    of nkSym:
+      case n.sym.kind
+      of skParam, skTemp, skResult, skForVar:
+        if n.sym.owner == owner: result = n.sym
+      of skVar:
+        if n.sym.owner == owner or sfThread in n.sym.flags: result = n.sym
+      of skLet, skConst:
+        if n.sym.owner == owner or {sfThread, sfGlobal} * n.sym.flags != {}:
+          result = n.sym
+      else:
+        discard
+      break
+    of nkDotExpr, nkDerefExpr, nkBracketExpr, nkHiddenDeref,
+        nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
+      n = n[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv,  nkCast,
+        nkObjUpConv, nkObjDownConv:
+      n = n.lastSon
+    of nkCallKinds:
+      if n.len > 1:
+        if (n.typ != nil and n.typ.kind in {tyVar, tyLent}) or getMagic(n) == mSlice:
+          n = n[1]
+        else:
+          break
+      else:
+        break
+    else:
+      break
 
 proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
   case n.kind
@@ -618,7 +689,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     for child in n: computeLiveRanges(c, child)
 
 proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partitions =
-  result = Partitions(performCursorInference: cursorInference)
+  result = Partitions(performCursorInference: cursorInference, owner: s)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -627,8 +698,8 @@ proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partit
       registerResult(result, s.ast[resultPos])
 
   computeLiveRanges(result, n)
-  # resart the timer for the second pass:
-  result.abstractTime = 0
+  # restart the timer for the second pass:
+  result.abstractTime = AbstractTime 0
   traverse(result, n)
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =

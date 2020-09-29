@@ -1893,8 +1893,36 @@ For example:
 
 A local variable of a view type can borrow from a location
 derived from a parameter, another local variable, a global ``const`` or ``let``
-symbol or a thread-local ``var``. **Note**: It is currently not defined what
-exactly "is derived from" means.
+symbol or a thread-local ``var`` or ``let``.
+
+Let ``p`` the proc that is analysed for the correctness of the borrow operation.
+
+Let ``source`` be one of:
+
+- A formal parameter of ``p``. Note that this does not cover parameters of
+  inner procs.
+- The ``result`` symbol of ``p``.
+- A local ``var`` or ``let`` or ``const`` of ``p``. Note that this does
+  not cover locals of inner procs.
+- A thread-local ``var`` or ``let``.
+- A global ``let`` or ``const``.
+
+A location derived from ``source`` is then defined as a path expression that
+has ``source`` as the owner. A path expression ``e`` is defined recursively:
+
+- ``source`` itself is a path expression.
+- Container access like ``e[i]`` is a path expression.
+- Tuple access ``e[0]`` is a path expression.
+- Object field access ``e.field`` is a path expression.
+- ``system.toOpenArray(e, ...)`` is a path expression.
+- Pointer dereference ``e[]`` is a path expression.
+- An address ``addr e``, ``unsafeAddr e`` is a path expression.
+- A type conversion ``T(e)`` is a path expression.
+- A cast expression ``cast[T](e)`` is a path expression.
+- ``f(e, ...)`` is a path expression if ``f``'s return type is a view type.
+  Because the view can only have been borrowed from ``e``, we then know
+  that owner of ``f(e, ...)`` is ``e``.
+
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
