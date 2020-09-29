@@ -405,19 +405,3 @@ proc testItemDeref(a: var seq[Nilable]) =
 # # discard testUniqueHashTree(withField)
 # # # test1(nilable)
 # # # test10(globalA)
-
-
-
-
-result <- 
-
-automatic generation of expressions
-and check accessible from result in end
-
-NonNilable : assume it has it?
-
-default is ok : then others are ok too
-
-non nilable <- nilable 
-
-ok
