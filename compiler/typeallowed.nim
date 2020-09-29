@@ -187,42 +187,77 @@ proc typeAllowed*(t: PType, kind: TSymKind; c: PContext; flags: TTypeAllowedFlag
   var marker = initIntSet()
   result = typeAllowedAux(marker, t, kind, c, flags)
 
-proc isViewTypeAux(marker: var IntSet, t: PType): bool
+type
+  ViewTypeKind* = enum
+    noView, immutableView, mutableView
 
-proc isViewTypeNode(marker: var IntSet, n: PNode): bool =
+proc combine(dest: var ViewTypeKind, b: ViewTypeKind) {.inline.} =
+  case dest
+  of noView, mutableView:
+    dest = b
+  of immutableView:
+    if b == mutableView: dest = b
+
+proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind
+
+proc classifyViewTypeNode(marker: var IntSet, n: PNode): ViewTypeKind =
   case n.kind
   of nkSym:
-    result = isViewTypeAux(marker, n.typ)
+    result = classifyViewTypeAux(marker, n.typ)
   of nkOfBranch:
-    result = isViewTypeNode(marker, n.lastSon)
+    result = classifyViewTypeNode(marker, n.lastSon)
   else:
+    result = noView
     for child in n:
-      result = isViewTypeNode(marker, child)
-      if result: break
+      result.combine classifyViewTypeNode(marker, child)
+      if result == mutableView: break
 
-proc isViewTypeAux(marker: var IntSet, t: PType): bool =
-  if containsOrIncl(marker, t.id): return false
+proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
+  if containsOrIncl(marker, t.id): return noView
   case t.kind
-  of tyVar, tyLent, tyVarargs, tyOpenArray:
-    result = true
+  of tyVar:
+    result = mutableView
+  of tyLent, tyVarargs, tyOpenArray:
+    result = immutableView
   of tyGenericInst, tyDistinct, tyAlias, tyInferred, tySink, tyOwned,
-     tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic, tyFromExpr:
-    result = isViewTypeAux(marker, lastSon(t))
+     tyUncheckedArray, tySequence, tyArray, tyRef, tyStatic:
+    result = classifyViewTypeAux(marker, lastSon(t))
+  of tyFromExpr:
+    if t.len > 0:
+      result = classifyViewTypeAux(marker, lastSon(t))
+    else:
+      result = noView
   of tyTuple:
+    result = noView
     for i in 0..<t.len:
-      result = isViewTypeAux(marker, t[i])
-      if result: break
+      result.combine classifyViewTypeAux(marker, t[i])
+      if result == mutableView: break
   of tyObject:
-    result = false
+    result = noView
     if t.n != nil:
-      result = isViewTypeNode(marker, t.n)
+      result = classifyViewTypeNode(marker, t.n)
     if t[0] != nil:
-      result = result or isViewTypeAux(marker, t[0])
+      result.combine classifyViewTypeAux(marker, t[0])
   else:
     # it doesn't matter what these types contain, 'ptr openArray' is not a
     # view type!
-    result = false
+    result = noView
 
-proc isViewType*(t: PType): bool =
+proc classifyViewType*(t: PType): ViewTypeKind =
   var marker = initIntSet()
-  result = isViewTypeAux(marker, t)
+  result = classifyViewTypeAux(marker, t)
+
+proc directViewType*(t: PType): ViewTypeKind =
+  # does classify 't' without looking recursively into 't'.
+  case t.kind
+  of tyVar:
+    result = mutableView
+  of tyLent, tyOpenArray:
+    result = immutableView
+  of abstractInst-{tyTypeDesc}:
+    result = directViewType(t.lastSon)
+  else:
+    result = noView
+
+proc requiresInit*(t: PType): bool =
+  (t.flags * {tfRequiresInit, tfNotNil} != {}) or classifyViewType(t) != noView
