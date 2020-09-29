@@ -28,11 +28,10 @@
 ## See https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm
 ## for a high-level description of how borrow checking works.
 
-import ast, types, lineinfos, options, msgs, renderer
+import ast, types, lineinfos, options, msgs, renderer, typeallowed
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
-from typeallowed import classifyViewType, ViewTypeKind
 
 type
   AbstractTime = distinct int
@@ -479,31 +478,45 @@ proc pretendOwnsData(c: var Partitions, s: PSym) =
 const
   explainCursors = false
 
-proc trackBorrow(c: var Partitions; dest, src: PNode) =
+proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
   const
     url = "; see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
+
+  let s = pathExpr(src, c.owner)
+  if s == nil:
+    localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
+  elif s.kind == nkSym:
+    if dest.kind == skResult:
+      if s.sym.kind != skParam or s.sym.position != 0:
+        localError(c.config, src.info, "'result' must borrow from the first parameter")
+
+    let vid = variableId(c, dest)
+    if vid >= 0:
+      var sourceIdx = variableId(c, s.sym)
+      if sourceIdx < 0:
+        sourceIdx = c.s.len
+        c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: s.sym, reassignedTo: 0,
+                        aliveStart: MinTime, aliveEnd: MaxTime)
+
+      c.s[vid].borrowsFrom.add sourceIdx
+  else:
+    discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
+
+
+proc borrowingCall(c: var Partitions; destType: PType; n: PNode; i: int) =
+  let v = pathExpr(n[i], c.owner)
+  if v.kind == nkSym:
+    for j in i+1..<n.len:
+      if getMagic(n[j]) == mSlice:
+        borrowFrom(c, v.sym, n[j])
+  else:
+    localError(c.config, n[i].info, "cannot determine the target of the borrow")
+
+proc trackBorrow(c: var Partitions; dest, src: PNode) =
   if dest.kind == nkSym:
-    let vk = classifyViewType(dest.typ)
+    let vk = directViewType(dest.typ)
     if vk != noView:
-      let s = pathExpr(src, c.owner)
-      if s == nil:
-        localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
-      elif s.kind == nkSym:
-        if dest.sym.kind == skResult:
-          if s.sym.kind != skParam or s.sym.position != 0:
-            localError(c.config, src.info, "'result' must borrow from the first parameter")
-
-        let vid = variableId(c, dest.sym)
-        if vid >= 0:
-          var sourceIdx = variableId(c, s.sym)
-          if sourceIdx < 0:
-            sourceIdx = c.s.len
-            c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: s.sym, reassignedTo: 0,
-                            aliveStart: MinTime, aliveEnd: MaxTime)
-
-          c.s[vid].borrowsFrom.add sourceIdx
-      else:
-        discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
+      borrowFrom(c, dest.sym, src)
 
 proc deps(c: var Partitions; dest, src: PNode) =
   if not c.performCursorInference:
@@ -606,6 +619,13 @@ proc traverse(c: var Partitions; n: PNode) =
             if c.inNoSideEffectSection == 0:
               for r in roots: potentialMutation(c, r, it.info)
             for r in roots: noCursor(c, r)
+
+            if not c.performCursorInference:
+              # a call like 'result.add toOpenArray()' can also be a borrow
+              # operation. We know 'paramType' is a tyVar and we really care if
+              # 'paramType[0]' is still a view type, this is not a typo!
+              if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
+                borrowingCall(c, paramType[0], n, i)
 
   of nkAddr, nkHiddenAddr:
     traverse(c, n[0])
@@ -780,14 +800,15 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
     let v = par.s[i].sym
     if v.kind != skParam and classifyViewType(v.typ) != noView:
       let rid = root(par, i)
-      for b in par.s[rid].borrowsFrom:
-        let sid = root(par, b)
-        if sid >= 0:
-          if par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
-            cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
-          if par.s[sid].sym.kind != skParam and par.s[sid].aliveEnd < par.s[rid].aliveEnd:
-            localError(config, v.info, "'" & v.name.s & "' borrows from location '" & par.s[sid].sym.name.s &
-              "' which does not live long enough")
+      if rid >= 0:
+        for b in par.s[rid].borrowsFrom:
+          let sid = root(par, b)
+          if sid >= 0:
+            if par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
+              cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
+            if par.s[sid].sym.kind != skParam and par.s[sid].aliveEnd < par.s[rid].aliveEnd:
+              localError(config, v.info, "'" & v.name.s & "' borrows from location '" & par.s[sid].sym.name.s &
+                "' which does not live long enough")
 
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])

@@ -23,9 +23,8 @@ proc split*(s: string, seps: set[char] = Whitespace,
     while last < len(s) and s[last] notin seps:
       inc(last)
     if splits == 0: last = len(s)
-    {.noSideEffect.}:
-      result.add toOpenArray(s, first, last-1)
-      result.add toOpenArray(s, first, last-1)
+    result.add toOpenArray(s, first, last-1)
+    result.add toOpenArray(s, first, last-1)
     if splits == 0: break
     dec(splits)
     inc(last)

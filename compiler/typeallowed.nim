@@ -247,5 +247,17 @@ proc classifyViewType*(t: PType): ViewTypeKind =
   var marker = initIntSet()
   result = classifyViewTypeAux(marker, t)
 
+proc directViewType*(t: PType): ViewTypeKind =
+  # does classify 't' without looking recursively into 't'.
+  case t.kind
+  of tyVar:
+    result = mutableView
+  of tyLent, tyOpenArray:
+    result = immutableView
+  of abstractInst-{tyTypeDesc}:
+    result = directViewType(t.lastSon)
+  else:
+    result = noView
+
 proc requiresInit*(t: PType): bool =
   (t.flags * {tfRequiresInit, tfNotNil} != {}) or classifyViewType(t) != noView
