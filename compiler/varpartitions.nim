@@ -502,7 +502,8 @@ proc trackBorrow(c: var Partitions; dest, src: PNode) =
         discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
 
 proc deps(c: var Partitions; dest, src: PNode) =
-  trackBorrow(c, dest, src)
+  if not c.performCursorInference:
+    trackBorrow(c, dest, src)
 
   var targets, sources: seq[PSym]
   allRoots(dest, targets)
