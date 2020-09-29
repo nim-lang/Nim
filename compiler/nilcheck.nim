@@ -205,6 +205,7 @@ type
 # useful to have known resultId so we can set it in the beginning and on return
 const resultId: Symbol = (-1).Symbol
 const resultExprIndex: ExprIndex = 0.ExprIndex
+const noSymbol = (-2).Symbol
 
 func `<`*(a: ExprIndex, b: ExprIndex): bool =
   a.int16 < b.int16
@@ -337,7 +338,8 @@ proc symbol(n: PNode): Symbol =
   ## but we have to ensure hashTree does it as we expect
   case n.kind:
   of nkIdent:
-    result = 0.Symbol
+    # TODO ensure no idents get passed to symbol
+    result = noSymbol
   of nkSym:
     if n.sym.kind == skResult: # credit to disruptek for showing me that
       result = resultId
@@ -412,9 +414,11 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
   if ctx.symbolIndices.hasKey(a):
     return ctx.symbolIndices[a]
   else:
-    # echo ctx.expressions, " ", n.kind
-    internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
-    # return noExprIndex
+    #for a, e in ctx.expressions:
+    #  echo a, " ", e
+    #echo n.kind
+    # internalError(ctx.config, n.info, "expected " & $a & " " & $n & " to have a index")
+    return noExprIndex
     # 
   #ctx.symbolIndices[symbol(n)]
 
@@ -428,7 +432,8 @@ proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): IntSet =
 
     
 proc store(map: NilMap, ctx: NilCheckerContext, index: ExprIndex, value: Nilability, kind: TransitionKind, info: TLineInfo, node: PNode = nil) =
-  
+  if index == noExprIndex:
+    return
   map.expressions[index] = value
   map.history[index].add(History(info: info, kind: kind, node: node, nilability: value))
   #echo node, " ", index, " ", value
@@ -544,18 +549,21 @@ proc checkCall(n, ctx, map): Check =
       # as it might have been mutated
       # TODO similar for normal refs and fields: find dependent exprs: brackets
       
-      if child.kind == nkHiddenAddr and child.typ.kind == tyVar and child.typ[0].kind == tyRef:
-        # yes
+      if child.kind == nkHiddenAddr and not child.typ.isNil and child.typ.kind == tyVar and child.typ[0].kind == tyRef:
         if not isNew:
           result.map = newNilMap(map)
           isNew = true
         # result.map[$child] = MaybeNil
-        let a = ctx.index(child)
-        moveOut(ctx, result.map, child)
-        moveOutDependants(ctx, result.map, child)
-        result.map.store(ctx, a, MaybeNil, TVarArg, n.info, child)
-        storeDependants(ctx, result.map, child, MaybeNil)
-      elif child.typ.kind == tyRef:
+        var arg = child
+        while arg.kind == nkHiddenAddr:
+          arg = arg[0]
+        let a = ctx.index(arg)
+        if a != noExprIndex:
+          moveOut(ctx, result.map, arg)
+          moveOutDependants(ctx, result.map, arg)
+          result.map.store(ctx, a, MaybeNil, TVarArg, n.info, arg)
+          storeDependants(ctx, result.map, arg, MaybeNil)
+      elif not child.typ.isNil and child.typ.kind == tyRef:
         if child.kind in {nkSym, nkDotExpr} or isConstBracket(child):
           let a = ctx.index(child)
           if ctx.dependants[a].len > 0:
@@ -998,8 +1006,11 @@ proc checkCase(n, ctx, map): Check =
   for child in n:
     case child.kind:
     of nkOfBranch:
-      let branchBase = child[0]
-      let code = child[1]
+      if child.len < 2:
+        # echo "case with of with < 2 ", n
+        continue # TODO why does this happen
+      let branchBase = child[0] # TODO a, b or a, b..c etc
+      let code = child[^1]
       let test = infixEq(base, branchBase)
       if a.isNil:
         a = test
@@ -1009,6 +1020,8 @@ proc checkCase(n, ctx, map): Check =
       let newCheck = checkBranch(code, ctx, conditionMap)
       result.map = ctx.union(result.map, newCheck.map)
       result.nilability = union(result.nilability, newCheck.nilability)
+    of nkElifBranch:
+      discard "TODO: maybe adapt to be similar to checkIf"
     of nkElse:
       let mapElse = checkCondition(prefixNot(a), ctx, map.copyMap(), false, false)
       let newCheck = checkBranch(child[0], ctx, mapElse)
@@ -1348,15 +1361,16 @@ proc preVisitNode(ctx: NilCheckerContext, node: PNode, conf: ConfigRef) =
         var baseIndex = noExprIndex
         # deref usually?
         # ok, we hit another case
-        var base = if node[0].kind != nkSym: node[0][0] else: node[0]
-        let baseSymbol = symbol(base)
-        if not ctx.symbolIndices.hasKey(baseSymbol):
-          baseIndex = ctx.expressions.len # next visit should add it
-        else:
-          baseIndex = ctx.symbolIndices[baseSymbol]
-        if ctx.dependants.len <= baseIndex:
-          ctx.dependants.setLen(baseIndex + 1.ExprIndex)
-        ctx.dependants[baseIndex].incl(index.int)
+        var base = if node[0].kind notin {nkSym, nkIdent}: node[0][0] else: node[0]
+        if base.kind != nkIdent:
+          let baseSymbol = symbol(base)
+          if not ctx.symbolIndices.hasKey(baseSymbol):
+            baseIndex = ctx.expressions.len # next visit should add it
+          else:
+            baseIndex = ctx.symbolIndices[baseSymbol]
+          if ctx.dependants.len <= baseIndex:
+            ctx.dependants.setLen(baseIndex + 1.ExprIndex)
+          ctx.dependants[baseIndex].incl(index.int)
   case node.kind:
   of nkSym, nkEmpty, nkNilLit, nkType, nkIdent, nkCharLit .. nkUInt64Lit, nkFloatLit .. nkFloat64Lit, nkStrLit .. nkTripleStrLit:
     discard

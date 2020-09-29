@@ -291,6 +291,7 @@ proc testAliasChanging(a: Nilable) =
 # #     raise newException(ValueError, "a == nil")
 # #   echo a.a # ok
 
+
 # # proc testBlockScope(a: Nilable) =
 # #   var other = a
 # #   block:
@@ -408,3 +409,15 @@ proc testItemDeref(a: var seq[Nilable]) =
 
 
 
+result <- 
+
+automatic generation of expressions
+and check accessible from result in end
+
+NonNilable : assume it has it?
+
+default is ok : then others are ok too
+
+non nilable <- nilable 
+
+ok
