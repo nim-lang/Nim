@@ -1712,8 +1712,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   if le == nil:
     localError(c.config, a.info, "expression has no type")
   elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
-        isAssignable(c, a) in {arNone, arLentValue}) or
-      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
+        isAssignable(c, a) in {arNone, arLentValue}) or (
+      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
                renderTree(a, {renderNoComments}))

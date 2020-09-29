@@ -491,7 +491,7 @@ proc trackBorrow(c: var Partitions; dest, src: PNode) =
       elif s.kind == nkSym:
         if dest.sym.kind == skResult:
           if s.sym.kind != skParam or s.sym.position != 0:
-            localError(c.config, src.info, "result must borrow from the first parameter")
+            localError(c.config, src.info, "'result' must borrow from the first parameter")
 
         let vid = variableId(c, dest.sym)
         if vid >= 0:
