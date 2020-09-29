@@ -1,6 +1,7 @@
 discard """
   output: '''Error: cannot open 'a.nim'
-Error: cannot open 'b.nim''''
+Error: cannot open 'b.nim'
+'''
   targets: "c"
 """
 
