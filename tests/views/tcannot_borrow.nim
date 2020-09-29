@@ -1,10 +1,10 @@
 discard """
   errormsg: "cannot borrow"
   nimout: '''tcannot_borrow.nim(21, 7) Error: cannot borrow meh; what it borrows from is potentially mutated
-tcannot_borrow.nim(22, 3) the mutation is here
-tcannot_borrow.nim(21, 7) is the statement that connected the mutation to the parameter'''
+tcannot_borrow.nim(22, 3) the mutation is here'''
   line: 21
 """
+
 
 {.experimental: "views".}
 

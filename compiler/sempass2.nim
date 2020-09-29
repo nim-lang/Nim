@@ -1244,7 +1244,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   var mutationInfo = MutationInfo()
   if {strictFuncs, views} * c.features != {}:
-    var partitions = computeGraphPartitions(s, body)
+    var partitions = computeGraphPartitions(s, body, g.config)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
     if views in c.features:

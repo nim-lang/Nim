@@ -90,6 +90,7 @@ type
     unanalysableMutation, performCursorInference: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
     owner: PSym
+    config: ConfigRef
 
 proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
   #echo g.maxMutation, " ", g.minConnection, " ", g.param
@@ -242,7 +243,25 @@ proc connect(v: var Partitions; a, b: PSym; info: TLineInfo) =
     else:
       assert false, "cannot happen"
 
-proc pathExpr(node: PNode; owner: PSym): PSym =
+proc borrowFromConstExpr(n: PNode): bool =
+  case n.kind
+  of nkCharLit..nkNilLit:
+    result = true
+  of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv,
+      nkCast, nkObjUpConv, nkObjDownConv:
+    result = borrowFromConstExpr(n.lastSon)
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
+    result = true
+    for i in ord(n.kind == nkObjConstr)..<n.len:
+      if not borrowFromConstExpr(n[i]): return false
+  of nkCallKinds:
+    if getMagic(n) == mArrToSeq:
+      result = true
+      for i in 1..<n.len:
+        if not borrowFromConstExpr(n[i]): return false
+  else: discard
+
+proc pathExpr(node: PNode; owner: PSym): PNode =
   #[ From the spec:
 
   - ``source`` itself is a path expression.
@@ -268,12 +287,12 @@ proc pathExpr(node: PNode; owner: PSym): PSym =
     of nkSym:
       case n.sym.kind
       of skParam, skTemp, skResult, skForVar:
-        if n.sym.owner == owner: result = n.sym
+        if n.sym.owner == owner: result = n
       of skVar:
-        if n.sym.owner == owner or sfThread in n.sym.flags: result = n.sym
+        if n.sym.owner == owner or sfThread in n.sym.flags: result = n
       of skLet, skConst:
         if n.sym.owner == owner or {sfThread, sfGlobal} * n.sym.flags != {}:
-          result = n.sym
+          result = n
       else:
         discard
       break
@@ -285,7 +304,7 @@ proc pathExpr(node: PNode; owner: PSym): PSym =
       n = n.lastSon
     of nkCallKinds:
       if n.len > 1:
-        if (n.typ != nil and n.typ.kind in {tyVar, tyLent}) or getMagic(n) == mSlice:
+        if (n.typ != nil and classifyViewType(n.typ) != noView) or getMagic(n) == mSlice:
           n = n[1]
         else:
           break
@@ -293,6 +312,10 @@ proc pathExpr(node: PNode; owner: PSym): PSym =
         break
     else:
       break
+  # borrowFromConstExpr(n) is correct here because we need 'node'
+  # stripped off the path suffixes:
+  if result == nil and borrowFromConstExpr(n):
+    result = n
 
 proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
   case n.kind
@@ -456,16 +479,38 @@ proc pretendOwnsData(c: var Partitions, s: PSym) =
 const
   explainCursors = false
 
+proc trackBorrow(c: var Partitions; dest, src: PNode) =
+  const
+    url = "; see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
+  if dest.kind == nkSym:
+    let vk = classifyViewType(dest.typ)
+    if vk != noView:
+      let s = pathExpr(src, c.owner)
+      if s == nil:
+        localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
+      elif s.kind == nkSym:
+        let vid = variableId(c, dest.sym)
+        if vid >= 0:
+          var sourceIdx = variableId(c, s.sym)
+          if sourceIdx < 0:
+            sourceIdx = c.s.len
+            c.s.add VarIndex(con: Connection(kind: isEmptyRoot), sym: s.sym, reassignedTo: 0,
+                            aliveStart: MinTime, aliveEnd: MaxTime)
+
+          c.s[vid].borrowsFrom.add sourceIdx
+      else:
+        discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
+
 proc deps(c: var Partitions; dest, src: PNode) =
+  trackBorrow(c, dest, src)
+
   var targets, sources: seq[PSym]
   allRoots(dest, targets)
   allRoots(src, sources)
 
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
 
-  let vk = classifyViewType(dest.typ)
-
-  let destIsComplex = types.searchTypeFor(dest.typ, wrap) or vk != noView
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -688,8 +733,8 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
   else:
     for child in n: computeLiveRanges(c, child)
 
-proc computeGraphPartitions*(s: PSym; n: PNode; cursorInference = false): Partitions =
-  result = Partitions(performCursorInference: cursorInference, owner: s)
+proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; cursorInference = false): Partitions =
+  result = Partitions(performCursorInference: cursorInference, owner: s, config: config)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -727,14 +772,19 @@ proc cannotBorrow(config: ConfigRef; s: PSym; g: MutationInfo) =
 
 proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef) =
   for i in 0 ..< par.s.len:
-    let s = par.s[i].sym
-    if s.kind != skParam and classifyViewType(s.typ) != noView:
+    let v = par.s[i].sym
+    if v.kind != skParam and classifyViewType(v.typ) != noView:
       let rid = root(par, i)
-      if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
-        cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
+      for b in par.s[rid].borrowsFrom:
+        let sid = root(par, b)
+        if sid >= 0 and par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
+          cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
+
+      #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
+      #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = computeGraphPartitions(s, n, true)
+  var par = computeGraphPartitions(s, n, config, true)
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and

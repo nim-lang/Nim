@@ -1906,6 +1906,11 @@ Let ``source`` be one of:
   not cover locals of inner procs.
 - A thread-local ``var`` or ``let``.
 - A global ``let`` or ``const``.
+- A constant arraq/seq/object/tuple constructor.
+
+
+Path expressions
+----------------
 
 A location derived from ``source`` is then defined as a path expression that
 has ``source`` as the owner. A path expression ``e`` is defined recursively:
