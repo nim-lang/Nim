@@ -386,7 +386,7 @@ func `[]`*(pattern: Captures, name: string): string =
 template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     if key in pattern:
-        result[key] = pattern[key]
+      result[key] = pattern[key]
 
 func toTable*(pattern: Captures): Table[string, string] =
   result = initTable[string, string]()
@@ -539,7 +539,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
       raise RegexInternalError(msg: "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
-  ## Like ` ``find(...)`` <#proc-find>`_, but anchored to the start of the
+  ## Like `find(...)<#find,string,Regex,int>`_, but anchored to the start of the
   ## string.
   ##
   runnableExamples:
@@ -549,11 +549,11 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
-  ## Works the same as ` ``find(...)`` <#proc-find>`_, but finds every
+  ## Works the same as `find(...)<#find,string,Regex,int>`_, but finds every
   ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
   ## ``"22", "22", "22"``.
   ##
-  ## Arguments are the same as ` ``find(...)`` <#proc-find>`_
+  ## Arguments are the same as `find(...)<#find,string,Regex,int>`_
   ##
   ## Variants:
   ##
@@ -632,7 +632,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use.
   ##
-  ## ``start`` behaves the same as in ` ``find(...)`` <#proc-find>`_.
+  ## ``start`` behaves the same as in `find(...)<#find,string,Regex,int>`_.
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:

@@ -285,6 +285,10 @@ proc mydiv(a, b): int {.raises: [].} =
   an experimental feature. In other words, you don't have to write pragma
   `{.experimental: "forLoopMacros".}` if you want to use them.
 
+- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
+  performance this keyword can enable.
+
+- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
 
 ## Compiler changes
 
