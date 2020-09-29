@@ -28,7 +28,7 @@ import ast, types, lineinfos, options, msgs, renderer
 from trees import getMagic, whichPragma
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
-from typeallowed import isViewType
+from typeallowed import classifyViewType, ViewTypeKind
 
 type
   SubgraphFlag = enum
@@ -391,7 +391,10 @@ proc deps(c: var Partitions; dest, src: PNode) =
   allRoots(src, sources)
 
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-  let destIsComplex = types.searchTypeFor(dest.typ, wrap) or isViewType(dest.typ)
+
+  let vk = classifyViewType(dest.typ)
+
+  let destIsComplex = types.searchTypeFor(dest.typ, wrap) or vk != noView
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -654,7 +657,7 @@ proc cannotBorrow(config: ConfigRef; s: PSym; g: MutationInfo) =
 proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef) =
   for i in 0 ..< par.s.len:
     let s = par.s[i].sym
-    if s.kind != skParam and isViewType(s.typ):
+    if s.kind != skParam and classifyViewType(s.typ) != noView:
       let rid = root(par, i)
       if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
         cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
