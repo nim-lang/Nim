@@ -133,6 +133,8 @@ template parseFloatThousandSepImpl(s: var string; sep: static char; decimalDot: 
       of '-':  # Allow negative float
         if unlikely(isNegative):  # Wont allow ---1.0
           bail("string must not contain more than 1 '-' character.")
+        elif unlikely(idx != 0):
+          bail("the '-' character can only be at the start of the string.")
         else:
           isNegative = true
           inc idx
