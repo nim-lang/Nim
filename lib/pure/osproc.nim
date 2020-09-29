@@ -444,6 +444,31 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
+proc readLines*(p: Process): (seq[string], int) =
+  ## Convenience function for working with `startProcess` to read data from a
+  ## background process.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##  const opts = {poUsePath, poDaemon, poStdErrToStdOut}
+  ##  var ps: seq[Process]
+  ##  for prog in ["a", "b"]: # run 2 progs in parallel
+  ##    ps.add startProcess("nim", "", ["r", prog], nil, opts)
+  ##  for p in ps:
+  ##    let (lines, exCode) = p.readLines
+  ##    if exCode != 0:
+  ##      for line in lines: echo line
+  ##    p.close
+  var outp = p.outputStream
+  var line = newStringOfCap(120)
+  while true:
+    if outp.readLine(line):
+      result[0].add(line)
+    else:
+      result[1] = p.peekExitCode
+      if result[1] != -1: break
+
 when not defined(useNimRtl):
   proc execProcess(command: string, workingDir: string = "",
       args: openArray[string] = [], env: StringTableRef = nil,
