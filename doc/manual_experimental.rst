@@ -1852,8 +1852,8 @@ For example, the following types are **not** view types:
     NotView3 = ptr array[4, var int]
 
 
-A *mutable* view type is a type that is or contains a ``var T`` type,
-an *immutable* view type is a view type that is not a mutable view type.
+A *mutable* view type is a type that is or contains a ``var T`` type.
+An *immutable* view type is a view type that is not a mutable view type.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
@@ -1904,9 +1904,12 @@ details about how this is done for ``var T``.
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
 
+The *duration* of a borrow is the span of commands beginning from the assignment
+to the view and ending with the last usage of the view.
+
 For the duration of the borrow operation, no mutations to the borrowed locations
 may be performed except via the potentially mutable view that borrowed from the
-location:
+location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
 
@@ -1917,13 +1920,10 @@ location:
       field: string
 
   proc dangerous(s: var seq[Obj]) =
-    let v: lent Obj = s[0]
-    s.setLen 0  # prevented at compile-time!
+    let v: lent Obj = s[0] # seal 's'
+    s.setLen 0  # prevented at compile-time because 's' is sealed.
     echo v.field
 
-
-The *duration* of a borrow is the span of commands beginning from the assignment
-to the view and ending with the last usage of the view.
 
 The scope of the view does not matter:
 
@@ -1939,6 +1939,28 @@ The analysis requires as much precision about mutations as is reasonably obtaina
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
 feature. In other words ``--experimental:views`` works better
 with ``--experimental:strictFuncs``.
+
+The analysis is currently control flow insensitive:
+
+.. code-block:: nim
+
+  proc invalid(s: var seq[Obj]) =
+    let v: lent Obj = s[0]
+    if false:
+      s.setLen 0
+    echo v.field
+
+In this example, the compiler assumes that ``s.setLen 0`` invalidates the
+borrow operation of ``v`` even though a human being can easily see that it
+will never do that at runtime.
+
+
+Reborrows
+---------
+
+A view ``v`` can borrow from multiple different locations. However, the borrow
+is always the full span of ``v``'s lifetime and every location that is borrowed
+from is sealed during ``v``'s lifetime.
 
 
 Algorithm
@@ -1987,4 +2009,4 @@ and ``b`` the location that is borrowed from.
   ``v`` is a mutable view).
 - If ``v`` is ``result`` then ``b`` has to be a location derived from the first
   formal parameter.
-
+- A view cannot be used for a read or a write access before it was assigned to.
