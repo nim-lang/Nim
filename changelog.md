@@ -286,6 +286,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
   performance this keyword can enable.
 
+- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
 
 ## Compiler changes
 
