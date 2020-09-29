@@ -782,8 +782,12 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       let rid = root(par, i)
       for b in par.s[rid].borrowsFrom:
         let sid = root(par, b)
-        if sid >= 0 and par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
-          cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
+        if sid >= 0:
+          if par.s[sid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[sid].con.graphIndex], par.s[i]):
+            cannotBorrow(config, v, par.graphs[par.s[sid].con.graphIndex])
+          if par.s[sid].sym.kind != skParam and par.s[sid].aliveEnd < par.s[rid].aliveEnd:
+            localError(config, v.info, "'" & v.name.s & "' borrows from location '" & par.s[sid].sym.name.s &
+              "' which does not live long enough")
 
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
