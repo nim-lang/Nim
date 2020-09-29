@@ -2041,5 +2041,5 @@ and ``b`` the location that is borrowed from.
 - During ``v``'s lifetime, ``G(b)`` can only be modified by ``v`` (and only if
   ``v`` is a mutable view).
 - If ``v`` is ``result`` then ``b`` has to be a location derived from the first
-  formal parameter.
+  formal parameter or from a constant location.
 - A view cannot be used for a read or a write access before it was assigned to.

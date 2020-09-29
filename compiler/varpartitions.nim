@@ -489,6 +489,10 @@ proc trackBorrow(c: var Partitions; dest, src: PNode) =
       if s == nil:
         localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
       elif s.kind == nkSym:
+        if dest.sym.kind == skResult:
+          if s.sym.kind != skParam or s.sym.position != 0:
+            localError(c.config, src.info, "result must borrow from the first parameter")
+
         let vid = variableId(c, dest.sym)
         if vid >= 0:
           var sourceIdx = variableId(c, s.sym)

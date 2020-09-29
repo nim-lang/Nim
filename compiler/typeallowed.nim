@@ -241,3 +241,6 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
 proc classifyViewType*(t: PType): ViewTypeKind =
   var marker = initIntSet()
   result = classifyViewTypeAux(marker, t)
+
+proc requiresInit*(t: PType): bool =
+  (t.flags * {tfRequiresInit, tfNotNil} != {}) or classifyViewType(t) != noView
