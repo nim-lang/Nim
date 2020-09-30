@@ -2,7 +2,7 @@
 Strict not nil checking
 =========================
 
-**Note:** This featue is experimental, you need to enable it with
+**Note:** This feature is experimental, you need to enable it with
 
 .. code-block:: nim
   {.experimental: "strictNotNil".}
@@ -12,13 +12,13 @@ or
 .. code-block:: bash
   nim c --experimental:strictNotNil <program>
 
-in the second case it would check builtin and imported modules as well.
+In the second case it would check builtin and imported modules as well.
 
-Check nilability of ref-like types and make dereferencing safer based on flow typing and ``not nil`` annotations.
+It checks the nilability of ref-like types and makes dereferencing safer based on flow typing and ``not nil`` annotations.
 
-It's a different implementation than ``notnil``: ``strictNotNil``. Keep in mind to be careful with distinguishing them.
+Its implementation is different than the ``notnil`` one: defined under ``strictNotNil``. Keep in mind the difference in option names, be careful with distinguishing them.
 
-We check those kinds of types for nilability:
+We check several kinds of types for nilability:
 
 - ref types
 - pointer types
@@ -28,7 +28,7 @@ We check those kinds of types for nilability:
 nil
 -------
 
-The default kind of nilability types is nilable : they can have the value ``nil``.
+The default kind of nilability types is the nilable kind: they can have the value ``nil``.
 If you have a non-nilable type ``T``, you can use ``T nil`` to get a nilable type for it.
 
 
@@ -72,11 +72,13 @@ Note: test that/TODO for code/manual.
 nilability state
 -----------------
 
-Currently a nilable value can be ``Safe``, ``MaybeNil`` or ``Nil`` : we use internally ``Parent`` but this is an implementation detail(a parent layer has the actual nilability).
+Currently a nilable value can be ``Safe``, ``MaybeNil`` or ``Nil`` : we use internally ``Parent`` and ``Unreachable`` but this is an implementation detail(a parent layer has the actual nilability).
 
 ``Safe`` means it shouldn't be nil at that point: e.g. after assignment to a non-nil value or ``not a.isNil`` check
 ``MaybeNil`` means it might be nil, but it might not be nil: e.g. an argument, a call argument or a value after an ``if`` and ``else``.
 ``Nil`` means it should be nil at that point; e.g. after an assignment to ``nil`` or a ``.isNil`` check.
+
+``Unreachable`` means it shouldn't be possible to access this in this branch: so we do generate a warning as well.
 
 We show an error for each dereference (``[]``, ``.field``, ``[index]`` ``()`` etc) which is of a tracked expression which is
 in ``MaybeNil`` or ``Nil`` state.
@@ -100,8 +102,9 @@ Param's nilability is detected based on type nilability. We use the type of the 
 assignment rules
 -----------------
 
-When we assign, we pass the right's nilability to the left's expression. We have special handling of aliasing and 
-compund expressions which we specify in their sections. (This is a possible alias move or move out).
+Let's say we have ``left = right``.
+
+When we assign, we pass the right's nilability to the left's expression. There should be special handling of aliasing and compound expressions which we specify in their sections. (Assignment is a possible alias ``move`` or ``move out``).
 
 call args rules
 -----------------
@@ -112,7 +115,7 @@ When we call with arguments, we have two cases when we might change the nilabili
   callByVar(a)
 
 Here ``callByVar`` can re-assign ``a``, so this might change ``a``'s nilability, so we change it to ``MaybeNil``.
-This is also a possible aliasing move out (moving out of a current alias set).
+This is also a possible aliasing ``move out`` (moving out of a current alias set).
 
 .. code-block:: nim
   call(a)
@@ -123,7 +126,7 @@ Here ``call`` can change a field or element of ``a``, so if we have a dependant 
 branches rules
 ---------------
 
-Branches are the reason we do nil checking this way: with flow checking. 
+Branches are the reason we do nil checking like this: with flow checking. 
 Sources of brancing are ``if``, ``while``, ``for``, ``and``, ``or``, ``case``, ``try`` and combinations with ``return``, ``break``, ``continue`` and ``raise``
 
 We create a new layer/"scope" for each branch where we map expressions to nilability. This happens when we "fork": usually on the beginning of a construct.
@@ -200,14 +203,15 @@ We support alias detection for local expressions.
 
 We track sets of aliased expressions. We start with all nilable local expressions in separate sets.
 Assignments and other changes to nilability can move / move out expressions of sets.
-Moving ``left`` to ``right`` means we remove ``left`` from its current set and unify it with the ``right``'s set.
+
+``move``: Moving ``left`` to ``right`` means we remove ``left`` from its current set and unify it with the ``right``'s set.
 This means it stops being aliased with its previous aliases.
 
 .. code-block:: nim
   var left = b
   left = right # moving left to right
 
-Moving out ``left`` might remove it from the current set and ensure that it's in its own set as a single element.
+``move out``: Moving out ``left`` might remove it from the current set and ensure that it's in its own set as a single element.
 e.g.
 
 
