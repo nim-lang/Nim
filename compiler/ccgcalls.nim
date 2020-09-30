@@ -142,8 +142,10 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
-  let x = trees.getRoot(n)
-  if x != nil and x.kind == skParam:
+  var x = n
+  while x.kind in {nkAddr, nkHiddenAddr, nkHiddenStdConv, nkHiddenDeref}:
+    x = x[0]
+  if x.kind == nkSym and x.sym.kind == skParam:
     result = false
   else:
     result = true
