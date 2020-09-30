@@ -1264,6 +1264,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
+      if a[j].kind == nkPragmaExpr:
+        pragma(c, arg, a[j][1], paramPragmas)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
@@ -2056,7 +2058,7 @@ proc semGenericConstraints(c: PContext, x: PType): PType =
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
-  template addSym(result: PNode, s: PSym): untyped = 
+  template addSym(result: PNode, s: PSym): untyped =
     if father != nil: addSonSkipIntLit(father, s.typ)
     if sfGenSym notin s.flags: addDecl(c, s)
     result.add newSymNode(s)
@@ -2066,8 +2068,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     illFormedAst(n, c.config)
     return
   for i in 0..<n.len:
-    var a = n[i]    
-    case a.kind    
+    var a = n[i]
+    case a.kind
     of nkSym: result.addSym(a.sym)
     of nkIdentDefs:
       var def = a[^1]
@@ -2128,7 +2130,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
         if covarianceFlag != tfUnresolved: s.typ.flags.incl(covarianceFlag)
         if def.kind != nkEmpty: s.ast = def
-        s.position = result.len     
+        s.position = result.len
         result.addSym(s)
     else:
       illFormedAst(n, c.config)

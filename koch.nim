@@ -201,7 +201,8 @@ proc bundleWinTools(args: string) =
 
 proc bundleFusion(latest: bool) =
   let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
+                  allowBundled = true)
   copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
 
 proc zip(latest: bool; args: string) =

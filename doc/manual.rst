@@ -655,7 +655,7 @@ Precedence level    Operators                                              First
 ================  =======================================================  ==================  ===============
 
 
-Whether an operator is used a prefix operator is also affected by preceding
+Whether an operator is used as a prefix operator is also affected by preceding
 whitespace (this parsing change was introduced with version 0.13.0):
 
 .. code-block:: nim
@@ -3275,16 +3275,16 @@ programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
-  
+
 The target type of a cast must be a concrete type, for instance, a target type
 that is a type class (which is non-concrete) would be invalid:
 
 .. code-block:: nim
   type Foo = int or float
   var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
-  
+
 Type casts should not be confused with *type conversions,* as mentioned in the
-prior section. Unlike type conversions, a type cast cannot change the underlying 
+prior section. Unlike type conversions, a type cast cannot change the underlying
 bit pattern of the data being casted (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
 languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.

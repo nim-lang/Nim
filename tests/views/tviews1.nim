@@ -4,6 +4,7 @@ discard """
 33
 3
 2
+3
 3'''
   targets: "c cpp"
 """
@@ -22,6 +23,6 @@ proc main(s: seq[int]) =
   take(x.toOpenArray(0, 1))
   let y = x
   take y
-
+  take x
 
 main(@[11, 22, 33])
