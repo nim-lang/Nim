@@ -54,7 +54,9 @@ type
   VarFlag = enum
     ownsData,
     preventCursor,
-    isReassigned
+    isReassigned,
+    viewDoesMutate,
+    viewBorrowsFromConst
 
   VarIndexKind = enum
     isEmptyRoot,
@@ -478,9 +480,12 @@ proc pretendOwnsData(c: var Partitions, s: PSym) =
 const
   explainCursors = false
 
+proc isConstSym(s: PSym): bool =
+  result = s.kind in {skConst, skLet} or isConstParam(s)
+
 proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
   const
-    url = "; see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
+    url = "see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
 
   let s = pathExpr(src, c.owner)
   if s == nil:
@@ -499,28 +504,50 @@ proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
                         aliveStart: MinTime, aliveEnd: MaxTime)
 
       c.s[vid].borrowsFrom.add sourceIdx
+      if isConstSym(s.sym):
+        c.s[vid].flags.incl viewBorrowsFromConst
   else:
-    discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
+    let vid = variableId(c, dest)
+    if vid >= 0:
+      c.s[vid].flags.incl viewBorrowsFromConst
+    #discard "a valid borrow location that is a deeply constant expression so we have nothing to track"
 
 
 proc borrowingCall(c: var Partitions; destType: PType; n: PNode; i: int) =
   let v = pathExpr(n[i], c.owner)
-  if v.kind == nkSym:
+  if v != nil and v.kind == nkSym:
+    when false:
+      let isView = directViewType(destType) == immutableView
+      if n[0].kind == nkSym and n[0].sym.name.s == "[]=":
+        localError(c.config, n[i].info, "attempt to mutate an immutable view")
+
     for j in i+1..<n.len:
       if getMagic(n[j]) == mSlice:
         borrowFrom(c, v.sym, n[j])
   else:
     localError(c.config, n[i].info, "cannot determine the target of the borrow")
 
-proc trackBorrow(c: var Partitions; dest, src: PNode) =
+proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
   if dest.kind == nkSym:
-    let vk = directViewType(dest.typ)
-    if vk != noView:
+    if directViewType(dest.typ) != noView:
       borrowFrom(c, dest.sym, src)
+  elif dest.kind in {nkHiddenDeref, nkDerefExpr, nkBracketExpr}:
+    case directViewType(dest[0].typ)
+    of mutableView:
+      # we do not borrow, but we use the view to mutate the borrowed
+      # location:
+      let viewOrigin = pathExpr(dest, c.owner)
+      if viewOrigin.kind == nkSym:
+        let vid = variableId(c, viewOrigin.sym)
+        if vid >= 0:
+          c.s[vid].flags.incl viewDoesMutate
+    of immutableView:
+      localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+    of noView: discard "nothing to do"
 
 proc deps(c: var Partitions; dest, src: PNode) =
   if not c.performCursorInference:
-    trackBorrow(c, dest, src)
+    borrowingAsgn(c, dest, src)
 
   var targets, sources: seq[PSym]
   allRoots(dest, targets)
@@ -801,6 +828,7 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
     if v.kind != skParam and classifyViewType(v.typ) != noView:
       let rid = root(par, i)
       if rid >= 0:
+        var constViolation = false
         for b in par.s[rid].borrowsFrom:
           let sid = root(par, b)
           if sid >= 0:
@@ -809,6 +837,16 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
             if par.s[sid].sym.kind != skParam and par.s[sid].aliveEnd < par.s[rid].aliveEnd:
               localError(config, v.info, "'" & v.name.s & "' borrows from location '" & par.s[sid].sym.name.s &
                 "' which does not live long enough")
+            if viewDoesMutate in par.s[rid].flags and isConstSym(par.s[sid].sym):
+              localError(config, v.info, "'" & v.name.s & "' borrows from the immutable location '" &
+                par.s[sid].sym.name.s & "' and attempts to mutate it")
+              constViolation = true
+        if {viewDoesMutate, viewBorrowsFromConst} * par.s[rid].flags == {viewDoesMutate, viewBorrowsFromConst} and
+            not constViolation:
+          # we do not track the constant expressions we allow to borrow from so
+          # we can only produce a more generic error message:
+          localError(config, v.info, "'" & v.name.s &
+              "' borrows from an immutable location and attempts to mutate it")
 
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
