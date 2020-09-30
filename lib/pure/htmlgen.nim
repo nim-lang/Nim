@@ -17,7 +17,7 @@
 ##
 ## This module implements a simple `XML`:idx: and `HTML`:idx: code
 ## generator. Each commonly used HTML tag has a corresponding macro
-## that Generates a string with its HTML representation.
+## that generates a string with its HTML representation.
 ##
 ## MathML
 ## ======
