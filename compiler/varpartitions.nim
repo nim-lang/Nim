@@ -84,11 +84,17 @@ type
     maxMutation, minConnection: AbstractTime
     mutations: seq[AbstractTime]
 
+  Goal* = enum
+    constParameters,
+    borrowChecking,
+    cursorInference
+
   Partitions* = object
     abstractTime: AbstractTime
     s: seq[VarIndex]
     graphs: seq[MutationInfo]
-    unanalysableMutation, performCursorInference: bool
+    goals: set[Goal]
+    unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
     owner: PSym
     config: ConfigRef
@@ -546,7 +552,7 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
     of noView: discard "nothing to do"
 
 proc deps(c: var Partitions; dest, src: PNode) =
-  if not c.performCursorInference:
+  if borrowChecking in c.goals:
     borrowingAsgn(c, dest, src)
 
   var targets, sources: seq[PSym]
@@ -565,7 +571,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
       for s in sources:
         connect(c, t, s, dest.info)
 
-  if c.performCursorInference and src.kind != nkEmpty:
+  if cursorInference in c.goals and src.kind != nkEmpty:
     if dest.kind == nkSym:
       let vid = variableId(c, dest.sym)
       if vid >= 0:
@@ -647,7 +653,7 @@ proc traverse(c: var Partitions; n: PNode) =
               for r in roots: potentialMutation(c, r, it.info)
             for r in roots: noCursor(c, r)
 
-            if not c.performCursorInference:
+            if borrowChecking in c.goals:
               # a call like 'result.add toOpenArray()' can also be a borrow
               # operation. We know 'paramType' is a tyVar and we really care if
               # 'paramType[0]' is still a view type, this is not a typo!
@@ -785,8 +791,8 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
   else:
     for child in n: computeLiveRanges(c, child)
 
-proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; cursorInference = false): Partitions =
-  result = Partitions(performCursorInference: cursorInference, owner: s, config: config)
+proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; goals: set[Goal]): Partitions =
+  result = Partitions(owner: s, config: config, goals: goals)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -852,7 +858,7 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
 proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = computeGraphPartitions(s, n, config, true)
+  var par = computeGraphPartitions(s, n, config, {cursorInference})
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
     if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and

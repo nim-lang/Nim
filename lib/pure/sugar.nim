@@ -186,10 +186,6 @@ proc freshIdentNodes(ast: NimNode): NimNode =
         result.add inspect(child)
   result = inspect(ast)
 
-template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase from typetraits instead".} =
-  ## reverses ``type T = distinct A``; works recursively.
-  typetraits.distinctBase(T)
-
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
