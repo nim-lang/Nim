@@ -1994,7 +1994,7 @@ Start of a borrow
 A borrow starts with one of the following:
 
 - The assignment of a non-view-type to a view-type.
-- The assingment of a location that is derived from a local parameter
+- The assignment of a location that is derived from a local parameter
   to a view-type.
 
 
