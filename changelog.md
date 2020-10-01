@@ -287,6 +287,9 @@ proc mydiv(a, b): int {.raises: [].} =
   performance this keyword can enable.
 
 - `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
+- `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
+  `--deepcopy:on`.
+
 
 ## Compiler changes
 

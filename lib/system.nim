@@ -2895,6 +2895,9 @@ when hasAlloc and notJSnotNims:
     ##
     ## This is also used by the code generator
     ## for the implementation of ``spawn``.
+    ##
+    ## For ``--gc:arc`` or ``--gc:orc`` deepcopy support has to be enabled
+    ## via ``--deepcopy:on``.
     discard
 
   proc deepCopy*[T](y: T): T =

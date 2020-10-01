@@ -1355,7 +1355,7 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 
-  if t.kind == tyObject and t.len > 0 and t[0] != nil:
+  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =

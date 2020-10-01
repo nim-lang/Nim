@@ -30,7 +30,7 @@ closed
 destroying variable: 20
 destroying variable: 10
 '''
-  cmd: "nim c --gc:arc $file"
+  cmd: "nim c --gc:arc --deepcopy:on $file"
 """
 
 proc takeSink(x: sink string): bool = true
@@ -360,7 +360,7 @@ var xml: XmlParser
 open(xml, stream, "test")
 var xml2 = deepCopy(xml)
 
-proc text_parser(xml: var XmlParser) = 
+proc text_parser(xml: var XmlParser) =
   var test_passed = false
   while true:
     xml.next()
@@ -370,7 +370,7 @@ proc text_parser(xml: var XmlParser) =
         xml.next()
         if xml.kind == xmlCharData and xml.charData == "value":
           test_passed = true
-     
+
     of xmlEof: break
     else: discard
   xml.close()

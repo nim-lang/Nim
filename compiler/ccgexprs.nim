@@ -2394,6 +2394,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
+    if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+      localError(p.config, e.info,
+        "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
+
     var a, b: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     initLocExpr(p, x, a)
