@@ -1033,7 +1033,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wPush:
         processPush(c, n, i + 1)
         result = true
-      of wPop: processPop(c, it)
+      of wPop:
+        processPop(c, it)
+        result = true
       of wPragma:
         if not sym.isNil and sym.kind == skTemplate:
           sym.flags.incl sfCustomPragma
