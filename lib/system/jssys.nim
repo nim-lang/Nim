@@ -772,12 +772,6 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
   number = number * sign
   result = i - start
 
-when defined(nodejs):
-  # Deprecated. Use `alert` defined in dom.nim
-  proc alert*(s: cstring) {.importc: "console.log", nodecl, deprecated.}
-else:
-  # Deprecated. Use `alert` defined in dom.nim
-  proc alert*(s: cstring) {.importc, nodecl, deprecated.}
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:

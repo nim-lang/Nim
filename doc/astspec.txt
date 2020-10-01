@@ -1255,7 +1255,9 @@ AST:
     nnkEmpty(), # patterns for term rewriting in templates and macros (not procs)
     nnkGenericParams( # generic type parameters, like with type declaration
       nnkIdentDefs(
-        nnkIdent("T"), nnkIdent("SomeInteger")
+        nnkIdent("T"),
+        nnkIdent("SomeInteger"),
+        nnkEmpty()
       )
     ),
     nnkFormalParams(

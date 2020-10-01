@@ -474,6 +474,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     else:
       params.add(getTypeDescAux(m, param.typ, check, skParam))
     params.add(~" ")
+    if sfNoalias in param.flags:
+      params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
@@ -562,19 +564,21 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
+      let noAlias = if sfNoalias in field.flags: ~" NIM_NOALIAS" else: nil
+
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyUncheckedArray:
         result.addf("$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check, skField), sname])
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
-        result.addf("$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname, noAlias])
       elif field.bitsize != 0:
-        result.addf("$1 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize)])
+        result.addf("$1$4 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize), noAlias])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        result.addf("$1 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
@@ -693,7 +697,7 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
       result = getTypeName(m, t, sig)
       m.typeCache[sig] = result
       let elemType = getTypeDescWeak(m, t[0], check, kind)
-      m.s[cfsTypes].addf("typedef struct {$n$2* d;$nNI l;$n} $1;$n",
+      m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
@@ -724,7 +728,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
-    if mapType(m.config, t, kind) == ctPtrToArray:
+    if mapType(m.config, t, kind) == ctPtrToArray and (etB.kind != tyOpenArray or kind == skParam):
       if etB.kind == tySet:
         et = getSysType(m.g.graph, unknownLineInfo, tyUInt8)
       else:
@@ -1030,7 +1034,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   if tfIncompleteStruct in typ.flags:
     size = rope"void*"
   else:
-    size = getTypeDesc(m, origType)
+    size = getTypeDesc(m, origType, skVar)
   m.s[cfsTypeInit3].addf(
     "$1.size = sizeof($2);$n$1.align = NIM_ALIGNOF($2);$n$1.kind = $3;$n$1.base = $4;$n",
     [nameHcr, size, rope(nimtypeKind), base]
@@ -1128,7 +1132,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
     m.s[cfsTypeInit3].addf("$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
-        "$1.len = $7;$n", [expr, getTypeDesc(m, origType), field.loc.r,
+        "$1.len = $7;$n", [expr, getTypeDesc(m, origType, skVar), field.loc.r,
                            genTypeInfoV1(m, field.typ, info),
                            makeCString(field.name.s),
                            tmp, rope(L)])
@@ -1165,7 +1169,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
         internalError(m.config, n.info, "genObjectFields")
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-          "$1.name = $5;$n", [expr, getTypeDesc(m, origType),
+          "$1.name = $5;$n", [expr, getTypeDesc(m, origType, skVar),
           field.loc.r, genTypeInfoV1(m, field.typ, info), makeCString(field.name.s)])
   else: internalError(m.config, n.info, "genObjectFields")
 
@@ -1201,7 +1205,7 @@ proc genTupleInfo(m: BModule, typ, origType: PType, name: Rope; info: TLineInfo)
           "$1.offset = offsetof($2, Field$3);$n" &
           "$1.typ = $4;$n" &
           "$1.name = \"Field$3\";$n",
-           [tmp2, getTypeDesc(m, origType), rope(i), genTypeInfoV1(m, a, info)])
+           [tmp2, getTypeDesc(m, origType, skVar), rope(i), genTypeInfoV1(m, a, info)])
     m.s[cfsTypeInit3].addf("$1.len = $2; $1.kind = 2; $1.sons = &$3[0];$n",
          [expr, rope(typ.len), tmp])
   else:
@@ -1390,6 +1394,15 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   genTypeInfoV2Impl(m, t, origType, result, info)
   result = prefixTI.rope & result & ")".rope
 
+proc openArrayToTuple(m: BModule; t: PType): PType =
+  result = newType(tyTuple, t.owner)
+  let p = newType(tyPtr, t.owner)
+  let a = newType(tyUncheckedArray, t.owner)
+  a.add t.lastSon
+  p.add a
+  result.add p
+  result.add getSysType(m.g.graph, t.owner.info, tyInt)
+
 proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -1464,6 +1477,9 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     # BUGFIX: use consistently RTTI without proper field names; otherwise
     # results are not deterministic!
     genTupleInfo(m, t, origType, result, info)
+  of tyOpenArray:
+    let x = openArrayToTuple(m, t)
+    genTupleInfo(m, x, origType, result, info)
   else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
 
   if t.attachedOps[attachedDeepCopy] != nil:

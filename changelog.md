@@ -156,7 +156,7 @@
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
   `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
-
+- Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
@@ -195,7 +195,7 @@
       is
         cool!
     """
-  ``` 
+  ```
 
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
@@ -283,6 +283,10 @@ proc mydiv(a, b): int {.raises: [].} =
   an experimental feature. In other words, you don't have to write pragma
   `{.experimental: "forLoopMacros".}` if you want to use them.
 
+- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
+  performance this keyword can enable.
+
+- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
 
 ## Compiler changes
 
