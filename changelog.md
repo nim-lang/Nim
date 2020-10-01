@@ -288,6 +288,9 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
 
+- Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
+
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
