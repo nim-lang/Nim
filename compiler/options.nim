@@ -628,17 +628,6 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
 
-proc shortenDir*(conf: ConfigRef; dir: string): string {.
-    deprecated: "use 'relativeTo' instead".} =
-  ## returns the interesting part of a dir
-  var prefix = conf.projectPath.string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  prefix = getPrefixDir(conf).string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  result = dir
-
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):
     result = substr(path, 0, path.len - 2)
