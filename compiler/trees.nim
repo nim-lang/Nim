@@ -190,3 +190,8 @@ proc getRoot*(n: PNode): PSym =
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
   else: discard
+
+proc stupidStmtListExpr*(n: PNode): bool =
+  for i in 0..<n.len-1:
+    if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+  result = true

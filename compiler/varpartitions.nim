@@ -29,7 +29,7 @@
 ## for a high-level description of how borrow checking works.
 
 import ast, types, lineinfos, options, msgs, renderer, typeallowed
-from trees import getMagic, whichPragma
+from trees import getMagic, whichPragma, stupidStmtListExpr
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
 
@@ -309,6 +309,11 @@ proc pathExpr(node: PNode; owner: PSym): PNode =
     of nkHiddenStdConv, nkHiddenSubConv, nkConv,  nkCast,
         nkObjUpConv, nkObjDownConv:
       n = n.lastSon
+    of nkStmtList, nkStmtListExpr:
+      if n.len > 0 and stupidStmtListExpr(n):
+        n = n.lastSon
+      else:
+        break
     of nkCallKinds:
       if n.len > 1:
         if (n.typ != nil and classifyViewType(n.typ) != noView) or getMagic(n) == mSlice:
@@ -551,6 +556,10 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
       localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
     of noView: discard "nothing to do"
 
+proc containsPointer(t: PType): bool =
+  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
+  result = types.searchTypeFor(t, wrap)
+
 proc deps(c: var Partitions; dest, src: PNode) =
   if borrowChecking in c.goals:
     borrowingAsgn(c, dest, src)
@@ -559,9 +568,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
   allRoots(dest, targets)
   allRoots(src, sources)
 
-  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr}
-
-  let destIsComplex = types.searchTypeFor(dest.typ, wrap)
+  let destIsComplex = containsPointer(dest.typ)
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
@@ -607,6 +614,14 @@ const
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
     nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
 
+proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
+  if constParameters in c.goals and tfNoSideEffect in callee.flags:
+    discard "we know there are no hidden mutations through an immutable parameter"
+  elif c.inNoSideEffectSection == 0 and containsPointer(n.typ):
+    var roots: seq[PSym]
+    allRoots(n, roots)
+    for r in roots: potentialMutation(c, r, n.info)
+
 proc traverse(c: var Partitions; n: PNode) =
   inc c.abstractTime
   case n.kind
@@ -640,6 +655,7 @@ proc traverse(c: var Partitions; n: PNode) =
 
     let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
+    let m = getMagic(n)
 
     for i in 1..<n.len:
       let it = n[i]
@@ -659,6 +675,8 @@ proc traverse(c: var Partitions; n: PNode) =
               # 'paramType[0]' is still a view type, this is not a typo!
               if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
                 borrowingCall(c, paramType[0], n, i)
+        elif borrowChecking in c.goals and m == mNone:
+          potentialMutationViaArg(c, n[i], parameters)
 
   of nkAddr, nkHiddenAddr:
     traverse(c, n[0])
