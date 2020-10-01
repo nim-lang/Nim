@@ -1103,17 +1103,15 @@ proc skipEmptyStates(ctx: Ctx, stateIdx: int): int =
 
   result = ctx.states[stateIdx][0].intVal.int
 
-proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode =
-  result = n
+proc skipThroughEmptyStates(ctx: var Ctx, n: PNode) =
   case n.kind
   of nkSkip:
     discard
   of nkGotoState:
-    result = copyTree(n)
-    result[0].intVal = ctx.skipEmptyStates(result[0].intVal.int)
+    n[0].intVal = ctx.skipEmptyStates(n[0].intVal.int)
   else:
     for i in 0..<n.len:
-      n[i] = ctx.skipThroughEmptyStates(n[i])
+      ctx.skipThroughEmptyStates(n[i])
 
 proc newArrayType(g: ModuleGraph; n: int, t: PType, owner: PSym): PType =
   result = newType(tyArray, owner)
@@ -1267,7 +1265,7 @@ proc deleteEmptyStates(ctx: var Ctx) =
   for i, s in ctx.states:
     let body = skipStmtList(ctx, s[1])
     if body.kind != nkGotoState or i == 0:
-      discard ctx.skipThroughEmptyStates(s)
+      ctx.skipThroughEmptyStates(s)
       let excHandlState = ctx.exceptionTable[i]
       if excHandlState < 0:
         ctx.exceptionTable[i] = -ctx.skipEmptyStates(-excHandlState)
