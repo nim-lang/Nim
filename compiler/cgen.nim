@@ -1785,7 +1785,8 @@ proc initProcOptions(m: BModule): TOptions =
 proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
-  result.tmpBase = "TM" & "_" & getSomeNameForModule(module) & "_"
+  #result.tmpBase = "TM" & "_" & getSomeNameForModule(module) & "_"
+  result.tmpBase = "TM" & "_"
   result.headerFiles = @[]
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
