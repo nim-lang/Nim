@@ -444,7 +444,7 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-iterator lines*(p: Process): string =
+iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
   ## Convenience iterator for working with `startProcess` to read data from a
   ## background process.
   ##
@@ -473,7 +473,7 @@ iterator lines*(p: Process): string =
     else:
       if p.peekExitCode != -1: break
 
-proc readLines*(p: Process): (seq[string], int) =
+proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
   ## Convenience function for working with `startProcess` to read data from a
   ## background process.
   ##
