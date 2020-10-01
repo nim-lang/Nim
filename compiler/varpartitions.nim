@@ -29,7 +29,7 @@
 ## for a high-level description of how borrow checking works.
 
 import ast, types, lineinfos, options, msgs, renderer, typeallowed
-from trees import getMagic, whichPragma
+from trees import getMagic, whichPragma, stupidStmtListExpr
 from wordrecg import wNoSideEffect
 from isolation_check import canAlias
 
@@ -309,6 +309,11 @@ proc pathExpr(node: PNode; owner: PSym): PNode =
     of nkHiddenStdConv, nkHiddenSubConv, nkConv,  nkCast,
         nkObjUpConv, nkObjDownConv:
       n = n.lastSon
+    of nkStmtList, nkStmtListExpr:
+      if n.len > 0 and stupidStmtListExpr(n):
+        n = n.lastSon
+      else:
+        break
     of nkCallKinds:
       if n.len > 1:
         if (n.typ != nil and classifyViewType(n.typ) != noView) or getMagic(n) == mSlice:
