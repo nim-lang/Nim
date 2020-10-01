@@ -531,13 +531,13 @@ func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
     else: c.root.byte
   else: 0
 
-proc toCritBitTree*[A, B](pairs: openArray[(A, B)]): CritBitTree[A] {.inline, since: (1, 3).} =
+func toCritBitTree*[A, B](pairs: openArray[(A, B)]): CritBitTree[A] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `pairs`.
   runnableExamples:
     doAssert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
   for item in pairs: result.incl item[0], item[1]
 
-proc toCritBitTree*[T](items: openArray[T]): CritBitTree[void] {.inline, since: (1, 3).} =
+func toCritBitTree*[T](items: openArray[T]): CritBitTree[void] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `items`.
   runnableExamples:
     doAssert ["a", "b", "c"].toCritBitTree is CritBitTree[void]
