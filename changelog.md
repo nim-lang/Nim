@@ -156,7 +156,7 @@
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
   `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
-
+- Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
