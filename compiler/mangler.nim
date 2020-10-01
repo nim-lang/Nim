@@ -38,6 +38,7 @@ type
   ModuleOrProc* = BProc or BModule
 
 template config(): ConfigRef = cache.modules.config
+template add_and(s: typed; chs: string) = s.add "_"; s.add chs
 
 using
   g: ModuleGraph
@@ -220,8 +221,7 @@ proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string =
 
 template maybeAddCounter(result: typed; count: int) =
   if count > 0:
-    result.add "_"
-    result.add $count
+    add_and result, $count
 
 proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## Should we add the first argument's type to the mangle?  If yes, DO IT.
@@ -257,8 +257,7 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
     if result:
       if name.len == 0:
         name = mangle(s.name.s)
-      name.add "_"
-      name.add $conflictKey(s)
+      name.add_and $conflictKey(s)
       assert not s.hasImmutableName
 
 proc mangle*(p: ModuleOrProc; s: PSym): string =
@@ -283,21 +282,18 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
     if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
       let parent = findPendingModule(m, s)
       if parent != nil:
-        result.add "_"
-        result.add getSomeNameForModule(parent.module)
+        result.add_and getSomeNameForModule(parent.module)
 
     # for c-ish backends, "main" is already defined, of course
     elif s.name.s == "main":
       let parent = findPendingModule(m, s)
       if parent != nil and sfMainModule in parent.module.flags:
         # but we'll only worry about it for MainModule
-        result.add "_"
-        result.add getSomeNameForModule(parent.module)
+        result.add_and getSomeNameForModule(parent.module)
 
     # something like `default` might need this check
     if (unlikely) result in m.config.cppDefines:
-      result.add "_"
-      result.add $conflictKey(s)
+      result.add_and $conflictKey(s)
 
   #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
   # XXX: we don't do anything special with regard to m.hcrOn
@@ -568,7 +564,7 @@ proc mangleField*(m: BModule; name: PIdent): string =
    here anymore:
   ]#
   if isNimOrCKeyword(name):
-    result.add "_0"
+    result.add_and "0"
 
 proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
   ## Mangle an object field to ensure it is a valid name in the backend.
