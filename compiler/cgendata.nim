@@ -176,6 +176,11 @@ type
     g*: BModuleList
     ndi*: NdiFile
 
+const
+  irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
+                           tyGenericInvocation, tyDistinct, tyRange,
+                           tyStatic, tyAlias, tySink, tyInferred}
+
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 
