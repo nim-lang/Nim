@@ -199,6 +199,8 @@
 
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
+- Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
+
 ## Language changes
 
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
