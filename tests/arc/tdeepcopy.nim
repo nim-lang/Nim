@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --gc:arc $file"
+  cmd: "nim c --gc:arc --deepcopy:on $file"
   output: '''13 abc
 13 abc
 13 abc

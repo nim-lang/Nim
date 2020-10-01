@@ -96,6 +96,7 @@ type                          # please make sure we have under 32 options
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
     optProfileVM              # enable VM profiler
+    optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
 
   TGlobalOptions* = set[TGlobalOption]
 
