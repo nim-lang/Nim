@@ -1906,7 +1906,7 @@ Let ``source`` be one of:
   not cover locals of inner procs.
 - A thread-local ``var`` or ``let``.
 - A global ``let`` or ``const``.
-- A constant arraq/seq/object/tuple constructor.
+- A constant array/seq/object/tuple constructor.
 
 
 Path expressions
