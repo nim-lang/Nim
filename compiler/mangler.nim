@@ -25,7 +25,9 @@ conflict table; they are increasing but not guaranteed to be sequential.
 ]##
 
 const
-  inspect = "SharedList"
+  inspect = "CurrencyAmount"
+  addFirstParamToProcs = true
+  findSourceModulesForTypes = false
 
 import # compiler imports
 
@@ -67,7 +69,7 @@ proc hashTypeDef*(p: PType): SigHash =
   ## seq[string] isn't clobbered by an alias like seq[TaintedString].
   result = hashType(p, {CoType, CoDistinct}) # CoNaming
   when not defined(release):
-    when startsWith($result, inspect):
+    if startsWith($result, inspect):
       if p.sym != nil:
         echo mangle(p.sym.name.s), " --> ", result
 
@@ -251,7 +253,7 @@ proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   result = s.kind in routineKinds
   if result:
     # disabled for now because i can't figure out how to handle aliases
-    when false:
+    when addFirstParamToProcs:
       if s.typ != nil:
         if s.typ.sons.len >= 2:
           # avoid including the conflictKey of the 1st param
@@ -495,7 +497,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     while true:
       # use an immutable symbol name if we find one
       if t.sym.hasImmutableName:
-        when false:
+        when findSourceModulesForTypes:
           # make sure we use the source module for any type requested
           p = findPendingModule(p, t.sym)
 

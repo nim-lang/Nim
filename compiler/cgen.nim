@@ -1090,20 +1090,28 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
            sym.magic == mNone and
            m.config.backend == backendCpp)
 
+proc genDynProcPrototype(p: ModuleOrProc; sym: PSym) =
+  ## generate the prototype of a dynlib proc
+  let m = getem()
+  useHeader(m, sym)
+  assert sym.loc.lode != nil, "i will need you to fill out the loc"
+  assert lfDynamicLib in sym.loc.flags, "are you lost, son?"
+  if getModule(sym).id != m.module.id and
+      not containsOrIncl(m.declaredThings, sym.id):
+    m.s[cfsVars].add(ropecg(m, "$1 $2 $3;$n",
+                      [(if isReloadable(m, sym): "static" else: "extern"),
+                      getTypeDesc(p, sym.loc.t), mangleDynLibProc(sym)]))
+    if isReloadable(m, sym):
+      m.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
+           [mangleDynLibProc(sym), getTypeDesc(p, sym.loc.t),
+            getModuleDllPath(m, sym)])
+
 proc genProcPrototype(p: ModuleOrProc; sym: PSym) =
   let m = getem()
   useHeader(m, sym)
-  assert lfNoDecl notin sym.loc.flags, "just useHeader and done"
-  if lfDynamicLib in sym.loc.flags:
-    if getModule(sym).id != m.module.id and
-        not containsOrIncl(m.declaredThings, sym.id):
-      m.s[cfsVars].add(ropecg(m, "$1 $2 $3;$n",
-                        [(if isReloadable(m, sym): "static" else: "extern"),
-                        getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)]))
-      if isReloadable(m, sym):
-        m.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
-             [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
-  elif not containsOrIncl(m.declaredProtos, sym.id):
+  assert lfNoDecl notin sym.loc.flags, "don't come aroun' here no more"
+  assert lfDynamicLib notin sym.loc.flags, "don't come aroun' here no more"
+  if not containsOrIncl(m.declaredProtos, sym.id):
     let asPtr = isReloadable(m, sym)
     var header = genProcHeader(p, sym, asPtr)
     if not asPtr:
@@ -1140,9 +1148,9 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       fillProcLoc(findPendingModule(m, prc), prc.ast[namePos])
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    genProcPrototype(m, prc)
-    # after the prototype/header for mangling reasons...
+    # safely make the prototype after stashing the lode in loc
     fillProcLoc(q, prc.ast[namePos])
+    genDynProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       symInDynamicLib(q, prc)
       # register the procedure even though it is in a different dynamic library and will not be

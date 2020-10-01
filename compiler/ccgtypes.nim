@@ -826,9 +826,10 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
       else:
         m.s[cfsTypes].addf("typedef NU8 $1[$2];$n",
                            [result, rope(getSize(m.config, t))])
-  of tyDistinct, tyTypeDesc, tyAlias, tyUserTypeClass, tyUserTypeClassInst:
+  of tyDistinct, tyTypeDesc, tyAlias:
     result = getTypeName(p, t, sig)
-  of tyGenericInst, tySink, tyOwned, tyOrdinal, tyInferred:
+  of tyGenericInst, tySink, tyOwned, tyOrdinal, tyInferred,
+     tyUserTypeClass, tyUserTypeClassInst:
     result = getTypeDescAux(p, lastSon(t), check, kind)
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
