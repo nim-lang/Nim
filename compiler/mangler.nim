@@ -24,6 +24,8 @@ conflict table; they are increasing but not guaranteed to be sequential.
 
 ]##
 
+const
+  inspect = "SharedList"
 
 import # compiler imports
 
@@ -59,7 +61,16 @@ proc mangle*(p: ModuleOrProc; s: PSym): string
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope
 proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string
 
+proc hashTypeDef*(p: PType): SigHash =
+  ## A hash of the type that can discern between distinct and alias;
+  ## this is used to separate entries in the typecaches so that a
+  ## seq[string] isn't clobbered by an alias like seq[TaintedString].
+  result = hashType(p, {CoType, CoDistinct}) # CoNaming
+  if p.sym != nil:
+    echo mangle(p.sym.name.s), " --> ", result
+
 proc getSomeNameForModule*(m: PSym): string =
+  ## does what it says on the tin!
   assert m.kind == skModule
   assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
@@ -147,21 +158,12 @@ proc shouldAppendModuleName(s: PSym): bool =
       result = true
 
 const
-  irrelevantForBackend* = {tyGenericBody, tyGenericInst, tyOwned,
-                           tyGenericInvocation, tyDistinct, tyRange,
-                           tyStatic, tyAlias, tySink, tyInferred}
-  threeLetterShorties = {tyRef, tySequence, tyObject, tyTuple, tyArray,
-                         tyPtr, tyString, tySet, tyOrdinal, tyTypeDesc}
-  unwrapTypeArg = {tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray}
-
-when true:
-  const
-    irrelevantForNaming = irrelevantForBackend + {tyVar}
-else:
-  const
-    irrelevantForNaming = {tyGenericBody, tyGenericInst, tyOwned,
-                           tyGenericInvocation, tyAlias, # tyDistinct,
-                           tyVar, tyStatic, tyRange, tySink, tyInferred}
+  threeLetterShorties = {tyOrdinal, tySequence, tyObject, tyTuple, tyArray,
+                         tyVar, tyPtr, tyString, tySet, tyRef, tyTypeDesc}
+  unwrapTypeArg = {tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray,
+                   tySink, tyGenericInst, tyUserTypeClass, tyInferred,
+                   tyUserTypeClassInst, tyOwned, tyDistinct}
+  irrelevantForNaming = irrelevantForBackend + {tyVar}
 
 proc shortKind(k: TTypeKind): string =
   ## truncate longer type names
@@ -183,7 +185,7 @@ proc shortKind(k: TTypeKind): string =
 
 proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## compose a type name for a type that has an unusable symbol
-  var typ = typ.skipTypes(irrelevantForBackend)
+  var typ = typ.skipTypes(irrelevantForNaming)
   case typ.kind
   of unwrapTypeArg:
     # set[Enum] -> setEnum for "first word" shortening purposes
@@ -202,7 +204,7 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
     # always reuse it
 
     # these need a signature-based name so that type signatures match :-(
-    shortKind(typ.kind) & $hashType(typ)
+    shortKind(typ.kind) & $hashTypeDef(typ)
   else:
     shortKind(typ.kind)
 
@@ -439,17 +441,38 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     let counter = getOrSet(m.sigConflicts, name, conflictKey(typ))
     result = name.rope
     result.maybeAddCounter counter
-    when true:
-      if typ.sym != nil and typ.sym.name.s == "TaintedString":
-        echo "type mangle:"
-        debug typ
+    when not defined(release):
+      if inspect in $result:
         echo "type mangle used:"
         debug t
-        result.add "/*" & $key & "*/"
-        echo "type mangle result: ", $result
+      echo "=> ", conflictKey(p), " >> ", $result, spaces(4), $hashTypeDef(t)
+  when not defined(release):
+    #if typ.sym != nil and typ.sym.name.s == inspect:
+    if inspect in $result:
+      echo "original type mangle:"
+      debug typ
+      result.add "/*" & $conflictKey(typ) & "*/"
+    echo "-> ", conflictKey(p), " >> ", $result, spaces(4), $hashTypeDef(typ)
 
   if result == nil:
-    internalError(m.config, "getTypeName: " & $typ.kind)
+    internalError(p.config, "getTypeName: " & $typ.kind)
+
+proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
+  ## retrieve (or produce) a useful name for the given type; this is what
+  ## codegen uses exclusively
+  let m = getem()
+
+  block:
+    when false:
+      result = getOrDefault(m.typeCache, sig)
+      if result != nil:
+        break
+
+      result = getOrDefault(m.forwTypeCache, sig)
+      if result != nil:
+        break
+
+    result = getTypeName(p, typ)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
