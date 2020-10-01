@@ -1988,6 +1988,22 @@ borrow operation of ``v`` even though a human being can easily see that it
 will never do that at runtime.
 
 
+Start of a borrow
+-----------------
+
+A borrow starts with one of the following:
+
+- The assignment of a non-view-type to a view-type.
+- The assingment of a location that is derived from a local parameter
+  to a view-type.
+
+
+End of a borrow
+---------------
+
+A borrow operation ends with the last usage of the view variable.
+
+
 Reborrows
 ---------
 
