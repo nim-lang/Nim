@@ -66,8 +66,10 @@ proc hashTypeDef*(p: PType): SigHash =
   ## this is used to separate entries in the typecaches so that a
   ## seq[string] isn't clobbered by an alias like seq[TaintedString].
   result = hashType(p, {CoType, CoDistinct}) # CoNaming
-  if p.sym != nil:
-    echo mangle(p.sym.name.s), " --> ", result
+  when not defined(release):
+    when startsWith($result, inspect):
+      if p.sym != nil:
+        echo mangle(p.sym.name.s), " --> ", result
 
 proc getSomeNameForModule*(m: PSym): string =
   ## does what it says on the tin!
@@ -99,22 +101,41 @@ proc isNimOrCKeyword*(w: PIdent): bool =
   else:
     false
 
-proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
-  ## Add/get a mangled name from the conflicts table and return the number
-  ## of conflicts for that name at the time of its insertion.
+proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
+  ## Add/get a mangled name from the scope's conflicts table and return
+  ## the number of conflicts for that name at the time of its insertion.
+  template conflicts(): ConflictsTable = p.sigConflicts
   let key = $key
+
   result = getOrDefault(conflicts, key, -1)
+  when not defined(release):
+    if startsWith(name, inspect):
+      echo "getorset on ", $typeof(p), " ", conflictKey(p), " addr ", cast[uint](p), " table ", cast[uint](addr conflicts)
+      when p is BModule:
+        echo p.cfilename.string
+      else:
+        echo p.prc.name.s
+      echo "getorset ", name, " with key ", key, " is ", result
+
   if result == -1:
     # start counting at zero so we can omit an initial append
     result = getOrDefault(conflicts, name, 0)
+    when not defined(release):
+      if startsWith(name, inspect):
+        echo "get or set ", name, " with key ", name, " table: ", result
     if result == 0:
       # set the value for the name to indicate the NEXT available counter
       conflicts[name] = 1
     else:
       # this is kinda important; only an idiot would omit it on his first try
       inc conflicts[name]
-    # cache the result associated with the key
+    # cache the association between key and result
     conflicts[key] = result
+  when not defined(release):
+    if startsWith(name, inspect):
+      echo "Get/Set ", name, " with key ", name, " table: ", conflicts[name]
+      echo "Get/Set ", name, " with key ", key, " table: ", conflicts[key]
+      #echo conflicts
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym) =
   ## We currently only use this to remove parameters from a conflict table
@@ -227,13 +248,17 @@ template maybeAddCounter(result: typed; count: int) =
 
 proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## Should we add the first argument's type to the mangle?  If yes, DO IT.
-  if s.kind in routineKinds:
-    if s.typ != nil:
-      result = s.typ.sons.len >= 2
-      if result:
-        name.add "_"
-        # avoid including the conflictKey of the 1st param
-        name.add typeName(p, s.typ.sons[1], shorten = true)
+  result = s.kind in routineKinds
+  if result:
+    # disabled for now because i can't figure out how to handle aliases
+    when false:
+      if s.typ != nil:
+        if s.typ.sons.len >= 2:
+          # avoid including the conflictKey of the 1st param
+          name.add_and typeName(p, s.typ.sons[1], shorten = true)
+    else:
+      # procs are distinguished with an extra _ to prevent type clash
+      name.add "_"
 
 proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## `true` if the symbol is a source of link collisions; if so,
@@ -332,10 +357,8 @@ proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
   ## `true` if the symbol is presumed to be in module-level scope
   ## for the purposes of conflict detection
 
-  # critically, we must check for conflicts at the source module
-  # in the event a global symbol is actually foreign to `p`
-  # NOTE: constants are effectively global
-  result = sfGlobal in s.flags or s.kind == skConst
+  # NOTE: constants and types are effectively global
+  result = sfGlobal in s.flags or s.kind in {skConst, skType}
 
   when p is BProc:
     # if it's nominally proc but has no proc symbol, then we'll use
@@ -365,6 +388,8 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
         break
 
     if atModuleScope(p, s):
+      # critically, we must check for conflicts at the source module
+      # in the event a global symbol is actually foreign to `p`
       var parent = findPendingModule(m, s)
       if parent != nil:   # javascript can yield nil here
         when parent is BModule:
@@ -373,7 +398,12 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
             if parent.cfilename.string == m.cfilename.string:
               break
           # use or set the existing foreign counter for the key
+          when not defined(release):
+            echo "DO GETSET PARENT"
           (name, counter) = getSetConflict(parent, s)
+          when not defined(release):
+            if startsWith(name, inspect):
+              echo "DID GETSET PARENT FOR ", name, " counter ", counter
           break
 
   # only write mangled names for c codegen
@@ -386,47 +416,89 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   # if the counter hasn't been set from a foreign or cached symbol,
   if counter == -1:
     # set it using the local conflicts table
-    counter = getOrSet(p.sigConflicts, name, conflictKey(s))
+    counter = getOrSet(p, name, conflictKey(s))
+    when not defined(release):
+      if startsWith(name, inspect):
+        echo "new to conflicts of ", $typeof(p), " is ", name, " key ", key, " counter ", counter
   else:
+    when not defined(release):
+      if startsWith(name, inspect):
+        echo "old to conflicts of ", $typeof(p), " is ", name, " key ", key, " counter ", counter
+
+    # if the name is already in use locally,
+    if name in p.sigConflicts:
+      # if the existing name could clash,
+      if counter < p.sigConflicts[name]:
+        # and the table doesn't already bind the key to this counter,
+        if key notin p.sigConflicts or p.sigConflicts[key] != counter:
+          # this is a pretty serious problem!
+          internalError(m.config, "name clash between two modules: " & name)
+
     # else, stuff it into the local table with the discovered counter
     p.sigConflicts[key] = counter
 
-    # set the next value to the larger of the local and remote values
+    # set the next value to the larger of the foreign and local values
     p.sigConflicts[name] = max(counter + 1,
                                getOrDefault(p.sigConflicts, name, 1))
 
   result = (name: name, counter: counter)
 
-proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
-  ## produce a unique identity-or-signature for the given module and symbol
-  let conflict = getSetConflict(m, s)
+proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
+  ## Provide the location rope for symbol `s` as used in module|proc `p`.
+  when not defined(release):
+    if s.name.s == inspect:
+      echo "p is module ", p is BModule
+      echo "p key ", $conflictKey(p)
+
+  let conflict = getSetConflict(p, s)
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
-  when true:
-    if "TaintedString" in $result: #startsWith($result, "setChar"):
+  when not defined(release):
+    if startsWith($result, inspect):
       debug s
-      when m is BModule:
+      when p is BModule:
         result = "/*" & $conflictKey(s) & "*/" & result
-        debug m.cfilename.string
+        debug p.cfilename.string
         debug "module $4 >> $1 .. $2 -> $3" %
-          [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
-      elif m is BProc:
+          [ $conflictKey(s), s.name.s, $result, $conflictKey(p.module) ]
+      elif p is BProc:
         result = "/*" & $conflictKey(s) & "*/" & result
         debug "  proc $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result,
-           if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
+           if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
+
+proc `[]=`*(tc: var TypeCache; sig: SigHash; name: Rope) =
+  ## make sure we aren't mutating the typecache incorrectly
+  if sig in tc:
+    assert $name == $tc[sig], "typecache mutation"
+    assert false, "gratuitous typecache set"
+  else:
+    tables.`[]=`(tc, sig, name)
 
 proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
-  ## produce a useful name for the given type;
-  ## this is what codegen uses exclusively
-  let m = getem()
-  var key = $conflictKey(typ)
+  ## Produce a useful name for the given type; this is what codegen uses
+  ## when a SigHash is not available.
+  var m = getem()
+
+  # we don't currently use the proc scope for types; this is just a guard
+  # to ensure that we don't do so accidentally
+  var p = m
+
+  when not defined(release):
+    if 17445037 == typ.uniqueId:
+      echo "p is module (get type name) ", p is BModule
+      echo "p key ", conflictKey(m)
+
   block found:
     # try to find the actual type
     var t = typ
     while true:
       # use an immutable symbol name if we find one
       if t.sym.hasImmutableName:
+        when false:
+          # make sure we use the source module for any type requested
+          p = findPendingModule(p, t.sym)
+
         # the symbol might need mangling, first
         result = mangleName(p, t.sym)
         break found
@@ -435,27 +507,30 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
       else:
         break            # this looks like a good place to stop
 
-    # we'll use the module-level conflicts because, c'mon, it's a type
     assert t != nil
-    let name = typeName(m, t)
-    let counter = getOrSet(m.sigConflicts, name, conflictKey(typ))
+    let name = typeName(p, t)
+
+    let counter = getOrSet(p, name, conflictKey(typ))  # source
+    if counter != getOrSet(m, name, conflictKey(typ)): # destination
+      internalError(m.config, "name clash between two modules: " & name)
+
     result = name.rope
     result.maybeAddCounter counter
     when not defined(release):
       if inspect in $result:
         echo "type mangle used:"
         debug t
-      echo "=> ", conflictKey(p), " >> ", $result, spaces(4), $hashTypeDef(t)
+        echo "=> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(t)
   when not defined(release):
     #if typ.sym != nil and typ.sym.name.s == inspect:
     if inspect in $result:
       echo "original type mangle:"
       debug typ
       result.add "/*" & $conflictKey(typ) & "*/"
-    echo "-> ", conflictKey(p), " >> ", $result, spaces(4), $hashTypeDef(typ)
+      echo "-> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(typ)
 
   if result == nil:
-    internalError(p.config, "getTypeName: " & $typ.kind)
+    internalError(m.config, "getTypeName: " & $typ.kind)
 
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
   ## retrieve (or produce) a useful name for the given type; this is what
@@ -531,10 +606,6 @@ proc mangleName*(p: ModuleOrProc; s: PSym): Rope =
   ## Mangle the symbol name and set a new location rope for it, returning
   ## same.  Has no effect if the symbol already has a location rope.
   if s.loc.r == nil:
-    when false:
-      if s.kind == skProc:
-        writeStackTrace()
-        quit(1)
     when p is BModule:
       # skParam is valid for global object fields with proc types
       #assert s.kind notin {skParam, skResult}
@@ -605,9 +676,14 @@ proc mangleParamName*(m: BModule; s: PSym): Rope =
     if s.kind == skResult:
       s.loc.r = ~"result"
     else:
-      s.loc.r = mangleName(m, s)
-    echo "naive param mangle of ", s.name.s, " at ", cast[uint](s), " into ", $s.loc.r
-
+      # this is a little subtle; we need a mangle sophisticated enough
+      # to rename `default`, and correct enough to match a later mangle,
+      # but we don't want to actually getSetConflict() because we don't
+      # want param names to be numbered as if they might clash due to
+      # the module-level scope of the conflicts table...
+      s.loc.r = mangle(m, s).rope
+    when not defined(release):
+      echo "naive param mangle of ", s.name.s, " at ", cast[uint](s), " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
     internalError(m.config, s.info, "mangleParamName")
@@ -623,17 +699,19 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
     if s.kind == skResult:
       s.loc.r = ~"result"        # just set it to result if it's skResult
       # record (and verify) the result in the local conflicts table
-      if getOrSet(p.sigConflicts, "result", conflictKey(s)) != 0:
+      if getOrSet(p, "result", conflictKey(s)) != 0:
         internalError(p.config, s.info, "assignParam: shadowed result")
     else:
       s.loc.r = nil              # critically, destroy the location
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
-    if p.prc == nil:
-      echo "mangled ", s.name.s, " at ", cast[uint](s), " from nil proc into ", $s.loc.r
-    else:
-      echo "mangled ", s.name.s, " at ", cast[uint](s), " from ", p.prc.name.s, " into ", $s.loc.r
+    when not defined(release):
+      if p.prc == nil:
+        echo "mangled ", s.name.s, " at ", cast[uint](s), " from nil proc into ", $s.loc.r
+      else:
+        echo "mangled ", s.name.s, " at ", cast[uint](s), " from ", p.prc.name.s, " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
     internalError(p.config, s.info, "mangleParamName")
 
-proc assignParam*(p: BProc, s: PSym; ret: PType) = discard
+proc assignParam*(p: BProc, s: PSym; ret: PType) =
+  discard #mangleParamName(p, s)

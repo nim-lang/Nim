@@ -246,6 +246,8 @@ proc seqStar(m: BModule): string =
   else: result = "*"
 
 proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
+  when not defined(release):
+    echo "forward of ", sig
   result = cacheGetType(m.forwTypeCache, sig)
   if result != nil: return
   result = getTypePre(m, typ, sig)
@@ -262,15 +264,18 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     doAssert m.forwTypeCache[sig] == result
   else: internalError(m.config, "getTypeForward(" & $typ.kind & ')')
 
-proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): Rope =
+proc getTypeDescWeak(p: ModuleOrProc; t: PType; check: var IntSet; kind: TSymKind): Rope =
   ## like getTypeDescAux but creates only a *weak* dependency. In other words
   ## we know we only need a pointer to it so we only generate a struct forward
   ## declaration:
+  when not defined(release):
+    echo "weak"
+  let m = getem()
   let etB = t.skipTypes(abstractInst)
   case etB.kind
   of tyObject, tyTuple:
     if isImportedCppType(etB) and t.kind == tyGenericInst:
-      result = getTypeDescAux(m, t, check, kind)
+      result = getTypeDescAux(p, t, check, kind)
     else:
       result = getTypeForward(m, t, hashTypeDef(t))
       pushType(m, t)
@@ -291,7 +296,6 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
 
       if cacheGetType(m.typeCache, sig) == nil:
         m.typeCache[sig] = result
-        #echo "adding ", sig, " ", typeToString(t), " ", m.module.name.s
         appcg(m, m.s[cfsTypes],
           "struct $1 {$N" &
           "  NI len; $1_Content* p;$N" &
@@ -300,12 +304,11 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
       result = getTypeForward(m, t, sig) & seqStar(m)
     pushType(m, t)
   else:
-    result = getTypeDescAux(m, t, check, kind)
+    result = getTypeDescAux(p, t, check, kind)
 
 proc getSeqPayloadType(m: BModule; t: PType): Rope =
   var check = initIntSet()
   result = getTypeDescWeak(m, t, check, skParam) & "_Content"
-  #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
 proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
   let sig = hashTypeDef(t)
@@ -337,7 +340,8 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   ## to generate the actual procedure definition.
   let m = getem()
   params = nil
-  echo "enter proc params"
+  when not defined(release):
+    echo "enter proc params"
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
     rettype = ~"void"
   else:
@@ -347,16 +351,23 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
+    when not defined(release):
+      if param.typ != nil:
+        let sig = hashTypeDef(param.typ)
+        echo spaces(10), getTypeName(p, param.typ, sig), spaces(4), sig
     fillLoc(param.loc, locParam, t.n[i], mangleParamName(p, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
-      params.add(getTypeDescWeak(m, param.typ, check, skParam))
+      params.add(getTypeDescWeak(p, param.typ, check, skParam))
       params.add(~"*")
       incl(param.loc.flags, lfIndirect)
       param.loc.storage = OnUnknown
     elif weakDep:
-      params.add(getTypeDescWeak(m, param.typ, check, skParam))
+      params.add(getTypeDescWeak(p, param.typ, check, skParam))
     else:
+      when not defined(release):
+        if param.typ != nil:
+          echo spaces(10), getTypeDescAux(p, param.typ, check, skParam), spaces(4), $hashTypeDef(param.typ)
       params.add(getTypeDescAux(p, param.typ, check, skParam))
     params.add(~" ")
     if sfNoalias in param.flags:
@@ -377,7 +388,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
     var arr = t[0]
     if params != nil: params.add(", ")
     if mapReturnType(m.config, t[0]) != ctArray:
-      params.add(getTypeDescWeak(m, arr, check, skResult))
+      params.add(getTypeDescWeak(p, arr, check, skResult))
       params.add("*")
     else:
       params.add(getTypeDescAux(p, arr, check, skResult))
@@ -391,7 +402,8 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   if params == nil: params.add("void)")
   else: params.add(")")
   params = "(" & params
-  echo "exit proc params ", $params
+  when not defined(release):
+    echo "exit proc params ", $params
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
@@ -581,6 +593,8 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
 
 proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
   # returns only the type's name
+  when not defined(release):
+    echo "aux"
   let m = getem()
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
@@ -600,7 +614,11 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
   result = getTypePre(m, t, sig)
   if result != nil and t.kind != tyOpenArray:
     excl(check, t.id)
+    when not defined(release):
+      echo "=", $result
     return
+  when not defined(release):
+    echo t.kind
   case t.kind
   of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
@@ -614,6 +632,8 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
         et = elemType(etB)
       etB = et.skipTypes(abstractInst)
       star[0] = '*'
+    when not defined(release):
+      echo etB.kind
     case etB.kind
     of tyObject, tyTuple:
       if isImportedCppType(etB) and et.kind == tyGenericInst:
@@ -625,9 +645,12 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
         m.typeCache[sig] = result
     of tySequence:
       if optSeqDestructors in m.config.globalOptions:
-        result = getTypeDescWeak(m, et, check, kind) & star
+        result = getTypeDescWeak(p, et, check, kind) & star
         m.typeCache[sig] = result
       else:
+        when not defined(release):
+          echo "forward"
+          debug et
         # no restriction! We have a forward declaration for structs
         let name = getTypeForward(m, et, hashTypeDef et)
         result = name & seqStar(m) & star
@@ -685,7 +708,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
              [result, rettype, desc])
   of tySequence:
     if optSeqDestructors in m.config.globalOptions:
-      result = getTypeDescWeak(m, t, check, kind)
+      result = getTypeDescWeak(p, t, check, kind)
     else:
       # we cannot use getTypeForward here because then t would be associated
       # with the name of the struct, not with the pointer to the struct:
@@ -798,11 +821,15 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
       case s
-      of 1, 2, 4, 8: m.s[cfsTypes].addf("typedef NU$2 $1;$n", [result, rope(s*8)])
-      else: m.s[cfsTypes].addf("typedef NU8 $1[$2];$n",
-             [result, rope(getSize(m.config, t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
-     tyUserTypeClass, tyUserTypeClassInst, tyInferred:
+      of 1, 2, 4, 8:
+        m.s[cfsTypes].addf("typedef NU$2 $1;$n", [result, rope(s*8)])
+      else:
+        m.s[cfsTypes].addf("typedef NU8 $1[$2];$n",
+                           [result, rope(getSize(m.config, t))])
+  of tyDistinct, tyTypeDesc, tyAlias, tyUserTypeClass, tyUserTypeClassInst:
+    result = getTypeName(p, t, sig)
+    m.typeCache[sig] = result
+  of tyGenericInst, tySink, tyOwned, tyOrdinal, tyInferred:
     result = getTypeDescAux(p, lastSon(t), check, kind)
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
@@ -875,16 +902,19 @@ proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
-  echo "gen proc header for ", prc.name.s
+  when not defined(release):
+    echo "gen proc header for ", prc.name.s
   genProcParams(p, prc.typ, rettype, params, check)
-  echo "fill loc in genheader"
-  if prc.loc.r == nil:
-    echo "proc ", prc.name.s, " at ", cast[uint](prc), " is fresh"
-  else:
-    echo "proc ", prc.name.s, " at ", cast[uint](prc), " REUSES ", $prc.loc.r
+  when not defined(release):
+    echo "fill loc in genheader"
+    if prc.loc.r == nil:
+      echo "proc ", prc.name.s, " at ", cast[uint](prc), " is fresh"
+    else:
+      echo "proc ", prc.name.s, " at ", cast[uint](prc), " REUSES ", $prc.loc.r
   # make sure we mangle the proc name after having mangled the 1st param
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(p, prc), OnUnknown)
-  echo "mangle ", prc.name.s, " into ", $prc.loc.r
+  when not defined(release):
+    echo "mangle ", prc.name.s, " into ", $prc.loc.r
 
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with
