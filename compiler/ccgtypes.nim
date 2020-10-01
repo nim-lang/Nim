@@ -828,7 +828,6 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
                            [result, rope(getSize(m.config, t))])
   of tyDistinct, tyTypeDesc, tyAlias, tyUserTypeClass, tyUserTypeClassInst:
     result = getTypeName(p, t, sig)
-    m.typeCache[sig] = result
   of tyGenericInst, tySink, tyOwned, tyOrdinal, tyInferred:
     result = getTypeDescAux(p, lastSon(t), check, kind)
   else:
