@@ -1,5 +1,3 @@
-import std/private/since
-
 when sizeof(int) <= 2:
   type IntLikeForCount = int|int8|int16|char|bool|uint8|enum
 else:
