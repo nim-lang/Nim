@@ -648,7 +648,7 @@ proc genParForStmt(p: BProc, t: PNode) =
 
     # $n at the beginning because of #9710
     if call.len == 4: # `||`(a, b, annotation)
-      lineF(p, cpsStmts, "$n#pragma omp $4$n" &
+      lineF(p, cpsStmts, "$n#pragma $4$n" &
                           "for ($1 = $2; $1 <= $3; ++$1)",
                           [forLoopVar.loc.rdLoc,
                           rangeA.rdLoc, rangeB.rdLoc,
@@ -656,7 +656,7 @@ proc genParForStmt(p: BProc, t: PNode) =
     else: # `||`(a, b, step, annotation)
       var step: TLoc
       initLocExpr(p, call[3], step)
-      lineF(p, cpsStmts, "$n#pragma omp $5$n" &
+      lineF(p, cpsStmts, "$n#pragma $5$n" &
                     "for ($1 = $2; $1 <= $3; $1 += $4)",
                     [forLoopVar.loc.rdLoc,
                     rangeA.rdLoc, rangeB.rdLoc, step.rdLoc,

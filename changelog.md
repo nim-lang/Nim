@@ -294,6 +294,7 @@ proc mydiv(a, b): int {.raises: [].} =
 
 
 - Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
+- Added `system.staticFor` compile-time unrolled for loop iterator.
 
 
 ## Compiler changes
