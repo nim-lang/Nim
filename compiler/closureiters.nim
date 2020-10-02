@@ -1288,6 +1288,7 @@ type
   PreprocessContext = object
     finallys: seq[PNode]
     config: ConfigRef
+    blocks: seq[(PNode, int)]
   FreshVarsContext = object
     tab: Table[int, PSym]
     config: ConfigRef
@@ -1347,13 +1348,32 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
     if f.kind == nkFinally:
       discard c.finallys.pop()
 
+  of nkWhileStmt, nkBlockStmt:
+    c.blocks.add((n, c.finallys.len))
+    for i in 0 ..< n.len:
+      result[i] = preprocess(c, n[i])
+    discard c.blocks.pop()
+
   of nkBreakStmt:
-    if c.finallys.len > 0:
-      result = newNodeI(nkStmtList, n.info)
-      for i in countdown(c.finallys.high, 0):
-        var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.config, info: n.info)
-        result.add freshVars(preprocess(c, c.finallys[i]), vars)
-      result.add n
+    if c.blocks.len == 0:
+      discard
+    else:
+      var fin = -1
+      if n[0].kind == nkEmpty:
+        fin = c.blocks[^1][1]
+      elif n[0].kind == nkSym:
+        for i in countdown(c.blocks.high, 0):
+          if c.blocks[i][0].kind == nkBlockStmt and c.blocks[i][0][0].kind == nkSym and
+              c.blocks[i][0][0].sym == n[0].sym:
+            fin = c.blocks[i][1]
+            break
+
+      if fin >= 0:
+        result = newNodeI(nkStmtList, n.info)
+        for i in countdown(c.finallys.high, fin):
+          var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.config, info: n.info)
+          result.add freshVars(preprocess(c, c.finallys[i]), vars)
+        result.add n
   of nkSkip: discard
   else:
     for i in 0 ..< n.len:
