@@ -168,7 +168,6 @@ proc bundleWinTools(args: string) =
   buildVccTool(args)
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
-  bundleC2nim(args)
   nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
