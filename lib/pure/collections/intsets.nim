@@ -18,9 +18,8 @@
 ## **See also:**
 ## * `sets module <sets.html>`_ for more general hash sets
 
-
-import
-  hashes
+import std/private/since
+import hashes
 
 type
   BitScalar = uint
@@ -161,6 +160,9 @@ iterator items*(s: IntSet): int {.inline.} =
 
 proc initIntSet*: IntSet =
   ## Returns an empty IntSet.
+  ##
+  ## See also:
+  ## * `toIntSet proc <#toIntSet,openArray[int]>`_
   runnableExamples:
     var a = initIntSet()
     assert len(a) == 0
@@ -250,6 +252,24 @@ proc incl*(s: var IntSet, other: IntSet) =
     assert 5 in a
 
   for item in other: incl(s, item)
+
+proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3).} =
+  ## Creates a new IntSet that contains the elements of `x`.
+  ##
+  ## Duplicates are removed.
+  ##
+  ## See also:
+  ## * `initIntSet proc <#initIntSet>`_
+  runnableExamples:
+    var
+      a = toIntSet([5, 6, 7])
+      b = toIntSet(@[1, 8, 8, 8])
+    assert len(a) == 3
+    assert len(b) == 2
+
+  result = initIntSet()
+  for item in items(x):
+    result.incl(item)
 
 proc containsOrIncl*(s: var IntSet, key: int): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -584,6 +604,8 @@ when isMainModule:
 
   x.incl(1044)
   x.excl(1044)
+
+  assert x == [1, 2, 7, 1056].toIntSet
 
   assert x.containsOrIncl(888) == false
   assert 888 in x

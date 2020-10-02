@@ -529,15 +529,21 @@ proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    result.add if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
-    while true:
+    let a = if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
+    result.add a
+
+    while p.tok.tokType != tkEof:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
       if p.tok.tokType == tkParRi:
         break
       elif not (sameInd(p) or realInd(p)):
         parMessage(p, errInvalidIndentation)
-      result.add complexOrSimpleStmt(p)
+      let a = complexOrSimpleStmt(p)
+      if a.kind == nkEmpty:
+        parMessage(p, errExprExpected, p.tok)
+      else:
+        result.add a
   dec p.inSemiStmtList
   result.transitionSonsKind(nkStmtListExpr)
 
@@ -2244,7 +2250,13 @@ proc parseStmt(p: var Parser): PNode =
         if p.tok.tokType in {tkElse, tkElif}:
           break # Allow this too, see tests/parser/tifexprs
 
-        result.add complexOrSimpleStmt(p)
+        let a = complexOrSimpleStmt(p)
+        if a.kind == nkEmpty and not p.hasProgress:
+          parMessage(p, errExprExpected, p.tok)
+          break
+        else:
+          result.add a
+
         if not p.hasProgress and p.tok.tokType == tkEof: break
   else:
     # the case statement is only needed for better error messages:

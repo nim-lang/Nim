@@ -205,6 +205,9 @@
   The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
   Previously, it was necessary to create an empty HeapQueue and add items
   manually.
+- Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
+  is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty IntSet and add items manually.
 
 
 ## Language changes
@@ -298,7 +301,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
   `--deepcopy:on`.
 
-
+- Added a `std/effecttraits` module for introspection of the inferred `.raise` effects.
+  We hope this enables `async` macros that are precise about the possible exceptions that
+  can be raised.
 - Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
 
 
