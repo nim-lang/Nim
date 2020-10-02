@@ -261,3 +261,12 @@ proc registerAdditionalOps*(c: PCtx) =
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
     registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
       setResult(a, times.getTime().toLit)
+
+  registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
+        fn.typ.n[0][exceptionEffects] != nil:
+      var list = newNodeI(nkBracket, fn.info)
+      for e in fn.typ.n[0][exceptionEffects]:
+        list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info)
+      setResult(a, list)
