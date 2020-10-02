@@ -69,7 +69,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
   while hasNext(it, x):
     let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
-      if result.len == 0 or result[^1] notin {DirSep, AltSep}:
+      if result.len == 0 or result[^1].char notin {DirSep, AltSep}:
         result.add dirSep
       state = state or 1
     elif isDotDot(x, b):
