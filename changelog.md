@@ -201,6 +201,10 @@
 
 - Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
 
+- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
+  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
+  Previously, it was necessary to create an empty HeapQueue and add items
+  manually.
 - Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
   is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty IntSet and add items manually.
