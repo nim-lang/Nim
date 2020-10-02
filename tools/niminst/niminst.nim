@@ -30,6 +30,7 @@ type
     actionInno,   # action: create Inno Setup installer
     actionNsis,   # action: create NSIS installer
     actionScripts # action: create install and deinstall scripts
+    actionZip     # action: create zip file
     actionXz,     # action: create xz file
     actionDeb     # action: prepare deb package
 
@@ -139,6 +140,7 @@ Usage:
 Command:
   csource             build C source code for source based installations
   scripts             build install and deinstall scripts
+  zip                 build the ZIP file
   inno                build the Inno Setup installer
   nsis                build the NSIS Setup installer
   deb                 create files for debhelper
@@ -167,6 +169,7 @@ proc parseCmdLine(c: var ConfigData) =
           case a
           of "csource": incl(c.actions, actionCSource)
           of "scripts": incl(c.actions, actionScripts)
+          of "zip": incl(c.actions, actionZip)
           of "xz": incl(c.actions, actionXz)
           of "inno": incl(c.actions, actionInno)
           of "nsis": incl(c.actions, actionNsis)
@@ -721,6 +724,8 @@ proc main() =
     srcdist(c)
   if actionScripts in c.actions:
     writeInstallScripts(c)
+  if actionZip in c.actions:
+    xzDist(c, true)
   if actionXz in c.actions:
     xzDist(c)
   if actionDeb in c.actions:
