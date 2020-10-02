@@ -503,6 +503,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
     #  decl.add(" GC_GUARD")
     if sfVolatile in s.flags: result.add(" volatile")
+    if sfNoalias in s.flags: result.add(" NIM_NOALIAS")
     result.add(" ")
     result.add(s.loc.r)
   else:
@@ -563,6 +564,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         if p.hcrOn: decl.add("*")
         if sfRegister in s.flags: decl.add(" register")
         if sfVolatile in s.flags: decl.add(" volatile")
+        if sfNoalias in s.flags: decl.add(" NIM_NOALIAS")
         if value != nil:
           decl.addf(" $1 = $2;$n", [s.loc.r, value])
         else:
@@ -1261,6 +1263,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
       if lfDynamicLib in sym.loc.flags: m.s[cfsVars].add("*")
       if sfRegister in sym.flags: m.s[cfsVars].add(" register")
       if sfVolatile in sym.flags: m.s[cfsVars].add(" volatile")
+      if sfNoalias in sym.flags: m.s[cfsVars].add(" NIM_NOALIAS")
       m.s[cfsVars].addf(" $1;$n", [sym.loc.r])
       if m.hcrOn: m.initProc.procSec(cpsLocals).addf(
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,

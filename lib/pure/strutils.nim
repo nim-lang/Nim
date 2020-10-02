@@ -1930,7 +1930,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
 
 proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed
+  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##

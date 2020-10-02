@@ -278,23 +278,23 @@ proc genOpenArrayConv(p: BProc; d: TLoc; a: TLoc) =
   case a.t.skipTypes(abstractVar).kind
   of tyOpenArray, tyVarargs:
     if reifiedOpenArray(a.lode):
-      linefmt(p, cpsStmts, "$1.d = $2.d; $1.l = $2.l;$n",
+      linefmt(p, cpsStmts, "$1.Field0 = $2.Field0; $1.Field1 = $2.Field1;$n",
         [rdLoc(d), a.rdLoc])
     else:
-      linefmt(p, cpsStmts, "$1.d = $2; $1.l = $2Len_0;$n",
+      linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $2Len_0;$n",
         [rdLoc(d), a.rdLoc])
   of tySequence:
-    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
       [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
   of tyArray:
-    linefmt(p, cpsStmts, "$1.d = $2; $1.l = $3;$n",
+    linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n",
       [rdLoc(d), rdLoc(a), rope(lengthOrd(p.config, a.t))])
   of tyString:
     let etyp = skipTypes(a.t, abstractInst)
     if etyp.kind in {tyVar} and optSeqDestructors in p.config.globalOptions:
       linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
 
-    linefmt(p, cpsStmts, "$1.d = $2$3; $1.l = $4;$n",
+    linefmt(p, cpsStmts, "$1.Field0 = $2$3; $1.Field1 = $4;$n",
       [rdLoc(d), a.rdLoc, dataField(p), lenExpr(p, a)])
   else:
     internalError(p.config, a.lode.info, "cannot handle " & $a.t.kind)
@@ -943,7 +943,7 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
     if reifiedOpenArray(arr.lode):
       linefmt(p, cpsStmts,
         "if ($2-$1 != -1 && " &
-        "((NU)($1) >= (NU)($3.l) || (NU)($2) >= (NU)($3.l))){ #raiseIndexError(); $4}$n",
+        "((NU)($1) >= (NU)($3.Field1) || (NU)($2) >= (NU)($3.Field1))){ #raiseIndexError(); $4}$n",
         [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
@@ -977,11 +977,11 @@ proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
                 ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
   else:
     if optBoundsCheck in p.options:
-      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.l)){ #raiseIndexError2($1,$2.l-1); $3}$n",
+      linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2.Field1)){ #raiseIndexError2($1,$2.Field1-1); $3}$n",
               [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
     inheritLocation(d, a)
     putIntoDest(p, d, n,
-                ropecg(p.module, "$1.d[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
+                ropecg(p.module, "$1.Field0[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
 
 proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -1739,8 +1739,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
         if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
         else: unaryExpr(p, e, d, "$1Len_0")
       else:
-        if op == mHigh: unaryExpr(p, e, d, "($1.l-1)")
-        else: unaryExpr(p, e, d, "$1.l")
+        if op == mHigh: unaryExpr(p, e, d, "($1.Field1-1)")
+        else: unaryExpr(p, e, d, "$1.Field1")
   of tyCString:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
@@ -2215,6 +2215,14 @@ proc genDispose(p: BProc; n: PNode) =
       # destructor, but it uses the runtime type. Afterwards the memory is freed:
       lineCg(p, cpsStmts, ["#nimDestroyAndDispose($#)", rdLoc(a)])
 
+proc genSlice(p: BProc; e: PNode; d: var TLoc) =
+  let (x, y) = genOpenArraySlice(p, e, e.typ, e.typ.lastSon)
+  if d.k == locNone: getTemp(p, e.typ, d)
+  linefmt(p, cpsStmts, "$1.Field0 = $2; $1.Field1 = $3;$n", [rdLoc(d), x, y])
+  when false:
+    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
+      "'toOpenArray' is only valid within a call expression")
+
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
@@ -2386,6 +2394,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
+    if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+      localError(p.config, e.info,
+        "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
+
     var a, b: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     initLocExpr(p, x, a)
@@ -2396,9 +2408,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
-  of mSlice:
-    localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
-      "'toOpenArray' is only valid within a call expression")
+  of mSlice: genSlice(p, e, d)
   else:
     when defined(debugMagics):
       echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
@@ -3040,7 +3050,23 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
 proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
-    result = genBracedInit(p, n[1], isConst)
+    when false:
+      # XXX The frontend doesn't keep conversions to openArray for us. :-(
+      # We need to change 'transformConv' first, but that is hard.
+      if n.typ.kind == tyOpenArray:
+        assert n[1].kind == nkBracket
+        let data = genBracedInit(p, n[1], isConst)
+
+        let payload = getTempName(p.module)
+        let ctype = getTypeDesc(p.module, n.typ.skipTypes(abstractInst)[0])
+        let arrLen = n[1].len
+        appcg(p.module, cfsData,
+          "static $5 $1 $3[$2] = $4;$n", [
+          ctype, arrLen, payload, data,
+          if isConst: "const" else: ""])
+        result = "{($1*)&$2, $3}" % [ctype, payload, rope arrLen]
+    else:
+      result = genBracedInit(p, n[1], isConst)
   else:
     var ty = tyNone
     if n.typ == nil:

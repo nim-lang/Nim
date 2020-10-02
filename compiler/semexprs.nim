@@ -1601,7 +1601,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if (x.typ.kind in {tyVar, tyLent} or isViewType(x.typ)) and x.kind == nkSym and x.sym.kind == skResult:
+    if (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView) and x.kind == nkSym and x.sym.kind == skResult:
       n[0] = x # 'result[]' --> 'result'
       n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
@@ -1712,8 +1712,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   if le == nil:
     localError(c.config, a.info, "expression has no type")
   elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
-        isAssignable(c, a) in {arNone, arLentValue}) or
-      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
+        isAssignable(c, a) in {arNone, arLentValue}) or (
+      skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
                renderTree(a, {renderNoComments}))
@@ -1754,17 +1754,21 @@ proc semReturn(c: PContext, n: PNode): PNode =
   if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or
       (not c.p.owner.typ.isNil and isClosureIterator(c.p.owner.typ)):
     if n[0].kind != nkEmpty:
-      # transform ``return expr`` to ``result = expr; return``
-      if c.p.resultSym != nil:
+      if n[0].kind == nkAsgn and n[0][0].kind == nkSym and c.p.resultSym == n[0][0].sym:
+        discard "return is already transformed"
+      elif c.p.resultSym != nil:
+        # transform ``return expr`` to ``result = expr; return``
         var a = newNodeI(nkAsgn, n[0].info)
         a.add newSymNode(c.p.resultSym)
         a.add n[0]
-        n[0] = semAsgn(c, a)
-        # optimize away ``result = result``:
-        if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym:
-          n[0] = c.graph.emptyNode
+        n[0] = a
       else:
         localError(c.config, n.info, errNoReturnTypeDeclared)
+        return
+      result[0] = semAsgn(c, n[0])
+      # optimize away ``result = result``:
+      if result[0][1].kind == nkSym and result[0][1].sym == c.p.resultSym:
+        result[0] = c.graph.emptyNode
   else:
     localError(c.config, n.info, "'return' not allowed here")
 
@@ -1827,8 +1831,10 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
         else:
           localError(c.config, n[0].info, errXExpected, "tuple constructor")
   else:
-    if isViewType(t):
-      n[0] = takeImplicitAddr(c, n[0], false)
+    when false:
+      # XXX investigate what we really need here.
+      if isViewType(t):
+        n[0] = takeImplicitAddr(c, n[0], false)
 
 proc semYield(c: PContext, n: PNode): PNode =
   result = n
@@ -2056,7 +2062,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
                   else:
                     identNodeSym.newSymNode
   quotes[1] = newTreeI(nkCall, n.info, identNode, newStrNode(nkStrLit, "result"))
-  result = newTreeI(nkCall, n.info, 
+  result = newTreeI(nkCall, n.info,
      createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)

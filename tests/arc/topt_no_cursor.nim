@@ -44,15 +44,17 @@ var
 var
   lresult
   lvalue
+  lnext
   _
 `=`(lresult, [123])
-var lnext_cursor: string
 _ = (
   let blitTmp = lresult
   blitTmp, ";")
 lvalue = _[0]
-lnext_cursor = _[1]
-`=sink`(result.value, lvalue)
+lnext = _[1]
+`=sink`(result.value, move lvalue)
+`=destroy`(lnext)
+`=destroy_1`(lvalue)
 -- end of expandArc ------------------------
 --expandArc: tt
 
@@ -148,7 +150,7 @@ proc p1(): Maybe =
   var lnext: string
   (lvalue, lnext) = (lresult, ";")
 
-  result.value = lvalue
+  result.value = move lvalue
 
 proc tissue15130 =
   doAssert p1().value == @[123]

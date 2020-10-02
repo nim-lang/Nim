@@ -507,6 +507,7 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result:
     return                    # Rule 4:
   result = (p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkEof}) or
+      (markup in ["``", "`"] and p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkWord, tkEof}) or
       (p.tok[p.idx + 1].symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!',
        '?', '_'})
@@ -522,6 +523,7 @@ proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   if not result:
     return                    # Rule 1:
   result = (p.idx == 0) or (p.tok[p.idx - 1].kind in {tkIndent, tkWhite}) or
+      (markup in ["``", "`"] and p.tok[p.idx - 1].kind in {tkIndent, tkWhite, tkWord}) or
       (p.tok[p.idx - 1].symbol[0] in
       {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'})
   if not result:
@@ -1102,6 +1104,8 @@ proc whichSection(p: RstParser): RstNodeKind =
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnHeadline
+    elif p.tok[p.idx].symbol == "```":
+      result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
     elif p.tok[p.idx].symbol == "::":

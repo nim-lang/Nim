@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "f4c818a046c2c3ceb1523c4c974e4b6e625d8ca3" # master
+  NimbleStableCommit = "26167cd3b7671006c8bd38cbef8708431ddf8687" # master
   FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
 
 when not defined(windows):
@@ -145,35 +145,11 @@ proc bundleC2nim(args: string) =
 
 proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git", commit = commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
+                  commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --nilseqs:on " & args)
-
-proc buildNimble(latest: bool, args: string) =
-  # if koch is used for a tar.xz, build the dist/nimble we shipped
-  # with the tarball:
-  var installDir = "dist/nimble"
-  if not latest and dirExists(installDir) and not dirExists("dist/nimble/.git"):
-    discard "don't do the git dance"
-  else:
-    if not dirExists("dist/nimble/.git"):
-      if dirExists(installDir):
-        var id = 0
-        while dirExists("dist/nimble" & $id):
-          inc id
-        installDir = "dist/nimble" & $id
-      # consider using/adapting cloneDependency
-      exec("git clone -q https://github.com/nim-lang/nimble.git " & installDir)
-    withDir(installDir):
-      if latest:
-        exec("git checkout -f master")
-        exec("git pull")
-      else:
-        exec("git fetch")
-        exec("git checkout " & NimbleStableCommit)
-  nimCompile(installDir / "src/nimble.nim",
-             options = "--noNimblePath --nilseqs:on -d:release " & args)
+             options = "-d:release --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -201,7 +177,8 @@ proc bundleWinTools(args: string) =
 
 proc bundleFusion(latest: bool) =
   let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
+                  allowBundled = true)
   copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
 
 proc zip(latest: bool; args: string) =
@@ -481,7 +458,7 @@ proc temp(args: string) =
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
-      "js" notin programArgs:
+      "js" notin programArgs and "rst2html" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
@@ -703,14 +680,14 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools(op.cmdLineRest)
-      of "nimble": buildNimble(latest, op.cmdLineRest)
+      of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
       # toolsNoNimble is kept for backward compatibility with build scripts
       of "toolsnonimble", "toolsnoexternal":
         buildTools(op.cmdLineRest)
       of "tools":
         buildTools(op.cmdLineRest)
-        buildNimble(latest, op.cmdLineRest)
+        bundleNimbleExe(latest, op.cmdLineRest)
         bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)

@@ -699,9 +699,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
-    elif n.typ == nil or n.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyVar}).kind == tyOpenArray:
-      # 'raise X' can be part of a 'case' expression. Deal with it here.
-      # openarrays require perfect forwarding
+    elif n.typ == nil:
+      # 'raise X' can be part of a 'case' expression. Deal with it here:
       result = p(n, c, s, normal)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter

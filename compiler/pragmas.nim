@@ -65,14 +65,15 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor, wNoalias}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
+  paramPragmas* = {wNoalias, wInject, wGensym}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe,
@@ -864,6 +865,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wRegister:
         noVal(c, it)
         incl(sym.flags, sfRegister)
+      of wNoalias:
+        noVal(c, it)
+        incl(sym.flags, sfNoalias)
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
@@ -1033,7 +1037,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wPush:
         processPush(c, n, i + 1)
         result = true
-      of wPop: processPop(c, it)
+      of wPop:
+        processPop(c, it)
+        result = true
       of wPragma:
         if not sym.isNil and sym.kind == skTemplate:
           sym.flags.incl sfCustomPragma
