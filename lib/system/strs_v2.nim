@@ -23,13 +23,13 @@ type
 
 const nimStrVersion {.core.} = 2
 
-template isLiteral(s): bool = (s.p == nil) or (s.p.cap and strlitFlag) == strlitFlag
+template isLiteral(p: ptr NimStrPayload): bool = p == nil or (p.cap and strlitFlag) == strlitFlag
 
 template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
 
-template frees(s) =
-  if not isLiteral(s):
-    deallocShared(s.p)
+proc destroyStrPayload(p: ptr NimStrPayload) {.compilerRtl.} = 
+  if not isLiteral(p):
+    stdDealloc(p)
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
@@ -37,10 +37,10 @@ proc resize(old: int): int {.inline.} =
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
-  if isLiteral(s):
+  if isLiteral(s.p):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
-    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+    s.p = cast[ptr NimStrPayload](stdAlloc0(contentSize(s.len + addlen), alignof(NimStrPayload)))
     s.p.cap = s.len + addlen
     if s.len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -49,7 +49,7 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
     let oldCap = s.p.cap and not strlitFlag
     if s.len + addlen > oldCap:
       let newCap = max(s.len + addlen, resize(oldCap))
-      s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
+      s.p = cast[ptr NimStrPayload](stdRealloc0(s.p, contentSize(oldCap), contentSize(newCap)))
       s.p.cap = newCap
 
 proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inline.} =
@@ -110,25 +110,25 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen == 0:
     discard "do not free the buffer here, pattern 's.setLen 0' is common for avoiding allocations"
   else:
-    if newLen > s.len or isLiteral(s):
+    if newLen > s.len or isLiteral(s.p):
       prepareAdd(s, newLen - s.len)
     s.p.data[newLen] = '\0'
   s.len = newLen
 
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
   if a.p == b.p: return
-  if isLiteral(b):
+  if isLiteral(b.p):
     # we can shallow copy literals:
-    frees(a)
+    destroyStrPayload(a.p)
     a.len = b.len
     a.p = b.p
   else:
-    if isLiteral(a) or (a.p.cap and not strlitFlag) < b.len:
+    if isLiteral(a.p) or (a.p.cap and not strlitFlag) < b.len:
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
-      frees(a)
-      a.p = cast[ptr NimStrPayload](allocShared0(contentSize(b.len)))
+      destroyStrPayload(a.p)
+      a.p = cast[ptr NimStrPayload](stdAlloc(contentSize(b.len), alignof(NimStrPayload)))
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
@@ -136,10 +136,11 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
 proc nimPrepareStrMutationImpl(s: var NimStringV2) =
   let oldP = s.p
   # can't mutate a literal, so we need a fresh copy here:
-  s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
+  s.p = cast[ptr NimStrPayload](stdAlloc(contentSize(s.len), alignof(NimStrPayload)))
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 
 proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inline.} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
+

@@ -19,15 +19,9 @@ type
 proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
-    when defined(useMalloc):
-      var d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
-    else:
-      var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
+    var d = cast[CellArray](stdAlloc(s.cap * sizeof(CellTuple), alignOf(CellTuple)))
     copyMem(d, s.d, s.len * sizeof(CellTuple))
-    when defined(useMalloc):
-      c_free(s.d)
-    else:
-      dealloc(s.d)
+    stdDealloc(s.d)
     s.d = d
     # XXX: realloc?
   s.d[s.len] = (c, t)
@@ -36,17 +30,11 @@ proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
 proc init(s: var CellSeq, cap: int = 1024) =
   s.len = 0
   s.cap = cap
-  when defined(useMalloc):
-    s.d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
-  else:
-    s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
+  s.d = cast[CellArray](stdAlloc(s.cap * sizeof(CellTuple), alignOf(CellTuple)))
 
 proc deinit(s: var CellSeq) =
   if s.d != nil:
-    when defined(useMalloc):
-      c_free(s.d)
-    else:
-      dealloc(s.d)
+    stdDealloc(s.d)
     s.d = nil
   s.len = 0
   s.cap = 0

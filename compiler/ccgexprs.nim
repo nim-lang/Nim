@@ -2180,17 +2180,11 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #deallocShared($1.p);$n" &
-        "}$n",
-        [rdLoc(a)])
+      linefmt(p, cpsStmts, "#destroyStrPayload($1.p);", [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #deallocShared($1.p);$n" &
-        "}$n",
-        [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
+      linefmt(p, cpsStmts, "#destroySeqPayload($1.p);", [rdLoc(a)])
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)

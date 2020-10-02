@@ -35,7 +35,8 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    var p = cast[ptr NimSeqPayloadBase](allocShared0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
+    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+    var p = cast[ptr NimSeqPayloadBase](stdAlloc(headerSize + cap * elemSize, elemAlign))
     p.cap = cap
     result = p
   else:
@@ -50,7 +51,7 @@ template `-!`(p: pointer, s: int): pointer =
 proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     noSideEffect, raises: [], compilerRtl.} =
   {.noSideEffect.}:
-    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
+    
     if addlen <= 0:
       result = p
     elif p == nil:
@@ -58,11 +59,12 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
+      let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
       var p = cast[ptr NimSeqPayloadBase](p)
       let oldCap = p.cap and not strlitFlag
       let newCap = max(resize(oldCap), len+addlen)
       if (p.cap and strlitFlag) == strlitFlag:
-        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * newCap))
+        var q = cast[ptr NimSeqPayloadBase](stdAlloc0(headerSize + elemSize * newCap, elemAlign))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
         q.cap = newCap
         result = q
@@ -124,3 +126,7 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if xu.p == nil or xu.p.cap < newlen:
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
+
+proc destroySeqPayload(p: ptr NimSeqPayloadBase) {.compilerRtl.} = 
+  if p != nil and (p.cap and strlitFlag) != strlitFlag:
+    stdDealloc(p)

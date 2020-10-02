@@ -159,4 +159,44 @@ proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} 
   discard c_fwrite(s, 1, cast[csize_t](s.len), f)
   discard c_fflush(f)
 
+template stdAlloc*(size, align: int): pointer =
+  when defined(useMalloc):
+    c_malloc(size)    
+  elif compileOption("threads"):
+    allocShared(size )
+  else:
+    alloc(size)
+
+template stdAlloc0*(size, align: int): pointer =
+  when defined(useMalloc):
+    c_calloc(1, size)    
+  elif compileOption("threads"):
+    allocShared0(size)
+  else:
+    alloc0(size)
+
+template stdRealloc*(p: pointer, old_size, new_size: int): pointer =
+  when defined(useMalloc):
+    c_realloc(p, new_size) 
+  elif compileOption("threads"):
+    reallocShared(p, old_size, new_size)
+  else:
+    realloc(p, old_size, new_size)
+
+template stdRealloc0*(p: pointer, old_size, new_size: int): pointer =
+  when defined(useMalloc):
+    c_realloc(p, new_size) 
+  elif compileOption("threads"):
+    reallocShared0(p, old_size, new_size)
+  else:
+    realloc0(p, old_size, new_size)
+
+template stdDealloc*(p: pointer) =
+  when defined(useMalloc):
+    c_free(p)    
+  elif compileOption("threads"):
+    deallocShared(p)
+  else:
+    dealloc(p)
+
 {.pop.}

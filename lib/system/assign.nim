@@ -242,15 +242,14 @@ proc genericReset(dest: pointer, mt: PNimType) =
   of tyString:
     when defined(nimSeqsV2):
       var s = cast[ptr NimStringV2](dest)
-      frees(s[])
+      destroyStrPayload(s[].p)
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)
   of tySequence:
     when defined(nimSeqsV2):
       var s = cast[ptr NimSeqV2Reimpl](dest)
-      if s.p != nil:
-        deallocShared(s.p)
+      destroySeqPayload(cast[ptr NimSeqPayloadBase](s.p))
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)

@@ -79,14 +79,8 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = c_malloc(cuint s)
-    nimZeroMem(orig, s)
-    result = orig +! sizeof(RefHeader)
-  elif compileOption("threads"):
-    result = allocShared0(s) +! sizeof(RefHeader)
   else:
-    result = alloc0(s) +! sizeof(RefHeader)
+    result = stdAlloc(s, alignOf(RefHeader))  +! sizeof(RefHeader)
   when defined(nimArcDebug) or defined(nimArcIds):
     head(result).refId = gRefId
     atomicInc gRefId
@@ -102,12 +96,8 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = cast[ptr RefHeader](c_malloc(cuint s))
-  elif compileOption("threads"):
-    var orig = cast[ptr RefHeader](allocShared(s))
   else:
-    var orig = cast[ptr RefHeader](alloc(s))
+    var orig =  cast[ptr RefHeader](stdAlloc(s, alignof(RefHeader)))
   orig.rc = 0
   when defined(gcOrc):
     orig.rootIdx = 0
@@ -165,12 +155,8 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
-    elif defined(useMalloc):
-      c_free(p -! sizeof(RefHeader))
-    elif compileOption("threads"):
-      deallocShared(p -! sizeof(RefHeader))
     else:
-      dealloc(p -! sizeof(RefHeader))
+      stdDealloc(p -! sizeof(RefHeader))
 
 template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
