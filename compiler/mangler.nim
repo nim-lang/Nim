@@ -369,9 +369,8 @@ proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
     result = result or p.prc.isNil
 
 proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int] =
-  ## take a backend module or a procedure being generated and produce an
-  ## appropriate name and the instances of its occurence, which may be
-  ## incremented for this instance
+  ## Produce an appropriate name for a symbol, and the instances of its
+  ## occurence, which may have been incremented for this instance.
   let m = getem()
   template g(): ModuleGraph = m.g.graph
   var counter = -1         # the current counter for this name
