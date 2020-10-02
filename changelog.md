@@ -292,7 +292,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
   `--deepcopy:on`.
 
-
+- Added a `std/effecttraits` module for introspection of the inferred `.raise` effects.
+  We hope this enables `async` macros that are precise about the possible exceptions that
+  can be raised.
 - Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
 
 
