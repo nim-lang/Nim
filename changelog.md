@@ -201,6 +201,12 @@
 
 - Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
 
+- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
+  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
+  Previously, it was necessary to create an empty HeapQueue and add items
+  manually.
+
+
 ## Language changes
 
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
