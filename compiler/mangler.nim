@@ -201,7 +201,7 @@ proc shortKind(k: TTypeKind): string =
   elif len(result) > 4:  # elide vowels to shrink it
     if result[0] in vowels:
       # if it starts with a vowel, keep that letter; think `Opnrry`
-      split(result[1..^1], vowels).join("")
+      $result[0] & split(result[1..^1], vowels).join("")
     else:
       split(result, vowels).join("")
   else: result
