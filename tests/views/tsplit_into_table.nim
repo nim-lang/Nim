@@ -1,11 +1,10 @@
 discard """
-  output: '''asdf
-asdf
-231
-231
+  output: '''5: 231
+0: asdf
 '''
-  cmd: "nim c $file"
 """
+
+import tables
 
 {.experimental: "views".}
 
@@ -13,18 +12,18 @@ const
   Whitespace = {' ', '\t', '\n', '\r'}
 
 proc split*(s: string, seps: set[char] = Whitespace,
-                maxsplit: int = -1): seq[openArray[char]] =
+                maxsplit: int = -1): Table[int, openArray[char]] =
   var last = 0
   var splits = maxsplit
-  result = @[]
+  result = initTable[int, openArray[char]]()
 
   while last <= len(s):
     var first = last
     while last < len(s) and s[last] notin seps:
       inc(last)
     if splits == 0: last = len(s)
-    result.add toOpenArray(s, first, last-1)
-    result.add toOpenArray(s, first, last-1)
+    result[first] = toOpenArray(s, first, last-1)
+
     if splits == 0: break
     dec(splits)
     inc(last)
@@ -35,7 +34,7 @@ proc `$`(x: openArray[char]): string =
 
 proc main() =
   let words = split("asdf 231")
-  for x in words:
-    echo x
+  for i, x in words:
+    echo i, ": ", x
 
 main()

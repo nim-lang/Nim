@@ -474,6 +474,8 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     else:
       params.add(getTypeDescAux(m, param.typ, check, skParam))
     params.add(~" ")
+    if sfNoalias in param.flags:
+      params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
@@ -562,19 +564,21 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
+      let noAlias = if sfNoalias in field.flags: ~" NIM_NOALIAS" else: nil
+
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyUncheckedArray:
         result.addf("$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check, skField), sname])
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
-        result.addf("$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname, noAlias])
       elif field.bitsize != 0:
-        result.addf("$1 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize)])
+        result.addf("$1$4 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize), noAlias])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        result.addf("$1 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
@@ -1351,6 +1355,9 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 
+  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+    discard genTypeInfoV1(m, t, info)
+
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -1450,12 +1457,12 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)

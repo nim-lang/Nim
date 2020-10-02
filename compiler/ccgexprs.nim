@@ -2394,6 +2394,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
+    if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:
+      localError(p.config, e.info,
+        "for --gc:arc|orc 'deepcopy' support has to be enabled with --deepcopy:on")
+
     var a, b: TLoc
     let x = if e[1].kind in {nkAddr, nkHiddenAddr}: e[1][0] else: e[1]
     initLocExpr(p, x, a)
@@ -3046,7 +3050,23 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
 proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
-    result = genBracedInit(p, n[1], isConst)
+    when false:
+      # XXX The frontend doesn't keep conversions to openArray for us. :-(
+      # We need to change 'transformConv' first, but that is hard.
+      if n.typ.kind == tyOpenArray:
+        assert n[1].kind == nkBracket
+        let data = genBracedInit(p, n[1], isConst)
+
+        let payload = getTempName(p.module)
+        let ctype = getTypeDesc(p.module, n.typ.skipTypes(abstractInst)[0])
+        let arrLen = n[1].len
+        appcg(p.module, cfsData,
+          "static $5 $1 $3[$2] = $4;$n", [
+          ctype, arrLen, payload, data,
+          if isConst: "const" else: ""])
+        result = "{($1*)&$2, $3}" % [ctype, payload, rope arrLen]
+    else:
+      result = genBracedInit(p, n[1], isConst)
   else:
     var ty = tyNone
     if n.typ == nil:
