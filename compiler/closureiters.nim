@@ -130,7 +130,8 @@
 
 import
   ast, msgs, idents,
-  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos
+  renderer, magicsys, lowerings, lambdalifting, modulegraphs, lineinfos,
+  tables, options
 
 type
   Ctx = object
@@ -1281,6 +1282,81 @@ proc deleteEmptyStates(ctx: var Ctx) =
     else:
       inc i
 
+type
+  PreprocessContext = object
+    finallys: seq[PNode]
+    config: ConfigRef
+  FreshVarsContext = object
+    tab: Table[int, PSym]
+    config: ConfigRef
+    info: TLineInfo
+
+proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
+  case n.kind
+  of nkSym:
+    let x = c.tab.getOrDefault(n.sym.id)
+    if x == nil:
+      result = n
+    else:
+      result = newSymNode(x, n.info)
+  of nkSkip - {nkSym}:
+    result = n
+  of nkLetSection, nkVarSection:
+    result = copyNode(n)
+    for it in n:
+      if it.kind in {nkIdentDefs, nkVarTuple}:
+        let idefs = copyNode(it)
+        for v in 0..it.len-3:
+          if it[v].kind == nkSym:
+            let x = copySym(it[v].sym)
+            c.tab[it[v].sym.id] = x
+            idefs.add newSymNode(x)
+          else:
+            idefs.add it[v]
+
+        for rest in it.len-2 ..< it.len: idefs.add it[rest]
+        result.add idefs
+      else:
+        result.add it
+  of nkRaiseStmt:
+    localError(c.config, c.info, "unsupported control flow: 'finally: ... raise' duplicated because of 'break'")
+  else:
+    result = n
+    for i in 0..<n.safeLen:
+      result[i] = freshVars(n[i], c)
+
+proc preprocess(c: var PreprocessContext; n: PNode): PNode =
+  # in order to fix bug #15243 without risking regressions, we preprocess
+  # the AST so that 'break' statements inside a 'try finally' also have the
+  # finally section. We need to duplicate local variables here and also
+  # detect: 'finally: raises X' which is currently not supported. We produce
+  # an error for this case for now. All this will be done properly with Yuriy's
+  # patch.
+  result = n
+  case n.kind
+  of nkTryStmt:
+    let f = n.lastSon
+    if f.kind == nkFinally:
+      c.finallys.add f.lastSon
+
+    for i in 0 ..< n.len:
+      result[i] = preprocess(c, n[i])
+
+    if f.kind == nkFinally:
+      discard c.finallys.pop()
+
+  of nkBreakStmt:
+    if c.finallys.len > 0:
+      result = newNodeI(nkStmtList, n.info)
+      for i in countdown(c.finallys.high, 0):
+        var vars = FreshVarsContext(tab: initTable[int, PSym](), config: c.config, info: n.info)
+        result.add freshVars(preprocess(c, c.finallys[i]), vars)
+      result.add n
+  of nkSkip: discard
+  else:
+    for i in 0 ..< n.len:
+      result[i] = preprocess(c, n[i])
+
 proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   var ctx: Ctx
   ctx.g = g
@@ -1293,7 +1369,9 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
     ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn)
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
-  var n = n.toStmtList
+  var pc = PreprocessContext(finallys: @[], config: g.config)
+  var n = preprocess(pc, n.toStmtList)
+  #var n = n.toStmtList
 
   discard ctx.newState(n, nil)
   let gotoOut = newTree(nkGotoState, g.newIntLit(n.info, -1))
