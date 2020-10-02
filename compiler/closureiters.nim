@@ -1104,15 +1104,17 @@ proc skipEmptyStates(ctx: Ctx, stateIdx: int): int =
 
   result = ctx.states[stateIdx][0].intVal.int
 
-proc skipThroughEmptyStates(ctx: var Ctx, n: PNode) =
+proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
+  result = n
   case n.kind
   of nkSkip:
     discard
   of nkGotoState:
-    n[0].intVal = ctx.skipEmptyStates(n[0].intVal.int)
+    result = copyTree(n)
+    result[0].intVal = ctx.skipEmptyStates(result[0].intVal.int)
   else:
     for i in 0..<n.len:
-      ctx.skipThroughEmptyStates(n[i])
+      n[i] = ctx.skipThroughEmptyStates(n[i])
 
 proc newArrayType(g: ModuleGraph; n: int, t: PType, owner: PSym): PType =
   result = newType(tyArray, owner)
@@ -1266,7 +1268,7 @@ proc deleteEmptyStates(ctx: var Ctx) =
   for i, s in ctx.states:
     let body = skipStmtList(ctx, s[1])
     if body.kind != nkGotoState or i == 0:
-      ctx.skipThroughEmptyStates(s)
+      discard ctx.skipThroughEmptyStates(s)
       let excHandlState = ctx.exceptionTable[i]
       if excHandlState < 0:
         ctx.exceptionTable[i] = -ctx.skipEmptyStates(-excHandlState)
@@ -1371,6 +1373,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config)
   var n = preprocess(pc, n.toStmtList)
+  #echo "transformed into ", n
   #var n = n.toStmtList
 
   discard ctx.newState(n, nil)
