@@ -91,3 +91,10 @@ proc tester[T](x: T) =
 
 tester(1)
 
+# #14497 
+func reverse*(a: string): string =
+  result = a
+  for i in 0 ..< a.len div 2:
+    swap(result[i], result[^(i + 1)])
+
+doAssert reverse("hello") == "olleh"
