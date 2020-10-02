@@ -217,7 +217,10 @@ since (1, 1):
 
   macro dup*[T](arg: T, calls: varargs[untyped]): T =
     ## Turns an `in-place`:idx: algorithm into one that works on
-    ## a copy and returns this copy.
+    ## a copy and returns this copy, without modifying its input.
+    ##
+    ## This macro also allows for (otherwise in-place) function chaining.
+    ##
     ## **Since**: Version 1.2.
     runnableExamples:
       import algorithm
@@ -233,6 +236,21 @@ since (1, 1):
       var s1 = "abc"
       var s2 = "xyz"
       doAssert s1 & s2 == s1.dup(&= s2)
+
+      proc makePalindrome(s: var string) =
+        for i in countdown(s.len-2, 0):
+          s.add(s[i])
+
+      var c = "xyz"
+
+      # An underscore (_) can be used to denote the place of the argument you're passing:
+      # b = "xyz"
+      var d = dup c:
+        makePalindrome # xyzyx
+        sort(_, SortOrder.Descending) # zyyxx
+        makePalindrome # zyyxxxyyz
+
+      doAssert d == "zyyxxxyyz"
 
     result = newNimNode(nnkStmtListExpr, arg)
     let tmp = genSym(nskVar, "dupResult")
