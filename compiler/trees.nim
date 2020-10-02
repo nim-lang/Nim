@@ -195,3 +195,10 @@ proc stupidStmtListExpr*(n: PNode): bool =
   for i in 0..<n.len-1:
     if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
   result = true
+
+proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
+  # symbols that expand to a complex constant (array, etc.) should not be
+  # inlined, unless it's the empty array:
+  result = orig.kind == nkSym and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
+           cnst.len != 0
