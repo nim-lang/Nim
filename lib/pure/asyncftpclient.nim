@@ -63,7 +63,7 @@
 ##    import asyncdispatch, asyncftpclient
 ##
 ##    proc onProgressChanged(total, progress: BiggestInt,
-##                            speed: float): Future[void] =
+##                            speed: float) {.async.} =
 ##      echo("Uploaded ", progress, " of ", total, " bytes")
 ##      echo("Current speed: ", speed, " kb/s")
 ##
