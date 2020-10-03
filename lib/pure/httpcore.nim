@@ -219,8 +219,10 @@ func parseList(line: string, list: var seq[string], start: int): int =
       i.inc # Skip ,
     current.setLen(0)
 
-func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
-  ## Parses a single raw header HTTP line into key value pairs.
+func parseHeader*(line: string, noSplit: bool = false): tuple[key: string, value: seq[string]] =
+  ## Parses a single raw header HTTP line into key value pairs. ``noSplit``
+  ## affects if header values (except for ``Cookie``) are split on ``,`` or
+  ## not.
   ##
   ## Used by ``asynchttpserver`` and ``httpclient`` internally and should not
   ## be used by you.
@@ -233,7 +235,11 @@ func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
       i += line.skipWhitespace(i)
       result.value.add line.substr(i)
     else:
-      i += parseList(line, result.value, i)
+      if noSplit:
+        i += line.skipWhitespace(i)
+        result.value.add line.substr(i)
+      else:
+        i += parseList(line, result.value, i)
   elif result.key.len > 0:
     result.value = @[""]
   else:
