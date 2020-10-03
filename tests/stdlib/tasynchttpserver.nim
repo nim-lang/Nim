@@ -23,7 +23,7 @@ template runTest(
     response = waitFor(request(server))
     body = waitFor(response.body)
 
-  discard test(response, body)
+  waitFor(test(response, body))
 
 
 suite "asynchttpserver":
