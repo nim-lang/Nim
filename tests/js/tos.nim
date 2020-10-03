@@ -19,3 +19,18 @@ block:
   if not isWindows:
     doAssert cwd.isAbsolute
     doAssert relativePath(getCurrentDir() / "foo", "bar") == "../foo"
+
+import std/sequtils
+
+block:
+  putEnv("foo", "bar")
+  doAssert getEnv("foo") == "bar"
+  doAssert existsEnv("foo")
+  putEnv("foo", "")
+  doAssert existsEnv("foo")
+  delEnv("foo")
+  doAssert not existsEnv("foo")
+  putEnv("foo2", "bar2")
+  let s = toSeq(envPairs())
+  doAssert ("foo2", "bar2") in s
+  doAssert ("foo2", "bar3") notin s
