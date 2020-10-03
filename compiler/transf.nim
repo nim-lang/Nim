@@ -830,13 +830,6 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   else:
     result = transformSons(c, n)
 
-proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
-  # symbols that expand to a complex constant (array, etc.) should not be
-  # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and
-           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
-           cnst.len != 0
-
 proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
   result = n
   for i in 0..<n.safeLen:
