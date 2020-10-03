@@ -124,12 +124,6 @@ const
                  # but one can #define it to what one wants
     "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV"]
 
-proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
-  # returns nil if we need to declare this type
-  # since types are now unique via the ``getUniqueType`` mechanism, this slow
-  # linear search is not necessary anymore:
-  result = tab.getOrDefault(sig)
-
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if isDefined(m.config, "checkAbi") and (let size = getSize(m.config, t); size != szUnknownSize):
     var msg = "backend & Nim disagree on size for: "
@@ -211,6 +205,9 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
+  when not defined(release):
+    echo "simple type ", $typ.kind, " is ", if result.isNil: "(nil)" else: $result
+
   if result != nil and typ.isImportedType():
     let sig = hashTypeDef typ
     if cacheGetType(m.typeCache, sig) == nil:
@@ -246,16 +243,25 @@ proc seqStar(m: BModule): string =
   else: result = "*"
 
 proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
-  when not defined(release):
-    echo "forward of ", sig
+  defer:
+    when not defined(release):
+      echo "forward of ", sig, " produced ", $result, " in mod ", m.module.id
   result = cacheGetType(m.forwTypeCache, sig)
-  if result != nil: return
+  if result != nil:
+    when not defined(release):
+      echo "forward from cache ", sig, " to ", $result
+    return
   result = getTypePre(m, typ, sig)
-  if result != nil: return
+  if result != nil:
+    when not defined(release):
+      echo "forward from pre ", sig, " to ", $result
+    return
   let concrete = typ.skipTypes(abstractInst)
   case concrete.kind
   of tySequence, tyTuple, tyObject:
     result = getTypeName(m, typ, sig)
+    when not defined(release):
+      echo "forward from getTypeName ", sig, " to ", $result
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addForwardStructFormat(m, structOrUnion(typ), result)
@@ -594,7 +600,7 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
 proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
   # returns only the type's name
   when not defined(release):
-    echo "aux"
+    echo "aux ", $kind
   let m = getem()
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
@@ -715,10 +721,10 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
         result = getTypeName(p, origTyp, sig)
+        m.forwTypeCache[sig] = result
         if not isImportedType(t):
           addForwardStructFormat(m, structOrUnion(t), result)
-        m.forwTypeCache[sig] = result
-      assert(cacheGetType(m.typeCache, sig) == nil)
+      assert cacheGetType(m.typeCache, sig) == nil
       m.typeCache[sig] = result & seqStar(m)
       if not isImportedType(t):
         if skipTypes(t[0], typedescInst).kind != tyEmpty:

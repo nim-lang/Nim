@@ -24,11 +24,6 @@ conflict table; they are increasing but not guaranteed to be sequential.
 
 ]##
 
-const
-  inspect = "CurrencyAmount"
-  addFirstParamToProcs = true
-  findSourceModulesForTypes = false
-
 import # compiler imports
 
     ast, cgendata, modulegraphs, ropes, ccgutils, ndi, msgs, incremental,
@@ -37,6 +32,13 @@ import # compiler imports
 import # stdlib imports
 
   std / [ strutils, tables, sets ]
+
+const
+  inspect = "CurrencyAmount"
+  addFirstParamToProcs = true
+  findSourceModulesForTypes = false
+  hashTypeOptions = {CoType, CoDistinct}
+  #hashTypeOptions = {CoType, CoDistinct, CoNaming}
 
 type
   ModuleOrProc* = BProc or BModule
@@ -67,7 +69,7 @@ proc hashTypeDef*(p: PType): SigHash =
   ## A hash of the type that can discern between distinct and alias;
   ## this is used to separate entries in the typecaches so that a
   ## seq[string] isn't clobbered by an alias like seq[TaintedString].
-  result = hashType(p, {CoType, CoDistinct}) # CoNaming
+  result = hashType(p, hashTypeOptions)
   when not defined(release):
     if startsWith($result, inspect):
       if p.sym != nil:
@@ -165,7 +167,10 @@ proc shouldAppendModuleName(s: PSym): bool =
     # NOTE: constants are effectively global
     result = true
   else:
-    if s.owner == nil or s.owner.kind in {skModule, skPackage}:
+    if s.owner != nil and sfSystemModule in s.owner.flags:
+      # omit "system" in the interests of brevity
+      result = false
+    elif s.owner == nil or s.owner.kind in {skModule, skPackage}:
       # the symbol is top-level; add the module name
       result = true
     elif {sfGlobal, sfGeneratedOp} * s.flags != {}:
@@ -400,11 +405,11 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
               break
           # use or set the existing foreign counter for the key
           when not defined(release):
-            echo "DO GETSET PARENT"
+            echo "here follows the parent...!"
           (name, counter) = getSetConflict(parent, s)
           when not defined(release):
             if startsWith(name, inspect):
-              echo "DID GETSET PARENT FOR ", name, " counter ", counter
+              echo "used parent for ", name, " counter ", counter
           break
 
   # only write mangled names for c codegen
@@ -471,10 +476,33 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
 proc `[]=`*(tc: var TypeCache; sig: SigHash; name: Rope) =
   ## make sure we aren't mutating the typecache incorrectly
   if sig in tc:
-    assert $name == $tc[sig], "typecache mutation"
+    let old = tc[sig]
+    assert $name == $old, "typecache mutation: " & $name & " -> " & $old
     assert false, "gratuitous typecache set"
   else:
+    when not defined(release):
+      if $sig == "__sM4lkSb7zS6F7OVMvW9cffQ":
+        echo "assignment of ", name
+        if startsWith($name, "seqTaintedString"):
+          writeStackTrace()
+          quit(1)
     tables.`[]=`(tc, sig, name)
+
+proc getCachedTypeName*(m: BModule; sig: SigHash): Rope =
+  ## try to get a cached type name from any and all modules
+  # there's a good chance it's in the local cache
+  result = cacheGetType(m.typeCache, sig)
+  if result == nil:
+    # else, search the caches of the other modules
+    for peer in items(m.g.modules):
+      if peer != nil:
+        # skip checking our own cache again
+        if peer.module.id != m.module.id:
+          result = cacheGetType(peer.typeCache, sig)
+          if result != nil:
+            break
+  # instantiate a new rope for mutation reasons
+  result = rope $result
 
 proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   ## Produce a useful name for the given type; this is what codegen uses
@@ -532,6 +560,12 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
 
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
+
+  when not defined(release):
+    if "seqTaintedString" in $result:
+      if typ.lastSon.sym.typ.sym.id == typ.lastSon.sym.id:
+        debug typ
+        internalError(m.config, "appears concrete")
 
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
   ## retrieve (or produce) a useful name for the given type; this is what

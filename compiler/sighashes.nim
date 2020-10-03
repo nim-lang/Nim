@@ -95,12 +95,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     c &= "\254"
     return
 
-  # pretty much any notable quality of a symbol or type-wrapping
-  # abstract is going to be relevant to naming
   if CoNaming in flags:
-    c &= char(t.kind)
     if t.sym != nil:
-      c.hashSym t.sym
+      c &= t.sym.name.s
 
   case t.kind
   of tyGenericInvocation:

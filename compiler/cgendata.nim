@@ -222,3 +222,9 @@ iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m
+
+proc cacheGetType*(tab: TypeCache; sig: SigHash): Rope =
+  # returns nil if we need to declare this type
+  # since types are now unique via the ``getUniqueType`` mechanism, this slow
+  # linear search is not necessary anymore:
+  result = tab.getOrDefault(sig)
