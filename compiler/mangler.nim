@@ -188,9 +188,9 @@ proc shouldAppendModuleName(s: PSym): bool =
 const
   threeLetterShorties = {tyOrdinal, tySequence, tyObject, tyTuple, tyArray,
                          tyVar, tyPtr, tyString, tySet, tyRef, tyTypeDesc}
-  unwrapTypeArg = {tyRef, tyPtr, tySet, tySequence, tyTypeDesc, tyArray,
-                   tySink, tyGenericInst, tyUserTypeClass, tyInferred,
-                   tyUserTypeClassInst, tyOwned, tyDistinct}
+  abbrevTypeArg = {tySet, tySequence, tyTypeDesc, tyArray}
+  unwrapTypeArg = {tyRef, tyPtr, tySink, tyGenericInst, tyUserTypeClass,
+                   tyInferred, tyUserTypeClassInst, tyOwned, tyDistinct}
   irrelevantForNaming = irrelevantForBackend + {tyVar}
 
 proc shortKind(k: TTypeKind): string =
@@ -215,11 +215,11 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## compose a type name for a type that has an unusable symbol
   var typ = typ.skipTypes(irrelevantForNaming)
   case typ.kind
-  of unwrapTypeArg:
+  of abbrevTypeArg:
     # set[Enum] -> setEnum for "first word" shortening purposes
     shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
-  of tyVar:
-    # omit this verbosity for now and simply discard the var
+  of unwrapTypeArg:
+    # omit this verbosity for now and simply discard the wrapper
     typeName(p, typ.lastSon, shorten = shorten)
   of tyProc, tyTuple:
     # these can figure into the signature though they may not be exported
