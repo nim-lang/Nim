@@ -239,8 +239,8 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
 proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## Come up with a name for any PType; shorten makes it shorter. 😉
   var typ = typ.skipTypes(irrelevantForNaming)
-  if typ.sym == nil:
-    # there's no symbol, so we have to come up with our own name...
+  if typ.sym == nil or typ.kind notin {tyObject, tyEnum}:
+    # we have to come up with our own name...
     naiveTypeName(p, typ, shorten = shorten)
   elif shorten:
     # do the complete mangle but only use the first "word"
