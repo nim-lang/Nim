@@ -113,7 +113,7 @@ func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true, 
+  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -121,7 +121,7 @@ func newHttpHeaders*(titleCase=false): HttpHeaders =
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true, 
+  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -134,10 +134,10 @@ func newHttpHeaders*(keyValuePairs:
       result.table[key] = @[pair.val]
 
 
-func `$`*(headers: HttpHeaders): string =
-  return $headers.table
+func `$`*(headers: HttpHeaders): string {.inline.} =
+  $headers.table
 
-proc clear*(headers: HttpHeaders) =
+proc clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
 func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
@@ -206,7 +206,7 @@ func getOrDefault*(headers: HttpHeaders, key: string,
   else:
     return default
 
-func len*(headers: HttpHeaders): int = return headers.table.len
+func len*(headers: HttpHeaders): int {.inline.} = headers.table.len
 
 func parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
@@ -323,21 +323,21 @@ proc `==`*(rawCode: string, code: HttpCode): bool
   ##           string form of itself.
   return cmpIgnoreCase(rawCode, $code) == 0
 
-func is2xx*(code: HttpCode): bool =
+func is2xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 2xx HTTP status code.
-  return code.int in {200 .. 299}
+  code.int in {200 .. 299}
 
-func is3xx*(code: HttpCode): bool =
+func is3xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 3xx HTTP status code.
-  return code.int in {300 .. 399}
+  code.int in {300 .. 399}
 
-func is4xx*(code: HttpCode): bool =
+func is4xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 4xx HTTP status code.
-  return code.int in {400 .. 499}
+  code.int in {400 .. 499}
 
-func is5xx*(code: HttpCode): bool =
+func is5xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 5xx HTTP status code.
-  return code.int in {500 .. 599}
+  code.int in {500 .. 599}
 
 func `$`*(httpMethod: HttpMethod): string =
   return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
@@ -366,5 +366,3 @@ when isMainModule:
     doAssert testTitleCase.hasKey("Content-Length")
     for key, val in testTitleCase:
         doAssert key == "Content-Length"
-
-
