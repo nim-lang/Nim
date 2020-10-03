@@ -60,7 +60,8 @@
 ## ``retrFile`` procedures.
 ##
 ## Procs that take an ``onProgressChanged`` callback will call this every
-## ``progressInterval`` milliseconds.
+## ``progressInterval`` milliseconds. The progress handler is guaranteed to be
+## called before the start and after the end of an operation.
 ##
 ## .. code-block::nim
 ##    import asyncdispatch, asyncftpclient
@@ -309,6 +310,10 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   var progressInSecond = 0
   var countdownFut = sleepAsync(ftp.progressInterval)
   var dataFut = ftp.dsock.recv(BufferSize)
+
+  asyncCheck onProgressChanged(total, progress,
+      progressInSecond.float)
+
   while ftp.dsockConnected:
     await dataFut or countdownFut
     if countdownFut.finished:
@@ -326,6 +331,8 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
         dataFut = ftp.dsock.recv(BufferSize)
       else:
         ftp.dsockConnected = false
+        asyncCheck onProgressChanged(total, progress,
+            progressInSecond.float)
 
   assertReply(await(ftp.expectReply()), "226")
 
@@ -365,6 +372,10 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   var progressInSecond = 0
   var countdownFut = sleepAsync(ftp.progressInterval)
   var sendFut: Future[void] = nil
+
+  asyncCheck onProgressChanged(total, progress,
+      progressInSecond.float)
+
   while ftp.dsockConnected:
     if sendFut == nil or sendFut.finished:
       # TODO: Async file reading.
@@ -376,6 +387,10 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
         ftp.dsockConnected = false
 
         assertReply(await(ftp.expectReply()), "226")
+
+        asyncCheck onProgressChanged(total, progress,
+            progressInSecond.float)
+
       else:
         progress.inc(len)
         progressInSecond.inc(len)
