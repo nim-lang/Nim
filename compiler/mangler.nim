@@ -37,8 +37,8 @@ const
   inspect = "CurrencyAmount"
   addFirstParamToProcs = true
   findSourceModulesForTypes = false
-  hashTypeOptions = {CoType, CoDistinct}
-  #hashTypeOptions = {CoType, CoDistinct, CoNaming}
+  hashTypeOptions = {CoType}
+  #hashTypeOptions = {CoType, CoNaming}
 
 type
   ModuleOrProc* = BProc or BModule
@@ -534,8 +534,10 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     assert t != nil
     let name = typeName(p, t)
 
-    let counter = getOrSet(p, name, conflictKey(typ))  # source
-    if counter != getOrSet(m, name, conflictKey(typ)): # destination
+    # associate the counter with the derived type so that future
+    # derivations won't clash with this one
+    let counter = getOrSet(p, name, conflictKey(t))  # source
+    if counter != getOrSet(m, name, conflictKey(t)): # destination
       internalError(m.config, "name clash between two modules: " & name)
 
     result = name.rope
