@@ -3,10 +3,7 @@
 when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
-when defined(js):
-  when not defined(nodejs):
-    {.error: "requires -d:nodejs".}
-else:
+when not defined(js):
   when defined(windows):
     from parseutils import skipIgnoreCase
 
@@ -131,7 +128,8 @@ proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].}
   when nimvm:
     discard "built into the compiler"
   else:
-    when defined(nodejs):
+    when defined(js):
+      doAssert defined(nodejs)
       var ret: cstring
       let key2 = key.cstring
       {.emit: "`ret` = process.env[`key2`];".}
@@ -160,7 +158,8 @@ proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
   when nimvm:
     discard "built into the compiler"
   else:
-    when defined(nodejs):
+    when defined(js):
+      doAssert defined(nodejs)
       var key2 = key.cstring
       var ret: bool
       {.emit: "`ret` = `key2` in process.env;".}
@@ -186,7 +185,8 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   when nimvm:
     discard "built into the compiler"
   else:
-    when defined(nodejs):
+    when defined(js):
+      doAssert defined(nodejs)
       var key2 = key.cstring
       var val2 = val.cstring
       {.emit: "process.env[`key2`] = `val2`;".}
@@ -220,7 +220,8 @@ proc delEnv*(key: string) {.tags: [WriteEnvEffect].} =
   when nimvm:
     discard "built into the compiler"
   else:
-    when defined(nodejs):
+    when defined(js):
+      doAssert defined(nodejs)
       var key2 = key.cstring
       {.emit: "delete process.env[`key2`];".}
     else:
@@ -252,7 +253,8 @@ iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].}
     # xxx: support nimvm
     doAssert false, "not yet supported"
   else:
-    when defined(nodejs):
+    when defined(js):
+      doAssert defined(nodejs)
       var num: int
       var keys: RootObj
       {.emit: "`keys` = Object.keys(process.env); `num` = `keys`.length;".}
