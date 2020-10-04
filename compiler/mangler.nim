@@ -300,36 +300,36 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
   # TODO: until we have a new backend ast, all mangles have to be done
   # identically
   let m = getem()
-  block:
-    if mayCollide(p, s, result):
-      # result is now populated with a mangled name
-      break
+
+  # certain special cases may get a simple mangle early because
+  # we must be assured of their consistent clash-free linkage
+  if not mayCollide(p, s, result):
 
     # otherwise, start off by using a name that doesn't suck
     result = mangle(s.name.s)
 
-  # some symbols have flags that preclude further mangling
-  if not s.hasImmutableName:
+    # some symbols have flags that preclude further mangling
+    if not s.hasImmutableName:
 
-    # add the first argument to procs if possible
-    discard maybeAddProcArgument(m, s, result)
+      # add the first argument to procs if possible
+      discard maybeAddProcArgument(m, s, result)
 
-    # add the module name if necessary, or if it helps avoid a clash
-    if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
-      let parent = findPendingModule(m, s)
-      if parent != nil:
-        result.add_and getSomeNameForModule(parent.module)
+      # add the module name if necessary, or if it helps avoid a clash
+      if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
+        let parent = findPendingModule(m, s)
+        if parent != nil:
+          result.add_and getSomeNameForModule(parent.module)
 
-    # for c-ish backends, "main" is already defined, of course
-    elif s.name.s == "main":
-      let parent = findPendingModule(m, s)
-      if parent != nil and sfMainModule in parent.module.flags:
-        # but we'll only worry about it for MainModule
-        result.add_and getSomeNameForModule(parent.module)
+      # for c-ish backends, "main" is already defined, of course
+      elif s.name.s == "main":
+        let parent = findPendingModule(m, s)
+        if parent != nil and sfMainModule in parent.module.flags:
+          # but we'll only worry about it for MainModule
+          result.add_and getSomeNameForModule(parent.module)
 
-    # something like `default` might need this check
-    if (unlikely) result in m.config.cppDefines:
-      result.add_and $conflictKey(s)
+      # something like `default` might need this check
+      if (unlikely) result in m.config.cppDefines:
+        result.add_and $conflictKey(s)
 
   #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
   # XXX: we don't do anything special with regard to m.hcrOn
@@ -385,7 +385,6 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   let m = getem()
   template g(): ModuleGraph = m.g.graph
   var counter = -1         # the current counter for this name
-  var next = 1             # the next counter for this name
 
   # we always mangle it anew, which is kinda sad
   var name = mangle(p, s)

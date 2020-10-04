@@ -486,7 +486,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locLocalVar, n, mangleName(p, s), OnStack)
-    when not defined(release):
+    when debugMangle:
       echo "local type ", $getTypeName(p, s.typ)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
