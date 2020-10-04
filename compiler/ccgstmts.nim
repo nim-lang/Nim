@@ -272,7 +272,7 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
 
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
@@ -280,7 +280,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
-    result = genBracedInit(p, value, isConst = false)
+    result = genBracedInit(p, value, isConst = false, v.typ)
   else:
     result = nil
 

@@ -1194,8 +1194,10 @@ proc requestConstImpl(p: BProc, sym: PSym) =
     assert q.initProc.module == q
     # add a suffix for hcr - will later init the global pointer with this data
     let actualConstName = if m.hcrOn: sym.loc.r & "_const" else: sym.loc.r
+    echo sym.name.s, " ", sym.ast
     q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(q, sym.typ), actualConstName, genBracedInit(q.initProc, sym.ast, isConst = true)])
+        [getTypeDesc(q, sym.typ), actualConstName,
+        genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ)])
     if m.hcrOn:
       # generate the global pointer with the real name
       q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r])
