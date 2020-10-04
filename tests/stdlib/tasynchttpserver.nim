@@ -127,3 +127,31 @@ suite "asynchttpserver":
       runTest(handler, request, test)
 
     waitfor(testCustomContentLength())
+
+  test "User-Agent is split wrongly":
+    # This testcase exposes asynchttpserver wrongly handling a header with a
+    # comma in it.
+
+    proc testCustomContentLength() {.async.} =
+      proc handler(request: Request) {.async.} =
+        assert request.headers.hasKey("User-Agent")
+        assert request.headers["User-Agent"] == "foo"
+
+        let headers = newHttpHeaders()
+        await request.respond(Http200, "Hello World, 200", headers)
+
+      proc request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
+        let
+          client = newAsyncHttpClient(userAgent = "foo, bar")
+          clientResponse = await client.request("http://localhost:64123/")
+
+        server.close()
+
+        return clientResponse
+
+      proc test(response: AsyncResponse, body: string) {.async.} =
+        assert response.status == Http200
+
+      runTest(handler, request, test)
+
+    waitfor(testCustomContentLength())
