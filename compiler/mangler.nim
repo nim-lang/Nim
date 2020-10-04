@@ -280,8 +280,8 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
       result = s.name.s == ":anonymous"
       if result:
         name.add "lambda_"
-      # var procs are fun
-      result = result or sfAddrTaken in s.flags
+      # var procs are fun; generated proc names, too
+      result = result or {sfAddrTaken, sfGenSym} * s.flags != {}
       # closures are great for link collisions
       result = result or tfCapturesEnv in s.typ.flags
     of skIterator:
