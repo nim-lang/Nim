@@ -155,3 +155,35 @@ suite "asynchttpserver":
       runTest(handler, request, test)
 
     waitfor(testCustomContentLength())
+
+  test "Custom header":
+    # This testcase exposes asynchttpserver wrongly handling a header with a
+    # comma in it.
+
+    proc testCustomContentLength() {.async.} =
+      proc handler(request: Request) {.async.} =
+        assert request.headers.hasKey("X-Test")
+        assert request.headers["X-Test", 0] == "foo"
+        assert request.headers["X-Test", 1] == "bar"
+
+        let headers = newHttpHeaders()
+        await request.respond(Http200, "Hello World, 200", headers)
+
+      proc request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
+        let headers = newHttpHeaders()
+        headers["X-Test"] = "foo, bar"
+
+        let
+          client = newAsyncHttpClient(userAgent = "foo, bar")
+          clientResponse = await client.request("http://localhost:64123/", headers = headers)
+
+        server.close()
+
+        return clientResponse
+
+      proc test(response: AsyncResponse, body: string) {.async.} =
+        assert response.status == Http200
+
+      runTest(handler, request, test)
+
+    waitfor(testCustomContentLength())
