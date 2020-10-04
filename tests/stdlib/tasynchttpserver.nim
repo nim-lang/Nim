@@ -132,7 +132,7 @@ suite "asynchttpserver":
     # This testcase exposes asynchttpserver wrongly handling a header with a
     # comma in it.
 
-    proc testCustomContentLength() {.async.} =
+    proc testUserAgentSplit() {.async.} =
       proc handler(request: Request) {.async.} =
         assert request.headers.hasKey("User-Agent")
         assert request.headers["User-Agent"] == "foo"
@@ -154,13 +154,10 @@ suite "asynchttpserver":
 
       runTest(handler, request, test)
 
-    waitfor(testCustomContentLength())
+    waitfor(testUserAgentSplit())
 
   test "Custom header":
-    # This testcase exposes asynchttpserver wrongly handling a header with a
-    # comma in it.
-
-    proc testCustomContentLength() {.async.} =
+    proc testCustomHeader() {.async.} =
       proc handler(request: Request) {.async.} =
         assert request.headers.hasKey("X-Test")
         assert request.headers["X-Test", 0] == "foo"
@@ -186,4 +183,4 @@ suite "asynchttpserver":
 
       runTest(handler, request, test)
 
-    waitfor(testCustomContentLength())
+    waitfor(testCustomHeader())
