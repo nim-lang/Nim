@@ -212,6 +212,7 @@
 - Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
   at which progress callbacks are called.
 
+- Added `std/pointers` to handle `ptr[T]` variables without needing `cast`.
 
 ## Language changes
 
