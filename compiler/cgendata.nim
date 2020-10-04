@@ -223,6 +223,15 @@ iterator cgenModules*(g: BModuleList): BModule =
     # iterate modules in the order they were closed
     yield m
 
+when not defined(release):
+  proc `[]=`*(tc: var TypeCache; sig: SigHash; name: Rope) =
+    ## make sure we aren't mutating the typecache incorrectly
+    if sig in tc:
+      let old = tc[sig]
+      assert $name == $old, "typecache mutation: " & $name & " -> " & $old
+      assert false, "gratuitous typecache set"
+    tables.`[]=`(tc, sig, name)
+
 proc cacheGetType*(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
   # since types are now unique via the ``getUniqueType`` mechanism, this slow

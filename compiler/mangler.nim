@@ -397,20 +397,31 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
       # critically, we must check for conflicts at the source module
       # in the event a global symbol is actually foreign to `p`
       var parent = findPendingModule(m, s)
-      if parent != nil:   # javascript can yield nil here
-        when parent is BModule:
-          when p is BModule:
-            # is it (not) foreign?  terribly expensive, i know.
-            if parent.cfilename.string == m.cfilename.string:
-              break
-          # use or set the existing foreign counter for the key
-          when not defined(release):
-            echo "here follows the parent...!"
-          (name, counter) = getSetConflict(parent, s)
-          when not defined(release):
-            if startsWith(name, inspect):
-              echo "used parent for ", name, " counter ", counter
-          break
+      # i think we need to do this stupidly for IC reasons,
+      # but these errors will let me know...
+      when p is BModule:
+        # is it (not) foreign?  terribly expensive, i know.
+        if parent.module.id == m.module.id:
+          if parent.cfilename.string == m.cfilename.string:
+            break
+          else:
+            internalError(m.config, "symbols match, filenames don't")
+        elif parent.cfilename.string == m.cfilename.string:
+          internalError(m.config, "filenames match, symbols don't")
+
+      # use or set the existing foreign counter for the key
+      when not defined(release):
+        echo "here follows the parent...!"
+      let next = max(getOrDefault(p.sigConflicts, name, 0),
+                     getOrDefault(parent.sigConflicts, name, 0))
+      # prevent a future clash by bumping the counter
+      # in the parent's conflicts table if necessary
+      parent.sigConflicts[name] = next
+      (name, counter) = getSetConflict(parent, s)
+      when not defined(release):
+        if startsWith(name, inspect):
+          echo "used parent for ", name, " counter ", counter
+      break
 
   # only write mangled names for c codegen
   when m is BModule:
@@ -438,6 +449,10 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
         # and the table doesn't already bind the key to this counter,
         if key notin p.sigConflicts or p.sigConflicts[key] != counter:
           # this is a pretty serious problem!
+          when false:
+            echo "foreign counter ", counter, " for name ", name,
+              " has local name count ", p.sigConflicts[name],
+              " and key defined? ", key in p.sigConflicts
           internalError(m.config, "name clash between two modules: " & name)
 
     # else, stuff it into the local table with the discovered counter
@@ -473,22 +488,7 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
           [ $conflictKey(s), s.name.s, $result,
            if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
 
-proc `[]=`*(tc: var TypeCache; sig: SigHash; name: Rope) =
-  ## make sure we aren't mutating the typecache incorrectly
-  if sig in tc:
-    let old = tc[sig]
-    assert $name == $old, "typecache mutation: " & $name & " -> " & $old
-    assert false, "gratuitous typecache set"
-  else:
-    when not defined(release):
-      if $sig == "__sM4lkSb7zS6F7OVMvW9cffQ":
-        echo "assignment of ", name
-        if startsWith($name, "seqTaintedString"):
-          writeStackTrace()
-          quit(1)
-    tables.`[]=`(tc, sig, name)
-
-proc getCachedTypeName*(m: BModule; sig: SigHash): Rope =
+proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
   ## try to get a cached type name from any and all modules
   # there's a good chance it's in the local cache
   result = cacheGetType(m.typeCache, sig)
@@ -512,11 +512,6 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   # we don't currently use the proc scope for types; this is just a guard
   # to ensure that we don't do so accidentally
   var p = m
-
-  when not defined(release):
-    if 17445037 == typ.uniqueId:
-      echo "p is module (get type name) ", p is BModule
-      echo "p key ", conflictKey(m)
 
   block found:
     # try to find the actual type
@@ -561,28 +556,10 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
   if result == nil:
     internalError(m.config, "getTypeName: " & $typ.kind)
 
-  when not defined(release):
-    if "seqTaintedString" in $result:
-      if typ.lastSon.sym.typ.sym.id == typ.lastSon.sym.id:
-        debug typ
-        internalError(m.config, "appears concrete")
-
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
   ## retrieve (or produce) a useful name for the given type; this is what
   ## codegen uses exclusively
-  let m = getem()
-
-  block:
-    when false:
-      result = getOrDefault(m.typeCache, sig)
-      if result != nil:
-        break
-
-      result = getOrDefault(m.forwTypeCache, sig)
-      if result != nil:
-        break
-
-    result = getTypeName(p, typ)
+  result = getTypeName(p, typ)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -718,7 +695,7 @@ proc mangleParamName*(m: BModule; s: PSym): Rope =
       # the module-level scope of the conflicts table...
       s.loc.r = mangle(m, s).rope
     when not defined(release):
-      echo "naive param mangle of ", s.name.s, " at ", cast[uint](s), " into ", $s.loc.r
+      echo "naive param mangle of ", s.name.s, " # ", s.id, " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
     internalError(m.config, s.info, "mangleParamName")
@@ -741,9 +718,9 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
     when not defined(release):
       if p.prc == nil:
-        echo "mangled ", s.name.s, " at ", cast[uint](s), " from nil proc into ", $s.loc.r
+        echo "mangled ", s.name.s, " # ", s.id, " from nil proc into ", $s.loc.r
       else:
-        echo "mangled ", s.name.s, " at ", cast[uint](s), " from ", p.prc.name.s, " into ", $s.loc.r
+        echo "mangled ", s.name.s, " # ", s.id, " from ", p.prc.name.s, " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
     internalError(p.config, s.info, "mangleParamName")
