@@ -37,7 +37,8 @@ type
     modDesc: Rope       # module description
     module: PSym
     modDeprecationMsg: Rope
-    toc, section: TSections
+    toc, toc2, section: TSections
+    tocTable: array[TSymKind, Table[string, Rope]]
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
@@ -871,6 +872,18 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
+  var formattedRope = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+     "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
+    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
+     itemIDRope, plainNameRope, plainSymbolRope,
+     symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, attype])
+
+  if d.tocTable[k].getOrDefault(cleanPlainSymbol) == nil:
+    d.tocTable[k][cleanPlainSymbol] = formattedRope
+  else:
+    d.tocTable[k][cleanPlainSymbol].add(formattedRope)
+
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
@@ -1167,7 +1180,7 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
       generateTags(d, lastSon(n[0]), r)
   else: discard
 
-proc genSection(d: PDoc, kind: TSymKind) =
+proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
   const sectionNames: array[skModule..skField, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
@@ -1177,14 +1190,23 @@ proc genSection(d: PDoc, kind: TSymKind) =
   d.section[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.section[kind]])
+
+  var tocSource = d.toc
+  if groupedToc:
+    for p in d.tocTable[kind].keys:
+      d.toc2[kind].add ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc2"), [
+          "sectionid", "sectionTitle", "sectionTitleID", "content", "plainName"], [
+          ord(kind).rope, title, rope(ord(kind) + 50), d.tocTable[kind][p], p.rope])
+    tocSource = d.toc2
+
   d.toc[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
+      ord(kind).rope, title, rope(ord(kind) + 50), tocSource[kind]])
 
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
   rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
-proc genOutFile(d: PDoc): Rope =
+proc genOutFile(d: PDoc, groupedToc = false): Rope =
   var
     code, content: Rope
     title = ""
@@ -1193,7 +1215,8 @@ proc genOutFile(d: PDoc): Rope =
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
   for i in TSymKind:
-    genSection(d, i)
+    var shouldSort = i in {skProc, skFunc} and groupedToc
+    genSection(d, i, shouldSort)
     toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
@@ -1246,9 +1269,9 @@ proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
       if isAbsolute(d.conf.outFile.string):
         d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
-proc writeOutput*(d: PDoc, useWarning = false) =
+proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
   runAllExamples(d)
-  var content = genOutFile(d)
+  var content = genOutFile(d, groupedToc)
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
