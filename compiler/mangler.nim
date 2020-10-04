@@ -12,11 +12,12 @@
 cgendata defines ConflictsTable as Table[string, int]
 
 The key has one of two forms:
-  "SomeMangledName" -> the output of mangle() on a symbol
+  "someMangledName" -> the output of mangle() on a symbol or
+  "someMangledName" -> the output of getTypeName() on a type or
   "######" -> a series of digits representing a unique symbol or type id
 
 The values have different meanings depending upon the form of the key:
-  "SomeMangledName" -> the value represents the next available counter
+  "someMangledName" -> the value represents the next available counter
   "######" -> the value represents the counter associated with the id
 
 The counter is used to keep track of the order of symbol additions to the
@@ -34,11 +35,12 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "CurrencyAmount"
+  inspect = "eqdestroy"
   addFirstParamToProcs = true
   findSourceModulesForTypes = false
   hashTypeOptions = {CoType}
   #hashTypeOptions = {CoType, CoNaming}
+  debugMangle = false
 
 type
   ModuleOrProc* = BProc or BModule
@@ -70,13 +72,13 @@ proc hashTypeDef*(p: PType): SigHash =
   ## this is used to separate entries in the typecaches so that a
   ## seq[string] isn't clobbered by an alias like seq[TaintedString].
   result = hashType(p, hashTypeOptions)
-  when not defined(release):
+  when debugMangle:
     if startsWith($result, inspect):
       if p.sym != nil:
         echo mangle(p.sym.name.s), " --> ", result
 
 proc getSomeNameForModule*(m: PSym): string =
-  ## does what it says on the tin!
+  ## Produce a name for the given module symbol.
   assert m.kind == skModule
   assert m.owner.kind == skPackage
   if {sfSystemModule, sfMainModule} * m.flags == {}:
@@ -89,6 +91,7 @@ proc getSomeNameForModule*(m: PSym): string =
     result = "std_" & result[len("stdlib_") .. ^1]
 
 proc findPendingModule*(m: BModule, s: PSym): BModule =
+  ## Find the backend module to which a symbol belongs.
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
@@ -112,7 +115,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
   let key = $key
 
   result = getOrDefault(conflicts, key, -1)
-  when not defined(release):
+  when debugMangle:
     if startsWith(name, inspect):
       echo "getorset on ", $typeof(p), " ", conflictKey(p), " addr ", cast[uint](p), " table ", cast[uint](addr conflicts)
       when p is BModule:
@@ -124,7 +127,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
   if result == -1:
     # start counting at zero so we can omit an initial append
     result = getOrDefault(conflicts, name, 0)
-    when not defined(release):
+    when debugMangle:
       if startsWith(name, inspect):
         echo "get or set ", name, " with key ", name, " table: ", result
     if result == 0:
@@ -135,7 +138,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
       inc conflicts[name]
     # cache the association between key and result
     conflicts[key] = result
-  when not defined(release):
+  when debugMangle:
     if startsWith(name, inspect):
       echo "Get/Set ", name, " with key ", name, " table: ", conflicts[name]
       echo "Get/Set ", name, " with key ", key, " table: ", conflicts[key]
@@ -198,14 +201,13 @@ proc shortKind(k: TTypeKind): string =
   const vowels = {'a','e','i','o','u'}
   result = toLowerAscii($k)
   removePrefix(result, "ty")
-  # TODO: currently, uint32 -> nt32 🙁
   result = case k
   # handle der usual suspects especialment
   of threeLetterShorties:
     result[0 .. 2]
   elif len(result) > 4:  # elide vowels to shrink it
     if result[0] in vowels:
-      # if it starts with a vowel, keep that letter; think `Opnrry`
+      # if it starts with a vowel, keep that letter; think `Opnrry`, `Unt32`
       $result[0] & split(result[1..^1], vowels).join("")
     else:
       split(result, vowels).join("")
@@ -363,9 +365,13 @@ else:
 proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
   ## `true` if the symbol is presumed to be in module-level scope
   ## for the purposes of conflict detection
+  const
+    globalish = {sfImportc, sfGlobal, sfGeneratedOp, sfExportc, sfExported}
 
   # NOTE: constants and types are effectively global
-  result = sfGlobal in s.flags or s.kind in {skConst, skType}
+  result = s.kind in {skConst, skType}
+  # anything global or otherwise exported or imported is at module scope
+  result = result or globalish * s.flags != {}
 
   when p is BProc:
     # if it's nominally proc but has no proc symbol, then we'll use
@@ -410,7 +416,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
           internalError(m.config, "filenames match, symbols don't")
 
       # use or set the existing foreign counter for the key
-      when not defined(release):
+      when debugMangle:
         echo "here follows the parent...!"
       let next = max(getOrDefault(p.sigConflicts, name, 0),
                      getOrDefault(parent.sigConflicts, name, 0))
@@ -418,7 +424,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
       # in the parent's conflicts table if necessary
       parent.sigConflicts[name] = next
       (name, counter) = getSetConflict(parent, s)
-      when not defined(release):
+      when debugMangle:
         if startsWith(name, inspect):
           echo "used parent for ", name, " counter ", counter
       break
@@ -434,11 +440,11 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   if counter == -1:
     # set it using the local conflicts table
     counter = getOrSet(p, name, conflictKey(s))
-    when not defined(release):
+    when debugMangle:
       if startsWith(name, inspect):
         echo "new to conflicts of ", $typeof(p), " is ", name, " key ", key, " counter ", counter
   else:
-    when not defined(release):
+    when debugMangle:
       if startsWith(name, inspect):
         echo "old to conflicts of ", $typeof(p), " is ", name, " key ", key, " counter ", counter
 
@@ -449,7 +455,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
         # and the table doesn't already bind the key to this counter,
         if key notin p.sigConflicts or p.sigConflicts[key] != counter:
           # this is a pretty serious problem!
-          when false:
+          when debugMangle:
             echo "foreign counter ", counter, " for name ", name,
               " has local name count ", p.sigConflicts[name],
               " and key defined? ", key in p.sigConflicts
@@ -466,7 +472,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
 
 proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
   ## Provide the location rope for symbol `s` as used in module|proc `p`.
-  when not defined(release):
+  when debugMangle:
     if s.name.s == inspect:
       echo "p is module ", p is BModule
       echo "p key ", $conflictKey(p)
@@ -474,7 +480,7 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(p, s)
   result = conflict.name.rope
   result.maybeAddCounter conflict.counter
-  when not defined(release):
+  when debugMangle:
     if startsWith($result, inspect):
       debug s
       when p is BModule:
@@ -489,7 +495,7 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
            if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
 
 proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
-  ## try to get a cached type name from any and all modules
+  ## Try to get a cached type name from any and all modules.
   # there's a good chance it's in the local cache
   result = cacheGetType(m.typeCache, sig)
   if result == nil:
@@ -542,12 +548,12 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
 
     result = name.rope
     result.maybeAddCounter counter
-    when not defined(release):
+    when debugMangle:
       if inspect in $result:
         echo "type mangle used:"
         debug t
         echo "=> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(t)
-  when not defined(release):
+  when debugMangle:
     #if typ.sym != nil and typ.sym.name.s == inspect:
     if inspect in $result:
       echo "original type mangle:"
@@ -559,8 +565,8 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     internalError(m.config, "getTypeName: " & $typ.kind)
 
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
-  ## retrieve (or produce) a useful name for the given type; this is what
-  ## codegen uses exclusively
+  ## Retrieve (or produce) a useful name for the given type; this is what
+  ## codegen uses exclusively.
   result = getTypeName(p, typ)
 
 template tempNameForLabel(m: BModule; label: int): string =
@@ -568,7 +574,7 @@ template tempNameForLabel(m: BModule; label: int): string =
   m.tmpBase & $label & "_"
 
 proc hasTempName*(m: BModule; n: PNode): bool {.deprecated: "but why?".} =
-  ## true if the module/proc has a temporary cached for the given node
+  ## True if the module/proc has a temporary cached for the given node.
   result = nodeTableGet(m.dataCache, n) != low(int)
 
 proc getTempNameImpl(m: BModule; id: int): string =
@@ -586,8 +592,8 @@ proc getTempNameImpl(m: BModule; id: int): string =
   m.sigConflicts[result] = 1
 
 proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
-  ## create or retrieve a temporary name for the given node; returns
-  ## true if a new name was created and false otherwise.  appends the
+  ## Create or retrieve a temporary name for the given node; returns
+  ## true if a new name was created and false otherwise.  Appends the
   ## name to the given rope.
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   var name: string
@@ -608,12 +614,13 @@ proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
     r.add name
 
 proc getTempName*(m: BModule; n: PNode): Rope =
-  ## a simpler getTempName that doesn't care where the name comes from
+  ## A simpler getTempName that doesn't care where the name comes from.
   discard getTempName(m, n, result)
 
 proc getTempName*(m: BModule): Rope =
-  ## a factory for making temporary names for use in the backend; this mutates
-  ## the module from which the name originates; this always creates a new name
+  ## A factory for making temporary names for use in the backend; this
+  ## mutates the module from which the name originates; this always
+  ## creates a new name.
   result = getTempNameImpl(m, m.labels).rope
 
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope =
@@ -684,7 +691,7 @@ proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
     internalError(m.config, field.info, "mangleRecFieldName")
 
 proc mangleParamName*(m: BModule; s: PSym): Rope =
-  ## we should be okay with just a simple mangle here for prototype
+  ## We should be okay with just a simple mangle here for prototype
   ## purposes; the real meat happens when we're called with BProc...
   if s.loc.r == nil:
     if s.kind == skResult:
@@ -696,7 +703,7 @@ proc mangleParamName*(m: BModule; s: PSym): Rope =
       # want param names to be numbered as if they might clash due to
       # the module-level scope of the conflicts table...
       s.loc.r = mangle(m, s).rope
-    when not defined(release):
+    when debugMangle:
       echo "naive param mangle of ", s.name.s, " # ", s.id, " into ", $s.loc.r
   result = s.loc.r
   if result == nil:
@@ -718,7 +725,7 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
     else:
       s.loc.r = nil              # critically, destroy the location
       s.loc.r = mangleName(p, s) # then mangle it using the proc scope
-    when not defined(release):
+    when debugMangle:
       if p.prc == nil:
         echo "mangled ", s.name.s, " # ", s.id, " from nil proc into ", $s.loc.r
       else:
