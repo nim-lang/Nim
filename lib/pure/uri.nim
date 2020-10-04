@@ -494,7 +494,7 @@ func `$`*(u: Uri): string =
     result.add(u.anchor)
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
-  ## Convenience func for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
+  ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
   ##
   ## **See also:**
   ## * `mimetypes <mimetypes.html>`_ for `mime` argument
