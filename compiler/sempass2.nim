@@ -1084,7 +1084,8 @@ proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
     return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
 proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool;
-                     effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.}) =
+                     effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.};
+                     hintsArg: PNode = nil) =
   # check that any real exception is listed in 'spec'; mark those as used;
   # report any unused exception
   var used = initIntSet()
@@ -1102,7 +1103,8 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
   if hints:
     for s in 0..<spec.len:
       if not used.contains(s):
-        message(g.config, spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
+        message(g.config, spec[s].info, hintXCannotRaiseY,
+                "'$1' cannot raise '$2'" % [renderTree(hintsArg), renderTree(spec[s])])
 
 proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
   ## checks for consistent effects for multi methods.
@@ -1223,7 +1225,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
     checkRaisesSpec(g, raisesSpec, t.exc, "can raise an unlisted exception: ",
-                    hints=on, subtypeRelation)
+                    hints=on, subtypeRelation, hintsArg=s.ast[0])
     # after the check, use the formal spec:
     effects[exceptionEffects] = raisesSpec
 
