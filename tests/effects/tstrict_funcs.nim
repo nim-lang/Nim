@@ -2,7 +2,7 @@ discard """
   cmd: "nim c --experimental:strictFuncs --experimental:views $file"
 """
 
-import tables, streams, nre, parsecsv
+import tables, streams, nre, parsecsv, uri
 
 type
   Contig2Reads = TableRef[string, seq[string]]
