@@ -872,17 +872,13 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
-  var formattedRope = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
+  d.tocTable[k].mgetOrPut(cleanPlainSymbol, nil).add(ropeFormatNamedVars(
+    d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
      itemIDRope, plainNameRope, plainSymbolRope,
-     symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, attype])
-
-  if d.tocTable[k].getOrDefault(cleanPlainSymbol) == nil:
-    d.tocTable[k][cleanPlainSymbol] = formattedRope
-  else:
-    d.tocTable[k][cleanPlainSymbol].add(formattedRope)
+     symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
