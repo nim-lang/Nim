@@ -3007,17 +3007,17 @@ proc genConstSimpleList(p: BProc, n: PNode; isConst: bool): Rope =
 
 proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
+  let base = t.skipTypes(abstractInst)[0]
   if n.len > 0:
     # array part needs extra curlies:
     data.add(", {")
     for i in 0..<n.len:
       if i > 0: data.addf(",$n", [])
-      data.add genBracedInit(p, n[i], isConst, t.lastSon)
+      data.add genBracedInit(p, n[i], isConst, base)
     data.add("}")
   data.add("}")
 
   result = getTempName(p.module)
-  let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
         "static $5 struct {$n" &
@@ -3030,14 +3030,14 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   result = "(($1)&$2)" % [getTypeDesc(p.module, t), result]
 
 proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
+  let base = t.skipTypes(abstractInst)[0]
   var data = rope"{"
   for i in 0..<n.len:
     if i > 0: data.addf(",$n", [])
-    data.add genBracedInit(p, n[i], isConst, t.lastSon)
+    data.add genBracedInit(p, n[i], isConst, base)
   data.add("}")
 
   let payload = getTempName(p.module)
-  let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
     "static $5 struct {$n" &
