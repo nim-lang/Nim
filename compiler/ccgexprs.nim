@@ -3063,24 +3063,26 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
     result = genBracedInit(p, n[1], isConst, n.typ)
   else:
     var ty = tyNone
+    var typ: PType = nil
     if optionalType == nil:
       if n.kind in nkStrKinds:
         ty = tyString
       else:
         internalError(p.config, n.info, "node has no type")
     else:
-      ty = skipTypes(optionalType, abstractInstOwned + {tyStatic}).kind
+      typ = skipTypes(optionalType, abstractInstOwned + {tyStatic})
+      ty = typ.kind
     case ty
     of tySet:
       let cs = toBitSet(p.config, n)
       result = genRawSetData(cs, int(getSize(p.config, n.typ)))
     of tySequence:
       if optSeqDestructors in p.config.globalOptions:
-        result = genConstSeqV2(p, n, optionalType, isConst)
+        result = genConstSeqV2(p, n, typ, isConst)
       else:
-        result = genConstSeq(p, n, optionalType, isConst)
+        result = genConstSeq(p, n, typ, isConst)
     of tyProc:
-      if optionalType.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
+      if typ.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
         # Conversion: nimcall -> closure.
         # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
         # this behaviour is needed since closure_var = nil must be
@@ -3093,7 +3095,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
         else:
           var d: TLoc
           initLocExpr(p, n[0], d)
-          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, optionalType, clHalfWithEnv), rdLoc(d)]
+          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, typ, clHalfWithEnv), rdLoc(d)]
       else:
         var d: TLoc
         initLocExpr(p, n, d)
@@ -3101,7 +3103,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
     of tyArray, tyVarargs:
       result = genConstSimpleList(p, n, isConst)
     of tyTuple:
-      result = genConstTuple(p, n, isConst, optionalType)
+      result = genConstTuple(p, n, isConst, typ)
     of tyOpenArray:
       if n.kind != nkBracket:
         internalError(p.config, n.info, "const openArray expression is not an array construction")
@@ -3109,7 +3111,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
       let data = genConstSimpleList(p, n, isConst)
 
       let payload = getTempName(p.module)
-      let ctype = getTypeDesc(p.module, optionalType.skipTypes(abstractInstOwned + {tyStatic})[0])
+      let ctype = getTypeDesc(p.module, typ[0])
       let arrLen = n.len
       appcg(p.module, cfsData,
         "static $5 $1 $3[$2] = $4;$n", [
