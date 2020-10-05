@@ -2999,11 +2999,21 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool): Rope =
 
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool): Rope =
   result = rope("{")
-  for i in 0..<n.len - 1:
-    result.addf("$1,$n", [genNamedConstExpr(p, n[i], isConst)])
-  if n.len > 0:
-    result.add(genNamedConstExpr(p, n[^1], isConst))
-  result.addf("}$n", [])
+  for i in 0..<n.len:
+    let it = n[i]
+    if i > 0: result.add ",\n"
+    if it.kind == nkExprColonExpr: result.add genBracedInit(p, it[1], isConst, it[0].typ)
+    else: result.add genBracedInit(p, it, isConst, it.typ)
+  result.add("}\n")
+
+proc genConstTuple(p: BProc, n: PNode; isConst: bool; tup: PType): Rope =
+  result = rope("{")
+  for i in 0..<n.len:
+    let it = n[i]
+    if i > 0: result.add ",\n"
+    if it.kind == nkExprColonExpr: result.add genBracedInit(p, it[1], isConst, tup[i])
+    else: result.add genBracedInit(p, it, isConst, tup[i])
+  result.add("}\n")
 
 proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   var data = "{{$1, $1 | NIM_STRLIT_FLAG}" % [n.len.rope]
@@ -3088,8 +3098,10 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
         var d: TLoc
         initLocExpr(p, n, d)
         result = rdLoc(d)
-    of tyArray, tyTuple, tyVarargs:
+    of tyArray, tyVarargs:
       result = genConstSimpleList(p, n, isConst)
+    of tyTuple:
+      result = genConstTuple(p, n, isConst, optionalType)
     of tyOpenArray:
       if n.kind != nkBracket:
         internalError(p.config, n.info, "const openArray expression is not an array construction")
