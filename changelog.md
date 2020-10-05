@@ -156,7 +156,7 @@
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
   `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
-
+- Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
@@ -199,6 +199,20 @@
 
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 - Add `strmisc.parseFloatThousandSep` designed to parse floats as found in the wild formatted for humans.
+
+
+- Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
+
+- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
+  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
+  Previously, it was necessary to create an empty HeapQueue and add items
+  manually.
+- Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
+  is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty IntSet and add items manually.
+
+- Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
+  at which progress callbacks are called.
 
 
 ## Language changes
@@ -289,6 +303,14 @@ proc mydiv(a, b): int {.raises: [].} =
   performance this keyword can enable.
 
 - `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
+- `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
+  `--deepcopy:on`.
+
+- Added a `std/effecttraits` module for introspection of the inferred `.raise` effects.
+  We hope this enables `async` macros that are precise about the possible exceptions that
+  can be raised.
+- Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
+
 
 ## Compiler changes
 

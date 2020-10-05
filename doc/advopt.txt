@@ -153,3 +153,4 @@ Advanced options:
   --profileVM:on|off        enable compile time VM profiler
   --sinkInference:on|off    en-/disable sink parameter inference (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
+  --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``

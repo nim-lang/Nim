@@ -1906,7 +1906,7 @@ Let ``source`` be one of:
   not cover locals of inner procs.
 - A thread-local ``var`` or ``let``.
 - A global ``let`` or ``const``.
-- A constant arraq/seq/object/tuple constructor.
+- A constant array/seq/object/tuple constructor.
 
 
 Path expressions
@@ -1986,6 +1986,22 @@ The analysis is currently control flow insensitive:
 In this example, the compiler assumes that ``s.setLen 0`` invalidates the
 borrow operation of ``v`` even though a human being can easily see that it
 will never do that at runtime.
+
+
+Start of a borrow
+-----------------
+
+A borrow starts with one of the following:
+
+- The assignment of a non-view-type to a view-type.
+- The assignment of a location that is derived from a local parameter
+  to a view-type.
+
+
+End of a borrow
+---------------
+
+A borrow operation ends with the last usage of the view variable.
 
 
 Reborrows

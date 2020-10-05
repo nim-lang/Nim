@@ -707,11 +707,6 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
       localError(c.c.config, n.info, "invalid expression")
       result = n
 
-  proc stupidStmtListExpr(n: PNode): bool =
-    for i in 0..<n.len-1:
-      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
-    result = true
-
   result = n
   case n.kind
   of nkIdent:

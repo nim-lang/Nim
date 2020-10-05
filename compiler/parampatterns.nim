@@ -223,6 +223,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = arLValue
     elif isUnsafeAddr and n.sym.kind == skParam:
       result = arLValue
+    elif isUnsafeAddr and n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
+      result = arLValue
     elif n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and
           sfGlobal notin n.sym.flags:

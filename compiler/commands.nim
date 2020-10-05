@@ -901,7 +901,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "sourcemap":
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
-    # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
+  of "deepcopy":
+    processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:
