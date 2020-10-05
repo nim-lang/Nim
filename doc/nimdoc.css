@@ -446,10 +446,13 @@ ul.simple-toc-section {
 
 ul.nested-toc-section {
   list-style-type: circle;
-  margin-left: 0.0em;
+  margin-left: -0.75em;
   color: var(--text);
 }
 
+ul.nested-toc-section > li {
+  margin-left: 1.25em;
+}
 
 
 ol.arabic {
