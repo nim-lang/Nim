@@ -87,63 +87,7 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   return partition(s, sep, right = true)
 
 
-template parseFloatThousandSepImpl(s: var string; sep: static char; decimalDot: static char): float =
-  assert sep notin {'-', ' '} and decimalDot notin {'-', ' '} and sep != decimalDot
-
-  template bail(m: string) =
-    raise newException(ValueError, "Invalid float containing thousand separators, " & m)
-
-  if likely(s.len > 1): # Allow "0" thats valid, is 0.0
-    var idx, successive: int
-    var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
-    while idx < s.len:
-      case s[idx]
-      of '0' .. '9':  # Digits
-        if hasAnySep and successive > 2:
-          bail("more than 3 digits between thousand separators.")
-        else:
-          lastWasSep = false
-          lastWasDot = false
-          inc successive
-          inc idx
-      of sep:  # Thousands separator
-        if unlikely(isNegative and idx == 1 or idx == 0):
-          bail("string starts with thousand separator.")
-        elif lastWasSep:
-          bail("two separators in a row.")
-        elif afterDot:
-          bail("separator found after decimal dot.")
-        else:
-          s.delete(idx, idx)
-          lastWasSep = true
-          hasAnySep = true
-          successive = 0
-      of decimalDot:
-        if unlikely(isNegative and idx == 1 or idx == 0):  # Wont allow .1
-          bail("string starts with decimal dot.")
-        elif hasAnySep and successive != 3:
-          bail("not 3 successive digits before decimal point, despite larger 1000.")
-        else:
-          when decimalDot != '.':
-            s[idx] = '.'  # Replace decimalDot to '.' so parseFloat can take it.
-          successive = 0
-          lastWasDot = true
-          afterDot = true
-          inc idx
-      of '-':  # Allow negative float
-        if unlikely(isNegative):  # Wont allow ---1.0
-          bail("string must not contain more than 1 '-' character.")
-        elif unlikely(idx != 0):
-          bail("the '-' character can only be at the start of the string.")
-        else:
-          isNegative = true
-          inc idx
-      else:
-        bail("invalid character in float: " & $s[idx])
-  parseFloat(s)
-
-
-func parseFloatThousandSep*(s: string; sep: static char = ','; decimalDot: static char = '.'): float {.since: (1, 3).} =
+func parseFloatThousandSep*(str: string; sep: static char = ','; decimalDot: static char = '.'): float {.since: (1, 3).} =
   ## Convenience func for `parseFloat` which allows for thousand separators,
   ## this is designed to parse floats as found in the wild formatted for humans.
   ##
@@ -179,44 +123,65 @@ func parseFloatThousandSep*(s: string; sep: static char = ','; decimalDot: stati
     doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
     doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
     doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
-  var copiedString = s
-  parseFloatThousandSepImpl(copiedString, sep, decimalDot)
-
-
-func parseFloatThousandSep*(s: var string; sep: static char = ','; decimalDot: static char = '.'): float {.since: (1, 3).} =
-  ## In-place version of `parseFloatThousandSep`, does not copy the string internally.
-  runnableExamples:
-    var a = "0"
-    doAssert parseFloatThousandSep(a) == 0.0
-    var b = "-0"
-    doAssert parseFloatThousandSep(b) == -0.0
-    var c = "0.0"
-    doAssert parseFloatThousandSep(c) == 0.0
-    var d = "1.0"
-    doAssert parseFloatThousandSep(d) == 1.0
-    var e = "-0.0"
-    doAssert parseFloatThousandSep(e) == -0.0
-    var f = "-1.0"
-    doAssert parseFloatThousandSep(f) == -1.0
-    var g = "1.000"
-    doAssert parseFloatThousandSep(g) == 1.0
-    var h = "-1.000"
-    doAssert parseFloatThousandSep(h) == -1.0
-    var i = "1,000"
-    doAssert parseFloatThousandSep(i) == 1000.0
-    var j = "-1,000"
-    doAssert parseFloatThousandSep(j) == -1000.0
-    var k = "10,000.000"
-    doAssert parseFloatThousandSep(k) == 10000.0
-    var l = "1,000,000.000"
-    doAssert parseFloatThousandSep(l) == 1000000.0
-    var m = "10,000,000.000"
-    doAssert parseFloatThousandSep(m) == 10000000.0
-    var n = "10.000,0"
-    doAssert parseFloatThousandSep(n, '.', ',') == 10000.0
-    var o = "1'000'000,000"
-    doAssert parseFloatThousandSep(o, '\'', ',') == 1000000.0
-  parseFloatThousandSepImpl(s, sep, decimalDot)
+  assert sep notin {'-', ' '} and decimalDot notin {'-', ' '} and sep != decimalDot
+  var s = str
+  if s.len > 1: # Allow "0" thats valid, is 0.0
+    var idx, successive: int
+    var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
+    while idx < s.len:
+      case s[idx]
+      of '0' .. '9':  # Digits
+        if hasAnySep and successive > 2:
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, more than 3 digits between thousand separators.")
+        else:
+          lastWasSep = false
+          lastWasDot = false
+          inc successive
+          inc idx
+      of sep:  # Thousands separator
+        if unlikely(isNegative and idx == 1 or idx == 0):
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, string starts with thousand separator.")
+        elif lastWasSep:
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, two separators in a row.")
+        elif afterDot:
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, separator found after decimal dot.")
+        else:
+          s.delete(idx, idx)
+          lastWasSep = true
+          hasAnySep = true
+          successive = 0
+      of decimalDot:
+        if unlikely(isNegative and idx == 1 or idx == 0):  # Wont allow .1
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, string starts with decimal dot.")
+        elif hasAnySep and successive != 3:
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, not 3 successive digits before decimal point, despite larger 1000.")
+        else:
+          when decimalDot != '.':
+            s[idx] = '.'  # Replace decimalDot to '.' so parseFloat can take it.
+          successive = 0
+          lastWasDot = true
+          afterDot = true
+          inc idx
+      of '-':  # Allow negative float
+        if unlikely(isNegative):  # Wont allow ---1.0
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, string must not contain more than 1 '-' character.")
+        elif unlikely(idx != 0):
+          raise newException(ValueError,
+            "Invalid float containing thousand separators, the '-' character can only be at the start of the string.")
+        else:
+          isNegative = true
+          inc idx
+      else:
+        raise newException(ValueError,
+          "Invalid float containing thousand separators, invalid character in float: " & $s[idx])
+  parseFloat(s)
 
 
 when isMainModule:
