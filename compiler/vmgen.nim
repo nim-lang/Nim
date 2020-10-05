@@ -1807,7 +1807,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  of tySequence:
+  of tySequence, tyOpenArray:
     result = newNodeIT(nkBracket, info, t)
   else:
     globalError(conf, info, "cannot create null element for: " & $t.kind)

@@ -591,9 +591,16 @@ proc value(this: var DebugPrinter; value: PNode) =
   if this.conf != nil:
     this.key "info"
     this.value $lineInfoToStr(this.conf, value.info)
-  if card(value.flags) > 0:
+  if value.flags != {}:
     this.key "flags"
     this.value value.flags
+
+  if value.typ != nil:
+    this.key "typ"
+    this.value value.typ.kind
+  else:
+    this.key "typ"
+    this.value "nil"
 
   case value.kind
   of nkCharLit..nkUInt64Lit:
