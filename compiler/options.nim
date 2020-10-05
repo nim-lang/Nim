@@ -41,6 +41,7 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optNilSeqs,
     optSinkInference          # 'sink T' inference
+    optCursorInference
 
 
   TOptions* = set[TOption]
@@ -95,6 +96,7 @@ type                          # please make sure we have under 32 options
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
     optProfileVM              # enable VM profiler
+    optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -136,9 +138,8 @@ type
     cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
-    gcHooks,
-    gcRefc, gcV2, gcGo
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
+    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
@@ -154,7 +155,7 @@ type
     destructor,
     notnil,
     dynamicBindSym,
-    forLoopMacros,
+    forLoopMacros, # not experimental anymore; remains here for backwards compatibility
     caseStmtMacros,
     codeReordering,
     compiletimeFFI,
@@ -162,7 +163,8 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
-    strictFuncs
+    strictFuncs,
+    views
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -372,7 +374,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck}
+    optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -626,17 +628,6 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
-
-proc shortenDir*(conf: ConfigRef; dir: string): string {.
-    deprecated: "use 'relativeTo' instead".} =
-  ## returns the interesting part of a dir
-  var prefix = conf.projectPath.string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  prefix = getPrefixDir(conf).string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  result = dir
 
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):

@@ -1,7 +1,4 @@
 discard """
-  errormsg: "type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'"
-  file: "teffects1.nim"
-  line: 38
   cmd: "nim check $file"
   nimout: '''teffects1.nim(22, 28) template/generic instantiation from here
 teffects1.nim(23, 13) Error: can raise an unlisted exception: ref IOError
@@ -20,7 +17,10 @@ type
 proc forw: int {. .}
 
 proc lier(): int {.raises: [IO2Error].} =
-  writeLine stdout, "arg"
+  #[tt.Hint                 ^ 'IO2Error' is declared but not used [XDeclaredButNotUsed] ]#
+  writeLine stdout, "arg" #[tt.Error
+            ^  can raise an unlisted exception: ref IOError
+  ]#
 
 proc forw: int =
   raise newException(IOError, "arg")
@@ -35,5 +35,9 @@ proc foo(x: int): string {.raises: [ValueError].} =
     raise newException(ValueError, "Use single digit")
   $x
 
-var p: MyProcType = foo
+var p: MyProcType = foo #[tt.Error
+                    ^
+type mismatch: got <proc (x: int): string{.noSideEffect, gcsafe, locks: 0.}> but expected 'MyProcType = proc (x: int): string{.closure.}'
+
+]#
 {.pop.}

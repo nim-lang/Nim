@@ -4,6 +4,20 @@
 
 ## Standard library additions and changes
 
+- Added some enhancements to `std/jsonutils` module.
+  * Added a possibility to deserialize JSON arrays directly to `HashSet` and
+    `OrderedSet` types and respectively to serialize those types to JSON arrays
+    via `jsonutils.fromJson` and `jsonutils.toJson` procedures.
+  * Added a possibility to deserialize JSON `null` objects to Nim option objects
+    and respectively to serialize Nim option object to JSON object if `isSome`
+    or to JSON null object if `isNone` via `jsonutils.fromJson` and
+    `jsonutils.toJson` procedures.
+  * Added `Joptions` parameter to `jsonutils.fromJson` procedure currently
+    containing two boolean options `allowExtraKeys` and `allowMissingKeys`.
+    - If `allowExtraKeys` is `true` Nim's object to which the JSON is parsed is
+      not required to have a field for every JSON key.
+    - If `allowMissingKeys` is `true` Nim's object to which JSON is parsed is
+      allowed to have fields without corresponding JSON keys.
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Add `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
@@ -142,13 +156,13 @@
   Proc `rightSize` for Tables and HashSets is deprecated, as it is not needed anymore.
   `CountTable.inc` takes `val: int` again not `val: Positive`; I.e. it can "count down" again.
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
-
+- Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
 - Added `deques.toDeque`, which creates a deque from an openArray. The usage is
   similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty deque and add items manually.
-  
+
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -168,6 +182,35 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
+- Add `getprotobyname` to `winlean`. Add `getProtoByname` to `nativesockets` which returns a protocol code
+  from the database that matches the protocol `name`.
+
+- Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
+
+- Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
+  ```nim
+  import strutils
+  echo dedent """
+    This
+      is
+        cool!
+    """
+  ```
+
+- Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
+
+- Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
+
+- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
+  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
+  Previously, it was necessary to create an empty HeapQueue and add items
+  manually.
+- Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
+  is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
+  it was necessary to create an empty IntSet and add items manually.
+
+- Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
+  at which progress callbacks are called.
 
 
 ## Language changes
@@ -249,6 +292,22 @@ proc mydiv(a, b): int {.raises: [].} =
 - There is a new experimental feature called "strictFuncs" which makes the definition of
   `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
   for more information.
+
+- "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
+  an experimental feature. In other words, you don't have to write pragma
+  `{.experimental: "forLoopMacros".}` if you want to use them.
+
+- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
+  performance this keyword can enable.
+
+- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
+- `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
+  `--deepcopy:on`.
+
+- Added a `std/effecttraits` module for introspection of the inferred `.raise` effects.
+  We hope this enables `async` macros that are precise about the possible exceptions that
+  can be raised.
+- Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
 
 
 ## Compiler changes

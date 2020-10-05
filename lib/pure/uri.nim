@@ -49,6 +49,7 @@ import std/private/since
 import strutils, parseutils, base64
 include includes/decode_helpers
 
+
 type
   Url* = distinct string
 
@@ -56,6 +57,7 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
+    isIpv6: bool # not expose it for compatibility.
 
 proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
@@ -170,6 +172,7 @@ proc parseAuthority(authority: string, result: var Uri) =
         inPort = true
     of '[':
       inIPv6 = true
+      result.isIpv6 = true
     of ']':
       inIPv6 = false
     else:
@@ -207,6 +210,21 @@ proc initUri*(): Uri =
     assert initUri() == uri2
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
+
+proc initUri*(isIpv6: bool): Uri {.since: (1, 3, 5).} =
+  ## Initializes a URI with ``scheme``, ``username``, ``password``,
+  ## ``hostname``, ``port``, ``path``, ``query``, ``anchor`` and ``isIpv6``.
+  ##
+  ## **See also:**
+  ## * `Uri type <#Uri>`_ for available fields in the URI type
+  runnableExamples:
+    var uri2 = initUri(isIpv6 = true)
+    uri2.scheme = "tcp"
+    uri2.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    uri2.port = "8080"
+    assert $uri2 == "tcp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
+  result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
+                path: "", query: "", anchor: "", isIpv6: isIpv6)
 
 proc resetUri(uri: var Uri) =
   for f in uri.fields:
@@ -452,9 +470,15 @@ proc `$`*(u: Uri): string =
       result.add(u.password)
     result.add("@")
   if u.hostname.endsWith('/'):
-    result.add(u.hostname[0..^2])
+    if u.isIpv6:
+      result.add("[" & u.hostname[0 .. ^2] & "]")
+    else:
+      result.add(u.hostname[0 .. ^2])
   else:
-    result.add(u.hostname)
+    if u.isIpv6:
+      result.add("[" & u.hostname & "]")
+    else:
+      result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)

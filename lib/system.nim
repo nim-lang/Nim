@@ -288,13 +288,14 @@ else:
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
 
-proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
+proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect,
+  deprecated: "Deprecated since v1.4; there should not be `high(value)`. Use `high(type)`.".}
   ## Returns the highest possible value of an ordinal value `x`.
   ##
   ## As a special semantic rule, `x` may also be a type identifier.
   ##
-  ## See also:
-  ## * `low(T) <#low,T>`_
+  ## **This proc is deprecated**, use this one instead:
+  ## * `high(typedesc) <#high,typedesc[T]>`_
   ##
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
@@ -360,12 +361,13 @@ proc high*(x: string): int {.magic: "High", noSideEffect.}
   ##  var str = "Hello world!"
   ##  high(str) # => 11
 
-proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
+proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect,
+  deprecated: "Deprecated since v1.4; there should not be `low(value)`. Use `low(type)`.".}
   ## Returns the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
-  ## See also:
-  ## * `high(T) <#high,T>`_
+  ## **This proc is deprecated**, use this one instead:
+  ## * `low(typedesc) <#low,typedesc[T]>`_
   ##
   ## .. code-block:: Nim
   ##  low(2) # => -9223372036854775808
@@ -535,7 +537,7 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
-when notJSnotNims and not defined(nimV2):
+when notJSnotNims:
   include "system/hti"
 
 type
@@ -1213,24 +1215,51 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
-  ## Generic proc for adding a container `y` to a container `x`.
-  ##
-  ## For containers that have an order, `add` means *append*. New generic
-  ## containers should also call their adding proc `add` for consistency.
-  ## Generic code becomes much easier to write if the Nim naming scheme is
-  ## respected.
-  ##
-  ## See also:
-  ## * `& proc <#&,seq[T][T],seq[T][T]>`_
-  ##
-  ## .. code-block:: Nim
-  ##   var s: seq[string] = @["test2","test2"]
-  ##   s.add("test") # s <- @[test2, test2, test]
-  {.noSideEffect.}:
-    let xl = x.len
-    setLen(x, xl + y.len)
-    for i in 0..high(y): x[xl+i] = y[i]
+when defined(gcDestructors):
+  proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
+    ## Generic proc for adding a container `y` to a container `x`.
+    ##
+    ## For containers that have an order, `add` means *append*. New generic
+    ## containers should also call their adding proc `add` for consistency.
+    ## Generic code becomes much easier to write if the Nim naming scheme is
+    ## respected.
+    ##
+    ## See also:
+    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test") # s <- @[test2, test2, test]
+    {.noSideEffect.}:
+      let xl = x.len
+      setLen(x, xl + y.len)
+      for i in 0..high(y):
+        when nimvm:
+          # workaround the fact that the VM does not yet
+          # handle sink parameters properly:
+          x[xl+i] = y[i]
+        else:
+          x[xl+i] = move y[i]
+else:
+  proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+    ## Generic proc for adding a container `y` to a container `x`.
+    ##
+    ## For containers that have an order, `add` means *append*. New generic
+    ## containers should also call their adding proc `add` for consistency.
+    ## Generic code becomes much easier to write if the Nim naming scheme is
+    ## respected.
+    ##
+    ## See also:
+    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   var s: seq[string] = @["test2","test2"]
+    ##   s.add("test") # s <- @[test2, test2, test]
+    {.noSideEffect.}:
+      let xl = x.len
+      setLen(x, xl + y.len)
+      for i in 0..high(y): x[xl+i] = y[i]
+
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =
@@ -1716,16 +1745,16 @@ when not defined(js) and hasThreadSupport and hostOS != "standalone":
 
 when not defined(js) and defined(nimV2):
   type
-    TNimNode {.compilerproc.} = object # to keep the code generator simple
     DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
-    TNimType {.compilerproc.} = object
+    TNimTypeV2 {.compilerproc.} = object
       destructor: pointer
       size: int
       align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
-    PNimType = ptr TNimType
+      typeInfoV1: pointer # for backwards compat, usually nil
+    PNimTypeV2 = ptr TNimTypeV2
 
 when notJSnotNims and defined(nimSeqsV2):
   include "system/strs_v2"
@@ -2077,7 +2106,7 @@ const
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 5
+  NimPatch* {.intdefine.}: int = 7
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -2269,29 +2298,28 @@ when notJSnotNims:
   else:
     const GenericSeqSize = (2 * sizeof(int))
 
-  when not defined(nimV2):
-    proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
-      sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-      var d: uint
-      var a = cast[uint](aa)
-      case n.typ.size
-      of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
-      of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
-      of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
-      of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
-      else:
-        d = 0'u
-        sysAssert(false, "getDiscriminant: invalid n.typ.size")
-      return d
+  proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
+    sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
+    var d: uint
+    var a = cast[uint](aa)
+    case n.typ.size
+    of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
+    of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
+    of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
+    of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
+    else:
+      d = 0'u
+      sysAssert(false, "getDiscriminant: invalid n.typ.size")
+    return d
 
-    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
-      var discr = getDiscriminant(aa, n)
-      if discr < cast[uint](n.len):
-        result = n.sons[discr]
-        if result == nil: result = n.sons[n.len]
-        # n.sons[n.len] contains the ``else`` part (but may be nil)
-      else:
-        result = n.sons[n.len]
+  proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
+    var discr = getDiscriminant(aa, n)
+    if discr < cast[uint](n.len):
+      result = n.sons[discr]
+      if result == nil: result = n.sons[n.len]
+      # n.sons[n.len] contains the ``else`` part (but may be nil)
+    else:
+      result = n.sons[n.len]
 
 when notJSnotNims and hasAlloc:
   {.push profiler: off.}
@@ -2303,8 +2331,8 @@ when notJSnotNims and hasAlloc:
   {.pop.}
 
   include "system/strmantle"
-  when not usesDestructors:
-    include "system/assign"
+  include "system/assign"
+
   when not defined(nimV2):
     include "system/repr"
 
@@ -2860,13 +2888,16 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hasAlloc and notJSnotNims and not usesDestructors:
+when hasAlloc and notJSnotNims:
   # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.
     ##
     ## This is also used by the code generator
     ## for the implementation of ``spawn``.
+    ##
+    ## For ``--gc:arc`` or ``--gc:orc`` deepcopy support has to be enabled
+    ## via ``--deepcopy:on``.
     discard
 
   proc deepCopy*[T](y: T): T =

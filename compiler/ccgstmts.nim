@@ -1040,7 +1040,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
           else:
-            genTypeInfo(p.module, typeNode.typ, typeNode.info)
+            genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1255,7 +1255,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1383,7 +1383,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1508,7 +1508,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfo(p.module, t, a.lode.info)
+  discard genTypeInfoV1(p.module, t, a.lode.info)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
@@ -1556,7 +1556,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

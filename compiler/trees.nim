@@ -183,10 +183,22 @@ proc getRoot*(n: PNode): PSym =
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
+      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
     result = getRoot(n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = getRoot(n[1])
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
   else: discard
+
+proc stupidStmtListExpr*(n: PNode): bool =
+  for i in 0..<n.len-1:
+    if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+  result = true
+
+proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
+  # symbols that expand to a complex constant (array, etc.) should not be
+  # inlined, unless it's the empty array:
+  result = orig.kind == nkSym and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
+           cnst.len > ord(cnst.kind == nkObjConstr)

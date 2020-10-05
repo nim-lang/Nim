@@ -82,6 +82,7 @@ when defined(nimVmExportFixed):
   export toLower, toUpper
 
 include "system/inclrtl"
+import std/private/since
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -1294,8 +1295,7 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   let typ = typ.getTypeInst[1]
   let impl = typ.getImpl[2]
   expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
-                                                  bindSym"nimIdentNormalize"))
+  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
   var fStr = "" # string of current field
@@ -1512,6 +1512,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural,string>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1525,21 +1526,25 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural, padding: string = " "): string
+proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `dedent proc<#dedent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
-    doAssert unindent("  First line\l   and second line", 3) ==
-             "First line\land second line"
+    let x = """
+      Hello
+        There
+    """.unindent()
+
+    doAssert x == "Hello\nThere\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1554,11 +1559,30 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc unindent*(s: string): string
-    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
-  ## Removes all indentation composed of whitespace from each line in ``s``.
+proc indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## ignoring lines that consist only of whitespace.
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ':
+        result = i
+        break
+  if result == int.high:
+    result = 0
+
+proc dedent*(s: string, count: Natural = indentation(s)): string
+    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
+  ## is that this by default only cuts off the amount of indentation that all
+  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `unindent proc<#unindent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1566,11 +1590,11 @@ proc unindent*(s: string): string
   runnableExamples:
     let x = """
       Hello
-      There
-    """.unindent()
+        There
+    """.dedent()
 
-    doAssert x == "Hello\nThere\n"
-  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
+    doAssert x == "Hello\n  There\n"
+  unindent(s, count, " ")
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
@@ -1906,7 +1930,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
 
 proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed
+  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##

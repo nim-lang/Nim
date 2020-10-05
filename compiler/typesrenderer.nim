@@ -67,7 +67,7 @@ proc renderType(n: PNode): string =
     let typeStr = renderType(n[typePos])
     result = typeStr
     for i in 1..<typePos:
-      assert n[i].kind == nkIdent
+      assert n[i].kind in {nkSym, nkIdent}
       result.add(',' & typeStr)
   of nkTupleTy:
     result = "tuple["

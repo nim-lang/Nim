@@ -65,14 +65,15 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor, wNoalias}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
+  paramPragmas* = {wNoalias, wInject, wGensym}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe,
@@ -532,7 +533,7 @@ proc processLink(c: PContext, n: PNode) =
 proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
   case n[1].kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
-    result = newNode(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
+    result = newNodeI(if n.kind == nkAsmStmt: nkAsmStmt else: nkArgList, n.info)
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
@@ -563,7 +564,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       a = c + 1
   else:
     illFormedAstLocal(n, con.config)
-    result = newNode(nkAsmStmt, n.info)
+    result = newNodeI(nkAsmStmt, n.info)
 
 proc pragmaEmit(c: PContext, n: PNode) =
   if n.kind notin nkPragmaCallKinds or n.len != 2:
@@ -626,7 +627,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
     invalidPragma(c, n)
 
   var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
-  userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
+  userPragma.ast = newTreeI(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
@@ -864,6 +865,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wRegister:
         noVal(c, it)
         incl(sym.flags, sfRegister)
+      of wNoalias:
+        noVal(c, it)
+        incl(sym.flags, sfNoalias)
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
@@ -1033,7 +1037,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wPush:
         processPush(c, n, i + 1)
         result = true
-      of wPop: processPop(c, it)
+      of wPop:
+        processPop(c, it)
+        result = true
       of wPragma:
         if not sym.isNil and sym.kind == skTemplate:
           sym.flags.incl sfCustomPragma

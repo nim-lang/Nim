@@ -54,7 +54,8 @@ proc `callback=`*[T](future: FutureStream[T],
   ##
   ## If the future stream already has data or is finished then ``cb`` will be
   ## called immediately.
-  future.cb = proc () = cb(future)
+  proc named() = cb(future)
+  future.cb = named
   if future.queue.len > 0 or future.finished:
     callSoon(future.cb)
 
@@ -90,27 +91,26 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## ``FutureStream``.
   var resFut = newFuture[(bool, T)]("FutureStream.take")
   let savedCb = future.cb
-  var newCb =
-    proc (fs: FutureStream[T]) =
-      # Exit early if `resFut` is already complete. (See #8994).
-      if resFut.finished: return
+  proc newCb(fs: FutureStream[T]) =
+    # Exit early if `resFut` is already complete. (See #8994).
+    if resFut.finished: return
 
-      # We don't want this callback called again.
-      #future.cb = nil
+    # We don't want this callback called again.
+    #future.cb = nil
 
-      # The return value depends on whether the FutureStream has finished.
-      var res: (bool, T)
-      if finished(fs):
-        # Remember, this callback is called when the FutureStream is completed.
-        res[0] = false
-      else:
-        res[0] = true
-        res[1] = fs.queue.popFirst()
+    # The return value depends on whether the FutureStream has finished.
+    var res: (bool, T)
+    if finished(fs):
+      # Remember, this callback is called when the FutureStream is completed.
+      res[0] = false
+    else:
+      res[0] = true
+      res[1] = fs.queue.popFirst()
 
-      resFut.complete(res)
+    resFut.complete(res)
 
-      # If the saved callback isn't nil then let's call it.
-      if not savedCb.isNil: savedCb()
+    # If the saved callback isn't nil then let's call it.
+    if not savedCb.isNil: savedCb()
 
   if future.queue.len > 0 or future.finished:
     newCb(future)

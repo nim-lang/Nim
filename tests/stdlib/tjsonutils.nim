@@ -13,8 +13,7 @@ proc testRoundtrip[T](t: T, expected: string) =
   t2.fromJson(j)
   doAssert t2.toJson == j
 
-import tables
-import strtabs
+import tables, sets, algorithm, sequtils, options, strtabs
 
 type Foo = ref object
   id: int
@@ -118,6 +117,188 @@ template fn() =
     testRoundtrip(Foo[float](t1: true, z1: 5, t2: 3, z4: 12)): """{"t1":true,"z1":5,"t2":3,"z4":12}"""
     testRoundtrip(Foo[int](t1: false, z2: 7)): """{"t1":false,"z2":7}"""
     # pending https://github.com/nim-lang/Nim/issues/14698, test with `type Foo[T] = ref object`
+
+  block testHashSet:
+    testRoundtrip(HashSet[string]()): "[]"
+    testRoundtrip([""].toHashSet): """[""]"""
+    testRoundtrip(["one"].toHashSet): """["one"]"""
+
+    var s: HashSet[string]
+    fromJson(s, parseJson("""["one","two"]"""))
+    doAssert s == ["one", "two"].toHashSet
+
+    let jsonNode = toJson(s)
+    doAssert jsonNode.elems.mapIt(it.str).sorted == @["one", "two"]
+
+  block testOrderedSet:
+    testRoundtrip(["one", "two", "three"].toOrderedSet):
+      """["one","two","three"]"""
+
+  block testOption:
+    testRoundtrip(some("test")): "\"test\""
+    testRoundtrip(none[string]()): "null"
+    testRoundtrip(some(42)): "42"
+    testRoundtrip(none[int]()): "null"
+
+  block testStrtabs:
+    testRoundtrip(newStringTable(modeStyleInsensitive)):
+      """{"mode":"modeStyleInsensitive","table":{}}"""
+
+    testRoundtrip(
+      newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)):
+        """{"mode":"modeCaseSensitive","table":{"name":"John","surname":"Doe"}}"""
+
+  block testJoptions:
+    type
+      AboutLifeUniverseAndEverythingElse = object
+        question: string
+        answer: int
+
+    block testExceptionOnExtraKeys:
+      var guide: AboutLifeUniverseAndEverythingElse
+      let json = parseJson(
+        """{"question":"6*9=?","answer":42,"author":"Douglas Adams"}""")
+      doAssertRaises ValueError, fromJson(guide, json)
+      doAssertRaises ValueError,
+                     fromJson(guide, json, Joptions(allowMissingKeys: true))
+
+      type
+        A = object
+          a1,a2,a3: int
+      var a: A
+      let j = parseJson("""{"a3": 1, "a4": 2}""")
+      doAssertRaises ValueError,
+                     fromJson(a, j, Joptions(allowMissingKeys: true))
+
+    block testExceptionOnMissingKeys:
+      var guide: AboutLifeUniverseAndEverythingElse
+      let json = parseJson("""{"answer":42}""")
+      doAssertRaises ValueError, fromJson(guide, json)
+      doAssertRaises ValueError,
+                     fromJson(guide, json, Joptions(allowExtraKeys: true))
+
+    block testAllowExtraKeys:
+      var guide: AboutLifeUniverseAndEverythingElse
+      let json = parseJson(
+        """{"question":"6*9=?","answer":42,"author":"Douglas Adams"}""")
+      fromJson(guide, json, Joptions(allowExtraKeys: true))
+      doAssert guide == AboutLifeUniverseAndEverythingElse(
+        question: "6*9=?", answer: 42)
+
+    block testAllowMissingKeys:
+      var guide = AboutLifeUniverseAndEverythingElse(
+        question: "6*9=?", answer: 54)
+      let json = parseJson("""{"answer":42}""")
+      fromJson(guide, json, Joptions(allowMissingKeys: true))
+      doAssert guide == AboutLifeUniverseAndEverythingElse(
+        question: "6*9=?", answer: 42)
+
+    block testAllowExtraAndMissingKeys:
+      var guide = AboutLifeUniverseAndEverythingElse(
+        question: "6*9=?", answer: 54)
+      let json = parseJson(
+        """{"answer":42,"author":"Douglas Adams"}""")
+      fromJson(guide, json, Joptions(
+        allowExtraKeys: true, allowMissingKeys: true))
+      doAssert guide == AboutLifeUniverseAndEverythingElse(
+        question: "6*9=?", answer: 42)
+
+    type
+      Foo = object
+        a: array[2, string]
+        case b: bool
+        of false: f: float
+        of true: t: tuple[i: int, s: string]
+        case c: range[0 .. 2]
+        of 0: c0: int
+        of 1: c1: float
+        of 2: c2: string
+
+    block testExceptionOnMissingDiscriminantKey:
+      var foo: Foo
+      let json = parseJson("""{"a":["one","two"]}""")
+      doAssertRaises ValueError, fromJson(foo, json)
+
+    block testDoNotResetMissingFieldsWhenHaveDiscriminantKey:
+      var foo = Foo(a: ["one", "two"], b: true, t: (i: 42, s: "s"),
+                    c: 0, c0: 1)
+      let json = parseJson("""{"b":true,"c":2}""")
+      fromJson(foo, json, Joptions(allowMissingKeys: true))
+      doAssert foo.a == ["one", "two"]
+      doAssert foo.b
+      doAssert foo.t == (i: 42, s: "s")
+      doAssert foo.c == 2
+      doAssert foo.c2 == ""
+
+    block testAllowMissingDiscriminantKeys:
+      var foo: Foo
+      let json = parseJson("""{"a":["one","two"],"c":1,"c1":3.14159}""")
+      fromJson(foo, json, Joptions(allowMissingKeys: true))
+      doAssert foo.a == ["one", "two"]
+      doAssert not foo.b
+      doAssert foo.f == 0.0
+      doAssert foo.c == 1
+      doAssert foo.c1 == 3.14159
+
+    block testExceptionOnWrongDiscirminatBranchInJson:
+      var foo = Foo(b: false, f: 3.14159, c: 0, c0: 42)
+      let json = parseJson("""{"c2": "hello"}""")
+      doAssertRaises ValueError,
+                     fromJson(foo, json, Joptions(allowMissingKeys: true))
+      # Test that the original fields are not reset.
+      doAssert not foo.b
+      doAssert foo.f == 3.14159
+      doAssert foo.c == 0
+      doAssert foo.c0 == 42
+
+    block testNoExceptionOnRightDiscriminantBranchInJson:
+      var foo = Foo(b: false, f: 0, c:1, c1: 0)
+      let json = parseJson("""{"f":2.71828,"c1": 3.14159}""")
+      fromJson(foo, json, Joptions(allowMissingKeys: true))
+      doAssert not foo.b
+      doAssert foo.f == 2.71828
+      doAssert foo.c == 1
+      doAssert foo.c1 == 3.14159
+
+    block testAllowExtraKeysInJsonOnWrongDisciriminatBranch:
+      var foo = Foo(b: false, f: 3.14159, c: 0, c0: 42)
+      let json = parseJson("""{"c2": "hello"}""")
+      fromJson(foo, json, Joptions(allowMissingKeys: true,
+                                   allowExtraKeys: true))
+      # Test that the original fields are not reset.
+      doAssert not foo.b
+      doAssert foo.f == 3.14159
+      doAssert foo.c == 0
+      doAssert foo.c0 == 42
+
+    when false:
+      ## TODO: Implement support for nested variant objects allowing the tests
+      ## bellow to pass.
+      block testNestedVariantObjects:
+        type
+          Variant = object
+            case b: bool
+            of false:
+              case bf: bool
+              of false: bff: int
+              of true: bft: float
+            of true:
+              case bt: bool
+              of false: btf: string
+              of true: btt: char
+
+        testRoundtrip(Variant(b: false, bf: false, bff: 42)):
+          """{"b": false, "bf": false, "bff": 42}"""
+        testRoundtrip(Variant(b: false, bf: true, bft: 3.14159)):
+          """{"b": false, "bf": true, "bft": 3.14159}"""
+        testRoundtrip(Variant(b: true, bt: false, btf: "test")):
+          """{"b": true, "bt": false, "btf": "test"}"""
+        testRoundtrip(Variant(b: true, bt: true, btt: 'c')):
+          """{"b": true, "bt": true, "btt": "c"}"""
+        
+        # TODO: Add additional tests with missing and extra JSON keys, both when
+        # allowed and forbidden analogous to the tests for the not nested
+        # variant objects.
 
 static: fn()
 fn()

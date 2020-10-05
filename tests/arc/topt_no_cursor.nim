@@ -44,15 +44,17 @@ var
 var
   lresult
   lvalue
+  lnext
   _
 `=`(lresult, [123])
-var lnext_cursor: string
 _ = (
   let blitTmp = lresult
   blitTmp, ";")
 lvalue = _[0]
-lnext_cursor = _[1]
-`=sink`(result.value, lvalue)
+lnext = _[1]
+`=sink`(result.value, move lvalue)
+`=destroy`(lnext)
+`=destroy_1`(lvalue)
 -- end of expandArc ------------------------
 --expandArc: tt
 
@@ -148,7 +150,7 @@ proc p1(): Maybe =
   var lnext: string
   (lvalue, lnext) = (lresult, ";")
 
-  result.value = lvalue
+  result.value = move lvalue
 
 proc tissue15130 =
   doAssert p1().value == @[123]
@@ -171,3 +173,24 @@ proc encodedQuery =
     elem.tt()
 
 encodedQuery()
+
+# bug #15147
+
+proc s(input: string): (string, string) =
+  result = (";", "")
+
+proc charmatch(input: string): (string, string) =
+  result = ("123", input[0 .. input.high])
+
+proc plus(input: string) =
+  var
+    lvalue, rvalue: string # cursors
+    lnext: string # must be cursor!!!
+    rnext: string # cursor
+  let lresult = charmatch(input)
+  (lvalue, lnext) = lresult
+
+  let rresult = s(lnext)
+  (rvalue, rnext) = rresult
+
+plus("123;")

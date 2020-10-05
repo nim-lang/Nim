@@ -616,7 +616,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -625,7 +625,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body1
   else:
     body2

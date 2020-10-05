@@ -699,9 +699,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, s, sinkArg)
-    elif n.typ == nil or n.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyVar}).kind == tyOpenArray:
-      # 'raise X' can be part of a 'case' expression. Deal with it here.
-      # openarrays require perfect forwarding
+    elif n.typ == nil:
+      # 'raise X' can be part of a 'case' expression. Deal with it here:
       result = p(n, c, s, normal)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter
@@ -727,6 +726,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result = copyTree(n)
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
         if n[i].kind == nkExprColonExpr:
+          result[i][1] = p(n[i][1], c, s, m)
+        elif n[i].kind == nkRange:
+          result[i][0] = p(n[i][0], c, s, m)
           result[i][1] = p(n[i][1], c, s, m)
         else:
           result[i] = p(n[i], c, s, m)
@@ -1003,7 +1005,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echoCfg(c.g)
     echo n
 
-  computeCursors(owner, n, g.config)
+  if optCursorInference in g.config.options:
+    computeCursors(owner, n, g.config)
 
   var scope: Scope
   let body = p(n, c, scope, normal)
