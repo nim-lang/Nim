@@ -447,7 +447,7 @@ ul.simple-toc-section {
 ul.nested-toc-section {
   list-style-type: circle;
   margin-left: 0.0em;
-  color: #222;
+  color: var(--text);
 }
 
 
