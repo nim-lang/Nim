@@ -209,6 +209,9 @@
   is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
   it was necessary to create an empty IntSet and add items manually.
 
+- Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
+  at which progress callbacks are called.
+
 
 ## Language changes
 

@@ -13,8 +13,8 @@
 ##
 ##  To complete the installation, run:
 ##
-##  sudo apt-get libblas-dev
-##  sudo apt-get libvoodoo
+##  sudo apt-get install libblas-dev
+##  sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
