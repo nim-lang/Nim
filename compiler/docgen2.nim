@@ -29,6 +29,7 @@ proc shouldProcess(g: PGen): bool =
 template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
+  let groupedToc = true
   if shouldProcess(g):
     body
     try:
@@ -38,7 +39,7 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, useWarning)
+    writeOutput(g.doc, useWarning, groupedToc)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
