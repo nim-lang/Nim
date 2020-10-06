@@ -552,7 +552,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
   n.len == 0 or (n[tagEffects] == nil and n[exceptionEffects] == nil)
 
 proc isTrival(caller: PNode): bool {.inline.} =
-  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved}
+  result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)
