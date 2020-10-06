@@ -1081,11 +1081,8 @@ proc track(tracked: PEffects, n: PNode) =
         bc.enforceNoSideEffects = true
       of wCast:
         castBlock(tracked, pragmaList[i][1], bc)
-      of wLine: discard
       else:
-        localError(tracked.config, pragmaList[i].info,
-            "invalid pragma block: " & $pragmaList[i])
-
+        discard
     applyBlockContext(tracked, bc)
     track(tracked, n.lastSon)
     unapplyBlockContext(tracked, bc)
