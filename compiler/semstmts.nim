@@ -2169,7 +2169,7 @@ proc setLine(n: PNode, info: TLineInfo) =
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
-  pragma(c, nil, pragmaList, exprPragmas)
+  pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
   n[1] = semExpr(c, n[1])
   result = n
   result.typ = n[1].typ

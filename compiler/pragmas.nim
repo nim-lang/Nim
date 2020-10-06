@@ -771,6 +771,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   if key.kind == nkBracketExpr:
     processNote(c, it)
     return
+  elif key.kind == nkCast:
+    if comesFromPush:
+      localError(c.config, n.info, "a 'cast' pragma cannot be pushed")
+    elif not isStatement:
+      localError(c.config, n.info, "'cast' pragma only allowed in a statement context")
+    case whichPragma(key[1])
+    of wRaises, wTags: pragmaRaisesOrTags(c, key[1])
+    else: discard
+    return
   elif key.kind notin nkIdentKinds:
     n[i] = semCustomPragma(c, it)
     return
