@@ -181,6 +181,7 @@ type
     nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CfileFlag]
+    customArgs*: string
   CfileList* = seq[Cfile]
 
   Suggest* = ref object

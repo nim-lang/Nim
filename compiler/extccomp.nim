@@ -651,6 +651,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   if useCpp(conf, cfile.cname):
     options.add(' ' & CC[c].cppXsupport)
 
+  if cfile.customArgs != "":
+    options.add ' '
+    options.add cfile.customArgs
+
   var compilePattern: string
   # compute include paths:
   var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)

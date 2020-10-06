@@ -6652,6 +6652,14 @@ with the project:
 has changed. One can use the ``-f`` command line option to force recompilation
 of the file.
 
+Since 1.4 the `compile` pragma is also available with this syntax:
+
+.. code-block:: Nim
+  {.compile("myfile.cpp", "--custom flags here").}
+
+As can be seen in the example, this new variant allows for custom flags
+that are passed to the C compiler when the file is recompiled.
+
 
 Link pragma
 -----------

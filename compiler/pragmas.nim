@@ -92,11 +92,10 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool = false)
 
-proc recordPragma(c: PContext; n: PNode; key, val: string; val2 = "") =
+proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
   var recorded = newNodeI(nkCommentStmt, n.info)
-  recorded.add newStrNode(key, n.info)
-  recorded.add newStrNode(val, n.info)
-  if val2.len > 0: recorded.add newStrNode(val2, n.info)
+  for i in 0..args.high:
+    recorded.add newStrNode(args[i], n.info)
   c.graph.recordStmt(c.graph, c.module, recorded)
 
 const
@@ -496,11 +495,12 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
       if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
-  proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile) =
+  proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile; customArgs: string) =
     var cf = Cfile(nimname: splitFile(src).name,
-                   cname: src, obj: dest, flags: {CfileFlag.External})
+                   cname: src, obj: dest, flags: {CfileFlag.External},
+                   customArgs: customArgs)
     extccomp.addExternalFileToCompile(c.config, cf)
-    recordPragma(c, it, "compile", src.string, dest.string)
+    recordPragma(c, it, "compile", src.string, dest.string, customArgs)
 
   proc getStrLit(c: PContext, n: PNode; i: int): string =
     n[i] = c.semConstExpr(c, n[i])
@@ -518,9 +518,19 @@ proc processCompile(c: PContext, n: PNode) =
     var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
       let obj = completeCfilePath(c.config, AbsoluteFile(dest % extractFilename(f)))
-      docompile(c, it, AbsoluteFile f, obj)
+      docompile(c, it, AbsoluteFile f, obj, "")
   else:
-    let s = expectStrLit(c, n)
+    var s = ""
+    var customArgs = ""
+    if n.kind in nkCallKinds:
+      s = getStrLit(c, n, 1)
+      if n.len <= 3:
+        customArgs = getStrLit(c, n, 2)
+      else:
+        localError(c.config, n.info, "'.compile' pragma takes up 2 arguments")
+    else:
+      s = expectStrLit(c, n)
+
     var found = AbsoluteFile(parentDir(toFullPath(c.config, n.info)) / s)
     if not fileExists(found):
       if isAbsolute(s): found = AbsoluteFile s
@@ -528,7 +538,7 @@ proc processCompile(c: PContext, n: PNode) =
         found = findFile(c.config, s)
         if found.isEmpty: found = AbsoluteFile s
     let obj = toObjFile(c.config, completeCfilePath(c.config, found, false))
-    docompile(c, it, found, obj)
+    docompile(c, it, found, obj, customArgs)
 
 proc processLink(c: PContext, n: PNode) =
   let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
