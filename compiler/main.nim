@@ -249,7 +249,7 @@ proc mainCommand*(graph: ModuleGraph) =
       # so by default should not end up in $PWD nor in $projectPath.
       conf.outDir = block:
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-        else: conf.projectPath
+                  else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
         if docLikeCmd2: ret = ret / htmldocsDir
         ret
