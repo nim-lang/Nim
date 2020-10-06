@@ -1057,9 +1057,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkSymbol, "(wrong conv)")
   of nkCast:
     put(g, tkCast, "cast")
-    put(g, tkBracketLe, "[")
-    gsub(g, n, 0)
-    put(g, tkBracketRi, "]")
+    if n.len > 0 and n[0].kind != nkEmpty:
+      put(g, tkBracketLe, "[")
+      gsub(g, n, 0)
+      put(g, tkBracketRi, "]")
     put(g, tkParLe, "(")
     gsub(g, n, 1)
     put(g, tkParRi, ")")

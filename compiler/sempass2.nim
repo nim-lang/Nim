@@ -325,7 +325,7 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
   result.typ = g.sysTypeFromName(n.info, "RootEffect")
   if not n.isNil: result.info = n.info
 
-proc addEffect(a: PEffects, e, comesFrom: PNode) =
+proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom..<aa.len:
@@ -345,11 +345,11 @@ proc addTag(a: PEffects, e, comesFrom: PNode) =
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)): return
   throws(a.tags, e, comesFrom)
 
-proc mergeEffects(a: PEffects, b, comesFrom: PNode) =
+proc mergeRaises(a: PEffects, b, comesFrom: PNode) =
   if b.isNil:
-    addEffect(a, createRaise(a.graph, comesFrom), comesFrom)
+    addRaiseEffect(a, createRaise(a.graph, comesFrom), comesFrom)
   else:
-    for effect in items(b): addEffect(a, effect, comesFrom)
+    for effect in items(b): addRaiseEffect(a, effect, comesFrom)
 
 proc mergeTags(a: PEffects, b, comesFrom: PNode) =
   if b.isNil:
@@ -489,7 +489,7 @@ proc mergeLockLevels(tracked: PEffects, n: PNode, lockLevel: TLockLevel) =
 proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let pragma = s.ast[pragmasPos]
   let spec = effectSpec(pragma, wRaises)
-  mergeEffects(tracked, spec, n)
+  mergeRaises(tracked, spec, n)
 
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
@@ -535,7 +535,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     of impYes: discard
 
 proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
-  addEffect(tracked, createRaise(tracked.graph, n), nil)
+  addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
   addTag(tracked, createTag(tracked.graph, n), nil)
   let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
                   else: op.lockLevel
@@ -581,7 +581,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
       elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
         markSideEffect(tracked, a)
     else:
-      mergeEffects(tracked, effectList[exceptionEffects], n)
+      mergeRaises(tracked, effectList[exceptionEffects], n)
       mergeTags(tracked, effectList[tagEffects], n)
       if notGcSafe(op):
         if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
@@ -780,7 +780,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
         assumeTheWorst(tracked, n, op)
         gcsafeAndSideeffectCheck()
     else:
-      mergeEffects(tracked, effectList[exceptionEffects], n)
+      mergeRaises(tracked, effectList[exceptionEffects], n)
       mergeTags(tracked, effectList[tagEffects], n)
       gcsafeAndSideeffectCheck()
   if a.kind != nkSym or a.sym.magic != mNBindSym:
@@ -837,6 +837,64 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # initVar(tracked, n[i].skipAddr, false)
       else: discard
 
+type
+  PragmaBlockContext = object
+    oldLocked: int
+    oldLockLevel: TLockLevel
+    enforcedGcSafety, enforceNoSideEffects: bool
+    oldExc, oldTags: int
+    exc, tags: PNode
+
+proc createBlockContext(tracked: PEffects): PragmaBlockContext =
+  result = PragmaBlockContext(oldLocked: tracked.locked.len,
+    oldLockLevel: tracked.currLockLevel,
+    enforcedGcSafety: false, enforceNoSideEffects: false,
+    oldExc: tracked.exc.len, oldTags: tracked.tags.len)
+
+proc applyBlockContext(tracked: PEffects, bc: PragmaBlockContext) =
+  if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = true
+  if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
+
+proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
+  if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = false
+  if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = false
+  setLen(tracked.locked, bc.oldLocked)
+  tracked.currLockLevel = bc.oldLockLevel
+  if bc.exc != nil:
+    # beware that 'raises: []' is very different from not saying
+    # anything about 'raises' in the 'cast' at all. Same applies for 'tags'.
+    setLen(tracked.exc.sons, bc.oldExc)
+    for e in bc.exc:
+      addRaiseEffect(tracked, e, e)
+  if bc.tags != nil:
+    setLen(tracked.tags.sons, bc.oldTags)
+    for t in bc.tags:
+      addTag(tracked, t, t)
+
+proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
+  case whichPragma(pragma)
+  of wGcSafe:
+    bc.enforcedGcSafety = true
+  of wNoSideEffect:
+    bc.enforceNoSideEffects = true
+  of wTags:
+    let n = pragma[1]
+    if n.kind in {nkCurly, nkBracket}:
+      bc.tags = n
+    else:
+      bc.tags = newNodeI(nkArgList, pragma.info)
+      bc.tags.add n
+  of wRaises:
+    let n = pragma[1]
+    if n.kind in {nkCurly, nkBracket}:
+      bc.exc = n
+    else:
+      bc.exc = newNodeI(nkArgList, pragma.info)
+      bc.exc.add n
+  else:
+    localError(tracked.config, pragma.info,
+        "invalid pragma block: " & $pragma)
+
 proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
@@ -854,7 +912,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addEffect(tracked, n[0], nil)
+      addRaiseEffect(tracked, n[0], nil)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -862,7 +920,7 @@ proc track(tracked: PEffects, n: PNode) =
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseDefect`.
       # Here we add a `Exception` tag in order to cover both the cases.
-      addEffect(tracked, createRaise(tracked.graph, n), nil)
+      addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
     trackCall(tracked, n)
   of nkDotExpr:
@@ -1011,26 +1069,27 @@ proc track(tracked: PEffects, n: PNode) =
       checkForSink(tracked.config, tracked.owner, n[i])
   of nkPragmaBlock:
     let pragmaList = n[0]
-    let oldLocked = tracked.locked.len
-    let oldLockLevel = tracked.currLockLevel
-    var enforcedGcSafety = false
-    var enforceNoSideEffects = false
+    var bc = createBlockContext(tracked)
     for i in 0..<pragmaList.len:
       let pragma = whichPragma(pragmaList[i])
-      if pragma == wLocks:
+      case pragma
+      of wLocks:
         lockLocations(tracked, pragmaList[i])
-      elif pragma == wGcSafe:
-        enforcedGcSafety = true
-      elif pragma == wNoSideEffect:
-        enforceNoSideEffects = true
+      of wGcSafe:
+        bc.enforcedGcSafety = true
+      of wNoSideEffect:
+        bc.enforceNoSideEffects = true
+      of wCast:
+        castBlock(tracked, pragmaList[i][1], bc)
+      of wLine: discard
+      else:
+        localError(tracked.config, pragmaList[i].info,
+            "invalid pragma block: " & $pragmaList[i])
 
-    if enforcedGcSafety: tracked.inEnforcedGcSafe = true
-    if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
+    applyBlockContext(tracked, bc)
     track(tracked, n.lastSon)
-    if enforcedGcSafety: tracked.inEnforcedGcSafe = false
-    if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = false
-    setLen(tracked.locked, oldLocked)
-    tracked.currLockLevel = oldLockLevel
+    unapplyBlockContext(tracked, bc)
+
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard

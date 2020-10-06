@@ -29,8 +29,7 @@
 ## for a high-level description of how borrow checking works.
 
 import ast, types, lineinfos, options, msgs, renderer, typeallowed
-from trees import getMagic, whichPragma, stupidStmtListExpr
-from wordrecg import wNoSideEffect
+from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
 type
@@ -713,7 +712,7 @@ proc traverse(c: var Partitions; n: PNode) =
     let pragmaList = n[0]
     var enforceNoSideEffects = 0
     for i in 0..<pragmaList.len:
-      if whichPragma(pragmaList[i]) == wNoSideEffect:
+      if isNoSideEffectPragma(pragmaList[i]):
         enforceNoSideEffects = 1
         break
 

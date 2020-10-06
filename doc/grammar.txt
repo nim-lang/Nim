@@ -6,7 +6,7 @@ colon = ':' COMMENT?
 colcom = ':' COMMENT?
 operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
-         | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from' |
+         | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 prefixOperator = operator
 optInd = COMMENT? IND?
@@ -31,15 +31,15 @@ dotExpr = expr '.' optInd (symbol | '[:' exprList ']')
 explicitGenericInstantiation = '[:' exprList ']' ( '(' exprColonEqExpr ')' )?
 qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
-castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
+castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
         | 'when' | 'var' | 'mixin'
 par = '(' optInd
-          ( &parKeyw complexOrSimpleStmt ^+ ';'
-          | ';' complexOrSimpleStmt ^+ ';'
+          ( &parKeyw (ifExpr \ complexOrSimpleStmt) ^+ ';'
+          | ';' (ifExpr \ complexOrSimpleStmt) ^+ ';'
           | pragmaStmt
-          | simpleExpr ( ('=' expr (';' complexOrSimpleStmt ^+ ';' )? )
+          | simpleExpr ( ('=' expr (';' (ifExpr \ complexOrSimpleStmt) ^+ ';' )? )
                        | (':' expr (',' exprColonEqExpr     ^+ ',' )? ) ) )
           optPar ')'
 literal = | INT_LIT | INT8_LIT | INT16_LIT | INT32_LIT | INT64_LIT
@@ -59,11 +59,6 @@ primarySuffix = '(' (exprColonEqExpr comma?)* ')'
       | '[' optInd exprColonEqExprList optPar ']'
       | '{' optInd exprColonEqExprList optPar '}'
       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
-condExpr = expr colcom expr optInd
-        ('elif' expr colcom expr optInd)*
-         'else' colcom expr
-ifExpr = 'if' condExpr
-whenExpr = 'when' condExpr
 pragma = '{.' optInd (exprColonEqExpr comma?)* optPar ('.}' | '}')
 identVis = symbol OPR?  # postfix position
 identVisDot = symbol '.' optInd symbol OPR?
@@ -130,6 +125,11 @@ condStmt = expr colcom stmt COMMENT?
            (IND{=} 'else' colcom stmt)?
 ifStmt = 'if' condStmt
 whenStmt = 'when' condStmt
+condExpr = expr colcom expr optInd
+        ('elif' expr colcom expr optInd)*
+         'else' colcom expr
+ifExpr = 'if' condExpr
+whenExpr = 'when' condExpr
 whileStmt = 'while' expr colcom stmt
 ofBranch = 'of' exprList colcom stmt
 ofBranches = ofBranch (IND{=} ofBranch)*
@@ -193,8 +193,8 @@ complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | tryStmt | forStmt
                     | blockStmt | staticStmt | deferStmt | asmStmt
                     | 'proc' routine
-                    | 'func' routine
                     | 'method' routine
+                    | 'func' routine
                     | 'iterator' routine
                     | 'macro' routine
                     | 'template' routine
