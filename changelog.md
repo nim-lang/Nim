@@ -57,6 +57,7 @@
 
 - `strscans.scanf` now supports parsing single characters.
 
+- Added `os.rebasePath`
 
 ## Language changes
 

@@ -476,6 +476,20 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   let ret = relativePath(path, base)
   result = path.len > 0 and not ret.startsWith ".."
 
+proc rebasePath*(path, oldBase, newBase: string, check: static bool = true): string =
+  ## returns `newBase / path.relativePath(oldBase)`
+  runnableExamples:
+    doAssert "/home/foo/baz".rebasePath("/home/foo", "/tmp") == "/tmp/baz"
+    ## `path` must be relative to `oldBase`:
+    doAssertRaises(OSError): discard "/home/foo/baz".rebasePath("/home/other", "/tmp")
+    ## unless `check = false`, in which case it returns `path` unchanged:
+    doAssert "/home/foo/baz".rebasePath("/home/other", "/tmp", check = false) == "/home/foo/baz"
+  if path.isRelativeTo(oldBase):
+    result = newBase / path.relativePath(oldBase)
+  else:
+    when check: raise newException(OSError, $(path, oldBase, newBase))
+    result = path
+
 proc parentDirPos(path: string): int =
   var q = 1
   if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
