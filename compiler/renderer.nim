@@ -183,9 +183,9 @@ proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
     addPendingNL(g)
     if s.len > 0:
       addTok(g, kind, s, sym)
-      inc(g.lineLen, s.len)
   else:
     g.pendingWhitespace = s.len
+  inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
   if s.len == 0: return
