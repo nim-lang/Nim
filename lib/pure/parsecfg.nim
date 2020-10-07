@@ -562,7 +562,7 @@ proc writeConfig*(dict: Config, filename: string) =
 
 proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the Key value of the specified Section.
-  ## Returns the specified default value if the specified key value does not exist.
+  ## Returns the specified default value if the specified key does not exist.
   if dict.hasKey(section):
     if dict[section].hasKey(key):
       result = dict[section][key]
