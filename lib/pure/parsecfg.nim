@@ -560,7 +560,7 @@ proc writeConfig*(dict: Config, filename: string) =
   let fileStream = newFileStream(file)
   dict.writeConfig(fileStream)
 
-proc getSectionValue*(dict: Config, section, key: string, defaultVal: string = ""): string =
+proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the Key value of the specified Section.
   ## Returns the specified default value if the specified key value does not exist.
   if dict.hasKey(section):
