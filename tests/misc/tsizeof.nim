@@ -346,6 +346,21 @@ testinstance:
       c: char
       d: int32  # unaligned
 
+    Kind = enum
+      K1, K2
+  
+    AnotherEnum = enum
+      X1, X2, X3
+
+    MyObject = object
+      s: string
+      case k: Kind
+      of K1: nil
+      of K2:
+          x: float
+          y: int32
+      z: AnotherEnum
+
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
   proc main(): void =
@@ -361,6 +376,7 @@ testinstance:
     var go : GenericObject[int64]
     var po : PaddingOfSetEnum33
     var capo: MyCustomAlignPackedObject
+    var issue15516: MyObject
 
     var
       e1: Enum1
@@ -379,7 +395,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo, issue15516)
 
     type
       WithBitsize {.objectconfig.} = object
