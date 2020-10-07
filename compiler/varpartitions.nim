@@ -48,7 +48,8 @@ proc dec(x: var AbstractTime; diff = 1) {.borrow.}
 type
   SubgraphFlag = enum
     isMutated, # graph might be mutated
-    connectsConstParam, # graph is connected to a non-var parameter.
+    isMutatedDirectly, # graph is mutated directly by a non-var parameter.
+    connectsConstParam # graph is connected to a non-var parameter.
 
   VarFlag = enum
     ownsData,
@@ -99,12 +100,12 @@ type
     config: ConfigRef
 
 proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
-  #echo g.maxMutation, " ", g.minConnection, " ", g.param
+  #echo g.maxMutation.int, " ", g.minConnection.int, " ", g.param
   g.maxMutation > g.minConnection
 
 proc `$`*(config: ConfigRef; g: MutationInfo): string =
   result = ""
-  if g.flags == {isMutated, connectsConstParam}:
+  if g.flags * {isMutated, connectsConstParam} == {isMutated, connectsConstParam}:
     result.add "\nan object reachable from '"
     result.add g.param.name.s
     result.add "' is potentially mutated"
@@ -119,7 +120,8 @@ proc `$`*(config: ConfigRef; g: MutationInfo): string =
 
 proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
   for g in mitems c.graphs:
-    if g.flags == {isMutated, connectsConstParam} and mutationAfterConnection(g):
+    if g.flags * {isMutated, connectsConstParam} == {isMutated, connectsConstParam} and
+        (mutationAfterConnection(g) or isMutatedDirectly in g.flags):
       info = g
       return true
   return false
@@ -173,11 +175,16 @@ proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
   let id = variableId(v, s)
   if id >= 0:
     let r = root(v, id)
+    let flags = if s.kind == skParam and isConstParam(s):
+                  {isMutated, isMutatedDirectly}
+                else:
+                  {isMutated}
+
     case v.s[r].con.kind
     of isEmptyRoot:
       v.s[r].con = Connection(kind: isRootOf, graphIndex: v.graphs.len)
       v.graphs.add MutationInfo(param: if isConstParam(s): s else: nil, mutatedHere: info,
-                            connectedVia: unknownLineInfo, flags: {isMutated},
+                            connectedVia: unknownLineInfo, flags: flags,
                             maxMutation: v.abstractTime, minConnection: MaxTime,
                             mutations: @[v.abstractTime])
     of isRootOf:
@@ -187,7 +194,7 @@ proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
       if v.abstractTime > g.maxMutation:
         g.mutatedHere = info
         g.maxMutation = v.abstractTime
-      g.flags.incl isMutated
+      g.flags.incl flags
       g.mutations.add v.abstractTime
     else:
       assert false, "cannot happen"
