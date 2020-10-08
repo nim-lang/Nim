@@ -19,10 +19,10 @@
     - If `allowMissingKeys` is `true` Nim's object to which JSON is parsed is
       allowed to have fields without corresponding JSON keys.
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
-- Add `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
+- Added `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
-- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+- Added [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
   to the `dom` module for the JavaScript target.
 - The default hash for `Ordinal` has changed to something more bit-scrambling.
   `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
@@ -159,10 +159,6 @@
 - Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
-- Added `deques.toDeque`, which creates a deque from an openArray. The usage is
-  similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
-  it was necessary to create an empty deque and add items manually.
-
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -182,10 +178,10 @@
   cannot be applied to every use case. The limitations and the (lack of) reliability
   of `round` are well documented.
 
-- Add `getprotobyname` to `winlean`. Add `getProtoByname` to `nativesockets` which returns a protocol code
+- Added `getprotobyname` to `winlean`. Added `getProtoByname` to `nativesockets` which returns a protocol code
   from the database that matches the protocol `name`.
 
-- Add missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
+- Added missing attributes and methods to `dom.Navigator` like `deviceMemory`, `onLine`, `vibrate()`, etc.
 
 - Added `strutils.indentation` and `strutils.dedent` which enable indented string literals:
   ```nim
@@ -200,16 +196,18 @@
 - Add `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 - Add `strmisc.parseFloatThousandSep` designed to parse floats as found in the wild formatted for humans.
 
+- Added `initUri(isIpv6: bool)` to `uri` module, now `uri` supports parsing ipv6 hostname.
 
-- Add `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
+- Added `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
 
-- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
-  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
-  Previously, it was necessary to create an empty HeapQueue and add items
-  manually.
-- Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
-  is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
-  it was necessary to create an empty IntSet and add items manually.
+- Added the below `to` procs for collections. The usage is similar to procs such as
+  `sets.toHashSet` and `tables.toTable`. Previously, it was necessary to create the
+  respective empty collection and add items manually.
+    * `critbits.toCritBitTree`, which creates a `CritBitTree` from an `openArray` of
+       items or an `openArray` of pairs.
+    * `deques.toDeque`, which creates a `Deque` from an `openArray`.
+    * `heapqueue.toHeapQueue`, which creates a `HeapQueue` from an `openArray`.
+    * `intsets.toIntSet`, which creates an `IntSet` from an `openArray`.
 
 - Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
   at which progress callbacks are called.
@@ -235,7 +233,6 @@
   proc `=destroy`(x: MyObj) =
     if x.kind and x.y != nil:
       deallocShared(x.y)
-      x.y = nil
   ```
   Refactor into:
   ```nim
@@ -250,7 +247,6 @@
   proc `=destroy`(x: MySubObj) =
     if x.val != nil:
       deallocShared(x.val)
-      x.val = nil
   ```
 - `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatibility can be restored
@@ -282,14 +278,14 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purposes.
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
-- Remove `strutils.isNilOrWhitespace`, was deprecated.
-- Remove `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
+- Removed `strutils.isNilOrWhitespace`, was deprecated.
+- Removed `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
 - Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
-- Remove `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
+- Removed `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
 
-- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+- Removed `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
 - There is a new experimental feature called "strictFuncs" which makes the definition of
   `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
@@ -306,10 +302,12 @@ proc mydiv(a, b): int {.raises: [].} =
 - `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
   `--deepcopy:on`.
 
-- Added a `std/effecttraits` module for introspection of the inferred `.raise` effects.
+- Added a `std/effecttraits` module for introspection of the inferred effects.
   We hope this enables `async` macros that are precise about the possible exceptions that
   can be raised.
-- Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
+- The pragma blocks `{.gcsafe.}: ...` and `{.noSideEffect.}: ...` can now also be
+  written as `{.cast(gcsafe).}: ...` and `{.cast(noSideEffect).}: ...`. This is the new
+  preferred way of writing these, emphasizing their unsafe nature.
 
 
 ## Compiler changes
@@ -330,7 +328,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - `--hint:processing` is now supported and means `--hint:processing:on`
   (likewise with other hints and warnings), which is consistent with all other bool flags.
   (since 1.3.3).
-- `nim doc -r main` and `nim rst2html -r main` now call openDefaultBrowser
+- `nim doc -r main` and `nim rst2html -r main` now call `openDefaultBrowser`.
 - new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error)
   was generated; this helps in particular when it's non obvious where it came from
   either because multiple locations generate the same message, or because the

@@ -554,6 +554,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
+  if cfile.customArgs != "":
+    options.add ' '
+    options.add cfile.customArgs
+
   var compilePattern: string
   # compute include paths:
   var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)

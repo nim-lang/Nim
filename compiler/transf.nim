@@ -1009,6 +1009,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   # Constants can be inlined here, but only if they cannot result in a cast
   # in the back-end (e.g. var p: pointer = someProc)
   let exprIsPointerCast = n.kind in {nkCast, nkConv, nkHiddenStdConv} and
+                          n.typ != nil and
                           n.typ.kind == tyPointer
   if not exprIsPointerCast:
     var cnst = getConstExpr(c.module, result, c.graph)

@@ -80,7 +80,7 @@ proc execProcess*(command: string, workingDir: string = "",
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
-  ## **WARNING:** This function uses `poEvalCommand` by default for backward
+  ## **WARNING:** This function uses `poEvalCommand` by default for backwards
   ## compatibility.
   ## Make sure to pass options explicitly.
   ##

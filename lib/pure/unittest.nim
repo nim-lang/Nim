@@ -22,8 +22,8 @@
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
 ##
-## Compiled test files return the number of failed test as exit code, while
-## ``nim c -r <testfile.nim>`` exits with 0 or 1
+## Compiled test files as well as ``nim c -r <testfile.nim>``
+## exit with 0 for success (no failed tests) or 1 for failure.
 ##
 ## Running a single test
 ## =====================

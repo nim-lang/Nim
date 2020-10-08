@@ -485,17 +485,24 @@ proc setOrTableConstr(p: var Parser): PNode =
   eat(p, tkCurlyRi) # skip '}'
 
 proc parseCast(p: var Parser): PNode =
-  #| castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
+  #| castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
+  #                    ('(' optInd exprColonEqExpr optPar ')')
   result = newNodeP(nkCast, p)
   getTok(p)
-  eat(p, tkBracketLe)
-  optInd(p, result)
-  result.add(parseTypeDesc(p))
-  optPar(p)
-  eat(p, tkBracketRi)
-  eat(p, tkParLe)
-  optInd(p, result)
-  result.add(parseExpr(p))
+  if p.tok.tokType == tkBracketLe:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p))
+    optPar(p)
+    eat(p, tkBracketRi)
+    eat(p, tkParLe)
+    optInd(p, result)
+    result.add(parseExpr(p))
+  else:
+    result.add p.emptyNode
+    eat(p, tkParLe)
+    optInd(p, result)
+    result.add(exprColonEqExpr(p))
   optPar(p)
   eat(p, tkParRi)
 

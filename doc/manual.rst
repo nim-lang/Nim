@@ -6031,12 +6031,12 @@ so that it can be used for debugging routines marked as ``noSideEffect``.
 
 
 To override the compiler's side effect analysis a ``{.noSideEffect.}``
-pragma block can be used:
+``cast`` pragma block can be used:
 
 .. code-block:: nim
 
   func f() =
-    {.noSideEffect.}:
+    {.cast(noSideEffect).}:
       echo "test"
 
 
@@ -6621,6 +6621,14 @@ with the project:
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
 has changed. One can use the ``-f`` command line option to force recompilation
 of the file.
+
+Since 1.4 the `compile` pragma is also available with this syntax:
+
+.. code-block:: Nim
+  {.compile("myfile.cpp", "--custom flags here").}
+
+As can be seen in the example, this new variant allows for custom flags
+that are passed to the C compiler when the file is recompiled.
 
 
 Link pragma
@@ -7501,7 +7509,7 @@ To disable the GC-safety checking the ``--threadAnalysis:off`` command line
 switch can be used. This is a temporary workaround to ease the porting effort
 from old code to the new threading model.
 
-To override the compiler's gcsafety analysis a ``{.gcsafe.}`` pragma block can
+To override the compiler's gcsafety analysis a ``{.cast(gcsafe).}`` pragma block can
 be used:
 
 .. code-block:: nim
@@ -7511,7 +7519,7 @@ be used:
     perThread {.threadvar.}: string
 
   proc setPerThread() =
-    {.gcsafe.}:
+    {.cast(gcsafe).}:
       deepCopy(perThread, someGlobal)
 
 
