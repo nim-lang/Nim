@@ -402,6 +402,7 @@
   for an object type in the current scope.
 
 - `typeof(voidStmt)` now works and returns `void`.
+- `const` now works with types containing `ref`, see `tests/vm/tconstrefs.nim`
 
 - The `gc:orc` algorithm was refined so that custom container types can participate in the
   cycle collection process.
