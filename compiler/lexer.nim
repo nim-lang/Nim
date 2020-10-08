@@ -62,6 +62,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, tkBracketLeColon,
     tkOpr, tkComment, tkAccent,
+    # these are fake tokens used by renderer.nim
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
