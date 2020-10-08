@@ -11,6 +11,7 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
+      - 'koch.nim'
   pull_request:
     # Run only on changes on these files.
     paths:
@@ -27,6 +28,8 @@ on:
 
 jobs:
   build:
+    if: |
+      !contains(format('{0} {1} {2}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -120,6 +123,10 @@ jobs:
       - name: 'Build the real compiler'
         shell: bash
         run: ./koch boot -d:release
+
+      - name: 'Clone fusion'
+        shell: bash
+        run: ./koch fusion
 
       - name: 'Build documentation'
         shell: bash

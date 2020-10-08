@@ -209,8 +209,6 @@ file.
 See source switch
 -----------------
 
-The ``docSeeSrcUrl`` switch is deprecated. Use:
-
 ::
   nim doc2 --git.url:<url> filename.nim
 
@@ -345,9 +343,8 @@ but can have up to four (additional columns are ignored). The content of these
 columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
-   Nim's rules (eg. \`^\`).
-2. Base filename plus anchor hyperlink (eg.
-   ``algorithm.html#*,int,SortOrder``).
+   Nim's rules (e.g. \`^\`).
+2. Base filename plus anchor hyperlink (e.g. ``algorithm.html#*,int,SortOrder``).
 3. Optional human readable string to display as hyperlink. If the value is not
    present or is the empty string, the hyperlink will be rendered
    using the term. Prefix whitespace indicates that this entry is

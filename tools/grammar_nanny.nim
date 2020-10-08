@@ -16,8 +16,8 @@ proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
   if stream != nil:
     declaredSyms.incl "section" # special case for 'section(RULE)' in the grammar
     var
-      L: TLexer
-      tok: TToken
+      L: Lexer
+      tok: Token
     initToken(tok)
     openLexer(L, f, stream, cache, config)
     # load the first token:

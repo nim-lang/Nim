@@ -107,7 +107,6 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   var indent = info.col
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
-  result = ""
 
   var ldata = LineData(lineFirst: first.line.int, conf: conf)
   visitMultilineStrings(ldata, n[^1])
@@ -116,6 +115,7 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
     for i in 0..<ldata.lines.len:
       echo (i+ldata.lineFirst, ldata.lines[i])
 
+  result = ""
   for line in first.line..numLines: # bugfix, see `testNimDocTrailingExample`
     info.line = line
     let src = sourceLine(conf, info)

@@ -66,6 +66,7 @@ testament.db
 /tests/**/*.js
 /csources
 /dist/
+/lib/fusion
 
 # Private directories and files (IDEs)
 .*/

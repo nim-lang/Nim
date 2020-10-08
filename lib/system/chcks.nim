@@ -38,6 +38,9 @@ proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
   # todo: better error reporting
   sysFatal(RangeDefect, "value out of range")
 
+proc raiseRangeErrorNoArgs() {.compilerproc, noinline.} =
+  sysFatal(RangeDefect, "value out of range")
+
 proc raiseObjectConversionError() {.compilerproc, noinline.} =
   sysFatal(ObjectConversionDefect, "invalid object conversion")
 

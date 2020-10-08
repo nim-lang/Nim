@@ -79,6 +79,9 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
   var j = 0
   if not h.isInternal:
     while j < h.entries:
+      if eq(key, h.keys[j]):
+        h.vals[j] = val
+        return
       if less(key, h.keys[j]): break
       inc j
     for i in countdown(h.entries, j+1):
@@ -132,8 +135,7 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
-proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool =
-  result = index < b.entries
+proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool = index < b.entries
 
 proc countSubTree[Key, Val](it: Node[Key, Val]): int =
   if it.isInternal:

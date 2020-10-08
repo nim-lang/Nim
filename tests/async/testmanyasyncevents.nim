@@ -1,8 +1,9 @@
 discard """
 output: '''
 hasPendingOperations: false
-triggerCount: 100 
+triggerCount: 100
 '''
+disabled: "windows"
 """
 
 import asyncDispatch

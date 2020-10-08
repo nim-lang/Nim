@@ -35,7 +35,6 @@ type
     inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
-    wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
@@ -85,6 +84,7 @@ type
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
+    templInstCounter*: ref int # gives every template instantiation a unique id
 
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
@@ -143,6 +143,7 @@ type
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
+    lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -211,7 +212,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
   result.options = conf.options
-  result.defaultCC = ccDefault
+  result.defaultCC = ccNimCall
   result.dynlib = nil
   result.notes = conf.notes
   result.warningAsErrors = conf.warningAsErrors
@@ -380,8 +381,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
-  result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n])
+  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
@@ -390,9 +390,8 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   result.sons = @[intType]
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
-  result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(0, intType),
-    makeStaticExpr(c, nMinusOne(c, n))])
+  result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
+    makeStaticExpr(c, nMinusOne(c, n)))
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
   tfUnresolved in t.flags

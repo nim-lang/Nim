@@ -37,7 +37,8 @@ type
     modDesc: Rope       # module description
     module: PSym
     modDeprecationMsg: Rope
-    toc, section: TSections
+    toc, toc2, section: TSections
+    tocTable: array[TSymKind, Table[string, Rope]]
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
@@ -82,7 +83,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
     # a relative path (would it be relative wrt $PWD or to projectfile)
     conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
-    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.dirExists, arg=conf.docRoot
     # needed because `canonicalizePath` called on `file`
     result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
@@ -302,15 +303,13 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
 
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
-  var dummyHasToc: bool
   if n.comment.len > 0:
-    var comment2 = n.comment
+    let comment = n.comment
     when false:
       # RFC: to preseve newlines in comments, this would work:
-      comment2 = comment2.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
-                               toLinenumber(n.info), toColumn(n.info),
-                               dummyHasToc, d.options, d.conf), result)
+      comment = comment.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
+                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -342,11 +341,10 @@ proc getPlainDocstring(n: PNode): string =
   ## You need to call this before genRecComment, whose side effects are removal
   ## of comments from the tree. The proc will recursively scan and return all
   ## the concatenated ``##`` comments of the node.
-  result = ""
-  if n == nil: return
-  if startsWith(n.comment, "##"):
+  if n == nil: result = ""
+  elif startsWith(n.comment, "##"):
     result = n.comment
-  if result.len < 1:
+  else:
     for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return
@@ -458,7 +456,6 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
 
 proc runAllExamples(d: PDoc) =
-  let backend = d.conf.backend
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
@@ -522,20 +519,6 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
-  ## this is a rather hacky way to get rid of the initial indentation
-  ## that the renderer currently produces:
-  # deadcode
-  var i = 0
-  var body = n.lastSon
-  if body.len == 1 and body.kind == nkStmtList and
-      body.lastSon.kind == nkStmtList:
-    body = body.lastSon
-  for b in body:
-    if i > 0: dest.add "\n"
-    inc i
-    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
-
 type RunnableState = enum
   rsStart
   rsComment
@@ -575,12 +558,9 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      when true:
-        var dest2 = ""
-        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
-        dest.add dest2
-      else:
-        renderNimCodeOld(d, n, dest)
+      var dest2 = ""
+      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+      dest.add dest2
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
       return rsRunnable
   else: discard
@@ -892,6 +872,14 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
       plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
+  d.tocTable[k].mgetOrPut(cleanPlainSymbol, nil).add(ropeFormatNamedVars(
+    d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+     "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
+    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
+     itemIDRope, plainNameRope, plainSymbolRope,
+     symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, attype]))
+
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
@@ -1013,8 +1001,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       # set the type so that the following analysis doesn't screw up:
       effects[i].typ = real[i].typ
 
-    result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
+    result = newTreeI(nkExprColonExpr, n.info,
+      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects)
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym
@@ -1026,8 +1014,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
       effects.add params[i]
 
   if effects.len > 0:
-    result = newNode(nkExprColonExpr, n.info, @[
-      newIdentNode(getIdent(cache, pragmaName), n.info), effects])
+    result = newTreeI(nkExprColonExpr, n.info,
+      newIdentNode(getIdent(cache, pragmaName), n.info), effects)
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return
@@ -1188,7 +1176,7 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
       generateTags(d, lastSon(n[0]), r)
   else: discard
 
-proc genSection(d: PDoc, kind: TSymKind) =
+proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
   const sectionNames: array[skModule..skField, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
@@ -1198,14 +1186,23 @@ proc genSection(d: PDoc, kind: TSymKind) =
   d.section[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.section[kind]])
+
+  var tocSource = d.toc
+  if groupedToc:
+    for p in d.tocTable[kind].keys:
+      d.toc2[kind].add ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc2"), [
+          "sectionid", "sectionTitle", "sectionTitleID", "content", "plainName"], [
+          ord(kind).rope, title, rope(ord(kind) + 50), d.tocTable[kind][p], p.rope])
+    tocSource = d.toc2
+
   d.toc[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
+      ord(kind).rope, title, rope(ord(kind) + 50), tocSource[kind]])
 
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
   rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
-proc genOutFile(d: PDoc): Rope =
+proc genOutFile(d: PDoc, groupedToc = false): Rope =
   var
     code, content: Rope
     title = ""
@@ -1213,12 +1210,13 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in low(TSymKind)..high(TSymKind):
-    genSection(d, i)
+  for i in TSymKind:
+    var shouldSort = i in {skProc, skFunc} and groupedToc
+    genSection(d, i, shouldSort)
     toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in low(TSymKind)..high(TSymKind): code.add(d.section[i])
+  for i in TSymKind: code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
@@ -1267,9 +1265,9 @@ proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
       if isAbsolute(d.conf.outFile.string):
         d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
-proc writeOutput*(d: PDoc, useWarning = false) =
+proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
   runAllExamples(d)
-  var content = genOutFile(d)
+  var content = genOutFile(d, groupedToc)
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:

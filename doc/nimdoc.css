@@ -154,10 +154,12 @@ body {
   margin-left: 0; }
 
 .three.columns {
-  width: 19%; }
+  width: 22%;
+  line-break: anywhere;
+}
 
 .nine.columns {
-  width: 80.0%; }
+  width: 77.0%; }
 
 .twelve.columns {
   width: 100%;
@@ -420,7 +422,7 @@ ul.simple-boot li {
 }
 
 ol.simple > li, ul.simple > li {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.2em;
   margin-left: 0.4em }
 
 ul.simple.simple-toc > li {
@@ -439,8 +441,18 @@ ul.simple-toc > li {
 
 ul.simple-toc-section {
   list-style-type: circle;
-  margin-left: 1em;
+  margin-left: 0.8em;
   color: #6c9aae; }
+
+ul.nested-toc-section {
+  list-style-type: circle;
+  margin-left: -0.75em;
+  color: var(--text);
+}
+
+ul.nested-toc-section > li {
+  margin-left: 1.25em;
+}
 
 
 ol.arabic {
@@ -582,6 +594,7 @@ table th {
 
 table th.docinfo-name {
     background-color: transparent;
+    text-align: right;
 }
 
 table tr:hover {

@@ -336,7 +336,7 @@ ProcDef
   static: assert bar("x") == "x"
 
 #------------------------------------------------------
-# issue #13909
+# bug #13909
 
 template dependency*(id: string, weight = 0.0) {.pragma.}
 
@@ -346,3 +346,24 @@ type
 
 proc myproc(obj: string): string {.dependency("Data/" & obj, 16.1).} =
   result = obj
+
+# bug 12523
+template myCustomPragma {.pragma.}
+
+type
+  RefType = ref object
+    field {.myCustomPragma.}: int
+
+  ObjType = object
+    field {.myCustomPragma.}: int
+  RefType2 = ref ObjType
+
+block:
+  let x = RefType()
+  for fieldName, fieldSym in fieldPairs(x[]):
+    doAssert hasCustomPragma(fieldSym, myCustomPragma)
+
+block:
+  let x = RefType2()
+  for fieldName, fieldSym in fieldPairs(x[]):
+    doAssert hasCustomPragma(fieldSym, myCustomPragma)

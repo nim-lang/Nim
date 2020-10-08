@@ -321,6 +321,13 @@ proc containsGarbageCollectedRef*(typ: PType): bool =
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
 
+proc isManagedMemory(t: PType): bool =
+  result = t.kind in GcTypeKinds or
+    (t.kind == tyProc and t.callConv == ccClosure)
+
+proc containsManagedMemory*(typ: PType): bool =
+  result = searchTypeFor(typ, isManagedMemory)
+
 proc isTyRef(t: PType): bool =
   result = t.kind == tyRef or (t.kind == tyProc and t.callConv == ccClosure)
 
@@ -329,7 +336,7 @@ proc containsTyRef*(typ: PType): bool =
   result = searchTypeFor(typ, isTyRef)
 
 proc isHiddenPointer(t: PType): bool =
-  result = t.kind in {tyString, tySequence}
+  result = t.kind in {tyString, tySequence, tyOpenArray, tyVarargs}
 
 proc containsHiddenPointer*(typ: PType): bool =
   # returns true if typ contains a string, table or sequence (all the things
@@ -469,9 +476,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       prefer
 
   proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
+    result = ""
     let prefer = getPrefer(prefer)
     let t = typ
-    result = ""
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
          sfAnon notin t.sym.flags and t.kind != tySequence:
@@ -543,7 +550,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       else:
         result = "<invalid tyUserTypeClass>"
     of tyBuiltInTypeClass:
-      result = case t.base.kind:
+      result = case t.base.kind
         of tyVar: "var"
         of tyRef: "ref"
         of tyPtr: "ptr"
@@ -679,7 +686,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < t.len - 1: result.add(", ")
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
-      var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: CallingConvToStr[t.callConv]
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
@@ -729,7 +736,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
       assert(t.n[0].kind == nkSym)
       result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
@@ -786,7 +793,7 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
     assert(t.n[^1].kind == nkSym)
     result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
-     tyStatic, tyInferred, tyUserTypeClasses:
+     tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
   of tyProxy: result = Zero
   of tyOrdinal:
@@ -936,7 +943,7 @@ proc equalParams(a, b: PNode): TParamsEquality =
         discard
       of paramsIncompatible:
         result = paramsIncompatible
-      if (m.name.id != n.name.id):
+      if m.name.id != n.name.id:
         # BUGFIX
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
@@ -1070,7 +1077,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst, tyAlias})
+  while a.kind == tyUserTypeClass and tfResolved in a.flags:
+    a = skipTypes(a[^1], {tyGenericInst, tyAlias})
   var b = skipTypes(y, {tyGenericInst, tyAlias})
+  while b.kind == tyUserTypeClass and tfResolved in b.flags:
+    b = skipTypes(b[^1], {tyGenericInst, tyAlias})
   assert(a != nil)
   assert(b != nil)
   if a.kind != b.kind:
@@ -1236,37 +1247,6 @@ proc commonSuperclass*(a, b: PType): PType =
       return t
     y = y[0]
 
-type
-  TTypeAllowedFlag* = enum
-    taField,
-    taHeap,
-    taConcept,
-    taIsOpenArray,
-    taNoUntyped
-    taIsTemplateOrMacro
-    taProcContextIsNotMacro
-
-  TTypeAllowedFlags* = set[TTypeAllowedFlag]
-
-proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
-                    flags: TTypeAllowedFlags = {}): PType
-
-proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
-                     flags: TTypeAllowedFlags = {}): PType =
-  if n != nil:
-    result = typeAllowedAux(marker, n.typ, kind, flags)
-    if result == nil:
-      case n.kind
-      of nkNone..nkNilLit:
-        discard
-      else:
-        #if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
-        #  return n[0].typ
-        for i in 0..<n.len:
-          let it = n[i]
-          result = typeAllowedNode(marker, it, kind, flags)
-          if result != nil: break
-
 proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
                 last: TTypeKind): bool =
   var a = a
@@ -1275,143 +1255,6 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.len or a[i] == nil: return false
     a = a[i]
   result = a.kind == last
-
-proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
-                    flags: TTypeAllowedFlags = {}): PType =
-  assert(kind in {skVar, skLet, skConst, skProc, skFunc, skParam, skResult})
-  # if we have already checked the type, return true, because we stop the
-  # evaluation if something is wrong:
-  result = nil
-  if typ == nil: return nil
-  if containsOrIncl(marker, typ.id): return nil
-  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
-  case t.kind
-  of tyVar, tyLent:
-    if kind in {skProc, skFunc, skConst}:
-      result = t
-    elif t.kind == tyLent and kind != skResult:
-      result = t
-    else:
-      var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc})
-      case t2.kind
-      of tyVar, tyLent:
-        if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
-      of tyOpenArray:
-        if kind != skParam or taIsOpenArray in flags: result = t
-        else: result = typeAllowedAux(marker, t2[0], kind, flags+{taIsOpenArray})
-      of tyUncheckedArray:
-        if kind != skParam: result = t
-        else: result = typeAllowedAux(marker, t2[0], kind, flags)
-      else:
-        if kind notin {skParam, skResult}: result = t
-        else: result = typeAllowedAux(marker, t2, kind, flags)
-  of tyProc:
-    if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
-      result = t
-    else:
-      if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
-        # only closure iterators may be assigned to anything.
-        result = t
-      let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
-      for i in 1..<t.len:
-        if result != nil: break
-        result = typeAllowedAux(marker, t[i], skParam, f-{taIsOpenArray})
-      if result.isNil and t[0] != nil:
-        result = typeAllowedAux(marker, t[0], skResult, flags)
-  of tyTypeDesc:
-    if kind in {skVar, skLet, skConst} and taProcContextIsNotMacro in flags:
-      result = t
-    else:
-      # XXX: This is still a horrible idea...
-      result = nil
-  of tyUntyped, tyTyped:
-    if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
-  of tyStatic:
-    if kind notin {skParam}: result = t
-  of tyVoid:
-    if taField notin flags: result = t
-  of tyTypeClasses:
-    if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
-      discard
-    elif t.isResolvedUserTypeClass:
-      result = typeAllowedAux(marker, t.lastSon, kind, flags)
-    elif kind notin {skParam, skResult}:
-      result = t
-  of tyGenericBody, tyGenericParam, tyGenericInvocation,
-     tyNone, tyForward, tyFromExpr:
-    result = t
-  of tyNil:
-    if kind != skConst and kind != skParam: result = t
-  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
-    result = nil
-  of tyOrdinal:
-    if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
-    result = typeAllowedAux(marker, lastSon(t), kind, flags)
-  of tyRange:
-    if skipTypes(t[0], abstractInst-{tyTypeDesc}).kind notin
-      {tyChar, tyEnum, tyInt..tyFloat128, tyInt..tyUInt64}: result = t
-  of tyOpenArray, tyVarargs, tySink:
-    # you cannot nest openArrays/sinks/etc.
-    if kind != skParam or taIsOpenArray in flags:
-      result = t
-    else:
-      result = typeAllowedAux(marker, t[0], kind, flags+{taIsOpenArray})
-  of tyUncheckedArray:
-    if kind != skParam and taHeap notin flags:
-      result = t
-    else:
-      result = typeAllowedAux(marker, lastSon(t), kind, flags-{taHeap})
-  of tySequence:
-    if t[0].kind != tyEmpty:
-      result = typeAllowedAux(marker, t[0], kind, flags+{taHeap})
-    elif kind in {skVar, skLet}:
-      result = t[0]
-  of tyArray:
-    if t[1].kind == tyTypeDesc:
-      result = t[1]
-    elif t[1].kind != tyEmpty:
-      result = typeAllowedAux(marker, t[1], kind, flags)
-    elif kind in {skVar, skLet}:
-      result = t[1]
-  of tyRef:
-    if kind == skConst: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
-  of tyPtr:
-    result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
-  of tySet:
-    for i in 0..<t.len:
-      result = typeAllowedAux(marker, t[i], kind, flags)
-      if result != nil: break
-  of tyObject, tyTuple:
-    if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t[0] != nil:
-      result = t
-    else:
-      let flags = flags+{taField}
-      for i in 0..<t.len:
-        result = typeAllowedAux(marker, t[i], kind, flags)
-        if result != nil: break
-      if result.isNil and t.n != nil:
-        result = typeAllowedNode(marker, t.n, kind, flags)
-  of tyEmpty:
-    if kind in {skVar, skLet}: result = t
-  of tyProxy:
-    # for now same as error node; we say it's a valid type as it should
-    # prevent cascading errors:
-    result = nil
-  of tyOwned:
-    if t.len == 1 and t[0].skipTypes(abstractInst).kind in {tyRef, tyPtr, tyProc}:
-      result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
-    else:
-      result = t
-  of tyOptDeprecated: doAssert false
-
-proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
-  # returns 'nil' on success and otherwise the part of the type that is
-  # wrong!
-  var marker = initIntSet()
-  result = typeAllowedAux(marker, t, kind, flags)
 
 include sizealignoffsetimpl
 

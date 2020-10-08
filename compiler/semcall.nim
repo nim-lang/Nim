@@ -94,10 +94,6 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
       matches(c, n, orig, z)
       if z.state == csMatch:
-        #if sym.name.s == "==" and (n.info ?? "temp3"):
-        #  echo typeToString(sym.typ)
-        #  writeMatches(z)
-
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator: inc(z.exactMatches, 200)
         case best.state
@@ -219,7 +215,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
-      of kUnknownNamedParam: candidates.add("\n  unknown named parameter: " & $nArg[0])
+      of kUnknownNamedParam:
+        if nArg == nil:
+          candidates.add("\n  unknown named parameter")
+        else:
+          candidates.add("\n  unknown named parameter: " & $nArg[0])
       of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
       of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
       of kExtraArg: candidates.add("\n  extra argument given")
@@ -318,7 +318,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
-  if nfDotField in n.flags and nfExplicitCall notin n.flags:
+  if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
     let sym = n[1].typ.sym
     var typeHint = ""
     if sym == nil:
@@ -495,9 +495,14 @@ proc updateDefaultParams(call: PNode) =
 proc getCallLineInfo(n: PNode): TLineInfo =
   case n.kind
   of nkAccQuoted, nkBracketExpr, nkCall, nkCallStrLit, nkCommand:
-    getCallLineInfo(n[0])
-  of nkDotExpr: getCallLineInfo(n[1])
-  else: n.info
+    if len(n) > 0:
+      return getCallLineInfo(n[0])
+  of nkDotExpr:
+    if len(n) > 1:
+      return getCallLineInfo(n[1])
+  else:
+    discard
+  result = n.info
 
 proc semResolvedCall(c: PContext, x: TCandidate,
                      n: PNode, flags: TExprFlags): PNode =

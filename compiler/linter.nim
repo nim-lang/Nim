@@ -71,23 +71,15 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc differ*(line: string, a, b: int, x: string): string =
   proc substrEq(s: string, pos, last: int, substr: string): bool =
-    var i = 0
-    while i < substr.len and pos+i <= last and s[pos+i] == substr[i]:
-      inc i
-    return i == substr.len
-
-  let last = min(b, line.len)
+    result = true
+    for i in 0..<substr.len:
+      if pos+i > last or s[pos+i] != substr[i]: return false
 
   result = ""
   if not substrEq(line, a, b, x):
     let y = line[a..b]
     if cmpIgnoreStyle(y, x) == 0:
       result = y
-
-proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
-  let beau = beautifyName(s, k)
-  if s != beau:
-    lintReport(conf, info, beau, s)
 
 proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
@@ -136,6 +128,6 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
     lintReport(conf, info, newName, oldName)
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
-  let wanted = canonPragmaSpelling(w)
+  let wanted = specialWords[w]
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)

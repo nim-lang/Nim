@@ -102,26 +102,26 @@ const
 const httpNewLine* = "\c\L"
 const headerLimit* = 10_000
 
-proc toTitleCase(s: string): string =
+func toTitleCase(s: string): string =
   result = newString(len(s))
   var upper = true
   for i in 0..len(s) - 1:
     result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
     upper = s[i] == '-'
 
-proc toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
+func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
-proc newHttpHeaders*(titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true, 
+func newHttpHeaders*(titleCase=false): HttpHeaders =
+  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
 
-proc newHttpHeaders*(keyValuePairs:
+func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true, 
+  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -134,13 +134,13 @@ proc newHttpHeaders*(keyValuePairs:
       result.table[key] = @[pair.val]
 
 
-proc `$`*(headers: HttpHeaders): string =
-  return $headers.table
+func `$`*(headers: HttpHeaders): string {.inline.} =
+  $headers.table
 
-proc clear*(headers: HttpHeaders) =
+proc clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
-proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
+func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If the returned
   ## values are passed to a procedure expecting a ``string``, the first
   ## value is automatically picked. If there are
@@ -153,7 +153,7 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
-proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
+func `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
@@ -188,16 +188,16 @@ iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
     for value in v:
       yield (k, value)
 
-proc contains*(values: HttpHeaderValues, value: string): bool =
+func contains*(values: HttpHeaderValues, value: string): bool =
   ## Determines if ``value`` is one of the values inside ``values``. Comparison
   ## is performed without case sensitivity.
   for val in seq[string](values):
     if val.toLowerAscii == value.toLowerAscii: return true
 
-proc hasKey*(headers: HttpHeaders, key: string): bool =
+func hasKey*(headers: HttpHeaders, key: string): bool =
   return headers.table.hasKey(headers.toCaseInsensitive(key))
 
-proc getOrDefault*(headers: HttpHeaders, key: string,
+func getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
@@ -206,9 +206,9 @@ proc getOrDefault*(headers: HttpHeaders, key: string,
   else:
     return default
 
-proc len*(headers: HttpHeaders): int = return headers.table.len
+func len*(headers: HttpHeaders): int {.inline.} = headers.table.len
 
-proc parseList(line: string, list: var seq[string], start: int): int =
+func parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
   var current = ""
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
@@ -219,7 +219,7 @@ proc parseList(line: string, list: var seq[string], start: int): int =
       i.inc # Skip ,
     current.setLen(0)
 
-proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
+func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
   ##
   ## Used by ``asynchttpserver`` and ``httpclient`` internally and should not
@@ -229,13 +229,17 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   i = line.parseUntil(result.key, ':')
   inc(i) # skip :
   if i < len(line):
-    i += parseList(line, result.value, i)
+    if cmpIgnoreCase(result.key, "cookie") == 0:
+      i += line.skipWhitespace(i)
+      result.value.add line.substr(i)
+    else:
+      i += parseList(line, result.value, i)
   elif result.key.len > 0:
     result.value = @[""]
   else:
     result.value = @[]
 
-proc `==`*(protocol: tuple[orig: string, major, minor: int],
+func `==`*(protocol: tuple[orig: string, major, minor: int],
            ver: HttpVersion): bool =
   let major =
     case ver
@@ -246,10 +250,10 @@ proc `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-proc contains*(methods: set[HttpMethod], x: string): bool =
+func contains*(methods: set[HttpMethod], x: string): bool =
   return parseEnum[HttpMethod](x) in methods
 
-proc `$`*(code: HttpCode): string =
+func `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
   ##
   ## For example:
@@ -307,7 +311,7 @@ proc `$`*(code: HttpCode): string =
   of 505: "505 HTTP Version Not Supported"
   else: $(int(code))
 
-proc `==`*(a, b: HttpCode): bool {.borrow.}
+func `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool
           {.deprecated: "Deprecated since v1.2; use rawCode == $code instead".} =
@@ -319,23 +323,23 @@ proc `==`*(rawCode: string, code: HttpCode): bool
   ##           string form of itself.
   return cmpIgnoreCase(rawCode, $code) == 0
 
-proc is2xx*(code: HttpCode): bool =
+func is2xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 2xx HTTP status code.
-  return code.int in {200 .. 299}
+  code.int in {200 .. 299}
 
-proc is3xx*(code: HttpCode): bool =
+func is3xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 3xx HTTP status code.
-  return code.int in {300 .. 399}
+  code.int in {300 .. 399}
 
-proc is4xx*(code: HttpCode): bool =
+func is4xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 4xx HTTP status code.
-  return code.int in {400 .. 499}
+  code.int in {400 .. 499}
 
-proc is5xx*(code: HttpCode): bool =
+func is5xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 5xx HTTP status code.
-  return code.int in {500 .. 599}
+  code.int in {500 .. 599}
 
-proc `$`*(httpMethod: HttpMethod): string =
+func `$`*(httpMethod: HttpMethod): string =
   return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
@@ -362,5 +366,3 @@ when isMainModule:
     doAssert testTitleCase.hasKey("Content-Length")
     for key, val in testTitleCase:
         doAssert key == "Content-Length"
-
-

@@ -52,7 +52,8 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
       s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
       s.p.cap = newCap
 
-proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
+proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inline.} =
+  #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
   s.p.data[s.len] = c
   s.p.data[s.len+1] = '\0'
@@ -132,10 +133,13 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
-proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl.} =
+proc nimPrepareStrMutationImpl(s: var NimStringV2) =
+  let oldP = s.p
+  # can't mutate a literal, so we need a fresh copy here:
+  s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
+  s.p.cap = s.len
+  copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
+
+proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inline.} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
-    let oldP = s.p
-    # can't mutate a literal, so we need a fresh copy here:
-    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
-    s.p.cap = s.len
-    copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
+    nimPrepareStrMutationImpl(s)

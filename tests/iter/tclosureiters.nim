@@ -19,7 +19,9 @@ discard """
 0
 1
 2
-70'''
+70
+0
+'''
 """
 
 when true:
@@ -139,3 +141,14 @@ iterator filesIt(path: string): auto {.closure.} =
     let prefix = path.splitPath[1]
     for f in files:
       yield prefix / f
+
+# bug #13815
+var love = iterator: int {.closure.} =
+  yield cast[type(
+    block:
+      var a = 0
+      yield a
+      a)](0)
+
+for i in love():
+  echo i

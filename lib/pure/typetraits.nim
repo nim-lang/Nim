@@ -115,54 +115,52 @@ macro genericParamsImpl(T: typedesc): untyped =
   impl = impl[1]
   while true:
     case impl.kind
-      of nnkSym:
-        impl = impl.getImpl
-        continue
-      of nnkTypeDef:
-        impl = impl[2]
-        continue
-      of nnkTypeOfExpr:
-        impl = getTypeInst(impl[0])
-        continue
-      of nnkBracketExpr:
-        for i in 1..<impl.len:
-          let ai = impl[i]
-          var ret: NimNode = nil
-          case ai.typeKind
-          of ntyTypeDesc:
+    of nnkSym:
+      impl = impl.getImpl
+    of nnkTypeDef:
+      impl = impl[2]
+    of nnkTypeOfExpr:
+      impl = getTypeInst(impl[0])
+    of nnkBracketExpr:
+      for i in 1..<impl.len:
+        let ai = impl[i]
+        var ret: NimNode = nil
+        case ai.typeKind
+        of ntyTypeDesc:
+          ret = ai
+        of ntyStatic: doAssert false
+        else:
+          # getType from a resolved symbol might return a typedesc symbol.
+          # If so, use it directly instead of wrapping it in StaticParam.
+          if (ai.kind == nnkSym and ai.symKind == nskType) or
+              (ai.kind == nnkBracketExpr and ai[0].kind == nnkSym and
+              ai[0].symKind == nskType) or ai.kind in {nnkRefTy, nnkVarTy, nnkPtrTy, nnkProcTy}:
             ret = ai
-          of ntyStatic: doAssert false
+          elif ai.kind == nnkInfix and ai[0].kind == nnkIdent and
+                ai[0].strVal == "..":
+            # For built-in array types, the "2" is translated to "0..1" then
+            # automagically translated to "range[0..1]". However this is not
+            # reflected in the AST, thus requiring manual transformation here.
+            #
+            # We will also be losing some context here:
+            #   var a: array[10, int]
+            # will be translated to:
+            #   var a: array[0..9, int]
+            # after typecheck. This means that we can't get the exact
+            # definition as typed by the user, which will cause confusion for
+            # users expecting:
+            #   genericParams(typeof(a)) is (StaticParam(10), int)
+            # to be true while in fact the result will be:
+            #   genericParams(typeof(a)) is (range[0..9], int)
+            ret = newTree(nnkBracketExpr, @[bindSym"range", ai])
           else:
-            # getType from a resolved symbol might return a typedesc symbol.
-            # If so, use it directly instead of wrapping it in StaticParam.
-            if (ai.kind == nnkSym and ai.symKind == nskType) or
-               (ai.kind == nnkBracketExpr and ai[0].kind == nnkSym and
-                ai[0].symKind == nskType):
-              ret = ai
-            elif ai.kind == nnkInfix and ai[0].kind == nnkIdent and
-                 ai[0].strVal == "..":
-              # For built-in array types, the "2" is translated to "0..1" then
-              # automagically translated to "range[0..1]". However this is not
-              # reflected in the AST, thus requiring manual transformation here.
-              #
-              # We will also be losing some context here:
-              #   var a: array[10, int]
-              # will be translated to:
-              #   var a: array[0..9, int]
-              # after typecheck. This means that we can't get the exact
-              # definition as typed by the user, which will cause confusion for
-              # users expecting:
-              #   genericParams(typeof(a)) is (StaticParam(10), int)
-              # to be true while in fact the result will be:
-              #   genericParams(typeof(a)) is (range[0..9], int)
-              ret = newTree(nnkBracketExpr, @[bindSym"range", ai])
-            else:
-              since (1, 1):
-                ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
-          result.add ret
-        break
-      else:
-        error "wrong kind: " & $impl.kind, impl
+            since (1, 1):
+              echo ai.typeKind
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+        result.add ret
+      break
+    else:
+      error "wrong kind: " & $impl.kind, impl
 
 since (1, 1):
   template genericParams*(T: typedesc): untyped =

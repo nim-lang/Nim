@@ -10,11 +10,12 @@
 #
 
 const
-  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
+  NimbleStableCommit = "26167cd3b7671006c8bd38cbef8708431ddf8687" # master
+  FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
 
 when not defined(windows):
   const
-    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
+    Z3StableCommit = "65de3f748a6812eecd7db7c478dcd5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):
@@ -50,8 +51,10 @@ Usage:
   koch [options] command [options for command]
 Options:
   --help, -h               shows this help and quits
-  --latest                 bundle the installers with a bleeding edge Nimble
-  --stable                 bundle the installers with a stable Nimble (default)
+  --latest                 bundle the installers with bleeding edge versions of
+                           external components.
+  --stable                 bundle the installers with stable versions of
+                           external components (default).
   --nim:path               use specified path for nim binary
   --localdocs[:path]       only build local documentations. If a path is not
                            specified (or empty), the default is used.
@@ -59,9 +62,11 @@ Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
-  toolsNoNimble            builds Nim related tools (except nimble)
+  toolsNoExternal          builds Nim related tools (except external tools,
+                           ie. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
+  fusion                   clone fusion into the working tree
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -140,35 +145,11 @@ proc bundleC2nim(args: string) =
 
 proc bundleNimbleExe(latest: bool, args: string) =
   let commit = if latest: "HEAD" else: NimbleStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git", commit = commit)
+  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
+                  commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --nilseqs:on " & args)
-
-proc buildNimble(latest: bool, args: string) =
-  # if koch is used for a tar.xz, build the dist/nimble we shipped
-  # with the tarball:
-  var installDir = "dist/nimble"
-  if not latest and dirExists(installDir) and not dirExists("dist/nimble/.git"):
-    discard "don't do the git dance"
-  else:
-    if not dirExists("dist/nimble/.git"):
-      if dirExists(installDir):
-        var id = 0
-        while dirExists("dist/nimble" & $id):
-          inc id
-        installDir = "dist/nimble" & $id
-      # consider using/adapting cloneDependency
-      exec("git clone -q https://github.com/nim-lang/nimble.git " & installDir)
-    withDir(installDir):
-      if latest:
-        exec("git checkout -f master")
-        exec("git pull")
-      else:
-        exec("git fetch")
-        exec("git checkout " & NimbleStableCommit)
-  nimCompile(installDir / "src/nimble.nim",
-             options = "--noNimblePath --nilseqs:on -d:release " & args)
+             options = "-d:release --noNimblePath " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -187,14 +168,20 @@ proc bundleWinTools(args: string) =
   buildVccTool(args)
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
-  bundleC2nim(args)
   nimCompile("testament/testament.nim", options = args)
   when false:
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
+proc bundleFusion(latest: bool) =
+  let commit = if latest: "HEAD" else: FusionStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
+                  allowBundled = true)
+  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
+
 proc zip(latest: bool; args: string) =
+  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -234,6 +221,7 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
+  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -440,8 +428,10 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 
 proc tests(args: string) =
   nimexec "cc --opt:speed testament/testament"
-  let tester = quoteShell(getCurrentDir() / "testament/testament".exe)
-  let success = tryExec tester & " " & (args|"all")
+  var testCmd = quoteShell(getCurrentDir() / "testament/testament".exe)
+  testCmd.add " " & quoteShell("--nim:" & findNim())
+  testCmd.add " " & (args|"all")
+  let success = tryExec testCmd
   if not success:
     quit("tests failed", QuitFailure)
 
@@ -467,7 +457,7 @@ proc temp(args: string) =
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
-      "js" notin programArgs:
+      "js" notin programArgs and "rst2html" notin programArgs:
     bootArgs.add " -d:leanCompiler"
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
@@ -689,17 +679,20 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools(op.cmdLineRest)
-      of "nimble": buildNimble(latest, op.cmdLineRest)
+      of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
-      of "toolsnonimble":
+      # toolsNoNimble is kept for backward compatibility with build scripts
+      of "toolsnonimble", "toolsnoexternal":
         buildTools(op.cmdLineRest)
       of "tools":
         buildTools(op.cmdLineRest)
-        buildNimble(latest, op.cmdLineRest)
+        bundleNimbleExe(latest, op.cmdLineRest)
+        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
+      of "fusion": bundleFusion(latest)
       else: showHelp()
       break
     of cmdEnd: break

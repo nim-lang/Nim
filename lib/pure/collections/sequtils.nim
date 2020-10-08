@@ -415,6 +415,11 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
+proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
+  ## Same as `apply` but for proc that do not return and do not mutate `s` directly.
+  runnableExamples: apply([0, 1, 2, 3, 4], proc(item: int) = echo item)
+  for i in 0 ..< s.len: op(s[i])
+
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (function that returns a `bool`).
@@ -527,7 +532,8 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
     assert dest == outcome
 
   var j = len(dest) - 1
-  var i = len(dest) + len(src) - 1
+  var i = j + len(src)
+  if i == j: return
   dest.setLen(i + 1)
 
   # Move items after `pos` to the end of the sequence.
@@ -808,10 +814,17 @@ template foldl*(sequence, operation: untyped): untyped =
       multiplication = foldl(numbers, a * b)
       words = @["nim", "is", "cool"]
       concatenation = foldl(words, a & b)
+      procs = @["proc", "Is", "Also", "Fine"]
+
+
+    proc foo(acc, cur: string): string =
+      result = acc & cur
+
     assert addition == 25, "Addition is (((5)+9)+11)"
     assert subtraction == -15, "Subtraction is (((5)-9)-11)"
     assert multiplication == 495, "Multiplication is (((5)*9)*11)"
     assert concatenation == "nimiscool"
+    assert foldl(procs, foo(a, b)) == "procIsAlsoFine"
 
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"

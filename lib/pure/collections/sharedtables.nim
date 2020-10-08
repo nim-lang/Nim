@@ -138,6 +138,10 @@ proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
+template tabMakeEmpty(i) = t.data[i].hcode = 0
+template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
+template tabCellHash(i)  = t.data[i].hcode
+
 proc withKey*[A, B](t: var SharedTable[A, B], key: A,
                     mapper: proc(key: A, val: var B, pairExists: var bool)) =
   ## Computes a new mapping for the ``key`` with the specified ``mapper``
@@ -179,7 +183,7 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
     if pairExists:
       mapper(t.data[index].key, t.data[index].val, pairExists)
       if not pairExists:
-        delImplIdx(t, index)
+        delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
     else:
       var val: B
       mapper(key, val, pairExists)
@@ -200,22 +204,18 @@ proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
 proc del*[A, B](t: var SharedTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   withLock t:
-    delImpl()
+    delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc len*[A, B](t: var SharedTable[A, B]): int =
   ## number of elements in `t`
   withLock t:
     result = t.counter
 
-proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
+proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
   ## creates a new hash table that is empty.
   ##
   ## This proc must be called before any other usage of `t`.
-  ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
-  assert isPowerOfTwo(initialSize)
+  let initialSize = slotsNeeded(initialSize)
   t.counter = 0
   t.dataLen = initialSize
   t.data = cast[KeyValuePairSeq[A, B]](allocShared0(

@@ -22,8 +22,8 @@
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
 ##
-## Compiled test files return the number of failed test as exit code, while
-## ``nim c -r <testfile.nim>`` exits with 0 or 1
+## Compiled test files as well as ``nim c -r <testfile.nim>``
+## exit with 0 for success (no failed tests) or 1 for failure.
 ##
 ## Running a single test
 ## =====================
@@ -94,6 +94,7 @@
 ##     echo "suite teardown: run once after the tests"
 
 import std/private/since
+import std/exitprocs
 
 import
   macros, strutils, streams, times, sets, sequtils
@@ -498,7 +499,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -524,7 +525,7 @@ template test*(name, body) {.dirty.} =
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
-        programResult = 1
+        setProgramResult 1
       let testResult = TestResult(
         suiteName: when declared(testSuiteName): testSuiteName else: "",
         testName: name,
@@ -560,12 +561,11 @@ template fail* =
   ##  fail()
   ##
   ## outputs "Checkpoint A" before quitting.
-  bind ensureInitialized
-
+  bind ensureInitialized, setProgramResult
   when declared(testStatusIMPL):
     testStatusIMPL = TestStatus.FAILED
   else:
-    programResult = 1
+    setProgramResult 1
 
   ensureInitialized()
 
@@ -576,8 +576,7 @@ template fail* =
     else:
       formatter.failureOccurred(checkpoints, "")
 
-  when declared(programResult):
-    if abortOnError: quit(programResult)
+  if abortOnError: quit(1)
 
   checkpoints = @[]
 
@@ -679,7 +678,7 @@ macro check*(conditions: untyped): untyped =
     result = newNimNode(nnkStmtList)
     for node in checked:
       if node.kind != nnkCommentStmt:
-        result.add(newCall(!"check", node))
+        result.add(newCall(newIdentNode("check"), node))
 
   else:
     let lineinfo = newStrLitNode(checked.lineInfo)

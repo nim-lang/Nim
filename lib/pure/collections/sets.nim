@@ -80,6 +80,8 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
+  SomeSet*[A] = HashSet[A] | OrderedSet[A]
+    ## Type union representing `HashSet` or `OrderedSet`.
 
 const
   defaultInitialSize* = 64
@@ -93,11 +95,6 @@ include setimpl
 
 proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## Initializes a hash set.
-  ##
-  ## The `initialSize` parameter needs to be a power of two (default: 64).
-  ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
-  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -222,7 +219,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
     assert len(b) == 5
     ## b == {'a', 'b', 'c', 'd', 'r'}
 
-  result = initHashSet[A](rightSize(keys.len))
+  result = initHashSet[A](keys.len)
   for key in items(keys): result.incl(key)
 
 iterator items*[A](s: HashSet[A]): A =
@@ -425,8 +422,15 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  for item in s1:
-    if item in s2: incl(result, item)
+  
+  # iterate over the elements of the smaller set
+  if s1.data.len < s2.data.len:
+    for item in s1:
+      if item in s2: incl(result, item)
+  else:
+    for item in s2:
+      if item in s1: incl(result, item)
+  
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
@@ -628,11 +632,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## Initializes an ordered hash set.
   ##
-  ## The `initialSize` parameter needs to be a power of two (default: 64).
-  ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
-  ## `rightSize proc <#rightSize,Natural>`_ from this module.
-  ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -685,7 +684,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
     assert len(b) == 5
     ## b == {'a', 'b', 'r', 'c', 'd'} # different than in HashSet
 
-  result = initOrderedSet[A](rightSize(keys.len))
+  result = initOrderedSet[A](keys.len)
   for key in items(keys): result.incl(key)
 
 proc contains*[A](s: OrderedSet[A], key: A): bool =
@@ -917,8 +916,6 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
 
-
-
 # -----------------------------------------------------------------------
 
 
@@ -980,7 +977,7 @@ when isMainModule and not defined(release):
 
     block toSeqAndString:
       var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int](rightSize(a.len))
+      var b = initHashSet[int](a.len)
       for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
@@ -1097,20 +1094,6 @@ when isMainModule and not defined(release):
       b = initHashSet[int](4)
       b.incl(2)
       assert b.len == 1
-
-    block:
-      type FakeTable = object
-        dataLen: int
-        counter: int
-        countDeleted: int
-
-      var t: FakeTable
-      for i in 0 .. 32:
-        var s = rightSize(i)
-        t.dataLen = s
-        t.counter = i
-        doAssert s > i and not mustRehash(t),
-          "performance issue: rightSize() will not elide enlarge() at: " & $i
 
     block missingOrExcl:
       var s = toOrderedSet([2, 3, 6, 7])

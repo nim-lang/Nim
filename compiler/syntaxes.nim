@@ -13,44 +13,20 @@ import
   strutils, llstream, ast, idents, lexer, options, msgs, parser,
   filters, filter_tmpl, renderer, lineinfos, pathutils
 
-type
-  TFilterKind* = enum
-    filtNone, filtTemplate, filtReplace, filtStrip
-  TParserKind* = enum
-    skinStandard, skinEndX
-
-const
-  parserNames*: array[TParserKind, string] = ["standard",
-                                              "endx"]
-  filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
-                                              "strip"]
+export Parser, parseAll, parseTopLevelStmt, closeParser
 
 type
-  TParsers* = object
-    skin*: TParserKind
-    parser*: TParser
-
-template config(p: TParsers): ConfigRef = p.parser.lex.config
-
-proc parseAll*(p: var TParsers): PNode =
-  case p.skin
-  of skinStandard:
-    result = parser.parseAll(p.parser)
-  of skinEndX:
-    internalError(p.config, "parser to implement")
-
-proc parseTopLevelStmt*(p: var TParsers): PNode =
-  case p.skin
-  of skinStandard:
-    result = parser.parseTopLevelStmt(p.parser)
-  of skinEndX:
-    internalError(p.config, "parser to implement")
+  FilterKind = enum
+    filtNone = "none"
+    filtTemplate = "stdtmpl"
+    filtReplace = "replace"
+    filtStrip = "strip"
 
 proc utf8Bom(s: string): int =
   if s.len >= 3 and s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
-    result = 3
+    3
   else:
-    result = 0
+    0
 
 proc containsShebang(s: string, i: int): bool =
   if i+1 < s.len and s[i] == '#' and s[i+1] == '!':
@@ -78,23 +54,16 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
       else:
         inc(i, 2)
         while i < line.len and line[i] in Whitespace: inc(i)
-        var q: TParser
-        parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
-        result = parser.parseAll(q)
-        parser.closeParser(q)
+        var p: Parser
+        openParser(p, filename, llStreamOpen(substr(line, i)), cache, config)
+        result = parseAll(p)
+        closeParser(p)
     llStreamClose(s)
 
-proc getFilter(ident: PIdent): TFilterKind =
-  for i in low(TFilterKind)..high(TFilterKind):
-    if cmpIgnoreStyle(ident.s, filterNames[i]) == 0:
+proc getFilter(ident: PIdent): FilterKind =
+  for i in FilterKind:
+    if cmpIgnoreStyle(ident.s, $i) == 0:
       return i
-  result = filtNone
-
-proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
-  for i in low(TParserKind)..high(TParserKind):
-    if cmpIgnoreStyle(ident.s, parserNames[i]) == 0:
-      return i
-  localError(conf, n.info, "unknown parser: " & ident.s)
 
 proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   if n.kind in nkCallKinds and n[0].kind == nkIdent:
@@ -104,30 +73,28 @@ proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   else:
     localError(conf, n.info, "invalid filter: " & renderTree(n))
 
-proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
+proc applyFilter(p: var Parser, n: PNode, filename: AbsoluteFile,
                  stdin: PLLStream): PLLStream =
-  var ident = getCallee(p.config, n)
-  var f = getFilter(ident)
-  case f
-  of filtNone:
-    p.skin = getParser(p.config, n, ident)
-    result = stdin
-  of filtTemplate:
-    result = filterTmpl(stdin, filename, n, p.config)
-  of filtStrip:
-    result = filterStrip(p.config, stdin, filename, n)
-  of filtReplace:
-    result = filterReplace(p.config, stdin, filename, n)
+  var f = getFilter(getCallee(p.lex.config, n))
+  result = case f
+           of filtNone:
+             stdin
+           of filtTemplate:
+             filterTmpl(p.lex.config, stdin, filename, n)
+           of filtStrip:
+             filterStrip(p.lex.config, stdin, filename, n)
+           of filtReplace:
+             filterReplace(p.lex.config, stdin, filename, n)
   if f != filtNone:
-    assert p.config != nil
-    if p.config.hasHint(hintCodeBegin):
-      rawMessage(p.config, hintCodeBegin, "")
-      msgWriteln(p.config, result.s)
-      rawMessage(p.config, hintCodeEnd, "")
+    assert p.lex.config != nil
+    if p.lex.config.hasHint(hintCodeBegin):
+      rawMessage(p.lex.config, hintCodeBegin, "")
+      msgWriteln(p.lex.config, result.s)
+      rawMessage(p.lex.config, hintCodeEnd, "")
 
-proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
+proc evalPipe(p: var Parser, n: PNode, filename: AbsoluteFile,
               start: PLLStream): PLLStream =
-  assert p.config != nil
+  assert p.lex.config != nil
   result = start
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
@@ -141,35 +108,28 @@ proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
   else:
     result = applyFilter(p, n, filename, result)
 
-proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
+proc openParser*(p: var Parser, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache; config: ConfigRef) =
   assert config != nil
-  var s: PLLStream
-  p.skin = skinStandard
   let filename = toFullPathConsiderDirty(config, fileIdx)
   var pipe = parsePipe(filename, inputstream, cache, config)
-  p.config() = config
-  if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
-  else: s = inputstream
-  case p.skin
-  of skinStandard, skinEndX:
-    parser.openParser(p.parser, fileIdx, s, cache, config)
+  p.lex.config = config
+  let s = if pipe != nil: evalPipe(p, pipe, filename, inputstream)
+          else: inputstream
+  parser.openParser(p, fileIdx, s, cache, config)
 
-proc closeParsers*(p: var TParsers) =
-  parser.closeParser(p.parser)
-
-proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
+proc setupParser*(p: var Parser; fileIdx: FileIndex; cache: IdentCache;
                    config: ConfigRef): bool =
-  var f: File
   let filename = toFullPathConsiderDirty(config, fileIdx)
+  var f: File
   if not open(f, filename.string):
     rawMessage(config, errGenerated, "cannot open file: " & filename.string)
     return false
-  openParsers(p, fileIdx, llStreamOpen(f), cache, config)
+  openParser(p, fileIdx, llStreamOpen(f), cache, config)
   result = true
 
 proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode =
-  var p: TParsers
-  if setupParsers(p, fileIdx, cache, config):
+  var p: Parser
+  if setupParser(p, fileIdx, cache, config):
     result = parseAll(p)
-    closeParsers(p)
+    closeParser(p)

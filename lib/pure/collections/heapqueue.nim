@@ -58,6 +58,9 @@ type HeapQueue*[T] = object
 
 proc initHeapQueue*[T](): HeapQueue[T] =
   ## Create a new empty heap.
+  ##
+  ## See also:
+  ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
   discard
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
@@ -115,6 +118,20 @@ proc push*[T](heap: var HeapQueue[T], item: T) =
   heap.data.add(item)
   siftdown(heap, 0, len(heap)-1)
 
+proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
+  ## Creates a new HeapQueue that contains the elements of `x`.
+  ##
+  ## See also:
+  ## * `initHeapQueue proc <#initHeapQueue>`_
+  runnableExamples:
+    var heap = toHeapQueue([9, 5, 8])
+    assert heap.pop() == 5
+    assert heap[0] == 8
+
+  result = initHeapQueue[T]()
+  for item in items(x):
+    result.push(item)
+
 proc pop*[T](heap: var HeapQueue[T]): T =
   ## Pop and return the smallest item from `heap`,
   ## maintaining the heap invariant.
@@ -156,10 +173,10 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
-  if heap.len > 0 and heapCmp(heap[0], item):
-    swap(item, heap[0])
+  result = item
+  if heap.len > 0 and heapCmp(heap.data[0], item):
+    swap(result, heap.data[0])
     siftup(heap, 0)
-  return item
 
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Remove all elements from `heap`, making it empty.
@@ -195,6 +212,7 @@ when isMainModule:
     let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
     for item in data:
       push(heap, item)
+    doAssert(heap == data.toHeapQueue)
     doAssert(heap[0] == 0)
     doAssert(heap.toSortedSeq == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 

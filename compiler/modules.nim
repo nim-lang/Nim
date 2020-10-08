@@ -86,7 +86,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     result = r
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags = result.flags + flags
+      result.flags.incl flags
       result.id = id
       registerModule(graph, result)
     else:

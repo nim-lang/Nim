@@ -1117,13 +1117,7 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-when not defined(nimscript):
-  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
-    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-      fileExists(args)
-  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
-
-proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
+proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
@@ -1150,7 +1144,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ##
   ## See also:
   ## * `fileExists proc <#fileExists,string>`_
-  ## * `existsDir proc <#existsDir,string>`_
+  ## * `dirExists proc <#dirExists,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, link)
@@ -1163,13 +1157,13 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 
-proc dirExists*(dir: string): bool {.inline, noNimJs.} =
-  ## Alias for `existsDir proc <#existsDir,string>`_.
-  ##
-  ## See also:
-  ## * `fileExists proc <#fileExists,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsDir(dir)
+when not defined(nimscript):
+  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
+    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+      fileExists(args)
+    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+      dirExists(args)
+  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
 
 when not defined(windows) and not weirdTarget:
   proc checkSymlink(path: string): bool =
@@ -2026,7 +2020,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     # way of retrieving the true filename
     for x in walkFiles(result):
       result = x
-    if not fileExists(result) and not existsDir(result):
+    if not fileExists(result) and not dirExists(result):
       # consider using: `raiseOSError(osLastError(), result)`
       raise newException(OSError, "file '" & result & "' does not exist")
   else:
@@ -2323,7 +2317,7 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   result = not rawCreateDir(dir)
   if result:
     # path already exists - need to check that it is indeed a directory
-    if not existsDir(dir):
+    if not dirExists(dir):
       raise newException(IOError, "Failed to create '" & dir & "'")
 
 proc createDir*(dir: string) {.rtl, extern: "nos$1",
@@ -2820,7 +2814,7 @@ else:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
-when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
+when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -2832,12 +2826,19 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
 
   when defined(freebsd):
     const KERN_PROC_PATHNAME = 12
+  elif defined(netbsd):
+    const KERN_PROC_ARGS = 48
+    const KERN_PROC_PATHNAME = 5
   else:
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize_t(0)
-    var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
+
+    when defined(netbsd):
+      var req = [CTL_KERN.cint, KERN_PROC_ARGS.cint, -1.cint, KERN_PROC_PATHNAME.cint]
+    else:
+      var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
 
     # first call to get the required length
     var res = sysctl(addr req[0], 4, nil, addr pathLength, nil, 0)
@@ -2990,13 +2991,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if result.len > 0:
       result = result.expandFilename
   else:
-    when defined(linux) or defined(aix) or defined(netbsd):
+    when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
-    elif defined(freebsd) or defined(dragonfly):
+    elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
@@ -3086,14 +3087,15 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
-      result.permissions = {fpUserExec..fpOthersRead}
+      formalInfo.permissions = {fpUserExec..fpOthersRead}
 
     # Retrieve basic file kind
-    result.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
+    else:
+      formalInfo.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-      formalInfo.kind = succ(result.kind)
+      formalInfo.kind = succ(formalInfo.kind)
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
@@ -3106,7 +3108,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
     formalInfo.creationTime = rawInfo.st_ctim.toTime
 
-    result.permissions = {}
+    formalInfo.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
     checkAndIncludeMode(S_IWUSR, fpUserWrite)
     checkAndIncludeMode(S_IXUSR, fpUserExec)
@@ -3119,12 +3121,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    formalInfo.kind = pcFile
-    if S_ISDIR(rawInfo.st_mode):
-      formalInfo.kind = pcDir
-    elif S_ISLNK(rawInfo.st_mode):
-      assert(path != "") # symlinks can't occur for file handles
-      formalInfo.kind = getSymlinkFileKind(path)
+    formalInfo.kind =
+      if S_ISDIR(rawInfo.st_mode):
+        pcDir
+      elif S_ISLNK(rawInfo.st_mode):
+        assert(path != "") # symlinks can't occur for file handles
+        getSymlinkFileKind(path)
+      else:
+        pcFile
 
 when defined(js):
   when not declared(FileHandle):

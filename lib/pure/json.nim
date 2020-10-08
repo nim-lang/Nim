@@ -219,7 +219,7 @@ proc newJNull*(): JsonNode =
 
 proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
-  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](4))
+  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](2))
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
@@ -264,7 +264,7 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getFields*(n: JsonNode,
-    default = initOrderedTable[string, JsonNode](4)):
+    default = initOrderedTable[string, JsonNode](2)):
         OrderedTable[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##

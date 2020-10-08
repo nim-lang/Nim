@@ -103,7 +103,7 @@ proc saveCurrentFile() =
   let
     path = expandPath(currentFileTransfer.assetType, currentFileTransfer.fileName)
     parent = parentDir(path)
-  if not existsDir(parent):
+  if not dirExists(parent):
     createDir(parent)
     echo("Created dir")
   writeFile path, currentFIleTransfer.data

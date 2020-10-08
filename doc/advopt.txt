@@ -11,9 +11,9 @@ Advanced commands:
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //genDepend               generate a DOT file containing the
-                          module dependency graph
+                            module dependency graph
   //dump                    dump all defined conditionals and search paths
-                          see also: --dump.format:json (useful with: ` | jq`)
+                            see also: --dump.format:json (useful with: `| jq`)
   //check                   checks the project for syntax and semantic
 
 Runtime checks (see -x):
@@ -111,7 +111,7 @@ Advanced options:
   --skipProjCfg:on|off      do not read the project's configuration file
   --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
-  --exceptions:setjmp|cpp|goto|quirky
+  --exceptions:setjmp|cpp|goto
                             select the exception handling implementation
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
@@ -122,6 +122,8 @@ Advanced options:
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
   --expandMacro:MACRO       dump every generated AST from MACRO
+  --expandArc:PROCNAME      show how PROCNAME looks like after diverse optimizations
+                            before the final backend phase (mostly ARC/ORC specific)
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
@@ -144,11 +146,11 @@ Advanced options:
   --legacy:$2
                             enable obsolete/legacy language feature
   --useVersion:1.0          emulate Nim version X of the Nim compiler
-  --newruntime              use an alternative runtime that uses destructors
-                            and that uses a shared heap via -d:useMalloc
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --profileVM:on|off        enable compile time VM profiler
   --sinkInference:on|off    en-/disable sink parameter inference (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
+  --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``

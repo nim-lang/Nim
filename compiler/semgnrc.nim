@@ -228,7 +228,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles, mAstToStr}
+      mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen
                         else: scOpen

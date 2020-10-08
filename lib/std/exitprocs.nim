@@ -63,3 +63,25 @@ proc addExitProc*(cl: proc() {.noconv.}) =
   withLock gFunsLock:
     fun()
     gFuns.add Fun(kind: kNoconv, fun2: cl)
+
+when not defined(nimscript):
+  proc getProgramResult*(): int =
+    when defined(js) and defined(nodejs):
+      asm """
+`result` = process.exitCode;
+"""
+    elif not defined(js):
+      result = programResult
+    else:
+      doAssert false
+
+  proc setProgramResult*(a: int) =
+    # pending https://github.com/nim-lang/Nim/issues/14674
+    when defined(js) and defined(nodejs):
+      asm """
+process.exitCode = `a`;
+"""
+    elif not defined(js):
+      programResult = a
+    else:
+      doAssert false

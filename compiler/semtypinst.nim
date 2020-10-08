@@ -12,8 +12,7 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos
 
-const
-  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
+const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
@@ -208,7 +207,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result.sym = replaceTypeVarsS(cl, n.sym)
     if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
-      result = newNode(nkRecList, n.info)
+      result = newNodeI(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in 0..<n.len:
@@ -630,7 +629,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = t
 
       # Slow path, we have some work to do
-      if result.n != nil and t.kind == tyObject:
+      if t.kind == tyRef and t.len > 0 and t[0].kind == tyObject and t[0].n != nil:
+        discard replaceObjBranches(cl, t[0].n)
+
+      elif result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)

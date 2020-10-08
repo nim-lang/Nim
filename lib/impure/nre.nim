@@ -7,7 +7,7 @@
 #
 
 when defined(js):
-  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
 ## What is NRE?
 ## ============
@@ -367,24 +367,26 @@ func contains*(pattern: CaptureBounds, name: string): bool =
 func contains*(pattern: Captures, name: string): bool =
   name in CaptureBounds(pattern)
 
-func checkNamedCaptured(pattern: RegexMatch, name: string): void =
+func checkNamedCaptured(pattern: RegexMatch, name: string) =
   if not (name in pattern.captureBounds):
     raise newException(KeyError, "Group '" & name & "' was not captured")
 
 func `[]`*(pattern: CaptureBounds, name: string): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  pattern.captureBounds[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captureBounds[pattern.pattern.captureNameToId[name]]
 
 func `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  return pattern.captures[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captures[pattern.pattern.captureNameToId[name]]
 
 template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     if key in pattern:
-        result[key] = pattern[key]
+      result[key] = pattern[key]
 
 func toTable*(pattern: Captures): Table[string, string] =
   result = initTable[string, string]()
@@ -498,7 +500,7 @@ proc re*(pattern: string): Regex =
   initRegex(pattern, flags, study)
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
-  var myResult = RegexMatch(pattern : pattern, str : str)
+  var myResult = RegexMatch(pattern: pattern, str: str)
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
@@ -528,16 +530,16 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
     of pcre.ERROR_NULL:
       raise newException(AccessViolationDefect, "Expected non-null parameters")
     of pcre.ERROR_BADOPTION:
-      raise RegexInternalError(msg : "Unknown pattern flag. Either a bug or " &
+      raise RegexInternalError(msg: "Unknown pattern flag. Either a bug or " &
         "outdated PCRE.")
     of pcre.ERROR_BADUTF8, pcre.ERROR_SHORTUTF8, pcre.ERROR_BADUTF8_OFFSET:
-      raise InvalidUnicodeError(msg : "Invalid unicode byte sequence",
-        pos : myResult.pcreMatchBounds[0].a)
+      raise InvalidUnicodeError(msg: "Invalid unicode byte sequence",
+        pos: myResult.pcreMatchBounds[0].a)
     else:
-      raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
+      raise RegexInternalError(msg: "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
-  ## Like ` ``find(...)`` <#proc-find>`_, but anchored to the start of the
+  ## Like `find(...)<#find,string,Regex,int>`_, but anchored to the start of the
   ## string.
   ##
   runnableExamples:
@@ -547,11 +549,11 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
-  ## Works the same as ` ``find(...)`` <#proc-find>`_, but finds every
+  ## Works the same as `find(...)<#find,string,Regex,int>`_, but finds every
   ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
   ## ``"22", "22", "22"``.
   ##
-  ## Arguments are the same as ` ``find(...)`` <#proc-find>`_
+  ## Arguments are the same as `find(...)<#find,string,Regex,int>`_
   ##
   ## Variants:
   ##
@@ -630,7 +632,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use.
   ##
-  ## ``start`` behaves the same as in ` ``find(...)`` <#proc-find>`_.
+  ## ``start`` behaves the same as in `find(...)<#find,string,Regex,int>`_.
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:

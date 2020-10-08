@@ -59,16 +59,19 @@
 ## by specifying a ``onProgressChanged`` procedure to the ``store`` or
 ## ``retrFile`` procedures.
 ##
+## Procs that take an ``onProgressChanged`` callback will call this every
+## ``progressInterval`` milliseconds.
+##
 ## .. code-block::nim
 ##    import asyncdispatch, asyncftpclient
 ##
 ##    proc onProgressChanged(total, progress: BiggestInt,
-##                            speed: float): Future[void] =
+##                            speed: float) {.async.} =
 ##      echo("Uploaded ", progress, " of ", total, " bytes")
 ##      echo("Current speed: ", speed, " kb/s")
 ##
 ##    proc main() {.async.} =
-##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test", progressInterval = 500)
 ##      await ftp.connect()
 ##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
 ##      echo("File finished uploading")
@@ -85,6 +88,7 @@ type
     user*, pass*: string
     address*: string
     port*: Port
+    progressInterval: int
     jobInProgress*: bool
     job*: FtpJob
     dsockConnected*: bool
@@ -134,7 +138,7 @@ proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
   var line = await ftp.csock.recvLine()
   result = TaintedString(line)
   var count = 0
-  while line[3] == '-':
+  while line.len > 3 and line[3] == '-':
     ## Multi-line reply.
     line = await ftp.csock.recvLine()
     string(result).add("\n" & line)
@@ -146,7 +150,11 @@ proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ##
+  ## You need to make sure that the message ``m`` doesn't contain any newline
+  ## characters. Failing to do so will raise ``AssertionDefect``.
+  ##
   ## **Note:** The server may return multiple lines of coded replies.
+  doAssert(not m.contains({'\c', '\L'}), "message shouldn't contain any newline characters")
   await ftp.csock.send(m & "\c\L")
   return await ftp.expectReply()
 
@@ -299,7 +307,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assert ftp.dsockConnected
   var progress = 0
   var progressInSecond = 0
-  var countdownFut = sleepAsync(1000)
+  var countdownFut = sleepAsync(ftp.progressInterval)
   var dataFut = ftp.dsock.recv(BufferSize)
   while ftp.dsockConnected:
     await dataFut or countdownFut
@@ -307,7 +315,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
       asyncCheck onProgressChanged(total, progress,
           progressInSecond.float)
       progressInSecond = 0
-      countdownFut = sleepAsync(1000)
+      countdownFut = sleepAsync(ftp.progressInterval)
 
     if dataFut.finished:
       let data = dataFut.read
@@ -355,7 +363,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   var data = newString(4000)
   var progress = 0
   var progressInSecond = 0
-  var countdownFut = sleepAsync(1000)
+  var countdownFut = sleepAsync(ftp.progressInterval)
   var sendFut: Future[void] = nil
   while ftp.dsockConnected:
     if sendFut == nil or sendFut.finished:
@@ -376,7 +384,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
     if countdownFut.finished:
       asyncCheck onProgressChanged(total, progress, progressInSecond.float)
       progressInSecond = 0
-      countdownFut = sleepAsync(1000)
+      countdownFut = sleepAsync(ftp.progressInterval)
 
     await countdownFut or sendFut
 
@@ -411,13 +419,14 @@ proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
   assertReply(await ftp.send("RMD " & dir), "250")
 
 proc newAsyncFtpClient*(address: string, port = Port(21),
-    user, pass = ""): AsyncFtpClient =
+    user, pass = "", progressInterval: int = 1000): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
   new result
   result.user = user
   result.pass = pass
   result.address = address
   result.port = port
+  result.progressInterval = progressInterval
   result.dsockConnected = false
   result.csock = newAsyncSocket()
 

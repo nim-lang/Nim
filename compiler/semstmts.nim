@@ -159,7 +159,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if it.len == 2:
       openScope(c)
       it[0] = forceBool(c, semExprWithType(c, it[0]))
-      it[1] = semExprBranch(c, it[1])
+      it[1] = semExprBranch(c, it[1], flags)
       typ = commonType(typ, it[1])
       closeScope(c)
     elif it.len == 1:
@@ -229,8 +229,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
       elif a.len == 1:
-          # count number of ``except: body`` blocks
-          inc catchAllExcepts
+        # count number of ``except: body`` blocks
+        inc catchAllExcepts
 
       else:
         # support ``except KeyError, ValueError, ... : body``
@@ -324,11 +324,14 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   proc getLineInfo(n: PNode): TLineInfo =
     case n.kind
     of nkPostfix:
-      getLineInfo(n[1])
+      if len(n) > 1:
+        return getLineInfo(n[1])
     of nkAccQuoted, nkPragmaExpr:
-      getLineInfo(n[0])
+      if len(n) > 0:
+        return getLineInfo(n[0])
     else:
-      n.info
+      discard
+    result = n.info
   let info = getLineInfo(n)
   suggestSym(c.config, info, result, c.graph.usageSym)
 
@@ -531,7 +534,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     if c.matchedConcept != nil:
       typFlags.incl taConcept
-    typeAllowedCheck(c.config, a.info, typ, symkind, typFlags)
+    typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
     when false: liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
@@ -664,7 +667,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def.kind != nkNilLit:
       if c.matchedConcept != nil:
         typFlags.incl taConcept
-      typeAllowedCheck(c.config, a.info, typ, skConst, typFlags)
+      typeAllowedCheck(c, a.info, typ, skConst, typFlags)
 
     var b: PNode
     if a.kind == nkVarTuple:
@@ -715,7 +718,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   let iterBase = n[^2].typ
   var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink, tyOwned})
-  var iterAfterVarLent = iter.skipTypes({tyLent, tyVar})
+  var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
@@ -887,9 +890,8 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
-  if forLoopMacros in c.features:
-    result = handleForLoopMacro(c, n, flags)
-    if result != nil: return result
+  result = handleForLoopMacro(c, n, flags)
+  if result != nil: return result
   openScope(c)
   result = n
   n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})
@@ -1428,16 +1430,19 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
-proc addResult(c: PContext, t: PType, info: TLineInfo, owner: TSymKind) =
+proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   if owner == skMacro or t != nil:
-    var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), info)
-    s.typ = t
-    incl(s.flags, sfUsed)
-    addParamOrResult(c, s, owner)
-    c.p.resultSym = s
-
-proc addResultNode(c: PContext, n: PNode) =
-  if c.p.resultSym != nil: n.add newSymNode(c.p.resultSym)
+    if n.len > resultPos and n[resultPos] != nil:
+      if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+        localError(c.config, n.info, "incorrect result proc symbol")
+      c.p.resultSym = n[resultPos].sym
+    else:
+      var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), n.info)
+      s.typ = t
+      incl(s.flags, sfUsed)
+      c.p.resultSym = s
+      n.add newSymNode(c.p.resultSym)
+    addParamOrResult(c, c.p.resultSym, owner)
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
@@ -1561,8 +1566,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # XXX not good enough; see tnamedparamanonproc.nim
     if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
       pushProcCon(c, s)
-      addResult(c, s.typ[0], n.info, skProc)
-      addResultNode(c, n)
+      addResult(c, n, s.typ[0], skProc)
       s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
       trackProc(c, s, s.ast[bodyPos])
       popProcCon(c)
@@ -1604,8 +1608,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   pushOwner(c, s)
   addParams(c, params, skProc)
   pushProcCon(c, s)
-  addResult(c, n.typ[0], n.info, skProc)
-  addResultNode(c, n)
+  addResult(c, n, n.typ[0], skProc)
   s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
   trackProc(c, s, s.ast[bodyPos])
   popProcCon(c)
@@ -1635,11 +1638,9 @@ proc activate(c: PContext, n: PNode) =
 proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
   if s.kind == skMacro:
     let resultType = sysTypeFromName(c.graph, n.info, "NimNode")
-    addResult(c, resultType, n.info, s.kind)
-    addResultNode(c, n)
+    addResult(c, n, resultType, s.kind)
   elif s.typ[0] != nil and not isInlineIterator(s.typ):
-    addResult(c, s.typ[0], n.info, s.kind)
-    addResultNode(c, n)
+    addResult(c, n, s.typ[0], s.kind)
 
 proc canonType(c: PContext, t: PType): PType =
   if t.kind == tySequence:
@@ -1834,7 +1835,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
-  checkSonsLen(n, bodyPos + 1, c.config)
+  checkMinSonsLen(n, bodyPos + 1, c.config)
   var s: PSym
   var typeIsDetermined = false
   var isAnon = false
@@ -1896,8 +1897,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif s.kind == skFunc:
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
-  var proto: PSym = if isAnon: nil
-                    else: searchForProc(c, oldScope, s)
+  var (proto, comesFromShadowScope) = if isAnon: (nil, false)
+                                      else: searchForProc(c, oldScope, s)
+  if proto == nil and sfForward in s.flags:
+    #This is a definition that shares its sym with its forward declaration (generated by a macro),
+    #if the symbol is also gensymmed we won't find it with searchForProc, so we check here
+    proto = s
   if proto == nil:
     if s.kind == skIterator:
       if s.typ.callConv != ccClosure:
@@ -1935,15 +1940,15 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     onDefResolveForward(n[namePos].info, proto)
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
-    excl(proto.flags, sfForward)
-    incl(proto.flags, sfWasForwarded)
+    if not comesFromShadowScope:
+      excl(proto.flags, sfForward)
+      incl(proto.flags, sfWasForwarded)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast[genericParamsPos].kind != nkEmpty:
       addGenericParamListToScope(c, proto.ast[genericParamsPos])
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
-    s.typ = proto.typ
     proto.options = s.options
     s = proto
     n[genericParamsPos] = proto.ast[genericParamsPos]
@@ -1983,7 +1988,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if n[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
         if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
-        c.p.wasForwarded = proto != nil
         maybeAddResult(c, s, n)
         # semantic checking also needed with importc in case used in VM
         s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
@@ -2165,7 +2169,7 @@ proc setLine(n: PNode, info: TLineInfo) =
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 2, c.config)
   let pragmaList = n[0]
-  pragma(c, nil, pragmaList, exprPragmas)
+  pragma(c, nil, pragmaList, exprPragmas, isStatement = true)
   n[1] = semExpr(c, n[1])
   result = n
   result.typ = n[1].typ

@@ -53,15 +53,14 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
-  var x = ""
-  for f in low(T)..high(T):
-    if x.len > 0: x.add "|"
-    x.add $f
-  x
+  result = ""
+  for f in T:
+    if result.len > 0: result.add "|"
+    result.add $f
 
 const
-  Usage = slurp"../doc/basicopt.txt".replace(" //", " ")
-  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", " ") % [genFeatureDesc(Feature), genFeatureDesc(LegacyFeature)]
+  Usage = slurp"../doc/basicopt.txt".replace(" //", "   ")
+  AdvancedUsage = slurp"../doc/advopt.txt".replace(" //", "   ") % [genFeatureDesc(Feature), genFeatureDesc(LegacyFeature)]
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
@@ -146,24 +145,24 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
-  of "","on": conf.options = conf.options + op
-  of "off": conf.options = conf.options - op
+  of "","on": conf.options.incl op
+  of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
   result = false
   case arg.normalize
-  of "on": conf.options = conf.options + op
-  of "off": conf.options = conf.options - op
+  of "on": conf.options.incl op
+  of "off": conf.options.excl op
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 
 proc processOnOffSwitchG(conf: ConfigRef; op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
   case arg.normalize
-  of "", "on": conf.globalOptions = conf.globalOptions + op
-  of "off": conf.globalOptions = conf.globalOptions - op
+  of "", "on": conf.globalOptions.incl op
+  of "off": conf.globalOptions.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc expectArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
@@ -486,6 +485,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
+    if conf.backend == backendJs:
+      return
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       case arg.normalize
@@ -866,8 +867,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "expandmacro":
     expectArg(conf, switch, arg, pass, info)
     conf.macrosToExpand[arg] = "T"
-  of "oldgensym":
-    processOnOffSwitchG(conf, {optNimV019}, arg, pass, info)
+  of "expandarc":
+    expectArg(conf, switch, arg, pass, info)
+    conf.arcToExpand[arg] = "T"
   of "useversion":
     expectArg(conf, switch, arg, pass, info)
     case arg
@@ -878,14 +880,20 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "NimPatch", "100")
       # old behaviors go here:
       defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
+      undefSymbol(conf.symbols, "nimDoesntTrackDefects")
       ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
       conf.globalOptions.incl optNimV1Emulation
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
+  of "profilevm":
+    processOnOffSwitchG(conf, {optProfileVM}, arg, pass, info)
   of "sinkinference":
     processOnOffSwitch(conf, {optSinkInference}, arg, pass, info)
+  of "cursorinference":
+    # undocumented, for debugging purposes only:
+    processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
   of "panics":
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
@@ -893,7 +901,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "sourcemap":
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
-    # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
+  of "deepcopy":
+    processOnOffSwitchG(conf, {optEnableDeepCopy}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:
