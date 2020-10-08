@@ -1,3 +1,7 @@
+discard """
+  targets:  "c cpp js"
+"""
+
 import std/json
 
 block: # ref objects
@@ -71,7 +75,7 @@ block: # complex example
   doAssert f8[1].b0 == 3
   var f9: (Foo3,)
   f9[0] = f
-  doAssert f9.f0.b0 == 2
+  doAssert f9[0].f0.b0 == 2
 
 block: # case ref objects
   const j = parseJson(""" {"x1":12,"x2":"asdf","x3":[1,2]} """)
