@@ -138,12 +138,13 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       accum.offset  = szUnknownSize
       accum.maxAlign = szUnknownSize
     else:
-      # the union neds to be aligned first, before the offsets can be assigned
+      # the union needs to be aligned first, before the offsets can be assigned
       accum.align(maxChildAlign)
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1..<n.len:
-        var branchAccum = accumRoot
+        var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
         computeObjectOffsetsFoldFunction(conf, n[i].lastSon, packed, branchAccum)
+        discard finish(branchAccum)
         accum.mergeBranch(branchAccum)
   of nkRecList:
     for i, child in n.sons:
@@ -173,9 +174,10 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; accum: var
     localError(conf, n.info, "Illegal use of ``case`` in union type.")
   of nkRecList:
     let accumRoot = accum # copy, because each branch should start af the same offset
-    for i, child in n.sons:
-      var branchAccum = accumRoot
+    for child in n.sons:
+      var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
       computeUnionObjectOffsetsFoldFunction(conf, child, branchAccum)
+      discard finish(branchAccum)
       accum.mergeBranch(branchAccum)
   of nkSym:
     var size = szUnknownSize
