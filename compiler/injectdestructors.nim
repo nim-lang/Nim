@@ -411,7 +411,9 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
         "if possible, rearrange your program's control flow to prevent it") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc}:
-      assert(not containsGarbageCollectedRef(n.typ))
+      assert(not containsManagedMemory(n.typ))
+    if n.typ.skipTypes(abstractInst).kind in {tyOpenArray, tyVarargs}:
+      localError(c.graph.config, n.info, "cannot create an implicit openArray copy to be passed to a sink parameter")
     result.add newTree(nkAsgn, tmp, p(n, c, s, normal))
   # Since we know somebody will take over the produced copy, there is
   # no need to destroy it.
