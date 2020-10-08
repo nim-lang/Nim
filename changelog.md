@@ -159,10 +159,6 @@
 - Removed `sugar.distinctBase`, deprecated since `0.19`.
 - Export `asyncdispatch.PDispatcher.handles` so that an external library can register them.
 
-- Added `deques.toDeque`, which creates a deque from an openArray. The usage is
-  similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
-  it was necessary to create an empty deque and add items manually.
-
 - `std/with`, `sugar.dup` now support object field assignment expression:
   ```nim
   import std/with
@@ -201,13 +197,14 @@
 
 - Added `readLines(p: Process)` to `osproc` module for `startProcess` convenience.
 
-- Added `heapqueue.toHeapQueue`, which creates a HeapQueue from an openArray.
-  The usage is similar to procs such as `sets.toHashSet` and `tables.toTable`.
-  Previously, it was necessary to create an empty HeapQueue and add items
-  manually.
-- Added `intsets.toIntSet`, which creates an IntSet from an openArray. The usage
-  is similar to procs such as `sets.toHashSet` and `tables.toTable`. Previously,
-  it was necessary to create an empty IntSet and add items manually.
+- Added the below `to` procs for collections. The usage is similar to procs such as
+  `sets.toHashSet` and `tables.toTable`. Previously, it was necessary to create the
+  respective empty collection and add items manually.
+    *  `critbits.toCritBitTree`, which creates a `CritBitTree` from an `openArray` of
+       items or an `openArray` of pairs.
+    * `deques.toDeque`, which creates a `Deque` from an `openArray`.
+    * `heapqueue.toHeapQueue`, which creates a `HeapQueue` from an `openArray`.
+    * `intsets.toIntSet`, which creates an `IntSet` from an `openArray`.
 
 - Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
   at which progress callbacks are called.
@@ -305,7 +302,6 @@ proc mydiv(a, b): int {.raises: [].} =
 - Added a `std/effecttraits` module for introspection of the inferred effects.
   We hope this enables `async` macros that are precise about the possible exceptions that
   can be raised.
-- Added `critbits.toCritBitTree`, similar to `tables.toTable`, creates a new `CritBitTree` with given arguments.
 - The pragma blocks `{.gcsafe.}: ...` and `{.noSideEffect.}: ...` can now also be
   written as `{.cast(gcsafe).}: ...` and `{.cast(noSideEffect).}: ...`. This is the new
   preferred way of writing these, emphasizing their unsafe nature.
