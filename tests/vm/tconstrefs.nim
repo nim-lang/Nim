@@ -22,6 +22,22 @@ block: # nested ref objects
   const f = Foo2(f0: Bar(b0: 1))
   doAssert f.f0.b0 == 1
 
+block: # ref object of
+  type Foo = ref object of RootObj
+    f0: int
+  const f = @[Foo(f0: 1), Foo(f0: 2)]
+  doAssert f[1].f0 == 2
+  let f2 = f
+  doAssert f2[1].f0 == 2
+
+  type Goo = ref object of Foo
+    g0: int
+  const g = @[Goo(g0: 3), Goo(g0: 4, f0: 5)]
+  doAssert g[0].g0 == 3
+  doAssert g[0].f0 == 0
+  doAssert g[1].g0 == 4
+  doAssert g[1].f0 == 5
+
 block: # complex example
   type Bar = ref object
     b0: int

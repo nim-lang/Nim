@@ -170,8 +170,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t[i], kind, c, flags)
       if result != nil: break
   of tyObject, tyTuple:
-    if kind in {skProc, skFunc, skConst} and
-        t.kind == tyObject and t[0] != nil:
+    # skConst is now allowed
+    if kind in {skProc, skFunc} and t.kind == tyObject and t[0] != nil:
       result = t
     else:
       let flags = flags+{taField}
