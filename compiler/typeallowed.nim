@@ -161,8 +161,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif kind in {skVar, skLet}:
       result = t[1]
   of tyRef:
-    if kind == skConst: result = t
-    else: result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
+    # skConst is now allowed
+    result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
   of tyPtr:
     result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
   of tySet:
