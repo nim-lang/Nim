@@ -593,6 +593,18 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
     result.add processScope(c, bodyScope, bodyResult)
     dec c.inLoop
 
+  of nkParForStmt:
+    inc c.inLoop
+    result = shallowCopy(n)
+    let last = n.len-1
+    for i in 0..<last-1:
+      result[i] = n[i]
+    result[last-1] = p(n[last-1], c, s, normal)
+    var bodyScope = nestedScope(s)
+    let bodyResult = p(n[last], c, bodyScope, normal)
+    result[last] = processScope(c, bodyScope, bodyResult)
+    dec c.inLoop
+
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
     result.add n[0]
@@ -668,7 +680,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
 
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
-                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkTryStmt}:
+                nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt, nkParForStmt, nkTryStmt}:
     template process(child, s): untyped = p(child, c, s, mode)
     handleNestedTempl(n, process)
   elif mode == sinkArg:
