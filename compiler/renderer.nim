@@ -32,6 +32,7 @@ type
   TSrcGen* = object
     indent*: int
     lineLen*: int
+    col: int
     pos*: int              # current position for iteration over the buffer
     idx*: int              # current token index for iteration over the buffer
     tokens*: TRenderTokSeq
@@ -119,11 +120,10 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.config = config
 
 proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
-  setLen(g.tokens, g.tokens.len + 1)
-  g.tokens[^1].kind = kind
-  g.tokens[^1].length = int16(s.len)
-  g.tokens[^1].sym = sym
+  g.tokens.add TRenderTok(kind: kind, length: int16(s.len), sym: sym)
   g.buf.add(s)
+  if kind != tkSpaces:
+    inc g.col, s.len
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
@@ -133,6 +133,7 @@ proc addPendingNL(g: var TSrcGen) =
       const newlines = "\n"
     addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
+    g.col = g.pendingNL
     g.pendingNL = - 1
     g.pendingWhitespace = -1
   elif g.pendingWhitespace >= 0:
@@ -141,7 +142,10 @@ proc addPendingNL(g: var TSrcGen) =
 
 proc putNL(g: var TSrcGen, indent: int) =
   if g.pendingNL >= 0: addPendingNL(g)
-  else: addTok(g, tkSpaces, "\n")
+  else:
+    addTok(g, tkSpaces, "\n")
+    g.col = 0
+
   g.pendingNL = indent
   g.lineLen = indent
   g.pendingWhitespace = -1
@@ -185,14 +189,15 @@ proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
       addTok(g, kind, s, sym)
   else:
     g.pendingWhitespace = s.len
+    inc g.col, s.len
   inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
   if s.len == 0: return
   var i = 0
   let hi = s.len - 1
-  var isCode = (s.len >= 2) and (s[1] != ' ')
-  var ind = g.lineLen
+  let isCode = (s.len >= 2) and (s[1] != ' ')
+  let ind = g.col
   var com = "## "
   while i <= hi:
     case s[i]
@@ -218,7 +223,7 @@ proc putComment(g: var TSrcGen, s: string) =
       # compute length of the following word:
       var j = i
       while j <= hi and s[j] > ' ': inc(j)
-      if not isCode and (g.lineLen + (j - i) > MaxLineLen):
+      if not isCode and (g.col + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
@@ -300,15 +305,18 @@ proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
   if shouldRenderComment(g, n):
+    var oneSpaceAdded = 0
     if (g.pendingNL < 0) and (g.buf.len > 0) and (g.buf[^1] != ' '):
       put(g, tkSpaces, Space)
+      oneSpaceAdded = 1
       # Before long comments we cannot make sure that a newline is generated,
       # because this might be wrong. But it is no problem in practice.
     if (g.pendingNL < 0) and (g.buf.len > 0) and
-        (g.lineLen < LineCommentColumn):
+        (g.col < LineCommentColumn):
       var ml = maxLineLength(n.comment)
       if ml + LineCommentColumn <= MaxLineLen:
-        put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
+        put(g, tkSpaces, spaces(LineCommentColumn - g.col))
+        dec g.col, oneSpaceAdded
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
