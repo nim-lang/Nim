@@ -200,7 +200,7 @@
 - Added the below `to` procs for collections. The usage is similar to procs such as
   `sets.toHashSet` and `tables.toTable`. Previously, it was necessary to create the
   respective empty collection and add items manually.
-    *  `critbits.toCritBitTree`, which creates a `CritBitTree` from an `openArray` of
+    * `critbits.toCritBitTree`, which creates a `CritBitTree` from an `openArray` of
        items or an `openArray` of pairs.
     * `deques.toDeque`, which creates a `Deque` from an `openArray`.
     * `heapqueue.toHeapQueue`, which creates a `HeapQueue` from an `openArray`.
