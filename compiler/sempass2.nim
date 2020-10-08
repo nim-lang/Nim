@@ -1065,7 +1065,10 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.len:
       track(tracked, n[i])
       if tracked.owner.kind != skMacro:
-        createTypeBoundOps(tracked, n[i].typ, n.info)
+        if n[i].kind == nkExprColonExpr:
+          createTypeBoundOps(tracked, n[i][0].typ, n.info)
+        else:
+          createTypeBoundOps(tracked, n[i].typ, n.info)
       checkForSink(tracked.config, tracked.owner, n[i])
   of nkPragmaBlock:
     let pragmaList = n[0]
