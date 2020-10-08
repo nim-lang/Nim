@@ -84,6 +84,7 @@ block: # case ref objects
   when false:
     # pending https://github.com/nim-lang/Nim/issues/13081
     echo j["x1"].getInt
+  doAssert j["x1"].getInt.static == 12
 
   doAssert x1 == 12
   doAssert x2 == @[1, 2]

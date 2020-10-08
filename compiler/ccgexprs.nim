@@ -2692,13 +2692,6 @@ proc genConstStmt(p: BProc, n: PNode) =
       if not isSimpleConst(sym.typ) and sym.itemId.item in m.alive and genConstSetup(p, sym):
         genConstDefinition(m, p, sym)
 
-# proc containsRef(t: PType): bool =
-#   # consider moving to 
-#   let t = skipTypes(t, abstractVar)
-#   case t.kind
-#   of tyRef: return true
-#   of tySequence: return t[]
-
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg p.config$n.info & " " & $n.kind
