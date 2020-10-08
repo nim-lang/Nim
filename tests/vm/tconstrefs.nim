@@ -64,8 +64,14 @@ block: # complex example
 
   const f6 = f.f3
   doAssert f6[0].f4 == "abc"
-  # let f7 = f6
-  # doAssert f7[0].f4 == "abc"
+  let f7 = f6
+  doAssert f7[0].f4 == "abc"
+  var f8: array[2,Bar]
+  f8 = f.f1
+  doAssert f8[1].b0 == 3
+  var f9: (Foo3,)
+  f9[0] = f
+  doAssert f9.f0.b0 == 2
 
 block: # case ref objects
   const j = parseJson(""" {"x1":12,"x2":"asdf","x3":[1,2]} """)
