@@ -1680,9 +1680,10 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
+proc copyFile*(source, dest: string, isDir = false) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
-  ## Copies a file from `source` to `dest`.
+  ## Copies a file from `source` to `dest`. If `isDir`, `dest` is the destination
+  ## directory (and must exist), else, `dest.parentDir` must exist.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -1707,6 +1708,11 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## * `removeFile proc <#removeFile,string>`_
   ## * `moveFile proc <#moveFile,string,string>`_
 
+  let dest = if isDir:
+    if dest.len == 0: # treating "" as "." is error prone
+      raise newException(ValueError, "dest is empty")
+    dest / source.lastPathPart
+  else: dest
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
