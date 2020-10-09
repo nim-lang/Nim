@@ -178,3 +178,34 @@ const
 static:
   doAssert ctor
   doAssert ctand
+
+block: # bug #13081
+  type Kind = enum
+    k0, k1, k2, k3
+
+  type Foo = object
+    x0: float
+    case kind: Kind
+    of k0: discard
+    of k1: x1: int
+    of k2: x2: string
+    of k3: x3: string
+
+  const j1 = Foo(x0: 1.2, kind: k1, x1: 12)
+  const j2 = Foo(x0: 1.3, kind: k2, x2: "abc")
+  const j3 = Foo(x0: 1.3, kind: k3, x3: "abc2")
+  static:
+    doAssert $j1 == "(x0: 1.2, kind: k1, x1: 12)"
+    doAssert $j2 == """(x0: 1.3, kind: k2, x2: "abc")"""
+    doAssert $j3 == """(x0: 1.3, kind: k3, x3: "abc2")"""
+  doAssert $j1 == "(x0: 1.2, kind: k1, x1: 12)"
+  doAssert $j2 == """(x0: 1.3, kind: k2, x2: "abc")"""
+  doAssert $j3 == """(x0: 1.3, kind: k3, x3: "abc2")"""
+
+  when false:
+    # BUG: this doesn't work yet
+    # Error: unhandled exception: 'sons' is not accessible using discriminant 'kind' of type 'TNode' [FieldDefect]
+    discard j1.x1
+    static:
+      # ditto
+      discard j1.x1
