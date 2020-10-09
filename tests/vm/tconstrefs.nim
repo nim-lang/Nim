@@ -112,5 +112,6 @@ block: # regression test with closures
     result.add even
     result.setLen 2 # intentionally leaving 1 unassigned
   const a = bar()
-  doAssert a == bar()
+  when not defined(js):
+    doAssert a == bar()
   doAssert a[0](2) == 2*3
