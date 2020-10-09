@@ -47,7 +47,7 @@ test(char, '0')
 test(bool, false)
 test(uint8, 2)
 test(string, "data")
-test(MyProc, even)
+# test(MyProc, even) # PRTEMP
 test(MyEnum, E02)
 test(AObj, AObj())
 test(ATup, (i:11, d:9.99))
