@@ -572,7 +572,7 @@ proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): stri
     result = defaultVal
 
 proc setSectionKey*(dict: var Config, section, key, value: string) =
-  ## Sets the Key value of the specified Section.
+  ## Sets the key value of the specified Section.
   var t = newOrderedTable[string, string]()
   if dict.hasKey(section):
     t = dict[section]
@@ -591,3 +591,24 @@ proc delSectionKey*(dict: var Config, section, key: string) =
         dict.del(section)
       else:
         dict[section].del(key)
+
+proc get*(dict: Config, section, key: string, defaultVal = ""): string =
+  ## A simplified version of the name for the `getSectionValue` function.
+  ## Gets the key value of the specified Section.
+  ## Returns the specified default value if the specified key does not exist.
+  result = getSectionValue(dict, section, key, defaultVal)
+
+proc set*(dict: var Config, section, key, value: string): string =
+  ## A simplified version of the name for the `setSectionKey` function.
+  ## Sets the key value of the specified Section.
+  setSectionKey(dict, section, key, value)
+
+proc del*(dict: var Config, section: string) =
+  ## A simplified version of the name for the `delSection` function.
+  ## Deletes the specified section and all of its sub keys.
+  delSection(dict, section)
+
+proc del*(dict: var Config, section, key: string) =
+  ## A simplified version of the name for the `delSectionKey` function.
+  ## Delete the key of the specified section.
+  delSection(dict, section, key)
