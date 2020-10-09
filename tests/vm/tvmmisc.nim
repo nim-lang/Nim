@@ -202,7 +202,7 @@ block: # bug #13081
   doAssert $j2 == """(x0: 1.3, kind: k2, x2: "abc")"""
   doAssert $j3 == """(x0: 1.3, kind: k3, x3: "abc2")"""
 
-  when true:
+  when false:
     # BUG: this doesn't work yet
     # Error: unhandled exception: 'sons' is not accessible using discriminant 'kind' of type 'TNode' [FieldDefect]
     discard j1.x1
