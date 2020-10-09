@@ -104,3 +104,13 @@ block: # case ref objects
 
   doAssert x1 == 12
   doAssert x2 == @[1, 2]
+
+block: # regression test with closures
+  type MyProc = proc (x: int): int
+  proc even(x: int): int = x*3
+  proc bar(): seq[MyProc] =
+    result.add even
+    result.setLen 2 # intentionally leaving 1 unassigned
+  const a = bar()
+  doAssert a == bar()
+  doAssert a[0](2) == 2*3
