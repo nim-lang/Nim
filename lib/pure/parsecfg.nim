@@ -611,4 +611,4 @@ proc del*(dict: var Config, section: string) =
 proc del*(dict: var Config, section, key: string) =
   ## A simplified version of the name for the `delSectionKey` function.
   ## Delete the key of the specified section.
-  delSection(dict, section, key)
+  delSectionKey(dict, section, key)
