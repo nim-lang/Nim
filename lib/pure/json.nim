@@ -969,7 +969,7 @@ when defined(js):
     of JInt:
       result = newJInt(cast[int](x))
     of JUInt:
-      result = newJUInt(cast[uint](x))
+      result = newJUInt(cast[BiggestUInt](x))
     of JFloat:
       result = newJFloat(cast[float](x))
     of JString:
