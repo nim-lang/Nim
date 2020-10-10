@@ -1,6 +1,6 @@
 discard """
   valgrind: true
-  cmd: "nim c --gc:arc -d:useMalloc --deepcopy:on $file"
+  cmd: "nim cpp --gc:arc -d:useMalloc --deepcopy:on $file"
 """
 
 type
