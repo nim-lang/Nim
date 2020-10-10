@@ -211,6 +211,7 @@
 
 - Added `os.copyFileToDir`
 - Added `macros.newLit(NimNode)` overload.
+- Added `macros.astGen(NimNode)`.
 
 ## Language changes
 
