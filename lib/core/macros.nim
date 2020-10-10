@@ -804,16 +804,21 @@ proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
     for b in arg.fields:
       result.add newLit(b)
 
-proc astGen*(n: NimNode): NimNode {.compileTime, benign, since: (1,3,7).} =
+proc astGen*(n: NimNode, compact = false): NimNode {.compileTime, benign, since: (1,3,7).} =
   ## Convert the AST ``n`` to the code required to generate that AST.
-  ## Does currently not preserve line information. There are multiple
-  ## ways to construct the same AST using macro API's, this proc returns a
-  ## more compact and idiomatic representation compared to using `newTree`
-  ## directly, and the exact calls are subject to change while preserving the
-  ## same AST.
+  ## Does currently not preserve line information. When `compact` is false,
+  ## tree nodes are represented via `newTree`, else using more idiomatic procs,
+  ## such as `newCall` instead of `nnkCall.newTree`.
+  ## The returned code is subject to change while preserving the same semantics.
   runnableExamples:
+    macro myQuoteAst(arg: untyped): untyped = arg.astGen
+    static:
+      let n = myQuoteAst:
+        var x = baz.create(56)
+      doAssert n.repr == "\nvar x = baz.create(56)"
+
     # returns more idiomatic code than `astGenRepr`
-    macro astGenRepr2(arg: untyped): string = arg.astGen.repr.newLit
+    macro astGenRepr2(arg: untyped): string = arg.astGen(compact = true).repr.newLit
     const code = astGenRepr2:
       var x = baz.create(56)
     # exact representation is subject to change, but returns equivalent AST.
@@ -838,22 +843,26 @@ newStmtList(nnkVarSection.newTree(nnkIdentDefs.newTree(ident"x", newEmptyNode(),
   of LitKinds:
     result = newCall(bindSym"newLit", n)
   else:
-    # some nodes kinds have constructor procs
-    case n.kind
-    of nnkStmtList:
-      result = newCall(ident"newStmtList")
-    of nnkCall:
-      result = newCall(ident"newCall")
-    of nnkAsgn:
-      result = newCall(ident"newAssignment")
-    of nnkDotExpr:
-      result = newCall(ident"newDotExpr")
-    of nnkExprColonExpr:
-      result = newCall(ident"newColonExpr")
-    else:
+    template fn() =
       result = newCall(nnkDotExpr.newTree(ident($n.kind), ident("newTree")))
+    if not compact: fn()
+    else:
+      # some nodes kinds have constructor procs
+      case n.kind
+      of nnkStmtList:
+        result = newCall(ident"newStmtList")
+      of nnkCall:
+        result = newCall(ident"newCall")
+      of nnkAsgn:
+        result = newCall(ident"newAssignment")
+      of nnkDotExpr:
+        result = newCall(ident"newDotExpr")
+      of nnkExprColonExpr:
+        result = newCall(ident"newColonExpr")
+      else:
+        fn()
     for i in 0 ..< n.len:
-      result.add astGen(n[i])
+      result.add astGen(n[i], compact)
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
