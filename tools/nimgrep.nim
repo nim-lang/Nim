@@ -38,14 +38,15 @@ Options:
                       empty one ("--ext") means files with missing extension
   --noExt:EX1|...     exclude files having given extension(s), use empty one to
                       skip files with no extension (like some binary files are)
-  --includeFile:PAT   include only files whose names match the given PATttern
+  --includeFile:PAT   search only files whose names match the given PATttern
   --excludeFile:PAT   skip files whose names match the given pattern PAT
+  --includeDir:PAT    search only files with full directory name matching PAT
   --excludeDir:PAT    skip directories whose names match the given pattern PAT
   --match:PAT, -m:PAT select files containing a (not displayed) match of PAT
   --noMatch:PAT       select files not containing any match of PAT
   --bin:yes|no|only   process binary files? (detected by \0 in first 1K bytes)
   --text, -t          process only text files, the same as --bin:no
-  --count             just count number of matches
+  --count             only print counts of matches for files that matched
   --nocolor           output will be given without any colours
   --color[:always]    force color even if output is redirected
   --colorTheme:THEME  select color THEME from 'simple' (default),
@@ -105,10 +106,12 @@ type
     skipExtensions: seq[string]
     excludeFile: seq[string]
     includeFile: seq[string]
+    includeDir : seq[string]
     excludeDir : seq[string]
   WalkOptComp[Pat] = tuple  # a compiled version of the previous
     excludeFile: seq[Pat]
     includeFile: seq[Pat]
+    includeDir : seq[Pat]
     excludeDir : seq[Pat]
   SearchOpt = tuple  # used for searching inside a file
     pattern: string
@@ -618,6 +621,14 @@ proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
     if not matched: return false
   for pat in walkOptC.excludeFile:
     if filename.match(pat): return false
+  let dirname = path.parentDir
+  if walkOptC.includeDir.len != 0:
+    var matched = false
+    for pat in walkOptC.includeDir:
+      if dirname.match(pat):
+        matched = true
+        break
+    if not matched: return false
   result = true
 
 proc hasRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
@@ -667,6 +678,7 @@ iterator walkRec(paths: seq[string]): (string, string) =
   declareCompiledPatterns(walkOptC, WalkOptComp):
     walkOptC.excludeFile.add walkOpt.excludeFile.compileArray()
     walkOptC.includeFile.add walkOpt.includeFile.compileArray()
+    walkOptC.includeDir.add  walkOpt.includeDir.compileArray()
     walkOptC.excludeDir.add  walkOpt.excludeDir.compileArray()
     for path in paths:
       if dirExists(path):
@@ -906,6 +918,7 @@ for kind, key, val in getopt():
     of "ext": walkOpt.extensions.add val.split('|')
     of "noext", "no-ext": walkOpt.skipExtensions.add val.split('|')
     of "excludedir", "exclude-dir": walkOpt.excludeDir.add val
+    of "includedir", "include-dir": walkOpt.includeDir.add val
     of "includefile", "include-file": walkOpt.includeFile.add val
     of "excludefile", "exclude-file": walkOpt.excludeFile.add val
     of "match", "m": searchOpt.checkMatch = val
