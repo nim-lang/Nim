@@ -40,7 +40,7 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc addInt*(result: var string; x: int64) =
+proc addIntImpl(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -66,7 +66,7 @@ proc addInt*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
-proc addInt*(result: var string; x: uint64) =
+proc addIntImpl(result: var string; x: uint64) =
   # PRTEMP: TODO: add tests
   let base = result.len
   setLen(result, base + sizeof(x)*4)
@@ -82,6 +82,9 @@ proc addInt*(result: var string; x: uint64) =
   # mirror the string:
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
+
+proc addInt*(result: var string; x: SomeInteger) = addIntImpl(result, x)
+  # indirection needed, see tests/vm/tmisc_vm.nim
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
