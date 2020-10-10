@@ -26,7 +26,7 @@
 ##
 ## The ``parseJson`` procedure takes a string containing JSON and returns a
 ## ``JsonNode`` object. This is an object variant and it is either a
-## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
+## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JUInt``, ``JFloat``, ``JBool`` or
 ## ``JNull``. You check the kind of this object variant by using the ``kind``
 ## accessor.
 ##
@@ -253,6 +253,17 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
+proc getBiggestUInt*(n: JsonNode, default: BiggestUInt = 0): BiggestUInt =
+  ## Retrieves the BiggestUInt value of a `JUInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  if n.isNil: return default
+  elif n.kind == JInt:
+    if n.num >= 0: return cast[BiggestUInt](n.num)
+    else: return default
+  elif n.kind == JUint: return n.unum
+  else: return default
+
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
@@ -261,6 +272,7 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   case n.kind
   of JFloat: return n.fnum
   of JInt: return float(n.num)
+  of JUInt: return float(n.unum)
   else: return default
 
 proc getBool*(n: JsonNode, default: bool = false): bool =
@@ -301,8 +313,12 @@ proc `%`*(s: string): JsonNode =
   result = JsonNode(kind: JString, str: s)
 
 proc `%`*(n: uint): JsonNode =
-  ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  ## Generic constructor for JSON data. Creates a new `JInt` or `JUInt` JsonNode
+  ## depending on whether `n <= int.high`.
+  if n <= cast[uint](int.high):
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
+  else:
+    result = JsonNode(kind: JUInt, unum: BiggestUInt(n))
 
 proc `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -310,7 +326,10 @@ proc `%`*(n: int): JsonNode =
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  if n <= cast[BiggestUInt](BiggestInt.high):
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
+  else:
+    result = JsonNode(kind: JUInt, unum: BiggestUInt(n))
 
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -902,7 +921,7 @@ when defined(js):
     of "[object Object]": return JObject
     of "[object Number]":
       if cast[float](x) mod 1.0 == 0:
-        return JInt
+        return JInt # JUint would probably not make sense for js here
       else:
         return JFloat
     of "[object Boolean]": return JBool
@@ -1041,15 +1060,21 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt}, jsonPath)
-    dst = T(jsonNode.num)
+    if jsonNode.kind == JUInt:
+      dst = T(jsonNode.unum)
+    else:
+      verifyJsonKind(jsonNode, {JInt}, jsonPath)
+      dst = T(jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
-    if jsonNode.kind == JFloat:
+    verifyJsonKind(jsonNode, {JInt, JUint, JFloat}, jsonPath)
+    case jsonNode.kind
+    of JFloat:
       dst = T(jsonNode.fnum)
-    else:
+    of Jint:
       dst = T(jsonNode.num)
+    else: # JUint
+      dst = T(jsonNode.unum)
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString}, jsonPath)

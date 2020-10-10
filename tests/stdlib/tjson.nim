@@ -232,3 +232,14 @@ doAssert isRefSkipDistinct(MyRef)
 doAssert not isRefSkipDistinct(MyObject)
 doAssert isRefSkipDistinct(MyDistinct)
 doAssert isRefSkipDistinct(MyOtherDistinct)
+
+block: # uint64
+  when not defined(js):
+    let x = "18446744073709551605"
+    let j = parseJson(x)
+    doAssert $j == "18446744073709551605"
+    doAssert j.pretty == "18446744073709551605"
+    doAssert j.kind == JUint
+    let x2 = j.getBiggestUInt
+    doAssert x2 == 18446744073709551605'u64
+    doAssert x2 > cast[uint64](int64.high)
