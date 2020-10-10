@@ -249,12 +249,12 @@ at indent 0
 
 when true: # methods; issue #14691
   type Moo = object
-  method method1*(self: Moo) =
+  method method1*(self: Moo) {.base.} =
     ## foo1
-  method method2*(self: Moo): int =
+  method method2*(self: Moo): int {.base.} =
     ## foo2
     result = 1
-  method method3*(self: Moo): int =
+  method method3*(self: Moo): int {.base.} =
     ## foo3
     1
 
