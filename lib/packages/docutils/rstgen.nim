@@ -458,9 +458,13 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
   while i < symbols.len:
     let keyword = symbols[i].keyword
     let cleanedKeyword = keyword.escapeLink
-    # the `-` prefix allows restricting search to match beginning of word, eg: `-split`
-    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>-$1:</span></a></dt><dd><ul class=\"simple\">\n",
-                [keyword, cleanedKeyword])
+    const prefix = """<span style="color: white">-</span>"""
+      # the `-` prefix allows restricting search to match beginning of word, eg: `-split`
+      # white makes it invisible yet matches in C+f search; note that dark mode
+      # currently doesn't change theindex.html background.
+      # `style="visibility: hidden` would not work
+    result.addf("<dt><a name=\"$3\" href=\"#$3\">$1<span>$2:</span></a></dt><dd><ul class=\"simple\">\n",
+                [prefix, keyword, cleanedKeyword])
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
