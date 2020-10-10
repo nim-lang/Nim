@@ -66,6 +66,23 @@ proc addInt*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
+proc addInt*(result: var string; x: uint64) =
+  # PRTEMP: TODO: add tests
+  let base = result.len
+  setLen(result, base + sizeof(x)*4)
+  var i = 0
+  var y = x
+  while true:
+    var d = y div 10
+    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
+    inc(i)
+    y = d
+    if y == 0: break
+  setLen(result, base+i)
+  # mirror the string:
+  for j in 0..i div 2 - 1:
+    swap(result[base+j], result[base+i-j-1])
+
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x

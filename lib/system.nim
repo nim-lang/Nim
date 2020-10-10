@@ -2402,6 +2402,9 @@ when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
     result.add $x
 
+  proc addInt*(result: var string; x: uint64) =
+    addInt(result, cast[int64](x)) # checkme
+
   proc addFloat*(result: var string; x: float) =
     result.add $x
 

@@ -173,7 +173,8 @@ type
     JFloat,
     JString,
     JObject,
-    JArray
+    JArray,
+    JUInt
 
   JsonNode* = ref JsonNodeObj ## JSON node
   JsonNodeObj* {.acyclic.} = object
@@ -182,6 +183,8 @@ type
       str*: string
     of JInt:
       num*: BiggestInt
+    of JUInt:
+      unum*: BiggestUInt
     of JFloat:
       fnum*: float
     of JBool:
@@ -204,6 +207,10 @@ proc newJStringMove(s: string): JsonNode =
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
   result = JsonNode(kind: JInt, num: n)
+
+proc newJUInt*(n: BiggestUInt): JsonNode =
+  ## Creates a new `JUInt JsonNode`.
+  result = JsonNode(kind: JUInt, unum: n)
 
 proc newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat JsonNode`.
@@ -419,6 +426,8 @@ proc `==`*(a, b: JsonNode): bool =
       result = a.str == b.str
     of JInt:
       result = a.num == b.num
+    of JUInt:
+      result = a.unum == b.unum
     of JFloat:
       result = a.fnum == b.fnum
     of JBool:
@@ -447,6 +456,8 @@ proc hash*(n: JsonNode): Hash =
     result = hash(n.fields)
   of JInt:
     result = hash(n.num)
+  of JUInt:
+    result = hash(n.unum)
   of JFloat:
     result = hash(n.fnum)
   of JBool:
@@ -564,6 +575,8 @@ proc copy*(p: JsonNode): JsonNode =
     result = newJString(p.str)
   of JInt:
     result = newJInt(p.num)
+  of JUInt:
+    result = newJUInt(p.unum)
   of JFloat:
     result = newJFloat(p.fnum)
   of JBool:
@@ -657,6 +670,11 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
+  of JUInt:
+    if lstArr: result.indent(currIndent)
+    when defined(js): result.add($node.unum)
+    else:
+      result.addInt(node.unum)
   of JFloat:
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
@@ -738,6 +756,9 @@ proc toUgly*(result: var string, node: JsonNode) =
   of JInt:
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
+  of JUInt:
+    when defined(js): result.add($node.unum)
+    else: result.addInt(node.unum)
   of JFloat:
     when defined(js): result.add($node.fnum)
     else: result.addFloat(node.fnum)
@@ -792,7 +813,11 @@ proc parseJson(p: var JsonParser): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    try:
+      result = newJInt(parseBiggestInt(p.a))
+    except ValueError:
+      # this can still raise for numbers outside of 64bit range
+      result = newJUInt(parseBiggestUInt(p.a))
     discard getTok(p)
   of tkFloat:
     result = newJFloat(parseFloat(p.a))
@@ -921,6 +946,8 @@ when defined(js):
       asm "}}"
     of JInt:
       result = newJInt(cast[int](x))
+    of JUInt:
+      result = newJUInt(cast[uint](x))
     of JFloat:
       result = newJFloat(cast[float](x))
     of JString:
