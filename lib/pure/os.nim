@@ -1738,7 +1738,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     flushFile(d)
     close(d)
 
-proc copyFileToDir*(source, dir: string) {.since: (1,3,7).} =
+proc copyFileToDir*(source, dir: string) {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
