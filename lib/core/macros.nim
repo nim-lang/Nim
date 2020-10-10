@@ -804,8 +804,23 @@ proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
     for b in arg.fields:
       result.add newLit(b)
 
-proc newLit*(n: NimNode): NimNode {.compileTime, benign, since: (1,3,7).} =
-  ## Convert the AST ``n`` to the code required to generate that AST. Does currently not preserve line information.
+proc astGen*(n: NimNode): NimNode {.compileTime, benign, since: (1,3,7).} =
+  ## Convert the AST ``n`` to the code required to generate that AST.
+  ## Does currently not preserve line information. There are multiple
+  ## ways to construct the same AST using macro API's, this proc returns a
+  ## more compact and idiomatic representation compared to using `newTree`
+  ## directly, and the exact calls are subject to change while preserving the
+  ## same AST.
+  runnableExamples:
+    # returns more idiomatic code than `astGenRepr`
+    macro astGenRepr2(arg: untyped): string = arg.astGen.repr.newLit
+    const code = astGenRepr2:
+      var x = baz.create(56)
+    # exact representation is subject to change, but returns equivalent AST.
+    doAssert code == """
+newStmtList(nnkVarSection.newTree(nnkIdentDefs.newTree(ident"x", newEmptyNode(),
+    newCall(newDotExpr(ident"baz", ident"create"), newLit(56)))))"""
+
   const LitKinds = nnkLiterals-{nnkNilLit}
   case n.kind
   of nnkNilLit:
@@ -838,7 +853,7 @@ proc newLit*(n: NimNode): NimNode {.compileTime, benign, since: (1,3,7).} =
     else:
       result = newCall(nnkDotExpr.newTree(ident($n.kind), ident("newTree")))
     for i in 0 ..< n.len:
-      result.add newLit(n[i])
+      result.add astGen(n[i])
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:

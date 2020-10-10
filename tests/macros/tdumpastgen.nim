@@ -75,7 +75,7 @@ dumpAstGen:
   callNilLit(nil)
   x.y = MyType(u1: 123'u64, u2: 321'u32)
 
-macro myQuoteAst(arg: untyped): untyped = newLit(arg)
+macro myQuoteAst(arg: untyped): untyped = astGen(arg)
 
 static:
   let myAst = myQuoteAst:
@@ -87,7 +87,6 @@ static:
 
     callNilLit(nil)
     x.y = MyType(u1: 123'u64, u2: 321'u32)
-
   assertEquals myAst.repr, """
 
 var x = baz.create(56)
