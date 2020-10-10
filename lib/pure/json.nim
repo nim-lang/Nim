@@ -261,7 +261,7 @@ proc getBiggestUInt*(n: JsonNode, default: BiggestUInt = 0): BiggestUInt =
   elif n.kind == JInt:
     if n.num >= 0: return cast[BiggestUInt](n.num)
     else: return default
-  elif n.kind == JUint: return n.unum
+  elif n.kind == JUInt: return n.unum
   else: return default
 
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
@@ -476,7 +476,10 @@ proc hash*(n: JsonNode): Hash =
   of JInt:
     result = hash(n.num)
   of JUInt:
-    result = hash(n.unum)
+    when defined(nimHashOrdinalFixed):
+      result = hash(n.unum)
+    else: # bootstrap
+      result = hash(cast[BiggestInt](n.unum))
   of JFloat:
     result = hash(n.fnum)
   of JBool:
@@ -921,7 +924,7 @@ when defined(js):
     of "[object Object]": return JObject
     of "[object Number]":
       if cast[float](x) mod 1.0 == 0:
-        return JInt # JUint would probably not make sense for js here
+        return JInt # JUInt would probably not make sense for js here
       else:
         return JFloat
     of "[object Boolean]": return JBool
@@ -1067,13 +1070,13 @@ when defined(nimFixedForwardGeneric):
       dst = T(jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt, JUint, JFloat}, jsonPath)
+    verifyJsonKind(jsonNode, {JInt, JUInt, JFloat}, jsonPath)
     case jsonNode.kind
     of JFloat:
       dst = T(jsonNode.fnum)
     of Jint:
       dst = T(jsonNode.num)
-    else: # JUint
+    else: # JUInt
       dst = T(jsonNode.unum)
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =

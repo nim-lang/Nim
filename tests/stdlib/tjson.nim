@@ -239,7 +239,7 @@ block: # uint64; bug #15413
     let j = parseJson(x)
     doAssert $j == "18446744073709551605"
     doAssert j.pretty == "18446744073709551605"
-    doAssert j.kind == JUint
+    doAssert j.kind == JUInt
     let x2 = j.getBiggestUInt
     doAssert x2 == 18446744073709551605'u64
     doAssert x2 > cast[uint64](int64.high)
