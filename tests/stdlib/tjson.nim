@@ -233,7 +233,7 @@ doAssert not isRefSkipDistinct(MyObject)
 doAssert isRefSkipDistinct(MyDistinct)
 doAssert isRefSkipDistinct(MyOtherDistinct)
 
-block: # uint64
+block: # uint64; bug #15413
   when not defined(js):
     let x = "18446744073709551605"
     let j = parseJson(x)
