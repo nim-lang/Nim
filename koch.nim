@@ -78,7 +78,7 @@ Boot options:
 Commands for core developers:
   runCI                    runs continuous integration (CI), eg from travis
   docs [options]           generates the full documentation
-  csource -d:release       builds the C sources for installation
+  csource -d:danger        builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
@@ -416,7 +416,7 @@ proc winRelease*() =
                   "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     inFold "winrelease csource":
-      csource("-d:release")
+      csource("-d:danger")
   when sizeof(pointer) == 4:
     winReleaseArch "32"
   when sizeof(pointer) == 8:
@@ -561,7 +561,7 @@ proc runCI(cmd: string) =
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
-  csource("-d:release")
+  csource("-d:danger")
   let cwd = getCurrentDir()
   try:
     copyDir("build/c_code", "../csources/c_code")
@@ -582,7 +582,7 @@ proc pushCsources() =
     setCurrentDir(cwd)
 
 proc testUnixInstall(cmdLineRest: string) =
-  csource("-d:release " & cmdLineRest)
+  csource("-d:danger" & cmdLineRest)
   xz(false, cmdLineRest)
   let oldCurrentDir = getCurrentDir()
   try:

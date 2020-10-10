@@ -605,7 +605,7 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
 
   if not windowsZip and not fileExists("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
-         "./koch csource -d:release.")
+         "./koch csource -d:danger.")
 
   if not windowsZip:
     processFile(proj / buildBatFile, "build" / buildBatFile)
