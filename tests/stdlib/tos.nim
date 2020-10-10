@@ -36,19 +36,19 @@ block fileOperations:
   createDir(dname)
   doAssert dirExists(dname)
 
-  block copyFile:
+  block: # copyFile, copyFileToDir
     doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
     writeFile(dname/fname, "foo")
     let sub = "sub"
     doAssertRaises(OSError): copyFile(dname/fname, dname/sub/fname2)
-    doAssertRaises(OSError): copyFile(dname/fname, dname/sub,isDir=true)
-    doAssertRaises(ValueError): copyFile(dname/fname, "",isDir=true)
+    doAssertRaises(OSError): copyFileToDir(dname/fname, dname/sub)
+    doAssertRaises(ValueError): copyFileToDir(dname/fname, "")
     copyFile(dname/fname, dname/fname2)
     doAssert fileExists(dname/fname2)
     createDir(dname/sub)
-    copyFile(dname/fname, dname/sub,isDir=true)
+    copyFileToDir(dname/fname, dname/sub)
     doAssert fileExists(dname/sub/fname)
     removeDir(dname/sub)
     doAssert not dirExists(dname/sub)
