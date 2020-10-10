@@ -1,21 +1,21 @@
 discard """
 nimout: '''
-newStmtList(
+nnkStmtList.newTree(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
-      ident"x",
+      newIdentNode("x"),
       newEmptyNode(),
-      newCall(
-        newDotExpr(
-          ident"baz",
-          ident"create"
+      nnkCall.newTree(
+        nnkDotExpr.newTree(
+          newIdentNode("baz"),
+          newIdentNode("create")
         ),
         newLit(56)
       )
     )
   ),
   nnkProcDef.newTree(
-    ident"foo",
+    newIdentNode("foo"),
     newEmptyNode(),
     newEmptyNode(),
     nnkFormalParams.newTree(
@@ -23,57 +23,47 @@ newStmtList(
     ),
     newEmptyNode(),
     newEmptyNode(),
-    newStmtList(
-      newCommentStmtNode(
-        "This is a docstring"
-      ),
+    nnkStmtList.newTree(
+      newCommentStmtNode("This is a docstring"),
       nnkCommand.newTree(
-        ident"echo",
+        newIdentNode("echo"),
         newLit("Hello, World!")
       ),
       nnkCommand.newTree(
-        ident"echo",
-        newLit(
-          "something \"quoted\""
-        )
+        newIdentNode("echo"),
+        newLit("something \"quoted\"")
       )
     )
   ),
-  newCall(
-    ident"callNilLit",
-    newNimNode(nnkNilLit)
+  nnkCall.newTree(
+    newIdentNode("callNilLit"),
+    newNilLit()
   ),
-  newAssignment(
-    newDotExpr(
-      ident"x",
-      ident"y"
+  nnkAsgn.newTree(
+    nnkDotExpr.newTree(
+      newIdentNode("x"),
+      newIdentNode("y")
     ),
     nnkObjConstr.newTree(
-      ident"MyType",
-      newColonExpr(
-        ident"u1",
-        newLit(123'u64)
+      newIdentNode("MyType"),
+      nnkExprColonExpr.newTree(
+        newIdentNode("u1"),
+        nnkUInt64Lit.newTree(
+        )
       ),
-      newColonExpr(
-        ident"u2",
-        newLit(321'u32)
+      nnkExprColonExpr.newTree(
+        newIdentNode("u2"),
+        nnkUInt32Lit.newTree(
+        )
       )
     )
   )
 )
-
-var x = baz.create(56)
-proc foo() =
-  ## This is a docstring
-  echo "Hello, World!"
-  echo "something \"quoted\""
-
-callNilLit(nil)
-x.y = MyType(u1: 123'u64, u2: 321'u32)
 '''
 """
 
 import macros
+import stdtest/unittest_light
 
 dumpAstGen:
   var x = baz.create(56)
@@ -87,7 +77,6 @@ dumpAstGen:
 
 macro myQuoteAst(arg: untyped): untyped = newLit(arg)
 
-
 static:
   let myAst = myQuoteAst:
     var x = baz.create(56)
@@ -99,4 +88,13 @@ static:
     callNilLit(nil)
     x.y = MyType(u1: 123'u64, u2: 321'u32)
 
-  echo myAst.repr
+  assertEquals myAst.repr, """
+
+var x = baz.create(56)
+proc foo() =
+  ## This is a docstring
+  echo "Hello, World!"
+  echo "something \"quoted\""
+
+callNilLit(nil)
+x.y = MyType(u1: 123'u64, u2: 321'u32)"""

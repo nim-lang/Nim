@@ -210,6 +210,7 @@
   at which progress callbacks are called.
 
 - Added `os.copyFileToDir`
+- Added `macros.newLit(NimNode)` overload.
 
 ## Language changes
 

@@ -804,20 +804,20 @@ proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
     for b in arg.fields:
       result.add newLit(b)
 
-proc newLit*(n: NimNode): NimNode {.compileTime, benign.} =
+proc newLit*(n: NimNode): NimNode {.compileTime, benign, since: (1,3,7).} =
   ## Convert the AST ``n`` to the code required to generate that AST. Does currently not preserve line information.
   const LitKinds = nnkLiterals-{nnkNilLit}
   case n.kind
   of nnkNilLit:
-    result = newCall(newIdentNode("newNimNode"), newIdentNode("nnkNilLit"))
+    result = newCall(ident("newNimNode"), ident("nnkNilLit"))
   of nnkEmpty:
-    result = newCall(newIdentNode("newEmptyNode"))
+    result = newCall(ident("newEmptyNode"))
   of nnkIdent:
-    result = nnkCallStrLit.newTree(newIdentNode("ident"), newLit(n.strVal))
+    result = nnkCallStrLit.newTree(ident("ident"), newLit(n.strVal))
   of nnkSym:
     assert false, "cannot preserve symbol binding through newLit"
   of nnkNone:
-    result = newCall(newIdentNode("newNimNode"), newIdentNode("nnkNone"))
+    result = newCall(ident("newNimNode"), ident("nnkNone"))
   of nnkCommentStmt:
     result = newCall("newCommentStmtNode", newLit(n.strVal))
   of LitKinds:
@@ -826,17 +826,17 @@ proc newLit*(n: NimNode): NimNode {.compileTime, benign.} =
     # some nodes kinds have constructor procs
     case n.kind
     of nnkStmtList:
-      result = newCall(newIdentNode"newStmtList")
+      result = newCall(ident"newStmtList")
     of nnkCall:
-      result = newCall(newIdentNode"newCall")
+      result = newCall(ident"newCall")
     of nnkAsgn:
-      result = newCall(newIdentNode"newAssignment")
+      result = newCall(ident"newAssignment")
     of nnkDotExpr:
-      result = newCall(newIdentNode"newDotExpr")
+      result = newCall(ident"newDotExpr")
     of nnkExprColonExpr:
-      result = newCall(newIdentNode"newColonExpr")
+      result = newCall(ident"newColonExpr")
     else:
-      result = newCall(nnkDotExpr.newTree(newIdentNode($n.kind), newIdentNode("newTree")))
+      result = newCall(nnkDotExpr.newTree(ident($n.kind), ident("newTree")))
     for i in 0 ..< n.len:
       result.add newLit(n[i])
 
@@ -910,51 +910,48 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to the code required to generate that AST.
   ##
   ## See also ``repr``, ``treeRepr``, and ``lispRepr``.
-  let tmp = repr(newLit(n))
-  # From here on, the rest of the code just rearranges whitespace in
-  # ``tmp`` to a human redable form. It would probably be not
-  # necessary, if ``repr`` would produce a better output for complex
-  # single expression code.
-  var i = 0
-  var ind = "\n"
-  let n = tmp.len
-  while i < n:
-    if tmp[i] == '\"': # east string literal
-      var j = i+1
-      while j < n and tmp[j] != '\"' and tmp[j-1] != '\\':
-        inc j
-      result.add tmp[i..j]
-      i = j
-    elif tmp[i] == '(' and tmp[i+1] != ')':
-      var j = i+1
-      while j < n and tmp[j] notin {'(', ')'}:
-        inc j
-      if tmp[j] == ')' and j - i <= 16:
-        result.add tmp[i..j]
-        i = j
-      else:
-        ind.add "  "
-        result.add tmp[i]
-        result.add ind
-        while tmp[i+1] in {'\r', '\n', ' '}:
-          inc i
-    elif tmp[i] == ')' and tmp[i-1] != '(':
-      ind.setLen(ind.len-2)
-      result.add ind
-      result.add tmp[i]
-    elif tmp[i] == ',':
-      result.add ','
-      result.add ind
-      while tmp[i+1] in {'\r', '\n', ' '}:
-        inc i
+  # xxx: use `result = repr(newLit(n))` after improving repr formatting, or
+  # reformat output of `repr`, see #13888
+  const
+    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
+    LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
+
+  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+    for i in 0..level-1: res.add "  "
+    if n.kind in NodeKinds:
+      res.add("new" & ($n.kind).substr(3) & "Node(")
+    elif n.kind in LitKinds:
+      res.add("newLit(")
+    elif n.kind == nnkNilLit:
+      res.add("newNilLit()")
     else:
-      result.add tmp[i]
-    inc i
+      res.add($n.kind)
 
+    case n.kind
+    of nnkEmpty, nnkNilLit: discard
+    of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
+    of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
+    of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+      res.add(n.strVal.newLit.repr)
+    of nnkNone: assert false
+    else:
+      res.add(".newTree(")
+      for j in 0..<n.len:
+        res.add "\n"
+        traverse(res, level + 1, n[j])
+        if j != n.len-1:
+          res.add(",")
 
+      res.add("\n")
+      for i in 0..level-1: res.add "  "
+      res.add(")")
 
+    if n.kind in NodeKinds+LitKinds:
+      res.add(")")
 
-
+  result = ""
+  traverse(result, 0, n)
 
 macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
@@ -1020,10 +1017,9 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## Outputs:
   ##
   ## .. code-block:: nim
-  ##
-  ##    newStmtList(
+  ##    nnkStmtList.newTree(
   ##      nnkCommand.newTree(
-  ##        ident"echo",
+  ##        newIdentNode("echo"),
   ##        newLit("Hello, World!")
   ##      )
   ##    )
