@@ -11,12 +11,12 @@ import
   os, strutils, parseopt, pegs, re, terminal, osproc, tables, algorithm, times
 
 const
-  Version = "1.5"
+  Version = "1.6"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
 Usage:
-  nimgrep [options] [pattern] [replacement] (file/directory)*
+  nimgrep [options] pattern [replacement] (file/directory)*
 Options:
   --find, -f          find the pattern (default)
   --replace, -!       replace the pattern
@@ -38,9 +38,11 @@ Options:
                       empty one ("--ext") means files with missing extension
   --noExt:EX1|...     exclude files having given extension(s), use empty one to
                       skip files with no extension (like some binary files are)
-  --includeFile:PAT   include only files whose names match the given regex PAT
-  --excludeFile:PAT   skip files whose names match the given regex pattern PAT
-  --excludeDir:PAT    skip directories whose names match the given regex PAT
+  --includeFile:PAT   include only files whose names match the given PATttern
+  --excludeFile:PAT   skip files whose names match the given pattern PAT
+  --excludeDir:PAT    skip directories whose names match the given pattern PAT
+  --match:PAT, -m:PAT select files containing a (not displayed) match of PAT
+  --noMatch:PAT       select files not containing any match of PAT
   --bin:yes|no|only   process binary files? (detected by \0 in first 1K bytes)
   --text, -t          process only text files, the same as --bin:no
   --count             just count number of matches
@@ -54,8 +56,8 @@ Options:
                -b:N   print N lines of leading context before every match
   --context:N, -c:N   print N lines of leading context before every match and
                       N lines of trailing context after it
-  --sortTime[:desc|asc],
-      -s[:desc|asc]   order files by modification time descending or ascending
+  --sortTime          order files by the last modification time -
+       -s[:desc|asc]  - descending (default) or ascending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
   --verbose           be verbose: list every processed file
@@ -98,29 +100,32 @@ type
   Trequest = (int, string)
   Tresult = tuple[finished: bool, fileNo: int,
                   filename: string, fileResult: seq[Output]]
-  WalkOpt = tuple
+  WalkOpt = tuple  # used for walking directories/producing paths
     extensions: seq[string]
     skipExtensions: seq[string]
     excludeFile: seq[string]
     includeFile: seq[string]
     excludeDir : seq[string]
-  WalkOptPat = tuple
-    excludeFileP: seq[Peg]
-    includeFileP: seq[Peg]
-    excludeDirP : seq[Peg]
-    excludeFileR: seq[Regex]
-    includeFileR: seq[Regex]
-    excludeDirR : seq[Regex]
-
-using pattern: Pattern
+  WalkOptComp[Pat] = tuple  # a compiled version of the previous
+    excludeFile: seq[Pat]
+    includeFile: seq[Pat]
+    excludeDir : seq[Pat]
+  SearchOpt = tuple  # used for searching inside a file
+    pattern: string
+    checkMatch: string
+    checkNoMatch: string
+    checkBin: Bin
+  SearchOptComp[Pat] = tuple  # a compiled version of the previous
+    pattern: Pat
+    checkMatch: Pat
+    checkNoMatch: Pat
 
 var
   paths: seq[string] = @[]
-  pattern = ""
   replacement = ""
   options: TOptions = {optRegex}
-  opt {.threadvar.}: WalkOpt
-  checkBin = biYes
+  walkOpt {.threadvar.}: WalkOpt
+  searchOpt {.threadvar.}: SearchOpt
   justCount = false
   sortTime = false
   sortTimeOrder = SortOrder.Descending
@@ -136,6 +141,8 @@ var
   searchRequestsChan: Channel[Trequest]
   resultsChan: Channel[Tresult]
   colorTheme: string = "simple"
+
+searchOpt.checkBin = biYes
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -423,7 +430,7 @@ proc printOutput(filename: string, output: Output) =
   of GroupEnd:
     printLinesAfter(filename, output.groupEnding, output.firstLine)
 
-iterator searchFile(pattern; filename: string; buffer: string): Output =
+iterator searchFile(pattern: Pattern; filename: string; buffer: string): Output =
   let si: SearchInfo = (buf: buffer, filename: filename)
   var prevMi, curMi: MatchInfo
   curMi.lineEnd = 1
@@ -471,75 +478,15 @@ func detectBin(buffer: string): bool =
     if buffer[i] == '\0':
       return true
 
-iterator processFile(pattern; filename: string, yieldContents=false): Output =
-  var buffer: string
-
-  if optFilenames in options:
-    buffer = filename
-  else:
-    try:
-      buffer = system.readFile(filename)
-    except IOError as e:
-      yield Output(kind: OpenError, msg: e.msg)
-
-  var reject = false
-  if checkBin in {biNo, biOnly}:
-    let isBin = detectBin(buffer)
-    if isBin and checkBin == biNo:
-      reject = true
-    if (not isBin) and checkBin == biOnly:
-      reject = true
-
-  if reject:
-    yield Output(kind: Rejected)
-  else:
-    var found = false
-    var cnt = 0
-    for output in searchFile(pattern, filename, buffer):
-      found = true
-      if not justCount:
-        yield output
-      else:
-        if output.kind in {GroupFirstMatch, GroupNextMatch}:
-          inc(cnt)
-    if justCount and cnt > 0:
-      yield Output(kind: JustCount, matches: cnt)
-    if yieldContents and found and not justCount:
-      yield Output(kind: FileContents, buffer: buffer)
-
-proc hasRightFileName(path: string, wopt: WalkOptPat): bool =
-  let filename = path.lastPathPart
-  let ex = filename.splitFile.ext.substr(1) # skip leading '.'
-  if opt.extensions.len != 0:
-    var matched = false
-    for x in opt.extensions:
-      if os.cmpPaths(x, ex) == 0:
-        matched = true
-        break
-    if not matched: return false
-  for x in opt.skipExtensions:
-    if os.cmpPaths(x, ex) == 0: return false
-  template checkFileName(patInclude: untyped, patExclude: untyped) =
-    if patInclude.len != 0:
-      var matched = false
-      for pat in patInclude:
-        if filename.match(pat):
-          matched = true
-          break
-      if not matched: return false
-    for pat in patExclude:
-      if filename.match(pat): return false
-  checkFileName(wopt.includeFileR, wopt.excludeFileR)
-  checkFileName(wopt.includeFileP, wopt.excludeFileP)
-  result = true
-
-proc hasRightDirectory(path: string, wopt: WalkOptPat): bool =
-  let dirname = path.lastPathPart
-  for pat in wopt.excludeDirR:
-    if dirname.match(pat): return false
-  for pat in wopt.excludeDirP:
-    if dirname.match(pat): return false
-  result = true
+proc compilePeg(initPattern: string): Peg =
+  var pattern = initPattern
+  if optWord in options:
+    pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
+  if optIgnoreStyle in options:
+    pattern = "\\y " & pattern
+  elif optIgnoreCase in options:
+    pattern = "\\i " & pattern
+  result = peg(pattern)
 
 proc styleInsensitive(s: string): string =
   template addx =
@@ -575,7 +522,111 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-iterator walkDirBasic(dir: string, wopt: WalkOptPat): string =
+proc compileRegex(initPattern: string): Regex =
+  var pattern = initPattern
+  var reflags = {reStudy}
+  if optIgnoreStyle in options:
+    pattern = styleInsensitive(pattern)
+  if optWord in options:
+    # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
+    pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
+  if {optIgnoreCase, optIgnoreStyle} * options != {}:
+    reflags.incl reIgnoreCase
+  result = if optRex in options: rex(pattern, reflags)
+           else: re(pattern, reflags)
+
+template declareCompiledPatterns(compiledStruct: untyped,
+                                 StructType: untyped,
+                                 body: untyped) =
+  if optRegex notin options:
+    var compiledStruct: StructType[Peg]
+    proc compile(p: string): Peg = p.compilePeg()
+    proc compileArray(initPattern: seq[string]): seq[Peg] =
+      for pat in initPattern:
+        result.add pat.compilePeg()
+    body
+  else:
+    var compiledStruct: StructType[Regex]
+    proc compile(p: string): Regex = p.compileRegex()
+    proc compileArray(initPattern: seq[string]): seq[Regex] =
+      for pat in initPattern:
+        result.add pat.compileRegex()
+    body
+
+iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string, yieldContents=false): Output =
+  var buffer: string
+
+  if optFilenames in options:
+    buffer = filename
+  else:
+    try:
+      buffer = system.readFile(filename)
+    except IOError as e:
+      yield Output(kind: OpenError, msg: e.msg)
+
+  var reject = false
+  if searchOpt.checkBin in {biNo, biOnly}:
+    let isBin = detectBin(buffer)
+    if isBin and searchOpt.checkBin == biNo:
+      reject = true
+    if (not isBin) and searchOpt.checkBin == biOnly:
+      reject = true
+
+  if not reject:
+    if searchOpt.checkMatch != "":
+      reject = not contains(buffer, searchOptC.checkMatch, 0)
+
+  if not reject:
+    if searchOpt.checkNoMatch != "":
+      reject = contains(buffer, searchOptC.checkNoMatch, 0)
+
+  if reject:
+    yield Output(kind: Rejected)
+  else:
+    var found = false
+    var cnt = 0
+    for output in searchFile(searchOptC.pattern, filename, buffer):
+      found = true
+      if not justCount:
+        yield output
+      else:
+        if output.kind in {GroupFirstMatch, GroupNextMatch}:
+          inc(cnt)
+    if justCount and cnt > 0:
+      yield Output(kind: JustCount, matches: cnt)
+    if yieldContents and found and not justCount:
+      yield Output(kind: FileContents, buffer: buffer)
+
+proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+  let filename = path.lastPathPart
+  let ex = filename.splitFile.ext.substr(1) # skip leading '.'
+  if walkOpt.extensions.len != 0:
+    var matched = false
+    for x in walkOpt.extensions:
+      if os.cmpPaths(x, ex) == 0:
+        matched = true
+        break
+    if not matched: return false
+  for x in walkOpt.skipExtensions:
+    if os.cmpPaths(x, ex) == 0: return false
+  if walkOptC.includeFile.len != 0:
+    var matched = false
+    for pat in walkOptC.includeFile:
+      if filename.match(pat):
+        matched = true
+        break
+    if not matched: return false
+  for pat in walkOptC.excludeFile:
+    if filename.match(pat): return false
+  result = true
+
+proc hasRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
+  let dirname = path.lastPathPart
+  for pat in walkOptC.excludeDir:
+    if dirname.match(pat): return false
+  result = true
+
+iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string =
   var dirStack = @[dir]  # stack of directories
   var timeFiles = newSeq[(times.Time, string)]()
   while dirStack.len > 0:
@@ -585,17 +636,17 @@ iterator walkDirBasic(dir: string, wopt: WalkOptPat): string =
     for kind, path in walkDir(d):
       case kind
       of pcFile:
-        if path.hasRightFileName(wopt):
+        if path.hasRightFileName(walkOptC):
           files.add(path)
       of pcLinkToFile:
-        if optFollow in options and path.hasRightFileName(wopt):
+        if optFollow in options and path.hasRightFileName(walkOptC):
           files.add(path)
       of pcDir:
-        if optRecursive in options and path.hasRightDirectory(wopt):
+        if optRecursive in options and path.hasRightDirectory(walkOptC):
           dirs.add path
       of pcLinkToDir:
         if optFollow in options and optRecursive in options and
-           path.hasRightDirectory(wopt):
+           path.hasRightDirectory(walkOptC):
           dirs.add path
     if sortTime:  # sort by time - collect files before yielding
       for file in files:
@@ -612,59 +663,19 @@ iterator walkDirBasic(dir: string, wopt: WalkOptPat): string =
     for (_, file) in timeFiles:
       yield file
 
-template withPattern2(initPattern: string,
-                      finalPattern: untyped, # either Peg or Regex
-                      body1: untyped,          # the Peg block
-                      body2: untyped) =        # the Regex block
-  var pattern = initPattern
-  if optRegex notin options:
-    if optWord in options:
-      pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
-    if optIgnoreStyle in options:
-      pattern = "\\y " & pattern
-    elif optIgnoreCase in options:
-      pattern = "\\i " & pattern
-    var finalPattern = peg(pattern)
-    body1
-  else:
-    var reflags = {reStudy}
-    if optIgnoreStyle in options:
-      pattern = styleInsensitive(pattern)
-    if optWord in options:
-      # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
-      pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
-    if {optIgnoreCase, optIgnoreStyle} * options != {}:
-      reflags.incl reIgnoreCase
-    var finalPattern = if optRex in options: rex(pattern, reflags)
-                         else: re(pattern, reflags)
-    body2
-
-template withPattern(initPattern: string, finalPattern: untyped, body) =
-  # use the same body for Peg and Regex
-  withPattern2(initPattern, finalPattern, body, body)
-
 iterator walkRec(paths: seq[string]): (string, string) =
-  var wopt: WalkOptPat
-  for pat in opt.excludeFile:
-    withPattern2(pat, finalPattern,
-      wopt.excludeFileP.add finalPattern,
-      wopt.excludeFileR.add finalPattern)
-  for pat in opt.includeFile:
-    withPattern2(pat, finalPattern,
-      wopt.includeFileP.add finalPattern,
-      wopt.includeFileR.add finalPattern)
-  for pat in opt.excludeDir:
-    withPattern2(pat, finalPattern,
-      wopt.excludeDirP.add finalPattern,
-      wopt.excludeDirR.add finalPattern)
-  for path in paths:
-    if dirExists(path):
-      for p in walkDirBasic(path, wopt):
-        yield ("", p)
-    elif fileExists(path):
-      yield ("", path)
-    else:
-      yield ("Error: no such file or directory: ", path)
+  declareCompiledPatterns(walkOptC, WalkOptComp):
+    walkOptC.excludeFile.add walkOpt.excludeFile.compileArray()
+    walkOptC.includeFile.add walkOpt.includeFile.compileArray()
+    walkOptC.excludeDir.add  walkOpt.excludeDir.compileArray()
+    for path in paths:
+      if dirExists(path):
+        for p in walkDirBasic(path, walkOptC):
+          yield ("", p)
+      elif fileExists(path):
+        yield ("", path)
+      else:
+        yield ("Error: no such file or directory: ", path)
 
 template printResult(filename: string, body: untyped) =
   var filenameShown = false
@@ -695,7 +706,7 @@ proc replaceMatches(filename: string, buffer: string, outpSeq: seq[Output]) =
         if output.kind in {GroupFirstMatch, GroupNextMatch}:
           #let r = replace(curMi.match, pattern, replacement % matches) #TODO
           let curMi = output.match
-          let r = replace(curMi.match, pattern, replacement)
+          let r = replace(curMi.match, searchOpt.pattern, replacement)
           if replace1match(si, curMi, i, r, newBuf, lineRepl):
             changed = true
           i = curMi.last + 1
@@ -709,40 +720,70 @@ proc replaceMatches(filename: string, buffer: string, outpSeq: seq[Output]) =
           printError "cannot open file for overwriting: " & filename
           inc(gVar.errors)
 
-proc run1Thread(initPattern: string) =
-  withPattern(initPattern, finalPattern):
-    for (err, filename) in walkRec(paths):
-      if err != "":
-        inc(gVar.errors)
-        printError (err & filename)
-        continue
-      if optReplace notin options:
-          printResult(filename, processFile(finalPattern, filename))
-      else:
-        var matches = newSeq[Output]()
-        var buffer = ""
+proc run1Thread() =
+  declareCompiledPatterns(searchOptC, SearchOptComp):
+      searchOptC.pattern = searchOpt.pattern.compile()
+      searchOptC.checkMatch = searchOpt.checkMatch.compile()
+      searchOptC.checkNoMatch = searchOpt.checkNoMatch.compile()
+      for (err, filename) in walkRec(paths):
+        if err != "":
+          inc(gVar.errors)
+          printError (err & filename)
+          continue
+        if optReplace notin options:
+            printResult(filename, processFile(searchOptC, filename))
+        else:
+          var matches = newSeq[Output]()
+          var buffer = ""
 
-        for output in processFile(finalPattern, filename, yieldContents=true):
-          updateCounters(output)
-          case output.kind
-          of Rejected, OpenError, JustCount: discard
-          of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
-          of FileContents: buffer = output.buffer
-        if matches.len > 0:
-          replaceMatches(filename, buffer, matches)
+          for output in processFile(searchOptC, filename, yieldContents=true):
+            updateCounters(output)
+            case output.kind
+            of Rejected, OpenError, JustCount: discard
+            of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
+            of FileContents: buffer = output.buffer
+          if matches.len > 0:
+            replaceMatches(filename, buffer, matches)
 
-proc worker(initPattern: string) {.thread.} =
-  withPattern(initPattern, finalPattern):
+# Multi-threaded version: all printing is being done in the Main thread.
+# Totally nWorkers+1 additional threads are created (workers + pathProducer).
+# An example of nWorkers=2:
+#
+#  ------------------  initial paths   -------------------
+#  |  Main thread   |----------------->|  pathProducer   |
+#  ------------------                  -------------------
+#             ^                          |        | 
+# resultsChan |                          |        | searchRequestsChan
+#             |       number of files    |   -----+-----
+#         ----+---------------------------   |         |
+#         |   |   (when walking finished)    |a path   |a path to file
+#         |   |                              |         |
+#         |   |                              V         V 
+#         |   |                      ------------  ------------
+#         |   |                      | worker 1 |  | worker 2 |
+#         |   |                      ------------  ------------
+#         |   |  matches in the file         |         |
+#         |   --------------------------------         |
+#         |      matches in the file                   |
+#         ----------------------------------------------
+
+proc worker(initSearchOpt: SearchOpt) {.thread.} =
+  searchOpt = initSearchOpt  # init thread-local var
+  declareCompiledPatterns(searchOptC, SearchOptComp):
+    searchOptC.pattern = searchOpt.pattern.compile()
+    searchOptC.checkMatch = searchOpt.checkMatch.compile()
+    searchOptC.checkNoMatch = searchOpt.checkNoMatch.compile()
     while true:
       let (fileNo, filename) = searchRequestsChan.recv()
       var fileResult = newSeq[Output]();
-      for output in processFile(finalPattern, filename, yieldContents=(optReplace in options)):
+      for output in processFile(searchOptC, filename,
+                                yieldContents=(optReplace in options)):
         fileResult.add(output)
       resultsChan.send((false, fileNo, filename, move(fileResult)))
 
 proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
   let paths = arg[0]
-  opt = arg[1]  # init thread-local copy of opt
+  walkOpt = arg[1]  # init thread-local copy of opt
   var
     nextFileN = 0
   for (err, filename) in walkRec(paths):
@@ -754,18 +795,18 @@ proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
     nextFileN += 1
   resultsChan.send((true, nextFileN, "", @[]))
 
-proc runMultiThread(pattern: string) =
+proc runMultiThread() =
   var
-    workers = newSeq[Thread[string]](nWorkers)
+    workers = newSeq[Thread[SearchOpt]](nWorkers)
     storage = newTable[int, (string, seq[Output]) ]()
       # file number -> accumulated result
     firstUnprocessedFile = 0
   open(searchRequestsChan)
   open(resultsChan)
   for n in 0 ..< nWorkers:
-    createThread(workers[n], worker, pattern)
+    createThread(workers[n], worker, searchOpt)
   var producerThread: Thread[(seq[string], WalkOpt)]
-  createThread(producerThread, pathProducer, (paths, opt))
+  createThread(producerThread, pathProducer, (paths, walkOpt))
   template process1result(fileNo: int, fname: string, fileResult: seq[Output]) =
       storage[fileNo] = (fname, fileResult)
       var outpSeq: seq[Output]
@@ -797,11 +838,11 @@ proc runMultiThread(pattern: string) =
     else:
       process1result(msg.fileNo, msg.filename, msg.fileResult)
 
-proc run(pattern: string) =
+proc run() =
   if nWorkers == 0:
-    run1Thread(pattern)
+    run1Thread()
   else:
-    runMultiThread(pattern)
+    runMultiThread()
 
 proc reportError(msg: string) =
   printError "Error: " & msg
@@ -830,8 +871,8 @@ for kind, key, val in getopt():
   of cmdArgument:
     if options.contains(optStdin):
       paths.add(key)
-    elif pattern.len == 0:
-      pattern = key
+    elif searchOpt.pattern.len == 0:
+      searchOpt.pattern = key
     elif options.contains(optReplace) and replacement.len == 0:
       replacement = key
     else:
@@ -855,41 +896,44 @@ for kind, key, val in getopt():
     of "confirm": incl(options, optConfirm)
     of "stdin": incl(options, optStdin)
     of "word", "w": incl(options, optWord)
-    of "ignorecase", "i": incl(options, optIgnoreCase)
-    of "ignorestyle", "y": incl(options, optIgnoreStyle)
+    of "ignorecase", "ignore-case", "i": incl(options, optIgnoreCase)
+    of "ignorestyle", "ignore-style", "y": incl(options, optIgnoreStyle)
     of "nworkers", "n":
       if val == "":
         nWorkers = countProcessors()
       else:
         nWorkers = parseInt(val)
-    of "ext": opt.extensions.add val.split('|')
-    of "noext": opt.skipExtensions.add val.split('|')
-    of "excludedir", "exclude-dir": opt.excludeDir.add val
-    of "includefile", "include-file": opt.includeFile.add val
-    of "excludefile", "exclude-file": opt.excludeFile.add val
+    of "ext": walkOpt.extensions.add val.split('|')
+    of "noext", "no-ext": walkOpt.skipExtensions.add val.split('|')
+    of "excludedir", "exclude-dir": walkOpt.excludeDir.add val
+    of "includefile", "include-file": walkOpt.includeFile.add val
+    of "excludefile", "exclude-file": walkOpt.excludeFile.add val
+    of "match", "m": searchOpt.checkMatch = val
+    of "nomatch", "notmatch", "not-match", "no-match":
+      searchOpt.checkNoMatch = val
     of "bin":
       case val
-      of "no": checkBin = biNo
-      of "yes": checkBin = biYes
-      of "only": checkBin = biOnly
+      of "no": searchOpt.checkBin = biNo
+      of "yes": searchOpt.checkBin = biYes
+      of "only": searchOpt.checkBin = biOnly
       else: reportError("unknown value for --bin")
-    of "text", "t": checkBin = biNo
+    of "text", "t": searchOpt.checkBin = biNo
     of "count": justCount = true
-    of "sorttime", "s":
+    of "sorttime", "sort-time", "s":
       sortTime = true
       case normalize(val)
       of "": discard
       of "asc", "ascending": sortTimeOrder = SortOrder.Ascending
       of "desc", "descending": sortTimeOrder = SortOrder.Descending
       else: reportError("invalid value '" & val & "' for --sortTime")
-    of "nocolor": useWriteStyled = false
+    of "nocolor", "no-color": useWriteStyled = false
     of "color":
       case val
       of "auto": discard
       of "never", "false": useWriteStyled = false
       of "", "always", "true": useWriteStyled = true
       else: reportError("invalid value '" & val & "' for --color")
-    of "colortheme":
+    of "colortheme", "color-theme":
       colortheme = normalize(val)
       if colortheme notin ["simple", "bnw", "ack", "gnu"]:
         reportError("unknown colortheme '" & val & "'")
@@ -930,17 +974,17 @@ linesBefore = max(linesBefore, linesContext)
 linesAfter  = max(linesAfter,  linesContext)
 
 if optStdin in options:
-  pattern = ask("pattern [ENTER to exit]: ")
-  if pattern.len == 0: quit(0)
+  searchOpt.pattern = ask("pattern [ENTER to exit]: ")
+  if searchOpt.pattern.len == 0: quit(0)
   if optReplace in options:
     replacement = ask("replacement [supports $1, $# notations]: ")
 
-if pattern.len == 0:
+if searchOpt.pattern.len == 0:
   reportError("empty pattern was given")
 else:
   if paths.len == 0:
     paths.add(os.getCurrentDir())
-  run(pattern)
+  run()
   if gVar.errors != 0:
     printError $gVar.errors & " errors"
   stdout.write($gVar.matches & " matches\n")
