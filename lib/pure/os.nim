@@ -1682,7 +1682,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
-  ## Copies a file from `source` to `dest`.
+  ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -1737,6 +1737,12 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     close(s)
     flushFile(d)
     close(d)
+
+proc copyFileToDir*(source, dir: string) {.noWeirdTarget, since: (1,3,7).} =
+  ## Copies a file `source` into directory `dir`, which must exist.
+  if dir.len == 0: # treating "" as "." is error prone
+    raise newException(ValueError, "dest is empty")
+  copyFile(source, dir / source.lastPathPart)
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
