@@ -244,6 +244,9 @@ since (1, 1):
       var c = "xyz"
 
       # An underscore (_) can be used to denote the place of the argument you're passing:
+      doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
+
+      # chaining:
       # b = "xyz"
       var d = dup c:
         makePalindrome # xyzyx
