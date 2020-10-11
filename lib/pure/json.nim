@@ -1063,7 +1063,7 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    if jsonNode.kind == JUInt:
+    if jsonNode != nil and jsonNode.kind == JUInt:
       dst = T(jsonNode.unum)
     else:
       verifyJsonKind(jsonNode, {JInt}, jsonPath)
