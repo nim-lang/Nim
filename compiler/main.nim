@@ -66,20 +66,6 @@ when not defined(leanCompiler):
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
-proc setOutFile(conf: ConfigRef) =
-  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
-    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
-  if conf.outFile.isEmpty:
-    let base = conf.projectName
-    let targetName = if optGenDynLib in conf.globalOptions:
-      platform.OS[conf.target.targetOS].dllFrmt % base
-    elif optGenStaticLib in conf.globalOptions:
-      libNameTmpl(conf) % base
-    else:
-      base & platform.OS[conf.target.targetOS].exeExt
-    conf.outFile = RelativeFile targetName
-
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
   setOutFile(conf)
