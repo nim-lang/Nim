@@ -245,6 +245,8 @@ since (1, 1):
 
       # An underscore (_) can be used to denote the place of the argument you're passing:
       doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
+      # but `_` is optional here since the substitution is in 1st position:
+      doAssert "".dup(addQuoted("foo")) == "\"foo\""
 
       # chaining:
       # b = "xyz"
