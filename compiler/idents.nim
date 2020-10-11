@@ -20,7 +20,8 @@ type
 
   PIdObj* = ref TIdObj
   PIdent* = ref TIdent
-  TIdent*{.acyclic.} = object of TIdObj
+  TIdent*{.acyclic.} = object
+    id*: int # unique id; use this for comparisons and not the pointers
     s*: string
     next*: PIdent             # for hash-table chaining
     h*: Hash                 # hash value of s
