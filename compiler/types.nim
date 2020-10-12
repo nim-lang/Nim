@@ -1433,7 +1433,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst, tyAlias, tySink: result = isEmptyContainer(t.lastSon)
   else: result = false
 
-proc takeType*(formal, arg: PType; id: ItemId): PType =
+proc takeType*(formal, arg: PType; idgen: var IdGenerator): PType =
   # param: openArray[string] = []
   # [] is an array constructor of length 0 of type string!
   if arg.kind == tyNil:
@@ -1441,7 +1441,7 @@ proc takeType*(formal, arg: PType; id: ItemId): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), id, arg.owner)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextId(idgen), arg.owner)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
@@ -1449,14 +1449,14 @@ proc takeType*(formal, arg: PType; id: ItemId): PType =
   else:
     result = arg
 
-proc skipHiddenSubConv*(n: PNode; newTypeId: ItemId): PNode =
+proc skipHiddenSubConv*(n: PNode; idgen: var IdGenerator): PNode =
   if n.kind == nkHiddenSubConv:
     # param: openArray[string] = []
     # [] is an array constructor of length 0 of type string!
     let formal = n.typ
     result = n[1]
     let arg = result.typ
-    let dest = takeType(formal, arg, newTypeId)
+    let dest = takeType(formal, arg, idgen)
     if dest == arg and formal.kind != tyUntyped:
       #echo n.info, " came here for ", formal.typeToString
       result = n

@@ -1802,19 +1802,19 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType; kind: TTypeKind; id: ItemId): PType =
+proc toVar*(typ: PType; kind: TTypeKind; idgen: var IdGenerator): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, id, typ.owner)
+    result = newType(kind, nextId(idgen), typ.owner)
     rawAddSon(result, typ)
 
-proc toRef*(typ: PType; id: ItemId): PType =
+proc toRef*(typ: PType; idgen: var IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, id, typ.owner)
+    result = newType(tyRef, nextId(idgen), typ.owner)
     rawAddSon(result, typ)
 
 proc toObject*(typ: PType): PType =
