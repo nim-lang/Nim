@@ -501,8 +501,9 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
+  c.idgen = idgen
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
@@ -620,7 +621,7 @@ proc reportUnusedModules(c: PContext) =
     if sfUsed notin c.unusedImports[i][0].flags:
       message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
 
-proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
   var c = PContext(context)
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
@@ -636,6 +637,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   storeRemaining(c.graph, c.module)
+  storeBack(idgen, c.idgen)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

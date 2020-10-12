@@ -223,7 +223,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         let isImported = semExceptBranchType(a[0][1])
         let symbol = newSymG(skLet, a[0][2], c)
         symbol.typ = if isImported: a[0][1].typ
-                     else: a[0][1].typ.toRef()
+                     else: a[0][1].typ.toRef(c.idgen)
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
@@ -411,8 +411,8 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
     let y = considerQuotedIdent(c, n[1])
     let obj = x.typ.skipTypes(abstractPtrs)
     if obj.kind == tyObject and tfPartial in obj.flags:
-      let field = newSym(skField, getIdent(c.cache, y.s), obj.sym, n[1].info)
-      field.typ = skipIntLit(typ)
+      let field = newSym(skField, getIdent(c.cache, y.s), nextId c.idgen, obj.sym, n[1].info)
+      field.typ = skipIntLit(typ, c.idgen)
       field.position = obj.n.len
       obj.n.add newSymNode(field)
       n[0] = makeDeref x
@@ -513,7 +513,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           def = fitNode(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
-        typ = def.typ.skipTypes({tyStatic}).skipIntLit
+        typ = def.typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
           typ = typ.lastSon
         if hasEmpty(typ):
@@ -621,7 +621,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
         x.add result[i]
-        vm.setupCompileTimeVar(c.module, c.graph, x)
+        vm.setupCompileTimeVar(c.module, c.idgen, c.graph, x)
       if v.flags * {sfGlobal, sfThread} == {sfGlobal}:
         message(c.config, v.info, hintGlobalVar)
 
@@ -1276,7 +1276,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert c.config, st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                              getCurrOwner(c), s.info)
+                       nextId c.idgen, getCurrOwner(c), s.info)
       obj.ast = a
       if sfPure in s.flags:
         obj.flags.incl sfPure
@@ -1337,11 +1337,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
             if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
               assignType(s.typ, t)
-              s.typ.id = t.id
+              s.typ.itemId = t.itemId
             elif t.kind in {tyObject, tyEnum, tyDistinct}:
               assert s.typ != nil
               assignType(s.typ, t)
-              s.typ.id = t.id     # same id
+              s.typ.itemId = t.itemId     # same id
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
@@ -1437,7 +1437,7 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
         localError(c.config, n.info, "incorrect result proc symbol")
       c.p.resultSym = n[resultPos].sym
     else:
-      var s = newSym(skResult, getIdent(c.cache, "result"), getCurrOwner(c), n.info)
+      var s = newSym(skResult, getIdent(c.cache, "result"), nextId c.idgen, getCurrOwner(c), n.info)
       s.typ = t
       incl(s.flags, sfUsed)
       c.p.resultSym = s
@@ -1535,7 +1535,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkSonsLen(n, bodyPos + 1, c.config)
   var s: PSym
   if n[namePos].kind != nkSym:
-    s = newSym(skProc, c.cache.idAnon, getCurrOwner(c), n.info)
+    s = newSym(skProc, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), n.info)
     s.ast = n
     n[namePos] = newSymNode(s)
   else:
@@ -1800,7 +1800,7 @@ proc hasObjParam(s: PSym): bool =
 
 proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
-    methodDef(c.graph, s, false)
+    methodDef(c.graph, c.idgen, s, false)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if isGenericRoutine(s):
@@ -1825,7 +1825,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     # no sense either.
     # and result[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
-      methodDef(c.graph, s, fromCache=false)
+      methodDef(c.graph, c.idgen, s, fromCache=false)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
@@ -1843,7 +1843,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     assert phase == stepRegisterSymbol
 
     if n[namePos].kind == nkEmpty:
-      s = newSym(kind, c.cache.idAnon, getCurrOwner(c), n.info)
+      s = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), n.info)
       incl(s.flags, sfUsed)
       isAnon = true
     else:
@@ -1997,7 +1997,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
         if (s.typ[0] != nil and kind != skIterator) or kind == skMacro:
-          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
+          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextId c.idgen, nil, n.info))
 
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
@@ -2188,7 +2188,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec c.inStaticContext
   n[0] = a
-  evalStaticStmt(c.module, c.graph, a, c.p.owner)
+  evalStaticStmt(c.module, c.idgen, c.graph, a, c.p.owner)
   when false:
     # for incremental replays, keep the AST as required for replays:
     result = n
