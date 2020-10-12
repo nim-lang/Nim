@@ -40,6 +40,7 @@ type
     inLoop, inSpawn: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
+    idgen: IdGenerator
 
   ProcessMode = enum
     normal
@@ -61,7 +62,7 @@ template dbg(body) =
       body
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
-  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextId c.idgen, c.owner, info)
   sym.typ = typ
   s.vars.add(sym)
   result = newSymNode(sym)
@@ -250,16 +251,16 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   m.add c.owner.name.s
   localError(c.graph.config, ri.info, errGenerated, m)
 
-proc makePtrType(c: Con, baseType: PType): PType =
-  result = newType(tyPtr, c.owner)
-  addSonSkipIntLit(result, baseType)
+proc makePtrType(c: var Con, baseType: PType): PType =
+  result = newType(tyPtr, nextId c.idgen, c.owner)
+  addSonSkipIntLit(result, baseType, c.idgen)
 
-proc genOp(c: Con; op: PSym; dest: PNode): PNode =
+proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
 
-proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
+proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
   if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
     # give up and find the canonical type instead:
@@ -280,7 +281,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
   c.genOp(op, dest)
 
-proc genDestroy(c: Con; dest: PNode): PNode =
+proc genDestroy(c: var Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedDestructor, dest, nil)
 
@@ -310,7 +311,7 @@ proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
       # and copyMem(dest, source). This is efficient.
       result = newTree(nkStmtList, c.genDestroy(dest), newTree(nkFastAsgn, dest, ri))
 
-proc genCopyNoCheck(c: Con; dest, ri: PNode): PNode =
+proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedAsgn, dest, ri)
 
@@ -346,7 +347,7 @@ It is best to factor out piece of object that needs custom destructor into separ
       return
 
     # generate: if le != tmp: `=destroy`(le)
-    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info)
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info, c.idgen)
     let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
     cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
     cond.add le
@@ -377,7 +378,7 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
-    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), c.owner, n.info)
+    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), nextId c.idgen, c.owner, n.info)
     temp.typ = n.typ
     var v = newNodeI(nkLetSection, n.info)
     let tempAsNode = newSymNode(temp)
@@ -799,7 +800,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       for it in n:
         var ri = it[^1]
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
-          let x = lowerTupleUnpacking(c.graph, it, c.owner)
+          let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
         elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ) and not isCursor(it[0], c):
           for j in 0..<it.len-2:
@@ -1010,10 +1011,10 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
     for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
-proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
+proc injectDestructorCalls*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
-  var c = Con(owner: owner, graph: g, g: constructCfg(owner, n))
+  var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
   dbg:
     echo "\n### ", owner.name.s, ":\nCFG:"
     echoCfg(c.g)
@@ -1042,3 +1043,4 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     echo "--expandArc: ", owner.name.s
     echo renderTree(result, {renderIr, renderNoComments})
     echo "-- end of expandArc ------------------------"
+  storeBack idgen, c.idgen

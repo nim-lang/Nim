@@ -180,10 +180,6 @@ proc readKey(L: var TBaseLexer, result: var string) =
   if L.buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
-proc newFakeType(id: int): PType =
-  new(result)
-  result.id = id
-
 proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
   if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
   inc L.bufpos
@@ -192,10 +188,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
     var key = decodeStr(L.buf, L.bufpos)
     if ^L.bufpos != ':': doAssert(false, "ccgmerge: ':' expected")
     inc L.bufpos
-    var value = decodeStr(L.buf, L.bufpos)
-    # XXX implement me
-    when false:
-      idTablePut(result, newFakeType(key), value.rope)
+    discard decodeStr(L.buf, L.bufpos)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =

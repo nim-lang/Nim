@@ -996,9 +996,9 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, prc, cache = false)
+  var procBody = transformBody(m.g.graph, m.idgen, prc, cache = false)
   if sfInjectDestructors in prc.flags:
-    procBody = injectDestructorCalls(m.g.graph, prc, procBody)
+    procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
 
   if sfPure notin prc.flags and prc.typ[0] != nil:
     if resultPos >= prc.ast.len:
@@ -1849,9 +1849,10 @@ template injectG() {.dirty.} =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
+  result.idgen = idgen
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
             else: graph.config.projectFull
@@ -1929,9 +1930,9 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
-  var transformedN = transformStmt(m.g.graph, m.module, n)
+  var transformedN = transformStmt(m.g.graph, m.idgen, m.module, n)
   if sfInjectDestructors in m.module.flags:
-    transformedN = injectDestructorCalls(m.g.graph, m.module, transformedN)
+    transformedN = injectDestructorCalls(m.g.graph, m.idgen, m.module, transformedN)
 
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
@@ -2034,7 +2035,7 @@ proc updateCachedModule(m: BModule) =
     cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
   result = n
   if b == nil: return
   var m = BModule(b)
@@ -2087,6 +2088,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 
   let mm = m
   m.g.modulesClosed.add mm
+  storeBack idgen, m.idgen
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
