@@ -470,9 +470,9 @@ when defined(nimsuggest):
 
 proc findDefinition(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   if s.isNil: return
-  if isTracked(info, conf.m.trackPos, s.name.s.len) or s == usageSym:
+  if isTracked(info, conf.m.trackPos, s.name.s.len) or (s == usageSym and sfForward notin s.flags):
+    suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0, useSuppliedInfo = s == usageSym))
     if sfForward notin s.flags:
-      suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0, useSuppliedInfo = s == usageSym))
       suggestQuit()
     else:
       usageSym = s

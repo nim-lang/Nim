@@ -358,3 +358,7 @@ proc mydiv(a, b): int {.raises: [].} =
 
 
 ## Tool changes
+
+- `nimsuggest` will now return both the forward declaration and the
+  implementation location upon a `def` query. Previously the behavior was
+  just to return the forward declaration.
