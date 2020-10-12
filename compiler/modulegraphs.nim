@@ -80,8 +80,8 @@ type
     idgen*: IdGenerator
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
-  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode; idgen: var IdGenerator): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
   TPass* = tuple[open: TPassOpen,

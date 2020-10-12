@@ -605,7 +605,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
       let xx = semExprWithType(c, x, flags*{efAllowDestructor})
       result.add xx
-      typ = commonType(typ, xx.typ)
+      typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #result.add fitNode(c, typ, n[i])
       inc(lastIndex)
@@ -2328,7 +2328,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if whenNimvm:
         if semCheck:
           it[1] = semExpr(c, it[1])
-          typ = commonType(typ, it[1].typ)
+          typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
         let e = forceBool(c, semConstExpr(c, it[0]))
@@ -2343,7 +2343,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if result == nil or whenNimvm:
         if semCheck:
           it[0] = semExpr(c, it[0])
-          typ = commonType(typ, it[0].typ)
+          typ = commonType(c, typ, it[0].typ)
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)

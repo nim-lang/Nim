@@ -1077,6 +1077,11 @@ proc nextId*(x: var IdGenerator): ItemId {.inline.} =
   inc x.ItemId.item
   result = ItemId(x)
 
+proc storeBack*(dest: var IdGenerator; src: IdGenerator) {.inline.} =
+  assert dest.ItemId.module == src.ItemId.module
+  assert dest.ItemId.item <= src.ItemId.item
+  dest = src
+
 proc getnimblePkgId*(a: PSym): int =
   let b = a.getnimblePkg
   result = if b == nil: -1 else: b.id

@@ -160,12 +160,12 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
       openScope(c)
       it[0] = forceBool(c, semExprWithType(c, it[0]))
       it[1] = semExprBranch(c, it[1], flags)
-      typ = commonType(typ, it[1])
+      typ = commonType(c, typ, it[1])
       closeScope(c)
     elif it.len == 1:
       hasElse = true
       it[0] = semExprBranchScope(c, it[0])
-      typ = commonType(typ, it[0])
+      typ = commonType(c, typ, it[0])
     else: illFormedAst(it, c.config)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
@@ -203,7 +203,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
   var typ = commonTypeBegin
   n[0] = semExprBranchScope(c, n[0])
-  typ = commonType(typ, n[0].typ)
+  typ = commonType(c, typ, n[0].typ)
 
   var last = n.len - 1
   var catchAllExcepts = 0
@@ -261,7 +261,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
 
     # last child of an nkExcept/nkFinally branch is a statement:
     a[^1] = semExprBranchScope(c, a[^1])
-    if a.kind != nkFinally: typ = commonType(typ, a[^1])
+    if a.kind != nkFinally: typ = commonType(c, typ, a[^1])
     else: dec last
     closeScope(c)
 
@@ -969,19 +969,19 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       semCaseBranch(c, n, x, i, covered)
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last])
-      typ = commonType(typ, x[last])
+      typ = commonType(c, typ, x[last])
     of nkElifBranch:
       chckCovered = false
       checkSonsLen(x, 2, c.config)
       openScope(c)
       x[0] = forceBool(c, semExprWithType(c, x[0]))
       x[1] = semExprBranch(c, x[1])
-      typ = commonType(typ, x[1])
+      typ = commonType(c, typ, x[1])
       closeScope(c)
     of nkElse:
       checkSonsLen(x, 1, c.config)
       x[0] = semExprBranchScope(c, x[0])
-      typ = commonType(typ, x[0])
+      typ = commonType(c, typ, x[0])
       if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
         message(c.config, x.info, warnUnreachableElse)
       hasElse = true

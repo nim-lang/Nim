@@ -682,7 +682,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit t.baseOfDistinct(c.idgen)
+      x.addSonSkipIntLit(t.baseOfDistinct(c.idgen), c.idgen)
     else:
       x = t.baseOfDistinct(c.idgen)
     call.add(newNodeIT(nkEmpty, fn.info, x))
