@@ -1602,22 +1602,22 @@ proc transitionToLet*(s: PSym) =
   s.alignment = obj.alignment
 
 template copyNodeImpl(dst, src, processSonsStmt) =
-  if src == nil: return
-  dst = newNode(src.kind)
-  dst.info = src.info
-  dst.typ = src.typ
-  dst.flags = src.flags * PersistentNodeFlags
-  dst.comment = src.comment
-  when defined(useNodeIds):
-    if dst.id == nodeIdToDebug:
-      echo "COMES FROM ", src.id
-  case src.kind
-  of nkCharLit..nkUInt64Lit: dst.intVal = src.intVal
-  of nkFloatLiterals: dst.floatVal = src.floatVal
-  of nkSym: dst.sym = src.sym
-  of nkIdent: dst.ident = src.ident
-  of nkStrLit..nkTripleStrLit: dst.strVal = src.strVal
-  else: processSonsStmt
+  if src != nil:
+    dst = newNode(src.kind)
+    dst.info = src.info
+    dst.typ = src.typ
+    dst.flags = src.flags * PersistentNodeFlags
+    dst.comment = src.comment
+    when defined(useNodeIds):
+      if dst.id == nodeIdToDebug:
+        echo "COMES FROM ", src.id
+    case src.kind
+    of nkCharLit..nkUInt64Lit: dst.intVal = src.intVal
+    of nkFloatLiterals: dst.floatVal = src.floatVal
+    of nkSym: dst.sym = src.sym
+    of nkIdent: dst.ident = src.ident
+    of nkStrLit..nkTripleStrLit: dst.strVal = src.strVal
+    else: processSonsStmt
 
 proc shallowCopy*(src: PNode): PNode =
   # does not copy its sons, but provides space for them:
@@ -1626,17 +1626,24 @@ proc shallowCopy*(src: PNode): PNode =
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
-  copyNodeImpl(result, src):
-    newSeq(result.sons, src.len)
-    for i in 0..<src.len:
-      result[i] = copyTree(src[i])
+  var stack = @[(addr result, src)]
+  while stack.len > 0:
+    let (target, source) = stack.pop()
+    copyNodeImpl(target[], source):
+      newSeq(target.sons, source.len)
+      for i in 0..<source.len:
+        stack.add((addr target.sons[i], source[i]))
 
 proc copyTreeWithoutNode*(src, skippedNode: PNode): PNode =
-  copyNodeImpl(result, src):
-    result.sons = newSeqOfCap[PNode](src.len)
-    for n in src.sons:
-      if n != skippedNode:
-        result.sons.add copyTreeWithoutNode(n, skippedNode)
+  var stack = @[(addr result, src)]
+  while stack.len > 0:
+    let (target, source) = stack.pop()
+    copyNodeImpl(target[], source):
+      target.sons = newSeqOfCap[PNode](source.len)
+      for n in source.sons:
+        if n != skippedNode:
+          target.sons.add nil
+          stack.add (addr target.sons[^1], n)
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in 0..<n.len:
