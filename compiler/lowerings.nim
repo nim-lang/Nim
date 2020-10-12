@@ -66,12 +66,13 @@ proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
   result[1].add ri
 
-proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
+proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextId(idgen),
+                    owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
 
@@ -85,12 +86,13 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
     if n[i].kind == nkSym: v.addVar(n[i], val)
     else: result.add newAsgnStmt(n[i], val)
 
-proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
+proc evalOnce*(g: ModuleGraph; value: PNode; idgen: var IdGenerator; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
   ## freely, multiple times. This is frequently required and such a builtin would also be
   ## handy to have in macros.nim. The value that can be reused is 'result.lastSon'!
   result = newNodeIT(nkStmtListExpr, value.info, value.typ)
-  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
+  var temp = newSym(skTemp, getIdent(g.cache, genPrefix), nextId(idgen),
+                    owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
 
@@ -111,11 +113,11 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
 proc newTryFinally*(body, final: PNode): PNode =
   result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
-proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
+proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(g.cache, "_"), owner, value.info, owner.options)
+  var temp = newSym(skTemp, getIdent(g.cache, "_"), nextId(idgen), owner, value.info, owner.options)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
@@ -130,10 +132,10 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   for i in 0..<lhs.len:
     result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempAsNode, i))
 
-proc lowerSwap*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
+proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
-  var temp = newSym(skVar, getIdent(g.cache, genPrefix), owner, n.info, owner.options)
+  var temp = newSym(skVar, getIdent(g.cache, genPrefix), nextId(idgen), owner, n.info, owner.options)
   temp.typ = n[1].typ
   incl(temp.flags, sfFromGeneric)
 
@@ -150,8 +152,8 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result.add newFastAsgnStmt(n[1], n[2])
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
-proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType =
-  result = newType(tyObject, owner)
+proc createObj*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
+  result = newType(tyObject, nextId(idgen), owner)
   if final:
     rawAddSon(result, nil)
     incl result.flags, tfFinal
@@ -159,6 +161,7 @@ proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)
   let s = newSym(skType, getIdent(g.cache, "Env_" & toFilename(g.config, info) & "_" & $owner.name.s),
+                  nextId(idgen),
                   owner, info, owner.options)
   incl s.flags, sfAnon
   s.typ = result
@@ -217,13 +220,13 @@ proc lookupInRecord(n: PNode, id: int): PSym =
     if n.sym.id == -abs(id): result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym; cache: IdentCache) =
+proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: var IdGenerator) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), s.owner, s.info,
-                     s.options)
-  field.id = -s.id
-  let t = skipIntLit(s.typ)
+  var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
+                     nextId(idgen), s.owner, s.info, s.options)
+  field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+  let t = skipIntLit(s.typ, idgen)
   field.typ = t
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
@@ -232,13 +235,13 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   obj.n.add newSymNode(field)
   fieldCheck()
 
-proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable.} =
+proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: var IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.id)
   if result == nil:
-    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), s.owner, s.info,
-                       s.options)
-    field.id = -s.id
-    let t = skipIntLit(s.typ)
+    var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), nextId(idgen),
+                       s.owner, s.info, s.options)
+    field.itemId = ItemId(module: s.itemId.module, item: -s.itemId.item)
+    let t = skipIntLit(s.typ, idgen)
     field.typ = t
     assert t.kind != tyTyped
     propagateToOwner(obj, t)
@@ -319,10 +322,10 @@ proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
 
-proc genAddrOf*(n: PNode, typeKind = tyPtr): PNode =
+proc genAddrOf*(n: PNode; idgen: var IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(typeKind, n.typ.owner)
+  result.typ = newType(typeKind, nextId(idgen), n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =

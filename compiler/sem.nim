@@ -83,7 +83,7 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
   result = arg
-  result = skipHiddenSubConv(result)
+  result = skipHiddenSubConv(result, c.idgen)
 
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =

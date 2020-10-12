@@ -682,9 +682,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit t.baseOfDistinct
+      x.addSonSkipIntLit t.baseOfDistinct(c.idgen)
     else:
-      x = t.baseOfDistinct
+      x = t.baseOfDistinct(c.idgen)
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}

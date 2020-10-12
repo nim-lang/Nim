@@ -143,7 +143,7 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
-  idTablePut(c.bindings, key, val.skipIntLit)
+  idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
@@ -726,7 +726,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, nextId(c.idgen), typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -738,14 +738,14 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         case typ.kind
         of tyStatic:
           param = paramSym skConst
-          param.typ = typ.exactReplica
+          param.typ = copyType(typ, nextId(c.idgen), typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
             param.ast = typ.n
         of tyUnknown:
           param = paramSym skVar
-          param.typ = typ.exactReplica
+          param.typ = copyType(typ, nextId(c.idgen), typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -796,7 +796,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = copyType(ff, ff.owner, true)
+    result = copyType(ff, nextId(c.idgen), ff.owner)
 
   result.n = checkedBody
 
@@ -1086,7 +1086,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   template bindingRet(res) =
     if doBind:
-      let bound = aOrig.skipTypes({tyRange}).skipIntLit
+      let bound = aOrig.skipTypes({tyRange}).skipIntLit(c.c.idgen)
       put(c, f, bound)
     return res
 
@@ -2291,7 +2291,7 @@ proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ,
-      {tyGenericInst, tyVar, tyLent, tyOrdinal}))
+      {tyGenericInst, tyVar, tyLent, tyOrdinal}), c.idgen)
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArray, c)

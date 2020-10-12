@@ -279,7 +279,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s)
+  result = copySym(s, nextId cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -302,7 +302,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
 
 proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
-  result = copyType(t, t.owner, cl.allowMetaTypes)
+  result = copyType(t, nextId(cl.c.idgen), t.owner)
   if cl.allowMetaTypes: return
   result.flags.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
@@ -355,7 +355,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, t[0].owner)
+  result = newType(tyGenericInst, nextId(cl.c.idgen), t[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header[0]]
@@ -459,11 +459,11 @@ proc eraseVoidParams*(t: PType) =
       setLen t.n.sons, pos
       break
 
-proc skipIntLiteralParams*(t: PType) =
+proc skipIntLiteralParams*(t: PType; idgen: var IdGenerator) =
   for i in 0..<t.len:
     let p = t[i]
     if p == nil: continue
-    let skipped = p.skipIntLit
+    let skipped = p.skipIntLit(idgen)
     if skipped != p:
       t[i] = skipped
       if i > 0: t.n[i].sym.typ = skipped
@@ -553,7 +553,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result = n.typ
 
   of tyInt, tyFloat:
-    result = skipIntLit(t)
+    result = skipIntLit(t, cl.c.idgen)
 
   of tyTypeDesc:
     let lookup = cl.typeMap.lookup(t)
@@ -617,7 +617,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyProc:
         eraseVoidParams(result)
-        skipIntLiteralParams(result)
+        skipIntLiteralParams(result, cl.c.idgen)
 
       of tyRange:
         result[0] = result[0].skipTypes({tyStatic, tyDistinct})

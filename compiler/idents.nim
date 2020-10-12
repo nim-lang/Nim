@@ -15,10 +15,6 @@ import
   hashes, wordrecg
 
 type
-  TIdObj* = object of RootObj
-    id*: int # unique id; use this for comparisons and not the pointers
-
-  PIdObj* = ref TIdObj
   PIdent* = ref TIdent
   TIdent*{.acyclic.} = object
     id*: int # unique id; use this for comparisons and not the pointers

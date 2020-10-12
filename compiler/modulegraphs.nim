@@ -74,8 +74,10 @@ type
     globalDestructors*: seq[PNode]
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
+    idgen: int32
 
   TPassContext* = object of RootObj # the pass's context
+    idgen*: IdGenerator
   PPassContext* = ref TPassContext
 
   TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
@@ -164,8 +166,12 @@ else:
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
+proc genId*(g: ModuleGraph): ItemId =
+  inc g.idgen
+  result = ItemId(module: -1, item: g.idgen)
+
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), genId(g), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 

@@ -1291,11 +1291,11 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
 
-proc baseOfDistinct*(t: PType): PType =
+proc baseOfDistinct*(t: PType; id: ItemId): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
-    result = copyType(t, t.owner, false)
+    result = copyType(t, id, t.owner)
     var parent: PType = nil
     var it = result
     while it.kind in {tyPtr, tyRef, tyOwned}:
@@ -1433,7 +1433,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst, tyAlias, tySink: result = isEmptyContainer(t.lastSon)
   else: result = false
 
-proc takeType*(formal, arg: PType): PType =
+proc takeType*(formal, arg: PType; id: ItemId): PType =
   # param: openArray[string] = []
   # [] is an array constructor of length 0 of type string!
   if arg.kind == tyNil:
@@ -1441,7 +1441,7 @@ proc takeType*(formal, arg: PType): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), arg.owner, keepId=false)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), id, arg.owner)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
@@ -1449,14 +1449,14 @@ proc takeType*(formal, arg: PType): PType =
   else:
     result = arg
 
-proc skipHiddenSubConv*(n: PNode): PNode =
+proc skipHiddenSubConv*(n: PNode; newTypeId: ItemId): PNode =
   if n.kind == nkHiddenSubConv:
     # param: openArray[string] = []
     # [] is an array constructor of length 0 of type string!
     let formal = n.typ
     result = n[1]
     let arg = result.typ
-    let dest = takeType(formal, arg)
+    let dest = takeType(formal, arg, newTypeId)
     if dest == arg and formal.kind != tyUntyped:
       #echo n.info, " came here for ", formal.typeToString
       result = n

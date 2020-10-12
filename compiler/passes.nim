@@ -13,7 +13,7 @@
 import
   options, ast, llstream, msgs,
   idents,
-  syntaxes, idgen, modulegraphs, reorder, rod,
+  syntaxes, modulegraphs, reorder, rod,
   lineinfos, pathutils
 
 type
@@ -215,6 +215,4 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
       closeParser(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)
-    # id synchronization point for more consistent code generation:
-    idSynchronizationPoint(1000)
   result = true

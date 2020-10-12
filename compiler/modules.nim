@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, msgs, options,
-  idents, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
+  idents, lexer, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
