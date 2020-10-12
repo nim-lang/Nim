@@ -1487,7 +1487,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   elif origType.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
 
-  if optTinyRtti in m.config.globalOptions and t.kind == tyObject:
+  if optTinyRtti in m.config.globalOptions and t.kind == tyObject and sfImportc notin t.sym.flags:
     let v2info = genTypeInfoV2(m, origType, info)
     addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2; $2.typeInfoV2 = (void*)$1;$n", [
       v2info, result])
