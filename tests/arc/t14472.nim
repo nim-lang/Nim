@@ -29,11 +29,9 @@ var s = bork()
 import tables
 
 type
-  unique_ptr[T] {.importcpp:"std::unique_ptr", header: "<memory>".} = object
   cdbl {.importc: "double".} = object
 
   MyObject = ref object of RootObj
-    x: Table[string, unique_ptr[cdbl]]
     y: Table[string, cdbl]
         
 
