@@ -1073,6 +1073,9 @@ template id*(a: PIdObj): int =
 type
   IdGenerator* = distinct ItemId
 
+const
+  PackageModuleId* = -3'i32
+
 proc nextId*(x: var IdGenerator): ItemId {.inline.} =
   inc x.ItemId.item
   result = ItemId(x)

@@ -17,7 +17,7 @@ import
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, passaux, depends, vm, idgen,
+  platform, nimconf, passaux, depends, vm,
   modules,
   modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
 
@@ -137,12 +137,8 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    processModule(graph, m, llStreamOpenStdIn())
-
-const evalPasses = [verbosePass, semPass, evalPass]
-
-proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
-  carryPasses(graph, nodes, module, evalPasses)
+    var idgen = m.itemId.IdGenerator
+    processModule(graph, m, idgen, llStreamOpenStdIn())
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -173,7 +169,6 @@ proc mainCommand*(graph: ModuleGraph) =
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
-  setId(100)
 
   proc customizeForBackend(backend: TBackend) =
     ## Sets backend specific options but don't compile to backend yet in

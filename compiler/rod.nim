@@ -16,7 +16,7 @@ when not nimIncremental:
   template storeNode*(g: ModuleGraph; module: PSym; n: PNode) = discard
   template loadNode*(g: ModuleGraph; module: PSym): PNode = newNode(nkStmtList)
 
-  proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) {.inline.} = (nil, int(fileIdx))
+  proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym) {.inline.} = nil
 
   template addModuleDep*(g: ModuleGraph; module, fileIdx: FileIndex; isIncludeFile: bool) = discard
 

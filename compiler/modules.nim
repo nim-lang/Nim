@@ -20,6 +20,8 @@ proc resetSystemArtifacts*(g: ModuleGraph) =
 template getModuleIdent(graph: ModuleGraph, filename: AbsoluteFile): PIdent =
   getIdent(graph.cache, splitFile(filename).name)
 
+template packageId(): untyped {.dirty.} = ItemId(module: PackageModuleId, item: int32(fileIdx))
+
 proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   ## returns package symbol (skPackage) for yet to be defined module for fileIdx
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
@@ -31,7 +33,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     pack = getIdent(graph.cache, pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
   if packSym == nil:
-    packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, info)
+    packSym = newSym(skPackage, getIdent(graph.cache, pck2), packageId(), nil, info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
   else:
@@ -47,7 +49,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
         # to resolve the conflicts:
         let pck3 = fakePackageName(graph.config, filename)
         # this makes the new `packSym`'s owner be the original `packSym`
-        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packSym, info)
+        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), packSym, info)
         initStrTable(packSym.tab)
         graph.packageSyms.strTableAdd(packSym)
   result = packSym
@@ -69,7 +71,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  result = PSym(kind: skModule, id: -1, # for better error checking
+  result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
                 name: getModuleIdent(graph, filename),
                 info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
@@ -82,25 +84,23 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   result = graph.getModule(fileIdx)
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-    let (r, id) = loadModuleSym(graph, fileIdx, filename)
-    result = r
+    result = loadModuleSym(graph, fileIdx, filename)
     if result == nil:
       result = newModule(graph, fileIdx)
       result.flags.incl flags
-      result.id = id
       registerModule(graph, result)
     else:
       partialInitModule(result, graph, fileIdx, filename)
-      result.id = id
-      assert result.id < 0
-    discard processModule(graph, result,
+    var idgen = IdGenerator(result.itemId)
+    discard processModule(graph, result, idgen,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
-    discard processModule(graph, result,
+    var idgen = IdGenerator(result.itemId)
+    discard processModule(graph, result, idgen,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
     graph.markClientsDirty(fileIdx)
 
@@ -161,7 +161,6 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
-  result.id = getID()
   registerModule(graph, result)
 
 proc makeModule*(graph: ModuleGraph; filename: string): PSym =

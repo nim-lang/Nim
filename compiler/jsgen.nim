@@ -602,12 +602,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
-  of mShlI: 
+  of mShlI:
     if n[1].typ.size <= 4:
       applyFormat("($1 << $2)", "($1 << $2)")
     else:
       applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
-  of mAshrI: 
+  of mAshrI:
     if n[1].typ.size <= 4:
       applyFormat("($1 >> $2)", "($1 >> $2)")
     else:
@@ -1804,7 +1804,7 @@ proc genVarStmt(p: PProc, n: PNode) =
     var a = n[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
-        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.prc)
+        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.module.idgen, p.prc)
         genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
@@ -2316,9 +2316,9 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
+  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, cache = false)
   if sfInjectDestructors in prc.flags:
-    transformedBody = injectDestructorCalls(oldProc.module.graph, prc, transformedBody)
+    transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
 
   p.nested: genStmt(p, transformedBody)
 
@@ -2607,9 +2607,9 @@ proc genModule(p: PProc, n: PNode) =
     p.body.add(frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilenameOption(p.config, p.module.module.info.fileIndex, foStacktrace))))
-  var transformedN = transformStmt(p.module.graph, p.module.module, n)
+  var transformedN = transformStmt(p.module.graph, p.module.idgen, p.module.module, n)
   if sfInjectDestructors in p.module.module.flags:
-    transformedN = injectDestructorCalls(p.module.graph, p.module.module, transformedN)
+    transformedN = injectDestructorCalls(p.module.graph, p.module.idgen, p.module.module, transformedN)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
@@ -2667,7 +2667,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != nil: result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
@@ -2685,8 +2685,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
     discard writeRopeIfNotEqual(code, outFile)
+  storeBack idgen, m.idgen
 
-proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
+
+proc myOpen(graph: ModuleGraph; s: PSym; idgen: var IdGenerator): PPassContext =
   result = newModule(graph, s)
+  result.idgen = idgen
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)

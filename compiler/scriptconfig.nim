@@ -27,9 +27,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph): PEvalContext =
+              graph: ModuleGraph; idgen: var IdGenerator): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph)
+  result = newCtx(module, cache, graph, idgen)
   result.mode = emRepl
   registerAdditionalOps(result)
   let conf = graph.config
@@ -197,7 +197,10 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       setResult(a, "")
       setResult(a, stdin.readAll())
 
+  storeBack idgen, result.idgen
+
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
+                   idgen: var IdGenerator;
                    freshDefines=true; conf: ConfigRef) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
@@ -221,10 +224,11 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, scriptName.string, graph)
+  var vm = setupVM(m, cache, scriptName.string, graph, idgen)
+  graph.vm = vm
 
   graph.compileSystemModule()
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+  discard graph.processModule(m, vm.idgen, llStreamOpen(scriptName, fmRead))
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
@@ -244,3 +248,4 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
   conf.symbolFiles = oldSymbolFiles
+  storeBack idgen, vm.idgen
