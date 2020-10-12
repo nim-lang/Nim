@@ -153,6 +153,7 @@ type
     curExcHandlingState: int # Negative for except, positive for finally
     nearestFinally: int # Index of the nearest finally block. For try/except it
                     # is their finally. For finally it is parent finally. Otherwise -1
+    idgen: IdGenerator
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
@@ -1379,10 +1380,11 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
+proc transformClosureIterator*(g: ModuleGraph; idgen: var IdGenerator; fn: PSym, n: PNode): PNode =
   var ctx: Ctx
   ctx.g = g
   ctx.fn = fn
+  ctx.idgen = idgen
 
   if getEnvParam(fn).isNil:
     # Lambda lifting was not done yet. Use temporary :state sym, which will
@@ -1422,6 +1424,7 @@ proc transformClosureIterator*(g: ModuleGraph; fn: PSym, n: PNode): PNode =
 
   result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
+  idgen = ctx.idgen
 
   # echo "TRANSFORM TO STATES: "
   # echo renderTree(result)
