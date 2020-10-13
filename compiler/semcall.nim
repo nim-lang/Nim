@@ -582,14 +582,6 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode {.nosinks.} =
-  var earlySym: PNode
-  var argsWrappedInPotentialEarlySem = newSeq[PNode](n.len)
-  for i in 1..<n.len:
-    if  n[i] != nil and n[i].kind == nkEarlySemArg:
-      # Store wrapping
-      argsWrappedInPotentialEarlySem[i] = n[i]
-      # Unwrap
-      n[i] = n[i][0]
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -599,10 +591,6 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       message(c.config, n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
-    #X: Shouldn't this be moved up so that we always do this? XX: Or down?
-    for i in 1..<argsWrappedInPotentialEarlySem.len:
-      if argsWrappedInPotentialEarlySem[i] != nil:
-        n[i] = argsWrappedInPotentialEarlySem[i]
     result = semResolvedCall(c, r, n, flags)
   elif implicitDeref in c.features and canDeref(n):
     # try to deref the first argument and then try overloading resolution again:
@@ -632,6 +620,19 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
       notFoundError(c, n, errors)
+
+proc semOverloadedCallHandleEarlySym(c: PContext, n, nOrig: PNode,
+                       filter: TSymKinds, flags: TExprFlags): PNode {.nosinks.} =
+  var argsWrappedInPotentialEarlySem = newSeq[PNode](n.len)
+  for i in 1..<n.len:
+    if  n[i] != nil and n[i].kind == nkEarlySemArg:
+      argsWrappedInPotentialEarlySem[i] = n[i]
+      n[i] = n[i][0]
+  result = semOverloadedCall(c, n, nOrig, filter, flags)
+  for i in 1..<argsWrappedInPotentialEarlySem.len:
+    if argsWrappedInPotentialEarlySem[i] != nil:
+      n[i] = argsWrappedInPotentialEarlySem[i]
+      result[i] = n[i]
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
