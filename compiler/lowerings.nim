@@ -199,7 +199,7 @@ proc rawDirectAccess*(obj, field: PSym): PNode =
   result.add newSymNode(field)
   result.typ = field.typ
 
-proc lookupInRecord(n: PNode, id: int): PSym =
+proc lookupInRecord(n: PNode, id: ItemId): PSym =
   result = nil
   case n.kind
   of nkRecList:
@@ -217,7 +217,7 @@ proc lookupInRecord(n: PNode, id: int): PSym =
         if result != nil: return
       else: discard
   of nkSym:
-    if n.sym.id == -abs(id): result = n.sym
+    if n.sym.itemId.module == id.module and n.sym.itemId.item == -abs(id.item): result = n.sym
   else: discard
 
 proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator) =
@@ -236,7 +236,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator) =
   fieldCheck()
 
 proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
-  result = lookupInRecord(obj.n, s.id)
+  result = lookupInRecord(obj.n, s.itemId)
   if result == nil:
     var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), nextId(idgen),
                        s.owner, s.info, s.options)
@@ -251,13 +251,13 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator)
 
 proc newDotExpr*(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
-  let field = lookupInRecord(obj.typ.n, b.id)
+  let field = lookupInRecord(obj.typ.n, b.itemId)
   assert field != nil, b.name.s
   result.add newSymNode(obj)
   result.add newSymNode(field)
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: int, info: TLineInfo): PNode =
+proc indirectAccess*(a: PNode, b: ItemId, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst)[0]
@@ -309,7 +309,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
   var t = t
   while true:
     assert t.kind == tyObject
-    result = lookupInRecord(t.n, v.id)
+    result = lookupInRecord(t.n, v.itemId)
     if result != nil: break
     t = t[0]
     if t == nil: break
@@ -317,7 +317,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node
-  result = indirectAccess(a, b.id, info)
+  result = indirectAccess(a, b.itemId, info)
 
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
