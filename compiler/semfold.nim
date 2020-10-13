@@ -17,7 +17,7 @@ import
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
-  result = newType(tyError, g.genId, g.owners[^1])
+  result = newType(tyError, nextId(g.idgen), g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =

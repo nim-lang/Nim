@@ -74,7 +74,7 @@ type
     globalDestructors*: seq[PNode]
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
-    idgen: int32
+    idgen*: IdGenerator
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -166,12 +166,8 @@ else:
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
-proc genId*(g: ModuleGraph): ItemId =
-  inc g.idgen
-  result = ItemId(module: -1, item: g.idgen)
-
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), genId(g), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
@@ -200,6 +196,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheTables = initTable[string, BTree[string, PNode]]()
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
+  result.idgen = IdGenerator(ItemId(module: -1'i32, item: 0'i32))
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

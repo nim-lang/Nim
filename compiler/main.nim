@@ -214,7 +214,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       wantMainModule(conf)
       conf.cmd = cmdDoc
-      loadConfigs(DocConfig, cache, conf)
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
@@ -272,14 +272,14 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2html
-      loadConfigs(DocConfig, cache, conf)
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of "rst2tex":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2tex
-      loadConfigs(DocTexConfig, cache, conf)
+      loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
   of "jsondoc0": docLikeCmd commandJson(cache, conf)
   of "jsondoc2", "jsondoc": docLikeCmd commandDoc2(graph, true)
