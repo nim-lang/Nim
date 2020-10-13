@@ -416,13 +416,13 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
   else:
     result = n
 
-proc transformSpawn(g: ModuleGraph; idgen: var IdGenerator;owner: PSym; n, barrier: PNode): PNode
-proc transformSpawnSons(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator;owner: PSym; n, barrier: PNode): PNode
+proc transformSpawnSons(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
   for i in 0..<n.len:
     result[i] = transformSpawn(g, idgen, owner, n[i], barrier)
 
-proc transformSpawn(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     result = nil
@@ -464,7 +464,7 @@ proc checkArgs(a: var AnalysisCtx; n: PNode) =
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
   discard "too implement"
 
-proc liftParallel*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; n: PNode): PNode =
+proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination
 
   # first pass:

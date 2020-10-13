@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-proc checkForSink*(config: ConfigRef; idgen: var IdGenerator; owner: PSym; arg: PNode) =
+proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNode) =
   #[ Patterns we seek to detect:
 
     someLocation = p # ---> p: sink T

@@ -37,11 +37,11 @@ template closeImpl(body: untyped) {.dirty.} =
     except IOError:
       discard
 
-proc close(graph: ModuleGraph; p: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
+proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutput(g.doc, useWarning, groupedToc)
 
-proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
+proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutputJson(g.doc, useWarning)
 
@@ -68,10 +68,10 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   g.doc = d
   result = g
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(HtmlExt)
 
-proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext =
+proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(JsonExt)
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)

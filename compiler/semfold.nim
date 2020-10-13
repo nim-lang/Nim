@@ -42,7 +42,7 @@ proc newStrNodeT*(strVal: string, n: PNode; g: ModuleGraph): PNode =
   result.typ = n.typ
   result.info = n.info
 
-proc getConstExpr*(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode
+proc getConstExpr*(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
   # evaluates the constant expression or returns nil if it is no constant
   # expression
 proc evalOp*(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode
@@ -303,7 +303,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
         exprStructuralEquivalent(a, b, strictSymEquality=true))), n, g)
   else: discard
 
-proc getConstIfExpr(c: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc getConstIfExpr(c: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
   for i in 0..<n.len:
     var it = n[i]
@@ -333,7 +333,7 @@ proc leValueConv*(a, b: PNode): bool =
     else: result = false # internalError(a.info, "leValueConv")
   else: result = false # internalError(a.info, "leValueConv")
 
-proc magicCall(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc magicCall(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   if n.len <= 1: return
 
   var s = n[0].sym
@@ -412,14 +412,14 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     result = a
     result.typ = n.typ
 
-proc getArrayConstr(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc getArrayConstr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   if n.kind == nkBracket:
     result = n
   else:
     result = getConstExpr(m, n, idgen, g)
     if result == nil: result = n
 
-proc foldArrayAccess(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyTypeDesc:
     return
@@ -447,7 +447,7 @@ proc foldArrayAccess(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph):
       localError(g.config, n.info, formatErrorIndexBound(idx, x.strVal.len-1) & $n)
   else: discard
 
-proc foldFieldAccess(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc foldFieldAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # a real field access; proc calls have already been transformed
   var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
@@ -465,7 +465,7 @@ proc foldFieldAccess(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph):
       return
   localError(g.config, n.info, "field not found: " & field.name.s)
 
-proc foldConStrStr(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc foldConStrStr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
   for i in 1..<n.len:
@@ -473,7 +473,7 @@ proc foldConStrStr(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): P
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
 
-proc newSymNodeTypeDesc*(s: PSym; idgen: var IdGenerator; info: TLineInfo): PNode =
+proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
     result.typ = newType(tyTypeDesc, idgen.nextId, s.owner)
@@ -481,7 +481,7 @@ proc newSymNodeTypeDesc*(s: PSym; idgen: var IdGenerator; info: TLineInfo): PNod
   else:
     result.typ = s.typ
 
-proc getConstExpr(m: PSym, n: PNode; idgen: var IdGenerator; g: ModuleGraph): PNode =
+proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
   case n.kind
   of nkSym:

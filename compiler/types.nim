@@ -1291,7 +1291,7 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
 
-proc baseOfDistinct*(t: PType; idgen: var IdGenerator): PType =
+proc baseOfDistinct*(t: PType; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
@@ -1433,7 +1433,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst, tyAlias, tySink: result = isEmptyContainer(t.lastSon)
   else: result = false
 
-proc takeType*(formal, arg: PType; idgen: var IdGenerator): PType =
+proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
   # param: openArray[string] = []
   # [] is an array constructor of length 0 of type string!
   if arg.kind == tyNil:
@@ -1449,7 +1449,7 @@ proc takeType*(formal, arg: PType; idgen: var IdGenerator): PType =
   else:
     result = arg
 
-proc skipHiddenSubConv*(n: PNode; idgen: var IdGenerator): PNode =
+proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenSubConv:
     # param: openArray[string] = []
     # [] is an array constructor of length 0 of type string!

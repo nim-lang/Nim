@@ -31,10 +31,10 @@ type
 
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: var IdGenerator): PSym
+              info: TLineInfo; idgen: IdGenerator): PSym
 
 proc createTypeBoundOps*(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
-                         idgen: var IdGenerator)
+                         idgen: IdGenerator)
 
 proc at(a, i: PNode, elemType: PType): PNode =
   result = newNodeI(nkBracketExpr, a.info, 2)
@@ -791,7 +791,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
-                            idgen: var IdGenerator): PSym =
+                            idgen: IdGenerator): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
   if baseType.attachedOps[kind] == nil:
@@ -800,7 +800,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
   result = typ.attachedOps[kind]
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: var IdGenerator): PSym =
+              info: TLineInfo; idgen: IdGenerator): PSym =
 
   let procname = getIdent(g.cache, AttachedOpToStr[kind])
   result = newSym(skProc, procname, nextId(idgen), owner, info)
@@ -829,7 +829,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
 
 
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo; idgen: var IdGenerator): PSym =
+              info: TLineInfo; idgen: IdGenerator): PSym =
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info, idgen)
 
@@ -871,7 +871,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
 
 
 proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
-                                        info: TLineInfo; idgen: var IdGenerator): PSym =
+                                        info: TLineInfo; idgen: IdGenerator): PSym =
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen)
@@ -891,13 +891,12 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   let placeHolder = newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
   fillBody(a, typ, result.ast[bodyPos], d, placeHolder)
   if not a.canRaise: incl result.flags, sfNeverRaises
-  idgen = a.idgen
 
 
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   discard "now a nop"
 
-proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: var IdGenerator) =
+proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: IdGenerator) =
   if n.kind in nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mDestroy:
       let t = n[1].typ.skipTypes(abstractVar)
@@ -925,7 +924,6 @@ template inst(field, t, idgen) =
       field = instantiateGeneric(a, field, t, t.typeInst)
       if field.ast != nil:
         patchBody(g, c, field.ast, info, a.idgen)
-      idgen = a.idgen
     else:
       localError(g.config, info, "unresolved generic parameter")
 
@@ -933,7 +931,7 @@ proc isTrival(s: PSym): bool {.inline.} =
   s == nil or (s.ast != nil and s.ast[bodyPos].len == 0)
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo;
-                        idgen: var IdGenerator) =
+                        idgen: IdGenerator) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'injectdestructors' pass depends on it.

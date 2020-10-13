@@ -1,7 +1,7 @@
 
 import ast, idents, lineinfos, modulegraphs, magicsys
 
-proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: var IdGenerator): PSym =
+proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
   result = newSym(skProc, getIdent(g.cache, "$"), nextId idgen, t.owner, info)
 
   let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)
@@ -62,7 +62,7 @@ proc searchObjCase(t: PType; field: PSym): PNode =
     result = searchObjCase(t[0].skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
   doAssert result != nil
 
-proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: var IdGenerator): PSym =
+proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
   result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextId idgen, t.owner, info)
 
   let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)

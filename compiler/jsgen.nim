@@ -2667,7 +2667,7 @@ proc getClassName(t: PType): Rope =
   if s.loc.r != nil: result = s.loc.r
   else: result = rope(s.name.s)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
@@ -2685,10 +2685,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerat
       (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
     discard writeRopeIfNotEqual(code, outFile)
-  storeBack idgen, m.idgen
 
 
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: var IdGenerator): PPassContext =
+proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   result = newModule(graph, s)
   result.idgen = idgen
 

@@ -25,7 +25,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
     result = ""
 
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
-                 idgen: var IdGenerator): PNode =
+                 idgen: IdGenerator): PNode =
   let sym = newSym(skType, getIdent(cache, name), nextId(idgen), t.owner, info)
   sym.magic = m
   sym.typ = t
@@ -36,11 +36,11 @@ proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s)
   result.info = info
 
-proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: var IdGenerator;
+proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator;
                    inst=false; allowRecursionX=false): PNode
 
 proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
-                       idgen: var IdGenerator;
+                       idgen: IdGenerator;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(cache, name, m, t, info, idgen)
@@ -52,7 +52,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
     else:
       result.add mapTypeToAstX(cache, t[i], info, idgen, inst)
 
-proc objectNode(cache: IdentCache; n: PNode; idgen: var IdGenerator): PNode =
+proc objectNode(cache: IdentCache; n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkSym:
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
@@ -64,7 +64,7 @@ proc objectNode(cache: IdentCache; n: PNode; idgen: var IdGenerator): PNode =
       result.add objectNode(cache, n[i], idgen)
 
 proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
-                   idgen: var IdGenerator;
+                   idgen: IdGenerator;
                    inst=false; allowRecursionX=false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(cache, name, m, t, info, idgen)
@@ -301,15 +301,15 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
   of tyOptDeprecated: doAssert false
 
-proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: var IdGenerator): PNode =
+proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   result = mapTypeToAstX(cache, t, info, idgen, inst=false, allowRecursionX=true)
 
 # the "Inst" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type declaration
-proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: var IdGenerator): PNode =
+proc opMapTypeInstToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=false)
 
 # the "Impl" version includes generic parameters in the resulting type tree
 # and also tries to look like the corresponding Nim type implementation
-proc opMapTypeImplToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: var IdGenerator): PNode =
+proc opMapTypeImplToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   result = mapTypeToAstX(cache, t, info, idgen, inst=true, allowRecursionX=true)

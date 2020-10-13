@@ -1071,19 +1071,22 @@ template id*(a: PIdObj): int =
   (x.itemId.module.int shl 24) + x.itemId.item.int
 
 type
-  IdGenerator* = distinct ItemId
+  IdGenerator* = ref ItemId # unfortunately, we really need the 'shared mutable' aspect here.
 
 const
   PackageModuleId* = -3'i32
 
-proc nextId*(x: var IdGenerator): ItemId {.inline.} =
-  inc x.ItemId.item
-  result = ItemId(x)
+proc nextId*(x: IdGenerator): ItemId {.inline.} =
+  inc x.item
+  result = x[]
 
-proc storeBack*(dest: var IdGenerator; src: IdGenerator) {.inline.} =
-  assert dest.ItemId.module == src.ItemId.module
-  assert dest.ItemId.item <= src.ItemId.item
-  dest = src
+when false:
+  proc storeBack*(dest: var IdGenerator; src: IdGenerator) {.inline.} =
+    assert dest.ItemId.module == src.ItemId.module
+    if dest.ItemId.item > src.ItemId.item:
+      echo dest.ItemId.item, " ", src.ItemId.item, " ", src.ItemId.module
+    assert dest.ItemId.item <= src.ItemId.item
+    dest = src
 
 proc getnimblePkgId*(a: PSym): int =
   let b = a.getnimblePkg
@@ -1810,7 +1813,7 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType; kind: TTypeKind; idgen: var IdGenerator): PType =
+proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
@@ -1818,7 +1821,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: var IdGenerator): PType =
     result = newType(kind, nextId(idgen), typ.owner)
     rawAddSon(result, typ)
 
-proc toRef*(typ: PType; idgen: var IdGenerator): PType =
+proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:

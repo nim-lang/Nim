@@ -114,14 +114,14 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   result = newSysType(g, tyFloat, size=8)
   result.n = literal
 
-proc skipIntLit*(t: PType; id: var IdGenerator): PType {.inline.} =
+proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
     result = copyType(t, nextId(id), t.owner)
     result.n = nil
   else:
     result = t
 
-proc addSonSkipIntLit*(father, son: PType; id: var IdGenerator) =
+proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit(id)

@@ -1765,11 +1765,11 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
-proc makePtrType(baseType: PType; idgen: var IdGenerator): PType =
+proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
   result = newType(tyPtr, nextId idgen, baseType.owner)
   addSonSkipIntLit(result, baseType, idgen)
 
-proc makeAddr(n: PNode; idgen: var IdGenerator): PNode =
+proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
     result = n
   else:

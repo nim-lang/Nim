@@ -1011,7 +1011,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
     for i in 0..<n.safeLen:
       injectDefaultCalls(n[i], c)
 
-proc injectDestructorCalls*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; n: PNode): PNode =
+proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
   var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
@@ -1043,4 +1043,3 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym;
     echo "--expandArc: ", owner.name.s
     echo renderTree(result, {renderIr, renderNoComments})
     echo "-- end of expandArc ------------------------"
-  storeBack idgen, c.idgen

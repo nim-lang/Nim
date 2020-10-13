@@ -55,7 +55,7 @@ proc lookupParam(params, dest: PNode): PSym =
       return params[i].sym
 
 proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: ConfigRef;
-                            idgen: var IdGenerator): PNode =
+                            idgen: IdGenerator): PNode =
   let liftDest = getPragmaVal(prc.ast, wLiftLocals)
   if liftDest == nil: return n
   let partialParam = lookupParam(prc.typ.n, liftDest)
@@ -71,4 +71,3 @@ proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: Config
   let w = newTree(nkStmtList, n)
   liftLocals(w, 0, c)
   result = w[0]
-  idgen = c.idgen

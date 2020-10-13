@@ -126,7 +126,7 @@ proc newCall(a: PSym, b: PNode): PNode =
   result.add newSymNode(a)
   result.add b
 
-proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: var IdGenerator): PType =
+proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PType =
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
   n.add newIntNode(nkIntLit, 0)
@@ -136,17 +136,17 @@ proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: var IdGenera
   if intType.isNil: intType = newType(tyInt, nextId(idgen), iter)
   rawAddSon(result, intType)
 
-proc createStateField(g: ModuleGraph; iter: PSym; idgen: var IdGenerator): PSym =
+proc createStateField(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
   result = newSym(skField, getIdent(g.cache, ":state"), nextId(idgen), iter, iter.info)
   result.typ = createClosureIterStateType(g, iter, idgen)
 
-proc createEnvObj(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; info: TLineInfo): PType =
+proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
   # YYY meh, just add the state field for every closure for now, it's too
   # hard to figure out if it comes from a closure iterator:
   result = createObj(g, idgen, owner, info, final=false)
   rawAddField(result, createStateField(g, owner, idgen))
 
-proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: var IdGenerator): PSym =
+proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
   if resultPos < iter.ast.len:
     result = iter.ast[resultPos].sym
   else:
@@ -209,7 +209,7 @@ proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
   result[0] = le
   result[1] = ri
 
-proc makeClosure*(g: ModuleGraph; idgen: var IdGenerator; prc: PSym; env: PNode; info: TLineInfo): PNode =
+proc makeClosure*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; env: PNode; info: TLineInfo): PNode =
   result = newNodeIT(nkClosure, info, prc.typ)
   result.add(newSymNode(prc))
   if env == nil:
@@ -237,13 +237,13 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
   result = conf.backend == backendJs and not isCompileTime
 
-proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: var IdGenerator; owner: PSym) =
+proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; idgen: IdGenerator; owner: PSym) =
   createTypeBoundOps(g, nil, refType.lastSon, info, idgen)
   createTypeBoundOps(g, nil, refType, info, idgen)
   if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
     owner.flags.incl sfInjectDestructors
 
-proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
   if liftingHarmful(g.config, owner): return n
   let iter = n.sym
@@ -270,7 +270,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym)
   createTypeBoundOpsLL(g, env.typ, n.info, idgen, owner)
   result.add makeClosure(g, idgen, iter, env, n.info)
 
-proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: var IdGenerator; owner: PSym): PNode =
+proc freshVarForClosureIter*(g: ModuleGraph; s: PSym; idgen: IdGenerator; owner: PSym): PNode =
   let envParam = getHiddenParam(g, owner)
   let obj = envParam.typ.skipTypes({tyOwned, tyRef, tyPtr})
   addField(obj, s, g.cache, idgen)
@@ -537,7 +537,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   localError(g.config, n.info, "internal error: environment misses: " & s.name.s)
   result = n
 
-proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo; idgen: var IdGenerator): PNode =
+proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   var v = newSym(skVar, getIdent(cache, envName), nextId(idgen), owner, info)
   v.flags = {sfShadowed, sfGeneratedOp}
   v.typ = typ
@@ -836,7 +836,7 @@ proc semCaptureSym*(s, owner: PSym) =
     # here
 
 proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
-                     idgen: var IdGenerator): PNode =
+                     idgen: IdGenerator): PNode =
   var d = initDetectionPass(g, fn, idgen)
   var c = initLiftingPass(fn)
   # pretend 'fn' is a closure iterator for the analysis:
@@ -849,10 +849,9 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType;
   result = liftCapturedVars(body, fn, d, c)
   fn.transitionRoutineSymKind(oldKind)
   fn.typ.callConv = oldCC
-  idgen = d.idgen
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
-                  idgen: var IdGenerator): PNode =
+                  idgen: IdGenerator): PNode =
   # XXX backend == backendJs does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -881,7 +880,6 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool;
         finishClosureCreation(fn, d, c, body.info, result)
     else:
       result = body
-    idgen = d.idgen
     #if fn.name.s == "get2":
     #  echo "had something to do ", d.somethingToDo
     #  echo renderTree(result, {renderIds})
@@ -892,7 +890,7 @@ proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
 
 # ------------------- iterator transformation --------------------------------
 
-proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym): PNode =
   # problem ahead: the iterator could be invoked indirectly, but then
   # we don't know what environment to create here:
   #

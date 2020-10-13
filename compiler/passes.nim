@@ -51,31 +51,18 @@ proc registerPass*(g: ModuleGraph; p: TPass) =
   internalAssert g.config, g.passes.len < maxPasses
   g.passes.add(p)
 
-proc carryPass*(g: ModuleGraph; p: TPass, module: PSym; idgen: var IdGenerator;
-                m: TPassData): TPassData =
-  var c = p.open(g, module, idgen)
-  result.input = p.process(c, m.input)
-  result.closeOutput = if p.close != nil: p.close(g, c, m.closeOutput, idgen)
-                       else: m.closeOutput
-
-proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym; idgen: var IdGenerator;
-                  passes: openArray[TPass]) =
-  var passdata: TPassData
-  passdata.input = nodes
-  for pass in passes:
-    passdata = carryPass(g, pass, module, idgen, passdata)
-
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
-                module: PSym; idgen: var IdGenerator) =
+                module: PSym; idgen: IdGenerator) =
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
       a[i] = g.passes[i].open(g, module, idgen)
     else: a[i] = nil
 
-proc closePasses(graph: ModuleGraph; a: var TPassContextArray; idgen: var IdGenerator) =
+proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in 0..<graph.passes.len:
-    if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m, idgen)
+    if not isNil(graph.passes[i].close):
+      m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
@@ -123,7 +110,7 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
-proc processModule*(graph: ModuleGraph; module: PSym; idgen: var IdGenerator;
+proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
@@ -152,7 +139,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: var IdGenerator;
     var m: PNode = nil
     for i in 0..<graph.passes.len:
       if not isNil(graph.passes[i].close) and not graph.passes[i].isFrontend:
-        m = graph.passes[i].close(graph, a[i], m, idgen)
+        m = graph.passes[i].close(graph, a[i], m)
       a[i] = nil
   else:
     openPasses(graph, a, module, idgen)
@@ -215,5 +202,5 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: var IdGenerator;
           if not processTopLevelStmt(graph, n, a): break
       closeParser(p)
       if s.kind != llsStdIn: break
-    closePasses(graph, a, idgen)
+    closePasses(graph, a)
   result = true

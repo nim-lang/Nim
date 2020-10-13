@@ -279,7 +279,7 @@ proc addToLib*(lib: PLib, sym: PSym) =
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, nextId(c.idgen), getCurrOwner(c))
 
-proc makePtrType*(owner: PSym, baseType: PType; idgen: var IdGenerator): PType =
+proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
   result = newType(tyPtr, nextId(idgen), owner)
   addSonSkipIntLit(result, baseType, idgen)
 
@@ -304,7 +304,7 @@ proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
     result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType, c.idgen)
 
-proc makeVarType*(owner: PSym, baseType: PType; idgen: var IdGenerator; kind = tyVar): PType =
+proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
@@ -334,7 +334,7 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result.n = n
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
-                      idgen: var IdGenerator): PType =
+                      idgen: IdGenerator): PType =
   result = newType(kind, nextId(idgen), owner)
   result.sons = sons
 

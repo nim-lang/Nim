@@ -1849,7 +1849,7 @@ template injectG() {.dirty.} =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nosinks.} =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
   result.idgen = idgen
@@ -2035,7 +2035,7 @@ proc updateCachedModule(m: BModule) =
     cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil: return
   var m = BModule(b)
@@ -2088,7 +2088,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode; idgen: var IdGenerat
 
   let mm = m
   m.g.modulesClosed.add mm
-  storeBack idgen, m.idgen
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

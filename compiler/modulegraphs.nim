@@ -80,8 +80,8 @@ type
     idgen*: IdGenerator
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nimcall.}
-  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode; idgen: var IdGenerator): PNode {.nimcall.}
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
   TPass* = tuple[open: TPassOpen,
@@ -173,6 +173,7 @@ proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
+  result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
@@ -196,7 +197,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheTables = initTable[string, BTree[string, PNode]]()
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
-  result.idgen = IdGenerator(ItemId(module: -1'i32, item: 0'i32))
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

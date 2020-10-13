@@ -24,7 +24,7 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
-proc transformBody*(g: ModuleGraph; idgen: var IdGenerator, prc: PSym, cache: bool): PNode
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool): PNode
 
 import closureiters, lambdalifting
 
@@ -851,7 +851,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   else:
     result = transformSons(c, n)
 
-proc commonOptimizations*(g: ModuleGraph; idgen: var IdGenerator; c: PSym, n: PNode): PNode =
+proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
   result = n
   for i in 0..<n.safeLen:
     result[i] = commonOptimizations(g, idgen, c, n[i])
@@ -1028,7 +1028,7 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   popTransCon(c)
   incl(result.flags, nfTransf)
 
-proc openTransf(g: ModuleGraph; module: PSym, filename: string; idgen: var IdGenerator): PTransf =
+proc openTransf(g: ModuleGraph; module: PSym, filename: string; idgen: IdGenerator): PTransf =
   new(result)
   result.contSyms = @[]
   result.breakSyms = @[]
@@ -1077,7 +1077,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; idgen: var IdGenerator; prc: PSym; cache: bool): PNode =
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1103,12 +1103,11 @@ proc transformBody*(g: ModuleGraph; idgen: var IdGenerator; prc: PSym; cache: bo
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
-    idgen = c.idgen
 
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})
 
-proc transformStmt*(g: ModuleGraph; idgen: var IdGenerator; module: PSym, n: PNode): PNode =
+proc transformStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
     result = n
   else:
@@ -1117,9 +1116,8 @@ proc transformStmt*(g: ModuleGraph; idgen: var IdGenerator; module: PSym, n: PNo
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
-    idgen = c.idgen
 
-proc transformExpr*(g: ModuleGraph; idgen: var IdGenerator; module: PSym, n: PNode): PNode =
+proc transformExpr*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
     result = n
   else:
@@ -1129,4 +1127,3 @@ proc transformExpr*(g: ModuleGraph; idgen: var IdGenerator; module: PSym, n: PNo
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
     incl(result.flags, nfTransf)
-    idgen = c.idgen

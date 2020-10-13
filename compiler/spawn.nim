@@ -53,7 +53,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
   result = not containsGarbageCollectedRef(t)
 
-proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: var IdGenerator; owner: PSym; typ: PType;
+proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; idgen: IdGenerator; owner: PSym; typ: PType;
                  v: PNode; useShallowCopy=false): PSym =
   result = newSym(skTemp, getIdent(g.cache, genPrefix), nextId idgen, owner, varSection.info,
                   owner.options)
@@ -111,7 +111,7 @@ stmtList:
 
 proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
-                       idgen: var IdGenerator;
+                       idgen: IdGenerator;
                        spawnKind: TSpawnResult, result: PSym) =
   var body = newNodeI(nkStmtList, f.info)
   var threadLocalBarrier: PSym
@@ -185,7 +185,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
       exceptions = emptyNode)
   result.typ = t
 
-proc createCastExpr(argsParam: PSym; objType: PType; idgen: var IdGenerator): PNode =
+proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode =
   result = newNodeI(nkCast, argsParam.info)
   result.add newNodeI(nkEmpty, argsParam.info)
   result.add newSymNode(argsParam)
@@ -193,7 +193,7 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: var IdGenerator): PN
   result.typ.rawAddSon(objType)
 
 proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
-                             idgen: var IdGenerator; owner: PSym; scratchObj: PSym,
+                             idgen: IdGenerator; owner: PSym; scratchObj: PSym,
                              castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
@@ -221,7 +221,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     call.add(newSymNode(temp))
 
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
-                             idgen: var IdGenerator;
+                             idgen: IdGenerator;
                              owner: PSym; scratchObj: PSym;
                              castExpr, call,
                              varSection, varInit, result: PNode) =
@@ -305,7 +305,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
                                     useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
-proc wrapProcForSpawn*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym; spawnExpr: PNode; retType: PType;
+proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExpr: PNode; retType: PType;
                        barrier, dest: PNode = nil): PNode =
   # if 'barrier' != nil, then it is in a 'parallel' section and we
   # generate quite different code

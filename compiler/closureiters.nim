@@ -1117,7 +1117,7 @@ proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
     for i in 0..<n.len:
       n[i] = ctx.skipThroughEmptyStates(n[i])
 
-proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: var IdGenerator;owner: PSym): PType =
+proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: PSym): PType =
   result = newType(tyArray, nextId(idgen), owner)
 
   let rng = newType(tyRange, nextId(idgen), owner)
@@ -1383,7 +1383,7 @@ proc preprocess(c: var PreprocessContext; n: PNode): PNode =
     for i in 0 ..< n.len:
       result[i] = preprocess(c, n[i])
 
-proc transformClosureIterator*(g: ModuleGraph; idgen: var IdGenerator; fn: PSym, n: PNode): PNode =
+proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: PNode): PNode =
   var ctx: Ctx
   ctx.g = g
   ctx.fn = fn
@@ -1398,7 +1398,6 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: var IdGenerator; fn: PSym,
   ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), nextId(idgen), fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
   var n = preprocess(pc, n.toStmtList)
-  idgen = pc.idgen
   #echo "transformed into ", n
   #var n = n.toStmtList
 
@@ -1428,7 +1427,6 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: var IdGenerator; fn: PSym,
 
   result = ctx.transformStateAssignments(result)
   result = ctx.wrapIntoStateLoop(result)
-  idgen = ctx.idgen
 
   # echo "TRANSFORM TO STATES: "
   # echo renderTree(result)

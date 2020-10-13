@@ -107,7 +107,7 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
       s.ast[resultPos] = newNodeI(nkEmpty, s.info)
     s.ast[dispatcherPos] = dispatcher
 
-proc createDispatcher(s: PSym; idgen: var IdGenerator): PSym =
+proc createDispatcher(s: PSym; idgen: IdGenerator): PSym =
   var disp = copySym(s, nextId(idgen))
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
@@ -157,7 +157,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
       if disp.typ.lockLevel < meth.typ.lockLevel:
         disp.typ.lockLevel = meth.typ.lockLevel
 
-proc methodDef*(g: ModuleGraph; idgen: var IdGenerator; s: PSym, fromCache: bool) =
+proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym, fromCache: bool) =
   var witness: PSym
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher

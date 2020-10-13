@@ -27,7 +27,7 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph; idgen: var IdGenerator): PEvalContext =
+              graph: ModuleGraph; idgen: IdGenerator): PEvalContext =
   # For Nimble we need to export 'setupVM'.
   result = newCtx(module, cache, graph, idgen)
   result.mode = emRepl
@@ -197,10 +197,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       setResult(a, "")
       setResult(a, stdin.readAll())
 
-  storeBack idgen, result.idgen
-
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
-                   idgen: var IdGenerator;
+                   idgen: IdGenerator;
                    freshDefines=true; conf: ConfigRef) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
@@ -248,4 +246,3 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   undefSymbol(conf.symbols, "nimscript")
   undefSymbol(conf.symbols, "nimconfig")
   conf.symbolFiles = oldSymbolFiles
-  storeBack idgen, vm.idgen

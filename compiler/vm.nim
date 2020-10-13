@@ -2122,14 +2122,14 @@ proc getGlobalValue*(c: PCtx; s: PSym): PNode =
 
 include vmops
 
-proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: var IdGenerator) =
+proc setupGlobalCtx*(module: PSym; graph: ModuleGraph; idgen: IdGenerator) =
   if graph.vm.isNil:
     graph.vm = newCtx(module, graph.cache, graph, idgen)
     registerAdditionalOps(PCtx graph.vm)
   else:
-    refresh(PCtx graph.vm, module)
+    refresh(PCtx graph.vm, module, idgen)
 
-proc myOpen(graph: ModuleGraph; module: PSym; idgen: var IdGenerator): PPassContext {.nosinks.} =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
@@ -2148,13 +2148,12 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   c.oldErrorCount = c.config.errorCounter
 
-proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode; idgen: var IdGenerator): PNode =
+proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   result = myProcess(c, n)
-  storeBack idgen, c.idgen
 
 const evalPass* = makePass(myOpen, myProcess, myClose)
 
-proc evalConstExprAux(module: PSym; idgen: var IdGenerator;
+proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   if g.config.errorCounter > 0: return n
@@ -2173,18 +2172,17 @@ proc evalConstExprAux(module: PSym; idgen: var IdGenerator;
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
-  storeBack idgen, c.idgen
 
-proc evalConstExpr*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; e: PNode): PNode =
+proc evalConstExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, idgen, g, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; e: PNode, prc: PSym): PNode =
+proc evalStaticExpr*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym): PNode =
   result = evalConstExprAux(module, idgen, g, prc, e, emStaticExpr)
 
-proc evalStaticStmt*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; e: PNode, prc: PSym) =
+proc evalStaticStmt*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode, prc: PSym) =
   discard evalConstExprAux(module, idgen, g, prc, e, emStaticStmt)
 
-proc setupCompileTimeVar*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; n: PNode) =
+proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: PNode) =
   discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt)
 
 proc prepareVMValue(arg: PNode): PNode =
@@ -2229,12 +2227,12 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
-proc errorNode(idgen: var IdGenerator; owner: PSym, n: PNode): PNode =
+proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = newType(tyError, nextId idgen, owner)
   result.typ.flags.incl tfCheckedForDestructor
 
-proc evalMacroCall*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; templInstCounter: ref int;
+proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =
   if g.config.errorCounter > 0: return errorNode(idgen, module, n)
 
@@ -2293,4 +2291,3 @@ proc evalMacroCall*(module: PSym; idgen: var IdGenerator; g: ModuleGraph; templI
   dec(g.config.evalMacroCounter)
   c.callsite = nil
   c.mode = oldMode
-  storeBack idgen, c.idgen

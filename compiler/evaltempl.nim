@@ -169,7 +169,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
                    ic: IdentCache; instID: ref int;
-                   idgen: var IdGenerator;
+                   idgen: IdGenerator;
                    fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
@@ -210,4 +210,3 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   dec(conf.evalTemplateCounter)
   # The instID must be unique for every template instantiation, so we increment it here
   inc instID[]
-  idgen = ctx.idgen

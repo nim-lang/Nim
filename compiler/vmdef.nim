@@ -282,17 +282,18 @@ type
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: var IdGenerator): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g, idgen: idgen)
 
-proc refresh*(c: PCtx, module: PSym) =
+proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
+  c.idgen = idgen
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len

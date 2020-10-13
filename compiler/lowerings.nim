@@ -66,7 +66,7 @@ proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
   result[1].add ri
 
-proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
@@ -86,7 +86,7 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owne
     if n[i].kind == nkSym: v.addVar(n[i], val)
     else: result.add newAsgnStmt(n[i], val)
 
-proc evalOnce*(g: ModuleGraph; value: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc evalOnce*(g: ModuleGraph; value: PNode; idgen: IdGenerator; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
   ## freely, multiple times. This is frequently required and such a builtin would also be
   ## handy to have in macros.nim. The value that can be reused is 'result.lastSon'!
@@ -113,7 +113,7 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
 proc newTryFinally*(body, final: PNode): PNode =
   result = newTree(nkHiddenTryStmt, body, newTree(nkFinally, final))
 
-proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
@@ -132,7 +132,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: var IdGenerato
   for i in 0..<lhs.len:
     result.add newAsgnStmt(lhs[i], newTupleAccessRaw(tempAsNode, i))
 
-proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): PNode =
+proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
   var temp = newSym(skVar, getIdent(g.cache, genPrefix), nextId(idgen), owner, n.info, owner.options)
@@ -152,7 +152,7 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: var IdGenerator; owner: PSym): 
   result.add newFastAsgnStmt(n[1], n[2])
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
-proc createObj*(g: ModuleGraph; idgen: var IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
+proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
   result = newType(tyObject, nextId(idgen), owner)
   if final:
     rawAddSon(result, nil)
@@ -220,7 +220,7 @@ proc lookupInRecord(n: PNode, id: int): PSym =
     if n.sym.id == -abs(id): result = n.sym
   else: discard
 
-proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: var IdGenerator) =
+proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len),
@@ -235,7 +235,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache; idgen: var IdGenerator) =
   obj.n.add newSymNode(field)
   fieldCheck()
 
-proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: var IdGenerator): PSym {.discardable.} =
+proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache; idgen: IdGenerator): PSym {.discardable.} =
   result = lookupInRecord(obj.n, s.id)
   if result == nil:
     var field = newSym(skField, getIdent(cache, s.name.s & $obj.n.len), nextId(idgen),
@@ -322,7 +322,7 @@ proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
 
-proc genAddrOf*(n: PNode; idgen: var IdGenerator; typeKind = tyPtr): PNode =
+proc genAddrOf*(n: PNode; idgen: IdGenerator; typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
   result.typ = newType(typeKind, nextId(idgen), n.typ.owner)

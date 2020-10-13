@@ -137,7 +137,7 @@ proc loadAny(p: var JsonParser, t: PType,
              tab: var Table[BiggestInt, PNode];
              cache: IdentCache;
              conf: ConfigRef;
-             idgen: var IdGenerator): PNode =
+             idgen: IdGenerator): PNode =
   case t.kind
   of tyNone: assert false
   of tyBool:
@@ -281,7 +281,7 @@ proc loadAny(p: var JsonParser, t: PType,
   else:
     internalError conf, "cannot marshal at compile-time " & t.typeToString
 
-proc loadAny*(s: string; t: PType; cache: IdentCache; conf: ConfigRef; idgen: var IdGenerator): PNode =
+proc loadAny*(s: string; t: PType; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator): PNode =
   var tab = initTable[BiggestInt, PNode]()
   var p: JsonParser
   open(p, newStringStream(s), "unknown file")

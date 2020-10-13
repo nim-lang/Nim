@@ -137,7 +137,7 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    var idgen = m.itemId.IdGenerator
+    var idgen = IdGenerator(module: m.itemId.module, item: m.itemId.item)
     processModule(graph, m, idgen, llStreamOpenStdIn())
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =

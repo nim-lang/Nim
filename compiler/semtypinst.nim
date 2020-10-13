@@ -459,7 +459,7 @@ proc eraseVoidParams*(t: PType) =
       setLen t.n.sons, pos
       break
 
-proc skipIntLiteralParams*(t: PType; idgen: var IdGenerator) =
+proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
   for i in 0..<t.len:
     let p = t[i]
     if p == nil: continue
