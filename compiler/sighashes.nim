@@ -379,3 +379,8 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
     hashBodyTree(graph, c, sym.ast[bodyPos])
     c.md5Final(result.MD5Digest)
     graph.symBodyHashes[sym.id] = result
+
+proc hashTypeDef*(p: PType): SigHash =
+  ## A hash of the type that may eventually discern between distinct and
+  ## alias; this is used to separate entries in the typecaches
+  result = hashType(p, {CoType}) #, CoNaming})

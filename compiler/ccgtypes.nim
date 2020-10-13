@@ -763,7 +763,8 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
            [foo, result, rope(n)])
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
-      let cppName = getTypeName(p, t, sig)
+      # TODO: fix this hack of the rope...
+      let cppName: Rope = getTypeName(p, t, sig)
       var i = 0
       var chunkStart = 0
 

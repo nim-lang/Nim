@@ -12,11 +12,9 @@
 import
 
   ast, ropes, options, intsets, tables, ndi, lineinfos, sets, pathutils,
-  modulegraphs
+  modulegraphs, astalgo, hashes
 
 type
-  ConflictsTable* = Table[string, int]
-
   TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
@@ -140,6 +138,21 @@ type
                             # unconditionally...
                             # nimtvDeps is VERY hard to cache because it's
                             # not a list of IDs nor can it be made to be one.
+    nameCache: MangleCache
+
+  ConflictsTable* = Table[string, int]
+  ConflictKey* = int
+
+  BName* = distinct string  # a mangled name used in backend code
+
+  Mangling = object
+    key: ConflictKey
+    sig: SigHash
+    name: BName
+    module: int
+  MangleCache = object
+    manglings: Table[BName, Mangling]
+    identities: Table[ConflictKey, BName]
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -214,9 +227,121 @@ template getem*() =
   else:
     p
 
+proc findPendingModule*(g: BModuleList; s: PSym): BModule =
+  ## Find the backend module to which a symbol belongs.
+  result = g.modules[getModule(s).position]
+
+proc findPendingModule*(m: BModule; s: PSym): BModule =
+  ## Find the backend module to which a symbol belongs.
+  if s == nil:
+    result = m
+  else:
+    result = findPendingModule(m.g, s)
+
+proc findPendingModule*(m: BModule; t: PType): BModule =
+  ## Find the backend module to which a type belongs.
+  if t.owner == nil:
+    result = findPendingModule(m.g, t.sym)
+  else:
+    result = findPendingModule(m.g, t.owner)
+
+# get a ConflictKey from a PSym or PType
+template conflictKey*(s: PSym): ConflictKey = ConflictKey s.id
+template conflictKey*(s: PType): ConflictKey = ConflictKey s.uniqueId
+
+proc initMangleCache(): MangleCache = discard
+
+proc `$`*(s: BName): string {.borrow.}
+proc hash*(s: BName): Hash {.borrow.}
+proc `==`*(a, b: BName): bool {.borrow.}
+proc `<`*(a, b: BName): bool {.borrow.}
+proc len(s: BName): int {.borrow.}
+proc isEmpty*(s: BName): bool = s.len == 0
+
+proc add*(s: var BName; x: string or Rope) =
+  # sure, you can mutate it, but we'll make it hard for you
+  assert not s.isEmpty
+  (string s).add "/*" & $x & "*/"
+
+proc `&`*(s: BName; x: string or Rope): BName =
+  assert not s.isEmpty
+  result = s
+  result.add x
+
+converter toString*(s: BName): string = s.string
+converter toRope*(s: BName): Rope = rope(s.string)
+
+proc newMangling(m: BModule; p: PSym or PType; name: string;
+                 sig: SigHash): Mangling =
+  assert name.len > 0
+  result = Mangling(key: conflictKey(p), sig: sig, name: name.BName,
+                    module: m.module.id)
+
+proc setName*(g: BModuleList; m: BModule; p: PSym or PType;
+              name: string; sig: SigHash): BName =
+  let man = newMangling(m, p, name, sig)
+  result = man.name
+  when defined(release):
+    g.nameCache.identities[man.key] = result
+    g.nameCache.manglings[result] = man
+  else:
+    try:
+      echo "set key ", man.key, " with sig ", man.sig, " at ", man.name
+      assert man.key notin g.nameCache.identities
+      g.nameCache.identities[man.key] = result
+      if man.name in g.nameCache.manglings:
+        assert g.nameCache.manglings[man.name].sig == man.sig
+        assert g.nameCache.manglings[man.name].module == man.module
+      g.nameCache.manglings[result] = man
+    except:
+      echo "assertion error for mangling `", name, "`"
+      echo "here's the input object:"
+      debug p
+      echo "here's the current mangling:"
+      echo repr(man)
+      if man.key in g.nameCache.identities:
+        echo "key already cached as `", g.nameCache.identities[man.key], "`"
+      if man.name in g.nameCache.manglings:
+        echo "name already cached; here's the previous mangling:"
+        echo repr(g.nameCache.manglings[man.name])
+      raise
+
+proc setName*(g: BModuleList; p: PSym or PType; name: string) =
+  let sig = when p is PSym: sigHash(p) else: hashTypeDef(p)
+  assert p.owner != nil
+  let m = findPendingModule(g, p.owner)
+  g.setName(m, p, name, sig)
+
+proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
+  result = key in g.nameCache.identities
+  when not defined(release):
+    if result:
+      try:
+        let man = g.nameCache.manglings[g.nameCache.identities[key]]
+        assert man.key == key
+        assert man.sig == sig
+        assert man.name == g.nameCache.identities[key]
+      except:
+        echo "looking for key ", key, " with sig ", sig
+        echo "which has name ", g.nameCache.identities[key]
+        echo "but that name isn't in the manglings cache"
+        raise
+
+proc name*(g: BModuleList; key: ConflictKey; sig: SigHash): BName =
+  # let it raise a KeyError as necessary...
+  result = g.nameCache.identities[key]
+  when not defined(release):
+    echo "get key ", key, " with sig ", sig, " at ", result
+    # make sure our expectations match reality
+    let man = g.nameCache.manglings[result]
+    assert sig == man.sig
+    assert result == man.name
+    assert key == man.key
+
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet())
+    config: g.config, graph: g, nimtvDeclared: initIntSet(),
+    nameCache: initMangleCache())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:

@@ -137,7 +137,9 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  result = "Marker_" & getTypeName(m, origTyp)
+  result.add "Marker_"
+  result.add Rope getTypeName(m, origTyp, sig)
+  result.add "/* fix this abuse from genTraverseProc() */"
   let
     hcrOn = m.hcrOn
     typ = origTyp.skipTypes(abstractInstOwned)

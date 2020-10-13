@@ -40,10 +40,10 @@ const
     when true:
       {tyObject, tyEnum} # obey the boss
     else:
-      {tyObject, tyEnum, tyString}
+      #{tyObject, tyEnum, tyString}
+      {TTypeKind.low .. TTypeKind.high} - {tyString}
   addFirstParamToProcs = true
   findSourceModulesForTypes = true
-  hashTypeOptions = {CoType} #, CoNaming}
   debugMangle = true and not defined(release)
 
   # these may be shorted to the first three characters following `ty`
@@ -67,10 +67,6 @@ template add_and(s: typed; chs: string) = s.add "_"; s.add chs
 using
   g: ModuleGraph
 
-# get a unique id from a psym or ptype; these are keys in ConflictsTable
-template conflictKey(s: PSym): int = s.id
-template conflictKey(s: PType): int = s.uniqueId
-
 # useful for debugging
 template conflictKey(s: BModule): int = conflictKey(s.module)
 template conflictKey(s: BProc): int =
@@ -79,6 +75,7 @@ template conflictKey(s: BProc): int =
   else:
     conflictKey(s.prc)
 
+template mangle*(p: ModuleOrProc; t: PType): string = $getTypeName(p, t)
 proc mangle*(p: ModuleOrProc; s: PSym): string
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope
 proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string
@@ -87,15 +84,6 @@ proc `==`(m, p: BModule): bool =
   if not p.isNil and not m.isNil:
     result = p.module.id == m.module.id
     result = result and p.cfilename.string == m.cfilename.string
-
-proc hashTypeDef*(p: PType): SigHash =
-  ## A hash of the type that may eventually discern between distinct and
-  ## alias; this is used to separate entries in the typecaches
-  result = hashType(p, hashTypeOptions)
-  when debugMangle:
-    if startsWith($result, inspect):
-      if p.sym != nil:
-        echo mangle(p.sym.name.s), " --> ", result
 
 proc getSomeNameForModule*(m: PSym): string =
   ## Produce a name for the given module symbol.
@@ -109,24 +97,6 @@ proc getSomeNameForModule*(m: PSym): string =
   if result.startsWith("stdlib_"):
     # replaceWord will consume _ :-(
     result = "std_" & result[len("stdlib_") .. ^1]
-
-proc findPendingModule*(m: BModule; s: PSym): BModule =
-  ## Find the backend module to which a symbol belongs.
-  if s == nil:
-    result = m
-  else:
-    var ms = getModule(s)
-    result = m.g.modules[ms.position]
-
-proc findPendingModule*(m: BModule; t: PType): BModule =
-  ## Find the backend module to which a type belongs.
-  if t.owner == nil:
-    result = findPendingModule(m, t.sym)
-  else:
-    result = findPendingModule(m, t.owner)
-    #echo "parent owner of type ", conflictKey(t), " is ", result.module.id
-  #echo "parent result of type ", conflictKey(t), " is ", result.module.id
-  #echo "parent sym of type ", conflictKey(t), " is ", findPendingModule(m, t.sym).module.id
 
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -151,8 +121,6 @@ proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
       if existing != v:
         assert false, "attempt to reindex " & s
   if existing < v:
-    existing = v
-    # working around an apparent bug in that we cannot modify existing...
     tables.`[]=`(conflicts, s, v)
   elif existing > v:
     when debugMangle:
@@ -421,32 +389,35 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
   # XXX: we don't do anything special with regard to m.hcrOn
   assert result.len > 0
 
-when not nimIncremental:
-  proc getConflictFromCache(g: ModuleGraph; s: PSym): int =
-    discard
-else:
-  import std/db_sqlite
+when false:
+  proc mangle*(g: BModuleList; p: PType): string
+  proc mangle*(g: BModuleList; p: PSym): string
 
-  proc getConflictFromCache(g: ModuleGraph; s: PSym): int =
-    template db(): DbConn = g.incr.db
-    const
-      query = sql"""
-        select id from conflicts
-        where nimid = ?
-        order by id desc
-        limit 1
-      """
-      insert = sql"""
-        insert into conflicts (nimid)
-        values (?)
-      """
-    let id = db.getValue(query, s.id)
-    if id == "":
-      # set the counter to the row id, not the symbol id or the actual count
-      result = db.insertID(insert, s.id).int
+  proc mangle*(g: BModuleList; p: PType): string =
+    g.nameCache[conflictKey(p), hashTypeDef(p)]
+
+  proc mangle*(g: BModuleList; p: PSym): string =
+    g.nameCache[conflictKey(p), sigHash(p)]
+
+  proc mangle*(g: BModuleList): MangleCache =
+    g.nameCache
+
+proc getConflictFromCache(p: ModuleOrProc; s: PSym | PType): string =
+  let m = getem()
+  template g(): ModuleGraph = m.g.graph
+  let key = conflictKey(s)
+  let sig =
+    when s is PType:
+      hashTypeDef(s)
     else:
-      result = id.parseInt
-    assert result > 0
+      sigHash(s)
+  if s notin g.mangle:
+    raise
+  else:
+    let man = g.nameCache[key]
+    result = man.name
+    assert man.sig == sig
+    assert man.module == m.module.id
 
 proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
   ## `true` if the symbol is presumed to be in module-level scope
@@ -474,25 +445,36 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   ## Produce an appropriate name for a symbol, and the instances of its
   ## occurence, which may have been incremented for this instance.
   let m = getem()
-  template g(): ModuleGraph = m.g.graph
+  let key = conflictKey(s)
   var counter = -1         # the current counter for this name
+
+  # for now, use the global registry everywhere if possible
+  let sig = sigHash(s)
+  if m.g.hasName(key, sig):
+    return (name: string m.g.name(key, sig), counter: 0)
 
   # we always mangle it anew, which is kinda sad
   var name = mangle(p, s)
-  let key = $conflictKey(s)
 
   block:
     when p is BModule:
-      if g.config.symbolFiles != disabledSf:
+      if m.g.config.symbolFiles != disabledSf:
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
-        counter = getConflictFromCache(g, s)
+
+        #let sig = sigHash(s)
+        if m.g.hasName(key, sig):
+          name = m.g.name(key, sig)
+          counter = 0
         break
 
     if atModuleScope(p, s):
       # critically, we must check for conflicts at the source module
       # in the event a global symbol is actually foreign to `p`
-      counter = floatConflict(p, s, name, conflictKey(s))
+      counter = floatConflict(p, s, name, key)
+      var r = name
+      r.maybeAddCounter counter
+      discard m.g.setName(m, s, r, sigHash(s))
       break
 
   # only write mangled names for c codegen
@@ -505,7 +487,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
   # if the counter hasn't been set from a foreign or cached symbol,
   if counter == -1:
     # set it using the local conflicts table
-    counter = getOrSet(p, name, conflictKey(s))
+    counter = getOrSet(p, name, key)
 
   result = (name: name, counter: counter)
 
@@ -523,12 +505,14 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
     if startsWith($result, inspect):
       debug s
       when p is BModule:
-        result = "/*" & $conflictKey(s) & "*/" & result
+        #if "/" notin $result:
+        #  result = "/*" & $conflictKey(s) & "*/" & result
         debug p.cfilename.string
         debug "module $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result, $conflictKey(p.module) ]
       elif p is BProc:
-        result = "/*" & $conflictKey(s) & "*/" & result
+        #if "/" notin $result:
+        #  result = "/*" & $conflictKey(s) & "*/" & result
         debug "  proc $4 >> $1 .. $2 -> $3" %
           [ $conflictKey(s), s.name.s, $result,
            if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
@@ -549,16 +533,15 @@ proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
   # instantiate a new rope for mutation reasons
   result = rope $result
 
-proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
-  ## Produce a useful name for the given type; this is what codegen uses
-  ## when a SigHash is not available.
-  var m = getem()
-
+proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
+  ## Retrieve (or produce) a useful name for the given type; this is what
+  ## codegen uses exclusively.
+  let m = getem()
+  var t = typ
   # we don't currently use the proc scope for types; this is just a guard
   # to ensure that we don't do so accidentally
   var p = m
 
-  var t = typ
   var name: string
   block found:
     # try to find the actual type
@@ -566,8 +549,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
       # use an immutable symbol name if we find one
       if t.sym != nil and hasImmutableName(t.sym):
         # the symbol might need mangling, first
-        result = mangleName(p, t.sym)
-        name = $result
+        name = $mangleName(p, t.sym)
         break found
       elif t.kind in irrelevantForNaming:
         t = t.lastSon    # continue into more precise types
@@ -577,28 +559,39 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
     assert t != nil
     name = typeName(p, t)
 
-  when false:
-    # the idea was to fix arrInt but it breaks seqTup so... :-(
-    # we could pass a flag down through typeName i guess.
-    if t.sym == nil:
-      name.add "_" & $conflictKey(t)
-
-  result = name.rope
-
-  var counter: int
-  when findSourceModulesForTypes:
-    if atModuleScope(p, t):
-      # make sure we use the source module for any type requested
-      counter = floatConflict(p, t, name, conflictKey(t))
-    else:
-      # get the counter from the local proc or module
-      counter = getOrSet(p, name, conflictKey(t))
+  if m.g.hasName(conflictKey(t), sig):
+    result = m.g.name(conflictKey(t), sig)
+    assert $result == name, "cached value doesn't match new mangle"
   else:
-    counter = getOrSet(p, name, conflictKey(t))
+    when false:
+      # the idea was to fix arrInt but it breaks seqTup so... :-(
+      # we could pass a flag down through typeName i guess.
+      if t.sym == nil:
+        name.add "_" & $conflictKey(t)
 
-  # pthread_mutex_t
-  if not hasImmutableName(t.sym):
-    result.maybeAddCounter counter
+    var r = name.rope
+
+    var counter: int
+    when findSourceModulesForTypes:
+      if atModuleScope(p, t):
+        # make sure we use the source module for any type requested
+        counter = floatConflict(p, t, name, conflictKey(t))
+      else:
+        # get the counter from the local proc or module
+        counter = getOrSet(p, name, conflictKey(t))
+    else:
+      counter = getOrSet(p, name, conflictKey(t))
+
+    # pthread_mutex_t
+    if not hasImmutableName(t.sym):
+      r.maybeAddCounter counter
+
+    try:
+      # cache the name globally
+      result = m.g.setName(m, typ, $r, sig)
+    except:
+      echo "counter was ", counter
+      raise
 
   when debugMangle:
     if inspect in $result:
@@ -612,13 +605,8 @@ proc getTypeName*(p: ModuleOrProc; typ: PType): Rope =
       result.add "/*" & $conflictKey(typ) & "*/"
       echo "-> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(typ)
 
-  if result == nil:
+  if result.isEmpty:
     internalError(m.config, "getTypeName: " & $typ.kind)
-
-proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): Rope =
-  ## Retrieve (or produce) a useful name for the given type; this is what
-  ## codegen uses exclusively.
-  result = getTypeName(p, typ)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
