@@ -2599,7 +2599,7 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `mget proc<#mget,CountTableRef[A],A>`_
+  ## * `inc proc<#inc,CountTableRef[A],A>`_ to inc even if missing
   ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
