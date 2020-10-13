@@ -7,13 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``intsets`` module implements an efficient `int` set implemented as a
+## The ``ordsets`` module implements an efficient `Ordinal` set implemented as a
 ## `sparse bit set`:idx:.
 ##
-## **Note**: Currently the assignment operator ``=`` for ``IntSet``
+## Supported `A: Ordinal` types include enums and distincts with int base.
+##
+## **Note**: Currently the assignment operator ``=`` for ``OrdSet[A]``
 ## performs some rather meaningless shallow copy. Since Nim currently does
 ## not allow the assignment operator to be overloaded, use `assign proc
-## <#assign,IntSet,IntSet>`_ to get a deep copy.
+## <#assign,OrdinalSet[A],OrdinalSet[A]>`_ to get a deep copy.
 ##
 ## **See also:**
 ## * `sets module <sets.html>`_ for more general hash sets
@@ -42,12 +44,16 @@ type
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[PTrunk]
-  IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
+
+  ## An efficient set of `Ordinal` implemented as a sparse bit set.
+  OrdSet*[A: Ordinal] = object
     elems: int           # only valid for small numbers
     counter, max: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
+
+  IntSet* = OrdSet[int]
 
 proc mustRehash[T](t: T): bool {.inline.} =
   let length = t.max + 1
@@ -60,7 +66,7 @@ proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   perturb = cast[Hash](perturb2)
   result = ((5*h) + 1 + perturb) and maxHash
 
-proc intSetGet(t: IntSet, key: int): PTrunk =
+proc intSetGet[A](t: OrdSet[A], key: int): PTrunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -69,7 +75,7 @@ proc intSetGet(t: IntSet, key: int): PTrunk =
     h = nextTry(h, t.max, perturb)
   result = nil
 
-proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
+proc intSetRawInsert[A](t: OrdSet[A], data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
   var perturb = desc.key
   while data[h] != nil:
@@ -78,7 +84,7 @@ proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   assert(data[h] == nil)
   data[h] = desc
 
-proc intSetEnlarge(t: var IntSet) =
+proc intSetEnlarge[A](t: var OrdSet[A]) =
   var n: TrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
@@ -87,7 +93,7 @@ proc intSetEnlarge(t: var IntSet) =
     if t.data[i] != nil: intSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc intSetPut(t: var IntSet, key: int): PTrunk =
+proc intSetPut[A](t: var OrdSet[A], key: int): PTrunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -106,14 +112,14 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.head = result
   t.data[h] = result
 
-proc bitincl(s: var IntSet, key: int) {.inline.} =
+proc bitincl[A](s: var OrdSet[A], key: int) {.inline.} =
   var ret: PTrunk
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
       (BitScalar(1) shl (u and IntMask))
 
-proc exclImpl(s: var IntSet, key: int) =
+proc exclImpl[A](s: var OrdSet[A], key: int) =
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key:
@@ -131,15 +137,14 @@ template dollarImpl(): untyped =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
-    result.add($key)
+    result.add($(ord(key)))
   result.add("}")
 
-
-iterator items*(s: IntSet): int {.inline.} =
+iterator items*[A](s: OrdSet[A]): A {.inline.} =
   ## Iterates over any included element of `s`.
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
-      yield s.a[i]
+      yield A(s.a[i])
   else:
     var r = s.head
     while r != nil:
@@ -151,37 +156,43 @@ iterator items*(s: IntSet): int {.inline.} =
         var j = 0
         while w != 0: # test all remaining bits for zero
           if (w and 1) != 0: # the bit is set!
-            yield (r.key shl TrunkShift) or (i shl IntShift +% j)
+            yield A((r.key shl TrunkShift) or (i shl IntShift +% j))
           inc(j)
           w = w shr 1
         inc(i)
       r = r.next
 
-
-proc initIntSet*: IntSet =
-  ## Returns an empty IntSet.
+proc initOrdSet*[A]: OrdSet[A] =
+  ## Returns an empty OrdSet[A].
+  ## A must be an ordinal equivalent type: int | enum | distinct int
   ##
   ## See also:
-  ## * `toIntSet proc <#toIntSet,openArray[int]>`_
+  ## * `toOrdSet[A] proc <#toOrdSet[A],openArray[int]>`_
   runnableExamples:
-    var a = initIntSet()
+    var a = initOrdSet[int]()
     assert len(a) == 0
 
-  # newSeq(result.data, InitIntSetSize)
-  # result.max = InitIntSetSize-1
-  result = IntSet(
+    type id = distinct int
+    var ids = initOrdSet[id]()
+    ids.incl(3.id)
+    #assert 3.id in ids #Type safe: `3 in ids` wouldn't compile
+
+  result = OrdSet[A](
     elems: 0,
     counter: 0,
     max: 0,
     head: nil,
     data: when defined(nimNoNilSeqs): @[] else: nil)
   #  a: array[0..33, int] # profiling shows that 34 elements are enough
+proc initIntSet*(): IntSet = initOrdSet[int]()
 
-proc contains*(s: IntSet, key: int): bool =
+proc contains*[A](s: OrdSet[A], key: A): bool =
   ## Returns true if `key` is in `s`.
   ##
   ## This allows the usage of `in` operator.
   runnableExamples:
+    type ABCD = enum A, B, C, D
+
     var a = initIntSet()
     for x in [1, 3, 5]:
       a.incl(x)
@@ -190,27 +201,34 @@ proc contains*(s: IntSet, key: int): bool =
     assert(not a.contains(8))
     assert 8 notin a
 
+    var letters = initOrdSet[ABCD]()
+    for x in [A, C]:
+      letters.incl(x)
+    assert A in letters
+    assert C in letters
+    assert B notin letters
+
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
-      if s.a[i] == key: return true
+      if s.a[i] == ord(key): return true
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, `shr`(ord(key), TrunkShift))
     if t != nil:
-      var u = key and TrunkMask
+      var u = ord(key) and TrunkMask
       result = (t.bits[u shr IntShift] and
                 (BitScalar(1) shl (u and IntMask))) != 0
     else:
       result = false
 
-proc incl*(s: var IntSet, key: int) =
+proc incl*[A](s: var OrdSet[A], key: A) =
   ## Includes an element `key` in `s`.
   ##
   ## This doesn't do anything if `key` is already in `s`.
   ##
   ## See also:
-  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
-  ## * `incl proc <#incl,IntSet,IntSet>`_ for including other set
-  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  ## * `excl proc <#excl,OrdSet[A],A>`_ for excluding an element
+  ## * `incl proc <#incl,OrdSet[A],OrdSet[A]>`_ for including other set
+  ## * `containsOrIncl proc <#containsOrIncl,OrdSet[A],A>`_
   runnableExamples:
     var a = initIntSet()
     a.incl(3)
@@ -219,9 +237,9 @@ proc incl*(s: var IntSet, key: int) =
 
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
-      if s.a[i] == key: return
+      if s.a[i] == ord(key): return
     if s.elems < s.a.len:
-      s.a[s.elems] = key
+      s.a[s.elems] = ord(key)
       inc s.elems
       return
     newSeq(s.data, InitIntSetSize)
@@ -230,17 +248,17 @@ proc incl*(s: var IntSet, key: int) =
       bitincl(s, s.a[i])
     s.elems = s.a.len + 1
     # fall through:
-  bitincl(s, key)
+  bitincl(s, ord(key))
 
-proc incl*(s: var IntSet, other: IntSet) =
+proc incl*[A](s: var OrdSet[A], other: OrdSet[A]) =
   ## Includes all elements from `other` into `s`.
   ##
-  ## This is the in-place version of `s + other <#+,IntSet,IntSet>`_.
+  ## This is the in-place version of `s + other <#+,OrdSet[A],OrdSet[A]>`_.
   ##
   ## See also:
-  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
-  ## * `incl proc <#incl,IntSet,int>`_ for including an element
-  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  ## * `excl proc <#excl,OrdSet[A],OrdSet[A]>`_ for excluding other set
+  ## * `incl proc <#incl,OrdSet[A],A>`_ for including an element
+  ## * `containsOrIncl proc <#containsOrIncl,OrdSet[A],A>`_
   runnableExamples:
     var
       a = initIntSet()
@@ -253,35 +271,37 @@ proc incl*(s: var IntSet, other: IntSet) =
 
   for item in other: incl(s, item)
 
-proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3).} =
-  ## Creates a new IntSet that contains the elements of `x`.
+proc toOrdSet*[A](x: openArray[A]): OrdSet[A] {.since: (1, 3).} =
+  ## Creates a new OrdSet[A] that contains the elements of `x`.
   ##
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initIntSet proc <#initIntSet>`_
+  ## * `initOrdSet[A] proc <#initOrdSet[A]>`_
   runnableExamples:
     var
-      a = toIntSet([5, 6, 7])
-      b = toIntSet(@[1, 8, 8, 8])
+      a = toOrdSet([5, 6, 7])
+      b = toOrdSet(@[1, 8, 8, 8])
     assert len(a) == 3
     assert len(b) == 2
 
-  result = initIntSet()
-  for item in items(x):
+  result = initOrdSet[A]()
+  for item in x:
     result.incl(item)
 
-proc containsOrIncl*(s: var IntSet, key: int): bool =
+proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3).} = toOrdSet[int](x)
+
+proc containsOrIncl*[A](s: var OrdSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
   ##
-  ## The difference with regards to the `incl proc <#incl,IntSet,int>`_ is
+  ## The difference with regards to the `incl proc <#incl,OrdSet[A],A>`_ is
   ## that this proc returns `true` if `s` already contained `key`. The
   ## proc will return `false` if `key` was added as a new value to `s` during
   ## this call.
   ##
   ## See also:
-  ## * `incl proc <#incl,IntSet,int>`_ for including an element
-  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  ## * `incl proc <#incl,OrdSet[A],A>`_ for including an element
+  ## * `missingOrExcl proc <#missingOrExcl,OrdSet[A],A>`_
   runnableExamples:
     var a = initIntSet()
     assert a.containsOrIncl(3) == false
@@ -290,14 +310,14 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
 
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
-      if s.a[i] == key:
+      if s.a[i] == ord(key):
         return true
     incl(s, key)
     result = false
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, `shr`(ord(key), TrunkShift))
     if t != nil:
-      var u = key and TrunkMask
+      var u = ord(key) and TrunkMask
       result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
       if not result:
         t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -306,33 +326,33 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
       incl(s, key)
       result = false
 
-proc excl*(s: var IntSet, key: int) =
+proc excl*[A](s: var OrdSet[A], key: A) =
   ## Excludes `key` from the set `s`.
   ##
   ## This doesn't do anything if `key` is not found in `s`.
   ##
   ## See also:
-  ## * `incl proc <#incl,IntSet,int>`_ for including an element
-  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
-  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  ## * `incl proc <#incl,OrdSet[A],A>`_ for including an element
+  ## * `excl proc <#excl,OrdSet[A],OrdSet[A]>`_ for excluding other set
+  ## * `missingOrExcl proc <#missingOrExcl,OrdSet[A],A>`_
   runnableExamples:
-    var a = initIntSet()
+    var a = initOrdSet[int]()
     a.incl(3)
     a.excl(3)
     a.excl(3)
     a.excl(99)
     assert len(a) == 0
-  exclImpl(s, key)
+  exclImpl[A](s, cast[int](key))
 
-proc excl*(s: var IntSet, other: IntSet) =
+proc excl*[A](s: var OrdSet[A], other: OrdSet[A]) =
   ## Excludes all elements from `other` from `s`.
   ##
-  ## This is the in-place version of `s - other <#-,IntSet,IntSet>`_.
+  ## This is the in-place version of `s - other <#-,OrdSet[A],OrdSet[A]>`_.
   ##
   ## See also:
-  ## * `incl proc <#incl,IntSet,IntSet>`_ for including other set
-  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
-  ## * `missingOrExcl proc <#missingOrExcl,IntSet,int>`_
+  ## * `incl proc <#incl,OrdSet[A],OrdSet[A]>`_ for including other set
+  ## * `excl proc <#excl,OrdSet[A],A>`_ for excluding an element
+  ## * `missingOrExcl proc <#missingOrExcl,OrdSet[A],A>`_
   runnableExamples:
     var
       a = initIntSet()
@@ -344,9 +364,10 @@ proc excl*(s: var IntSet, other: IntSet) =
     assert len(a) == 1
     assert 5 notin a
 
-  for item in other: excl(s, item)
+  for item in other:
+    excl(s, item)
 
-proc len*(s: IntSet): int {.inline.} =
+proc len*[A](s: OrdSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
   if s.elems < s.a.len:
     result = s.elems
@@ -355,18 +376,18 @@ proc len*(s: IntSet): int {.inline.} =
     for _ in s:
       inc(result)
 
-proc missingOrExcl*(s: var IntSet, key: int): bool =
+proc missingOrExcl*[A](s: var OrdSet[A], key: A): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
-  ## The difference with regards to the `excl proc <#excl,IntSet,int>`_ is
+  ## The difference with regards to the `excl proc <#excl,OrdSet[A],A>`_ is
   ## that this proc returns `true` if `key` was missing from `s`.
   ## The proc will return `false` if `key` was in `s` and it was removed
   ## during this call.
   ##
   ## See also:
-  ## * `excl proc <#excl,IntSet,int>`_ for excluding an element
-  ## * `excl proc <#excl,IntSet,IntSet>`_ for excluding other set
-  ## * `containsOrIncl proc <#containsOrIncl,IntSet,int>`_
+  ## * `excl proc <#excl,OrdSet[A],A>`_ for excluding an element
+  ## * `excl proc <#excl,OrdSet[A],OrdSet[A]>`_ for excluding other set
+  ## * `containsOrIncl proc <#containsOrIncl,OrdSet[A],A>`_
   runnableExamples:
     var a = initIntSet()
     a.incl(5)
@@ -374,11 +395,11 @@ proc missingOrExcl*(s: var IntSet, key: int): bool =
     assert a.missingOrExcl(5) == true
 
   var count = s.len
-  exclImpl(s, key)
+  exclImpl(s, cast[int](key))
   result = count == s.len
 
-proc clear*(result: var IntSet) =
-  ## Clears the IntSet back to an empty state.
+proc clear*[A](result: var OrdSet[A]) =
+  ## Clears the OrdSet[A] back to an empty state.
   runnableExamples:
     var a = initIntSet()
     a.incl(5)
@@ -398,11 +419,11 @@ proc clear*(result: var IntSet) =
   result.head = nil
   result.elems = 0
 
-proc isNil*(x: IntSet): bool {.inline.} = x.head.isNil and x.elems == 0
+proc isNil*[A](x: OrdSet[A]): bool {.inline.} = x.head.isNil and x.elems == 0
 
-proc assign*(dest: var IntSet, src: IntSet) =
+proc assign*[A](dest: var OrdSet[A], src: OrdSet[A]) =
   ## Copies `src` to `dest`.
-  ## `dest` does not need to be initialized by `initIntSet proc <#initIntSet>`_.
+  ## `dest` does not need to be initialized by `initOrdSet[A] proc <#initOrdSet[A]>`_.
   runnableExamples:
     var
       a = initIntSet()
@@ -443,10 +464,10 @@ proc assign*(dest: var IntSet, src: IntSet) =
       dest.data[h] = n
       it = it.next
 
-proc union*(s1, s2: IntSet): IntSet =
+proc union*[A](s1, s2: OrdSet[A]): OrdSet[A] =
   ## Returns the union of the sets `s1` and `s2`.
   ##
-  ## The same as `s1 + s2 <#+,IntSet,IntSet>`_.
+  ## The same as `s1 + s2 <#+,OrdSet[A],OrdSet[A]>`_.
   runnableExamples:
     var
       a = initIntSet()
@@ -459,10 +480,10 @@ proc union*(s1, s2: IntSet): IntSet =
   result.assign(s1)
   incl(result, s2)
 
-proc intersection*(s1, s2: IntSet): IntSet =
+proc intersection*[A](s1, s2: OrdSet[A]): OrdSet[A] =
   ## Returns the intersection of the sets `s1` and `s2`.
   ##
-  ## The same as `s1 * s2 <#*,IntSet,IntSet>`_.
+  ## The same as `s1 * s2 <#*,OrdSet[A],OrdSet[A]>`_.
   runnableExamples:
     var
       a = initIntSet()
@@ -472,15 +493,15 @@ proc intersection*(s1, s2: IntSet): IntSet =
     assert intersection(a, b).len == 1
     ## {3}
 
-  result = initIntSet()
+  result = initOrdSet[A]()
   for item in s1:
     if contains(s2, item):
       incl(result, item)
 
-proc difference*(s1, s2: IntSet): IntSet =
+proc difference*[A](s1, s2: OrdSet[A]): OrdSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
   ##
-  ## The same as `s1 - s2 <#-,IntSet,IntSet>`_.
+  ## The same as `s1 - s2 <#-,OrdSet[A],OrdSet[A]>`_.
   runnableExamples:
     var
       a = initIntSet()
@@ -490,12 +511,12 @@ proc difference*(s1, s2: IntSet): IntSet =
     assert difference(a, b).len == 2
     ## {1, 2}
 
-  result = initIntSet()
+  result = initOrdSet[A]()
   for item in s1:
     if not contains(s2, item):
       incl(result, item)
 
-proc symmetricDifference*(s1, s2: IntSet): IntSet =
+proc symmetricDifference*[A](s1, s2: OrdSet[A]): OrdSet[A] =
   ## Returns the symmetric difference of the sets `s1` and `s2`.
   runnableExamples:
     var
@@ -510,19 +531,19 @@ proc symmetricDifference*(s1, s2: IntSet): IntSet =
   for item in s2:
     if containsOrIncl(result, item): excl(result, item)
 
-proc `+`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `union(s1, s2) <#union,IntSet,IntSet>`_.
+proc `+`*[A](s1, s2: OrdSet[A]): OrdSet[A] {.inline.} =
+  ## Alias for `union(s1, s2) <#union,OrdSet[A],OrdSet[A]>`_.
   result = union(s1, s2)
 
-proc `*`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `intersection(s1, s2) <#intersection,IntSet,IntSet>`_.
+proc `*`*[A](s1, s2: OrdSet[A]): OrdSet[A] {.inline.} =
+  ## Alias for `intersection(s1, s2) <#intersection,OrdSet[A],OrdSet[A]>`_.
   result = intersection(s1, s2)
 
-proc `-`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `difference(s1, s2) <#difference,IntSet,IntSet>`_.
+proc `-`*[A](s1, s2: OrdSet[A]): OrdSet[A] {.inline.} =
+  ## Alias for `difference(s1, s2) <#difference,OrdSet[A],OrdSet[A]>`_.
   result = difference(s1, s2)
 
-proc disjoint*(s1, s2: IntSet): bool =
+proc disjoint*[A](s1, s2: OrdSet[A]): bool =
   ## Returns true if the sets `s1` and `s2` have no items in common.
   runnableExamples:
     var
@@ -539,11 +560,11 @@ proc disjoint*(s1, s2: IntSet): bool =
       return false
   return true
 
-proc card*(s: IntSet): int {.inline.} =
-  ## Alias for `len() <#len,IntSet>`_.
+proc card*[A](s: OrdSet[A]): int {.inline.} =
+  ## Alias for `len() <#len,OrdSet[A]>`_.
   result = s.len()
 
-proc `<=`*(s1, s2: IntSet): bool =
+proc `<=`*[A](s1, s2: OrdSet[A]): bool =
   ## Returns true if `s1` is subset of `s2`.
   ##
   ## A subset `s1` has all of its elements in `s2`, and `s2` doesn't necessarily
@@ -565,7 +586,7 @@ proc `<=`*(s1, s2: IntSet): bool =
       return false
   return true
 
-proc `<`*(s1, s2: IntSet): bool =
+proc `<`*[A](s1, s2: OrdSet[A]): bool =
   ## Returns true if `s1` is proper subset of `s2`.
   ##
   ## A strict or proper subset `s1` has all of its elements in `s2`, but `s2` has
@@ -581,11 +602,11 @@ proc `<`*(s1, s2: IntSet): bool =
     assert(not (a < b))
   return s1 <= s2 and not (s2 <= s1)
 
-proc `==`*(s1, s2: IntSet): bool =
+proc `==`*[A](s1, s2: OrdSet[A]): bool =
   ## Returns true if both `s1` and `s2` have the same elements and set size.
   return s1 <= s2 and s2 <= s1
 
-proc `$`*(s: IntSet): string =
+proc `$`*[A](s: OrdSet[A]): string =
   ## The `$` operator for int sets.
   ##
   ## Converts the set `s` to a string, mostly for logging and printing purposes.
@@ -596,109 +617,171 @@ proc `$`*(s: IntSet): string =
 when isMainModule:
   import sequtils, algorithm
 
-  var x = initIntSet()
-  x.incl(1)
-  x.incl(2)
-  x.incl(7)
-  x.incl(1056)
+  var y = initIntSet()
+  y.incl(1)
+  y.incl(2)
+  y.incl(7)
+  y.incl(1056)
 
-  x.incl(1044)
-  x.excl(1044)
+  y.incl(1044)
+  y.excl(1044)
 
-  assert x == [1, 2, 7, 1056].toIntSet
+  assert y == [1, 2, 7, 1056].toIntSet
 
-  assert x.containsOrIncl(888) == false
-  assert 888 in x
-  assert x.containsOrIncl(888) == true
+  assert y.containsOrIncl(888) == false
+  assert 888 in y
+  assert y.containsOrIncl(888) == true
 
-  assert x.missingOrExcl(888) == false
-  assert 888 notin x
-  assert x.missingOrExcl(888) == true
+  assert y.missingOrExcl(888) == false
+  assert 888 notin y
+  assert y.missingOrExcl(888) == true
 
-  var xs = toSeq(items(x))
-  xs.sort(cmp[int])
-  assert xs == @[1, 2, 7, 1056]
+  template genericTests(typ: typedesc, x: typed) =
+    block:
+      proc typSeq(s: seq[int]): seq[`typ`] = s.map(proc (i: int): `typ` = `typ`(i))
+      x.incl(`typ`(1))
+      x.incl(`typ`(2))
+      x.incl(`typ`(7))
+      x.incl(`typ`(1056))
 
-  var y: IntSet
-  assign(y, x)
-  var ys = toSeq(items(y))
-  ys.sort(cmp[int])
-  assert ys == @[1, 2, 7, 1056]
+      x.incl(`typ`(1044))
+      x.excl(`typ`(1044))
 
-  assert x == y
+      assert x == typSeq(@[1, 2, 7, 1056]).toOrdSet
 
-  var z: IntSet
-  for i in 0..1000:
-    incl z, i
-    assert z.len() == i+1
-  for i in 0..1000:
-    assert z.contains(i)
+      assert x.containsOrIncl(`typ`(888)) == false
+      assert `typ`(888) in x
+      assert x.containsOrIncl(`typ`(888)) == true
 
-  var w = initIntSet()
-  w.incl(1)
-  w.incl(4)
-  w.incl(50)
-  w.incl(1001)
-  w.incl(1056)
+      assert x.missingOrExcl(`typ`(888)) == false
+      assert `typ`(888) notin x
+      assert x.missingOrExcl(`typ`(888)) == true
 
-  var xuw = x.union(w)
-  var xuws = toSeq(items(xuw))
-  xuws.sort(cmp[int])
-  assert xuws == @[1, 2, 4, 7, 50, 1001, 1056]
+      var xs = toSeq(items(x))
+      xs.sort(cmp[`typ`])
+      assert xs == typSeq(@[1, 2, 7, 1056])
 
-  var xiw = x.intersection(w)
-  var xiws = toSeq(items(xiw))
-  xiws.sort(cmp[int])
-  assert xiws == @[1, 1056]
+      var y: OrdSet[`typ`]
+      assign(y, x)
+      var ys = toSeq(items(y))
+      ys.sort(cmp[`typ`])
+      assert ys == typSeq(@[1, 2, 7, 1056])
 
-  var xdw = x.difference(w)
-  var xdws = toSeq(items(xdw))
-  xdws.sort(cmp[int])
-  assert xdws == @[2, 7]
+      assert x == y
 
-  var xsw = x.symmetricDifference(w)
-  var xsws = toSeq(items(xsw))
-  xsws.sort(cmp[int])
-  assert xsws == @[2, 4, 7, 50, 1001]
+      var z: OrdSet[`typ`]
+      for i in 0..1000:
+        incl z, `typ`(i)
+        assert z.len() == i+1
+      for i in 0..1000:
+        assert z.contains(`typ`(i))
 
-  x.incl(w)
-  xs = toSeq(items(x))
-  xs.sort(cmp[int])
-  assert xs == @[1, 2, 4, 7, 50, 1001, 1056]
+      var w = initOrdSet[`typ`]()
+      w.incl(`typ`(1))
+      w.incl(`typ`(4))
+      w.incl(`typ`(50))
+      w.incl(`typ`(1001))
+      w.incl(`typ`(1056))
 
-  assert w <= x
+      var xuw = x.union(w)
+      var xuws = toSeq(items(xuw))
+      xuws.sort(cmp)
+      assert xuws == typSeq(@[1, 2, 4, 7, 50, 1001, 1056])
 
-  assert w < x
+      var xiw = x.intersection(w)
+      var xiws = toSeq(items(xiw))
+      xiws.sort(cmp)
+      assert xiws == @[`typ`(1), `typ`(1056)]
 
-  assert(not disjoint(w, x))
+      var xdw = x.difference(w)
+      var xdws = toSeq(items(xdw))
+      xdws.sort(cmp[`typ`])
+      assert xdws == @[`typ`(2), `typ`(7)]
 
-  var u = initIntSet()
-  u.incl(3)
-  u.incl(5)
-  u.incl(500)
-  assert disjoint(u, x)
+      var xsw = x.symmetricDifference(w)
+      var xsws = toSeq(items(xsw))
+      xsws.sort(cmp[`typ`])
+      assert xsws == typSeq(@[2, 4, 7, 50, 1001])
 
-  var v = initIntSet()
-  v.incl(2)
-  v.incl(50)
+      x.incl(w)
+      xs = toSeq(items(x))
+      xs.sort(cmp[`typ`])
+      assert xs == typSeq(@[1, 2, 4, 7, 50, 1001, 1056])
 
-  x.excl(v)
-  xs = toSeq(items(x))
-  xs.sort(cmp[int])
-  assert xs == @[1, 4, 7, 1001, 1056]
+      assert w <= x
 
-  proc bug12366 =
-    var
-      x = initIntSet()
-      y = initIntSet()
-      n = 3584
+      assert w < x
 
-    for i in 0..n:
-      x.incl(i)
-      y.incl(i)
+      assert(not disjoint(w, x))
 
-    let z = symmetricDifference(x, y)
-    doAssert z.len == 0
-    doAssert $z == "{}"
+      var u = initOrdSet[`typ`]()
+      u.incl(`typ`(3))
+      u.incl(`typ`(5))
+      u.incl(`typ`(500))
+      assert disjoint(u, x)
 
-  bug12366()
+      var v = initOrdSet[`typ`]()
+      v.incl(`typ`(2))
+      v.incl(`typ`(50))
+
+      x.excl(v)
+      xs = toSeq(items(x))
+      xs.sort(cmp[`typ`])
+      assert xs == typSeq(@[1, 4, 7, 1001, 1056])
+
+      proc bug12366 =
+        var
+
+          x = initOrdSet[`typ`]()
+          y = initOrdSet[`typ`]()
+          n = 3584
+
+        for i in 0..n:
+          x.incl(`typ`(i))
+          y.incl(`typ`(i))
+
+        let z = symmetricDifference(x, y)
+        doAssert z.len == 0
+        doAssert $z == "{}"
+
+      bug12366()
+
+  var legacy = initIntSet()
+  genericTests(int, legacy)
+
+  var intGenericInit = initOrdSet[int]()
+  genericTests(int, intGenericInit)
+
+  # Test distincts
+  type id = distinct int
+  proc cmp(a: id, b: id): int {.borrow.}
+  proc `==`(a: id, b: id): bool {.borrow.}
+  proc `<`(a: id, b: id): bool {.borrow.}
+
+  var idSet = initOrdSet[id]()
+  genericTests(id, idSet)
+
+  assert union(idSet, initOrdSet[id]()) == idSet
+
+  #Should fail
+  #var nonSupportedTypeParam: OrdSet[string]
+
+  # mixing sets of different types doesn't compile
+  #assert union(idSet, initOrdSet[int]()) == idSet # KO! typesafe
+
+  #Should fail
+  type nonIntDistinct = distinct string
+  #initOrdSet[nonIntDistinct]().incl("not typesafe") #KO!
+
+  # Test enums
+  type enumABCD = enum A, B, C, D
+  var letterSet = initOrdSet[enumABCD]()
+
+  for x in [A, C]:
+    letterSet.incl(x)
+
+  assert A in letterSet
+  assert B notin letterSet
+  assert C in letterSet
+  assert D notin letterSet
+
