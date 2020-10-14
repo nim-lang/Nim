@@ -444,11 +444,25 @@ Continuous Integration (CI)
    <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
-2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+2. Consider enabling CI (azure, github actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
    opening your PR in original Nim repo, so as to reduce CI congestion. Same
    applies for updates on a PR: you can test commits on a separate private
    branch before updating the main PR.
+
+Debugging CI failures, flaky tests, etc
+---------------------------------------
+
+1. First check the CI logs and search for `FAIL` to find why CI failed; if the
+   failure seems related to your PR, try to fix the code instead of restarting CI.
+
+2. If CI failure seems unrelated to your PR, it could be caused by a flaky test.
+   File a bug for it if it isn't already reported. A PR push (or opening/closing PR)
+   will re-trigger all CI jobs (even successful ones, which can be wasteful). Instead,
+   follow these instructions to only restart the jobs that failed:
+   azure: https://github.com/timotheecour/Nim/issues/211
+   github actions, builds.sr.ht: https://github.com/timotheecour/Nim/issues/327
+
 
 Code reviews
 ------------
