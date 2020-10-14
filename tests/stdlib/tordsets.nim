@@ -1,4 +1,4 @@
-import intsets
+import std/ordsets
 import std/sets
 
 from sequtils import toSeq
@@ -65,7 +65,7 @@ block: # we use HashSet as groundtruth, it's well tested elsewhere
           # issue #13505
           doAssert t.missingOrExcl(`A`(i))
 
-  var t: IntSet
+  var t: OrdSet[int]
   var t0: HashSet[int]
   testDel(int, t, t0)
 
