@@ -40,7 +40,7 @@ written as:
       for i in 0..<x.len: `=destroy`(x[i])
       dealloc(x.data)
 
-  proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
+  proc `=copy`*[T](a: var myseq[T]; b: myseq[T]) =
     # do nothing for self-assignments:
     if a.data == b.data: return
     `=destroy`(a)
@@ -134,7 +134,7 @@ not free the resources afterwards by setting the object to its default value
 default value is written as ``wasMoved(x)``. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
-provide `=destroy` and `=`, compiler will take care about the rest.
+provide `=destroy` and `=copy`, compiler will take care about the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
@@ -157,10 +157,10 @@ The general pattern in ``=sink`` looks like:
 How self-assignments are handled is explained later in this document.
 
 
-`=` (copy) hook
+`=copy` hook
 ---------------
 
-The ordinary assignment in Nim conceptually copies the values. The ``=`` hook
+The ordinary assignment in Nim conceptually copies the values. The ``=copy`` hook
 is called for assignments that couldn't be transformed into ``=sink``
 operations.
 
@@ -168,14 +168,14 @@ The prototype of this hook for a type ``T`` needs to be:
 
 .. code-block:: nim
 
-  proc `=`(dest: var T; source: T)
+  proc `=copy`(dest: var T; source: T)
 
 
-The general pattern in ``=`` looks like:
+The general pattern in ``=copy`` looks like:
 
 .. code-block:: nim
 
-  proc `=`(dest: var T; source: T) =
+  proc `=copy`(dest: var T; source: T) =
     # protect against self-assignments:
     if dest.field != source.field:
       `=destroy`(dest)
@@ -183,7 +183,7 @@ The general pattern in ``=`` looks like:
       dest.field = duplicateResource(source.field)
 
 
-The ``=`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
+The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
 that otherwise would lead to a copy is prevented at compile-time.
 
 
@@ -201,7 +201,7 @@ Swap
 ====
 
 The need to check for self-assignments and also the need to destroy previous
-objects inside ``=`` and ``=sink`` is a strong indicator to treat
+objects inside ``=copy`` and ``=sink`` is a strong indicator to treat
 ``system.swap`` as a builtin primitive of its own that simply swaps every
 field in the involved objects via ``copyMem`` or a comparable mechanism.
 In other words, ``swap(a, b)`` is **not** implemented
@@ -326,7 +326,7 @@ destroyed at the scope exit.
 
   x = y
   ------------------          (copy)
-  `=`(x, y)
+  `=copy`(x, y)
 
 
   f_sink(g())
@@ -336,7 +336,7 @@ destroyed at the scope exit.
 
   f_sink(notLastReadOf y)
   --------------------------     (copy-to-sink)
-  (let tmp; `=`(tmp, y);
+  (let tmp; `=copy`(tmp, y);
   f_sink(tmp))
 
 
