@@ -161,6 +161,12 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
         quit 1
+
+    when defined(gcOrc) and defined(nimArcDebug):
+      if (head(p).rc and 0b100) != 0:
+        cstderr.rawWrite "[FATAL] cycle root freed\n"
+        quit 1
+
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
