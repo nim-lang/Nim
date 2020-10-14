@@ -248,7 +248,10 @@
   ```
 - `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatibility can be restored
-  with command line switch `--useVersion:1.0`.
+  with `--useVersion:1.0`.
+- The typed AST for proc headers will now have the arguments be syms instead of idents.
+  This helps with writing typed macros. Old behaviour for backwards compatibility can
+  be restored with `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
   ``importc``/``importcpp``/``importjs``/``importobjc``.
 - The keyword `from` is now usable as an operator.
