@@ -61,6 +61,7 @@ proc reqMethod*(req: Request): HttpMethod =
     req.req.httpMethod.get()
   else:
     req.req.reqMethod
+
 proc reqMeth*(req: Request): HttpMethod {.deprecated.} =
   req.reqMethod
 

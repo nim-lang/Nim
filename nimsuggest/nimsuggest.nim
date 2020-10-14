@@ -97,9 +97,6 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
 
-type
-  EUnexpectedCommand = object of Exception
-
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)
@@ -528,8 +525,7 @@ proc mainCommand(graph: ModuleGraph) =
 
   add(conf.searchPaths, conf.libpath)
 
-  # do not stop after the first error:
-  conf.errorMax = high(int)
+  conf.setErrorMaxHighMaybe # honor --errorMax even if it may not make sense here
   # do not print errors, but log them
   conf.writelnHook = myLog
   conf.structuredErrorHook = nil
@@ -623,8 +619,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nimsuggest")
 
@@ -648,7 +643,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   #msgs.writelnHook = proc (line: string) = log(line)
   myLog("START " & conf.projectFull.string)
 
-  discard self.loadConfigsAndRunMainCommand(cache, conf)
+  var graph = newModuleGraph(cache, conf)
+  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    mainCommand(graph)
 
 when isMainModule:
   handleCmdLine(newIdentCache(), newConfigRef())
@@ -677,8 +674,7 @@ else:
 
       add(conf.searchPaths, conf.libpath)
 
-      # do not stop after the first error:
-      conf.errorMax = high(int)
+      conf.setErrorMaxHighMaybe
       # do not print errors, but log them
       conf.writelnHook = myLog
       conf.structuredErrorHook = nil
@@ -703,8 +699,7 @@ else:
       conf = newConfigRef()
       self = NimProg(
         suggestMode: true,
-        processCmdLine: mockCmdLine,
-        mainCommand: mockCommand
+        processCmdLine: mockCmdLine
       )
     self.initDefinesProg(conf, "nimsuggest")
 
@@ -727,7 +722,9 @@ else:
     #msgs.writelnHook = proc (line: string) = log(line)
     myLog("START " & conf.projectFull.string)
 
-    discard self.loadConfigsAndRunMainCommand(cache, conf)
+    var graph = newModuleGraph(cache, conf)
+    if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+      mockCommand(graph)
     if gLogging:
       for it in conf.searchPaths:
         log(it.string)

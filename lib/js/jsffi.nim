@@ -22,7 +22,7 @@
 ##  var document {.importc, nodecl.}: JsObject
 ##  var console {.importc, nodecl.}: JsObject
 ##  # import the "$" function
-##  proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
+##  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
 ##
 ##  # Use jQuery to make the following code run, after the document is ready.
 ##  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
@@ -83,7 +83,7 @@ proc toJsKey*[T: SomeFloat](text: cstring, t: type T): T {.importcpp: "parseFloa
 
 type
   JsKey* = concept a, type T
-    cstring.toJsKey(T) is type(a)
+    cstring.toJsKey(T) is T
 
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.
@@ -458,6 +458,14 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
 # Macro to build a lambda using JavaScript's `this`
 # from a proc, `this` being the first argument.
 
+proc replaceSyms(n: NimNode): NimNode =
+  if n.kind == nnkSym: 
+    result = newIdentNode($n)
+  else: 
+    result = n
+    for i in 0..<n.len:
+      result[i] = replaceSyms(n[i])
+
 macro bindMethod*(procedure: typed): auto =
   ## Takes the name of a procedure and wraps it into a lambda missing the first
   ## argument, which passes the JavaScript builtin ``this`` as the first
@@ -491,7 +499,7 @@ macro bindMethod*(procedure: typed): auto =
         getImpl(procedure)
       else:
         procedure
-    args = rawProc[3]
+    args = rawProc[3].copyNimTree.replaceSyms
     thisType = args[1][1]
     params = newNimNode(nnkFormalParams).add(args[0])
     body = newNimNode(nnkLambda)

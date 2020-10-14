@@ -4,44 +4,11 @@ language: c
 dist: xenial
 
 matrix:
-  fast_finish: true
-
   include:
     - os: linux
       env:
         - NIM_COMPILE_TO_CPP=false
         - CPU=amd64
-
-    - os: linux
-      env:
-        - NIM_COMPILE_TO_CPP=false
-        - CPU=i386
-      addons:
-        apt:
-          packages:
-            - gcc-multilib
-            - g++-multilib
-            - libcurl4-openssl-dev:i386
-            - libgc-dev:i386
-            - libglib2.0-dev:i386
-            - libpulse-dev:i386
-            - libsdl1.2-dev:i386
-            - libsfml-dev:i386
-
-    - os: osx
-      env:
-        - NIM_COMPILE_TO_CPP=false
-        - CPU=amd64
-
-    - os: osx
-      env:
-        - NIM_COMPILE_TO_CPP=true
-        - CPU=amd64
-
-# To allow failures for a failing configuration, use something like:
-#  allow_failures:
-#    - env: NIM_COMPILE_TO_CPP=true
-#    - os: osx
 
 addons:
   apt:
@@ -53,18 +20,6 @@ addons:
     - libsfml-dev
     - libc6-dbg
     - valgrind
-  homebrew:
-    packages:
-    - boehmgc
-    - make
-    - sfml
-    update: true
-
-install:
-  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which gcc) -m32 \"\$@\"" > bin/gcc; fi
-  - if [[ $CPU = i386 ]]; then chmod 755 bin/gcc; fi
-  - if [[ $CPU = i386 ]]; then echo -e "#!/bin/bash\n$(which g++) -m32 \"\$@\"" > bin/g++; fi
-  - if [[ $CPU = i386 ]]; then chmod 755 bin/g++; fi
 
 before_script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
@@ -75,11 +30,17 @@ script:
   - echo "travis_fold:start:nim_c_koch"
   - nim c koch
   - echo "travis_fold:end:nim_c_koch"
-  - ./koch runCI
+  - echo "travis_fold:start:koch_boot"
+  - ./koch boot
+  - echo "travis_fold:end:koch_boot"
+  - echo "travis_fold:start:koch_doc"
+  - ./koch doc
+  - echo "travis_fold:end:koch_doc"
 
 before_deploy:
   # Make https://nim-lang.github.io/Nim work the same as https://nim-lang.github.io/Nim/overview.html
   - cp -f ./doc/html/overview.html ./doc/html/index.html
+
 deploy:                         # https://nim-lang.github.io/Nim
   provider: pages
   # local-dir *has* to be a relative path from the repo root.
@@ -89,6 +50,3 @@ deploy:                         # https://nim-lang.github.io/Nim
   keep-history: false
   on:
     branch: devel
-
-# Extract failed tests
-after_failure: nim c -r tools/ci_testresults.nim

@@ -214,7 +214,7 @@ Generic Operating System Services
   This module implements the ability to access symbols from shared libraries.
 
 * `marshal <marshal.html>`_
-  Contains procs for serialization and deseralization of arbitrary Nim
+  Contains procs for serialization and deserialization of arbitrary Nim
   data structures.
 
 * `memfiles <memfiles.html>`_
@@ -267,7 +267,7 @@ Math libraries
   Statistical analysis
 
 * `std/sums <sums.html>`_
-  Fast sumation functions.
+  Fast summation functions.
 
 
 Internet Protocols and Support
@@ -451,7 +451,7 @@ Miscellaneous
   This module implements a simple logger.
 
 * `segfaults <segfaults.html>`_
-  Turns access violations or segfaults into a ``NilAccessError`` exception.
+  Turns access violations or segfaults into a ``NilAccessDefect`` exception.
 
 * `sugar <sugar.html>`_
   This module implements nice syntactic sugar based on Nim's macro system.
@@ -471,6 +471,9 @@ Modules for JS backend
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
+
+* `jsconsole <jsconsole.html>`_
+  Wrapper for the ``console`` object.
 
 * `jscore <jscore.html>`_
   Wrapper of core JavaScript functions. For most purposes you should be using

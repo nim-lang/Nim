@@ -12,8 +12,8 @@
 ##
 ## None of the procs that get an individual value from the deque can be used
 ## on an empty deque.
-## If compiled with `boundChecks` option, those procs will raise an `IndexError`
-## on such access. This should not be relied upon, as `-d:release` will
+## If compiled with `boundChecks` option, those procs will raise an `IndexDefect`
+## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
 ## disable those checks and may return garbage or crash the program.
 ##
 ## As such, a check to see if the deque is empty is needed before any
@@ -24,7 +24,7 @@
 ##
 ##   var a = initDeque[int]()
 ##
-##   doAssertRaises(IndexError, echo a[0])
+##   doAssertRaises(IndexDefect, echo a[0])
 ##
 ##   for i in 1 .. 5:
 ##     a.addLast(10*i)
@@ -51,8 +51,9 @@
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
 
+import std/private/since
 
-import math, typetraits
+import math
 
 type
   Deque*[T] = object
@@ -62,6 +63,19 @@ type
     data: seq[T]
     head, tail, count, mask: int
 
+const
+  defaultInitialSize* = 4
+
+template initImpl(result: typed, initialSize: int) =
+  let correctSize = nextPowerOfTwo(initialSize)
+  result.mask = correctSize-1
+  newSeq(result.data, correctSize)
+
+template checkIfInitialized(deq: typed) =
+  when compiles(defaultInitialSize):
+    if deq.mask == 0:
+      initImpl(deq, defaultInitialSize)
+
 proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## Create a new empty deque.
   ##
@@ -69,13 +83,24 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## as a performance optimization.
   ## The length of a newly created deque will still be 0.
   ##
-  ## ``initialSize`` must be a power of two (default: 4).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_.
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  ## See also:
+  ## * `toDeque proc <#toDeque,openArray[T]>`_
+  result.initImpl(initialSize)
+
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## See also:
+  ## * `initDeque proc <#initDeque,int>`_
+  runnableExamples:
+    var a = toDeque([7, 8, 9])
+    assert len(a) == 3
+    assert a.popFirst == 7
+    assert len(a) == 2
+
+  result.initImpl(x.len)
+  for item in items(x):
+    result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
@@ -85,16 +110,16 @@ template emptyCheck(deq) =
   # Bounds check for the regular deque access.
   when compileOption("boundChecks"):
     if unlikely(deq.count < 1):
-      raise newException(IndexError, "Empty deque.")
+      raise newException(IndexDefect, "Empty deque.")
 
 template xBoundsCheck(deq, i) =
   # Bounds check for the array like accesses.
-  when compileOption("boundChecks"): # d:release should disable this.
+  when compileOption("boundChecks"): # `-d:danger` or `--checks:off` should disable this.
     if unlikely(i >= deq.count): # x < deq.low is taken care by the Natural parameter
-      raise newException(IndexError,
+      raise newException(IndexDefect,
                          "Out of bounds: " & $i & " > " & $(deq.count - 1))
     if unlikely(i < 0): # when used with BackwardsIndex
-      raise newException(IndexError,
+      raise newException(IndexDefect,
                          "Out of bounds: " & $i & " < 0")
 
 proc `[]`*[T](deq: Deque[T], i: Natural): T {.inline.} =
@@ -105,7 +130,7 @@ proc `[]`*[T](deq: Deque[T], i: Natural): T {.inline.} =
       a.addLast(10*i)
     assert a[0] == 10
     assert a[3] == 40
-    doAssertRaises(IndexError, echo a[8])
+    doAssertRaises(IndexDefect, echo a[8])
 
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
@@ -119,7 +144,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
       a.addLast(10*i)
     assert a[0] == 10
     assert a[3] == 40
-    doAssertRaises(IndexError, echo a[8])
+    doAssertRaises(IndexDefect, echo a[8])
 
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
@@ -134,6 +159,7 @@ proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
     a[3] = 66
     assert $a == "[99, 20, 30, 66, 50]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
 
@@ -147,7 +173,7 @@ proc `[]`*[T](deq: Deque[T], i: BackwardsIndex): T {.inline.} =
       a.addLast(10*i)
     assert a[^1] == 50
     assert a[^4] == 20
-    doAssertRaises(IndexError, echo a[^9])
+    doAssertRaises(IndexDefect, echo a[^9])
 
   xBoundsCheck(deq, deq.len - int(i))
   return deq[deq.len - int(i)]
@@ -162,7 +188,7 @@ proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
       a.addLast(10*i)
     assert a[^1] == 50
     assert a[^4] == 20
-    doAssertRaises(IndexError, echo a[^9])
+    doAssertRaises(IndexDefect, echo a[^9])
 
   xBoundsCheck(deq, deq.len - int(i))
   return deq[deq.len - int(i)]
@@ -179,6 +205,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
     a[^3] = 77
     assert $a == "[10, 20, 77, 40, 99]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, deq.len - int(i))
   deq[deq.len - int(i)] = x
 
@@ -256,12 +283,14 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   return false
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
+  checkIfInitialized(deq)
   var cap = deq.mask + 1
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
     var i = 0
-    for x in mitems(deq): # don't use copyMem because of the GC and because it's slower.
-      n[i] = move(x)
+    for x in mitems(deq):
+      when nimVM: n[i] = x # workaround for VM bug
+      else: n[i] = move(x)
       inc i
     deq.data = move(n)
     deq.mask = cap * 2 - 1
@@ -329,6 +358,46 @@ proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
   result = deq.data[deq.head]
 
 proc peekLast*[T](deq: Deque[T]): T {.inline.} =
+  ## Returns the last element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekLast == 50
+    assert len(a) == 5
+
+  emptyCheck(deq)
+  result = deq.data[(deq.tail - 1) and deq.mask]
+
+proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
+  ## Returns the first element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekFirst == 10
+    assert len(a) == 5
+
+  emptyCheck(deq)
+  result = deq.data[deq.head]
+
+proc peekLast*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
@@ -477,6 +546,7 @@ when isMainModule:
   assert first == 123
   assert second == 9
   assert($deq == "[4, 56, 6, 789]")
+  assert deq == [4, 56, 6, 789].toDeque
 
   assert deq[0] == deq.peekFirst and deq.peekFirst == 4
   #assert deq[^1] == deq.peekLast and deq.peekLast == 789
@@ -513,14 +583,14 @@ when isMainModule:
     try:
       echo deq[99]
       assert false
-    except IndexError:
+    except IndexDefect:
       discard
 
     try:
       assert deq.len == 4
       for i in 0 ..< 5: deq.popFirst()
       assert false
-    except IndexError:
+    except IndexDefect:
       discard
 
   # grabs some types of resize error.
@@ -555,3 +625,15 @@ when isMainModule:
   foo(2, 1)
   foo(1, 5)
   foo(3, 2)
+
+  import sets
+  block t13310:
+    proc main() =
+      var q = initDeque[HashSet[int16]](2)
+      q.addFirst([1'i16].toHashSet)
+      q.addFirst([2'i16].toHashSet)
+      q.addFirst([3'i16].toHashSet)
+      assert $q == "[{3}, {2}, {1}]"
+
+    static:
+      main()

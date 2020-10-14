@@ -396,7 +396,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           var resLen = genSym(nskLet, "resLen")
           conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp,
               results[i], newLit(token), idx))
-          conds.add newCall(bindSym"!=", resLen, newLit min)
+          conds.add newCall(bindSym">=", resLen, newLit min)
           conds.add resLen
         else:
           matchError

@@ -1014,7 +1014,7 @@ AST:
   )
 
 Note that not all ``nnkTypeDef`` utilize ``nnkIdent`` as their
-their parameter. One of the most common uses of type declarations
+parameter. One of the most common uses of type declarations
 is to work with objects.
 
 Concrete syntax:
@@ -1255,7 +1255,9 @@ AST:
     nnkEmpty(), # patterns for term rewriting in templates and macros (not procs)
     nnkGenericParams( # generic type parameters, like with type declaration
       nnkIdentDefs(
-        nnkIdent("T"), nnkIdent("SomeInteger")
+        nnkIdent("T"),
+        nnkIdent("SomeInteger"),
+        nnkEmpty()
       )
     ),
     nnkFormalParams(

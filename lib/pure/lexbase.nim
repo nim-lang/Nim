@@ -52,7 +52,8 @@ proc fillBuffer(L: var BaseLexer) =
   toCopy = L.buf.len - (L.sentinel + 1)
   assert(toCopy >= 0)
   if toCopy > 0:
-    when defined(js):
+    when defined(js) or defined(nimscript):
+      # nimscript has to be here to avoid compiling other branch (moveMem)
       for i in 0 ..< toCopy:
         L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:

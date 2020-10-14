@@ -49,6 +49,5 @@ when defined(nimlocks):
 else:
   {.pragma: benign, gcsafe.}
 
-template since(version, body: untyped) {.dirty.} =
-  when version <= (NimMajor, NimMinor):
-    body
+when defined(nimHasSinkInference):
+  {.push sinkInference: on.}

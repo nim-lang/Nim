@@ -13,8 +13,8 @@
 ##
 ##  To complete the installation, run:
 ##
-##  sudo apt-get libblas-dev
-##  sudo apt-get libvoodoo
+##  sudo apt-get install libblas-dev
+##  sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
@@ -24,11 +24,14 @@
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
 ##
+##
+## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
 from strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from osproc import execProcess
+  from os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
@@ -105,7 +108,7 @@ type
     Clonezilla
     SteamOS
     Absolute
-    NixOS
+    NixOS ## NixOS or a Nix build environment
     AUSTRUMI
     Arya
     Porteus
@@ -133,18 +136,24 @@ const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-# we cache the result of the 'uname -a'
+# we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
-var unameRes, releaseRes, hostnamectlRes: string
+var unameRes, osReleaseIDRes, releaseRes, hostnamectlRes: string
 
-template unameRelease(cmd, cache): untyped =
+template cmdRelease(cmd, cache): untyped =
   if cache.len == 0:
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -o", unameRes)
-template release(): untyped = unameRelease("lsb_release -d", releaseRes)
-template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
+template uname(): untyped = cmdRelease("uname -a", unameRes)
+template osReleaseID(): untyped = cmdRelease("cat /etc/os-release | grep ^ID=", osReleaseIDRes)
+template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
+template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
+
+proc detectOsWithAllCmd(d: Distribution): bool =
+  let dd = toLowerAscii($d)
+  result = dd in toLowerAscii(osReleaseID()) or dd in toLowerAscii(release()) or
+            dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -153,29 +162,42 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
-  of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
-     Distribution.OpenBSD:
-    result = ("-" & $d & " ") in uname()
-  of Distribution.RedHat:
-    result = "Red Hat" in uname()
   of Distribution.BSD: result = defined(bsd)
-  of Distribution.ArchLinux:
-    result = "arch" in toLowerAscii(uname())
-  of Distribution.OpenSUSE:
-    result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
-  of Distribution.GoboLinux:
-    result = "-Gobo " in uname()
-  of Distribution.OpenMandriva:
-    result = "mandriva" in toLowerAscii(uname())
-  of Distribution.Solaris:
-    let uname = toLowerAscii(uname())
-    result = ("sun" in uname) or ("solaris" in uname)
-  of Distribution.Haiku:
-    result = defined(haiku)
   else:
-    let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or
-              ("operating system: " & dd) in toLowerAscii(hostnamectl())
+    when defined(bsd):
+      case d
+      of Distribution.FreeBSD, Distribution.OpenBSD:
+        result = $d in uname()
+      else:
+        result = false
+    elif defined(linux):
+      case d
+      of Distribution.Gentoo:
+        result = ("-" & $d & " ") in uname()
+      of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian, Distribution.Fedora,
+        Distribution.OpenMandriva, Distribution.CentOS, Distribution.Alpine,
+        Distribution.Mageia, Distribution.Zorin:
+        result = toLowerAscii($d) in osReleaseID()
+      of Distribution.RedHat:
+        result = "rhel" in osReleaseID()
+      of Distribution.ArchLinux:
+        result = "arch" in osReleaseID()
+      of Distribution.NixOS:
+        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
+        # Check if this is a Nix build or NixOS environment
+      of Distribution.OpenSUSE:
+        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
+      of Distribution.GoboLinux:
+        result = "-Gobo " in uname()
+      of Distribution.Solaris:
+        let uname = toLowerAscii(uname())
+        result = ("sun" in uname) or ("solaris" in uname)
+      of Distribution.Haiku:
+        result = defined(haiku)
+      else:
+        result = detectOsWithAllCmd(d)
+    else:
+      result = false
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
@@ -223,8 +245,10 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("netpkg install " & p, true)
     elif detectOs(NixOS):
       result = ("nix-env -i " & p, false)
-    elif detectOs(Solaris):
+    elif detectOs(Solaris) or detectOs(FreeBSD):
       result = ("pkg install " & p, true)
+    elif detectOs(OpenBSD):
+      result = ("pkg_add " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
     elif detectOs(ArchLinux) or detectOs(Manjaro):

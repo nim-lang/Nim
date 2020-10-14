@@ -3,7 +3,14 @@ discard """
 @[1, 2, 3]
 Success
 @["a", "b", "c"]
-0'''
+Hello
+1
+2
+0
+List
+@["4", "5", "6", "", "", "a", ""]
+@["", "", "a", ""]
+'''
   cmd: '''nim c --gc:arc $file'''
 """
 
@@ -82,6 +89,16 @@ proc inheritanceBug(param: string) =
   s[0] = B(more: "a" & param)
   s[1] = B(more: "a" & param)
 
+
+type
+  PAsyncHttpServer = ref object
+    value: string
+
+proc serve(server: PAsyncHttpServer) = discard
+
+proc leakObjConstr =
+  serve(PAsyncHttpServer(value: "asdas"))
+
 let startMem = getOccupiedMem()
 take3()
 tlazyList()
@@ -89,4 +106,79 @@ inheritanceBug("whatever")
 mkManyLeaks()
 tsimpleClosureIterator()
 tleakingNewStmt()
+leakObjConstr()
+
+# bug #12964
+
+type
+  Token* = ref object of RootObj
+  Li* = ref object of Token
+
+proc bug12964*() =
+  var token = Li()
+  var tokens = @[Token()]
+  tokens.add token
+
+bug12964()
+
+# bug #13119
+import streams
+
+proc bug13119 =
+  var m = newStringStream("Hello world")
+  let buffer = m.readStr(5)
+  echo buffer
+  m.close
+
+bug13119()
+
+# bug #13105
+
+type
+  Result[T, E] = object
+    a: T
+    b: E
+  D = ref object
+    x: int
+  R = Result[D, int]
+
+proc bug13105 =
+  for n in [R(b: 1), R(b: 2)]:
+    echo n.b
+
+bug13105()
+
 echo getOccupiedMem() - startMem
+
+
+#------------------------------------------------------------------------------
+# issue #14294
+
+import tables
+
+type
+  TagKind = enum
+    List = 0, Compound
+
+  Tag = object
+    case kind: TagKind
+    of List:
+      values: seq[Tag]
+    of Compound:
+      compound: Table[string, Tag]
+
+var a = Tag(kind: List)
+var b = a
+echo a.kind
+var c = a
+
+proc testAdd(i: int; yyy: openArray[string]) =
+  var x: seq[string]
+  x.add [$i, $(i+1), $(i+2)]
+  x.add yyy
+  echo x
+
+var y = newSeq[string](4)
+y[2] = "a"
+testAdd(4, y)
+echo y

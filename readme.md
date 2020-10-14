@@ -1,4 +1,6 @@
-# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci]
+# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim
+
+[![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
@@ -50,6 +52,12 @@ Next, to build from source you will need:
   * Either ``git`` or ``wget`` to download the needed source repositories.
   * The ``build-essential`` package when using ``gcc`` on Ubuntu (and likely
     other distros as well).
+  * On Windows MinGW 4.3.0 (GCC 8.10) is the minimum recommended compiler.
+  * Nim hosts a known working MinGW distribution:
+    * [MinGW32.7z](https://nim-lang.org/download/mingw32.7z)
+    * [MinGW64.7z](https://nim-lang.org/download/mingw64.7z)
+
+**Windows Note: Cygwin and similar posix runtime environments are not supported.**
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
 Nim from source using ``gcc``, ``git`` and the ``koch`` build tool.
@@ -73,9 +81,14 @@ Next run the appropriate build shell script for your platform:
 * `build_all.sh` (Linux, Mac)
 * `build_all.bat` (Windows)
 
+Windows requires a number of other dependencies that you may need to install including
+PCRE and OpenSSL. Nim hosts a zip package containing known working versions of the
+required DLLs [here](https://nim-lang.org/download/dlls.zip).
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
 should add the ``bin`` directory to your PATH.
+
+See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
 
 ## Koch
 
@@ -134,7 +147,7 @@ you should familiarize yourself with the following repository structure:
 If you are not familiar with making a pull request using GitHub and/or git, please
 read [this guide][pull-request-instructions].
 
-Ideally you should make sure that all tests pass before submitting a pull request.
+Ideally, you should make sure that all tests pass before submitting a pull request.
 However, if you are short on time, you can just run the tests specific to your
 changes by only running the corresponding categories of tests. Travis CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
@@ -142,7 +155,7 @@ running specific tests should be harmless.
 Integration tests should go in ``tests/untestable``.
 
 If you're looking for ways to contribute, please look at our [issue tracker][nim-issues].
-There are always plenty of issues labelled [``Easy``][nim-issues-easy]; these should
+There are always plenty of issues labeled [``Easy``][nim-issues-easy]; these should
 be a good starting point for an initial contribution to Nim.
 
 You can also help with the development of Nim by making donations. Donations can be
@@ -188,17 +201,16 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2019 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org
 [nim-issues]: https://github.com/nim-lang/Nim/issues
 [nim-issues-easy]: https://github.com/nim-lang/Nim/labels/Easy
 [nim-irc]: https://webchat.freenode.net/?channels=nim
-[nim-travisci]: https://travis-ci.org/nim-lang/Nim
 [nim-twitter]: https://twitter.com/nim_lang
-[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
-[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
+[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
+[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim

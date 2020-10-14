@@ -32,10 +32,10 @@ const
 proc quitOrDebug() {.noreturn, importc: "abort", header: "<stdlib.h>", nodecl.}
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-  sysFatal(ReraiseError, "exception handling is not available")
+  sysFatal(ReraiseDefect, "exception handling is not available")
 
 proc reraiseException() {.compilerRtl.} =
-  sysFatal(ReraiseError, "no exception to reraise")
+  sysFatal(ReraiseDefect, "no exception to reraise")
 
 proc writeStackTrace() = discard
 
@@ -43,4 +43,4 @@ proc unsetControlCHook() = discard
 proc setControlCHook(hook: proc () {.noconv.}) = discard
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
-  sysFatal(ReraiseError, "exception handling is not available")
+  sysFatal(ReraiseDefect, "exception handling is not available")

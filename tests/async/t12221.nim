@@ -1,7 +1,7 @@
 import asyncdispatch, os, times
 
 proc doubleSleep(hardSleep: int) {.async.} =
-  await sleepAsync(100)
+  await sleepAsync(50)
   sleep(hardSleep)
 
 template assertTime(target, timeTook: float): untyped {.dirty.} =
@@ -16,37 +16,25 @@ var
 
 # NOTE: this uses poll(3000) to limit timing error potential.
 start = epochTime()
-fut = sleepAsync(50) and sleepAsync(150) and doubleSleep(40)
+fut = sleepAsync(40) and sleepAsync(100) and doubleSleep(20)
 while not fut.finished:
-  poll(3000)
+  poll(1000)
 assertTime(150, epochTime() - start)
 
 start = epochTime()
-fut = sleepAsync(50) and sleepAsync(150) and doubleSleep(100)
+fut = sleepAsync(40) and sleepAsync(100) and doubleSleep(50)
 while not fut.finished:
-  poll(3000)
+  poll(1000)
 assertTime(200, epochTime() - start)
 
 start = epochTime()
-fut = sleepAsync(50) and sleepAsync(150) and doubleSleep(40) and sleepAsync(300)
+fut = sleepAsync(40) and sleepAsync(100) and doubleSleep(20) and sleepAsync(200)
 while not fut.finished:
-  poll(3000)
+  poll(1000)
 assertTime(300, epochTime() - start)
 
 start = epochTime()
-fut = sleepAsync(50) and sleepAsync(150) and doubleSleep(100) and sleepAsync(300)
+fut = (sleepAsync(40) and sleepAsync(100) and doubleSleep(20)) or sleepAsync(300)
 while not fut.finished:
-  poll(3000)
-assertTime(300, epochTime() - start)
-
-start = epochTime()
-fut = (sleepAsync(50) and sleepAsync(150) and doubleSleep(40)) or sleepAsync(700)
-while not fut.finished:
-  poll(3000)
+  poll(1000)
 assertTime(150, epochTime() - start)
-
-start = epochTime()
-fut = (sleepAsync(50) and sleepAsync(150) and doubleSleep(100)) or sleepAsync(700)
-while not fut.finished:
-  poll(3000)
-assertTime(200, epochTime() - start)

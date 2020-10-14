@@ -35,7 +35,7 @@ type
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
-    lastTok: TTokType
+    lastTok: TokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
@@ -146,7 +146,7 @@ proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
 
 proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
-  for i in 1 ..< em.tokens.len-pos:
+  for i in 1..<em.tokens.len-pos:
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
@@ -327,7 +327,7 @@ const
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-            tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
+            tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd, tkOr, tkXor}
 
 template goodCol(col): bool = col >= em.maxLineLen div 2
 
@@ -402,7 +402,7 @@ proc endsInAlpha(em: Emitter): bool =
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
-proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
+proc emitComment(em: var Emitter; tok: Token; dontIndent: bool) =
   var col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
@@ -417,7 +417,7 @@ proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
       inc col
     emitMultilineComment(em, lit, col, dontIndent)
 
-proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
+proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
   template wasExportMarker(em): bool =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
@@ -452,6 +452,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       if tok.tokType in openPars and tok.indent > em.indentStack[^1]:
         while em.indentStack[^1] < tok.indent:
           em.indentStack.add(em.indentStack[^1] + em.indWidth)
+      while em.indentStack[^1] > tok.indent:
+        discard em.indentStack.pop()
+
       # aka: we are in an expression context:
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
@@ -570,7 +573,7 @@ proc endsWith(em: Emitter; k: varargs[string]): bool =
   return true
 
 proc rfind(em: Emitter, t: string): int =
-  for i in 1 .. 5:
+  for i in 1..5:
     if em.tokens[^i] == t:
       return i
 

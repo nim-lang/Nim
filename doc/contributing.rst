@@ -18,15 +18,23 @@ See `codeowners <codeowners.html>`_ for more details.
 Writing tests
 =============
 
-There are 3 types of tests:
+There are 4 types of tests:
 
 1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
    These end up in documentation and ensure documentation stays in sync with code.
 
-2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
-   ``nimble test`` also typially runs these in external nimble packages.
+2. separate test files, e.g.: ``tests/stdlib/tos.nim``.
+   In nim repo, `testament` (see below) runs all `$nim/tests/*/t*.nim` test files;
+   for nimble packages, see https://github.com/nim-lang/nimble#tests.
 
-3. testament tests, e.g.: ``tests/stdlib/tos.nim`` (only used for Nim repo).
+3. (deprecated) tests in ``when isMainModule:`` block, ran by ``nim r mymod.nim``.
+   ``nimble test`` can run those in nimble packages when specified in a
+   `task "test"`.
+
+4. (not preferred) `.. code-block:: nim` RST snippets; these should only be used in rst sources,
+   in nim sources `runnableExamples` should now always be preferred to those for
+   several reasons (cleaner syntax, syntax highlights, batched testing, and
+   `rdoccmd` allows customization).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -34,31 +42,43 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-If you change the stdlib (anything under ``lib/``, e.g. ``lib/pure/os.nim``),
-put a test in the file you changed. Add the tests under a ``when isMainModule:``
-condition so they only get executed when the tester is building the
-file. Each test should be in a separate ``block:`` statement, such that
+Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
+preferably have a corresponding separate test file, eg `tests/stdlib/tos.nim`.
+The old convention was to add a ``when isMainModule:`` block in the source file,
+which only gets executed when the tester is building the file.
+
+Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
-testing by itself, don't rely on echo statements or similar.
+testing by itself, don't rely on echo statements or similar; in particular avoid
+things like `echo "done"`.
 
 Sample test:
 
 .. code-block:: nim
 
-  when isMainModule:
-    block: # newSeqWith tests
-      var seq2D = newSeqWith(4, newSeq[bool](2))
-      seq2D[0][0] = true
-      seq2D[1][0] = true
-      seq2D[0][1] = true
-      doAssert seq2D == @[@[true, true], @[true, false],
-                          @[false, false], @[false, false]]
-      # doAssert with `not` can now be done as follows:
-      doAssert not (1 == 2)
+  block: # bug #1234
+    static: doAssert 1+1 == 2
 
-Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
-e.g. ``tests/stdlib/tos.nim``; this allows additional features such as custom
-compiler flags; for more details see below.
+  block: # bug #1235
+    var seq2D = newSeqWith(4, newSeq[bool](2))
+    seq2D[0][0] = true
+    seq2D[1][0] = true
+    seq2D[0][1] = true
+    doAssert seq2D == @[@[true, true], @[true, false],
+                        @[false, false], @[false, false]]
+    # doAssert with `not` can now be done as follows:
+    doAssert not (1 == 2)
+
+Always refer to a github issue using the following exact syntax: `bug #1234` as shown
+above, so that it's consistent and easier to search or for tooling. Some browser
+extensions (eg https://github.com/sindresorhus/refined-github) will even turn those
+in clickable links when it works.
+
+Rationale for using a separate test file instead of `when isMainModule:` block:
+* allows custom compiler flags or testing options (see details below)
+* faster CI since they can be joined in `megatest` (combined into a single test)
+* avoids making the parser do un-necessary work when a source file is merely imported
+* avoids mixing source and test code when reporting line of code statistics or code coverage
 
 Compiler
 --------
@@ -252,6 +272,7 @@ the imperative (command) form. That is, between:
   proc hello*(): string =
     ## Return "hello"
     result = "hello"
+
 or
 
 .. code-block:: nim
@@ -264,11 +285,25 @@ the first is preferred.
 
 
 Best practices
-=============
+==============
 
 Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
 propagate best practices.
+
+.. _define_needs_prefix:
+New `defined(foo)` symbols need to be prefixed by the nimble package name, or
+by `nim` for symbols in nim sources (e.g. compiler, standard library). This is
+to avoid name conflicts across packages.
+
+.. code-block:: nim
+
+  # if in nim sources
+  when defined(allocStats): discard # bad, can cause conflicts
+  when defined(nimAllocStats): discard # preferred
+  # if in a pacakge `cligen`:
+  when defined(debug): discard # bad, can cause conflicts
+  when defined(cligenDebug): discard # preferred
 
 .. _noimplicitbool:
 Take advantage of no implicit bool conversion
@@ -346,8 +381,10 @@ General commit rules
 
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
-   branch (currently 1.0.x). The commit message should contain ``[backport]``
-   then.
+   branch (currently 1.2.x) and maybe also to the 1.0 branch.
+   The commit message should contain the tag ``[backport]`` for "backport to all
+   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
+   given $VERSION.
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
@@ -427,7 +464,7 @@ Code reviews
    .. code-block:: sh
 
       git fetch origin pull/10431/head && git checkout FETCH_HEAD
-      git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+      git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
 
 3. In addition, you can view github-like diffs locally to identify what was changed
    within a code block using `diff-highlight` or `diff-so-fancy`, e.g.:
@@ -443,3 +480,78 @@ Code reviews
 .. include:: docstyle.rst
 
 
+Evolving the stdlib
+===================
+
+As outlined in https://github.com/nim-lang/RFCs/issues/173 there are a couple
+of guidelines about what should go into the stdlib, what should be added and
+what eventually should be removed.
+
+
+What the compiler itself needs must be part of the stdlib
+---------------------------------------------------------
+
+Maybe in the future the compiler itself can depend on Nimble packages but for
+the time being, we strive to have zero dependencies in the compiler as the
+compiler is the root of the bootstrapping process and is also used to build
+Nimble.
+
+
+Vocabulary types must be part of the stdlib
+-------------------------------------------
+
+These are types most packages need to agree on for better interoperability,
+for example ``Option[T]``. This rule also covers the existing collections like
+``Table``, ``CountTable`` etc. "Sorted" containers based on a tree-like data
+structure are still missing and should be added.
+
+Time handling, especially the ``Time`` type are also covered by this rule.
+
+
+Existing, battle-tested modules stay
+------------------------------------
+
+Reason: There is no benefit in moving them around just to fullfill some design
+fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
+don't import it. If a compilation target (e.g. JS) cannot support a module,
+document this limitation.
+
+This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
+``strformat``, etc.
+
+
+Syntactic helpers can start as experimental stdlib modules
+----------------------------------------------------------
+
+Reason: Generally speaking as external dependencies they are not exposed
+to enough users so that we can see if the shortcuts provide enough benefit
+or not. Many programmers avoid external dependencies, even moreso for
+"tiny syntactic improvements". However, this is only true for really good
+syntactic improvements that have the potential to clean up other parts of
+the Nim library substantially. If in doubt, new stdlib modules should start
+as external, successful Nimble packages.
+
+
+
+Other new stdlib modules do not start as stdlib modules
+-------------------------------------------------------
+
+As we strive for higher quality everywhere, it's easier to adopt existing,
+battle-tested modules eventually rather than creating modules from scratch.
+
+
+Little additions are acceptable
+-------------------------------
+
+As long as they are documented and tested well, adding little helpers
+to existing modules is acceptable. For two reasons:
+
+1. It makes Nim easier to learn and use in the long run.
+   ("Why does sequtils lack a ``countIt``?
+   Because version 1.0 happens to have lacked it? Silly...")
+2. To encourage contributions. Contributors often start with PRs that
+   add simple things and then they stay and also fix bugs. Nim is an
+   open source project and lives from people's contributions and involvement.
+   Newly introduced issues have to be balanced against motivating new people. We know where
+   to find perfectly designed pieces of software that have no bugs -- these are the systems
+   that nobody uses.

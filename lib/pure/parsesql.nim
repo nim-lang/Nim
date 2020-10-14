@@ -557,7 +557,14 @@ type
     tok: Token
 
 proc newNode*(k: SqlNodeKind): SqlNode =
-  result = SqlNode(kind: k)
+  when defined(js): # bug #14117
+    case k
+    of LiteralNodes:
+      result = SqlNode(kind: k, strVal: "")
+    else:
+      result = SqlNode(kind: k, sons: @[])
+  else:
+    result = SqlNode(kind: k)
 
 proc newNode*(k: SqlNodeKind, s: string): SqlNode =
   result = SqlNode(kind: k)
@@ -1469,34 +1476,33 @@ proc treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 
-when not defined(js):
-  import streams
+import streams
 
-  proc open(L: var SqlLexer, input: Stream, filename: string) =
-    lexbase.open(L, input)
-    L.filename = filename
+proc open(L: var SqlLexer, input: Stream, filename: string) =
+  lexbase.open(L, input)
+  L.filename = filename
 
-  proc open(p: var SqlParser, input: Stream, filename: string) =
-    ## opens the parser `p` and assigns the input stream `input` to it.
-    ## `filename` is only used for error messages.
-    open(SqlLexer(p), input, filename)
-    p.tok.kind = tkInvalid
-    p.tok.literal = ""
-    getTok(p)
+proc open(p: var SqlParser, input: Stream, filename: string) =
+  ## opens the parser `p` and assigns the input stream `input` to it.
+  ## `filename` is only used for error messages.
+  open(SqlLexer(p), input, filename)
+  p.tok.kind = tkInvalid
+  p.tok.literal = ""
+  getTok(p)
 
-  proc parseSQL*(input: Stream, filename: string): SqlNode =
-    ## parses the SQL from `input` into an AST and returns the AST.
-    ## `filename` is only used for error messages.
-    ## Syntax errors raise an `SqlParseError` exception.
-    var p: SqlParser
-    open(p, input, filename)
-    try:
-      result = parse(p)
-    finally:
-      close(p)
+proc parseSQL*(input: Stream, filename: string): SqlNode =
+  ## parses the SQL from `input` into an AST and returns the AST.
+  ## `filename` is only used for error messages.
+  ## Syntax errors raise an `SqlParseError` exception.
+  var p: SqlParser
+  open(p, input, filename)
+  try:
+    result = parse(p)
+  finally:
+    close(p)
 
-  proc parseSQL*(input: string, filename = ""): SqlNode =
-    ## parses the SQL from `input` into an AST and returns the AST.
-    ## `filename` is only used for error messages.
-    ## Syntax errors raise an `SqlParseError` exception.
-    parseSQL(newStringStream(input), "")
+proc parseSQL*(input: string, filename = ""): SqlNode =
+  ## parses the SQL from `input` into an AST and returns the AST.
+  ## `filename` is only used for error messages.
+  ## Syntax errors raise an `SqlParseError` exception.
+  parseSQL(newStringStream(input), "")

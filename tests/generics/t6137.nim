@@ -16,7 +16,7 @@ let
   # define a vector of length 3
   x: vector[3] = [1.0, 3.0, 5.0]
 
-proc vectFunc[T](x: vector[T]): vector[T] {.procvar.} =
+proc vectFunc[T](x: vector[T]): vector[T] =
   # Define a vector function
   result = 2.0*x
 

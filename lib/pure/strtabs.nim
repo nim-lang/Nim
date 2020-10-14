@@ -48,16 +48,18 @@ runnableExamples:
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
 
+import std/private/since
 
 import
   hashes, strutils
 
-when defined(js):
+when defined(js) or defined(nimscript):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
   import os
-  include "system/inclrtl"
+
+include "system/inclrtl"
 
 type
   StringTableMode* = enum ## Describes the tables operation mode.
@@ -87,6 +89,7 @@ const
   growthFactor = 2
   startSize = 64
 
+proc mode*(t: StringTableRef): StringTableMode {.inline.} = t.mode
 
 iterator pairs*(t: StringTableRef): tuple[key, value: string] =
   ## Iterates over every `(key, value)` pair in the table `t`.
@@ -138,10 +141,8 @@ template get(t: StringTableRef, key: string) =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raise newException(KeyError, "key not found: " & key)
+
 
 proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## Returns the number of keys in `t`.
@@ -226,11 +227,11 @@ proc enlarge(t: StringTableRef) =
   var n: KeyValuePairSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].hasValue: rawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].hasValue: rawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*(t: StringTableRef, key, val: string) {.
-  rtlFunc, extern: "nstPut", noSideEffect.} =
+  rtlFunc, extern: "nstPut".} =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
@@ -250,7 +251,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     inc(t.counter)
 
 proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1".} =
+  rtlFunc, extern: "nst$1", noSideEffect.} =
   ## Creates a new empty string table.
   ##
   ## See also:
@@ -263,7 +264,7 @@ proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): owned(StringTableRef) {.
-  rtlFunc, extern: "nst$1WithPairs".} =
+  rtlFunc, extern: "nst$1WithPairs", noSideEffect.} =
   ## Creates a new string table with given `key, value` string pairs.
   ##
   ## `StringTableMode` must be specified.
@@ -274,12 +275,13 @@ proc newStringTable*(keyValuePairs: varargs[string],
   result = newStringTable(mode)
   var i = 0
   while i < high(keyValuePairs):
-    result[keyValuePairs[i]] = keyValuePairs[i + 1]
+    {.noSideEffect.}:
+      result[keyValuePairs[i]] = keyValuePairs[i + 1]
     inc(i, 2)
 
 proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
-    rtlFunc, extern: "nst$1WithTableConstr".} =
+    rtlFunc, extern: "nst$1WithTableConstr", noSideEffect.} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
   ##
   ## The default mode is case sensitive.
@@ -289,7 +291,9 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
       mytab2 = newStringTable([("key3", "val3"), ("key4", "val4")])
 
   result = newStringTable(mode)
-  for key, val in items(keyValuePairs): result[key] = val
+  for key, val in items(keyValuePairs):
+    {.noSideEffect.}:
+      result[key] = val
 
 proc raiseFormatException(s: string) =
   raise newException(ValueError, "format string: key not found: " & s)
@@ -297,10 +301,10 @@ proc raiseFormatException(s: string) =
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
-  when defined(js):
+  when defined(js) or defined(nimscript):
     result = ""
   else:
-    if useEnvironment in flags: result = os.getEnv(key).string
+    if useEnvironment in flags: result = getEnv(key).string
     else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
@@ -308,7 +312,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
 
 proc clear*(s: StringTableRef, mode: StringTableMode) {.
   rtlFunc, extern: "nst$1".} =
-  ## Resets a string table to be empty again.
+  ## Resets a string table to be empty again, perhaps altering the mode.
   ##
   ## See also:
   ## * `del proc <#del,StringTableRef,string>`_ for removing a key from the table
@@ -323,6 +327,10 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   s.data.setLen(startSize)
   for i in 0..<s.data.len:
     s.data[i].hasValue = false
+
+proc clear*(s: StringTableRef) {.since: (1, 1).} =
+  ## Resets a string table to be empty again without changing the mode.
+  s.clear(s.mode)
 
 proc del*(t: StringTableRef, key: string) =
   ## Removes `key` from `t`.
@@ -412,7 +420,6 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
     else:
       add(result, f[i])
       inc(i)
-
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable

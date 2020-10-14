@@ -305,15 +305,15 @@ proc whichMsgClass*(k: MsgKind): MsgClass =
   else: assert false, "msgkind does not fit naming scheme"
 
 proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
-                        arg: string) {.procvar.} =
+                        arg: string) =
   let mc = msgkind.whichMsgClass
   let a = messages[msgkind] % arg
   let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
 
-proc defaultFindFile*(filename: string): string {.procvar.} =
-  if existsFile(filename): result = filename
+proc defaultFindFile*(filename: string): string =
+  if fileExists(filename): result = filename
   else: result = ""
 
 proc newSharedState(options: RstParseOptions,
@@ -328,7 +328,7 @@ proc newSharedState(options: RstParseOptions,
 
 proc findRelativeFile(p: RstParser; filename: string): string =
   result = p.filename.splitFile.dir / filename
-  if not existsFile(result):
+  if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
@@ -507,6 +507,7 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result:
     return                    # Rule 4:
   result = (p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkEof}) or
+      (markup in ["``", "`"] and p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkWord, tkEof}) or
       (p.tok[p.idx + 1].symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!',
        '?', '_'})
@@ -522,6 +523,7 @@ proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   if not result:
     return                    # Rule 1:
   result = (p.idx == 0) or (p.tok[p.idx - 1].kind in {tkIndent, tkWhite}) or
+      (markup in ["``", "`"] and p.tok[p.idx - 1].kind in {tkIndent, tkWhite, tkWord}) or
       (p.tok[p.idx - 1].symbol[0] in
       {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'})
   if not result:
@@ -1102,6 +1104,8 @@ proc whichSection(p: RstParser): RstNodeKind =
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnHeadline
+    elif p.tok[p.idx].symbol == "```":
+      result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
     elif p.tok[p.idx].symbol == "::":
@@ -1558,15 +1562,20 @@ proc parseDirBody(p: var RstParser, contentParser: SectionParser): PRstNode =
     popInd(p)
 
 proc dirInclude(p: var RstParser): PRstNode =
-  #
-  #The following options are recognized:
-  #
-  #start-after : text to find in the external data file
-  #    Only the content after the first occurrence of the specified text will
-  #    be included.
-  #end-before : text to find in the external data file
-  #    Only the content before the first occurrence of the specified text
-  #    (but after any after text) will be included.
+  ##
+  ## The following options are recognized:
+  ##
+  ## :start-after: text to find in the external data file
+  ##
+  ##     Only the content after the first occurrence of the specified
+  ##     text will be included. If text is not found inclusion will
+  ##     start from beginning of the file
+  ##
+  ## :end-before: text to find in the external data file
+  ##
+  ##     Only the content before the first occurrence of the specified
+  ##     text (but after any after text) will be included. If text is
+  ##     not found inclusion will happen until the end of the file.
   #literal : flag (empty)
   #    The entire included text is inserted into the document as a single
   #    literal block (useful for program listings).
@@ -1586,10 +1595,34 @@ proc dirInclude(p: var RstParser): PRstNode =
       result = newRstNode(rnLiteralBlock)
       add(result, newRstNode(rnLeaf, readFile(path)))
     else:
+      let inputString = readFile(path).string()
+      let startPosition =
+        block:
+          let searchFor = n.getFieldValue("start-after").strip()
+          if searchFor != "":
+            let pos = inputString.find(searchFor)
+            if pos != -1: pos + searchFor.len()
+            else: 0
+          else:
+            0
+
+      let endPosition =
+        block:
+          let searchFor = n.getFieldValue("end-before").strip()
+          if searchFor != "":
+            let pos = inputString.find(searchFor, start = startPosition)
+            if pos != -1: pos - 1
+            else: 0
+          else:
+            inputString.len - 1
+
       var q: RstParser
       initParser(q, p.s)
       q.filename = path
-      q.col += getTokens(readFile(path), false, q.tok)
+      q.col += getTokens(
+        inputString[startPosition..endPosition].strip(),
+        false,
+        q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")

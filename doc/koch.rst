@@ -35,7 +35,7 @@ options:
   By default a debug version is created, passing this option will
   force a release build, which is much faster and should be preferred
   unless you are debugging the compiler.
--d:useLinenoise
+-d:nimUseLinenoise
   Use the linenoise library for interactive mode (not needed on Windows).
 
 After compilation is finished you will hopefully end up with the nim
@@ -77,7 +77,7 @@ https://nim-lang.org.
 
 By default the documentation will be built in parallel using the number of
 available CPU cores. If any documentation build sub commands fail, they will
-be rerun in serial fashion so that meaninful error output can be gathered for
+be rerun in serial fashion so that meaningful error output can be gathered for
 inspection. The ``--parallelBuild:n`` switch or configuration option can be
 used to force a specific number of parallel jobs or run everything serially
 from the start (``n == 1``).

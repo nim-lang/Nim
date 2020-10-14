@@ -16,12 +16,12 @@ template dataLen(t): untyped = len(t.data)
 include hashcommon
 
 template initImpl(s: typed, size: int) =
-  assert isPowerOfTwo(size)
+  let correctSize = slotsNeeded(size)
   when s is OrderedSet:
     s.first = -1
     s.last = -1
   s.counter = 0
-  newSeq(s.data, size)
+  newSeq(s.data, correctSize)
 
 template rawInsertImpl() {.dirty.} =
   if data.len == 0:
@@ -48,7 +48,7 @@ template inclImpl() {.dirty.} =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -62,7 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)

@@ -101,11 +101,13 @@ changed in the future.
         fd: int64
       HandleRef = ref Handle # Will be used less often
 
-- Exception and Error types should have the "Error" suffix.
+- Exception and Error types should have the "Error" or "Defect" suffix.
 
   .. code-block:: nim
     type
-      UnluckyError = object of Exception
+      ValueError = object of CatchableError
+      AssertionDefect = object of Defect
+      Foo = object of Exception # bad style, try to inherit CatchableError or Defect
 
 - Unless marked with the `{.pure.}` pragma, members of enums should have an
   identifying prefix, such as an abbreviation of the enum's name.
@@ -146,6 +148,8 @@ changed in the future.
 - When the 'returns transformed copy' version already exists like ``strutils.replace``
   an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
 
+
+- Use `subjectVerb`, not `verbSubject`, eg: `fileExists`, not `existsFile`.
 
 The stdlib API is designed to be **easy to use** and consistent. Ease of use is
 measured by the number of calls to achieve a concrete high level action. The
@@ -263,7 +267,7 @@ Conventions for multi-line statements and expressions
       EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
                             output: var string)
 
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float
+    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float,
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
 

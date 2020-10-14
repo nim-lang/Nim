@@ -12,10 +12,7 @@
 
 import strutils
 
-{.deadCodeElim: on.} # dce option deprecated
-
-proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
-  procvar.} =
+proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect.} =
   ## Expand tab characters in `s` replacing them by spaces.
   ##
   ## The amount of inserted spaces for each tab character is the difference
@@ -55,7 +52,7 @@ proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
 
 proc partition*(s: string, sep: string,
                 right: bool = false): (string, string, string)
-                {.noSideEffect, procvar.} =
+                {.noSideEffect.} =
   ## Split the string at the first or last occurrence of `sep` into a 3-tuple
   ##
   ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
@@ -74,7 +71,7 @@ proc partition*(s: string, sep: string,
   return if right: ("", "", s) else: (s, "", "")
 
 proc rpartition*(s: string, sep: string): (string, string, string)
-                {.noSideEffect, procvar.} =
+                {.noSideEffect.} =
   ## Split the string at the last occurrence of `sep` into a 3-tuple
   ##
   ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or

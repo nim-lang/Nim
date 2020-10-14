@@ -39,22 +39,24 @@ written as:
     if x.data != nil:
       for i in 0..<x.len: `=destroy`(x[i])
       dealloc(x.data)
-      x.data = nil
 
   proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
     # do nothing for self-assignments:
     if a.data == b.data: return
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
-      a.data = cast[type(a.data)](alloc(a.cap * sizeof(T)))
+      a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
         a.data[i] = b.data[i]
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
-    # move assignment
+    # move assignment, optional.
+    # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
+    wasMoved(a)
     a.len = b.len
     a.cap = b.cap
     a.data = b.data
@@ -75,7 +77,7 @@ written as:
   proc createSeq*[T](elems: varargs[T]): myseq[T] =
     result.cap = elems.len
     result.len = elems.len
-    result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
+    result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
     for i in 0..<result.len: result.data[i] = elems[i]
 
   proc len*[T](x: myseq[T]): int {.inline.} = x.len
@@ -119,7 +121,6 @@ The general pattern in ``=destroy`` looks like:
     # first check if 'x' was moved to somewhere else:
     if x.field != nil:
       freeResource(x.field)
-      x.field = nil
 
 
 
@@ -130,7 +131,10 @@ A `=sink` hook moves an object around, the resources are stolen from the source
 and passed to the destination. It is ensured that source's destructor does
 not free the resources afterwards by setting the object to its default value
 (the value the object's state started in). Setting an object ``x`` back to its
-default value is written as ``wasMoved(x)``.
+default value is written as ``wasMoved(x)``. When not provided the compiler
+is using a combination of `=destroy` and `copyMem` instead. This is efficient
+hence users rarely need to implement their own `=sink` operator, it is enough to
+provide `=destroy` and `=`, compiler will take care about the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
@@ -145,6 +149,7 @@ The general pattern in ``=sink`` looks like:
 
   proc `=sink`(dest: var T; source: T) =
     `=destroy`(dest)
+    wasMoved(dest)
     dest.field = source.field
 
 
@@ -174,6 +179,7 @@ The general pattern in ``=`` looks like:
     # protect against self-assignments:
     if dest.field != source.field:
       `=destroy`(dest)
+      wasMoved(dest)
       dest.field = duplicateResource(source.field)
 
 
@@ -199,7 +205,7 @@ objects inside ``=`` and ``=sink`` is a strong indicator to treat
 ``system.swap`` as a builtin primitive of its own that simply swaps every
 field in the involved objects via ``copyMem`` or a comparable mechanism.
 In other words, ``swap(a, b)`` is **not** implemented
-as ``let tmp = move(a); b = move(a); a = move(tmp)``.
+as ``let tmp = move(b); b = move(a); a = move(tmp)``.
 
 This has further consequences:
 
@@ -221,7 +227,7 @@ A sink parameter
 *may* be consumed once in the proc's body but doesn't have to be consumed at all.
 The reason for this is that signatures
 like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible
-without any further overloads and ``put`` might not take owership of ``k`` if
+without any further overloads and ``put`` might not take ownership of ``k`` if
 ``k`` already exists in the table. Sink parameters enable an affine type system,
 not a linear type system.
 
@@ -252,6 +258,27 @@ An implementation is allowed, but not required to implement even more move
 optimizations (and the current implementation does not).
 
 
+Sink parameter inference
+========================
+
+The current implementation can do a limited form of sink parameter
+inference. But it has to be enabled via `--sinkInference:on`, either
+on the command line or via a `push` pragma.
+
+To enable it for a section of code, one can
+use `{.push sinkInference: on.}`...`{.pop.}`.
+
+The `.nosinks`:idx: pragma can be used to disable this inference
+for a single routine:
+
+.. code-block:: nim
+
+  proc addX(x: T; child: T) {.nosinks.} =
+    x.s.add child
+
+
+The details of the inference algorithm are currently undocumented.
+
 
 Rewrite rules
 =============
@@ -262,8 +289,8 @@ Rewrite rules
    around the complete routine body.
 2. The produced ``finally`` section is wrapped around the enclosing scope.
 
-The current implementation follows strategy (1). This means that resources are
-not destroyed at the scope exit, but at the proc exit.
+The current implementation follows strategy (2). This means that resources are
+destroyed at the scope exit.
 
 ::
 
@@ -331,7 +358,8 @@ Destructor removal
 
 ``wasMoved(x);`` followed by a `=destroy(x)` operation cancel each other
 out. An implementation is encouraged to exploit this in order to improve
-efficiency and code sizes.
+efficiency and code sizes. The current implementation does perform this
+optimization.
 
 
 Self assignments
@@ -430,6 +458,7 @@ for expressions of type ``lent T`` or of type ``var T``.
     result = Tree(kids: kids)
     # converted into:
     `=sink`(result.kids, kids); wasMoved(kids)
+    `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]
@@ -447,43 +476,66 @@ for expressions of type ``lent T`` or of type ``var T``.
     echo t[0] # accessor does not copy the element!
 
 
+The .cursor annotation
+======================
 
-Owned refs
-==========
-
-Let ``W`` be an ``owned ref`` type. Conceptually its hooks look like:
-
-.. code-block:: nim
-
-  proc `=destroy`(x: var W) =
-    if x != nil:
-      assert x.refcount == 0, "dangling unowned pointers exist!"
-      `=destroy`(x[])
-      x = nil
-
-  proc `=`(x: var W; y: W) {.error: "owned refs can only be moved".}
-
-  proc `=sink`(x: var W; y: W) =
-    `=destroy`(x)
-    bitwiseCopy x, y # raw pointer copy
-
-
-Let ``U`` be an unowned ``ref`` type. Conceptually its hooks look like:
+Under the ``--gc:arc|orc`` modes Nim's `ref` type is implemented via the same runtime
+"hooks" and thus via reference counting. This means that cyclic structures cannot be freed
+immediately (``--gc:orc`` ships with a cycle collector). With the ``.cursor`` annotation
+one can break up cycles declaratively:
 
 .. code-block:: nim
 
-  proc `=destroy`(x: var U) =
-    if x != nil:
-      dec x.refcount
+  type
+    Node = ref object
+      left: Node # owning ref
+      right {.cursor.}: Node # non-owning ref
 
-  proc `=`(x: var U; y: U) =
-    # Note: No need to check for self-assignments here.
-    if y != nil: inc y.refcount
-    if x != nil: dec x.refcount
-    bitwiseCopy x, y # raw pointer copy
+But please notice that this is not C++'s weak_ptr, it means the right field is not
+involved in the reference counting, it is a raw pointer without runtime checks.
 
-  proc `=sink`(x: var U, y: U) {.error.}
-  # Note: Moves are not available.
+Automatic reference counting also has the disadvantage that it introduces overhead
+when iterating over linked structures. The ``.cursor`` annotation can also be used
+to avoid this overhead:
+
+.. code-block:: nim
+
+  var it {.cursor.} = listRoot
+  while it != nil:
+    use(it)
+    it = it.next
+
+
+In fact, ``.cursor`` more generally prevents object construction/destruction pairs
+and so can also be useful in other contexts. The alternative solution would be to
+use raw pointers (``ptr``) instead which is more cumbersome and also more dangerous
+for Nim's evolution: Later on the compiler can try to prove ``.cursor`` annotations
+to be safe, but for ``ptr`` the compiler has to remain silent about possible
+problems.
+
+
+Cursor inference / copy elision
+===============================
+
+The current implementation also performs `.cursor` inference. Cursor inference is
+a form of copy elision.
+
+To see how and when we can do that, think about this question: In `dest = src` when
+do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
+afterwards. If `dest` is a local variable that is simple to analyse. And if `src` is a
+location derived from a formal parameter, we also know it is not mutated! In other
+words, we do a compile-time copy-on-write analysis.
+
+This means that "borrowed" views can be written naturally and without explicit pointer
+indirections:
+
+.. code-block:: nim
+
+  proc main(tab: Table[string, string]) =
+    let v = tab["key"] # inferred as .cursor because 'tab' is not mutated.
+    # no copy into 'v', no destruction of 'v'.
+    use(v)
+    useItAgain(v)
 
 
 Hook lifting
@@ -546,14 +598,14 @@ used to specialize the object traversal in order to avoid deep recursions:
 
   type Node = ref object
     x, y: int32
-    left, right: owned Node
+    left, right: Node
 
   type Tree = object
-    root: owned Node
+    root: Node
 
   proc `=destroy`(t: var Tree) {.nodestroy.} =
     # use an explicit stack so that we do not get stack overflows:
-    var s: seq[owned Node] = @[t.root]
+    var s: seq[Node] = @[t.root]
     while s.len > 0:
       let x = s.pop
       if x.left != nil: s.add(x.left)

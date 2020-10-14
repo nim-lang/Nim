@@ -7,6 +7,8 @@ type
 
 let g_2* = @[Type2(data: 2), Type2(data: 3)][1..^1] # should have a length of 1
 
+const c_2* = [1, 2, 3] # testing that a complext const object is properly exported
+
 var a: tuple[str: string, i: int]
 a.str = "   2: random string"
 echo a.str

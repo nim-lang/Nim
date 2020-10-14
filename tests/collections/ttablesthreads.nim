@@ -3,7 +3,9 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables, sharedtables
+import hashes, tables, sharedtables, algorithm, sequtils
+
+proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
 
 const
   data = {
@@ -47,8 +49,7 @@ block tableTest1:
   for x in 0..1:
     for y in 0..1:
       assert t[(x,y)] == $x & $y
-  assert($t ==
-    "{(x: 1, y: 1): \"11\", (x: 0, y: 0): \"00\", (x: 0, y: 1): \"01\", (x: 1, y: 0): \"10\"}")
+  assert t.sortedPairs == @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
 block tableTest2:
   var t = initTable[string, float]()

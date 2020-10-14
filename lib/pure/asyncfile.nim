@@ -132,8 +132,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   var retFuture = newFuture[int]("asyncfile.readBuffer")
 
   when defined(windows) or defined(nimdoc):
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -212,8 +211,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(size)
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -340,8 +338,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   ## specified file.
   var retFuture = newFuture[void]("asyncfile.writeBuffer")
   when defined(windows) or defined(nimdoc):
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -382,7 +379,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
 
     proc cb(fd: AsyncFD): bool =
       result = true
-      let remainderSize = size-written
+      let remainderSize = size - written
       var cbuf = cast[cstring](buf)
       let res = write(fd.cint, addr cbuf[written], remainderSize.cint)
       if res < 0:
@@ -412,10 +409,9 @@ proc write*(f: AsyncFile, data: string): Future[void] =
   var copy = data
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(data.len)
-    copyMem(buffer, addr copy[0], data.len)
+    copyMem(buffer, copy.cstring, data.len)
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -458,8 +454,15 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
     proc cb(fd: AsyncFD): bool =
       result = true
-      let remainderSize = data.len-written
-      let res = write(fd.cint, addr copy[written], remainderSize.cint)
+
+      let remainderSize = data.len - written
+
+      let res =
+        if data.len == 0:
+          write(fd.cint, copy.cstring, 0)
+        else:
+          write(fd.cint, addr copy[written], remainderSize.cint)
+
       if res < 0:
         let lastError = osLastError()
         if lastError.int32 != EAGAIN:

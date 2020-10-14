@@ -169,8 +169,7 @@ proc mainCommand(graph: ModuleGraph) =
     if not fileExists(conf.projectFull):
       quit "cannot find file: " & conf.projectFull.string
     add(conf.searchPaths, conf.libpath)
-    # do not stop after the first error:
-    conf.errorMax = high(int)
+    conf.setErrorMaxHighMaybe
     try:
       compileProject(graph)
     finally:
@@ -183,10 +182,10 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case p.key.normalize
       of "help", "h":
-        stdout.writeline(Usage)
+        stdout.writeLine(Usage)
         quit()
       of "project":
         conf.projectName = p.val
@@ -196,8 +195,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
     of cmdArgument:
       let info = p.key.split(':')
       if info.len == 3:
-        let (dir, file, ext) = info[0].splitFile()
-        conf.projectName = findProjectNimFile(conf, dir)
+        conf.projectName = findProjectNimFile(conf, info[0].splitFile.dir)
         if conf.projectName.len == 0: conf.projectName = info[0]
         try:
           conf.m.trackPos = newLineInfo(conf, AbsoluteFile info[0],
@@ -210,13 +208,12 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nimfind")
 
   if paramCount() == 0:
-    stdout.writeline(Usage)
+    stdout.writeLine(Usage)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -230,6 +227,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if not dirExists(conf.prefixDir / RelativeDir"lib"):
     conf.prefixDir = AbsoluteDir""
 
-  discard self.loadConfigsAndRunMainCommand(cache, conf)
+  var graph = newModuleGraph(cache, conf)
+  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    mainCommand(graph)
 
-handleCmdline(newIdentCache(), newConfigRef())
+handleCmdLine(newIdentCache(), newConfigRef())

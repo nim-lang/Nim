@@ -28,8 +28,8 @@ const
     cfsFieldInfo: "NIM_merge_FIELD_INFO",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
-    cfsVars: "NIM_merge_VARS",
     cfsData: "NIM_merge_DATA",
+    cfsVars: "NIM_merge_VARS",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
     cfsDatInitProc: "NIM_merge_DATINIT_PROC",
@@ -48,11 +48,15 @@ const
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
+  # useful for debugging and only adds at most a few lines in each file
+  result.add("\n/* section: ")
+  result.add(CFileSectionNames[fs])
+  result.add(" */\n")
   if compilationCachePresent(conf):
     result = nil
-    add(result, "\n/*\t")
-    add(result, CFileSectionNames[fs])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CFileSectionNames[fs])
+    result.add(":*/\n")
 
 proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
@@ -61,9 +65,9 @@ proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope("")
-    add(result, "\n/*\t")
-    add(result, CProcSectionNames[ps])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CProcSectionNames[ps])
+    result.add(":*/\n")
 
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
@@ -278,7 +282,7 @@ proc mergeRequired*(m: BModule): bool =
     if m.s[i] != nil:
       #echo "not empty: ", i, " ", m.s[i]
       return true
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     if m.initProc.s(i) != nil:
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
@@ -288,7 +292,7 @@ proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   var old: TMergeSections
   readMergeSections(cfilename, old)
   # do the merge; old section before new section:
-  for i in low(TCFileSection)..high(TCFileSection):
+  for i in TCFileSection:
     m.s[i] = old.f[i] & m.s[i]
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     m.initProc.s(i) = old.p[i] & m.initProc.s(i)

@@ -1,5 +1,6 @@
 discard """
-  output: '''assign
+  output: '''
+assign
 destroy
 destroy
 5
@@ -7,7 +8,13 @@ destroy
 destroy Foo: 123
 destroy Foo: 5
 (x1: (val: ...))
-destroy'''
+destroy
+---------------
+app begin
+(val: ...)
+destroy
+app end
+'''
 joinable: false
 """
 
@@ -16,17 +23,18 @@ joinable: false
 type T = object
 
 proc `=`(lhs: var T, rhs: T) =
-    echo "assign"
+  echo "assign"
 
 proc `=destroy`(v: var T) =
-    echo "destroy"
+  echo "destroy"
 
 proc use(x: T) = discard
 
 proc usedToBeBlock =
-    var v1 : T
-    var v2 : T = v1
-    use v1
+  var v1 = T()
+  var v2: T = v1
+  discard addr(v2) # prevent cursorfication
+  use v1
 
 usedToBeBlock()
 
@@ -93,3 +101,30 @@ proc test =
   echo obj2
 
 test()
+
+
+#------------------------------------------------------------
+# Issue #12883
+
+type
+  TopObject = object
+    internal: UniquePtr[int]
+
+proc deleteTop(p: ptr TopObject) =
+  if p != nil:
+    `=destroy`(p[]) # !!! this operation used to leak the integer
+    deallocshared(p)
+
+proc createTop(): ptr TopObject =
+  result = cast[ptr TopObject](allocShared0(sizeof(TopObject)))
+  result.internal = newUniquePtr(1)
+
+proc test2() =
+  let x = createTop()
+  echo $x.internal
+  deleteTop(x)
+
+echo "---------------"
+echo "app begin"
+test2()
+echo "app end"

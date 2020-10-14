@@ -75,12 +75,14 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
+import macros # for `parseEnum`
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
   export toLower, toUpper
 
 include "system/inclrtl"
+import std/private/since
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -118,7 +120,7 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
+proc isAlphaAscii*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
   ##
@@ -130,7 +132,7 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
     doAssert isAlphaAscii('8') == false
   return c in Letters
 
-proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
+proc isAlphaNumeric*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
@@ -141,7 +143,7 @@ proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
     doAssert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
-proc isDigit*(c: char): bool {.noSideEffect, procvar,
+proc isDigit*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
@@ -151,7 +153,7 @@ proc isDigit*(c: char): bool {.noSideEffect, procvar,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
+proc isSpaceAscii*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
@@ -160,7 +162,7 @@ proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
 
-proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
+proc isLowerAscii*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
@@ -175,7 +177,7 @@ proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
     doAssert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
-proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
+proc isUpperAscii*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
@@ -191,7 +193,7 @@ proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
   return c in {'A'..'Z'}
 
 
-proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
+proc toLowerAscii*(c: char): char {.noSideEffect,
   rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character ``c``.
   ##
@@ -215,7 +217,7 @@ template toImpl(call) =
   for i in 0..len(s) - 1:
     result[i] = call(s[i])
 
-proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
+proc toLowerAscii*(s: string): string {.noSideEffect,
   rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
   ##
@@ -229,7 +231,7 @@ proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
-proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
+proc toUpperAscii*(c: char): char {.noSideEffect,
   rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts character `c` into upper case.
   ##
@@ -249,7 +251,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
+proc toUpperAscii*(s: string): string {.noSideEffect,
   rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts string `s` into upper case.
   ##
@@ -263,7 +265,7 @@ proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
-proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
+proc capitalizeAscii*(s: string): string {.noSideEffect,
   rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
   ##
@@ -278,7 +280,27 @@ proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
-proc normalize*(s: string): string {.noSideEffect, procvar,
+proc nimIdentNormalize*(s: string): string =
+  ## Normalizes the string `s` as a Nim identifier.
+  ##
+  ## That means to convert to lower case and remove any '_' on all characters
+  ## except first one.
+  runnableExamples:
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+  result = newString(s.len)
+  if s.len > 0:
+    result[0] = s[0]
+  var j = 1
+  for i in 1..len(s) - 1:
+    if s[i] in {'A'..'Z'}:
+      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      inc j
+    elif s[i] != '_':
+      result[j] = s[i]
+      inc j
+  if j != s.len: setLen(result, j)
+
+proc normalize*(s: string): string {.noSideEffect,
   rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
@@ -302,7 +324,7 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   if j != s.len: setLen(result, j)
 
 proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreCase", procvar.} =
+  rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 if a == b
@@ -324,7 +346,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
                                       # thus we compile without checks here
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
+  rtl, extern: "nsuCmpIgnoreStyle".} =
   ## Semantically the same as ``cmp(normalize(a), normalize(b))``. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names.
@@ -917,6 +939,31 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
+proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.noSideEffect.} =
+  const
+    HexChars = "0123456789ABCDEF"
+  var n = x
+  result = newString(len)
+  for j in countdown(len-1, 0):
+    result[j] = HexChars[int(n and 0xF)]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and handleNegative: n = not(BiggestUInt 0)
+
+proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## The resulting string will be exactly `len` characters long. No prefix like
+  ## ``0x`` is generated.
+  runnableExamples:
+    let
+      a = 62'u64
+      b = 4097'u64
+    doAssert a.toHex(3) == "03E"
+    doAssert b.toHex(3) == "001"
+    doAssert b.toHex(4) == "1001"
+  toHexImpl(x, len, false)
+
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation.
@@ -927,25 +974,19 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     let
       a = 62
       b = 4097
+      c = -8
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  const
-    HexChars = "0123456789ABCDEF"
-  var
-    n = x
-  result = newString(len)
-  for j in countdown(len-1, 0):
-    result[j] = HexChars[int(n and 0xF)]
-    n = n shr 4
-    # handle negative overflow
-    if n == 0 and x < 0: n = -1
+    doAssert c.toHex(6) == "FFFFF8"
+  toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
-proc toHex*[T: SomeInteger](x: T): string =
+proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
   ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
-  toHex(BiggestInt(x), T.sizeof * 2)
+    doAssert toHex(1984'i16) == "07C0"
+  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1075,45 +1116,49 @@ proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   if x < 0:
     result = '-' & result
 
-proc parseInt*(s: string): int {.noSideEffect, procvar,
+proc parseInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseInt".} =
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
     doAssert parseInt("-0042") == -42
+  result = 0
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
-proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
+proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect,
   rtl, extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestInt(0)
   let L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
-proc parseUInt*(s: string): uint {.noSideEffect, procvar,
+proc parseUInt*(s: string): uint {.noSideEffect,
   rtl, extern: "nsuParseUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = uint(0)
   let L = parseutils.parseUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
+proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect,
   rtl, extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestUInt(0)
   let L = parseutils.parseBiggestUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseFloat*(s: string): float {.noSideEffect, procvar,
+proc parseFloat*(s: string): float {.noSideEffect,
   rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`.
   ##
@@ -1122,11 +1167,12 @@ proc parseFloat*(s: string): float {.noSideEffect, procvar,
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
+  result = 0.0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
 
-proc parseBinInt*(s: string): int {.noSideEffect, procvar,
+proc parseBinInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseBinInt".} =
   ## Parses a binary integer value contained in `s`.
   ##
@@ -1140,6 +1186,7 @@ proc parseBinInt*(s: string): int {.noSideEffect, procvar,
     doAssert a.parseBinInt() == 53
     doAssert b.parseBinInt() == 7
 
+  result = 0
   let L = parseutils.parseBin(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1151,17 +1198,19 @@ proc parseOctInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
   ## `s` are ignored.
+  result = 0
   let L = parseutils.parseOct(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
-proc parseHexInt*(s: string): int {.noSideEffect, procvar,
+proc parseHexInt*(s: string): int {.noSideEffect,
   rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
   ## within `s` are ignored.
+  result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
@@ -1181,7 +1230,7 @@ proc generateHexCharToValueMap(): string =
 
 const hexCharToValueMap = generateHexCharToValueMap()
 
-proc parseHexStr*(s: string): string {.noSideEffect, procvar,
+proc parseHexStr*(s: string): string {.noSideEffect,
   rtl, extern: "nsuParseHexStr".} =
   ## Convert hex-encoded string to byte string, e.g.:
   ##
@@ -1229,8 +1278,64 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
+  result = nnkOfBranch.newTree(
+    newLit s,
+    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
+  )
+
+macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
+  # generates a case stmt, which assigns the correct enum field given
+  # a normalized string comparison to the `argSym` input.
+  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
+  # `of "Foo".nimIdentNormalize: Foo`.
+  # This will fail, if the enum is not defined at top level (e.g. in a block).
+  # Thus we check for the field value of the (possible holed enum) and convert
+  # the integer value to the generic argument `typ`.
+  let typ = typ.getTypeInst[1]
+  let impl = typ.getImpl[2]
+  expectKind impl, nnkEnumTy
+  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
+  # stores all processed field strings to give error msg for ambiguous enums
+  var foundFields: seq[string] = @[]
+  var fStr = "" # string of current field
+  var fNum = BiggestInt(0) # int value of current field
+  for f in impl:
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkEnumFieldDef:
+      case f[1].kind
+      of nnkStrLit: fStr = f[1].strVal
+      of nnkTupleConstr:
+        fStr = f[1][1].strVal
+        fNum = f[1][0].intVal
+      of nnkIntLit:
+        fStr = f[0].strVal
+        fNum = f[1].intVal
+      else: error("Invalid tuple syntax!", f[1])
+    else: error("Invalid node for enum type!", f)
+    # add field if string not already added
+    fStr = nimIdentNormalize(fStr)
+    if fStr notin foundFields:
+      result.add addOfBranch(fStr, newLit fNum, typ)
+      foundFields.add fStr
+    else:
+      error("Ambiguous enums cannot be parsed, field " & $fStr &
+        " appears multiple times!", f)
+    inc fNum
+  # finally add else branch to raise or use default
+  if default == nil:
+    let raiseStmt = quote do:
+      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
+    result.add nnkElse.newTree(raiseStmt)
+  else:
+    expectKind(default, nnkSym)
+    result.add nnkElse.newTree(default)
+
 proc parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``.
+  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
   ##
   ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
@@ -1246,13 +1351,11 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  raise newException(ValueError, "invalid enum value: " & s)
+  genEnumStmt(T, s, default = nil)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``.
+  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
@@ -1267,10 +1370,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  result = default
+  genEnumStmt(T, s, default)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
@@ -1412,6 +1512,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural,string>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1425,21 +1526,25 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural, padding: string = " "): string
+proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `dedent proc<#dedent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
-    doAssert unindent("  First line\l   and second line", 3) ==
-             "First line\land second line"
+    let x = """
+      Hello
+        There
+    """.unindent()
+
+    doAssert x == "Hello\nThere\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1454,11 +1559,30 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc unindent*(s: string): string
-    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
-  ## Removes all indentation composed of whitespace from each line in ``s``.
+proc indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## ignoring lines that consist only of whitespace.
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ':
+        result = i
+        break
+  if result == int.high:
+    result = 0
+
+proc dedent*(s: string, count: Natural = indentation(s)): string
+    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
+  ## is that this by default only cuts off the amount of indentation that all
+  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `unindent proc<#unindent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1466,11 +1590,11 @@ proc unindent*(s: string): string
   runnableExamples:
     let x = """
       Hello
-      There
-    """.unindent()
+        There
+    """.dedent()
 
-    doAssert x == "Hello\nThere\n"
-  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
+    doAssert x == "Hello\n  There\n"
+  unindent(s, count, " ")
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
@@ -1806,7 +1930,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
 
 proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed
+  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##
@@ -1955,6 +2079,7 @@ proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
   if sub.len == 0:
     return -1
   let last = if last == -1: s.high else: last
+  result = 0
   for i in countdown(last - sub.len + 1, start):
     for j in 0..sub.len-1:
       result = i
@@ -1971,6 +2096,7 @@ proc count*(s: string, sub: char): int {.noSideEffect,
   ##
   ## See also:
   ## * `countLines proc<#countLines,string>`_
+  result = 0
   for c in s:
     if c == sub: inc result
 
@@ -1981,6 +2107,7 @@ proc count*(s: string, subs: set[char]): int {.noSideEffect,
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert card(subs) > 0
+  result = 0
   for c in s:
     if c in subs: inc result
 
@@ -1993,6 +2120,7 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert sub.len > 0
+  result = 0
   var i = 0
   while true:
     i = s.find(sub, i)
@@ -2179,17 +2307,28 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-
-  var L = (s.len-1) div digits + s.len
-  result = newString(L)
+  result = newStringOfCap(s.len)
+  let hasPrefix = isDigit(s[s.low]) == false
+  var idx:int
+  if hasPrefix:
+    result.add s[s.low]
+    for i in (s.low + 1)..s.high:
+      idx = i
+      if not isDigit(s[i]):
+        result.add s[i]
+      else:
+        break
+  let partsLen = s.len - idx
+  var L = (partsLen-1) div digits + partsLen
+  result.setLen(L + idx)
   var j = 0
   dec(L)
-  for i in countdown(len(s)-1, 0):
+  for i in countdown(partsLen-1,0):
     if j == digits:
-      result[L] = sep
+      result[L + idx] = sep
       dec(L)
       j = 0
-    result[L] = s[i]
+    result[L + idx] = s[i + idx]
     inc(j)
     dec(L)
 
@@ -2240,7 +2379,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
       case s[i+1]:
       of 'x':
         inc i, 2
-        var c: int
+        var c = 0
         i += parseutils.parseHex(s, c, i, maxLen = 2)
         result.add(chr(c))
         dec i, 2
@@ -2357,10 +2496,6 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
-    when (NimMajor, NimMinor) >= (1, 1):
-      # remove trailing dot, compatible with Python's formatter and JS backend
-      if result[^1] == decimalSep:
-        result.setLen(len(result)-1)
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
@@ -2445,7 +2580,7 @@ proc formatSize*(bytes: int64,
     xb: int64 = bytes
     fbytes: float
     lastXb: int64 = bytes
-    matchedIndex: int
+    matchedIndex = 0
     prefixes: array[9, string]
   if prefix == bpColloquial:
     prefixes = collPrefixes
@@ -2849,18 +2984,17 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
       break
     i = j
 
-proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
-    extern: "nsuIsNilOrWhitespace".} =
-  ## Checks if `s` is nil or consists entirely of whitespace characters.
-  result = true
-  for c in s:
-    if not c.isSpaceAscii():
-      return false
+proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, rtl,
+    extern: "nsuIsEmptyOrWhitespace".} =
+  ## Checks if `s` is empty or consists entirely of whitespace characters.
+  result = s.allCharsInSet(Whitespace)
+
 
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235" # bugs 8242, 12586
+    when not defined(js):
+      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
@@ -2981,10 +3115,10 @@ when isMainModule:
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
 
-    doAssert(isNilOrWhitespace(""))
-    doAssert(isNilOrWhitespace("       "))
-    doAssert(isNilOrWhitespace("\t\l \v\r\f"))
-    doAssert(not isNilOrWhitespace("ABc   \td"))
+    doAssert(isEmptyOrWhitespace(""))
+    doAssert(isEmptyOrWhitespace("       "))
+    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
+    doAssert(not isEmptyOrWhitespace("ABc   \td"))
 
     doAssert isLowerAscii('a')
     doAssert isLowerAscii('z')

@@ -21,6 +21,7 @@ type
                       # new symbol
     config: ConfigRef
     ic: IdentCache
+    instID: int
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -39,10 +40,10 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     var s = templ.sym
     if (s.owner == nil and s.kind == skParam) or s.owner == c.owner:
       if s.kind == skParam and {sfGenSym, sfTemplateParam} * s.flags == {sfTemplateParam}:
-        handleParam actual.sons[s.position]
+        handleParam actual[s.position]
       elif (s.owner != nil) and (s.kind == skGenericParam or
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
-        handleParam actual.sons[s.owner.typ.len + s.position - 1]
+        handleParam actual[s.owner.typ.len + s.position - 1]
       else:
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
@@ -53,8 +54,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #if x.kind == skParam and x.owner.kind == skModule:
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
-        if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
-          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+        if sfGenSym in s.flags:
+          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
             if c.instLines: actual.info else: templ.info)
         else:
           result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
@@ -68,8 +69,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     # "declarative" context (bug #9235).
     if c.isDeclarative:
       var res = copyNode(c, templ, actual)
-      for i in 0 ..< len(templ):
-        evalTemplateAux(templ.sons[i], actual, c, res)
+      for i in 0..<templ.len:
+        evalTemplateAux(templ[i], actual, c, res)
       result.add res
     else:
       result.add newNodeI(nkEmpty, templ.info)
@@ -82,8 +83,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
       c.isDeclarative = true
       isDeclarative = true
     var res = copyNode(c, templ, actual)
-    for i in 0 ..< len(templ):
-      evalTemplateAux(templ.sons[i], actual, c, res)
+    for i in 0..<templ.len:
+      evalTemplateAux(templ[i], actual, c, res)
     result.add res
     if isDeclarative: c.isDeclarative = false
 
@@ -122,22 +123,22 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
                 n.renderTree)
 
   result = newNodeI(nkArgList, n.info)
-  for i in 1 .. givenRegularParams:
-    result.addSon n[i]
+  for i in 1..givenRegularParams:
+    result.add n[i]
 
   # handle parameters with default values, which were
   # not supplied by the user
-  for i in givenRegularParams+1 .. expectedRegularParams:
-    let default = s.typ.n.sons[i].sym.ast
+  for i in givenRegularParams+1..expectedRegularParams:
+    let default = s.typ.n[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
       localError(conf, n.info, errWrongNumberOfArguments)
-      addSon(result, newNodeI(nkEmpty, n.info))
+      result.add newNodeI(nkEmpty, n.info)
     else:
-      addSon(result, default.copyTree)
+      result.add default.copyTree
 
   # add any generic parameters
-  for i in 1 .. genericParams:
-    result.addSon n.sons[givenRegularParams + i]
+  for i in 1..genericParams:
+    result.add n[givenRegularParams + i]
 
 # to prevent endless recursion in template instantiation
 const evalTemplateLimit* = 1000
@@ -155,7 +156,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
       if x.kind in nkCallKinds:
         for i in 1..<x.len:
           if x[i].kind in nkCallKinds:
-            x.sons[i].info = info
+            x[i].info = info
   else:
     result = newNodeI(nkStmtListExpr, info)
     var d = newNodeI(nkComesFrom, info)
@@ -166,7 +167,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
-                   ic: IdentCache;
+                   ic: IdentCache; instID: ref int;
                    fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
@@ -181,13 +182,14 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.config = conf
   ctx.ic = ic
   initIdTable(ctx.mapping)
+  ctx.instID = instID[]
 
   let body = tmpl.getBody
   #echo "instantion of ", renderTree(body, {renderIds})
   if isAtom(body):
     result = newNodeI(nkPar, body.info)
     evalTemplateAux(body, args, ctx, result)
-    if result.len == 1: result = result.sons[0]
+    if result.len == 1: result = result[0]
     else:
       localError(conf, result.info, "illformed AST: " &
                   renderTree(result, {renderNoComments}))
@@ -196,10 +198,12 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
     ctx.instLines = sfCallsite in tmpl.flags
     if ctx.instLines:
       result.info = n.info
-    for i in 0 ..< safeLen(body):
-      evalTemplateAux(body.sons[i], args, ctx, result)
+    for i in 0..<body.safeLen:
+      evalTemplateAux(body[i], args, ctx, result)
   result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, tmpl, result)
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
+  # The instID must be unique for every template instantiation, so we increment it here
+  inc instID[]

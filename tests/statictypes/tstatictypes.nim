@@ -9,6 +9,7 @@ output: '''
 b is 2 times a
 17
 ['\x00', '\x00', '\x00', '\x00']
+heyho
 '''
 """
 
@@ -88,6 +89,10 @@ when true:
   reject:
     var x = static(v)
 
+block: # issue #13730
+  type Foo[T: static[float]] = object
+  doAssert Foo[0.0] is Foo[-0.0]
+
 when true:
   type
     ArrayWrapper1[S: static int] = object
@@ -166,3 +171,71 @@ var
   s: StringValue16
 
 echo s
+
+block: #13529
+  block:
+    type Foo[T: static type] = object
+    var foo: Foo["test"]
+    doAssert $foo == "()"
+    doAssert foo.T is string
+    static: doAssert foo.T == "test"
+    doAssert not compiles(
+      block:
+        type Foo2[T: static type] = object
+          x: T)
+
+  block:
+    type Foo[T: static[float]] = object
+    var foo: Foo[1.2]
+    doAssert $foo == "()"
+    doAssert foo.T == 1.2
+
+  block: # routines also work
+    proc fun(a: static) = (const a2 = a)
+    fun(1)
+    fun(1.2)
+  block: # routines also work
+    proc fun(a: static type) = (const a2 = a)
+    fun(1)
+    fun(1.2)
+
+  block: # this also works
+    proc fun[T](a: static[T]) = (const a2 = a)
+    fun(1)
+    fun(1.2)
+
+block: # #12713
+  block:
+    type Cell = object
+      c: int
+    proc test(c: static string) = discard #Remove this and it compiles
+    proc test(c: Cell) = discard
+    test Cell(c: 0)
+  block:
+    type Cell = object
+      c: int
+    proc test(c: static string) = discard #Remove this and it compiles
+    proc test(c: Cell) = discard
+    test Cell()
+
+block: # issue #14802
+  template fn(s: typed): untyped =
+    proc bar() = discard
+    12
+  const myConst = static(fn(1))
+  doAssert myConst == 12
+
+
+# bug #12571
+type
+  T[K: static bool] = object of RootObj
+    when K == true:
+      foo: string
+    else:
+      bar: string
+  U[K: static bool] = object of T[K]
+
+let t = T[true](foo: "hey")
+let u = U[false](bar: "ho")
+echo t.foo, u.bar
+

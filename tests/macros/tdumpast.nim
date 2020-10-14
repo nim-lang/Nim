@@ -31,3 +31,20 @@ dumpAST:
 
   proc sub(x, y: int): int = return x - y
 
+macro fun() =
+  let n = quote do:
+    1+1 == 2
+  doAssert n.repr == "1 + 1 == 2", n.repr
+fun()
+
+macro fun2(): untyped =
+  let n = quote do:
+    1 + 2 * 3 == 1 + 6
+  doAssert n.repr == "1 + 2 * 3 == 1 + 6", n.repr
+fun2()
+
+macro fun3(): untyped =
+  let n = quote do:
+    int | float | array | seq | object | ptr | pointer | float32
+  doAssert n.repr == "int | float | array | seq | object | ptr | pointer | float32", n.repr
+fun3()

@@ -30,8 +30,16 @@ Generate HTML documentation for a whole project:
 
 ::
   # delete any htmldocs/*.idx file before starting
-  nim doc --project --index:on --git.url:<url> --git.commit:<tag> <main_filename>.nim
-  nim buildIndex -o:htmldocs/theindex.html htmldocs
+  nim doc --project --index:on --git.url:<url> --git.commit:<tag> --outdir:htmldocs <main_filename>.nim
+  # this will generate html files, a theindex.html index, css and js under `htmldocs`
+  # See also `--docroot` to specify a relative root.
+  # to get search (dochacks.js) to work locally, you need a server otherwise
+  # CORS will prevent opening file:// urls; this works:
+  python3 -m http.server 7029 --directory htmldocs
+  # When --outdir is omitted it defaults to $projectPath/htmldocs,
+  or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
+  and likewise without `--project`.
+  Adding `-r` will open in a browser directly.
 
 
 Documentation Comments
@@ -201,8 +209,6 @@ file.
 See source switch
 -----------------
 
-The ``docSeeSrcUrl`` switch is deprecated. Use:
-
 ::
   nim doc2 --git.url:<url> filename.nim
 
@@ -216,6 +222,10 @@ This is useful to link to a different branch e.g. `--git.commit:master`,
 or to a tag e.g. `--git.commit:1.2.3` or a commit.
 
 Source URLs are generated as `href="${url}/tree/${commit}/${path}#L${line}"` by default and this compatible with GitHub but not with GitLab.
+
+Similarly, ``git.devel`` switch overrides the hardcoded `devel` branch for the `Edit` link which is also useful if you have a different working branch than `devel` e.g. `--git.devel:master`.
+
+Edit URLs are generated as `href="${url}/tree/${devel}/${path}#L${line}"` by default.
 
 You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with a hyperlink to your own code repository.
 
@@ -232,7 +242,7 @@ Other Input Formats
 
 The *Nim compiler* also has support for RST (reStructuredText) files with
 the ``rst2html`` and ``rst2tex`` commands. Documents like this one are
-initially written in a dialect of RST which adds support for nim sourcecode
+initially written in a dialect of RST which adds support for nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
 supports highlighting of C++ and some other c-like languages.
 
@@ -318,7 +328,7 @@ Index (idx) file format
 
 Files with the ``.idx`` extension are generated when you use the `Index
 switch <#related-options-index-switch>`_ along with commands to generate
-documentation from source or text files. You can programatically generate
+documentation from source or text files. You can programmatically generate
 indices with the `setIndexTerm()
 <rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
 and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
@@ -333,9 +343,8 @@ but can have up to four (additional columns are ignored). The content of these
 columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
-   Nim's rules (eg. \`^\`).
-2. Base filename plus anchor hyperlink (eg.
-   ``algorithm.html#*,int,SortOrder``).
+   Nim's rules (e.g. \`^\`).
+2. Base filename plus anchor hyperlink (e.g. ``algorithm.html#*,int,SortOrder``).
 3. Optional human readable string to display as hyperlink. If the value is not
    present or is the empty string, the hyperlink will be rendered
    using the term. Prefix whitespace indicates that this entry is
@@ -363,7 +372,7 @@ exception to this are table of content (TOC) entries. TOC entries are added to
 the index file with their third column having as much prefix spaces as their
 level is in the TOC (at least 1 character). The prefix whitespace helps to
 filter TOC entries from API or text symbols. This is important because the
-amount of spaces is used to replicate the hiearchy for document TOCs in the
+amount of spaces is used to replicate the hierarchy for document TOCs in the
 final index, and TOC entries found in ``.nim`` files are discarded.
 
 

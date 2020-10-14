@@ -74,19 +74,22 @@ proc strAlign(arg: string): string =
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
-macro c_offsetof(a: typed, b: untyped): int32 =
+macro c_offsetof(fieldAccess: typed): int32 =
   ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral =
-    if b.kind == nnkStrLit:
-      b
-    else:
-      newLit(repr(b))
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0]
+          else: fieldAccess
+  let a = s[0].getTypeInst
+  let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
     res
+
+template c_offsetof(t: typedesc, a: untyped): int32 =
+  var x: ptr t
+  c_offsetof(x[].a)
 
 macro c_sizeof(a: typed): int32 =
   ## Bullet proof implementation that works using the sizeof operator
@@ -343,6 +346,21 @@ testinstance:
       c: char
       d: int32  # unaligned
 
+    Kind = enum
+      K1, K2
+  
+    AnotherEnum = enum
+      X1, X2, X3
+
+    MyObject = object
+      s: string
+      case k: Kind
+      of K1: nil
+      of K2:
+          x: float
+          y: int32
+      z: AnotherEnum
+
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
   proc main(): void =
@@ -358,6 +376,7 @@ testinstance:
     var go : GenericObject[int64]
     var po : PaddingOfSetEnum33
     var capo: MyCustomAlignPackedObject
+    var issue15516: MyObject
 
     var
       e1: Enum1
@@ -376,7 +395,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo, issue15516)
 
     type
       WithBitsize {.objectconfig.} = object
@@ -683,3 +702,21 @@ reject:
 
 reject:
   const off8 = offsetof(MyPackedCaseObject, val5)
+
+
+type
+  O0 = object
+  T0 = tuple[]
+
+doAssert sizeof(O0) == 1
+doAssert sizeof(T0) == 1
+
+
+type
+  # this thing may not have padding bytes at the end
+  PackedUnion* {.union, packed.} = object
+    a*: array[11, byte]
+    b*: int64
+
+doAssert sizeof(PackedUnion) == 11
+doAssert alignof(PackedUnion) == 1

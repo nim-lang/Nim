@@ -37,34 +37,34 @@ template eq(a, b): bool = cmp(a, b) == 0
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
 
 proc contains*[Key, Val](b: BTree[Key, Val], key: Key): bool =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return true
   return false
 
 proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
-  for j in 0 ..< Mhalf:
+  for j in 0..<Mhalf:
     result.keys[j] = h.keys[Mhalf + j]
   if h.isInternal:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       result.links[j] = h.links[Mhalf + j]
   else:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
@@ -79,6 +79,9 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
   var j = 0
   if not h.isInternal:
     while j < h.entries:
+      if eq(key, h.keys[j]):
+        h.vals[j] = val
+        return
       if less(key, h.keys[j]): break
       inc j
     for i in countdown(h.entries, j+1):
@@ -132,8 +135,7 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
-proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool =
-  result = index < b.entries
+proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool = index < b.entries
 
 proc countSubTree[Key, Val](it: Node[Key, Val]): int =
   if it.isInternal:
@@ -191,7 +193,7 @@ when isMainModule:
     st.add("www.yahoo.com",        "216.109.118.65")
 
     assert st.getOrDefault("www.cs.princeton.edu") == "abc"
-    assert st.getOrDefault("www.harvardsucks.com") == nil
+    assert st.getOrDefault("www.harvardsucks.com") == ""
 
     assert st.getOrDefault("www.simpsons.com") == "209.052.165.60"
     assert st.getOrDefault("www.apple.com") == "17.112.152.32"

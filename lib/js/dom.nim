@@ -9,7 +9,7 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
-
+import std/private/since
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -19,29 +19,32 @@ const
 type
   EventTarget* = ref EventTargetObj
   EventTargetObj {.importc.} = object of RootObj
-    onabort*: proc (event: Event) {.nimcall.}
-    onblur*: proc (event: Event) {.nimcall.}
-    onchange*: proc (event: Event) {.nimcall.}
-    onclick*: proc (event: Event) {.nimcall.}
-    ondblclick*: proc (event: Event) {.nimcall.}
-    onerror*: proc (event: Event) {.nimcall.}
-    onfocus*: proc (event: Event) {.nimcall.}
-    onkeydown*: proc (event: Event) {.nimcall.}
-    onkeypress*: proc (event: Event) {.nimcall.}
-    onkeyup*: proc (event: Event) {.nimcall.}
-    onload*: proc (event: Event) {.nimcall.}
-    onmousedown*: proc (event: Event) {.nimcall.}
-    onmousemove*: proc (event: Event) {.nimcall.}
-    onmouseout*: proc (event: Event) {.nimcall.}
-    onmouseover*: proc (event: Event) {.nimcall.}
-    onmouseup*: proc (event: Event) {.nimcall.}
-    onreset*: proc (event: Event) {.nimcall.}
-    onselect*: proc (event: Event) {.nimcall.}
-    onsubmit*: proc (event: Event) {.nimcall.}
-    onunload*: proc (event: Event) {.nimcall.}
+    onabort*: proc (event: Event) {.closure.}
+    onblur*: proc (event: Event) {.closure.}
+    onchange*: proc (event: Event) {.closure.}
+    onclick*: proc (event: Event) {.closure.}
+    ondblclick*: proc (event: Event) {.closure.}
+    onerror*: proc (event: Event) {.closure.}
+    onfocus*: proc (event: Event) {.closure.}
+    onkeydown*: proc (event: Event) {.closure.}
+    onkeypress*: proc (event: Event) {.closure.}
+    onkeyup*: proc (event: Event) {.closure.}
+    onload*: proc (event: Event) {.closure.}
+    onmousedown*: proc (event: Event) {.closure.}
+    onmousemove*: proc (event: Event) {.closure.}
+    onmouseout*: proc (event: Event) {.closure.}
+    onmouseover*: proc (event: Event) {.closure.}
+    onmouseup*: proc (event: Event) {.closure.}
+    onreset*: proc (event: Event) {.closure.}
+    onselect*: proc (event: Event) {.closure.}
+    onsubmit*: proc (event: Event) {.closure.}
+    onunload*: proc (event: Event) {.closure.}
+    onloadstart*: proc (event: Event) {.closure.}
+    onprogress*: proc (event: Event) {.closure.}
+    onloadend*: proc (event: Event) {.closure.}
 
-  # https://developer.mozilla.org/en-US/docs/Web/Events
   DomEvent* {.pure.} = enum
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
     Abort = "abort",
     BeforeInput = "beforeinput",
     Blur = "blur",
@@ -103,6 +106,27 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  Range* {.importc.} = ref object
+    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    collapsed*: bool
+    commonAncestorContainer*: Node
+    endContainer*: Node
+    endOffset*: int
+    startContainer*: Node
+    startOffset*: int
+
+  Selection* {.importc.} = ref object
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+    anchorNode*: Node
+    anchorOffset*: int
+    focusNode*: Node
+    focusOffset*: int
+    isCollapsed*: bool
+    rangeCount*: int
+    `type`*: cstring
+
+  LocalStorage* {.importc.} = ref object
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -129,6 +153,7 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
+    localStorage*: LocalStorage
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -163,12 +188,21 @@ type
     nodeType*: NodeType
     nodeValue*: cstring
     parentNode*: Node
+    content*: Node
     previousSibling*: Node
+    ownerDocument*: Document
     innerHTML*: cstring
+    outerHTML*: cstring
+    innerText*: cstring
+    textContent*: cstring
     style*: Style
+    baseURI*: cstring
+    parentElement*: Element
+    isConnected*: bool
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
+    activeElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -189,9 +223,11 @@ type
     applets*: seq[Element]
     embeds*: seq[EmbedElement]
     links*: seq[LinkElement]
+    fonts*: FontFaceSet
 
   Element* = ref ElementObj
   ElementObj {.importc.} = object of NodeObj
+    className*: cstring
     classList*: ClassList
     checked*: bool
     defaultChecked*: bool
@@ -211,8 +247,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/ValidityState
-  ValidityState* = ref ValidityStateObj
+  ValidityState* = ref ValidityStateObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
   ValidityStateObj {.importc.} = object
     badInput*: bool
     customError*: bool
@@ -226,20 +261,24 @@ type
     valid*: bool
     valueMissing*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Blob
-  Blob* = ref BlobObj
+  Blob* = ref BlobObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
   BlobObj {.importc.} = object of RootObj
     size*: int
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/File
-  File* = ref FileObj
+  File* = ref FileObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
-  InputElement* = ref InputElementObj
+  TextAreaElement* = ref TextAreaElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
+  TextAreaElementObj {.importc.} = object of Element
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
+
+  InputElement* = ref InputElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
   InputElementObj {.importc.} = object of Element
     # Properties related to the parent form
     formAction*: cstring
@@ -321,8 +360,7 @@ type
     text*: cstring
     value*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement
-  FormElement* = ref FormObj
+  FormElement* = ref FormObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
   FormObj {.importc.} = object of ElementObj
     acceptCharset*: cstring
     action*: cstring
@@ -348,98 +386,374 @@ type
 
   Style* = ref StyleObj
   StyleObj {.importc.} = object of RootObj
+    alignContent*: cstring
+    alignItems*: cstring
+    alignSelf*: cstring
+    all*: cstring
+    animation*: cstring
+    animationDelay*: cstring
+    animationDirection*: cstring
+    animationDuration*: cstring
+    animationFillMode*: cstring
+    animationIterationCount*: cstring
+    animationName*: cstring
+    animationPlayState*: cstring
+    animationTimingFunction*: cstring
+    backdropFilter*: cstring
+    backfaceVisibility*: cstring
     background*: cstring
     backgroundAttachment*: cstring
+    backgroundBlendMode*: cstring
+    backgroundClip*: cstring
     backgroundColor*: cstring
     backgroundImage*: cstring
+    backgroundOrigin*: cstring
     backgroundPosition*: cstring
     backgroundRepeat*: cstring
+    backgroundSize*: cstring
+    blockSize*: cstring
     border*: cstring
+    borderBlock*: cstring
+    borderBlockColor*: cstring
+    borderBlockEnd*: cstring
+    borderBlockEndColor*: cstring
+    borderBlockEndStyle*: cstring
+    borderBlockEndWidth*: cstring
+    borderBlockStart*: cstring
+    borderBlockStartColor*: cstring
+    borderBlockStartStyle*: cstring
+    borderBlockStartWidth*: cstring
+    borderBlockStyle*: cstring
+    borderBlockWidth*: cstring
     borderBottom*: cstring
     borderBottomColor*: cstring
+    borderBottomLeftRadius*: cstring
+    borderBottomRightRadius*: cstring
     borderBottomStyle*: cstring
     borderBottomWidth*: cstring
+    borderCollapse*: cstring
     borderColor*: cstring
+    borderEndEndRadius*: cstring
+    borderEndStartRadius*: cstring
+    borderImage*: cstring
+    borderImageOutset*: cstring
+    borderImageRepeat*: cstring
+    borderImageSlice*: cstring
+    borderImageSource*: cstring
+    borderImageWidth*: cstring
+    borderInline*: cstring
+    borderInlineColor*: cstring
+    borderInlineEnd*: cstring
+    borderInlineEndColor*: cstring
+    borderInlineEndStyle*: cstring
+    borderInlineEndWidth*: cstring
+    borderInlineStart*: cstring
+    borderInlineStartColor*: cstring
+    borderInlineStartStyle*: cstring
+    borderInlineStartWidth*: cstring
+    borderInlineStyle*: cstring
+    borderInlineWidth*: cstring
     borderLeft*: cstring
     borderLeftColor*: cstring
     borderLeftStyle*: cstring
     borderLeftWidth*: cstring
+    borderRadius*: cstring
     borderRight*: cstring
     borderRightColor*: cstring
     borderRightStyle*: cstring
     borderRightWidth*: cstring
+    borderSpacing*: cstring
+    borderStartEndRadius*: cstring
+    borderStartStartRadius*: cstring
     borderStyle*: cstring
     borderTop*: cstring
     borderTopColor*: cstring
+    borderTopLeftRadius*: cstring
+    borderTopRightRadius*: cstring
     borderTopStyle*: cstring
     borderTopWidth*: cstring
     borderWidth*: cstring
     bottom*: cstring
+    boxDecorationBreak*: cstring
+    boxShadow*: cstring
+    boxSizing*: cstring
+    breakAfter*: cstring
+    breakBefore*: cstring
+    breakInside*: cstring
     captionSide*: cstring
+    caretColor*: cstring
     clear*: cstring
     clip*: cstring
+    clipPath*: cstring
     color*: cstring
+    colorAdjust*: cstring
+    columnCount*: cstring
+    columnFill*: cstring
+    columnGap*: cstring
+    columnRule*: cstring
+    columnRuleColor*: cstring
+    columnRuleStyle*: cstring
+    columnRuleWidth*: cstring
+    columnSpan*: cstring
+    columnWidth*: cstring
+    columns*: cstring
+    contain*: cstring
+    content*: cstring
+    counterIncrement*: cstring
+    counterReset*: cstring
+    counterSet*: cstring
     cursor*: cstring
     direction*: cstring
     display*: cstring
     emptyCells*: cstring
+    filter*: cstring
+    flex*: cstring
+    flexBasis*: cstring
+    flexDirection*: cstring
+    flexFlow*: cstring
+    flexGrow*: cstring
+    flexShrink*: cstring
+    flexWrap*: cstring
     cssFloat*: cstring
     font*: cstring
     fontFamily*: cstring
+    fontFeatureSettings*: cstring
+    fontKerning*: cstring
+    fontLanguageOverride*: cstring
+    fontOpticalSizing*: cstring
     fontSize*: cstring
+    fontSizeAdjust*: cstring
     fontStretch*: cstring
     fontStyle*: cstring
+    fontSynthesis*: cstring
     fontVariant*: cstring
+    fontVariantAlternates*: cstring
+    fontVariantCaps*: cstring
+    fontVariantEastAsian*: cstring
+    fontVariantLigatures*: cstring
+    fontVariantNumeric*: cstring
+    fontVariantPosition*: cstring
+    fontVariationSettings*: cstring
     fontWeight*: cstring
+    gap*: cstring
+    grid*: cstring
+    gridArea*: cstring
+    gridAutoColumns*: cstring
+    gridAutoFlow*: cstring
+    gridAutoRows*: cstring
+    gridColumn*: cstring
+    gridColumnEnd*: cstring
+    gridColumnStart*: cstring
+    gridRow*: cstring
+    gridRowEnd*: cstring
+    gridRowStart*: cstring
+    gridTemplate*: cstring
+    gridTemplateAreas*: cstring
+    gridTemplateColumns*: cstring
+    gridTemplateRows*: cstring
+    hangingPunctuation*: cstring
     height*: cstring
+    hyphens*: cstring
+    imageOrientation*: cstring
+    imageRendering*: cstring
+    inlineSize*: cstring
+    inset*: cstring
+    insetBlock*: cstring
+    insetBlockEnd*: cstring
+    insetBlockStart*: cstring
+    insetInline*: cstring
+    insetInlineEnd*: cstring
+    insetInlineStart*: cstring
+    isolation*: cstring
+    justifyContent*: cstring
+    justifyItems*: cstring
+    justifySelf*: cstring
     left*: cstring
     letterSpacing*: cstring
+    lineBreak*: cstring
     lineHeight*: cstring
     listStyle*: cstring
     listStyleImage*: cstring
     listStylePosition*: cstring
     listStyleType*: cstring
     margin*: cstring
+    marginBlock*: cstring
+    marginBlockEnd*: cstring
+    marginBlockStart*: cstring
     marginBottom*: cstring
+    marginInline*: cstring
+    marginInlineEnd*: cstring
+    marginInlineStart*: cstring
     marginLeft*: cstring
     marginRight*: cstring
     marginTop*: cstring
+    mask*: cstring
+    maskBorder*: cstring
+    maskBorderMode*: cstring
+    maskBorderOutset*: cstring
+    maskBorderRepeat*: cstring
+    maskBorderSlice*: cstring
+    maskBorderSource*: cstring
+    maskBorderWidth*: cstring
+    maskClip*: cstring
+    maskComposite*: cstring
+    maskImage*: cstring
+    maskMode*: cstring
+    maskOrigin*: cstring
+    maskPosition*: cstring
+    maskRepeat*: cstring
+    maskSize*: cstring
+    maskType*: cstring
+    maxBlockSize*: cstring
     maxHeight*: cstring
+    maxInlineSize*: cstring
     maxWidth*: cstring
+    minBlockSize*: cstring
     minHeight*: cstring
+    minInlineSize*: cstring
     minWidth*: cstring
+    mixBlendMode*: cstring
+    objectFit*: cstring
+    objectPosition*: cstring
+    offset*: cstring
+    offsetAnchor*: cstring
+    offsetDistance*: cstring
+    offsetPath*: cstring
+    offsetRotate*: cstring
     opacity*: cstring
+    order*: cstring
+    orphans*: cstring
+    outline*: cstring
+    outlineColor*: cstring
+    outlineOffset*: cstring
+    outlineStyle*: cstring
+    outlineWidth*: cstring
     overflow*: cstring
+    overflowAnchor*: cstring
+    overflowBlock*: cstring
+    overflowInline*: cstring
+    overflowWrap*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
+    overscrollBehavior*: cstring
+    overscrollBehaviorBlock*: cstring
+    overscrollBehaviorInline*: cstring
+    overscrollBehaviorX*: cstring
+    overscrollBehaviorY*: cstring
     padding*: cstring
+    paddingBlock*: cstring
+    paddingBlockEnd*: cstring
+    paddingBlockStart*: cstring
     paddingBottom*: cstring
+    paddingInline*: cstring
+    paddingInlineEnd*: cstring
+    paddingInlineStart*: cstring
     paddingLeft*: cstring
     paddingRight*: cstring
     paddingTop*: cstring
     pageBreakAfter*: cstring
     pageBreakBefore*: cstring
+    pageBreakInside*: cstring
+    paintOrder*: cstring
+    perspective*: cstring
+    perspectiveOrigin*: cstring
+    placeContent*: cstring
+    placeItems*: cstring
+    placeSelf*: cstring
     pointerEvents*: cstring
     position*: cstring
+    quotes*: cstring
+    resize*: cstring
     right*: cstring
+    rotate*: cstring
+    rowGap*: cstring
+    scale*: cstring
+    scrollBehavior*: cstring
+    scrollMargin*: cstring
+    scrollMarginBlock*: cstring
+    scrollMarginBlockEnd*: cstring
+    scrollMarginBlockStart*: cstring
+    scrollMarginBottom*: cstring
+    scrollMarginInline*: cstring
+    scrollMarginInlineEnd*: cstring
+    scrollMarginInlineStart*: cstring
+    scrollMarginLeft*: cstring
+    scrollMarginRight*: cstring
+    scrollMarginTop*: cstring
+    scrollPadding*: cstring
+    scrollPaddingBlock*: cstring
+    scrollPaddingBlockEnd*: cstring
+    scrollPaddingBlockStart*: cstring
+    scrollPaddingBottom*: cstring
+    scrollPaddingInline*: cstring
+    scrollPaddingInlineEnd*: cstring
+    scrollPaddingInlineStart*: cstring
+    scrollPaddingLeft*: cstring
+    scrollPaddingRight*: cstring
+    scrollPaddingTop*: cstring
+    scrollSnapAlign*: cstring
+    scrollSnapStop*: cstring
+    scrollSnapType*: cstring
     scrollbar3dLightColor*: cstring
     scrollbarArrowColor*: cstring
     scrollbarBaseColor*: cstring
+    scrollbarColor*: cstring
     scrollbarDarkshadowColor*: cstring
     scrollbarFaceColor*: cstring
     scrollbarHighlightColor*: cstring
     scrollbarShadowColor*: cstring
     scrollbarTrackColor*: cstring
+    scrollbarWidth*: cstring
+    shapeImageThreshold*: cstring
+    shapeMargin*: cstring
+    shapeOutside*: cstring
+    tabSize*: cstring
     tableLayout*: cstring
     textAlign*: cstring
+    textAlignLast*: cstring
+    textCombineUpright*: cstring
     textDecoration*: cstring
+    textDecorationColor*: cstring
+    textDecorationLine*: cstring
+    textDecorationSkipInk*: cstring
+    textDecorationStyle*: cstring
+    textDecorationThickness*: cstring
+    textEmphasis*: cstring
+    textEmphasisColor*: cstring
+    textEmphasisPosition*: cstring
+    textEmphasisStyle*: cstring
     textIndent*: cstring
+    textJustify*: cstring
+    textOrientation*: cstring
+    textOverflow*: cstring
+    textRendering*: cstring
+    textShadow*: cstring
     textTransform*: cstring
-    transform*: cstring
+    textUnderlineOffset*: cstring
+    textUnderlinePosition*: cstring
     top*: cstring
+    touchAction*: cstring
+    transform*: cstring
+    transformBox*: cstring
+    transformOrigin*: cstring
+    transformStyle*: cstring
+    transition*: cstring
+    transitionDelay*: cstring
+    transitionDuration*: cstring
+    transitionProperty*: cstring
+    transitionTimingFunction*: cstring
+    translate*: cstring
+    unicodeBidi*: cstring
     verticalAlign*: cstring
     visibility*: cstring
+    whiteSpace*: cstring
+    widows*: cstring
     width*: cstring
+    willChange*: cstring
+    wordBreak*: cstring
     wordSpacing*: cstring
-    zIndex*: int
+    writingMode*: cstring
+    zIndex*: cstring
 
   EventPhase* = enum
     None = 0,
@@ -447,8 +761,7 @@ type
     AtTarget,
     BubblingPhase
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Event
-  Event* = ref EventObj
+  Event* = ref EventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
   EventObj {.importc.} = object of RootObj
     bubbles*: bool
     cancelBubble*: bool
@@ -461,14 +774,12 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/UIEvent
-  UIEvent* = ref UIEventObj
+  UIEvent* = ref UIEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
   UIEventObj {.importc.} = object of Event
     detail*: int64
     view*: Window
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
-  KeyboardEvent* = ref KeyboardEventObj
+  KeyboardEvent* = ref KeyboardEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
   KeyboardEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     code*: cstring
@@ -477,8 +788,7 @@ type
     keyCode*: int
     location*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
-  KeyboardEventKey* {.pure.} = enum
+  KeyboardEventKey* {.pure.} = enum ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values>`_
     # Modifier keys
     Alt,
     AltGraph,
@@ -832,8 +1142,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
-  MouseEvent* = ref MouseEventObj
+  MouseEvent* = ref MouseEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
   MouseEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     button*: int
@@ -851,14 +1160,12 @@ type
     File = "file",
     String = "string"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem
-  DataTransferItem* = ref DataTransferItemObj
+  DataTransferItem* = ref DataTransferItemObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
   DataTransferItemObj {.importc.} = object of RootObj
     kind*: cstring
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer
-  DataTransfer* = ref DataTransferObj
+  DataTransfer* = ref DataTransferObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
   DataTransferObj {.importc.} = object of RootObj
     dropEffect*: cstring
     effectAllowed*: cstring
@@ -893,9 +1200,13 @@ type
     DragStart = "dragstart",
     Drop = "drop"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DragEvent
   DragEvent* {.importc.} = object of MouseEvent
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DragEvent>`_
     dataTransfer*: DataTransfer
+
+  ClipboardEvent* {.importc.} = object of Event
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ClipboardEvent>`_
+    clipboardData*: DataTransfer
 
   TouchList* {.importc.} = ref object of RootObj
     length*: int
@@ -923,6 +1234,7 @@ type
     port*: cstring
     protocol*: cstring
     search*: cstring
+    origin*: cstring
 
   History* = ref HistoryObj
   HistoryObj {.importc.} = object of RootObj
@@ -933,10 +1245,19 @@ type
     appCodeName*: cstring
     appName*: cstring
     appVersion*: cstring
+    buildID*: cstring        ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/buildID
     cookieEnabled*: bool
+    deviceMemory*: float     ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory
+    doNotTrack*: cstring     ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/doNotTrack
     language*: cstring
+    languages*: seq[cstring] ## https://developer.mozilla.org/en-US/docs/Web/API/NavigatorLanguage/languages
+    maxTouchPoints*: cint    ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/maxTouchPoints
+    onLine*: bool            ## https://developer.mozilla.org/en-US/docs/Web/API/NavigatorOnLine/onLine
+    oscpu*: cstring          ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/oscpu
     platform*: cstring
     userAgent*: cstring
+    vendor*: cstring         ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vendor
+    webdriver*: bool         ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/webdriver
     mimeTypes*: seq[ref MimeType]
 
   Plugin* {.importc.} = object of RootObj
@@ -975,6 +1296,69 @@ type
     once*: bool
     passive*: bool
 
+  FontFaceSetReady* {.importc.} = ref object
+    ## see: `docs<https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet/ready>`_
+    then*: proc(cb: proc())
+
+  FontFaceSet* {.importc.} = ref object
+    ## see: `docs<https://developer.mozilla.org/en-US/docs/Web/API/FontFaceSet>`_
+    ready*: FontFaceSetReady
+    onloadingdone*: proc(event: Event)
+
+since (1, 3):
+  type
+    DomParser* = ref object
+      ## DOM Parser object (defined on browser only, may not be on NodeJS).
+      ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+      ##
+      ## .. code-block:: nim
+      ##   let prsr = newDomParser()
+      ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+
+    DomException* = ref DOMExceptionObj
+      ## The DOMException interface represents an abnormal event (called an exception)
+      ## which occurs as a result of calling a method or accessing a property of a web API.
+      ## Each exception has a name, which is a short "CamelCase" style string identifying
+      ## the error or abnormal condition.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
+
+    DOMExceptionObj {.importc.} = object
+
+    FileReader* = ref FileReaderObj
+      ## The FileReader object lets web applications asynchronously read the contents of files
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify
+      ## the file or data to read.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+
+    FileReaderObj {.importc.} = object of EventTargetObj
+
+    FileReaderState* = distinct range[0'u16..2'u16]
+    RootNodeOptions* = object of RootObj
+      composed*: bool
+    DocumentOrShadowRoot* {.importc.} = object of RootObj
+      activeElement*: Element
+      # styleSheets*: StyleSheetList
+    ShadowRoot* = ref ShadowRootObj
+    ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
+      delegatesFocus*: bool
+      host*: Element
+      innerHTML*: cstring
+      mode*: cstring # "open" or "closed"
+    ShadowRootInit* = object of RootObj
+      mode*: cstring
+      delegatesFocus*: bool
+
+    HTMLSlotElement* = ref HTMLSlotElementObj
+    HTMLSlotElementObj {.importc.} = object of RootObj
+      name*: cstring
+    SlotOptions* = object of RootObj
+      flatten*: bool
+
+  const
+    fileReaderEmpty* = 0.FileReaderState
+    fileReaderLoading* = 1.FileReaderState
+    fileReaderDone* = 2.FileReaderState
+
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
 proc class*(n: Node): cstring {.importcpp: "#.className", nodecl.}
@@ -993,6 +1377,7 @@ when defined(nodejs):
     result = cast[Element](x.childNodes[idx])
 
   var document* = Document(nodeType: DocumentNode)
+  document.ownerDocument = document
 
   proc getElem(x: Element; id: cstring): Element =
     if x.id == id: return x
@@ -1006,6 +1391,7 @@ when defined(nodejs):
 
   proc appendChild*(parent, n: Node) =
     n.parentNode = parent
+    n.ownerDocument = parent.ownerDocument
     parent.childNodes.add n
 
   proc replaceChild*(parent, newNode, oldNode: Node) =
@@ -1052,17 +1438,25 @@ when defined(nodejs):
     result.nodeValue = identifier
     result.nodeType = NodeType.TextNode
 
+  proc createComment*(d: Document, data: cstring): Node =
+    new(result)
+    result.nodeName = "#comment"
+    result.nodeValue = data
+    result.nodeType = NodeType.CommentNode
+
 else:
   proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
   proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
   proc getElementById*(id: cstring): Element {.importc: "document.getElementById", nodecl.}
   proc appendChild*(n, child: Node) {.importcpp.}
   proc removeChild*(n, child: Node) {.importcpp.}
+  proc remove*(child: Node) {.importcpp.}
   proc replaceChild*(n, newNode, oldNode: Node) {.importcpp.}
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
+  proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
 proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
 proc clearTimeout*(t: Timeout) {.importc, nodecl.}
@@ -1079,7 +1473,6 @@ proc removeEventListener*(et: EventTarget; ev: cstring; cb: proc(ev: Event))
 proc alert*(w: Window, msg: cstring)
 proc back*(w: Window)
 proc blur*(w: Window)
-proc captureEvents*(w: Window, eventMask: int) {.deprecated.}
 proc clearInterval*(w: Window, interval: ref Interval)
 proc clearTimeout*(w: Window, timeout: ref TimeOut)
 proc close*(w: Window)
@@ -1099,7 +1492,6 @@ proc open*(w: Window, uri, windowname: cstring,
            properties: cstring = nil): Window
 proc print*(w: Window)
 proc prompt*(w: Window, text, default: cstring): cstring
-proc releaseEvents*(w: Window, eventMask: int) {.deprecated.}
 proc resizeBy*(w: Window, x, y: int)
 proc resizeTo*(w: Window, x, y: int)
 proc routeEvent*(w: Window, event: Event)
@@ -1120,7 +1512,9 @@ proc deleteData*(n: Node, start, len: int)
 proc focus*(e: Node)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
+proc hasAttribute*(n: Node, attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
+proc normalize*(n: Node)
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
@@ -1128,17 +1522,37 @@ proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
+proc querySelector*(n: Node, selectors: cstring): Element
+proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
+proc compareDocumentPosition*(n: Node, otherNode:Node): int
+proc lookupPrefix*(n: Node): cstring
+proc lookupNamespaceURI*(n: Node): cstring
+proc isDefaultNamespace*(n: Node): bool
+proc contains*(n: Node): bool
+proc isEqualNode*(n: Node): bool
+proc isSameNode*(n: Node): bool
+
+since (1, 3):
+  proc getRootNode*(n: Node,options: RootNodeOptions): Node
+
+  # DocumentOrShadowRoot
+  proc getSelection*(n: DocumentOrShadowRoot): Selection
+  proc elementFromPoint*(n: DocumentOrShadowRoot; x, y: float): Element
+
+  # shadow dom
+  proc attachShadow*(n: Element): ShadowRoot
+  proc assignedNodes*(n: HTMLSlotElement; options: SlotOptions): seq[Node]
+  proc assignedElements*(n: HTMLSlotElement; options: SlotOptions): seq[Element]
 
 # Document "methods"
-proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
 proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc insertNode*(range: Range, node: Node)
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
-proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
@@ -1176,6 +1590,12 @@ proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
+since (1, 3):
+  proc canShare*(self: Navigator; data: cstring): bool           ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/canShare
+  proc sendBeacon*(self: Navigator; url, data: cstring): bool    ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
+  proc vibrate*(self: Navigator; pattern: cint): bool            ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
+  proc vibrate*(self: Navigator; pattern: openArray[cint]): bool ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
+  proc registerProtocolHandler*(self: Navigator; scheme, url, title: cstring) ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/registerProtocolHandler
 
 # ClassList "methods"
 proc add*(c: ClassList, class: cstring)
@@ -1221,6 +1641,23 @@ proc checkValidity*(e: InputElement): bool
 
 # Blob "methods"
 proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: cstring = "")
+
+# Performance "methods"
+proc now*(p: Performance): float
+
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+proc deleteFromDocument*(s: Selection)
+proc getRangeAt*(s: Selection, index: int): Range
+converter toString*(s: Selection): cstring
+proc `$`*(s: Selection): string = $(s.toString())
+
+# LocalStorage "methods"
+proc getItem*(ls: LocalStorage, key: cstring): cstring
+proc setItem*(ls: LocalStorage, key, value: cstring)
+proc hasItem*(ls: LocalStorage, key: cstring): bool
+proc clear*(ls: LocalStorage)
+proc removeItem*(ls: LocalStorage, key: cstring)
 
 {.pop.}
 
@@ -1269,6 +1706,7 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc `scrollTop=`*(e: Node, value: int) {.importcpp: "#.scrollTop = #", nodecl.}
 proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
 proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
 proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}
@@ -1276,3 +1714,33 @@ proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
+
+since (1, 3):
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+    ## DOM Parser constructor.
+  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+    ## Parse from string to `Document`.
+
+  proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
+    ## DOM Exception constructor
+  proc message*(ex: DomException): cstring {.importcpp: "#.message", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/message
+  proc name*(ex: DomException): cstring  {.importcpp: "#.name", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
+
+  proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
+    ## File Reader constructor
+  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
+  proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
+  proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
+  proc abort*(f: FileReader) {.importcpp: "#.abort()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
+  proc readAsBinaryString*(f: FileReader, b: Blob) {.importcpp: "#.readAsBinaryString(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
+  proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
+  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
