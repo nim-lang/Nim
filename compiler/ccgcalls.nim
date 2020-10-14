@@ -249,7 +249,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
-  if needsTmp:
+  if needsTmp and a.lode.typ != nil:
     var tmp: TLoc
     getTemp(p, a.lode.typ, tmp, needsInit=false)
     genAssignment(p, tmp, a, {})
