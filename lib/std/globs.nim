@@ -17,7 +17,7 @@ iterator glob*(dir: string, follow: proc(entry: PathEntry): bool = nil,
   ## This is more flexible than `os.walkDirRec`.
   runnableExamples:
     import os,sugar
-    if defined(nimGlobsEnableExample): # `if` intentional
+    if false:
       # list hidden files of depth <= 2 + 1 in your home.
       for e in glob(getHomeDir(), follow = a=>a.path.isHidden and a.depth <= 2):
         if e.kind in {pcFile, pcLinkToFile}: echo e.path
