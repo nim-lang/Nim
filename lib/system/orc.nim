@@ -297,8 +297,10 @@ proc collectCyclesBacon(j: var GcEnv) =
 const
   defaultThreshold = when defined(nimAdaptiveOrc): 128 else: 10_000
 
-var
-  rootsThreshold = defaultThreshold
+when defined(nimStressOrc):
+  const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
+else:
+  var rootsThreshold = defaultThreshold
 
 proc collectCycles() =
   ## Collect cycles.
@@ -320,28 +322,31 @@ proc collectCycles() =
 
   deinit j.traceStack
   deinit roots
-  # compute the threshold based on the previous history
-  # of the cycle collector's effectiveness:
-  # we're effective when we collected 50% or more of the nodes
-  # we touched. If we're effective, we can reset the threshold:
-  if j.freed * 2 >= j.touched:
-    when defined(nimAdaptiveOrc):
-      rootsThreshold = max(rootsThreshold div 2, 16)
-    else:
-      rootsThreshold = defaultThreshold
-    #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
-  elif rootsThreshold < high(int) div 4:
-    rootsThreshold = rootsThreshold * 3 div 2
+
+  when not defined(nimStressOrc):
+    # compute the threshold based on the previous history
+    # of the cycle collector's effectiveness:
+    # we're effective when we collected 50% or more of the nodes
+    # we touched. If we're effective, we can reset the threshold:
+    if j.freed * 2 >= j.touched:
+      when defined(nimAdaptiveOrc):
+        rootsThreshold = max(rootsThreshold div 2, 16)
+      else:
+        rootsThreshold = defaultThreshold
+      #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
+    elif rootsThreshold < high(int) div 4:
+      rootsThreshold = rootsThreshold * 3 div 2
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem())
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
+  s.rootIdx = roots.len
+  if roots.d == nil: init(roots)
+  add(roots, s, desc)
+
   if roots.len >= rootsThreshold:
     collectCycles()
-  if roots.d == nil: init(roots)
-  s.rootIdx = roots.len
-  add(roots, s, desc)
   #writeCell("[added root]", s)
 
 proc GC_fullCollect* =
@@ -350,10 +355,12 @@ proc GC_fullCollect* =
   collectCycles()
 
 proc GC_enableMarkAndSweep*() =
-  rootsThreshold = defaultThreshold
+  when not defined(nimStressOrc):
+    rootsThreshold = defaultThreshold
 
 proc GC_disableMarkAndSweep*() =
-  rootsThreshold = high(int)
+  when not defined(nimStressOrc):
+    rootsThreshold = high(int)
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
