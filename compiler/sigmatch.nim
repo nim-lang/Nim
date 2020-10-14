@@ -1089,7 +1089,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       let x = typeRel(c, f, branch, flags + {trDontBind})
       if x == isNone: return isNone
       if x < result: result = x
-    return
+    return result
 
   of tyAnd:
     # XXX: deal with the current dual meaning of tyGenericParam
@@ -1423,7 +1423,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           let ff = rootf.sons[i]
           let aa = roota.sons[i]
           let res = typeRel(c, ff, aa, nextFlags)
-          if res != isEqual: result = isGeneric
+          if res != isNone and res != isEqual: result = isGeneric
           if res notin {isEqual, isGeneric}:
             if trNoCovariance notin flags and ff.kind == aa.kind:
               let paramFlags = rootf.base.sons[i-1].flags
