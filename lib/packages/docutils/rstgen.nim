@@ -34,6 +34,9 @@ import ../../std/private/since
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
+  boundaryChar = "#"
+    # to match stard/end of word with control+F in theindex.html
+    # `#` is chosen since it occurs rarely in docs (only once in stdlib's theindex)
 
 type
   OutputTarget* = enum ## which document type to generate
@@ -458,13 +461,14 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
   while i < symbols.len:
     let keyword = symbols[i].keyword
     let cleanedKeyword = keyword.escapeLink
-    const prefix = """<span style="color: white">-</span>"""
-      # the `-` prefix allows restricting search to match beginning of word, eg: `-split`
+    const boundary = """<span style="color: white">$1</span>""" % boundaryChar
+      # allows restricting search to match start/end of word, eg: `#split#`,
+      # with few/no false positives.
       # white makes it invisible yet matches in C+f search; note that dark mode
       # currently doesn't change theindex.html background.
       # `style="visibility: hidden` would not work
-    result.addf("<dt><a name=\"$3\" href=\"#$3\">$1<span>$2:</span></a></dt><dd><ul class=\"simple\">\n",
-                [prefix, keyword, cleanedKeyword])
+    result.addf("<dt><a name=\"$3\" href=\"#$3\">$1<span>$2:</span>$1</a></dt><dd><ul class=\"simple\">\n",
+                [boundary, keyword, cleanedKeyword])
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
@@ -690,6 +694,8 @@ proc mergeIndexes*(dir: string): string =
   var (modules, symbols, docs) = readIndexDir(dir)
 
   result = ""
+  result.add("<small><center> hint: search <code>#foo:#</code> for an exact match of API symbol <code>foo</code></center></small><p/>\n" % boundaryChar)
+
   # Generate a quick jump list of documents.
   if docs.len > 0:
     result.add(generateDocumentationJumps(docs))
