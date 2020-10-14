@@ -1288,7 +1288,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addParamOrResult(c, arg, kind)
       styleCheckDef(c.config, a[j].info, arg)
       onDef(a[j].info, arg)
-      a[j] = newSymNode(arg)
+      if optNimV1Emulation notin c.config.globalOptions:
+        a[j] = newSymNode(arg)
 
   var r: PType
   if n[0].kind != nkEmpty:
