@@ -35,7 +35,7 @@ To choose the memory management strategy use the ``--gc:`` switch.
   It offers deterministic performance for `hard realtime`:idx: systems. Reference cycles
   cause memory leaks, beware.
 
-- ``--gc:orc``. Same as ``-gc:arc`` but adds a cycle collector based on "trial deletion".
+- ``--gc:orc``. Same as ``--gc:arc`` but adds a cycle collector based on "trial deletion".
   Unfortunately that makes its performance profile hard to reason about so it is less
   useful for hard realtime systems.
 
