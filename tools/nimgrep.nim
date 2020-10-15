@@ -108,7 +108,6 @@ type
   Bin = enum
     biYes, biOnly, biNo
   Pattern = Regex | Peg
-  SearchInfo = tuple[buf: string, filename: string]
   MatchInfo = tuple[first: int, last: int;
                     lineBeg: int, lineEnd: int, match: string]
   outputKind = enum
@@ -448,9 +447,9 @@ proc printCropped(s: string, curCol: var Column, fromLeft: bool) =
       printBold ellipsis
       curCol.terminal += 3
 
-proc getSubLinesBefore(si: SearchInfo, curMi: MatchInfo): string =
-  let first = beforePattern(si.buf, curMi.first-1, linesBefore+1)
-  result = substr(si.buf, first, curMi.first-1)
+proc getSubLinesBefore(buf: string, curMi: MatchInfo): string =
+  let first = beforePattern(buf, curMi.first-1, linesBefore+1)
+  result = substr(buf, first, curMi.first-1)
 
 proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
                          curCol: var Column, reserveChars: int, replMode=false) =
@@ -467,9 +466,9 @@ proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
     if not isLastLine:
       newLn(curCol)
 
-proc getSubLinesAfter(si: SearchInfo, mi: MatchInfo): string =
-  let last = afterPattern(si.buf, mi.last+1, 1+linesAfter)
-  result = substr(si.buf, mi.last+1, last)
+proc getSubLinesAfter(buf: string, mi: MatchInfo): string =
+  let last = afterPattern(buf, mi.last+1, 1+linesAfter)
+  result = substr(buf, mi.last+1, last)
 
 proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
                         curCol: var Column) =
@@ -490,9 +489,9 @@ proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
       sLines[i].printCropped(curCol, fromLeft = false)
       newLn(curCol)
 
-proc getSubLinesBetween(si: SearchInfo, prevMi: MatchInfo,
+proc getSubLinesBetween(buf: string, prevMi: MatchInfo,
                         curMi: MatchInfo): string =
-  si.buf.substr(prevMi.last+1, curMi.first-1)
+  buf.substr(prevMi.last+1, curMi.first-1)
 
 proc printBetweenMatches(filename: string, betweenMatches: string,
                          lastLineBeg: int,
@@ -513,22 +512,21 @@ proc printBetweenMatches(filename: string, betweenMatches: string,
       if not isLastLine:
         newLn(curCol)
 
-proc printReplacement(si: SearchInfo, mi: MatchInfo, repl: string,
-                      showRepl: bool, curPos: int,
+proc printReplacement(filename: string, buf: string, mi: MatchInfo,
+                      repl: string, showRepl: bool, curPos: int,
                       newBuf: string, curLine: int) =
-  let filename = si.fileName
+  let filename = fileName
   var curCol: Column
-  printSubLinesBefore(fileName, getSubLinesBefore(si, mi), mi.lineBeg,
+  printSubLinesBefore(fileName, getSubLinesBefore(buf, mi), mi.lineBeg,
                       curCol, reserveChars(mi))
   printMatch(fileName, mi, curCol)
-  printSubLinesAfter(fileName, getSubLinesAfter(si, mi), mi.lineEnd, curCol)
+  printSubLinesAfter(fileName, getSubLinesAfter(buf, mi), mi.lineEnd, curCol)
   stdout.flushFile()
   if showRepl:
-    let newSi: SearchInfo = (buf: newBuf, filename: filename)
     let miForNewBuf: MatchInfo =
       (first: newBuf.len, last: newBuf.len,
        lineBeg: curLine, lineEnd: curLine, match: "")
-    printSubLinesBefore(fileName, getSubLinesBefore(newSi, miForNewBuf),
+    printSubLinesBefore(fileName, getSubLinesBefore(newBuf, miForNewBuf),
                         miForNewBuf.lineBeg, curCol, reserveChars(miForNewBuf),
                         replMode=true)
 
@@ -537,16 +535,16 @@ proc printReplacement(si: SearchInfo, mi: MatchInfo, repl: string,
       (first: mi.first, last: mi.last,
        lineBeg: curLine, lineEnd: curLine + replLines, match: repl)
     printMatch(fileName, miFixLines, curCol)
-    printSubLinesAfter(fileName, getSubLinesAfter(si, miFixLines),
+    printSubLinesAfter(fileName, getSubLinesAfter(buf, miFixLines),
                        miFixLines.lineEnd, curCol)
     stdout.flushFile()
 
-proc replace1match(si: SearchInfo, mi: MatchInfo, i: int, r: string;
-               newBuf: var string, curLine: var int): bool =
-  newBuf.add(si.buf.substr(i, mi.first-1))
-  inc(curLine, countLineBreaks(si.buf, i, mi.first-1))
+proc replace1match(filename: string, buf: string, mi: MatchInfo, i: int,
+                   r: string; newBuf: var string, curLine: var int): bool =
+  newBuf.add(buf.substr(i, mi.first-1))
+  inc(curLine, countLineBreaks(buf, i, mi.first-1))
   if optConfirm in options:
-    printReplacement(si, mi, r, showRepl=true, i, newBuf, curLine)
+    printReplacement(filename, buf, mi, r, showRepl=true, i, newBuf, curLine)
     case confirm()
     of ceAbort: quit(0)
     of ceYes: gVar.reallyReplace = true
@@ -559,7 +557,8 @@ proc replace1match(si: SearchInfo, mi: MatchInfo, i: int, r: string;
       gVar.reallyReplace = false
       options.excl(optConfirm)
   else:
-    printReplacement(si, mi, r, showRepl=gVar.reallyReplace, i, newBuf, curLine)
+    printReplacement(filename, buf, mi, r, showRepl=gVar.reallyReplace, i,
+                     newBuf, curLine)
   if gVar.reallyReplace:
     result = true
     newBuf.add(r)
@@ -602,8 +601,8 @@ proc printOutput(filename: string, output: Output, curCol: var Column) =
       curCol.overflowMatches = 0
     if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
 
-iterator searchFile(pattern: Pattern; filename: string; buffer: string): Output =
-  let si: SearchInfo = (buf: buffer, filename: filename)
+iterator searchFile(pattern: Pattern; filename: string;
+                    buffer: string): Output =
   var prevMi, curMi: MatchInfo
   curMi.lineEnd = 1
   var i = 0
@@ -614,7 +613,7 @@ iterator searchFile(pattern: Pattern; filename: string; buffer: string): Output 
     if t.first < 0 or t.last < t.first:
       if prevMi.lineBeg != 0: # finalize last match
         yield Output(kind: BlockEnd,
-                     blockEnding: getSubLinesAfter(si, prevMi),
+                     blockEnding: getSubLinesAfter(buffer, prevMi),
                      firstLine: prevMi.lineEnd)
       break
 
@@ -626,20 +625,20 @@ iterator searchFile(pattern: Pattern; filename: string; buffer: string): Output 
              match: buffer.substr(t.first, t.last))
     if prevMi.lineBeg == 0: # no prev. match, so no prev. block to finalize
       yield Output(kind: BlockFirstMatch,
-                   pre: getSubLinesBefore(si, curMi),
+                   pre: getSubLinesBefore(buffer, curMi),
                    match: curMi)
     else:
       let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
       if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
         yield Output(kind: BlockNextMatch,
-                     pre: getSubLinesBetween(si, prevMi, curMi),
+                     pre: getSubLinesBetween(buffer, prevMi, curMi),
                      match: curMi)
       else: # finalize previous block and then print next block
         yield Output(kind: BlockEnd,
-                     blockEnding: getSubLinesAfter(si, prevMi),
+                     blockEnding: getSubLinesAfter(buffer, prevMi),
                      firstLine: prevMi.lineEnd)
         yield Output(kind: BlockFirstMatch,
-                     pre: getSubLinesBefore(si, curMi),
+                     pre: getSubLinesBefore(buffer, curMi),
                      match: curMi)
 
     i = t.last+1
@@ -886,14 +885,13 @@ proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
 
       var changed = false
       var lineRepl = 1
-      let si: SearchInfo = (buf: buffer, filename: filename)
       var i = 0
       for output in fileResult:
         if output.kind in {BlockFirstMatch, BlockNextMatch}:
           #let r = replace(curMi.match, pattern, replacement % matches) #TODO
           let curMi = output.match
           let r = replace(curMi.match, searchOpt.pattern, replacement)
-          if replace1match(si, curMi, i, r, newBuf, lineRepl):
+          if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
             changed = true
           i = curMi.last + 1
       if changed:
