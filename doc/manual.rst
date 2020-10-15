@@ -2601,7 +2601,7 @@ however the discardable pragma does not work on templates as templates substitut
 
   example()
 
-This template will resolve into "https://nim-lang.org" which is string literal type, and since {.discardable.} don't apply to literals, the compiler will error.
+This template will resolve into "https://nim-lang.org" which is a string literal and since {.discardable.} doesn't apply to literals, the compiler will error.
 
 An empty ``discard`` statement is often used as a null statement:
 
