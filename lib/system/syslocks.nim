@@ -181,7 +181,7 @@ else:
       releaseSysAux(L)
 
   when insideRLocksModule:
-    var SysLockType_Reentrant{.importc: "PTHREAD_MUTEX_RECURSIVE",
+    let SysLockType_Reentrant{.importc: "PTHREAD_MUTEX_RECURSIVE",
       header: "<pthread.h>".}: SysLockType
     proc initSysLockAttr(a: var SysLockAttr) {.
       importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
