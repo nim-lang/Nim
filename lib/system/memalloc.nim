@@ -324,7 +324,37 @@ when hasAlloc and not defined(js):
       base[offset - 1] = offset
       result = base[offset].addr
 
-  proc alignedDealloc(p: pointer, align: int) = 
+  proc alignedAlloc0(size, align: Natural): pointer =
+    if not needsAlignment(align):
+      when compileOption("threads"):
+        result = allocShared0(size)
+      else:
+        result = alloc0(size)
+    else: 
+      when compileOption("threads"):
+        let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
+      else:
+        let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
+      let offset = int8(align - (cast[int](base) and (align - 1)))
+      base[offset - 1] = offset
+      result = base[offset].addr
+
+  proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
+    if not needsAlignment(align):
+      when compileOption("threads"):
+        result = reallocShared0(p, oldSize, newSize)
+      else:
+        result = realloc0(p, oldSize, newSize)
+    else: 
+      when compileOption("threads"):
+        let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
+      else:
+        let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
+      let offset = int8(align - (cast[int](base) and (align - 1)))
+      base[offset - 1] = offset
+      result = base[offset].addr
+
+  proc alignedDealloc(p: pointer, align: int) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} = 
     if not needsAlignment(align):
       when compileOption("threads"):
         deallocShared(p)
