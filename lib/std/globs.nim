@@ -9,7 +9,7 @@ type
       ## depth wrt globbed dir
 
 iterator glob*(dir: string, follow: proc(entry: PathEntry): bool = nil,
-    relative = false, checkDir = true): PathEntry {.closure, tags: [ReadDirEffect].} =
+    relative = false, checkDir = true, includeRoot = false): PathEntry {.closure, tags: [ReadDirEffect].} =
   ## Recursively walks `dir` which must exist when checkDir=true (else raises `OSError`).
   ## Paths in `result.path` are relative to `dir` unless `relative=false`,
   ## `result.depth >= 1` is the tree depth relative to the root `dir` (at depth 0).
@@ -22,8 +22,11 @@ iterator glob*(dir: string, follow: proc(entry: PathEntry): bool = nil,
       for e in glob(getHomeDir(), follow = a=>a.path.isHidden and a.depth <= 2):
         if e.kind in {pcFile, pcLinkToFile}: echo e.path
   #[
-  note: a yieldFilter, regex match etc isn't needed because caller can filter at
+  note:
+  * a yieldFilter, regex match etc isn't needed because caller can filter at
   call site, without loss of generality, unlike `follow`; this simplifies the API.
+  * a closure iterator is used since we need multiple yield statements and it simplifies code.
+    In practice optimized performance drops by less than 2%, likely 0 when filesystem is not "hot".
 
   Future work:
   * need to document
@@ -37,9 +40,26 @@ iterator glob*(dir: string, follow: proc(entry: PathEntry): bool = nil,
   var stack = @[(0, ".")]
   var checkDir = checkDir
   var entry: PathEntry
-  # if includeRoot:
+  if not dirExists(dir):
+    if checkDir:
+      raise newException(OSError, "invalid root dir: " & dir)
+    else:
+      return
+
+  if includeRoot:
+    if symlinkExists(dir):
+      entry.kind = pcLinkToDir
+    else:
+      entry.kind = pcDir
+    entry.path = if relative: "." else: dir
+    normalizePath(entry.path)
+    entry.depth = 0
+    yield entry
+
   while stack.len > 0:
     let (depth, d) = stack.pop()
+    # checkDir is still needed here in first iteration because things could
+    # fail for reasons other than `not dirExists`.
     for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
       let rel = d / p
       entry.depth = depth + 1
