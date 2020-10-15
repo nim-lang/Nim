@@ -75,14 +75,14 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
-proc nimNewObj(size: int): pointer {.compilerRtl.} =
+proc nimNewObj(size, align: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
   elif defined(useMalloc):
     var orig = c_malloc(cuint s)
     nimZeroMem(orig, s)
-    result = orig +! sizeof(RefHeader)
+    result = orig +! sizeof(RefHeader)  
   elif compileOption("threads"):
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
@@ -96,7 +96,7 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
-proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+proc nimNewObjUninit(size, align: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
   # The codegen proved for us that this is not necessary.
   let s = size + sizeof(RefHeader)
