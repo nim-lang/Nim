@@ -116,7 +116,7 @@ type
   Output = object
     case kind: outputKind
     of OpenError: msg: string
-    of Rejected: discard
+    of Rejected: reason: string
     of JustCount: matches: int
     of BlockFirstMatch, BlockNextMatch:
       pre: string
@@ -574,13 +574,20 @@ template updateCounters(output: Output) =
   of OpenError: inc(gVar.errors)
   of Rejected, BlockEnd, FileContents: discard
 
-proc printOutput(filename: string, output: Output, curCol: var Column) =
+proc printInfo(filename:string, output: Output) =
   case output.kind
   of OpenError:
     printError("can not open path " & filename & " " & output.msg)
-  of Rejected: discard
+  of Rejected:
+    if optVerbose in options:
+      echo "(rejected: ", output.reason, ")"
   of JustCount:
     echo " (" & $output.matches & " matches)"
+  else: discard  # impossible
+
+proc printOutput(filename: string, output: Output, curCol: var Column) =
+  case output.kind
+  of OpenError, Rejected, JustCount: printInfo(filename, output)
   of FileContents: discard # impossible
   of BlockFirstMatch:
     printSubLinesBefore(filename, output.pre, output.match.lineBeg,
@@ -728,7 +735,8 @@ template declareCompiledPatterns(compiledStruct: untyped,
     body
   {.hint[XDeclaredButNotUsed]: on.}
 
-iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string, yieldContents=false): Output =
+iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
+                     yieldContents=false): Output =
   var buffer: string
 
   if optFilenames in options:
@@ -737,26 +745,31 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string, yield
     try:
       buffer = system.readFile(filename)
     except IOError as e:
-      yield Output(kind: OpenError, msg: e.msg)
+      yield Output(kind: OpenError, msg: "readFile failed")
 
   var reject = false
+  var reason: string
   if searchOpt.checkBin in {biNo, biOnly}:
     let isBin = detectBin(buffer)
     if isBin and searchOpt.checkBin == biNo:
       reject = true
+      reason = "binary file"
     if (not isBin) and searchOpt.checkBin == biOnly:
       reject = true
+      reason = "text file"
 
   if not reject:
     if searchOpt.checkMatch != "":
       reject = not contains(buffer, searchOptC.checkMatch, 0)
+      reason = "doesn't contain a requested match"
 
   if not reject:
     if searchOpt.checkNoMatch != "":
       reject = contains(buffer, searchOptC.checkNoMatch, 0)
+      reason = "contains a forbidden match"
 
   if reject:
-    yield Output(kind: Rejected)
+    yield Output(kind: Rejected, reason: reason)
   else:
     var found = false
     var cnt = 0
@@ -861,7 +874,31 @@ iterator walkRec(paths: seq[string]): (string, string) =
       else:
         yield ("Error: no such file or directory: ", path)
 
-template printFileResult(filename: string, body: untyped) =
+proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
+  var newBuf = newStringOfCap(buffer.len)
+
+  var changed = false
+  var lineRepl = 1
+  var i = 0
+  for output in fileResult:
+    if output.kind in {BlockFirstMatch, BlockNextMatch}:
+      #let r = replace(curMi.match, pattern, replacement % matches) #TODO
+      let curMi = output.match
+      let r = replace(curMi.match, searchOpt.pattern, replacement)
+      if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
+        changed = true
+      i = curMi.last + 1
+  if changed:
+    newBuf.add(substr(buffer, i))  # finalize new buffer after last match
+    var f: File
+    if open(f, filename, fmWrite):
+      f.write(newBuf)
+      f.close()
+    else:
+      printError "cannot open file for overwriting: " & filename
+      inc(gVar.errors)
+
+template processFileResult(filename: string, fileResult: untyped) =
   var filenameShown = false
   template showFilename =
     if not filenameShown:
@@ -871,38 +908,27 @@ template printFileResult(filename: string, body: untyped) =
       filenameShown = true
   if optVerbose in options:
     showFilename
-  var curCol: Column
-  for output in body:
-    updateCounters(output)
-    if output.kind notin {Rejected, OpenError, JustCount} and not oneline:
-      showFilename
-    if output.kind == JustCount and oneline:
-      printFile(filename & ":")
-    printOutput(filename, output, curCol)
-  
-proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
-      var newBuf = newStringOfCap(buffer.len)
-
-      var changed = false
-      var lineRepl = 1
-      var i = 0
-      for output in fileResult:
-        if output.kind in {BlockFirstMatch, BlockNextMatch}:
-          #let r = replace(curMi.match, pattern, replacement % matches) #TODO
-          let curMi = output.match
-          let r = replace(curMi.match, searchOpt.pattern, replacement)
-          if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
-            changed = true
-          i = curMi.last + 1
-      if changed:
-        newBuf.add(substr(buffer, i))  # finalize new buffer after last match
-        var f: File
-        if open(f, filename, fmWrite):
-          f.write(newBuf)
-          f.close()
-        else:
-          printError "cannot open file for overwriting: " & filename
-          inc(gVar.errors)
+  if optReplace notin options:
+    var curCol: Column
+    for output in fileResult:
+      updateCounters(output)
+      if output.kind notin {Rejected, OpenError, JustCount} and not oneline:
+        showFilename
+      if output.kind == JustCount and oneline:
+        printFile(filename & ":")
+      printOutput(filename, output, curCol)
+  else:
+    var buffer = ""
+    var matches: FileResult
+    for output in fileResult:
+      updateCounters(output)
+      case output.kind
+      of Rejected, OpenError, JustCount: printInfo(filename, output)
+      of BlockFirstMatch, BlockNextMatch, BlockEnd:
+        matches.add(output)
+      of FileContents: buffer = output.buffer
+    if matches.len > 0:
+      replaceMatches(filename, buffer, matches)
 
 proc run1Thread() =
   declareCompiledPatterns(searchOptC, SearchOptComp):
@@ -914,21 +940,9 @@ proc run1Thread() =
         inc(gVar.errors)
         printError (err & filename)
         continue
-      if optReplace notin options:
-          printFileResult(filename, processFile(searchOptC, filename))
-      else:
-        var matches: FileResult
-        var buffer = ""
-
-        for output in processFile(searchOptC, filename, yieldContents=true):
-          updateCounters(output)
-          case output.kind
-          of Rejected, OpenError, JustCount: discard
-          of BlockFirstMatch, BlockNextMatch, BlockEnd:
-            matches.add(output)
-          of FileContents: buffer = output.buffer
-        if matches.len > 0:
-          replaceMatches(filename, buffer, matches)
+      processFileResult(filename,
+                        processFile(searchOptC, filename,
+                                    yieldContents=optReplace in options))
 
 # Multi-threaded version: all printing is being done in the Main thread.
 # Totally nWorkers+1 additional threads are created (workers + pathProducer).
@@ -980,57 +994,35 @@ proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
       resultsChan.send((false, nextFileN,
                         filename, @[Output(kind: OpenError, msg: err)]))
     nextFileN += 1
-  resultsChan.send((true, nextFileN, "", @[]))
+  resultsChan.send((true, nextFileN, "", @[]))  # pass total number of files
 
 proc runMultiThread() =
   var
     workers = newSeq[Thread[SearchOpt]](nWorkers)
     storage = newTable[int, (string, FileResult) ]()
-      # file number -> accumulated result
-    firstUnprocessedFile = 0
+      # file number -> tuple[filename, fileResult - accumulated data structure]
+    firstUnprocessedFile = 0  # for always processing files in the same order
   open(searchRequestsChan)
   open(resultsChan)
   for n in 0 ..< nWorkers:
     createThread(workers[n], worker, searchOpt)
   var producerThread: Thread[(seq[string], WalkOpt)]
   createThread(producerThread, pathProducer, (paths, walkOpt))
-  template process1result(fileNo: int, fname: string, fResult: FileResult) =
-      storage[fileNo] = (fname, fResult)
-      var fileResult: FileResult
-      while storage.haskey(firstUnprocessedFile):
-        fileResult = storage[firstUnprocessedFile][1]
-        let filename = storage[firstUnprocessedFile][0]
-        if optReplace notin options:
-          printFileResult(filename, fileResult)
-        else:
-          var buffer = ""
-
-          var matches: FileResult
-          for output in fileResult:
-            updateCounters(output)
-            case output.kind
-            of Rejected, OpenError, JustCount: discard
-            # printError error
-            of BlockFirstMatch, BlockNextMatch, BlockEnd:
-              matches.add(output)
-            of FileContents: buffer = output.buffer
-          if matches.len > 0:
-            replaceMatches(filename, buffer, matches)
-        storage.del(firstUnprocessedFile)
-        firstUnprocessedFile += 1
+  template add1fileResult(fileNo: int, fname: string, fResult: FileResult) =
+    storage[fileNo] = (fname, fResult)
+    while storage.haskey(firstUnprocessedFile):
+      let fileResult = storage[firstUnprocessedFile][1]
+      let filename = storage[firstUnprocessedFile][0]
+      processFileResult(filename, fileResult)
+      storage.del(firstUnprocessedFile)
+      firstUnprocessedFile += 1
   var totalFiles = -1  # will be known when pathProducer finishes
   while totalFiles == -1 or firstUnprocessedFile < totalFiles:
     let msg = resultsChan.recv()
     if msg.finished:
       totalFiles = msg.fileNo
     else:
-      process1result(msg.fileNo, msg.filename, msg.fileResult)
-
-proc run() =
-  if nWorkers == 0:
-    run1Thread()
-  else:
-    runMultiThread()
+      add1fileResult(msg.fileNo, msg.filename, msg.fileResult)
 
 proc reportError(msg: string) =
   printError "Error: " & msg
@@ -1178,7 +1170,10 @@ if searchOpt.pattern.len == 0:
 else:
   if paths.len == 0:
     paths.add(os.getCurrentDir())
-  run()
+  if nWorkers == 0:
+    run1Thread()
+  else:
+    runMultiThread()
   if gVar.errors != 0:
     printError $gVar.errors & " errors"
   printBold($gVar.matches & " matches")
