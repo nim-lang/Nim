@@ -2005,5 +2005,8 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
       newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
     else:
       newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-  socket.connect($dest, 80.Port)
-  socket.getLocalAddr()[0].parseIpAddress()
+  try:
+    socket.connect($dest, 80.Port)
+    result = socket.getLocalAddr()[0].parseIpAddress()
+  finally:
+    socket.close()

@@ -1732,7 +1732,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
     incl(s.flags, sfOverriden)
-  of "=", "=sink":
+  of "=", "=copy", "=sink":
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     incl(s.flags, sfOverriden)
@@ -1754,7 +1754,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         # attach these ops to the canonical tySequence
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
-        let k = if name == "=": attachedAsgn else: attachedSink
+        let k = if name == "=" or name == "=copy": attachedAsgn else: attachedSink
         if obj.attachedOps[k] == s:
           discard "forward declared op"
         elif obj.attachedOps[k].isNil and tfCheckedForDestructor notin obj.flags:
@@ -1943,6 +1943,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
       incl(proto.flags, sfWasForwarded)
+    suggestSym(c.config, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast[genericParamsPos].kind != nkEmpty:

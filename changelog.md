@@ -212,11 +212,16 @@
 - Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
   at which progress callbacks are called.
 
+- Added `os.copyFileToDir`
 
 ## Language changes
 
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
   `wasMoved` calls where needed.
+- The `=` hook is now called `=copy` for clarity. The old name `=` is still available so there
+  is no need to update your code. This change was backported to 1.2 too so you can use the
+  more readability `=copy` without loss of compatibility.
+
 - In the newruntime it is now allowed to assign to the discriminator field
   without restrictions as long as case object doesn't have custom destructor.
   The discriminator value doesn't have to be a constant either. If you have a
@@ -250,7 +255,10 @@
   ```
 - `getImpl` on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatibility can be restored
-  with command line switch `--useVersion:1.0`.
+  with `--useVersion:1.0`.
+- The typed AST for proc headers will now have the arguments be syms instead of idents.
+  This helps with writing typed macros. Old behaviour for backwards compatibility can
+  be restored with `--useVersion:1.0`.
 - ``let`` statements can now be used without a value if declared with
   ``importc``/``importcpp``/``importjs``/``importobjc``.
 - The keyword `from` is now usable as an operator.
@@ -360,3 +368,7 @@ proc mydiv(a, b): int {.raises: [].} =
 
 
 ## Tool changes
+
+- `nimsuggest` will now return both the forward declaration and the
+  implementation location upon a `def` query. Previously the behavior was
+  just to return the forward declaration.

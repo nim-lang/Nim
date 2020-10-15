@@ -619,8 +619,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nimsuggest")
 
@@ -644,7 +643,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   #msgs.writelnHook = proc (line: string) = log(line)
   myLog("START " & conf.projectFull.string)
 
-  discard self.loadConfigsAndRunMainCommand(cache, conf)
+  var graph = newModuleGraph(cache, conf)
+  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    mainCommand(graph)
 
 when isMainModule:
   handleCmdLine(newIdentCache(), newConfigRef())
@@ -698,8 +699,7 @@ else:
       conf = newConfigRef()
       self = NimProg(
         suggestMode: true,
-        processCmdLine: mockCmdLine,
-        mainCommand: mockCommand
+        processCmdLine: mockCmdLine
       )
     self.initDefinesProg(conf, "nimsuggest")
 
@@ -722,7 +722,9 @@ else:
     #msgs.writelnHook = proc (line: string) = log(line)
     myLog("START " & conf.projectFull.string)
 
-    discard self.loadConfigsAndRunMainCommand(cache, conf)
+    var graph = newModuleGraph(cache, conf)
+    if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+      mockCommand(graph)
     if gLogging:
       for it in conf.searchPaths:
         log(it.string)

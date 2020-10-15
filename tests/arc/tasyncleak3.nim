@@ -1,6 +1,7 @@
 discard """
-  cmd: "nim c --gc:orc $file"
+  cmd: "nim c --gc:orc -d:useMalloc $file"
   output: "true"
+  valgrind: "true"
 """
 
 import strutils

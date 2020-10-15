@@ -38,7 +38,7 @@ try:
           return
         add(a):
           wasMoved(:tmpD)
-          `=`(:tmpD, x)
+          `=copy`(:tmpD, x)
           :tmpD
         inc i_1, 1
   if cond:

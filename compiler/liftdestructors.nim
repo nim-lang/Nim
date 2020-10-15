@@ -518,7 +518,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
-  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(t)
+  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(elemType)
 
   var cond: PNode
   if isCyclic:

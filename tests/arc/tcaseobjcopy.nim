@@ -59,7 +59,7 @@ proc `=destroy`(o: var TMyObj) =
     o.p = nil
     echo "myobj destroyed"
 
-proc `=`(dst: var TMyObj, src: TMyObj) =
+proc `=copy`(dst: var TMyObj, src: TMyObj) =
   `=destroy`(dst)
   dst.p = alloc(src.len)
   dst.len = src.len

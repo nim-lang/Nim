@@ -758,8 +758,9 @@ proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
-    if col > MaxLineLength:
-      lexMessagePos(L, hintLineTooLong, pos)
+    when not defined(nimpretty):
+      if col > MaxLineLength:
+        lexMessagePos(L, hintLineTooLong, pos)
 
   case L.buf[pos]
   of CR:
