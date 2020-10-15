@@ -2592,7 +2592,7 @@ been declared with the `discardable`:idx: pragma:
 
   p(3, 4) # now valid
 
-however discardable pragma not working on template because template do AST substitute in place, for example
+however the discardable pragma does not work on templates as templates substitute the AST in place. For example:
 
 .. code-block:: nim
   {.push discardable .}
