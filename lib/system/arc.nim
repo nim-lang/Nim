@@ -159,7 +159,7 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
-    when compileOption("threads"):
+    elif compileOption("threads"):
       deallocShared(p -! sizeof(RefHeader))
     else:
       dealloc(p -! sizeof(RefHeader))
