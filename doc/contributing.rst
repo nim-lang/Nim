@@ -460,8 +460,13 @@ Debugging CI failures, flaky tests, etc
    File a bug for it if it isn't already reported. A PR push (or opening/closing PR)
    will re-trigger all CI jobs (even successful ones, which can be wasteful). Instead,
    follow these instructions to only restart the jobs that failed:
-   azure: https://github.com/timotheecour/Nim/issues/211
-   github actions, builds.sr.ht: https://github.com/timotheecour/Nim/issues/327
+
+  * Azure: if on your own fork, it's possible from inside azure console
+    (eg `dev.azure.com/username/username/_build/results?buildId=1430&view=results`) via `rerun failed jobs` on top.
+    If either on you own fork or in Nim repo, it's possible from inside github UI
+    under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
+  * github actions: under "Checks" tab, click "Re-run jobs" in the right.
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
 
 
 Code reviews
