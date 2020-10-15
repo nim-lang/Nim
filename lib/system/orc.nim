@@ -349,18 +349,35 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
     collectCycles()
   #writeCell("[added root]", s)
 
-proc GC_fullCollect* =
-  ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
-  ## collector.
+proc GC_runOrc* =
+  ## Forces a cycle collection pass.
   collectCycles()
 
-proc GC_enableMarkAndSweep*() =
+proc GC_enableOrc*() =
+  ## Enables the cycle collector subsystem of ``--gc:orc``. This is a ``--gc:orc``
+  ## specific API. Check with ``when defined(gcOrc)`` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = defaultThreshold
 
-proc GC_disableMarkAndSweep*() =
+proc GC_disableOrc*() =
+  ## Disables the cycle collector subsystem of ``--gc:orc``. This is a ``--gc:orc``
+  ## specific API. Check with ``when defined(gcOrc)`` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = high(int)
+
+
+proc GC_fullCollect* =
+  ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
+  ## collector. This is an alias for ``GC_runOrc``.
+  collectCycles()
+
+proc GC_enableMarkAndSweep*() =
+  ## For ``--gc:orc`` an alias for ``GC_enableOrc``.
+  GC_enableOrc()
+
+proc GC_disableMarkAndSweep*() =
+  ## For ``--gc:orc`` an alias for ``GC_disableOrc``.
+  GC_disableOrc()
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
