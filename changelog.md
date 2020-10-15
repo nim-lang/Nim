@@ -129,6 +129,19 @@
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+
+- The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
+  `wasMoved` calls where needed.
+- The `=` hook is now called `=copy` for clarity. The old name `=` is still available so there
+  is no need to update your code. This change was backported to 1.2 too so you can use the
+  more readability `=copy` without loss of compatibility.
+
+- In the newruntime it is now allowed to assign to the discriminator field
+  without restrictions as long as case object doesn't have custom destructor.
+  The discriminator value doesn't have to be a constant either. If you have a
+  custom destructor for a case object and you do want to freely assign discriminator
+  fields, it is recommended to refactor object into 2 objects like this:
+
   ```nim
   type
     MyObj = object
