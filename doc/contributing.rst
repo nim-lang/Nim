@@ -555,3 +555,15 @@ to existing modules is acceptable. For two reasons:
    Newly introduced issues have to be balanced against motivating new people. We know where
    to find perfectly designed pieces of software that have no bugs -- these are the systems
    that nobody uses.
+
+Conventions
+-----------
+New stdlib modules should go under `Nim/lib/std/`. The rationale is to require
+users to import via `import std/foo` instead of `import foo`, which would cause
+potential conflicts with nimble packages. Note that this still applies for new modules
+in existing logical directories, eg:
+use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
+
+New module names should prefer plural form whenever possible, eg:
+`std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
+between module name and the symbols it defines.
