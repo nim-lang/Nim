@@ -182,7 +182,7 @@ else:
 
   when insideRLocksModule:
     var SysLockType_Reentrant{.importc: "PTHREAD_MUTEX_RECURSIVE",
-      header: "<pthread.h>", noDecl.}: SysLockType
+      header: "<pthread.h>".}: SysLockType
     proc initSysLockAttr(a: var SysLockAttr) {.
       importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
     proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
