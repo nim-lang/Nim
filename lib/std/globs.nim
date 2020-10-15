@@ -9,7 +9,7 @@ type
       ## depth wrt globbed dir
 
 iterator glob*(dir: string, follow: proc(entry: PathEntry): bool = nil,
-    relative = false, checkDir = true): PathEntry {.tags: [ReadDirEffect].} =
+    relative = false, checkDir = true): PathEntry {.closure, tags: [ReadDirEffect].} =
   ## Recursively walks `dir` which must exist when checkDir=true (else raises `OSError`).
   ## Paths in `result.path` are relative to `dir` unless `relative=false`,
   ## `result.depth >= 1` is the tree depth relative to the root `dir` (at depth 0).
