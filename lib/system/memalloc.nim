@@ -304,6 +304,40 @@ when hasAlloc and not defined(js):
     ## or other memory may be corrupted.
     deallocShared(p)
 
+  
+  template needsAlignment(a: int): bool = 
+    when sizeof(int) == 4: a > 8
+    else: a > 16
+
+  proc alignedAlloc(size, align: Natural): pointer =
+    if not needsAlignment(align):
+      when compileOption("threads"):
+        result = allocShared(size)
+      else:
+        result = alloc(size)
+    else: 
+      when compileOption("threads"):
+        let base = cast[ptr UncheckedArray[int8]](allocShared(size + align))
+      else:
+        let base = cast[ptr UncheckedArray[int8]](alloc(size + align))
+      let offset = int8(align - (cast[int](base) and (align - 1)))
+      base[offset - 1] = offset
+      result = base[offset].addr
+
+  proc alignedDealloc(p: pointer, align: int) = 
+    if not needsAlignment(align):
+      when compileOption("threads"):
+        deallocShared(p)
+      else:
+        dealloc(p)
+    else:      
+      let pbyte = cast[ptr UncheckedArray[int8]](p)
+      let offset = pbyte[-1]
+      when compileOption("threads"):
+        deallocShared(addr pbyte[-offset])
+      else:
+        deallocShared(addr pbyte[-offset])
+
   {.pop.}
 
 # GC interface:
@@ -353,3 +387,4 @@ when hasAlloc and hasThreadSupport and not defined(useMalloc):
   proc getTotalSharedMem*(): int {.rtl.}
     ## Returns the number of bytes on the shared heap that are owned by the
     ## process. This is only available when threads are enabled.
+

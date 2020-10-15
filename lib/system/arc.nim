@@ -75,14 +75,14 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
-proc nimNewObj(size, align: int): pointer {.compilerRtl.} =
+proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
   elif defined(useMalloc):
     var orig = c_malloc(cuint s)
     nimZeroMem(orig, s)
-    result = orig +! sizeof(RefHeader)  
+    result = orig +! sizeof(RefHeader)
   elif compileOption("threads"):
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
@@ -96,7 +96,7 @@ proc nimNewObj(size, align: int): pointer {.compilerRtl.} =
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
-proc nimNewObjUninit(size, align: int): pointer {.compilerRtl.} =
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
   # The codegen proved for us that this is not necessary.
   let s = size + sizeof(RefHeader)
@@ -161,12 +161,6 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
         quit 1
-
-    when defined(gcOrc) and defined(nimArcDebug):
-      if (head(p).rc and 0b100) != 0:
-        cstderr.rawWrite "[FATAL] cycle root freed\n"
-        quit 1
-
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
