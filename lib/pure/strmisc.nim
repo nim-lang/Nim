@@ -94,7 +94,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
   ## The following assumptions and requirements must be met:
   ## - String must not be empty.
   ## - String must be stripped of trailing and leading whitespaces.
-  ## - `sep` must not be `'-'` nor `' '`.
+  ## - `sep` must not be `'-'`.
   ## - `decimalDot` must not be `'-'` nor `' '`.
   ## - `sep` and `decimalDot` must be different.
   ## - No separator before a digit.
@@ -123,7 +123,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
     doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
     doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
     doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
-  assert sep notin {'-', ' '} and decimalDot notin {'-', ' '} and sep != decimalDot
+  assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
   if str.len > 1: # Allow "0" thats valid, is 0.0
     var s = newStringOfCap(str.len)
     var idx, successive: int
