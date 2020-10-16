@@ -1,7 +1,8 @@
 ## Part of 'koch' responsible for the documentation generation.
 
 import os, strutils, osproc, sets, pathnorm, pegs
-from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
+from std/private/osutils import nativeToUnixPath
+from std/globs import globs, PathEntry
 import "../compiler/nimpaths"
 
 const
@@ -99,7 +100,7 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   execFold(desc, cmd)
 
 proc getRst2html(): seq[string] =
-  for a in walkDirRecFilter("doc"):
+  for a in glob("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
         ["docs.rst", "nimfix.rst"]:
@@ -188,7 +189,7 @@ lib/system/widestrs.nim
 
   proc follow(a: PathEntry): bool =
     a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
-  for entry in walkDirRecFilter("lib", follow = follow):
+  for entry in glob("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or
        (a.isRelativeTo("lib/system") and a.nativeToUnixPath notin goodSystem) or

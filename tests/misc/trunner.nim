@@ -11,7 +11,7 @@ import std/[strformat,os,osproc,unittest]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
-from std/private/globs import nativeToUnixPath
+from std/private/osutils import nativeToUnixPath
 
 import "$lib/../compiler/nimpaths"
 

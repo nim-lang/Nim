@@ -2,10 +2,7 @@
 unstable API, internal use only for now.
 ]##
 
-import std/[os,strutils,globs]
-
-{.deprecated: [walkDirRecFilter: glob].}
-export glob
+import std/[os,strutils]
 
 proc nativeToUnixPath*(path: string): string =
   # pending https://github.com/nim-lang/Nim/pull/13265

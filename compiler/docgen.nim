@@ -19,7 +19,7 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
-from std/private/globs import nativeToUnixPath
+from std/private/osutils import nativeToUnixPath
 
 const
   exportSection = skField
