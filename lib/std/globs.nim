@@ -11,23 +11,41 @@ type
     path*: string
       ## absolute or relative path wrt globbed dir
     depth*: int
-      ## depth wrt globbed dir
+      ## depth wrt GlobOpt.dir (which is at depth 0)
     epilogue*: bool
   GlobMode* = enum
-    gDfs, gBfs
+    gDfs ## depth first search
+    gBfs ## breadth first search
   FollowCallback* = proc(entry: PathEntry): bool
   SortCmpCallback* = proc (x, y: PathEntrySub): int
+  GlobOpt* = object
+    dir*: string ## root of glob
+    relative: bool ## when true, paths are are returned relative to `dir`, else they start with `dir`
+    checkDir: bool ## if true, raises `OSError` when `dir` can't be listed. Deeper
+      ## directories do not cause `OSError`, and currently no error reporting is done for those.
+    globMode: GlobMode ## controls how paths are returned
+    includeRoot: bool ## whether to include root `dir`
+    includeEpilogue: bool
+      ## when false, yields: someDir, <children of someDir>
+      ## when true, yields: someDir, <children of someDir>, someDir: each dir is
+      ## yielded a 2nd time. This is useful in applications that aggregate data over dirs.
+    followSymlinks: bool ## whether to follow symlinks
+    follow: FollowCallback
+      ## if not `nil`, `glob` visits `entry` if `follow(entry) == true`.
+    sortCmp: SortCmpCallback
+      ## if not `nil`, immediate children of a dir are sorted using `sortCmp`
 
-iterator glob*(dir: string, relative = false, checkDir = true, globMode = gDfs, includeRoot = false, includeEpilogue = false, followSymlinks = false,
-    follow: FollowCallback = nil,
-    sortCmp: SortCmpCallback = nil,
-    topFirst = true):
-    PathEntry {.tags: [ReadDirEffect].} =
-  ## Recursively walks `dir` which must exist when checkDir=true (else raises `OSError`).
-  ## Paths in `result.path` are relative to `dir` unless `relative=false`,
-  ## `result.depth >= 1` is the tree depth relative to the root `dir` (at depth 0).
-  ## if `follow != nil`, `glob` visits `entry` if `filter(entry) == true`.
-  ## This is more flexible than `os.walkDirRec`.
+proc initGlobOpt*(
+  dir: string, relative = false, checkDir = true, globMode = gDfs,
+  includeRoot = false, includeEpilogue = false, followSymlinks = false,
+  follow: FollowCallback = nil, sortCmp: SortCmpCallback = nil): GlobOpt =
+  result = GlobOpt(dir: dir, relative: relative, checkDir: checkDir, globMode: globMode, includeRoot: includeRoot, includeEpilogue: includeEpilogue, followSymlinks: followSymlinks, follow: follow, sortCmp: sortCmp)
+
+iterator globOpt*(opt: GlobOpt): PathEntry =
+  ##[
+  Recursively walks `dir`.
+  This is more flexible than `os.walkDirRec`.
+  ]##
   runnableExamples:
     import os,sugar
     if false:
@@ -45,47 +63,50 @@ iterator glob*(dir: string, relative = false, checkDir = true, globMode = gDfs, 
     modulo some refactoring.
   ]#
   var entry = PathEntry(depth: 0, path: ".")
-  entry.kind = if symlinkExists(dir): pcLinkToDir else: pcDir
+  entry.kind = if symlinkExists(opt.dir): pcLinkToDir else: pcDir
   # var stack: seq[PathEntry]
   var stack = initDeque[PathEntry]()
 
-  var checkDir = checkDir
-  if dirExists(dir):
+  var checkDir = opt.checkDir
+  if dirExists(opt.dir):
     stack.addLast entry
   elif checkDir:
-    raise newException(OSError, "invalid root dir: " & dir)
+    raise newException(OSError, "invalid root dir: " & opt.dir)
 
   var dirsLevel: seq[PathEntrySub]
   while stack.len > 0:
-    let current = if globMode == gDfs: stack.popLast() else: stack.popFirst()
+    let current = if opt.globMode == gDfs: stack.popLast() else: stack.popFirst()
     entry.epilogue = current.epilogue
     entry.depth = current.depth
     entry.kind = current.kind
-    entry.path = if relative: current.path else: dir / current.path
+    entry.path = if opt.relative: current.path else: opt.dir / current.path
     normalizePath(entry.path) # pending https://github.com/timotheecour/Nim/issues/343
 
-    if includeRoot or current.depth > 0:
+    if opt.includeRoot or current.depth > 0:
       yield entry
 
-    if (current.kind == pcDir or current.kind == pcLinkToDir and followSymlinks) and not current.epilogue:
-      if follow == nil or follow(current):
-        if sortCmp != nil:
+    if (current.kind == pcDir or current.kind == pcLinkToDir and opt.followSymlinks) and not current.epilogue:
+      if opt.follow == nil or opt.follow(current):
+        if opt.sortCmp != nil:
           dirsLevel.setLen 0
-        if includeEpilogue:
+        if opt.includeEpilogue:
           stack.addLast PathEntry(depth: current.depth, path: current.path, kind: current.kind, epilogue: true)
         # checkDir is still needed here in first iteration because things could
         # fail for reasons other than `not dirExists`.
-        for k, p in walkDir(dir / current.path, relative = true, checkDir = checkDir):
-          if sortCmp != nil:
+        for k, p in walkDir(opt.dir / current.path, relative = true, checkDir = checkDir):
+          if opt.sortCmp != nil:
             dirsLevel.add PathEntrySub(kind: k, path: p)
           else:
             stack.addLast PathEntry(depth: current.depth + 1, path: current.path / p, kind: k)
         checkDir = false
           # We only check top-level dir, otherwise if a subdir is invalid (eg. wrong
           # permissions), it'll abort iteration and there would be no way to resume iteration.
-        if sortCmp != nil:
-          sort(dirsLevel, sortCmp)
+        if opt.sortCmp != nil:
+          sort(dirsLevel, opt.sortCmp)
           for i in 0..<dirsLevel.len:
-            let j = if globMode == gDfs: dirsLevel.len-1-i else: i
+            let j = if opt.globMode == gDfs: dirsLevel.len-1-i else: i
             let ai = dirsLevel[j]
             stack.addLast PathEntry(depth: current.depth + 1, path: current.path / ai.path, kind: ai.kind)
+
+template glob*(args: varargs[untyped]): untyped =
+  globOpt(initGlobOpt(args))

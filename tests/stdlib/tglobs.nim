@@ -2,8 +2,6 @@ import std/[sugar,globs,os,strutils,sequtils,algorithm]
 from std/private/osutils as osutils2 import nativeToUnixPath
 import stdtest/[specialpaths,osutils]
 
-import timn/exp/taps
-
 proc processAux[T](a: T): seq[string] =
   a.mapIt(it.path.nativeToUnixPath)
 
@@ -49,4 +47,4 @@ f5
   doAssert toSeq(glob(dir, relative = true, sortCmp = mySort, globMode = gBfs)).processAux == @["d1", "d2", "f5", "d1/d1a", "d1/d1b", "d1/f1.txt", "d1/d1a/d1a1", "d1/d1a/f2.txt", "d1/d1a/f3", "d1/d1b/d1b1", "d1/d1b/d1b1/f4"]
 
   # includeEpilogue
-  doAssert toSeq(glob(dir, relative = true, sortCmp = mySort, includeEpilogue = true, includeRoot = true)).processAux.tap == @[".", "d1", "d1/d1a", "d1/d1a/d1a1", "d1/d1a/d1a1", "d1/d1a/f2.txt", "d1/d1a/f3", "d1/d1a", "d1/d1b", "d1/d1b/d1b1", "d1/d1b/d1b1/f4", "d1/d1b/d1b1", "d1/d1b", "d1/f1.txt", "d1", "d2", "d2", "f5", "."]
+  doAssert toSeq(glob(dir, relative = true, sortCmp = mySort, includeEpilogue = true, includeRoot = true)).processAux == @[".", "d1", "d1/d1a", "d1/d1a/d1a1", "d1/d1a/d1a1", "d1/d1a/f2.txt", "d1/d1a/f3", "d1/d1a", "d1/d1b", "d1/d1b/d1b1", "d1/d1b/d1b1/f4", "d1/d1b/d1b1", "d1/d1b", "d1/f1.txt", "d1", "d2", "d2", "f5", "."]
