@@ -2,7 +2,7 @@
 
 import os, strutils, osproc, sets, pathnorm, pegs
 from std/private/osutils import nativeToUnixPath
-from std/globs import globs, PathEntry
+from std/globs import glob, PathEntry
 import "../compiler/nimpaths"
 
 const
