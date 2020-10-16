@@ -1,18 +1,13 @@
 import std/[sugar,globs,os,strutils,sequtils,algorithm]
-from std/private/globs as globsOld import nativeToUnixPath
+from std/private/osutils as osutils2 import nativeToUnixPath
 import stdtest/[specialpaths,osutils]
 
-# proc nativeToUnixPath*(path: string): string =
-#   # pending https://github.com/nim-lang/Nim/pull/13265
-#   doAssert not path.isAbsolute # not implemented here; absolute files need more care for the drive
-#   when DirSep == '\\':
-#     result = replace(path, '\\', '/')
-#   else: result = path
+import timn/exp/taps
 
-# import timn/exp/taps
-
+proc processAux[T](a: T): seq[string] =
+  a.mapIt(it.path.nativeToUnixPath)
 proc process[T](a: T): seq[string] =
-  a.mapIt(it.path.nativeToUnixPath).sorted
+  a.processAux.sorted
 
 block: # glob
   let dir = buildDir/"D20201013T100140"
@@ -36,3 +31,9 @@ f5
   doAssertRaises(OSError): discard toSeq(glob("nonexistant"))
   doAssertRaises(OSError): discard toSeq(glob("f5"))
   doAssert toSeq(glob("nonexistant", checkDir = false)) == @[]
+
+  proc mySort(a, b: PathEntrySub): int = cmp(a.path, b.path)
+  proc mySort2(a, b: PathEntrySub): int = -cmp(a.path, b.path)
+  doAssert toSeq(glob(dir, relative = true, sortCmp = mySort2)).processAux == @["f5", "d2", "d1", "d1/f1.txt", "d1/d1b", "d1/d1a", "d1/d1a/f3", "d1/d1a/f2.txt", "d1/d1a/d1a1", "d1/d1b/d1b1", "d1/d1b/d1b1/f4"]
+  doAssert toSeq(glob(dir, relative = true, sortCmp = mySort))
+    .processAux.tap == @["d1", "d2", "f5", "d1/d1a", "d1/d1b", "d1/f1.txt", "d1/d1b/d1b1", "d1/d1b/d1b1/f4", "d1/d1a/d1a1", "d1/d1a/f2.txt", "d1/d1a/f3"]

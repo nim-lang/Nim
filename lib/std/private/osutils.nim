@@ -2,14 +2,10 @@
 unstable API, internal use only for now.
 ]##
 
-#[
-this module should be renamed to reflect its scope, eg to osutils.
-]#
-
 import std/[os,strutils,globs]
 
-# {.deprecated: [walkDirRecFilter: glob].}
-# export glob
+{.deprecated: [walkDirRecFilter: glob].}
+export glob
 
 proc nativeToUnixPath*(path: string): string =
   # pending https://github.com/nim-lang/Nim/pull/13265
