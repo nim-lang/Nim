@@ -1,5 +1,6 @@
 import std/os
 import std/algorithm
+import std/deques
 
 type
   PathEntrySub* = object
@@ -12,10 +13,14 @@ type
     depth*: int
       ## depth wrt globbed dir
     epilogue*: bool
+  GlobMode* = enum
+    gDfs, gBfs
+  FollowCallback* = proc(entry: PathEntry): bool
+  SortCmpCallback* = proc (x, y: PathEntrySub): int
 
-iterator glob*(dir: string, relative = false, checkDir = true, includeRoot = false, includeEpilogue = false,
-    follow: proc(entry: PathEntry): bool = nil,
-    sortCmp: proc (x, y: PathEntrySub): int = nil,
+iterator glob*(dir: string, relative = false, checkDir = true, globMode = gDfs, includeRoot = false, includeEpilogue = false, followSymlinks = false,
+    follow: FollowCallback = nil,
+    sortCmp: SortCmpCallback = nil,
     topFirst = true):
     PathEntry {.tags: [ReadDirEffect].} =
   ## Recursively walks `dir` which must exist when checkDir=true (else raises `OSError`).
@@ -41,18 +46,18 @@ iterator glob*(dir: string, relative = false, checkDir = true, includeRoot = fal
   ]#
   var entry = PathEntry(depth: 0, path: ".")
   entry.kind = if symlinkExists(dir): pcLinkToDir else: pcDir
-  var stack: seq[PathEntry]
+  # var stack: seq[PathEntry]
+  var stack = initDeque[PathEntry]()
 
   var checkDir = checkDir
   if dirExists(dir):
-    stack.add entry
+    stack.addLast entry
   elif checkDir:
     raise newException(OSError, "invalid root dir: " & dir)
 
   var dirsLevel: seq[PathEntrySub]
   while stack.len > 0:
-    let current = stack.pop()
-    # let current = stack.popFront()
+    let current = if globMode == gDfs: stack.popLast() else: stack.popFirst()
     entry.epilogue = current.epilogue
     entry.depth = current.depth
     entry.kind = current.kind
@@ -62,24 +67,25 @@ iterator glob*(dir: string, relative = false, checkDir = true, includeRoot = fal
     if includeRoot or current.depth > 0:
       yield entry
 
-    if current.kind in {pcDir, pcLinkToDir} and not current.epilogue:
+    if (current.kind == pcDir or current.kind == pcLinkToDir and followSymlinks) and not current.epilogue:
       if follow == nil or follow(current):
         if sortCmp != nil:
           dirsLevel.setLen 0
         if includeEpilogue:
-          stack.add PathEntry(depth: current.depth, path: current.path, kind: current.kind, epilogue: true)
+          stack.addLast PathEntry(depth: current.depth, path: current.path, kind: current.kind, epilogue: true)
         # checkDir is still needed here in first iteration because things could
         # fail for reasons other than `not dirExists`.
         for k, p in walkDir(dir / current.path, relative = true, checkDir = checkDir):
           if sortCmp != nil:
             dirsLevel.add PathEntrySub(kind: k, path: p)
           else:
-            stack.add PathEntry(depth: current.depth + 1, path: current.path / p, kind: k)
+            stack.addLast PathEntry(depth: current.depth + 1, path: current.path / p, kind: k)
         checkDir = false
           # We only check top-level dir, otherwise if a subdir is invalid (eg. wrong
           # permissions), it'll abort iteration and there would be no way to resume iteration.
         if sortCmp != nil:
           sort(dirsLevel, sortCmp)
-          for i in countdown(dirsLevel.len-1, 0):
-            let ai = dirsLevel[i]
-            stack.add PathEntry(depth: current.depth + 1, path: current.path / ai.path, kind: ai.kind)
+          for i in 0..<dirsLevel.len:
+            let j = if globMode == gDfs: dirsLevel.len-1-i else: i
+            let ai = dirsLevel[j]
+            stack.addLast PathEntry(depth: current.depth + 1, path: current.path / ai.path, kind: ai.kind)
