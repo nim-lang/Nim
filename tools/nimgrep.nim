@@ -59,7 +59,7 @@ Options:
   --context:N, -c:N   print N lines of leading context before every match and
                       N lines of trailing context after it
   --sortTime          order files by the last modification time -
-       -s[:asc|desc]  - ascending (default: recent files last) or descending
+       -s[:asc|desc]  - ascending (default: recent files go last) or descending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
   --limit[:N], -m[:N] limit max width of lines from files by N characters (80)
@@ -153,6 +153,8 @@ type
     pattern: Pat
     checkMatch: Pat
     checkNoMatch: Pat
+  SinglePattern[PAT] = tuple  # compile single pattern for replacef
+    pattern: PAT
 
 var
   paths: seq[string] = @[]
@@ -886,7 +888,8 @@ iterator walkRec(paths: seq[string]): (string, string) =
       else:
         yield ("Error: no such file or directory: ", path)
 
-proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
+proc replaceMatches(pattern: Pattern; filename: string, buffer: string,
+                    fileResult: FileResult) =
   var newBuf = newStringOfCap(buffer.len)
 
   var changed = false
@@ -894,9 +897,8 @@ proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
   var i = 0
   for output in fileResult:
     if output.kind in {BlockFirstMatch, BlockNextMatch}:
-      #let r = replace(curMi.match, pattern, replacement % matches) #TODO
       let curMi = output.match
-      let r = replace(curMi.match, searchOpt.pattern, replacement)
+      let r = replacef(curMi.match, pattern, replacement)
       if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
         changed = true
       i = curMi.last + 1
@@ -910,7 +912,8 @@ proc replaceMatches(filename: string, buffer: string, fileResult: FileResult) =
       printError "cannot open file for overwriting: " & filename
       inc(gVar.errors)
 
-template processFileResult(filename: string, fileResult: untyped) =
+template processFileResult(pattern: Pattern; filename: string,
+                           fileResult: untyped) =
   var filenameShown = false
   template showFilename =
     if not filenameShown:
@@ -940,7 +943,7 @@ template processFileResult(filename: string, fileResult: untyped) =
         matches.add(output)
       of FileContents: buffer = output.buffer
     if matches.len > 0:
-      replaceMatches(filename, buffer, matches)
+      replaceMatches(pattern, filename, buffer, matches)
 
 proc run1Thread() =
   declareCompiledPatterns(searchOptC, SearchOptComp):
@@ -952,7 +955,7 @@ proc run1Thread() =
         inc(gVar.errors)
         printError (err & filename)
         continue
-      processFileResult(filename,
+      processFileResult(searchOptC.pattern, filename,
                         processFile(searchOptC, filename,
                                     yieldContents=optReplace in options))
 
@@ -1020,21 +1023,23 @@ proc runMultiThread() =
     createThread(workers[n], worker, searchOpt)
   var producerThread: Thread[(seq[string], WalkOpt)]
   createThread(producerThread, pathProducer, (paths, walkOpt))
-  template add1fileResult(fileNo: int, fname: string, fResult: FileResult) =
-    storage[fileNo] = (fname, fResult)
-    while storage.haskey(firstUnprocessedFile):
-      let fileResult = storage[firstUnprocessedFile][1]
-      let filename = storage[firstUnprocessedFile][0]
-      processFileResult(filename, fileResult)
-      storage.del(firstUnprocessedFile)
-      firstUnprocessedFile += 1
-  var totalFiles = -1  # will be known when pathProducer finishes
-  while totalFiles == -1 or firstUnprocessedFile < totalFiles:
-    let msg = resultsChan.recv()
-    if msg.finished:
-      totalFiles = msg.fileNo
-    else:
-      add1fileResult(msg.fileNo, msg.filename, msg.fileResult)
+  declareCompiledPatterns(pat, SinglePattern):
+    compile1Pattern(searchOpt.pattern, pat.pattern)
+    template add1fileResult(fileNo: int, fname: string, fResult: FileResult) =
+      storage[fileNo] = (fname, fResult)
+      while storage.haskey(firstUnprocessedFile):
+        let fileResult = storage[firstUnprocessedFile][1]
+        let filename = storage[firstUnprocessedFile][0]
+        processFileResult(pat.pattern, filename, fileResult)
+        storage.del(firstUnprocessedFile)
+        firstUnprocessedFile += 1
+    var totalFiles = -1  # will be known when pathProducer finishes
+    while totalFiles == -1 or firstUnprocessedFile < totalFiles:
+      let msg = resultsChan.recv()
+      if msg.finished:
+        totalFiles = msg.fileNo
+      else:
+        add1fileResult(msg.fileNo, msg.filename, msg.fileResult)
 
 proc reportError(msg: string) =
   printError "Error: " & msg
