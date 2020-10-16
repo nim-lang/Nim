@@ -42,7 +42,8 @@ Options:
   --excludeFile:PAT   skip files whose names match the given pattern PAT
   --includeDir:PAT    search only files with full directory name matching PAT
   --excludeDir:PAT    skip directories whose names match the given pattern PAT
-  --match:PAT, -m:PAT select files containing a (not displayed) match of PAT
+  --if,--ef,--id,--ed abbreviations of 4 options above
+  --match:PAT         select files containing a (not displayed) match of PAT
   --noMatch:PAT       select files not containing any match of PAT
   --bin:yes|no|only   process binary files? (detected by \0 in first 1K bytes)
   --text, -t          process only text files, the same as --bin:no
@@ -58,10 +59,11 @@ Options:
   --context:N, -c:N   print N lines of leading context before every match and
                       N lines of trailing context after it
   --sortTime          order files by the last modification time -
-       -s[:desc|asc]  - descending (default) or ascending
+       -s[:asc|desc]  - ascending (default: recent files last) or descending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
   --limit[:N], -m[:N] limit max width of lines from files by N characters (80)
+  --fit               calculate --limit from terminal width for every line
   --onlyAscii, -o     use only printable ASCII Latin characters 0x20-0x7E
                       (substitutions: 0 -> @, 1-0x1F -> A-_, 0x7F-0xFF -> !)
   --verbose           be verbose: list every processed file
@@ -101,7 +103,7 @@ type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
     optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
-    optRex, optFollow, optLimitChars
+    optRex, optFollow, optLimitChars, optFit
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -160,7 +162,7 @@ var
   searchOpt {.threadvar.}: SearchOpt
   justCount = false
   sortTime = false
-  sortTimeOrder = SortOrder.Descending
+  sortTimeOrder = SortOrder.Ascending
   useWriteStyled = true
   oneline = true
   linesBefore = 0
@@ -325,18 +327,6 @@ proc blockHeader(filename: string, line: int|string, replMode=false) =
       printBlockLineN($line.`$`.align(alignment) & ":")
     stdout.write("\n")
 
-proc lineHeader(filename: string, line: int|string, isMatch: bool) =
-  let lineSym =
-    if isMatch: $line & ":"
-    else: $line & " "
-  if not newLine and optFilenames notin options:
-    if oneline:
-      printFile(filename)
-      printLineN(":" & lineSym, isMatch)
-    else:
-      printLineN(lineSym.align(alignment+1), isMatch)
-    stdout.write(" ")
-
 type Column = tuple  # current column info for the cropping (--limit) feature
   terminal: int
   file: int
@@ -347,11 +337,25 @@ proc newLn(curCol: var Column) =
   curCol.file = 0
   curcol.terminal = 0
 
+proc lineHeader(filename: string, line: int|string, isMatch: bool, curCol: var Column) =
+  let lineSym =
+    if isMatch: $line & ":"
+    else: $line & " "
+  if not newLine and optFilenames notin options:
+    if oneline:
+      printFile(filename)
+      printLineN(":" & lineSym, isMatch)
+      curcol.terminal += filename.len + 1 + lineSym.len
+    else:
+      printLineN(lineSym.align(alignment+1), isMatch)
+      curcol.terminal += lineSym.align(alignment+1).len
+    stdout.write(" "); curCol.terminal += 1
+
 proc printMatch(fileName: string, mi: MatchInfo, curCol: var Column) =
   let sLines = mi.match.splitLines()
   for i, l in sLines:
     if i > 0:
-      lineHeader(filename, mi.lineBeg + i, isMatch = true)
+      lineHeader(filename, mi.lineBeg + i, isMatch = true, curCol)
     if curCol.terminal < limitChar:
       writeColored(l)
     else:
@@ -361,15 +365,15 @@ proc printMatch(fileName: string, mi: MatchInfo, curCol: var Column) =
   curCol.terminal += mi.match.len
   curCol.file += mi.match.len
 
+const matchPaddingFromRight = 10
 let ellipsis = "..."
 
 proc reserveChars(mi: MatchInfo): int =
-  if optLimitChars notin options:
-    result = 0
-  else:
+  if optLimitChars in options or optFit in options:
     let patternChars = afterPattern(mi.match, 0) + 1
-    let padding = 3
-    result = patternChars + ellipsis.len + padding
+    result = patternChars + ellipsis.len + matchPaddingFromRight
+  else:
+    result = 0
 
 proc printRaw(c: char, curCol: var Column, allowTabs = true) =
   # print taking into account tabs and optOnlyAscii
@@ -459,7 +463,7 @@ proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
   blockHeader(filename, lineBeg, replMode=replMode)
   for i, l in sLines:
     let isLastLine = i == sLines.len - 1
-    lineHeader(filename, startLine + i, isMatch = isLastLine)
+    lineHeader(filename, startLine + i, isMatch = isLastLine, curCol)
     if isLastLine: limitChar -= reserveChars
     l.printCropped(curCol, fromLeft = isLastLine)
     if isLastLine: limitChar += reserveChars
@@ -469,6 +473,13 @@ proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
 proc getSubLinesAfter(buf: string, mi: MatchInfo): string =
   let last = afterPattern(buf, mi.last+1, 1+linesAfter)
   result = substr(buf, mi.last+1, last)
+
+proc printOverflow(filename: string, line: int, curCol: var Column) =
+  if curCol.overflowMatches > 0:
+    lineHeader(filename, line, isMatch = true, curCol)
+    printBold("(" & $curCol.overflowMatches & " more matches skipped)")
+    newLn(curCol)
+    curCol.overflowMatches = 0
 
 proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
                         curCol: var Column) =
@@ -480,12 +491,13 @@ proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
     sLines[0].printCropped(curCol, fromLeft = false)
       # complete the line after the match itself
     newLn(curCol)
+    printOverflow(filename, matchLineEnd, curCol)
     #let skipLine =  # workaround posix line ending at the end of file
     #  if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
-    #  else: 0
+    #  else: 0  TODO:
     let skipLine = 0
     for i in 1 ..< sLines.len - skipLine:
-      lineHeader(filename, matchLineEnd + i, isMatch = false)
+      lineHeader(filename, matchLineEnd + i, isMatch = false, curCol)
       sLines[i].printCropped(curCol, fromLeft = false)
       newLn(curCol)
 
@@ -502,10 +514,11 @@ proc printBetweenMatches(filename: string, betweenMatches: string,
     # finish the line of previous Match
   if sLines.len > 1:
     newLn(curCol)
+    printOverflow(filename, lastLineBeg - sLines.len + 1, curCol)
     for i in 1 ..< sLines.len:
       let isLastLine = i == sLines.len - 1
       lineHeader(filename, lastLineBeg - sLines.len + i + 1,
-                 isMatch = isLastLine)
+                 isMatch = isLastLine, curCol)
       if isLastLine: limitChar -= reserveChars
       sLines[i].printCropped(curCol, fromLeft = isLastLine)
       if isLastLine: limitChar += reserveChars
@@ -600,12 +613,6 @@ proc printOutput(filename: string, output: Output, curCol: var Column) =
     printMatch(filename, output.match, curCol)
   of BlockEnd:
     printSubLinesAfter(filename, output.blockEnding, output.firstLine, curCol)
-    if curCol.overflowMatches > 0:
-      # overflowed matches are shown for the entire Block after last match
-      lineHeader(filename, output.firstLine, isMatch = true)
-      printBold("(" & $curCol.overflowMatches & " more matches skipped)")
-      stdout.write("\n")
-      curCol.overflowMatches = 0
     if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
 
 iterator searchFile(pattern: Pattern; filename: string;
@@ -846,7 +853,12 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string =
           dirs.add path
     if sortTime:  # sort by time - collect files before yielding
       for file in files:
-        timeFiles.add((getLastModificationTime(file), file))
+        var time: Time
+        try:
+          time = getLastModificationTime(file)  # can fail for broken symlink
+        except:
+          discard
+        timeFiles.add((time, file))
     else:  # alphanumeric sort, yield immediately after sorting
       files.sort()
       for file in files:
@@ -1085,10 +1097,10 @@ for kind, key, val in getopt():
         nWorkers = parseInt(val)
     of "ext": walkOpt.extensions.add val.split('|')
     of "noext", "no-ext": walkOpt.skipExtensions.add val.split('|')
-    of "excludedir", "exclude-dir": walkOpt.excludeDir.add val
-    of "includedir", "include-dir": walkOpt.includeDir.add val
-    of "includefile", "include-file": walkOpt.includeFile.add val
-    of "excludefile", "exclude-file": walkOpt.excludeFile.add val
+    of "excludedir", "exclude-dir",   "ed": walkOpt.excludeDir.add val
+    of "includedir", "include-dir",   "id": walkOpt.includeDir.add val
+    of "includefile", "include-file", "if": walkOpt.includeFile.add val
+    of "excludefile", "exclude-file", "ef": walkOpt.excludeFile.add val
     of "match": searchOpt.checkMatch = val
     of "nomatch", "notmatch", "not-match", "no-match":
       searchOpt.checkNoMatch = val
@@ -1143,6 +1155,9 @@ for kind, key, val in getopt():
       incl(options, optLimitChars)
       if val != "":
         limitChar = parseInt(val)
+    of "fit":
+      incl(options, optFit)
+      limitChar = terminalWidth()
     of "onlyascii", "only-ascii", "o": optOnlyAscii = true
     of "verbose": incl(options, optVerbose)
     of "filenames": incl(options, optFilenames)
@@ -1155,6 +1170,7 @@ checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
 checkOptions({optFilenames, optReplace}, "filenames", "replace")
+checkOptions({optFit, optLimitChars}, "fit", "limit")
 
 linesBefore = max(linesBefore, linesContext)
 linesAfter  = max(linesAfter,  linesContext)
