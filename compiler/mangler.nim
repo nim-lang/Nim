@@ -35,7 +35,7 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "procException"
+  inspect = "notnotprocException"
   symbolicTypes =
     when false:
       {tyObject, tyEnum} # obey the boss
@@ -168,28 +168,28 @@ proc nextConflict(p: ModuleOrProc; name: string; key: int): int {.deprecated.} =
   else:
     result = p.sigConflicts[name]
 
+template purgeConflict(m: ModuleOrProc; key: ConflictKey) =
+  del m.sigConflicts, $key
+
 proc purgeConflict*(m: ModuleOrProc; s: PSym or PType) =
   ## Remove a cached symbol or type name from a conflicts table.
-  del m.sigConflicts, $conflictKey(s)
+  purgeConflict(m, conflictKey(s))
 
 proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
-                                        name: string): int =
-  ## XXX: remove me
+                                        name: string): int
+  {.deprecated: "hack".} =
   # types are allowed to match up if they have the same signature
   let sig = when s is PType: hashTypeDef(s) else: default(SigHash)
   var key = conflictKey(s)
 
+  var broken = false
   when s is PType:
+    broken = $key in m.sigConflicts
     # if we already have this key cached, then we'll use the original key
     # so that we don't confuse our local cache in the getOrSet operation
-    when debugMangle:
-      echo "input key was ", key, " with sig ", sig
     key = unaliasTypeBySignature(m.g, key, sig)
-    when debugMangle:
-      echo "input key now ", key, " with sig ", sig
 
   while true:
-    #echo "checking ", name, " for key ", key
     result = getOrSet(m, name, key)
     var aNameForTesting = name
     aNameForTesting.maybeAddCounter result
@@ -197,14 +197,22 @@ proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
                                                        aNameForTesting,
                                                        key, sig):
       when debugMangle:
-        echo "registry says ", aNameForTesting, " is in use"
-      # if this is an alias/clone/reuse, we should crash
-      #if conflictKey(s) != key:
-      #  internalError(m.config, "unexpected name reuse failure")
-      when debugMangle:
-        echo "purge $1 for $2 name $3" %
-          [ $conflictKey(s), $key, aNameForTesting ]
-      purgeConflict(m, s)
+        echo "purge $1 for $2 name $3; counter $4" %
+          [ $conflictKey(s), $key, aNameForTesting, $result ]
+
+      # if we already have a counter for this name and yet
+      # it stands in conflict against the global registry,
+      # then we've made a very serious error!
+      if broken:
+        internalError(m.config, "attempt to recount " & name)
+
+      # we need to purge `key`, not conflictKey(s)
+      purgeConflict(m, key)
+
+      # we need to make sure that the conflicts for this name
+      # are primed and ready to increment despite perhaps not
+      # having any record of this name from prior introduction
+      discard hasKeyOrPut(m.sigConflicts, name, 1)
     else:
       break
 
@@ -609,15 +617,15 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
         if atModuleScope(p, t):
           # make sure we use the source module for any type requested
           when debugMangle:
-            echo "at module scope; running float"
+            echo "at module scope; floating ", name
           counter = floatConflict(p, t, name, conflictKey(t))
           # pthread_mutex_t
           if not hasImmutableName(t):
             r.maybeAddCounter counter
           else:
             when debugMangle:
-              echo "btw, immutable name ", name, " with counter ", $counter
-          echo "at module scope; set name on t"
+              echo "immutable name ", name, " with counter ", counter
+              echo "at module scope; set name on t to ", r
           try:
             # cache the name globally; r is foo_#
             result = m.g.setName(m, t, r, tsig)

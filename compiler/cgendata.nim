@@ -360,7 +360,8 @@ proc unaliasTypeBySignature*(g: BModuleList;
 proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
                                                       name: BNameInput;
                                                       key: ConflictKey;
-                                                      sig: SigHash): bool =
+                                                      sig: SigHash): bool
+  {.deprecated: "hack".} =
   ## XXX: remove me; used by the mangler to skip global names
   ##      previously defined in unrelated modules...
   let name = BName $name
