@@ -8,8 +8,9 @@ proc processAux[T](a: T): seq[string] =
 proc process[T](a: T): seq[string] =
   a.processAux.sorted
 
+const dir = buildDir/"D20201013T100140"
+
 block: # glob
-  const dir = buildDir/"D20201013T100140"
   defer: removeDir(dir)
   let paths = """
 d1/f1.txt
@@ -29,9 +30,6 @@ f5
     # filter by pcDir
     doAssert toSeq(glob(dir, relative = true))
       .filterIt(it.kind == pcDir).process == @["d1", "d1/d1a", "d1/d1a/d1a1", "d1/d1b", "d1/d1b/d1b1", "d2"]
-  
-  const s = toSeq(glob(dir, relative = true)).filterIt(it.kind == pcDir).process
-  echo s
 
   block: # includeRoot
     doAssert toSeq(glob(dir, relative = true, includeRoot = true))
@@ -52,3 +50,12 @@ f5
   # includeEpilogue
   doAssert toSeq(glob(dir, relative = true, sortCmp = mySort, includeEpilogue = true, includeRoot = true)).processAux == @[".", "d1", "d1/d1a", "d1/d1a/d1a1", "d1/d1a/d1a1", "d1/d1a/f2.txt", "d1/d1a/f3", "d1/d1a", "d1/d1b", "d1/d1b/d1b1", "d1/d1b/d1b1/f4", "d1/d1b/d1b1", "d1/d1b", "d1/f1.txt", "d1", "d2", "d2", "f5", "."]
 
+
+proc main()=
+  let s = toSeq(glob(dir, relative = true))
+
+when false:
+  #[
+  pending https://github.com/nim-lang/Nim/issues/15597 and https://github.com/nim-lang/Nim/issues/15595
+  ]#
+  static: main()
