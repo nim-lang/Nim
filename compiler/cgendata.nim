@@ -12,7 +12,7 @@
 import
 
   ast, ropes, options, intsets, tables, ndi, lineinfos, sets, pathutils,
-  modulegraphs, astalgo, hashes
+  modulegraphs, astalgo, hashes, msgs
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -143,16 +143,21 @@ type
   ConflictsTable* = Table[string, int]
   ConflictKey* = int
 
-  BName* = distinct string  # a mangled name used in backend code
+  # this mangling stuff is intentionally verbose; err on side of caution!
+  #
+  BName* = distinct string              # a mangled name used in backend
+  BNameInput = BName or string or Rope  # you can make a BName from these
 
   Mangling = object
-    key: ConflictKey
-    sig: SigHash
-    name: BName
-    module: int
+    key: ConflictKey                         # unique id of type/symbol
+    sig: SigHash                             # signature of type/symbol
+    name: BName                              # mangled backend name
+    module: int                              # source module
+
   MangleCache = object
-    manglings: Table[BName, Mangling]
-    identities: Table[ConflictKey, BName]
+    manglings: Table[BName, Mangling]        # link name to debug info
+    identities: Table[ConflictKey, BName]    # link unique id to name
+    signatures: Table[SigHash, ConflictKey]  # unifies types by sig
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -251,62 +256,73 @@ template conflictKey*(s: PType): ConflictKey = ConflictKey s.uniqueId
 
 proc initMangleCache(): MangleCache = discard
 
-proc `$`*(s: BName): string {.borrow.}
 proc hash*(s: BName): Hash {.borrow.}
 proc `==`*(a, b: BName): bool {.borrow.}
 proc `<`*(a, b: BName): bool {.borrow.}
-proc len(s: BName): int {.borrow.}
-proc isEmpty*(s: BName): bool = s.len == 0
+proc `$`*(s: BName): string {.borrow.}
 
-proc add*(s: var BName; x: string or Rope) =
+proc `$`(m: Mangling): string =
+  for k, v in fieldPairs(m):
+    result.add "\t" & k & ": " & $v & "\n"
+
+proc add*(s: var BName; x: BNameInput) =
   # sure, you can mutate it, but we'll make it hard for you
-  assert not s.isEmpty
   (string s).add "/*" & $x & "*/"
 
-proc `&`*(s: BName; x: string or Rope): BName =
-  assert not s.isEmpty
+proc `&`*(s: BName; x: BNameInput): BName =
   result = s
   result.add x
 
 converter toString*(s: BName): string = s.string
 converter toRope*(s: BName): Rope = rope(s.string)
 
-proc newMangling(m: BModule; p: PSym or PType; name: string;
+proc newMangling(m: BModule; p: PSym or PType; name: BNameInput;
                  sig: SigHash): Mangling =
-  assert name.len > 0
-  result = Mangling(key: conflictKey(p), sig: sig, name: name.BName,
+  when name isnot BName:
+    if name.len == 0:
+      internalError(m.config, "empty identifier names are not supported")
+    let name =
+      when name is Rope:
+        BName $name
+      else:
+        BName name
+  result = Mangling(key: conflictKey(p), sig: sig, name: name,
                     module: m.module.id)
 
 proc setName*(g: BModuleList; m: BModule; p: PSym or PType;
-              name: string; sig: SigHash): BName =
+              name: BNameInput; sig: SigHash): BName =
   let man = newMangling(m, p, name, sig)
   result = man.name
+
+  when p is PType:         # cache type signature if necessary
+    discard hasKeyOrPut(g.nameCache.signatures, man.sig, man.key)
+
   when defined(release):
     g.nameCache.identities[man.key] = result
-    g.nameCache.manglings[result] = man
+    discard hasKeyOrPut(g.nameCache.manglings, result, man)
   else:
     try:
       echo "set key ", man.key, " with sig ", man.sig, " at ", man.name
       assert man.key notin g.nameCache.identities
       g.nameCache.identities[man.key] = result
-      if man.name in g.nameCache.manglings:
-        assert g.nameCache.manglings[man.name].sig == man.sig
-        assert g.nameCache.manglings[man.name].module == man.module
-      g.nameCache.manglings[result] = man
+      if hasKeyOrPut(g.nameCache.manglings, result, man):
+        assert g.nameCache.manglings[result].key != man.key
     except:
       echo "assertion error for mangling `", name, "`"
       echo "here's the input object:"
       debug p
       echo "here's the current mangling:"
-      echo repr(man)
+      echo man
       if man.key in g.nameCache.identities:
         echo "key already cached as `", g.nameCache.identities[man.key], "`"
+        echo "here's the previous mangling:"
+        echo g.nameCache.manglings[g.nameCache.identities[man.key]]
       if man.name in g.nameCache.manglings:
         echo "name already cached; here's the previous mangling:"
-        echo repr(g.nameCache.manglings[man.name])
+        echo g.nameCache.manglings[man.name]
       raise
 
-proc setName*(g: BModuleList; p: PSym or PType; name: string) =
+proc setName*(g: BModuleList; p: PSym or PType; name: BNameInput) =
   let sig = when p is PSym: sigHash(p) else: hashTypeDef(p)
   assert p.owner != nil
   let m = findPendingModule(g, p.owner)
@@ -318,14 +334,46 @@ proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
     if result:
       try:
         let man = g.nameCache.manglings[g.nameCache.identities[key]]
-        assert man.key == key
+        # we decided to allow multiple keys to share the same mangle
+        # as long as they have the same signature or somethin'
+        #assert man.key == key
         assert man.sig == sig
         assert man.name == g.nameCache.identities[key]
       except:
         echo "looking for key ", key, " with sig ", sig
         echo "which has name ", g.nameCache.identities[key]
-        echo "but that name isn't in the manglings cache"
+        if g.nameCache.identities[key] in g.nameCache.manglings:
+          echo "the existing mangle is:"
+          echo g.nameCache.manglings[g.nameCache.identities[key]]
+        else:
+          echo "there is no existing mangle"
         raise
+
+proc unaliasTypeBySignature*(g: BModuleList;
+                             key: ConflictKey;
+                             sig: SigHash): ConflictKey =
+  ## used by the mangler to avoid out-of-order name
+  ## introductions for sig-equal types that vary in identity
+  ## and do not share source modules...  fun, right?
+  result = getOrDefault(g.nameCache.signatures, sig, key)
+
+proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
+                                                      name: BNameInput;
+                                                      key: ConflictKey;
+                                                      sig: SigHash): bool =
+  ## XXX: remove me; used by the mangler to skip global names
+  ##      previously defined in unrelated modules...
+  let name = BName $name
+  if key in g.nameCache.identities:
+    # if we have a key, then the name is a conflict if it wasn't used prior
+    result = g.nameCache.identities[key] != name
+  else:
+    # basically, defer to later tests
+    result = true
+  # the name is in use if there's already a mangle for it
+  result = result and name in g.nameCache.manglings
+  # the name is in use if the signatures don't match
+  result = result and g.nameCache.manglings[name].sig != sig
 
 proc name*(g: BModuleList; key: ConflictKey; sig: SigHash): BName =
   # let it raise a KeyError as necessary...
@@ -336,7 +384,9 @@ proc name*(g: BModuleList; key: ConflictKey; sig: SigHash): BName =
     let man = g.nameCache.manglings[result]
     assert sig == man.sig
     assert result == man.name
-    assert key == man.key
+    # we decided to allow multiple keys to share the same mangle
+    # as long as they have the same signature or somethin'
+    #assert man.key == key
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
