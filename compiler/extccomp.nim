@@ -627,10 +627,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  case conf.backend
-  of backendInvalid: doAssert false
-  of backendJs: return false # pre-existing behavior, but not sure it's good
-  else: discard
+  if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)
