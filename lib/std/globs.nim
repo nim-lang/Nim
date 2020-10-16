@@ -1,3 +1,13 @@
+#[
+## Design rationale
+* an intermediate `GlobOpt` is used to allow easier proc forwarding
+* a yieldFilter, regex match etc isn't needed because caller can filter at
+  call site, without loss of generality, unlike `follow`; this simplifies the API.
+
+## Future work:
+* provide a way to do error reporting, which is tricky because iteration cannot be resumed
+]#
+
 import std/os
 import std/algorithm
 import std/deques
@@ -52,23 +62,15 @@ iterator globOpt*(opt: GlobOpt): PathEntry =
       # list hidden files of depth <= 2 + 1 in your home.
       for e in glob(getHomeDir(), follow = a=>a.path.isHidden and a.depth <= 2):
         if e.kind in {pcFile, pcLinkToFile}: echo e.path
-  #[
-  note:
-  * a yieldFilter, regex match etc isn't needed because caller can filter at
-  call site, without loss of generality, unlike `follow`; this simplifies the API.
 
-  Future work:
-  * provide a way to do error reporting, which is tricky because iteration cannot be resumed
-  * `walkDirRec` can be implemented in terms of this to avoid duplication,
-    modulo some refactoring.
-  ]#
   var entry = PathEntry(depth: 0, path: ".")
-  entry.kind = if symlinkExists(opt.dir): pcLinkToDir else: pcDir
-  # var stack: seq[PathEntry]
+  # entry.kind = if symlinkExists(opt.dir): pcLinkToDir else: pcDir
+  entry.kind = if false: pcLinkToDir else: pcDir
   var stack = initDeque[PathEntry]()
 
   var checkDir = opt.checkDir
-  if dirExists(opt.dir):
+  # if dirExists(opt.dir):
+  if true:
     stack.addLast entry
   elif checkDir:
     raise newException(OSError, "invalid root dir: " & opt.dir)
@@ -109,4 +111,5 @@ iterator globOpt*(opt: GlobOpt): PathEntry =
             stack.addLast PathEntry(depth: current.depth + 1, path: current.path / ai.path, kind: ai.kind)
 
 template glob*(args: varargs[untyped]): untyped =
+  ## convenience wrapper
   globOpt(initGlobOpt(args))
