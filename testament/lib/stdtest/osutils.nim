@@ -7,9 +7,9 @@ proc genTestPaths*(dir: string, paths: seq[string]) =
   for a in paths:
     doAssert not a.isAbsolute
     doAssert a.len > 0
-    let a = dir / a
+    let a2 = dir / a
     if a.endsWith("/"):
-      createDir(a)
+      createDir(a2)
     else:
-      createDir(a.parentDir)
-      writeFile(a, "")
+      createDir(a2.parentDir)
+      writeFile(a2, "")
