@@ -625,7 +625,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
       func addGHLocation(s: var string, conf: ConfigRef, info: TLineInfo) =
         if info != unknownLineInfo:
           s.add " file="
-          s.add conf.toProjPath(info)
+          s.add conf.toFullPath(info)
           s.add ",line="
           s.addInt info.line.int
           s.add ",col="
@@ -649,7 +649,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
       func addAzureLocation(s: var string, conf: ConfigRef, info: TLineInfo) =
         if info != unknownLineInfo:
           s.add ";sourcepath="
-          s.add conf.toProjPath(info)
+          s.add conf.toFullPath(info)
           s.add ";linenumber="
           s.addInt info.line.int
           s.add ";columnnumber="
