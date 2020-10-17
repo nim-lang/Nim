@@ -53,6 +53,5 @@ suite "httpcore":
     doAssert parseHeader("Accept: foo, bar, prologue, starlight") == (key: "Accept", value: @["foo", "bar", "prologue", "starlight"])
 
 
-  test "test parseHeader with noSplit":
-    doAssert parseHeader("Accept: foo, bar", noSplit = true) ==  ("Accept", @["foo, bar"])
-    doAssert parseHeader("Accept: foo, bar", noSplit = false) ==  ("Accept", @["foo", "bar"])
+  test "test parseHeaderField":
+    doAssert parseHeaderField("Accept: foo, bar") ==  ("Accept", @["foo, bar"])
