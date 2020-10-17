@@ -155,6 +155,10 @@ type
     checkNoMatch: Pat
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
     pattern: PAT
+  Column = tuple  # current column info for the cropping (--limit) feature
+    terminal: int
+    file: int
+    overflowMatches: int
 
 var
   paths: seq[string] = @[]
@@ -328,17 +332,13 @@ proc blockHeader(filename: string, line: int|string, replMode=false) =
       printBlockLineN($line.`$`.align(alignment) & ":")
     stdout.write("\n")
 
-type Column = tuple  # current column info for the cropping (--limit) feature
-  terminal: int
-  file: int
-  overflowMatches: int
-
 proc newLn(curCol: var Column) =
   stdout.write("\n")
   curCol.file = 0
   curcol.terminal = 0
 
-proc lineHeader(filename: string, line: int|string, isMatch: bool, curCol: var Column) =
+proc lineHeader(filename: string, line: int|string, isMatch: bool,
+                curCol: var Column) =
   let lineSym =
     if isMatch: $line & ":"
     else: $line & " "
@@ -457,7 +457,8 @@ proc getSubLinesBefore(buf: string, curMi: MatchInfo): string =
   result = substr(buf, first, curMi.first-1)
 
 proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
-                         curCol: var Column, reserveChars: int, replMode=false) =
+                         curCol: var Column, reserveChars: int,
+                         replMode=false) =
   # start block: print 'linesBefore' lines before current match `curMi`
   let sLines = splitLines(beforeMatch)
   let startLine = lineBeg - sLines.len + 1
@@ -1168,6 +1169,8 @@ for kind, key, val in getopt():
     of "fit":
       incl(options, optFit)
       limitChar = terminalWidth()
+      when defined(windows):  # Windows cmd&powershell add an empty line when
+        limitChar -= 1        # printing '\n' right after the last column
     of "onlyascii", "only-ascii", "o": optOnlyAscii = true
     of "verbose": incl(options, optVerbose)
     of "filenames": incl(options, optFilenames)
