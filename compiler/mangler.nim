@@ -313,7 +313,7 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
     # always reuse it
 
     # these need a signature-based name so that type signatures match :-(
-    if typ.lastSon == nil:
+    if typ.len == 0 or typ.lastSon == nil:
       shortKind(typ.kind) & $hashTypeDef(typ)
     else:
       shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
