@@ -322,9 +322,11 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
   let oldErrorOutputs = c.config.m.errorOutputs
+  let oldStructuredErrorHook = c.config.structuredErrorHook
 
   c.config.m.errorOutputs = {}
   c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
+  c.config.structuredErrorHook = nil
 
   try:
     result = evalConstExpr(c.module, c.graph, e)
@@ -339,6 +341,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
   c.config.m.errorOutputs = oldErrorOutputs
+  c.config.structuredErrorHook = oldStructuredErrorHook
 
 const
   errConstExprExpected = "constant expression expected"
