@@ -94,7 +94,7 @@ Example "template" **to edit** and write a Testament unittest:
 
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
-    cmd: "c -r $file" # Command the test should use to run.
+    cmd: "nim c -r $file" # Command the test should use to run.
 
     maxcodesize: 666  # Maximum generated temporary intermediate code file size for the test.
 
