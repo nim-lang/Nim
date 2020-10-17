@@ -617,6 +617,7 @@ template listMsg(title, r) =
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
 
+{.warning: "A warning to test the feature".}
 proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Severity) =
   var active {.global.} = true
   if active:
