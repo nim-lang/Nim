@@ -3,7 +3,7 @@ discard """
   cmd: "nim $target --threads:on $options $file"
 """
 
-# bug #15584
+# bugfix #15584
 
 import rlocks
 
