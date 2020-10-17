@@ -616,3 +616,57 @@ template listMsg(title, r) =
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
+
+proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Severity) =
+  var active {.global.} = true
+  if active:
+    if existsEnv "GITHUB_ACTIONS":
+      func addGHLocation(s: var string, conf: ConfigRef, info: TLineInfo) =
+        if info != unknownLineInfo:
+          s.add " file="
+          s.add conf.toProjPath(info)
+          s.add ",line="
+          s.addInt info.line.int
+          s.add ",col="
+          s.addInt info.col.int + 1
+
+      var buf: string = "\n"
+      case severity
+      of Severity.Warning, Severity.Error:
+        if severity == Severity.Warning:
+          buf.add "::warning"
+        else:
+          buf.add "::error"
+        buf.addGHLocation(conf, info)
+        buf.add "::"
+        buf.add msg
+
+        stderr.writeLine buf
+      else:
+        discard "Don't report hints"
+    elif existsEnv "TF_BUILD":
+      func addAzureLocation(s: var string, conf: ConfigRef, info: TLineInfo) =
+        if info != unknownLineInfo:
+          s.add ";sourcepath="
+          s.add conf.toProjPath(info)
+          s.add ";linenumber="
+          s.addInt info.line.int
+          s.add ";columnnumber="
+          s.addInt info.col.int + 1
+
+      var buf: string = "\n##vso[task.logissue "
+      case severity
+      of Severity.Warning, Severity.Error:
+        if severity == Severity.Warning:
+          buf.add "type=warning"
+        else:
+          buf.add "type=error"
+        buf.addAzureLocation(conf, info)
+        buf.add "]"
+        buf.add msg
+
+        stderr.writeLine buf
+      else:
+        discard "Don't report hints"
+    else:
+      active = false
