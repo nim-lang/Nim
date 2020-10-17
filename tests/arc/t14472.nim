@@ -1,6 +1,6 @@
 discard """
   valgrind: true
-  cmd: "nim c --gc:arc -d:useMalloc $file"
+  cmd: "nim cpp --gc:arc -d:useMalloc --deepcopy:on $file"
 """
 
 type
@@ -21,3 +21,23 @@ proc bork() : ImportedScene =
   add(result.meshes, Mesh(material: mats[0]))
 
 var s = bork()
+
+
+#------------------------------------------------------------------------
+# issue #15543
+
+import tables
+
+type
+  cdbl {.importc: "double".} = object
+
+  MyObject = ref object of RootObj
+    y: Table[string, cdbl]
+        
+
+proc test =
+  var x = new(MyObject)
+
+test()
+
+

@@ -1357,7 +1357,7 @@ const
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
   AttachedOpToStr*: array[TTypeAttachedOp, string] = [
-    "=destroy", "=", "=sink", "=trace", "=dispose", "=deepcopy"]
+    "=destroy", "=copy", "=sink", "=trace", "=dispose", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"

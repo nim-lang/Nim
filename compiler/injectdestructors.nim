@@ -236,7 +236,7 @@ template isUnpackedTuple(n: PNode): bool =
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
-  if opname == "=" and ri != nil:
+  if (opname == "=" or opname == "=copy") and ri != nil:
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
@@ -320,7 +320,7 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
     if c.otherRead == nil: discard isLastRead(ri, c)
-    c.checkForErrorPragma(t, ri, "=")
+    c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =

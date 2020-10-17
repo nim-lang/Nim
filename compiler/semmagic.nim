@@ -527,7 +527,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
-      let fin = if n[^1].kind == nkLambda: n[^1][namePos].sym
+      let fin = if n[^1].kind in {nkLambda, nkDo}: n[^1][namePos].sym
                 else: n[^1].sym
       # check if we converted this finalizer into a destructor already:
       let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
