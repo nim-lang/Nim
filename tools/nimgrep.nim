@@ -1196,7 +1196,7 @@ if searchOpt.pattern.len == 0:
   reportError("empty pattern was given")
 else:
   if paths.len == 0:
-    paths.add(os.getCurrentDir())
+    paths.add(".")
   if nWorkers == 0:
     run1Thread()
   else:
