@@ -103,7 +103,7 @@ type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
     optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
-    optRex, optFollow, optLimitChars, optFit
+    optRex, optFollow, optCount, optLimitChars, optFit
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -162,7 +162,6 @@ var
   options: TOptions = {optRegex}
   walkOpt {.threadvar.}: WalkOpt
   searchOpt {.threadvar.}: SearchOpt
-  justCount = false
   sortTime = false
   sortTimeOrder = SortOrder.Ascending
   useWriteStyled = true
@@ -171,7 +170,7 @@ var
   linesAfter = 0
   linesContext = 0
   newLine = false
-  gVar = (matches: 0, errors: 0, reallyReplace: false)
+  gVar = (matches: 0, errors: 0, reallyReplace: true)
     # gVar - variables that can change during search/replace
   nWorkers = 0  # run in single thread by default
   searchRequestsChan: Channel[Trequest]
@@ -474,7 +473,11 @@ proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
 
 proc getSubLinesAfter(buf: string, mi: MatchInfo): string =
   let last = afterPattern(buf, mi.last+1, 1+linesAfter)
-  result = substr(buf, mi.last+1, last)
+  let skipByte =  # workaround posix: suppress extra line at the end of file
+    if (last == buf.len-1 and buf.len >= 2 and
+        buf[^1] == '\l' and buf[^2] != '\c'): 1
+    else: 0
+  result = substr(buf, mi.last+1, last - skipByte)
 
 proc printOverflow(filename: string, line: int, curCol: var Column) =
   if curCol.overflowMatches > 0:
@@ -494,11 +497,7 @@ proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
       # complete the line after the match itself
     newLn(curCol)
     printOverflow(filename, matchLineEnd, curCol)
-    #let skipLine =  # workaround posix line ending at the end of file
-    #  if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
-    #  else: 0  TODO:
-    let skipLine = 0
-    for i in 1 ..< sLines.len - skipLine:
+    for i in 1 ..< sLines.len:
       lineHeader(filename, matchLineEnd + i, isMatch = false, curCol)
       sLines[i].printCropped(curCol, fromLeft = false)
       newLn(curCol)
@@ -552,6 +551,7 @@ proc printReplacement(filename: string, buf: string, mi: MatchInfo,
     printMatch(fileName, miFixLines, curCol)
     printSubLinesAfter(fileName, getSubLinesAfter(buf, miFixLines),
                        miFixLines.lineEnd, curCol)
+    if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
     stdout.flushFile()
 
 proc replace1match(filename: string, buf: string, mi: MatchInfo, i: int,
@@ -608,14 +608,14 @@ proc printOutput(filename: string, output: Output, curCol: var Column) =
     printSubLinesBefore(filename, output.pre, output.match.lineBeg,
                         curCol, reserveChars(output.match))
     printMatch(filename, output.match, curCol)
-    #flush: TODO
   of BlockNextMatch:
     printBetweenMatches(filename, output.pre, output.match.lineBeg,
                         curCol, reserveChars(output.match))
     printMatch(filename, output.match, curCol)
   of BlockEnd:
     printSubLinesAfter(filename, output.blockEnding, output.firstLine, curCol)
-    if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
+    if linesAfter + linesBefore >= 2 and not newLine and
+       optFilenames notin options: stdout.write("\n")
 
 iterator searchFile(pattern: Pattern; filename: string;
                     buffer: string): Output =
@@ -784,14 +784,14 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     var cnt = 0
     for output in searchFile(searchOptC.pattern, filename, buffer):
       found = true
-      if not justCount:
+      if optCount notin options:
         yield output
       else:
         if output.kind in {BlockFirstMatch, BlockNextMatch}:
           inc(cnt)
-    if justCount and cnt > 0:
+    if optCount in options and cnt > 0:
       yield Output(kind: JustCount, matches: cnt)
-    if yieldContents and found and not justCount:
+    if yieldContents and found and optCount notin options:
       yield Output(kind: FileContents, buffer: buffer)
 
 proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
@@ -925,13 +925,18 @@ template processFileResult(pattern: Pattern; filename: string,
     showFilename
   if optReplace notin options:
     var curCol: Column
+    var toFlush: bool
     for output in fileResult:
       updateCounters(output)
+      toFlush = true
       if output.kind notin {Rejected, OpenError, JustCount} and not oneline:
         showFilename
       if output.kind == JustCount and oneline:
         printFile(filename & ":")
       printOutput(filename, output, curCol)
+      if nWorkers == 0 and output.kind in {BlockFirstMatch, BlockNextMatch}:
+        stdout.flushFile()  # flush immediately in single thread mode
+    if toFlush: stdout.flushFile()
   else:
     var buffer = ""
     var matches: FileResult
@@ -1116,7 +1121,7 @@ for kind, key, val in getopt():
       of "only": searchOpt.checkBin = biOnly
       else: reportError("unknown value for --bin")
     of "text", "t": searchOpt.checkBin = biNo
-    of "count": justCount = true
+    of "count": incl(options, optCount)
     of "sorttime", "sort-time", "s":
       sortTime = true
       case normalize(val)
@@ -1172,6 +1177,7 @@ for kind, key, val in getopt():
   of cmdEnd: assert(false) # cannot happen
 
 checkOptions({optFind, optReplace}, "find", "replace")
+checkOptions({optCount, optReplace}, "count", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
 checkOptions({optFilenames, optReplace}, "filenames", "replace")
