@@ -69,6 +69,15 @@ template doAssert*(cond: untyped, msg = "") =
     doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
   assertImpl(cond, msg, astToStr(cond), true)
 
+template enforce*(cond: untyped, msg = "", typ: typedesc = CatchableError) =
+  const
+    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+    ploc = $loc
+  {.line: loc.}:
+    if not cond:
+      const expr = astToStr(cond)
+      raise newException(typ, ploc & " `" & expr & "` " & msg)
+
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert
   ## statements following `onFailedAssert` in the current scope.
