@@ -1,6 +1,6 @@
 discard """
   action: "compile"
-  cmd: "nim c --threads:on $file"
+  cmd: "nim $target --threads:on $options $file"
 """
 
 # bug #15584
