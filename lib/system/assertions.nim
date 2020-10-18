@@ -2,24 +2,13 @@
 ##
 ## **Note:** This module is reexported by `system` and thus does not need to be
 ## imported directly (with `system/assertions`).
+##
+## See also: `std/asserts`
 
 when not declared(sysFatal):
   include "system/fatal"
 
 import std/private/miscdollars
-# ---------------------------------------------------------------------------
-# helpers
-
-type InstantiationInfo = tuple[filename: string, line: int, column: int]
-
-proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-proc `$`(info: InstantiationInfo): string =
-  # The +1 is needed here
-  # instead of overriding `$` (and changing its meaning), consider explicit name.
-  result = ""
-  result.toLocation(info.filename, info.line, info.column + 1)
-
-# ---------------------------------------------------------------------------
 
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
@@ -68,15 +57,6 @@ template doAssert*(cond: untyped, msg = "") =
   runnableExamples:
     doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
   assertImpl(cond, msg, astToStr(cond), true)
-
-template enforce*(cond: untyped, msg = "", typ: typedesc = CatchableError) =
-  const
-    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
-    ploc = $loc
-  {.line: loc.}:
-    if not cond:
-      const expr = astToStr(cond)
-      raise newException(typ, ploc & " `" & expr & "` " & msg)
 
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert

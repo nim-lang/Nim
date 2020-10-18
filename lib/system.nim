@@ -1843,7 +1843,7 @@ when defined(nimV2):
   include system/arc
 
 import system/assertions
-export assertions except enforce
+export assertions
 
 import system/iterators
 export iterators
