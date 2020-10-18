@@ -514,25 +514,26 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
-  if paramType != nil and tfNotNil in paramType.flags and
-      n.typ != nil and tfNotNil notin n.typ.flags:
-    if isAddrNode(n):
-      # addr(x[]) can't be proven, but addr(x) can:
-      if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif (n.kind == nkSym and n.sym.kind in routineKinds) or
-         (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
-         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq) or
-         n.typ.kind == tyTypeDesc:
-      # 'p' is not nil obviously:
-      return
-    case impliesNotNil(tracked.guards, n)
-    of impUnknown:
-      message(tracked.config, n.info, errGenerated,
-              "cannot prove '$1' is not nil" % n.renderTree)
-    of impNo:
-      message(tracked.config, n.info, errGenerated,
-              "'$1' is provably nil" % n.renderTree)
-    of impYes: discard
+  if paramType != nil and tfNotNil in paramType.flags and n.typ != nil:
+    let ntyp = n.typ.skipTypesOrNil(abstractInst)
+    if ntyp != nil and tfNotNil notin ntyp.flags:
+      if isAddrNode(n):
+        # addr(x[]) can't be proven, but addr(x) can:
+        if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
+      elif (n.kind == nkSym and n.sym.kind in routineKinds) or
+          (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
+          (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq) or
+          n.typ.kind == tyTypeDesc:
+        # 'p' is not nil obviously:
+        return
+      case impliesNotNil(tracked.guards, n)
+      of impUnknown:
+        message(tracked.config, n.info, errGenerated,
+                "cannot prove '$1' is not nil" % n.renderTree)
+      of impNo:
+        message(tracked.config, n.info, errGenerated,
+                "'$1' is provably nil" % n.renderTree)
+      of impYes: discard
 
 proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
@@ -1258,7 +1259,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   # effects already computed?
   if not s.hasRealBody: return
   if effects.len == effectListLen: return
-
+  
   var t: TEffects
   initEffects(g, effects, s, t, c)
   track(t, body)
