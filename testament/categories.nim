@@ -262,6 +262,8 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
   if fileExists("tools/nimgrep.nim"):
     var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
     t.spec.action = actionCompile
+    # force target to C because of MacOS 10.15 clang++ bug (see #15612)
+    t.spec.targets = { targetC }
     testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
