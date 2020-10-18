@@ -803,15 +803,12 @@ proc mangleParamName*(m: BModule; s: PSym): Rope =
   ## We should be okay with just a simple mangle here for prototype
   ## purposes; the real meat happens when we're called with BProc...
   if s.loc.r == nil:
-    if s.kind == skResult:
-      s.loc.r = ~"result"
-    else:
-      # this is a little subtle; we need a mangle sophisticated enough
-      # to rename `default`, and correct enough to match a later mangle,
-      # but we don't want to actually getSetConflict() because we don't
-      # want param names to be numbered as if they might clash due to
-      # the module-level scope of the conflicts table...
-      s.loc.r = mangle(m, s).rope
+    # this is a little subtle; we need a mangle sophisticated enough
+    # to rename `default`, and correct enough to match a later mangle,
+    # but we don't want to actually getSetConflict() because we don't
+    # want param names to be numbered as if they might clash due to
+    # the module-level scope of the conflicts table...
+    s.loc.r = mangle(m, s).rope
   result = s.loc.r
   if result == nil:
     internalError(m.config, s.info, "mangleParamName")
@@ -824,14 +821,8 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
   if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
     # discard any existing counter for this sym from the module scope
     purgeConflict(p.module, s)
-    if s.kind == skResult:
-      s.loc.r = ~"result"        # just set it to result if it's skResult
-      # record (and verify) the result in the local conflicts table
-      if getOrSet(p, "result", conflictKey(s)) != 0:
-        internalError(p.config, s.info, "assignParam: shadowed result")
-    else:
-      s.loc.r = nil              # critically, destroy the location
-      s.loc.r = mangleName(p, s) # then mangle it using the proc scope
+    s.loc.r = nil              # critically, destroy the location
+    s.loc.r = mangleName(p, s) # then mangle it using the proc scope
   result = s.loc.r
   if result == nil:
     internalError(p.config, s.info, "mangleParamName")

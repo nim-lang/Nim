@@ -163,7 +163,7 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = pt.kind != tyVar
 
 proc fillResult(conf: ConfigRef; param: PNode) =
-  fillLoc(param.sym.loc, locParam, param, ~"result", OnStack)
+  fillLoc(param.sym.loc, locParam, param, ~"Result", OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
     incl(param.sym.loc.flags, lfIndirect)
@@ -401,7 +401,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
       params.add("*")
     else:
       params.add(getTypeDescAux(p, arr, check, skResult))
-    params.addf(" result", [])
+    params.addf(" Result", [])
   if t.callConv == ccClosure and declareEnvironment:
     if params != nil: params.add(", ")
     params.add("void* ClE_0")
