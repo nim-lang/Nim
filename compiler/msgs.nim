@@ -631,7 +631,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
           s.add ",col="
           s.addInt info.col.int + 1
 
-      var buf: string = "\n"
+      var buf: string
       case severity
       of Severity.Warning, Severity.Error:
         if severity == Severity.Warning:
@@ -642,7 +642,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
         buf.add "::"
         buf.add msg
 
-        stderr.writeLine buf
+        conf.msgWriteln buf
       else:
         discard "Don't report hints"
     elif existsEnv "TF_BUILD":
@@ -655,7 +655,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
           s.add ";columnnumber="
           s.addInt info.col.int + 1
 
-      var buf: string = "\n##vso[task.logissue "
+      var buf = "##vso[task.logissue "
       case severity
       of Severity.Warning, Severity.Error:
         if severity == Severity.Warning:
@@ -666,7 +666,7 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
         buf.add "]"
         buf.add msg
 
-        stderr.writeLine buf
+        conf.msgWriteln buf
       else:
         discard "Don't report hints"
     else:
