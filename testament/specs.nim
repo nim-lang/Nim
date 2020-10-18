@@ -43,7 +43,7 @@ type
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,
+    reExitcodesDiffer,  # exit codes of program or of valgrind differ
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
