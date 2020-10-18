@@ -1,5 +1,5 @@
 # v1.6.x - yyyy-mm-dd
-
+* add `std/asserts` containing `enforce`
 
 
 ## Changes affecting backward compatibility
