@@ -1259,7 +1259,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   # effects already computed?
   if not s.hasRealBody: return
   if effects.len == effectListLen: return
-  
+
   var t: TEffects
   initEffects(g, effects, s, t, c)
   track(t, body)
