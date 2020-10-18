@@ -35,9 +35,9 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "notnotprocException"
+  inspect = "dollar"
   symbolicTypes =
-    when false:
+    when true:
       {tyObject, tyEnum} # obey the boss
     else:
       #{tyObject, tyEnum, tyString}
@@ -119,14 +119,18 @@ proc `[]`(conflicts: var ConflictsTable; s: string): int =
   result = getOrDefault(conflicts, s, if s[0].isDigit: -1 else: 0)
 
 proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
+  # default key values to at least 0; default names to at least 1
+  when debugMangle:
+    if not s[0].isDigit:
+      assert v > 0
+  let v = max(v, if s[0].isDigit: 0 else: 1)
   var existing = mgetOrPut(conflicts, s, v)
   if existing < v:
     tables.`[]=`(conflicts, s, v)
   elif existing > v:
     when debugMangle:
       if s[0].isDigit:
-        if existing != v:
-          assert false, "lower $1 from $2 to $3" % [ s, $existing, $v ]
+        assert false, "lower $1 from $2 to $3" % [ s, $existing, $v ]
 
 proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
   ## Add/get a mangled name from the scope's conflicts table and return
@@ -157,9 +161,16 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
         echo "getorset at ", $conflictKey(p), " for ", name, " with key ", key, " is ", result
 
   else:
+    # set the value for the name to indicate the NEXT available counter
+    # (this will ignore lower values)
+    conflicts[name] = result + 1
     when debugMangle:
-      if result > conflicts[name]:
-        internalError(p.config, "clash count unexpectedly low")
+      echo "getorset has ", key, " already as ", result, " for ", name
+      if result >= conflicts[name]:
+        echo "module ", conflictKey(p), " and name ", name
+        internalError(p.config,
+          "clash count unexpectedly low; result " & $result &
+          "; table is " & $conflicts[name])
 
 proc nextConflict(p: ModuleOrProc; name: string; key: int): int {.deprecated.} =
   let skey = $key
@@ -188,6 +199,8 @@ proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
     # if we already have this key cached, then we'll use the original key
     # so that we don't confuse our local cache in the getOrSet operation
     key = unaliasTypeBySignature(m.g, key, sig)
+    when debugMangle:
+      echo "unaliased ", name, " from ", conflictKey(s), " to ", $key
 
   while true:
     result = getOrSet(m, name, key)
@@ -209,10 +222,12 @@ proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
       # we need to purge `key`, not conflictKey(s)
       purgeConflict(m, key)
 
-      # we need to make sure that the conflicts for this name
-      # are primed and ready to increment despite perhaps not
-      # having any record of this name from prior introduction
-      discard hasKeyOrPut(m.sigConflicts, name, 1)
+      # this should have been done for us in getOrSet()
+      when false:
+        # we need to make sure that the conflicts for this name
+        # are primed and ready to increment despite perhaps not
+        # having any record of this name from prior introduction
+        discard hasKeyOrPut(m.sigConflicts, name, 1)
     else:
       break
 
@@ -313,10 +328,10 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
     # always reuse it
 
     # these need a signature-based name so that type signatures match :-(
-    if typ.len == 0 or typ.lastSon == nil:
-      shortKind(typ.kind) & $hashTypeDef(typ)
-    else:
-      shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
+    #if typ.len != 0 or typ.lastSon != nil:
+    #  shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
+    #else:
+    shortKind(typ.kind) & $hashTypeDef(typ)
   else:
     shortKind(typ.kind)
 
