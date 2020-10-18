@@ -291,7 +291,8 @@ proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
     msgStdout,     ## force writing to stdout, even stderr is default
-    msgSkipHook    ## skip message hook even if it is present
+    msgSkipHook,   ## skip message hook even if it is present
+    msgTty         ## only output on terminal
   MsgFlags* = set[MsgFlag]
 
 proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
@@ -305,12 +306,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s)
-  elif optStdout in conf.globalOptions or msgStdout in flags:
+  elif optStdout in conf.globalOptions or msgStdout in flags and (msgTty notin flags or stdout.isatty):
     if eStdOut in conf.m.errorOutputs:
       flushDot(conf, stdout)
       writeLine(stdout, s)
       flushFile(stdout)
-  else:
+  elif msgTty notin flags or stderr.isatty:
     if eStdErr in conf.m.errorOutputs:
       flushDot(conf, stderr)
       writeLine(stderr, s)
@@ -666,7 +667,8 @@ proc ciErrorHook*(conf: ConfigRef, info: TLineInfo, msg: string, severity: Sever
         buf.add "]"
         buf.add msg
 
-        conf.msgWriteln buf
+
+        conf.msgWriteln buf, {msgTty}
       else:
         discard "Don't report hints"
     else:
