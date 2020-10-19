@@ -35,7 +35,10 @@ proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    var p = cast[ptr NimSeqPayloadBase](allocShared0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
+    when compileOption("threads"):
+      var p = cast[ptr NimSeqPayloadBase](allocShared0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
+    else:
+      var p = cast[ptr NimSeqPayloadBase](alloc0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
     p.cap = cap
     result = p
   else:
@@ -62,14 +65,20 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): poin
       let oldCap = p.cap and not strlitFlag
       let newCap = max(resize(oldCap), len+addlen)
       if (p.cap and strlitFlag) == strlitFlag:
-        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * newCap))
+        when compileOption("threads"):
+          var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * newCap))
+        else:
+          var q = cast[ptr NimSeqPayloadBase](alloc0(headerSize + elemSize * newCap))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
         q.cap = newCap
         result = q
       else:
         let oldSize = headerSize + elemSize * oldCap
         let newSize = headerSize + elemSize * newCap
-        var q = cast[ptr NimSeqPayloadBase](reallocShared0(p, oldSize, newSize))
+        when compileOption("threads"):
+          var q = cast[ptr NimSeqPayloadBase](reallocShared0(p, oldSize, newSize))
+        else:
+          var q = cast[ptr NimSeqPayloadBase](realloc0(p, oldSize, newSize))
         q.cap = newCap
         result = q
 
