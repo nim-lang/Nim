@@ -26,8 +26,8 @@
 ##
 ## The ``parseJson`` procedure takes a string containing JSON and returns a
 ## ``JsonNode`` object. This is an object variant and it is either a
-## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JUInt``, ``JFloat``, ``JBool`` or
-## ``JNull``. You check the kind of this object variant by using the ``kind``
+## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JUInt``, ``JFloat``, `JNumber`,
+## ``JBool`` or ``JNull``. You check the kind of this object variant by using the ``kind``
 ## accessor.
 ##
 ## For a ``JsonNode`` who's kind is ``JObject``, you can access its fields using
@@ -174,7 +174,8 @@ type
     JString,
     JObject,
     JArray,
-    JUInt
+    JUInt,
+    JNumber,
 
   JsonNode* = ref JsonNodeObj ## JSON node
   JsonNodeObj* {.acyclic.} = object
@@ -185,6 +186,8 @@ type
       num*: BiggestInt
     of JUInt:
       unum*: BiggestUInt
+    of JNumber:
+      rawNum*: string
     of JFloat:
       fnum*: float
     of JBool:
@@ -211,6 +214,10 @@ proc newJInt*(n: BiggestInt): JsonNode =
 proc newJUInt*(n: BiggestUInt): JsonNode =
   ## Creates a new `JUInt JsonNode`.
   result = JsonNode(kind: JUInt, unum: n)
+
+proc newJNumber*(a: string): JsonNode =
+  ## Creates a new `JNumber JsonNode`.
+  result = JsonNode(kind: JNumber, rawNum: a)
 
 proc newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat JsonNode`.
@@ -257,6 +264,18 @@ proc getBiggestUInt*(n: JsonNode, default: BiggestUInt = 0): BiggestUInt =
   ## Retrieves the BiggestUInt value of a `JUInt JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  if n.isNil: return default
+  elif n.kind == JInt:
+    if n.num >= 0: return cast[BiggestUInt](n.num)
+    else: return default
+  elif n.kind == JUInt: return n.unum
+  else: return default
+
+proc getNumber*(n: JsonNode, default: string = "0"): string =
+  ## Retrieves the BiggestUInt value of a `JUInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  return n.
   if n.isNil: return default
   elif n.kind == JInt:
     if n.num >= 0: return cast[BiggestUInt](n.num)
