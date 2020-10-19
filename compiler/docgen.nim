@@ -1241,7 +1241,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile..AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
