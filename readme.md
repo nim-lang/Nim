@@ -224,7 +224,7 @@ Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 [csources-repo]: https://github.com/nim-lang/csources
 [badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
-[badge-nim-discord]: https://img.shields.io/discord/371759389889003530?label=discord&logo=discord&logoColor=gold&style=flat-square
+[badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square
 [badge-nim-forum-gethelp]: https://img.shields.io/badge/Forum-get%20help-4eb899.svg?style=flat-square
 [badge-nim-twitter]: https://img.shields.io/twitter/follow/nim_lang.svg?style=social
