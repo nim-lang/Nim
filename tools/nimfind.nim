@@ -228,7 +228,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     conf.prefixDir = AbsoluteDir""
 
   var graph = newModuleGraph(cache, conf)
-  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+  if self.loadConfigsAndSetupCommand(cache, conf, graph):
     mainCommand(graph)
 
 handleCmdLine(newIdentCache(), newConfigRef())

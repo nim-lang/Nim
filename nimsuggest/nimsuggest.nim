@@ -644,7 +644,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   myLog("START " & conf.projectFull.string)
 
   var graph = newModuleGraph(cache, conf)
-  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+  if self.loadConfigsAndSetupCommand(cache, conf, graph):
     mainCommand(graph)
 
 when isMainModule:
@@ -723,7 +723,7 @@ else:
     myLog("START " & conf.projectFull.string)
 
     var graph = newModuleGraph(cache, conf)
-    if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    if self.loadConfigsAndSetupCommand(cache, conf, graph):
       mockCommand(graph)
     if gLogging:
       for it in conf.searchPaths:
