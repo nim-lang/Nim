@@ -317,7 +317,7 @@ proc parseSpec*(filename: string): TSpec =
         else:
           # Windows lacks valgrind. Silly OS.
           # Valgrind only supports OSX <= 17.x
-          result.useValgrind = false
+          result.useValgrind = disabled
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled
