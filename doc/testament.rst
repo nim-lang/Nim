@@ -103,6 +103,11 @@ Example "template" **to edit** and write a Testament unittest:
     target: "c js"    # Targets to run the test into (C, C++, JavaScript, etc).
 
     disabled: "bsd"   # Disable the test by condition, here BSD is disabled just as an example.
+    disabled: "win"   # Can disable multiple OSes at once
+    disabled: "32bit" # ...or architectures
+    disabled: "i386"
+    disabled: "azure" # ...or pipeline runners
+    disabled: true    # ...or can disable the test entirely
 
   """
   assert true
