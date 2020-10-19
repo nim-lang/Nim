@@ -272,26 +272,26 @@ proc getBiggestUInt*(n: JsonNode, default: BiggestUInt = 0): BiggestUInt =
   else: return default
 
 proc getNumber*(n: JsonNode, default: string = "0"): string =
-  ## Retrieves the BiggestUInt value of a `JUInt JsonNode`.
-  ##
-  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
-  return n.
-  if n.isNil: return default
-  elif n.kind == JInt:
-    if n.num >= 0: return cast[BiggestUInt](n.num)
-    else: return default
-  elif n.kind == JUInt: return n.unum
-  else: return default
+  ## Retrieves the string representation of a `JsonNode` of kind
+  ## `JNumber`, `JInt`, `JUInt`, `JFloat`, else returns `default`.
+  case n.kind
+  of JNumber: result = n.rawNum
+  of JInt: result = $n.num
+  of JUInt: result = $n.unum
+  of JFloat: result = $n.fnum
+  else: result = default
 
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
+  ## Returns ``default`` if ``n`` is not a ``JFloat``, ``JInt``, `JUInt`, `JNumber`,
+  ## or if ``n`` is nil.
   if n.isNil: return default
   case n.kind
   of JFloat: return n.fnum
   of JInt: return float(n.num)
   of JUInt: return float(n.unum)
+  of JNumber: return parseFloat(n.rawNum)
   else: return default
 
 proc getBool*(n: JsonNode, default: bool = false): bool =
@@ -466,6 +466,8 @@ proc `==`*(a, b: JsonNode): bool =
       result = a.num == b.num
     of JUInt:
       result = a.unum == b.unum
+    of JNumber:
+      result = a.rawNum == b.rawNum
     of JFloat:
       result = a.fnum == b.fnum
     of JBool:
@@ -503,7 +505,7 @@ proc hash*(n: JsonNode): Hash =
     result = hash(n.fnum)
   of JBool:
     result = hash(n.bval.int)
-  of JString:
+  of JString, JNumber:
     result = hash(n.str)
   of JNull:
     result = Hash(0)
@@ -618,6 +620,8 @@ proc copy*(p: JsonNode): JsonNode =
     result = newJInt(p.num)
   of JUInt:
     result = newJUInt(p.unum)
+  of JNumber:
+    result = newJNumber(p.rawNum)
   of JFloat:
     result = newJFloat(p.fnum)
   of JBool:
@@ -707,6 +711,9 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
   of JString:
     if lstArr: result.indent(currIndent)
     escapeJson(node.str, result)
+  of JNumber:
+    if lstArr: result.indent(currIndent)
+    result.add node.rawNum
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
@@ -794,6 +801,9 @@ proc toUgly*(result: var string, node: JsonNode) =
     result.add "}"
   of JString:
     node.str.escapeJson(result)
+  of JNumber:
+    # escapeJsonUnquoted shouldn't be needed
+    result.add node.rawNum
   of JInt:
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
@@ -857,10 +867,14 @@ proc parseJson(p: var JsonParser): JsonNode =
     try:
       result = newJInt(parseBiggestInt(p.a))
     except ValueError:
-      # this can still raise for numbers outside of 64bit range
-      result = newJUInt(parseBiggestUInt(p.a))
+      try:
+        # this can still raise for numbers outside of 64bit range
+        result = newJUInt(parseBiggestUInt(p.a))
+      except ValueError:
+        result = newJNumber(p.a)
     discard getTok(p)
   of tkFloat:
+    # xxx JNumber for out of range or extra precision?
     result = newJFloat(parseFloat(p.a))
     discard getTok(p)
   of tkTrue:
@@ -941,6 +955,7 @@ when defined(js):
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
     of "[object Object]": return JObject
+    of "[object BigInt]": return JNumber
     of "[object Number]":
       if cast[float](x) mod 1.0 == 0:
         return JInt # JUInt would probably not make sense for js here
@@ -989,6 +1004,8 @@ when defined(js):
       result = newJInt(cast[int](x))
     of JUInt:
       result = newJUInt(cast[BiggestUInt](x))
+    of JNumber:
+      result = newJNumber($x)
     of JFloat:
       result = newJFloat(cast[float](x))
     of JString:
@@ -1081,6 +1098,7 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
     dst = jsonNode.copy
 
+  # future work could add an overload for JNumber (BigNum or BigInt or BigFloat)
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
     if jsonNode != nil and jsonNode.kind == JUInt:
       dst = T(jsonNode.unum)

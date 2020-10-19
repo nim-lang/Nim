@@ -243,3 +243,13 @@ block: # uint64; bug #15413
     let x2 = j.getBiggestUInt
     doAssert x2 == 18446744073709551605'u64
     doAssert x2 > cast[uint64](int64.high)
+
+block: # JNumber
+  doAssert uint.high == 18446744073709551615'u64
+  let x = "184467440737095516151"
+  let j = parseJson(x)
+  doAssert $j == x
+  doAssert j.pretty == x
+  doAssert j.kind == JNumber
+  let x2 = j.getNumber
+  doAssert x2 == x
