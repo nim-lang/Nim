@@ -1,5 +1,5 @@
 # v1.6.x - yyyy-mm-dd
-* add `std/asserts` containing `enforce`
+
 
 
 ## Changes affecting backward compatibility
@@ -333,6 +333,8 @@
 - Added setCurrentException for JS backend.
 
 - Added `dom.scrollIntoView` proc with options
+
+- add `std/asserts` containing `enforce`
 
 ## Language changes
 

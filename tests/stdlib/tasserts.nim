@@ -14,6 +14,5 @@ block: ## checks AST isn't transformed as it used to
   try:
     enforce a > 1
   except CatchableError as e:
-    echo e.msg
     assert e.msg.endsWith "tasserts.nim(15, 13) `a > 1` "
   doAssertRaises(CatchableError): enforce a > 1
