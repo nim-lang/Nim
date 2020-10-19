@@ -444,11 +444,30 @@ Continuous Integration (CI)
    <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
-2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+2. Consider enabling CI (azure, github actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
    opening your PR in original Nim repo, so as to reduce CI congestion. Same
    applies for updates on a PR: you can test commits on a separate private
    branch before updating the main PR.
+
+Debugging CI failures, flaky tests, etc
+---------------------------------------
+
+1. First check the CI logs and search for `FAIL` to find why CI failed; if the
+   failure seems related to your PR, try to fix the code instead of restarting CI.
+
+2. If CI failure seems unrelated to your PR, it could be caused by a flaky test.
+   File a bug for it if it isn't already reported. A PR push (or opening/closing PR)
+   will re-trigger all CI jobs (even successful ones, which can be wasteful). Instead,
+   follow these instructions to only restart the jobs that failed:
+
+  * Azure: if on your own fork, it's possible from inside azure console
+    (eg `dev.azure.com/username/username/_build/results?buildId=1430&view=results`) via `rerun failed jobs` on top.
+    If either on you own fork or in Nim repo, it's possible from inside github UI
+    under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
+  * github actions: under "Checks" tab, click "Re-run jobs" in the right.
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
+
 
 Code reviews
 ------------
