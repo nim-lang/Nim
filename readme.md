@@ -9,7 +9,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 ## Community
 
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
-[![Join the Discord server][badge-nim-discord][nim-discord]
+[![Join the Discord server][badge-nim-discord]][nim-discord]
 [![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
 [![Get help][badge-nim-forum-gethelp]][nim-forum]
 [![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
