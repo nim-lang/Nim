@@ -1042,7 +1042,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
   tok.iNumber = 0
   assert L.buf[pos+1] == '#'
   when defined(nimpretty):
-    tok.commentOffsetA = L.offsetBase + pos - 1
+    tok.commentOffsetA = L.offsetBase + pos
 
   if L.buf[pos+2] == '[':
     skipMultiLineComment(L, tok, pos+3, true)
