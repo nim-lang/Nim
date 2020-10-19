@@ -515,7 +515,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
   if paramType != nil and tfNotNil in paramType.flags and n.typ != nil:
-    let ntyp = n.typ.skipTypesOrNil(abstractInst)
+    let ntyp = n.typ.skipTypesOrNil({tyVar, tyLent, tySink})
     if ntyp != nil and tfNotNil notin ntyp.flags:
       if isAddrNode(n):
         # addr(x[]) can't be proven, but addr(x) can:
