@@ -1,8 +1,10 @@
 discard """
 valgrind: true
 cmd: "nim $target --gc:arc -d:useMalloc $options $file"
-disabled: "windows"
+disabled: "freebsd"
 disabled: "macosx"
+disabled: "openbsd"
+disabled: "windows"
 disabled: "32bit"
 """
 

@@ -2,8 +2,10 @@ discard """
 valgrind: true
 cmd: "nim $target --gc:refc -d:useMalloc $options $file"
 exitcode: 0
-disabled: "windows"
+disabled: "freebsd"
 disabled: "macosx"
+disabled: "openbsd"
+disabled: "windows"
 disabled: "32bit"
 """
 
