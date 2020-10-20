@@ -34,5 +34,21 @@ template main() =
       ret.add (k,v)
     doAssert ret == @[(2, "2"), (3, "3"), (4, "4"), (5, "5")]
 
+  block: # continue, break
+    proc fn1(n: int, cont: proc(_: int)) =
+      for ai in 0..<n: cont ai
+
+    var ret: seq[string]
+    for x in iterate fn1(5):
+      ret.add $x
+      if x==2:
+        ret.add "continue"
+        continue
+      if x==3:
+        ret.add "break"
+        break
+      ret.add "after"
+    doAssert ret == @["0", "after", "1", "after", "2", "continue", "3", "break"]
+
 static: main()
 main()
