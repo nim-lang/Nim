@@ -395,6 +395,7 @@ proc unaliasTypeBySignature*(g: BModuleList;
   ## used by the mangler to avoid out-of-order name
   ## introductions for sig-equal types that vary in identity
   ## and do not share source modules...  fun, right?
+  assert sig != default(SigHash)
   result = getOrDefault(g.nameCache.signatures, sig, key)
 
 proc retrieveCounter*(g: BModuleList; key: ConflictKey; sig: SigHash): int =

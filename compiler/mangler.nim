@@ -35,7 +35,8 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "FILE"
+  inspect = "foo_int"
+  debugMangle = true and not defined(release)
   symbolicTypes =
     when true:
       {tyObject, tyEnum} # obey the boss
@@ -43,7 +44,6 @@ const
       #{tyObject, tyEnum, tyString}
       {TTypeKind.low .. TTypeKind.high} - {tyString}
   addFirstParamToProcs = true
-  debugMangle = true and not defined(release)
 
   # these may be shorted to the first three characters following `ty`
   # as opposed to perhaps being stripped of vowels, etc.
@@ -208,12 +208,17 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
     key = unaliasTypeBySignature(m.g, key, sig)
     when debugMangle:
       if conflictKey(s) != key:
-        echo "unaliased ", name, " from ", conflictKey(s), " to ", $key
+        echo "unaliased ", name, " from ", conflictKey(s), " to ", $key,
+          " for sig ", $sig
 
   if s.hasImmutableName:
+    when debugMangle:
+      echo "immutable hack ", name, " for ", $key, " sig ", $sig
     counter = getOrSet(m, name, key)
     result = BName name
   elif m.g.hasName(key, sig):
+    when debugMangle:
+      echo "cached hack ", name, " for ", $key, " sig ", $sig
     counter = m.g.retrieveCounter(key, sig)
     while true:
       let current = getOrSet(m, name, key)
@@ -226,6 +231,8 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
         break
     result = m.g.name(key, sig)
   else:
+    when debugMangle:
+      echo "uncached hack ", name, " for ", $key, " sig ", $sig
     var x: int
     while true:
       inc x
@@ -259,7 +266,8 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
 
   when debugMangle:
     if counter != 0:
-      echo "the collision hack chose counter ", counter
+      echo "the collision hack chose counter ", counter, " for ", name
+    echo "collision hack yielding ", result
 
 proc floatConflict(p: ModuleOrProc; s: PType or PSym;
                    name: string; key: ConflictKey): BName =
@@ -289,6 +297,9 @@ proc shouldAddModuleName(s: PSym): bool =
     result = false
   of skConst:
     # NOTE: constants are effectively global
+    result = true
+  of skProc:
+    # for linking reasons
     result = true
   else:
     if s.owner != nil and sfSystemModule in s.owner.flags:
@@ -482,8 +493,8 @@ proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
   const
     globalish = {sfImportc, sfGlobal, sfGeneratedOp, sfExportc, sfExported}
 
-  # NOTE: constants and types are effectively global
-  result = s.kind in {skConst, skType}
+  # NOTE: constants and types and procs are effectively global
+  result = s.kind in {skConst, skType, skProc}
   # anything global or otherwise exported or imported is at module scope
   result = result or globalish * s.flags != {}
 
