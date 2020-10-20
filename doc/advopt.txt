@@ -51,6 +51,7 @@ Advanced options:
                             resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
+                            see also `patchFile` in nimscript which offers more flexibility.
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
                             see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
