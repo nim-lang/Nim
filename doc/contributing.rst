@@ -43,7 +43,7 @@ Stdlib
 ------
 
 Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
-preferably have a corresponding separate test file, eg `tests/stdlib/tos.nim`.
+preferably have a corresponding separate test file, e.g. `tests/stdlib/tos.nim`.
 The old convention was to add a ``when isMainModule:`` block in the source file,
 which only gets executed when the tester is building the file.
 
@@ -71,7 +71,7 @@ Sample test:
 
 Always refer to a github issue using the following exact syntax: `bug #1234` as shown
 above, so that it's consistent and easier to search or for tooling. Some browser
-extensions (eg https://github.com/sindresorhus/refined-github) will even turn those
+extensions (e.g. https://github.com/sindresorhus/refined-github) will even turn those
 in clickable links when it works.
 
 Rationale for using a separate test file instead of `when isMainModule:` block:
