@@ -991,11 +991,18 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if chckCovered:
     if covered == toCover(c, n[0].typ):
       hasElse = true
-    elif n[0].typ.skipTypes(abstractRange).kind in {tyEnum, tyChar}:
-      localError(c.config, n.info, "not all cases are covered; missing: $1" %
-                 formatMissingEnums(c, n))
     else:
-      localError(c.config, n.info, "not all cases are covered")
+      let typ = n[0].typ.skipTypes(abstractRange)
+      template msg: untyped = "not all cases are covered; missing: $1" % formatMissingEnums(c, n)
+      template bail = localError(c.config, n.info, msg())
+      case typ.kind
+      of tyChar: bail()
+      of tyEnum:
+        if sfAllowMissingCases in typ.sym.flags:
+           message(c.config, n.info, warnMissingCases, msg())
+        else: bail()
+      else:
+        localError(c.config, n.info, "not all cases are covered")
   popCaseContext(c)
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or

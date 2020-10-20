@@ -295,6 +295,7 @@ type
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+    sfAllowMissingCases  # issue warnMissingCases instead of error
 
   TSymFlags* = set[TSymFlag]
 

@@ -63,7 +63,7 @@ const
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wPartial, wExplain, wPackage}
+    wBorrow, wGcSafe, wPartial, wExplain, wPackage, wAllowMissingCases}
   fieldPragmas* = declPragmas + {
     wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
@@ -875,6 +875,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym != nil:
           if k == wPure and sym.kind in routineKinds: invalidPragma(c, it)
           else: incl(sym.flags, sfPure)
+      of wAllowMissingCases:
+        # let s = expectStrLit(c, it)
+        noVal(c, it) # TODO: allow allowMissingCases:false
+        if sym != nil:
+          incl(sym.flags, sfAllowMissingCases)
+        else: localError(c.config, it.info, "expected a `sym`")
       of wVolatile:
         noVal(c, it)
         incl(sym.flags, sfVolatile)

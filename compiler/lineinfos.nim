@@ -56,6 +56,7 @@ type
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
     warnObservableStores,
     warnUser,
+    warnMissingCases,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintXCannotRaiseY,
@@ -126,6 +127,7 @@ const
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
+    warnMissingCases: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
@@ -177,7 +179,7 @@ const
     "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "CaseTransition", "CycleCreated",
-    "ObservableStores", "User"]
+    "ObservableStores", "User", "MissingCases"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",

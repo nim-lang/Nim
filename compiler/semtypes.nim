@@ -701,9 +701,13 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     delSon(b, b.len - 1)
     semRecordNodeAux(c, lastSon(n[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != toCover(c, a[0].typ):
-    if a[0].typ.skipTypes(abstractRange).kind == tyEnum:
-      localError(c.config, a.info, "not all cases are covered; missing: $1" %
-                 formatMissingEnums(c, a))
+    let typ = a[0].typ.skipTypes(abstractRange)
+    if typ.kind == tyEnum:
+      template msg: untyped = "not all cases are covered; missing: $1" % formatMissingEnums(c, a)
+      if sfAllowMissingCases in typ.sym.flags:
+         message(c.config, a.info, warnMissingCases, msg())
+      else:
+        localError(c.config, a.info, msg())
     else:
       localError(c.config, a.info, "not all cases are covered")
   father.add a

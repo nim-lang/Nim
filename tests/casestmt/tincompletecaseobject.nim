@@ -1,10 +1,33 @@
 discard """
+nimout: '''
+tincompletecaseobject.nim(19, 3) Warning: not all cases are covered; missing: {f2} [MissingCases]
+tincompletecaseobject.nim(24, 5) Warning: not all cases are covered; missing: {f2} [MissingCases]
+'''
 errormsg: '''
 not all cases are covered; missing: {nnkComesFrom, nnkDotCall, nnkHiddenCallConv, nnkVarTuple, nnkCurlyExpr, nnkRange, nnkCheckedFieldExpr, nnkDerefExpr, nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkBind, nnkClosedSymChoice, nnkHiddenSubConv, nnkConv, nnkStaticExpr, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, nnkStringToCString, nnkCStringToString, nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, nnkImportAs, nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, nnkAsmStmt, nnkTypeDef, nnkFinally, nnkContinueStmt, nnkImportStmt, nnkImportExceptStmt, nnkExportStmt, nnkExportExceptStmt, nnkFromStmt, nnkIncludeStmt, nnkUsingStmt, nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkWith, nnkWithout, nnkTypeOfExpr, nnkObjectTy, nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy, nnkRecList, nnkRecCase, nnkRecWhen, nnkVarTy, nnkConstTy, nnkMutableTy, nnkDistinctTy, nnkProcTy, nnkIteratorTy, nnkSharedTy, nnkEnumTy, nnkEnumFieldDef, nnkArglist, nnkPattern, nnkReturnToken, nnkClosure, nnkGotoState, nnkState, nnkBreakState, nnkFuncDef, nnkTupleConstr}
 '''
 """
 
 # this isn't imported from macros.nim to make it robust against possible changes in the ast.
+
+block:
+  type Foo {.allowMissingCases.} = enum
+    f0
+    f1
+    f2
+  var f: Foo
+  case f
+  of f0: discard
+  of f1: discard
+
+  type Bar = object
+    case k: Foo
+    of f0:
+      v0: string
+    of f1:
+      v1: string
+
+  var b: Bar
 
 type
   NimNodeKind* = enum
