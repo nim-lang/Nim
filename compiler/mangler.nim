@@ -279,7 +279,7 @@ proc floatConflict(p: ModuleOrProc; s: PType or PSym;
     # set the local name to prevent future conflict
     p.sigConflicts[name] = m.sigConflicts[name]
 
-  result = m.g.setName(m, s, name, sig)
+  result = m.g.setName(m, s, result, sig)
 
 proc shouldAddModuleName(s: PSym): bool =
   ## Are we going to apply top-level mangling semantics?
