@@ -8,6 +8,9 @@
 
 # "Stack GC" for embedded devices or ultra performance requirements.
 
+when defined(memProfiler):
+  proc nimProfile(requestedSize: int) {.benign.}
+
 when defined(useMalloc):
   proc roundup(x, v: int): int {.inline.} =
     result = (x + (v-1)) and not (v-1)
