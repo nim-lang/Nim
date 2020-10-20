@@ -168,7 +168,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.module = module
   result.conf = conf
   result.cache = cache
-  result.outDir = conf.outDir
+  result.outDir = conf.outDir.string
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
@@ -230,8 +230,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if gotten != status:
         rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
-  result.thisDir = result.destFile.splitFile.dir
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
+  result.thisDir = result.destFile.AbsoluteFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if conf.cmd != cmdRst2tex: dest.addf(xml, args)
@@ -849,7 +849,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope,
       deprecationMsgRope]))
 
-  let external = d.destFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
+  let external = d.destFile.AbsoluteFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:
@@ -1237,14 +1237,14 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
       "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
         "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [relLink(d.conf.outDir, d.destFile, nimdocOutCss.RelativeFile),
-        relLink(d.conf.outDir, d.destFile, docHackJsFname.RelativeFile),
+        [relLink(d.conf.outDir, d.destFile.AbsoluteFile, nimdocOutCss.RelativeFile),
+        relLink(d.conf.outDir, d.destFile.AbsoluteFile, docHackJsFname.RelativeFile),
         title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
@@ -1271,7 +1271,7 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    template outfile: untyped = d.destFile
+    template outfile: untyped = d.destFile.AbsoluteFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
@@ -1300,13 +1300,13 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     write(stdout, $content)
   else:
     var f: File
-    if open(f, d.destFile.string, fmWrite):
+    if open(f, d.destFile, fmWrite):
       write(f, $content)
       close(f)
-      updateOutfile(d, d.destFile)
+      updateOutfile(d, d.destFile.AbsoluteFile)
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
-                 warnUser, "unable to open file \"" & d.destFile.string &
+                 warnUser, "unable to open file \"" & d.destFile &
                  "\" for writing")
 
 proc handleDocOutputOptions*(conf: ConfigRef) =

@@ -230,6 +230,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
         candidates.add typeToString(wanted)
+        when false:
+          if wanted.sym != nil:
+            candidates.add "(" & (c.config $ wanted.sym.info) & ")"
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
@@ -239,6 +242,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "' is of type: "
           var got = nArg.typ
           candidates.add typeToString(got)
+          when false:
+            if got.sym != nil:
+              candidates.add "(" & (c.config $ got.sym.info) & ")"
+
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"
