@@ -30,7 +30,7 @@ type
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
     rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
-    docCmd: string ## from user config, eg --doccmd:-d:foo
+    docCmd: string ## from user config, e.g. --doccmd:-d:foo
     code: string ## contains imports; each import contains `body`
     index: int ## group index
   TDocumentor = object of rstgen.RstGenerator
@@ -457,7 +457,7 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
 
 proc runAllExamples(d: PDoc) =
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
-  # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
+  # using `-d:js` (etc) cannot work properly, e.g. would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
   let outputDir = d.exampleOutputDir
   for _, group in d.exampleGroups:
@@ -1259,7 +1259,7 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
-  if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
+  if d.module == nil or sfMainModule in d.module.flags: # nil for e.g. for commandRst2Html
     if d.conf.outFile.isEmpty:
       d.conf.outFile = outfile.relativeTo(d.conf.outDir)
       if isAbsolute(d.conf.outFile.string):
