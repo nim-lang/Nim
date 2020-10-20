@@ -878,7 +878,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
     [rope(getName(d, nameNode, d.splitAfter)), result, comm,
      itemIDRope, plainNameRope, plainSymbolRope,
-     symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, attype]))
+     rope(symbolOrId.replace(",", ",<wbr>")), plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
