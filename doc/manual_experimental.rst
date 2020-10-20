@@ -1703,7 +1703,7 @@ noRewrite pragma
 Term rewriting macros and templates are currently greedy and
 they will rewrite as long as there is a match.
 There was no way to ensure some rewrite happens only once,
-eg. when rewriting term to same term plus extra content.
+e.g. when rewriting term to same term plus extra content.
 
 ``noRewrite`` pragma can actually prevent further rewriting on marked code,
 e.g. with given example ``echo("ab")`` will be rewritten just once:

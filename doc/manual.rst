@@ -6707,7 +6707,7 @@ Example:
   embedsC()
 
 ``nimbase.h`` defines ``NIM_EXTERNC`` C macro that can be used for
-``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, eg:
+``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, e.g.:
 
 .. code-block:: Nim
   proc foobar() {.importc:"$1".}
