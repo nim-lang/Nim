@@ -279,7 +279,7 @@ proc containsObject*(t: PType): bool =
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
   result = t.kind == tyObject and t[0] == nil and
-      not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
+      not (t.sym != nil and {sfPure, sfCompileToCpp} * t.sym.flags != {}) and
       tfFinal notin t.flags
 
 type

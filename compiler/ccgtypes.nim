@@ -201,8 +201,8 @@ proc isImportedType(t: PType): bool =
 
 proc isImportedCppType(t: PType): bool =
   let x = t.skipTypes(irrelevantForBackend)
-  result = (t.sym != nil and sfInfixCall in t.sym.flags) or
-           (x.sym != nil and sfInfixCall in x.sym.flags)
+  result = (t.sym != nil and sfCompileToCpp in t.sym.flags) or
+           (x.sym != nil and sfCompileToCpp in x.sym.flags)
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope
 

@@ -206,6 +206,9 @@ provided by the operating system.
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+- `importcpp` procs now support free functions via `!` prefix:
+`proc freeFn(a: cint) {.importcpp: "!$1".}` maps to `void freeFn(int)`.
+likewise with `importcpp: "!freeFn"`.
 
 - `typetraits.distinctBase` now is identity instead of error for non distinct types.
 

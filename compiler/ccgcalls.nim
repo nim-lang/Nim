@@ -281,7 +281,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     # means '*T'. See posix.nim for lots of examples that do that in the wild.
     let callee = call[0]
     if callee.kind == nkSym and
-        {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
+        {sfImportc, sfCompileToCpp, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
       result = addrLoc(p.config, a)
     else:

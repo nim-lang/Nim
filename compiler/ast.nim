@@ -298,6 +298,9 @@ type
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+    sfCompileToCpp
+      # skModule: compile the module as C++ code
+      # skType, skProc: C++ symbol
 
   TSymFlags* = set[TSymFlag]
 
@@ -321,7 +324,6 @@ const
   sfReorder* = sfForward
     # reordering pass is enabled
 
-  sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code
   sfExperimental* = sfOverriden       # module uses the .experimental switch
   sfGoto* = sfOverriden               # var is used for 'goto' code generation
@@ -1945,7 +1947,7 @@ proc canRaiseConservative*(fn: PNode): bool =
 
 proc canRaise*(fn: PNode): bool =
   if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
-      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+      {sfImportc, sfCompileToCpp} * fn.sym.flags == {sfImportc} or
       sfGeneratedOp in fn.sym.flags):
     result = false
   elif fn.kind == nkSym and fn.sym.magic == mEcho:

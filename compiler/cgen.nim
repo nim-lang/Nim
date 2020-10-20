@@ -1099,7 +1099,7 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
            m.config.backend != backendCpp) or (
-           sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
+           sym.flags * {sfCompileToCpp, sfCompilerProc, sfMangleCpp} == {} and
            sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
            m.config.backend == backendCpp)

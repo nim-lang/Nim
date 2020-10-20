@@ -178,9 +178,15 @@ proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLin
   incl(s.loc.flags, lfImportCompilerProc)
 
 proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
+  var extname = extname
+  let isFreeFunction = extname.startsWith "!"
+  if isFreeFunction:
+    extname = extname[1..^1]
+  else:
+    incl(s.flags, sfInfixCall)
   setExternName(c, s, extname, info)
   incl(s.flags, sfImportc)
-  incl(s.flags, sfInfixCall)
+  incl(s.flags, sfCompileToCpp)
   excl(s.flags, sfForward)
   if c.config.backend == backendC:
     let m = s.getModule()
