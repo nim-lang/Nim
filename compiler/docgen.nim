@@ -866,19 +866,13 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
   d.toc[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
-    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
-    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
-      itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
-      plainSymbolEncRope, symbolOrIdEncRope, attype]))
+    ["name", "header_plain", "itemSymOrIDEnc"],
+    [nameRope, plainNameRope, symbolOrIdEncRope]))
 
   d.tocTable[k].mgetOrPut(cleanPlainSymbol, nil).add(ropeFormatNamedVars(
     d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
-    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
-     "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
-    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
-     itemIDRope, plainNameRope, plainSymbolRope,
-     rope(symbolOrId.replace(",", ",<wbr>")), plainSymbolEncRope, symbolOrIdEncRope, attype]))
+    ["name", "header_plain", "itemSymOrID", "itemSymOrIDEnc"],
+    [nameRope, plainNameRope, rope(symbolOrId.replace(",", ",<wbr>")), symbolOrIdEncRope]))
 
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
