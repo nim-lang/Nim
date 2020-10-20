@@ -1,3 +1,7 @@
+discard """
+  targets: "cpp"
+"""
+
 proc fun1(): cint {.importcpp:"!$1".}
 proc fun2(a: cstring): cint {.importcpp:"!fun2".}
 proc fun2(): cint {.importcpp:"!$1".}
