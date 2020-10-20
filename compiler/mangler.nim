@@ -35,7 +35,7 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "dollar"
+  inspect = "FILE"
   symbolicTypes =
     when true:
       {tyObject, tyEnum} # obey the boss
@@ -111,26 +111,32 @@ proc isNimOrCKeyword*(w: PIdent): bool =
   else:
     false
 
-template maybeAddCounter(result: typed; count: int) =
-  if count > 0:
-    add_and result, $count
+template maybeAddCounter(result: typed; p: PType or PSym; count: int) =
+  if not p.hasImmutableName:
+    add_and result:
+      if count > 0:
+        $count
+      else:
+        ""
 
 proc `[]`(conflicts: var ConflictsTable; s: string): int =
   result = getOrDefault(conflicts, s, if s[0].isDigit: -1 else: 0)
 
 proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
   # default key values to at least 0; default names to at least 1
-  when debugMangle:
-    if not s[0].isDigit:
-      assert v > 0
+  when false:
+    when debugMangle:
+      if not s[0].isDigit:
+        assert v > 0
   let v = max(v, if s[0].isDigit: 0 else: 1)
   var existing = mgetOrPut(conflicts, s, v)
   if existing < v:
     tables.`[]=`(conflicts, s, v)
   elif existing > v:
-    when debugMangle:
-      if s[0].isDigit:
-        assert false, "lower $1 from $2 to $3" % [ s, $existing, $v ]
+    when false:
+      when debugMangle:
+        if s[0].isDigit:
+          assert false, "lower $1 from $2 to $3" % [ s, $existing, $v ]
 
 proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
   ## Add/get a mangled name from the scope's conflicts table and return
@@ -165,7 +171,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
     # (this will ignore lower values)
     conflicts[name] = result + 1
     when debugMangle:
-      echo "getorset has ", key, " already as ", result, " for ", name
+      echo "getorset has ", key, " has ", result, " for ", name
       if result >= conflicts[name]:
         echo "module ", conflictKey(p), " and name ", name
         internalError(p.config,
@@ -186,13 +192,14 @@ proc purgeConflict*(m: ModuleOrProc; s: PSym or PType) =
   ## Remove a cached symbol or type name from a conflicts table.
   purgeConflict(m, conflictKey(s))
 
-proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
-                                        name: string): int
+proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
+                                        s: PType or PSym;
+                                        sig: SigHash;
+                                        name: string;
+                                        counter: var int): BName
   {.deprecated: "hack".} =
-  # types are allowed to match up if they have the same signature
-  let sig = when s is PType: hashTypeDef(s) else: default(SigHash)
+  let m = getem()
   var key = conflictKey(s)
-
   var broken = false
   when s is PType:
     broken = $key in m.sigConflicts
@@ -200,68 +207,79 @@ proc hackAroundGlobalRegistryCollisions(m: BModule; s: PType or PSym;
     # so that we don't confuse our local cache in the getOrSet operation
     key = unaliasTypeBySignature(m.g, key, sig)
     when debugMangle:
-      echo "unaliased ", name, " from ", conflictKey(s), " to ", $key
+      if conflictKey(s) != key:
+        echo "unaliased ", name, " from ", conflictKey(s), " to ", $key
 
-  while true:
-    result = getOrSet(m, name, key)
-    var aNameForTesting = name
-    aNameForTesting.maybeAddCounter result
-    if hackIfThisNameIsAlreadyInUseInTheGlobalRegistry(m.g, # KILL ME NOW
-                                                       aNameForTesting,
-                                                       key, sig):
-      when debugMangle:
-        echo "purge $1 for $2 name $3; counter $4" %
-          [ $conflictKey(s), $key, aNameForTesting, $result ]
+  if s.hasImmutableName:
+    counter = getOrSet(m, name, key)
+    result = BName name
+  elif m.g.hasName(key, sig):
+    counter = m.g.retrieveCounter(key, sig)
+    while true:
+      let current = getOrSet(m, name, key)
+      if counter == current:
+        break
+      elif counter > current:
+        purgeConflict(m, key)
+      elif counter < current:
+        m.g.bumpCounter(key, sig, current)
+        break
+    result = m.g.name(key, sig)
+  else:
+    var x: int
+    while true:
+      inc x
+      if x > 1000:
+        debug s
+        writeStackTrace()
+        quit(1)
+      counter = getOrSet(m, name, key)
+      var aNameForTesting = name
+      aNameForTesting.maybeAddCounter(s, counter)
+      if counter > 0:
+        assert aNameForTesting != name
+      if hackIfThisNameIsAlreadyInUseInTheGlobalRegistry(m.g, # KILL ME NOW
+                                                         aNameForTesting,
+                                                         key, sig):
+        when debugMangle:
+          echo "purge $1 for $2 name $3; counter $4" %
+            [ $conflictKey(s), $key, aNameForTesting, $counter ]
 
-      # if we already have a counter for this name and yet
-      # it stands in conflict against the global registry,
-      # then we've made a very serious error!
-      if broken:
-        internalError(m.config, "attempt to recount " & name)
+        # if we already have a counter for this name and yet
+        # it stands in conflict against the global registry,
+        # then we've made a very serious error!
+        if broken:
+          internalError(m.config, "attempt to recount " & name)
 
-      # we need to purge `key`, not conflictKey(s)
-      purgeConflict(m, key)
+        # we need to purge `key`, not conflictKey(s)
+        purgeConflict(m, key)
+      else:
+        result = BName aNameForTesting
+        break
 
-      # this should have been done for us in getOrSet()
-      when false:
-        # we need to make sure that the conflicts for this name
-        # are primed and ready to increment despite perhaps not
-        # having any record of this name from prior introduction
-        discard hasKeyOrPut(m.sigConflicts, name, 1)
-    else:
-      break
+  when debugMangle:
+    if counter != 0:
+      echo "the collision hack chose counter ", counter
 
 proc floatConflict(p: ModuleOrProc; s: PType or PSym;
-                   name: string; key: ConflictKey): int =
+                   name: string; key: ConflictKey): BName =
   ## Mix a local name into any parent scopes of `s`.
   var m = getem()
   # redirect to the source module for `s`
   m = findPendingModule(m, s)
 
-  result = hackAroundGlobalRegistryCollisions(m, s, name)
+  var counter = -1
+  let sig = conflictSig(s)
+  result = hackAroundGlobalRegistryCollisions(m, s, sig, name, counter)
 
   # copy the cache to the local module or proc if necessary
   if (when p is BProc: true else: m != p):
     # cache the counter locally
-    p.sigConflicts[$key] = result
+    p.sigConflicts[$key] = counter
     # set the local name to prevent future conflict
     p.sigConflicts[name] = m.sigConflicts[name]
 
-proc hasImmutableName(s: PSym): bool =
-  ## True if the symbol uses a name that must not change.
-  const immut = {sfCompilerProc, sfImportc, sfExportc}
-  result = s == nil
-  if not result:
-    # special-casing FlowVars because they are special-cased in pragmas...
-    if sfCompilerProc in s.flags:
-      if not s.typ.isNil and s.typ.kind == tyGenericBody:
-        assert s.name.s == "FlowVar", "unexpected generic compiler proc"
-        return false
-    result = immut * s.flags != {}
-
-proc hasImmutableName(t: PType): bool =
-  ## True if the type uses a name that must not change.
-  result = t.sym != nil and hasImmutableName(t.sym)
+  result = m.g.setName(m, s, name, sig)
 
 proc shouldAddModuleName(s: PSym): bool =
   ## Are we going to apply top-level mangling semantics?
@@ -480,19 +498,18 @@ proc atModuleScope(p: ModuleOrProc; t: PType): bool =
   ## for the purposes of conflict detection
   result = true # t.sym == nil or atModuleScope(p, t.sym)
 
-proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int] =
+proc getSetConflict(p: ModuleOrProc; s: PSym): BName =
   ## Produce an appropriate name for a symbol, and the instances of its
   ## occurence, which may have been incremented for this instance.
   let m = getem()
   let key = conflictKey(s)
-  var counter = -1         # the current counter for this name
 
   # for now, use the global registry everywhere if possible
   let sig = sigHash(s)
   if m.g.hasName(key, sig):
-    return (name: string m.g.name(key, sig), counter: 0)
+    return m.g.name(key, sig)
 
-  # we always mangle it anew, which is kinda sad
+  # we often mangle it anew, which is kinda sad
   var name = mangle(p, s)
 
   block:
@@ -501,20 +518,23 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
 
-        #let sig = sigHash(s)
         if m.g.hasName(key, sig):
-          name = m.g.name(key, sig)
-          counter = 0
+          result = m.g.name(key, sig)
         break
 
     if atModuleScope(p, s):
       # critically, we must check for conflicts at the source module
       # in the event a global symbol is actually foreign to `p`
-      counter = floatConflict(p, s, name, key)
-      var r = name
-      r.maybeAddCounter counter
-      discard m.g.setName(m, s, r, sigHash(s))
+      result = floatConflict(p, s, name, key)
+      if not m.g.hasName(key, sig):
+        result = m.g.setName(m, s, result, sig)
       break
+
+    # if the result wasn't set from a foreign or cached symbol,
+    # set it using the local conflicts table
+    var r = name
+    r.maybeAddCounter(s, getOrSet(p, name, key))
+    result = BName r
 
   # only write mangled names for c codegen
   when m is BModule:
@@ -523,13 +543,6 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int]
       # cache the symbol for write at file close
       writeMangledName(m.ndi, s, m.config)
 
-  # if the counter hasn't been set from a foreign or cached symbol,
-  if counter == -1:
-    # set it using the local conflicts table
-    counter = getOrSet(p, name, key)
-
-  result = (name: name, counter: counter)
-
 proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
   ## Provide the location rope for symbol `s` as used in module|proc `p`.
   when debugMangle:
@@ -537,9 +550,7 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
       echo "p is module ", p is BModule
       echo "p key ", $conflictKey(p)
 
-  let conflict = getSetConflict(p, s)
-  result = conflict.name.rope
-  result.maybeAddCounter conflict.counter
+  result = Rope getSetConflict(p, s)
   when debugMangle:
     if startsWith($result, inspect):
       debug s
@@ -596,74 +607,53 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
     assert t != nil
     name = typeName(p, t)
 
-  var counter = hackAroundGlobalRegistryCollisions(m, typ, name)
-  when debugMangle:
-    echo "the collision hack chose counter ", counter
-  # XXX: hack
-  var r = name
-  r.maybeAddCounter counter
-
   # XXX: dogshit ahead
   #
   # this is temporary, but the goal here is to explicitly show
   # the control flow that demonstrates the needed logic for types
 
+  let tsig = hashTypeDef(t)
+  var counter = -1
+  var r = hackAroundGlobalRegistryCollisions(m, t, tsig, name, counter)
+
   # name is "foo"
   # r is "foo_#"
   try:
     if m.g.hasName(conflictKey(typ), sig):
-      when debugMangle:
-        echo "has name for typ"
       result = m.g.name(conflictKey(typ), sig)
     else:
-      let tsig = hashTypeDef(t)
       if m.g.hasName(conflictKey(t), tsig):
-        when debugMangle:
-          echo "has name for t"
         result = m.g.name(conflictKey(t), tsig)
         when debugMangle:
-          assert $result == name, "cached value doesn't match new mangle"
+          assert $result == $r,
+            "cached " & $result & " doesn't match new mangle " & $r
         if conflictKey(t) != conflictKey(typ):
-          when debugMangle:
-            echo "setting name for typ"
           discard m.g.setName(m, typ, result, sig)
       else:
-        var r = name
         if atModuleScope(p, t):
           # make sure we use the source module for any type requested
-          when debugMangle:
-            echo "at module scope; floating ", name
-          counter = floatConflict(p, t, name, conflictKey(t))
-          # pthread_mutex_t
-          if not hasImmutableName(t):
-            r.maybeAddCounter counter
-          else:
-            when debugMangle:
-              echo "immutable name ", name, " with counter ", counter
-              echo "at module scope; set name on t to ", r
-          try:
-            # cache the name globally; r is foo_#
-            result = m.g.setName(m, t, r, tsig)
-            if conflictKey(t) != conflictKey(typ):
-              # cache the name for the input type and signature
-              when debugMangle:
-                echo "at module scope; set name on typ"
-              discard m.g.setName(m, typ, result, sig)
-          except:
-            when debugMangle:
-              echo "counter was ", counter
-            raise
+          result = floatConflict(p, t, name, conflictKey(t))
+          # cache the name globally; r is foo_#
+          if not m.g.hasName(conflictKey(t), tsig):
+            result = m.g.setName(m, t, result, tsig)
+          if conflictKey(t) != conflictKey(typ):
+            # cache the name for the input type and signature
+            #if not m.g.hasName(conflictKey(typ), sig):
+            discard m.g.setName(m, typ, result, sig)
         else:
-          # get the counter from the local proc or module
-          counter = getOrSet(p, name, conflictKey(t))
-
-          # pthread_mutex_t
-          if not hasImmutableName(t.sym):
-            r.maybeAddCounter counter
-          # XXX: hack
-          result = BName $r # m.g.setName(m, typ, r, sig)
+          when false:
+            # get the counter from the local proc or module
+            counter = getOrSet(p, name, conflictKey(t))
+            var r = name
+            r.maybeAddCounter(t, counter)
+            # XXX: hack
+            result = BName $r # m.g.setName(m, typ, r, sig)
+          else:
+            assert false, "unsupported"
   except:
     when debugMangle:
+      echo "input sig: ", $sig
+      echo "name ", name, " counter ", counter, " result ", result
       echo "it failed and the input was as follows:"
       debug typ
       echo "also the computed type was:"
