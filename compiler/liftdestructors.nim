@@ -837,7 +837,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if result == nil:
     result = symPrototype(g, typ, typ.owner, kind, info, idgen)
 
-  var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ)
+  var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ, idgen: idgen)
   a.fn = result
 
   let dest = result.typ.n[1].sym
