@@ -245,7 +245,7 @@ block: # uint64; bug #15413
     doAssert x2 > cast[uint64](int64.high)
 
 block: # JNumber
-  doAssert uint.high == 18446744073709551615'u64
+  doAssert uint64.high == 18446744073709551615'u64
   let x = "184467440737095516151"
   let j = parseJson(x)
   doAssert $j == x
