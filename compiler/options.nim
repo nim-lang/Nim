@@ -198,6 +198,7 @@ type
   Cfile* = object
     nimname*: string
     cname*, obj*: AbsoluteFile
+    nimFile*: AbsoluteFile ## nonempty if generated from a nim file
     flags*: set[CfileFlag]
     customArgs*: string
   CfileList* = seq[Cfile]
