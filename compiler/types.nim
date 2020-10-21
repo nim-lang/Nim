@@ -132,6 +132,7 @@ proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions:
+    let typ = typ.skipTypes(abstractInst - {tyRange})
     result.add " [$1" % typ.kind.toHumanStr
     if typ.sym != nil:
       result.add " declared in " & toFileLineCol(conf, typ.sym.info)
