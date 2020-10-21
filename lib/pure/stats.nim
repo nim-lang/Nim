@@ -338,31 +338,30 @@ runnableExamples:
 
 
 when isMainModule:
-  proc clean(x: float): float =
-    result = round(1.0e8*x).float * 1.0e-8
+  proc `=~`(x, y: float): bool = (abs(x-y) < 1e-8)
 
   var rs: RunningStat
   rs.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
   doAssert(rs.n == 8)
-  doAssert(clean(rs.mean) == 2.0)
-  doAssert(clean(rs.variance()) == 1.5)
-  doAssert(clean(rs.varianceS()) == 1.71428571)
-  doAssert(clean(rs.skewness()) == 0.81649658)
-  doAssert(clean(rs.skewnessS()) == 1.01835015)
-  doAssert(clean(rs.kurtosis()) == -1.0)
-  doAssert(clean(rs.kurtosisS()) == -0.7000000000000001)
+  doAssert(rs.mean =~ 2.0)
+  doAssert(rs.variance() =~ 1.5)
+  doAssert(rs.varianceS() =~ 1.71428571)
+  doAssert(rs.skewness() =~ 0.81649658)
+  doAssert(rs.skewnessS() =~ 1.01835015)
+  doAssert(rs.kurtosis() =~ -1.0)
+  doAssert(rs.kurtosisS() =~ -0.7000000000000001)
 
   var rs1, rs2: RunningStat
   rs1.push(@[1.0, 2.0, 1.0, 4.0])
   rs2.push(@[1.0, 4.0, 1.0, 2.0])
   let rs3 = rs1 + rs2
-  doAssert(clean(rs3.mom2) == clean(rs.mom2))
-  doAssert(clean(rs3.mom3) == clean(rs.mom3))
-  doAssert(clean(rs3.mom4) == clean(rs.mom4))
+  doAssert(rs3.mom2 =~ rs.mom2)
+  doAssert(rs3.mom3 =~ rs.mom3)
+  doAssert(rs3.mom4 =~ rs.mom4)
   rs1 += rs2
-  doAssert(clean(rs1.mom2) == clean(rs.mom2))
-  doAssert(clean(rs1.mom3) == clean(rs.mom3))
-  doAssert(clean(rs1.mom4) == clean(rs.mom4))
+  doAssert(rs1.mom2 =~ rs.mom2)
+  doAssert(rs1.mom3 =~ rs.mom3)
+  doAssert(rs1.mom4 =~ rs.mom4)
   rs1.clear()
   rs1.push(@[1.0, 2.2, 1.4, 4.9])
   doAssert(rs1.sum == 9.5)
@@ -380,5 +379,5 @@ when isMainModule:
     rr2.push(@[2.8, 3.0, 4.0], @[2.3, 3.0, 4.0])
     let rr3 = rr1 + rr2
     doAssert(rr3.correlation() == rr.correlation())
-    doAssert(clean(rr3.slope()) == clean(rr.slope()))
-    doAssert(clean(rr3.intercept()) == clean(rr.intercept()))
+    doAssert(rr3.slope() =~ rr.slope())
+    doAssert(rr3.intercept() =~ rr.intercept())
