@@ -124,12 +124,18 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  # result.add " [declared in " & conf$sym.info & "]"
-  result.add " [declared in " & toFileLineCol(conf, sym.info) & "]"
+  result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
-  if optDeclaredLocs in conf.globalOptions:
+  if optDeclaredLocs in conf.globalOptions and sym != nil:
     addDeclaredLoc(result, conf, sym)
+
+proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
+  if optDeclaredLocs in conf.globalOptions:
+    result.add " [$1" % typ.kind.toHumanStr
+    if typ.sym != nil:
+      result.add " declared in " & toFileLineCol(conf, typ.sym.info)
+    result.add "]"
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
@@ -1476,9 +1482,10 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
-    var msg = "type mismatch: got <" &
-              typeToString(actual) & "> " &
-              "but expected '" & x & "'"
+    var msg = "type mismatch: got <" & typeToString(actual) & ">"
+    msg.addDeclaredLocMaybe(conf, actual)
+    msg.add " but expected '" & x & "'"
+    msg.addDeclaredLocMaybe(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)

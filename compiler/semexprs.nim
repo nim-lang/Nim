@@ -965,8 +965,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
           # t.kind != tySequence(It is tyProc)
           if typ.sym != nil and sfAnon notin typ.sym.flags and
                                 typ.kind == tyProc:
-            msg.add(" = " &
-                typeToString(typ, preferDesc))
+            # when can `typ.sym != nil` ever happen?
+            msg.add(" = " & typeToString(typ, preferDesc))
+          msg.addDeclaredLocMaybe(c.config, typ)
           localError(c.config, n.info, msg)
         return errorNode(c, n)
       result = nil
