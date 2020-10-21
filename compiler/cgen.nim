@@ -486,8 +486,6 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locLocalVar, n, mangleName(p, s), OnStack)
-    when debugMangle:
-      echo "local type ", $getTypeName(p, s.typ)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
@@ -1795,7 +1793,6 @@ proc initProcOptions(m: BModule): TOptions =
 proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
-  #result.tmpBase = "TM" & "_" & getSomeNameForModule(module) & "_"
   result.tmpBase = "TM" & "_"
   result.headerFiles = @[]
   result.declaredThings = initIntSet()

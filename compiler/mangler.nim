@@ -41,7 +41,6 @@ const
     when true:
       {tyObject, tyEnum} # obey the boss
     else:
-      #{tyObject, tyEnum, tyString}
       {TTypeKind.low .. TTypeKind.high} - {tyString}
   addFirstParamToProcs = true
 
@@ -69,10 +68,7 @@ using
 # useful for debugging
 template conflictKey(s: BModule): int = conflictKey(s.module)
 template conflictKey(s: BProc): int =
-  if s.prc == nil:
-    0
-  else:
-    conflictKey(s.prc)
+  if s.prc == nil: 0 else: conflictKey(s.prc)
 
 template mangle*(p: ModuleOrProc; t: PType): string = $getTypeName(p, t)
 proc mangle*(p: ModuleOrProc; s: PSym): string
@@ -124,10 +120,6 @@ proc `[]`(conflicts: var ConflictsTable; s: string): int =
 
 proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
   # default key values to at least 0; default names to at least 1
-  when false:
-    when debugMangle:
-      if not s[0].isDigit:
-        assert v > 0
   let v = max(v, if s[0].isDigit: 0 else: 1)
   var existing = mgetOrPut(conflicts, s, v)
   if existing < v:
@@ -178,18 +170,12 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
           "clash count unexpectedly low; result " & $result &
           "; table is " & $conflicts[name])
 
-proc nextConflict(p: ModuleOrProc; name: string; key: int): int {.deprecated.} =
-  let skey = $key
-  if skey in p.sigConflicts:
-    result = p.sigConflicts[skey]
-  else:
-    result = p.sigConflicts[name]
-
 template purgeConflict(m: ModuleOrProc; key: ConflictKey) =
+  ## Remove a cached symbol or type identity from a conflicts table.
   del m.sigConflicts, $key
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym or PType) =
-  ## Remove a cached symbol or type name from a conflicts table.
+  ## Remove a cached symbol or type from a conflicts table.
   purgeConflict(m, conflictKey(s))
 
 proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
@@ -212,13 +198,11 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
           " for sig ", $sig
 
   if s.hasImmutableName:
-    when debugMangle:
-      echo "immutable hack ", name, " for ", $key, " sig ", $sig
+    # immutable names don't even hit the global registry
     counter = getOrSet(m, name, key)
     result = BName name
   elif m.g.hasName(key, sig):
-    when debugMangle:
-      echo "cached hack ", name, " for ", $key, " sig ", $sig
+    # here we need to handle a previously-cached name for this key/sig
     counter = m.g.retrieveCounter(key, sig)
     while true:
       let current = getOrSet(m, name, key)
@@ -231,15 +215,8 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
         break
     result = m.g.name(key, sig)
   else:
-    when debugMangle:
-      echo "uncached hack ", name, " for ", $key, " sig ", $sig
-    var x: int
+    # in this scenario, there's nothing cached for this key/sig
     while true:
-      inc x
-      if x > 1000:
-        debug s
-        writeStackTrace()
-        quit(1)
       counter = getOrSet(m, name, key)
       var aNameForTesting = name
       aNameForTesting.maybeAddCounter(s, counter)
@@ -299,7 +276,7 @@ proc shouldAddModuleName(s: PSym): bool =
     # NOTE: constants are effectively global
     result = true
   of skProc:
-    # for linking reasons
+    # for linking reasons demonstrable in megatest
     result = true
   else:
     if s.owner != nil and sfSystemModule in s.owner.flags:
@@ -351,10 +328,6 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
     # as types, so signature won't match when it comes time to link
 
     # these are not just a c++ problem... m.config.backend == backendCpp:
-
-    # best idea i can come up with is a global registry where we simply
-    # record the first introduction of an otherwise unknown signature and
-    # always reuse it
 
     # these need a signature-based name so that type signatures match :-(
     #if typ.len != 0 or typ.lastSon != nil:
@@ -419,8 +392,7 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
       assert not s.hasImmutableName
 
 proc mangle*(p: ModuleOrProc; s: PSym): string =
-  # TODO: until we have a new backend ast, all mangles have to be done
-  # identically
+  ## pending a new backend, all mangles must be done identically
   let m = getem()
 
   # certain special cases may get a simple mangle early because
@@ -456,36 +428,6 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
   #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
   # XXX: we don't do anything special with regard to m.hcrOn
   assert result.len > 0
-
-when false:
-  proc mangle*(g: BModuleList; p: PType): string
-  proc mangle*(g: BModuleList; p: PSym): string
-
-  proc mangle*(g: BModuleList; p: PType): string =
-    g.nameCache[conflictKey(p), hashTypeDef(p)]
-
-  proc mangle*(g: BModuleList; p: PSym): string =
-    g.nameCache[conflictKey(p), sigHash(p)]
-
-  proc mangle*(g: BModuleList): MangleCache =
-    g.nameCache
-
-proc getConflictFromCache(p: ModuleOrProc; s: PSym | PType): string =
-  let m = getem()
-  template g(): ModuleGraph = m.g.graph
-  let key = conflictKey(s)
-  let sig =
-    when s is PType:
-      hashTypeDef(s)
-    else:
-      sigHash(s)
-  if s notin g.mangle:
-    raise
-  else:
-    let man = g.nameCache[key]
-    result = man.name
-    assert man.sig == sig
-    assert man.module == m.module.id
 
 proc atModuleScope(p: ModuleOrProc; s: PSym): bool =
   ## `true` if the symbol is presumed to be in module-level scope
@@ -576,21 +518,22 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
           [ $conflictKey(s), s.name.s, $result,
            if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
 
-proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
-  ## Try to get a cached type name from any and all modules.
-  # there's a good chance it's in the local cache
-  result = cacheGetType(m.typeCache, sig)
-  if result == nil:
-    # else, search the caches of the other modules
-    for peer in items(m.g.modules):
-      if peer != nil:
-        # skip checking our own cache again
-        if peer != m:
-          result = cacheGetType(peer.typeCache, sig)
-          if result != nil:
-            break
-  # instantiate a new rope for mutation reasons
-  result = rope $result
+when false:
+  proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
+    ## Try to get a cached type name from any and all modules.
+    # there's a good chance it's in the local cache
+    result = cacheGetType(m.typeCache, sig)
+    if result == nil:
+      # else, search the caches of the other modules
+      for peer in items(m.g.modules):
+        if peer != nil:
+          # skip checking our own cache again
+          if peer != m:
+            result = cacheGetType(peer.typeCache, sig)
+            if result != nil:
+              break
+    # instantiate a new rope for mutation reasons
+    result = rope $result
 
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
   ## Retrieve (or produce) a useful name for the given type; this is what
@@ -652,15 +595,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
             #if not m.g.hasName(conflictKey(typ), sig):
             discard m.g.setName(m, typ, result, sig)
         else:
-          when false:
-            # get the counter from the local proc or module
-            counter = getOrSet(p, name, conflictKey(t))
-            var r = name
-            r.maybeAddCounter(t, counter)
-            # XXX: hack
-            result = BName $r # m.g.setName(m, typ, r, sig)
-          else:
-            assert false, "unsupported"
+          assert false, "unsupported"
   except:
     when debugMangle:
       echo "input sig: ", $sig
@@ -676,8 +611,6 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
       echo "type mangle used:"
       debug t
       echo "=> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(t)
-
-    if inspect in $result:
       echo "original type mangle:"
       debug typ
       result.add $conflictKey(typ)
@@ -746,36 +679,36 @@ proc mangleName*(p: ModuleOrProc; s: PSym): Rope =
     s.loc.r = idOrSig(p, s)
   result = s.loc.r
 
-    #[
+  #[
 
-     2020-06-11: leaving this here because it explains a real scenario,
-                 but it remains to be seen if we'll still have this problem
-                 after the new mangling processes the symbols; ie. why is
-                 HCR special?
+   2020-06-11: leaving this here because it explains a real scenario,
+               but it remains to be seen if we'll still have this problem
+               after the new mangling processes the symbols; ie. why is
+               HCR special?
 
-     Take into account if HCR is on because of the following scenario:
+   Take into account if HCR is on because of the following scenario:
 
-     if a module gets imported and it has some more importc symbols in it,
-     some param names might receive the "_0" suffix to distinguish from
-     what is newly available. That might lead to changes in the C code
-     in nimcache that contain only a parameter name change, but that is
-     enough to mandate recompilation of that source file and thus a new
-     shared object will be relinked. That may lead to a module getting
-     reloaded which wasn't intended and that may be fatal when parts of
-     the current active callstack when performCodeReload() was called are
-     from the module being reloaded unintentionally - example (3 modules
-     which import one another):
+   if a module gets imported and it has some more importc symbols in it,
+   some param names might receive the "_0" suffix to distinguish from
+   what is newly available. That might lead to changes in the C code
+   in nimcache that contain only a parameter name change, but that is
+   enough to mandate recompilation of that source file and thus a new
+   shared object will be relinked. That may lead to a module getting
+   reloaded which wasn't intended and that may be fatal when parts of
+   the current active callstack when performCodeReload() was called are
+   from the module being reloaded unintentionally - example (3 modules
+   which import one another):
 
-       main => proxy => reloadable
+     main => proxy => reloadable
 
-     we call performCodeReload() in proxy to reload only changes in
-     reloadable but there is a new import which introduces an importc
-     symbol `socket` and a function called in main or proxy uses `socket`
-     as a parameter name. That would lead to either needing to reload
-     `proxy` or to overwrite the executable file for the main module,
-     which is running (or both!) -> error.
+   we call performCodeReload() in proxy to reload only changes in
+   reloadable but there is a new import which introduces an importc
+   symbol `socket` and a function called in main or proxy uses `socket`
+   as a parameter name. That would lead to either needing to reload
+   `proxy` or to overwrite the executable file for the main module,
+   which is running (or both!) -> error.
 
-    ]#
+  ]#
 
 proc mangleField*(m: BModule; name: PIdent): string =
   ## Mangle a field to ensure it is a valid name in the backend.
@@ -829,4 +762,5 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
     internalError(p.config, s.info, "mangleParamName")
 
 proc assignParam*(p: BProc, s: PSym; ret: PType) =
-  discard #mangleParamName(p, s)
+  ## i have nothing good to say about this proc
+  discard # mangleParamName(p, s)

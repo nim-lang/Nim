@@ -12,9 +12,6 @@
 import sighashes, modulegraphs, mangler
 from lowerings import createObj
 
-const
-  debugMangle = false
-
 proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope
 
 when false:
@@ -208,9 +205,6 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
-  when debugMangle:
-    echo "simple type ", $typ.kind, " is ", if result.isNil: "(nil)" else: $result
-
   if result != nil and typ.isImportedType():
     let sig = hashTypeDef typ
     if cacheGetType(m.typeCache, sig) == nil:
@@ -246,25 +240,14 @@ proc seqStar(m: BModule): string =
   else: result = "*"
 
 proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
-  defer:
-    when debugMangle:
-      echo "forward of ", sig, " produced ", $result, " in mod ", m.module.id
   result = cacheGetType(m.forwTypeCache, sig)
-  if result != nil:
-    when debugMangle:
-      echo "forward from cache ", sig, " to ", $result
-    return
+  if result != nil: return
   result = getTypePre(m, typ, sig)
-  if result != nil:
-    when debugMangle:
-      echo "forward from pre ", sig, " to ", $result
-    return
+  if result != nil: return
   let concrete = typ.skipTypes(abstractInst)
   case concrete.kind
   of tySequence, tyTuple, tyObject:
     result = getTypeName(m, typ, sig)
-    when debugMangle:
-      echo "forward from getTypeName ", sig, " to ", $result
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addForwardStructFormat(m, structOrUnion(typ), result)
@@ -277,8 +260,6 @@ proc getTypeDescWeak(p: ModuleOrProc; t: PType; check: var IntSet; kind: TSymKin
   ## like getTypeDescAux but creates only a *weak* dependency. In other words
   ## we know we only need a pointer to it so we only generate a struct forward
   ## declaration:
-  when debugMangle:
-    echo "weak"
   let m = getem()
   let etB = t.skipTypes(abstractInst)
   case etB.kind
@@ -349,8 +330,6 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   ## to generate the actual procedure definition.
   let m = getem()
   params = nil
-  when debugMangle:
-    echo "enter proc params"
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
     rettype = ~"void"
   else:
@@ -360,10 +339,6 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
-    when debugMangle:
-      if param.typ != nil:
-        let sig = hashTypeDef(param.typ)
-        echo spaces(10), getTypeName(p, param.typ, sig), spaces(4), sig
     fillLoc(param.loc, locParam, t.n[i], mangleParamName(p, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
@@ -374,9 +349,6 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
     elif weakDep:
       params.add(getTypeDescWeak(p, param.typ, check, skParam))
     else:
-      when debugMangle:
-        if param.typ != nil:
-          echo spaces(10), getTypeDescAux(p, param.typ, check, skParam), spaces(4), $hashTypeDef(param.typ)
       params.add(getTypeDescAux(p, param.typ, check, skParam))
     params.add(~" ")
     if sfNoalias in param.flags:
@@ -411,8 +383,6 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
   if params == nil: params.add("void)")
   else: params.add(")")
   params = "(" & params
-  when debugMangle:
-    echo "exit proc params ", $params
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
@@ -602,8 +572,6 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
 
 proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
   # returns only the type's name
-  when debugMangle:
-    echo "aux ", $kind
   let m = getem()
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
@@ -623,11 +591,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
   result = getTypePre(m, t, sig)
   if result != nil and t.kind != tyOpenArray:
     excl(check, t.id)
-    when debugMangle:
-      echo "=", $result
     return
-  when debugMangle:
-    echo t.kind
   case t.kind
   of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
@@ -641,8 +605,6 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
         et = elemType(etB)
       etB = et.skipTypes(abstractInst)
       star[0] = '*'
-    when debugMangle:
-      echo etB.kind
     case etB.kind
     of tyObject, tyTuple:
       if isImportedCppType(etB) and et.kind == tyGenericInst:
@@ -657,9 +619,6 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
         result = getTypeDescWeak(p, et, check, kind) & star
         m.typeCache[sig] = result
       else:
-        when debugMangle:
-          echo "forward"
-          debug et
         # no restriction! We have a forward declaration for structs
         let name = getTypeForward(m, et, hashTypeDef et)
         result = name & seqStar(m) & star
@@ -856,7 +815,7 @@ type
     clFull            ## struct {fn(args, void* env), env}
 
 proc getClosureType(p: BProc, t: PType, kind: TClosureTypeKind): Rope =
-  let m = p.module
+  template m: BModule = p.module
   assert t.kind == tyProc
   var check = initIntSet()
   # handle proc params first so that we can mangle the proc symbol later
@@ -910,19 +869,9 @@ proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
-  when debugMangle:
-    echo "gen proc header for ", prc.name.s
   genProcParams(p, prc.typ, rettype, params, check)
-  when debugMangle:
-    echo "fill loc in genheader"
-    if prc.loc.r == nil:
-      echo "proc ", prc.name.s, " at ", cast[uint](prc), " is fresh"
-    else:
-      echo "proc ", prc.name.s, " at ", cast[uint](prc), " REUSES ", $prc.loc.r
   # make sure we mangle the proc name after having mangled the 1st param
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(p, prc), OnUnknown)
-  when debugMangle:
-    echo "mangle ", prc.name.s, " into ", $prc.loc.r
 
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with

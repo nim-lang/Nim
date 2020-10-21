@@ -301,6 +301,7 @@ proc hasImmutableName*(t: PType): bool =
 
 proc newMangling(m: BModule; p: PSym or PType; name: BNameInput;
                  sig: SigHash): Mangling =
+  ## cache a big fat expensive object full of debugging data
   let names = $name
   when name isnot BName:
     if name.len == 0:
@@ -315,55 +316,30 @@ proc newMangling(m: BModule; p: PSym or PType; name: BNameInput;
 
 proc nextMangling(man: Mangling; m: BModule; p: PSym or PType;
                   name: BNameInput; sig: SigHash): Mangling =
+  ## eventually, this could move clash detection where we need it
   result = newMangling(m, p, name, sig)
   result.counter = man.counter + 1
 
 proc setName*(g: BModuleList; m: BModule; p: PSym or PType;
               name: BNameInput; sig: SigHash): BName =
+  ## register a name in the global mangle cache
   template key: ConflictKey = conflictKey(p)
-  when true:
-    let man =
-      if g.hasName(key, sig):
-        g.nameCache.manglings[g.name(key, sig)].nextMangling(m, p, name, sig)
-      else:
-        newMangling(m, p, name, sig)
-  else:
-    let man = newMangling(m, p, name, sig)
-
-  result = man.name
+  let man =
+    if g.hasName(key, sig):
+      g.nameCache.manglings[g.name(key, sig)].nextMangling(m, p, name, sig)
+    else:
+      newMangling(m, p, name, sig)
 
   when p is PType:         # cache type signature if necessary
     discard hasKeyOrPut(g.nameCache.signatures, man.sig, man.key)
 
-  when defined(release):
-    g.nameCache.identities[man.key] = result
-    g.nameCache.manglings[result] = man
-  else:
-    try:
-      assert man.key notin g.nameCache.identities
-      g.nameCache.identities[man.key] = result
-      g.nameCache.manglings[result] = man
-    except:
-      echo "set key ", man.key, " with sig ", man.sig, " at ", man.name
-      echo "assertion error for mangling `", name, "`"
-      echo "here's the input object:"
-      debug p
-      echo "here's the current mangling:"
-      echo $man
-      if man.key in g.nameCache.identities:
-        echo "key already cached as `", g.nameCache.identities[man.key], "`"
-        echo "here's the previous mangling:"
-        echo $g.nameCache.manglings[g.nameCache.identities[man.key]]
-      if man.name in g.nameCache.manglings:
-        echo "name already cached; here's the previous mangling:"
-        echo $g.nameCache.manglings[man.name]
-      raise
+  result = man.name
+  g.nameCache.identities[man.key] = result
+  g.nameCache.manglings[result] = man
 
 proc setName*(g: BModuleList; p: PSym or PType; name: BNameInput) =
-  let sig = when p is PSym: sigHash(p) else: hashTypeDef(p)
   assert p.owner != nil
-  let m = findPendingModule(g, p.owner)
-  g.setName(m, p, name, sig)
+  g.setName(findPendingModule(g, p.owner), p, name, conflictSig(p))
 
 proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
   result = key in g.nameCache.identities
@@ -389,27 +365,22 @@ proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
           echo "there is no existing mangle"
         raise
 
-proc unaliasTypeBySignature*(g: BModuleList;
-                             key: ConflictKey;
+proc unaliasTypeBySignature*(g: BModuleList; key: ConflictKey;
                              sig: SigHash): ConflictKey =
-  ## used by the mangler to avoid out-of-order name
-  ## introductions for sig-equal types that vary in identity
-  ## and do not share source modules...  fun, right?
+  ## used by the mangler to avoid out-of-order name introductions for
+  ## sig-equal types that vary in identity and do not share source
+  ## modules... fun, right?
   assert sig != default(SigHash)
   result = getOrDefault(g.nameCache.signatures, sig, key)
 
 proc retrieveCounter*(g: BModuleList; key: ConflictKey; sig: SigHash): int =
   ## used by the mangler to update local sigConflicts counters
-  if key in g.nameCache.identities:
-    result = g.nameCache.manglings[g.nameCache.identities[key]].counter
-  else:
-    result = 0
+  result = g.nameCache.manglings[g.nameCache.identities[key]].counter
 
 proc bumpCounter*(g: BModuleList; key: ConflictKey; sig: SigHash; to: int) =
   ## used by the mangler to update global sigConflicts counters
-  if key in g.nameCache.identities:
-    let future = max(to, retrieveCounter(g, key, sig))
-    g.nameCache.manglings[g.nameCache.identities[key]].counter = future
+  template future: int = max(to, retrieveCounter(g, key, sig))
+  g.nameCache.manglings[g.nameCache.identities[key]].counter = future
 
 proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
                                                       name: BNameInput;
@@ -419,41 +390,27 @@ proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
   ## XXX: remove me; used by the mangler to skip global names
   ##      previously defined in unrelated modules...
   let name = BName $name
-  if key in g.nameCache.identities:
+  if key notin g.nameCache.identities:
+    # the name is in use if there's already a mangle for it...
+    result = name in g.nameCache.manglings
+    # ...and the signatures also don't match
+    result = result and g.nameCache.manglings[name].sig != sig
+  else:
     # the name is in use if we somehow computed a novel name for
-    # the same key, or if the sig doesn't match
+    # the same key,
     #result = g.nameCache.identities[key] != name
     assert g.nameCache.identities[key] == name,
       "was " & $g.nameCache.identities[key] & " now " & $name
     # the name may also clash if the signatures don't match
     #result = result or g.nameCache.manglings[name].sig != sig
-  else:
-    # the name is in use if there's already a mangle for it...
-    result = name in g.nameCache.manglings
-    # ...and the signatures also don't match
-    result = result and g.nameCache.manglings[name].sig != sig
 
 proc name*(g: BModuleList; key: ConflictKey; sig: SigHash): BName =
   # let it raise a KeyError as necessary...
   result = g.nameCache.identities[key]
-  when not defined(release):
-    try:
-      # make sure our expectations match reality
-      let man = g.nameCache.manglings[result]
-      # the sig can differ in, eg. the case of CFile -> FILE where
-      # two types with differing signatures both import the same name
-      #assert sig == man.sig
-      assert result == man.name
-      # we decided to allow multiple keys to share the same mangle
-      # as long as they have the same signature or somethin'
-      #assert man.key == key
-    except:
-      echo "get key ", key, " with sig ", sig, " at ", result
-      raise
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet(),
+  BModuleList(config: g.config, graph: g, nimtvDeclared: initIntSet(),
+    typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
     nameCache: initMangleCache())
 
 iterator cgenModules*(g: BModuleList): BModule =
