@@ -1,7 +1,7 @@
 discard """
   cmd: "nim $target --nilseqs:off $options $file"
   output: "Hello"
-  ccodecheck: "\\i@'a = ((NimStringDesc*) NIM_NIL)'"
+  ccodecheck: "\\i@'a_ = ((NimStringDesc*) NIM_NIL)'"
 """
 
 proc main() =
