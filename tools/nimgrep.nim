@@ -621,7 +621,7 @@ proc printOutput(filename: string, output: Output, curCol: var Column) =
 iterator searchFile(pattern: Pattern; filename: string;
                     buffer: string): Output =
   var prevMi, curMi: MatchInfo
-  curMi.lineEnd = 1
+  prevMi.lineEnd = 1
   var i = 0
   var matches: array[0..re.MaxSubpatterns-1, string]
   for j in 0..high(matches): matches[j] = ""
@@ -634,32 +634,32 @@ iterator searchFile(pattern: Pattern; filename: string;
                      firstLine: prevMi.lineEnd)
       break
 
-    let lineBeg = curMi.lineEnd + countLineBreaks(buffer, i, t.first-1)
+    let lineBeg = prevMi.lineEnd + countLineBreaks(buffer, i, t.first-1)
     curMi = (first: t.first,
              last: t.last,
              lineBeg: lineBeg,
              lineEnd: lineBeg + countLineBreaks(buffer, t.first, t.last),
              match: buffer.substr(t.first, t.last))
     if prevMi.lineBeg == 0: # no prev. match, so no prev. block to finalize
-      yield Output(kind: BlockFirstMatch,
-                   pre: getSubLinesBefore(buffer, curMi),
-                   match: curMi)
+      let pre = getSubLinesBefore(buffer, curMi)
+      prevMi = curMi
+      yield Output(kind: BlockFirstMatch, pre: pre, match: move(curMi))
     else:
       let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
       if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
-        yield Output(kind: BlockNextMatch,
-                     pre: getSubLinesBetween(buffer, prevMi, curMi),
-                     match: curMi)
+        let pre =  getSubLinesBetween(buffer, prevMi, curMi)
+        prevMi = curMi
+        yield Output(kind: BlockNextMatch, pre: pre, match: move(curMi))
       else: # finalize previous block and then print next block
-        yield Output(kind: BlockEnd,
-                     blockEnding: getSubLinesAfter(buffer, prevMi),
+        let after = getSubLinesAfter(buffer, prevMi)
+        yield Output(kind: BlockEnd, blockEnding: after,
                      firstLine: prevMi.lineEnd)
+        let pre = getSubLinesBefore(buffer, curMi)
+        prevMi = curMi
         yield Output(kind: BlockFirstMatch,
-                     pre: getSubLinesBefore(buffer, curMi),
-                     match: curMi)
-
+                     pre: pre,
+                     match: move(curMi))
     i = t.last+1
-    prevMi = curMi
 
 func detectBin(buffer: string): bool =
   for i in 0 ..< min(1024, buffer.len):
@@ -779,7 +779,7 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
       reason = "contains a forbidden match"
 
   if reject:
-    yield Output(kind: Rejected, reason: reason)
+    yield Output(kind: Rejected, reason: move(reason))
   else:
     var found = false
     var cnt = 0
@@ -793,7 +793,7 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     if optCount in options and cnt > 0:
       yield Output(kind: JustCount, matches: cnt)
     if yieldContents and found and optCount notin options:
-      yield Output(kind: FileContents, buffer: buffer)
+      yield Output(kind: FileContents, buffer: move(buffer))
 
 proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   let filename = path.lastPathPart
