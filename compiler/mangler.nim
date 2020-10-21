@@ -310,12 +310,18 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   of tyProc, tyTuple:
     # these can figure into the signature though they may not be exported
     # as types, so signature won't match when it comes time to link
-    #[
-      if typ.len != 0 or typ.lastSon != nil:
-        shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
-      else:
-    ]#
-    shortKind(typ.kind) & $conflictSig(typ)
+    let m = getem()
+    let sig = conflictSig(typ)
+    var name: BName
+    # consult the global cache for a usename name for the type
+    if tryGet(m.g, sig, name):
+      $name
+    # else, maybe we can make a nice name using a referenced symbol
+    elif typ.len != 0 and typ.lastSon != nil:
+      shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
+    # else, compose an ugly name using the signature
+    else:
+      shortKind(typ.kind) & $conflictSig(typ)
   else:
     shortKind(typ.kind)
 

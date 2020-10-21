@@ -341,6 +341,12 @@ proc setName*(g: BModuleList; p: PSym or PType; name: BNameInput) =
   assert p.owner != nil
   g.setName(findPendingModule(g, p.owner), p, name, conflictSig(p))
 
+proc tryGet*(g: BModuleList; sig: SigHash; name: var BName): bool =
+  ## try to get a name using only a signature; for tyProc|tyTuple use
+  withValue(g.nameCache.signatures, sig, value):
+    name = g.nameCache.identities[value[]]
+    result = true
+
 proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
   result = key in g.nameCache.identities
   when not defined(release):
