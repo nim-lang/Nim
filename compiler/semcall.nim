@@ -317,7 +317,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var o: TOverloadIter
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
-      result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+      result &= "\n  found '$1'" % [getSymRepr(c.config, sym)]
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
