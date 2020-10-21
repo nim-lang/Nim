@@ -11,7 +11,7 @@
 
 
 ## Compiler changes
-
+add `--declaredlocs` to show symbol declaration location in messages
 
 
 ## Tool changes
