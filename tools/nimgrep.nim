@@ -1065,6 +1065,15 @@ proc checkOptions(subset: TOptions, a, b: string) =
   if subset <= options:
     quit("cannot specify both '$#' and '$#'" % [a, b])
 
+proc parseNonNegative(str: string, key: string): int =
+  try:
+    result = parseInt(str)
+  except ValueError:
+    reportError("Option " & key & " requires an integer but '" &
+                str & "' was given")
+  if result < 0:
+    reportError("A positive integer is expected for option " & key)
+
 when defined(posix):
   useWriteStyled = terminal.isatty(stdout)
   # that should be before option processing to allow override of useWriteStyled
@@ -1105,7 +1114,7 @@ for kind, key, val in getopt():
       if val == "":
         nWorkers = countProcessors()
       else:
-        nWorkers = parseInt(val)
+        nWorkers = parseNonNegative(val, key)
     of "ext": walkOpt.extensions.add val.split('|')
     of "noext", "no-ext": walkOpt.skipExtensions.add val.split('|')
     of "excludedir", "exclude-dir",   "ed": walkOpt.excludeDir.add val
@@ -1142,30 +1151,20 @@ for kind, key, val in getopt():
       if colortheme notin ["simple", "bnw", "ack", "gnu"]:
         reportError("unknown colortheme '" & val & "'")
     of "beforecontext", "before-context", "b":
-      try:
-        linesBefore = parseInt(val)
-      except ValueError:
-        reportError("option " & key & " requires an integer but '" &
-                    val & "' was given")
+      linesBefore = parseNonNegative(val, key)
     of "aftercontext", "after-context", "a":
-      try:
-        linesAfter = parseInt(val)
-      except ValueError:
-        reportError("option " & key & " requires an integer but '" &
-                    val & "' was given")
+      linesAfter = parseNonNegative(val, key)
     of "context", "c":
-      try:
-        linesContext = parseInt(val)
-      except ValueError:
-        reportError("option --context requires an integer but '" &
-                    val & "' was given")
+      linesContext = parseNonNegative(val, key)
     of "newline", "l": newLine = true
     of "oneline": oneline = true
     of "group", "g": oneline = false
     of "limit", "m":
       incl(options, optLimitChars)
-      if val != "":
-        limitChar = parseInt(val)
+      if val == "":
+        limitChar = 80
+      else:
+        limitChar = parseNonNegative(val, key)
     of "fit":
       incl(options, optFit)
       limitChar = terminalWidth()
