@@ -365,6 +365,13 @@ proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
           echo "there is no existing mangle"
         raise
 
+proc tryGet*(g: BModuleList; key: ConflictKey; sig: SigHash;
+             name: var BName): bool =
+  ## convenience for the mangler because withValue won't work for result
+  withValue(g.nameCache.identities, key, value):
+    name = value[]   # sadly, passing name to withValue will corrupt it
+    result = true
+
 proc unaliasTypeBySignature*(g: BModuleList; key: ConflictKey;
                              sig: SigHash): ConflictKey =
   ## used by the mangler to avoid out-of-order name introductions for

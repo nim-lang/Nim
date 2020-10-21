@@ -42,7 +42,6 @@ const
       {tyObject, tyEnum} # obey the boss
     else:
       {TTypeKind.low .. TTypeKind.high} - {tyString}
-  addFirstParamToProcs = true
 
   # these may be shorted to the first three characters following `ty`
   # as opposed to perhaps being stripped of vowels, etc.
@@ -116,19 +115,14 @@ template maybeAddCounter(result: typed; p: PType or PSym; count: int) =
         ""
 
 proc `[]`(conflicts: var ConflictsTable; s: string): int =
+  # missing key values are -1; missing names are 0
   result = getOrDefault(conflicts, s, if s[0].isDigit: -1 else: 0)
 
 proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
-  # default key values to at least 0; default names to at least 1
+  # key values are at least 0; name values are at least 1
   let v = max(v, if s[0].isDigit: 0 else: 1)
-  var existing = mgetOrPut(conflicts, s, v)
-  if existing < v:
+  if mgetOrPut(conflicts, s, v) < v:
     tables.`[]=`(conflicts, s, v)
-  elif existing > v:
-    when false:
-      when debugMangle:
-        if s[0].isDigit:
-          assert false, "lower $1 from $2 to $3" % [ s, $existing, $v ]
 
 proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
   ## Add/get a mangled name from the scope's conflicts table and return
@@ -250,8 +244,7 @@ proc floatConflict(p: ModuleOrProc; s: PType or PSym;
                    name: string; key: ConflictKey): BName =
   ## Mix a local name into any parent scopes of `s`.
   var m = getem()
-  # redirect to the source module for `s`
-  m = findPendingModule(m, s)
+  m = findPendingModule(m, s)   # redirect to the source module for `s`
 
   var counter = -1
   let sig = conflictSig(s)
@@ -259,10 +252,8 @@ proc floatConflict(p: ModuleOrProc; s: PType or PSym;
 
   # copy the cache to the local module or proc if necessary
   if (when p is BProc: true else: m != p):
-    # cache the counter locally
-    p.sigConflicts[$key] = counter
-    # set the local name to prevent future conflict
-    p.sigConflicts[name] = m.sigConflicts[name]
+    p.sigConflicts[$key] = counter              # set the local counter
+    p.sigConflicts[name] = m.sigConflicts[name] # set the local name
 
   result = m.g.setName(m, s, result, sig)
 
@@ -273,28 +264,22 @@ proc shouldAddModuleName(s: PSym): bool =
   of skParam, skResult, skModule, skPackage, skTemp:
     result = false
   of skConst:
-    # NOTE: constants are effectively global
-    result = true
+    result = true        # NOTE: constants are effectively global
   of skProc:
-    # for linking reasons demonstrable in megatest
-    result = true
+    result = true        # for linking reasons demonstrable in megatest
   else:
     if s.owner != nil and sfSystemModule in s.owner.flags:
-      # omit "system" in the interests of brevity
-      result = false
+      result = false     # omit "system" in the interests of brevity
     elif s.owner == nil or s.owner.kind in {skModule, skPackage}:
-      # the symbol is top-level; add the module name
-      result = true
+      result = true      # the symbol is top-level; add the module name
     elif {sfGlobal, sfGeneratedOp} * s.flags != {}:
-      # the symbol is top-level; add the module name
-      result = true
+      result = true      # the symbol is top-level; add the module name
     elif s.kind == skForVar:
       # forvars get special handling due to the fact that they
       # can, in rare and stupid cases, be globals...
       result = false
     elif sfExported in s.flags:
-      # exports get their source module appended
-      result = true
+      result = true      # exports get their source module appended
 
 proc shortKind(k: TTypeKind): string =
   ## truncate longer type names
@@ -302,10 +287,9 @@ proc shortKind(k: TTypeKind): string =
   result = toLowerAscii($k)
   removePrefix(result, "ty")
   result = case k
-  # handle der usual suspects especialment
-  of threeLetterShorties:
+  of threeLetterShorties:       # handle der usual suspects especialment
     result[0 .. 2]
-  elif len(result) > 4:  # elide vowels to shrink it
+  elif len(result) > 4:         # elide vowels to shrink it
     if result[0] in vowels:
       # if it starts with a vowel, keep that letter; think `Opnrry`, `Unt32`
       $result[0] & split(result[1..^1], vowels).join("")
@@ -326,14 +310,12 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   of tyProc, tyTuple:
     # these can figure into the signature though they may not be exported
     # as types, so signature won't match when it comes time to link
-
-    # these are not just a c++ problem... m.config.backend == backendCpp:
-
-    # these need a signature-based name so that type signatures match :-(
-    #if typ.len != 0 or typ.lastSon != nil:
-    #  shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
-    #else:
-    shortKind(typ.kind) & $hashTypeDef(typ)
+    #[
+      if typ.len != 0 or typ.lastSon != nil:
+        shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
+      else:
+    ]#
+    shortKind(typ.kind) & $conflictSig(typ)
   else:
     shortKind(typ.kind)
 
@@ -341,28 +323,20 @@ proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string =
   ## Come up with a name for any PType; shorten makes it shorter. 😉
   var typ = typ.skipTypes(irrelevantForNaming)
   if typ.sym == nil or typ.kind notin symbolicTypes:
-    # we have to come up with our own name...
-    naiveTypeName(p, typ, shorten = shorten)
+    naiveTypeName(p, typ, shorten = shorten)    # invent our own name...
   elif shorten:
-    # do the complete mangle but only use the first "word"
-    mangle(p, typ.sym).split("_")[0]
+    mangle(p, typ.sym).split("_")[0]            # only use the first "word"
   else:
-    # use the complete type symbol mangle
-    mangle(p, typ.sym)
+    mangle(p, typ.sym)                          # use the entire type sym
 
 proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## Should we add the first argument's type to the mangle?  If yes, DO IT.
   result = s.kind in routineKinds
   if result:
-    # disabled for now because i can't figure out how to handle aliases
-    when addFirstParamToProcs:
-      if s.typ != nil:
-        if s.typ.sons.len >= 2:
-          # avoid including the conflictKey of the 1st param
-          name.add_and typeName(p, s.typ.sons[1], shorten = true)
-    else:
-      # procs are distinguished with an extra _ to prevent type clash
-      name.add "_"
+    if s.typ != nil:
+      if s.typ.sons.len >= 2:
+        # avoid including the conflictKey of the 1st param
+        name.add_and typeName(p, s.typ.sons[1], shorten = true)
 
 proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
   ## `true` if the symbol is a source of link collisions; if so,
@@ -456,11 +430,11 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): BName =
   ## occurence, which may have been incremented for this instance.
   let m = getem()
   let key = conflictKey(s)
+  let sig = conflictSig(s)
 
   # for now, use the global registry everywhere if possible
-  let sig = sigHash(s)
-  if m.g.hasName(key, sig):
-    return m.g.name(key, sig)
+  if tryGet(m.g, key, sig, result):
+    return
 
   # we often mangle it anew, which is kinda sad
   var name = mangle(p, s)
@@ -470,9 +444,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): BName =
       if m.g.config.symbolFiles != disabledSf:
         # we can use the IC cache to determine the right name and counter
         # for this symbol, but only for module-level manglings
-
-        if m.g.hasName(key, sig):
-          result = m.g.name(key, sig)
+        discard tryGet(m.g, key, sig, result)
         break
 
     if atModuleScope(p, s):
@@ -518,23 +490,6 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
           [ $conflictKey(s), s.name.s, $result,
            if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
 
-when false:
-  proc getCachedTypeName*(m: BModule; sig: SigHash): Rope {.deprecated.} =
-    ## Try to get a cached type name from any and all modules.
-    # there's a good chance it's in the local cache
-    result = cacheGetType(m.typeCache, sig)
-    if result == nil:
-      # else, search the caches of the other modules
-      for peer in items(m.g.modules):
-        if peer != nil:
-          # skip checking our own cache again
-          if peer != m:
-            result = cacheGetType(peer.typeCache, sig)
-            if result != nil:
-              break
-    # instantiate a new rope for mutation reasons
-    result = rope $result
-
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
   ## Retrieve (or produce) a useful name for the given type; this is what
   ## codegen uses exclusively.
@@ -566,55 +521,29 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
   # this is temporary, but the goal here is to explicitly show
   # the control flow that demonstrates the needed logic for types
 
-  let tsig = hashTypeDef(t)
+  let tsig = conflictSig(t)
   var counter = -1
   var r = hackAroundGlobalRegistryCollisions(m, t, tsig, name, counter)
 
-  # name is "foo"
-  # r is "foo_#"
-  try:
-    if m.g.hasName(conflictKey(typ), sig):
-      result = m.g.name(conflictKey(typ), sig)
-    else:
-      if m.g.hasName(conflictKey(t), tsig):
-        result = m.g.name(conflictKey(t), tsig)
-        when debugMangle:
-          assert $result == $r,
-            "cached " & $result & " doesn't match new mangle " & $r
-        if conflictKey(t) != conflictKey(typ):
-          discard m.g.setName(m, typ, result, sig)
-      else:
-        if atModuleScope(p, t):
-          # make sure we use the source module for any type requested
-          result = floatConflict(p, t, name, conflictKey(t))
-          # cache the name globally; r is foo_#
-          if not m.g.hasName(conflictKey(t), tsig):
-            result = m.g.setName(m, t, result, tsig)
-          if conflictKey(t) != conflictKey(typ):
-            # cache the name for the input type and signature
-            #if not m.g.hasName(conflictKey(typ), sig):
-            discard m.g.setName(m, typ, result, sig)
-        else:
-          assert false, "unsupported"
-  except:
-    when debugMangle:
-      echo "input sig: ", $sig
-      echo "name ", name, " counter ", counter, " result ", result
-      echo "it failed and the input was as follows:"
-      debug typ
-      echo "also the computed type was:"
-      debug t
-    raise
+  block:
+    # name is "foo"
+    # r is "foo_#"
 
-  when debugMangle:
-    if inspect in $result:
-      echo "type mangle used:"
-      debug t
-      echo "=> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(t)
-      echo "original type mangle:"
-      debug typ
-      result.add $conflictKey(typ)
-      echo "-> ", conflictKey(m), " >> ", $result, spaces(4), $hashTypeDef(typ)
+    if tryGet(m.g, conflictKey(typ), sig, result):
+      # found cached name from input type
+      break
+
+    if tryGet(m.g, conflictKey(t), tsig, result):
+      # found cached name from refined type
+      if conflictKey(t) != conflictKey(typ):
+        # cache the name for the input type and signature
+        discard m.g.setName(m, typ, result, sig)
+      break
+
+    assert atModuleScope(p, t), "we're not prepared to scope types"
+
+    # make sure we use the source module for any type requested
+    result = floatConflict(p, t, name, conflictKey(t))
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
