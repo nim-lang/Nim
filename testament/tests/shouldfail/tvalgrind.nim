@@ -8,7 +8,7 @@ cmd: "nim $target --gc:arc -d:useMalloc $options $file"
 when defined(linux) and sizeof(int) == 8:
   # discarding this allocation will cause valgrind to fail (which is what we
   # want), but valgrind only runs on 64-bit Linux machines...
-  discard alloc(0)
+  discard alloc(1)
 else:
   # ...so on all other OS/architectures, simulate any non-zero exit code to
   # mimic how valgrind would have failed on this test. We cannot use things like
