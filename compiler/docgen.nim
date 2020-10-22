@@ -777,8 +777,7 @@ type DocFlags = enum
   kDefault
   kForceExport
 
-proc genSeeSrcRope(d: PDoc, path: string, line: int): Rope=
-  var seeSrcRope: Rope = nil
+proc genSeeSrcRope(d: PDoc, path: string, line: int): Rope =
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
     let path = relativeTo(AbsoluteFile path, AbsoluteDir getCurrentDir(), '/')
@@ -794,10 +793,9 @@ proc genSeeSrcRope(d: PDoc, path: string, line: int): Rope=
         else: "version-$1-$2" % [$NimMajor, $NimMinor]
       let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
       let develBranch = getConfigVar(d.conf, "git.devel", "devel")
-      dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
+      dispA(d.conf, result, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
           ["path", "line", "url", "commit", "devel"], [rope path.string,
           rope($line), rope gitUrl, rope commit, rope develBranch])])
-  return seeSrcRope
 
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
