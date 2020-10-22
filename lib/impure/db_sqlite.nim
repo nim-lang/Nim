@@ -242,10 +242,15 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared): SqlPrepared {.since: (1, 3).
 
 proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
-    setLen(r[col], column_bytes(stmt, col)) # set capacity
-    setLen(r[col], 0)
-    let x = column_text(stmt, col)
-    if not isNil(x): add(r[col], x)
+    let cb = column_bytes(stmt, col)
+    setLen(r[col], cb) # set capacity
+    if column_type(stmt, col) == SQLITE_BLOB:
+      copyMem(addr(r[col][0]), column_blob(stmt, col), cb)
+    else:
+      # setLen(r[col], 0)
+      # it seems weird to use setLen(0) after setLen(cb)
+      let x = column_text(stmt, col)
+      if not isNil(x): add(r[col], x)
 
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
@@ -288,7 +293,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   finally:
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
-iterator fastRows*(db: DbConn, stmtName: SqlPrepared): Row 
+iterator fastRows*(db: DbConn, stmtName: SqlPrepared): Row
                   {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   discard setupQuery(db, stmtName)
   var L = (column_count(stmtName.PStmt))
@@ -491,7 +496,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   for r in fastRows(db, query, args):
     result.add(r)
 
-proc getAllRows*(db: DbConn, stmtName: SqlPrepared): seq[Row] 
+proc getAllRows*(db: DbConn, stmtName: SqlPrepared): seq[Row]
                 {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   result = @[]
   for r in fastRows(db, stmtName):
@@ -524,7 +529,7 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ##    db.close()
   for r in fastRows(db, query, args): yield r
 
-iterator rows*(db: DbConn, stmtName: SqlPrepared): Row 
+iterator rows*(db: DbConn, stmtName: SqlPrepared): Row
               {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   for r in fastRows(db, stmtName): yield r
 
@@ -558,13 +563,17 @@ proc getValue*(db: DbConn, query: SqlQuery,
     if cb == 0:
       result = ""
     else:
-      result = newStringOfCap(cb)
-      add(result, column_text(stmt, 0))
+      if column_type(stmt, 0) == SQLITE_BLOB:
+        result.setLen(cb)
+        copyMem(addr(result[0]), column_blob(stmt, 0), cb)
+      else:
+        result = newStringOfCap(cb)
+        add(result, column_text(stmt, 0))
   else:
     result = ""
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
-proc getValue*(db: DbConn,  stmtName: SqlPrepared): string 
+proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
               {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   var stmt = setupQuery(db, stmtName).PStmt
   if step(stmt) == SQLITE_ROW:
@@ -572,8 +581,12 @@ proc getValue*(db: DbConn,  stmtName: SqlPrepared): string
     if cb == 0:
       result = ""
     else:
-      result = newStringOfCap(cb)
-      add(result, column_text(stmt, 0))
+      if column_type(stmt, 0) == SQLITE_BLOB:
+        result.setLen(cb)
+        copyMem(addr(result[0]), column_blob(stmt, 0), cb)
+      else:
+        result = newStringOfCap(cb)
+        add(result, column_text(stmt, 0))
   else:
     result = ""
 
@@ -671,7 +684,7 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   exec(db, query, args)
   result = changes(db)
 
-proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared): int64 
+proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared): int64
                       {.tags: [ReadDbEffect, WriteDbEffect],since: (1, 3).} =
   exec(db, stmtName)
   result = changes(db)
@@ -723,7 +736,7 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
-proc finalize*(sqlPrepared:SqlPrepared) {.discardable, since: (1, 3).} = 
+proc finalize*(sqlPrepared:SqlPrepared) {.discardable, since: (1, 3).} =
   discard finalize(sqlPrepared.PStmt)
 
 template dbBindParamError*(paramIdx: int, val: varargs[untyped]) =
@@ -756,7 +769,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) {.since: (1, 3).} 
     dbBindParamError(paramIdx, val)
 
 proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
-  ## Sets the bindparam at the specified paramIndex to null 
+  ## Sets the bindparam at the specified paramIndex to null
   ## (default behaviour by sqlite).
   if bind_null(ps.PStmt, paramIdx.int32) != SQLITE_OK:
     dbBindParamError(paramIdx)
