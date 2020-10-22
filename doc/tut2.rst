@@ -457,7 +457,7 @@ If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
 also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim ``doc2``
+find out the list of exceptions raised by a proc is to use the Nim ``doc``
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.

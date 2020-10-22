@@ -73,7 +73,7 @@ Advanced options:
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
-  --project                 document the whole project (doc2)
+  --project                 document the whole project (doc)
   --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
                             generates: docs/sub/main.html
                             if path == @pkg, will use nimble file enclosing dir
@@ -85,7 +85,7 @@ Advanced options:
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
                             else, runs runnableExamples with given options, e.g.:
                             `--docCmd:"-d:foo --threads:on"`
-  --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
+  --docSeeSrcUrl:url        activate 'see source' for doc command
                             (see doc.item.seesrc in config/nimdoc.cfg)
   --docInternal             also generate documentation for non-exported symbols
   --lineDir:on|off          generation of #line directive on|off

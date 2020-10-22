@@ -516,7 +516,7 @@ can be read in the `Nim Backend Integration document <backends.html>`_.
 Nim documentation tools
 =======================
 
-Nim provides the `doc`:idx: and `doc2`:idx: commands to generate HTML
+Nim provides the `doc`:idx: command to generate HTML
 documentation from ``.nim`` source files. Only exported symbols will appear in
 the output. For more details `see the docgen documentation <docgen.html>`_.
 

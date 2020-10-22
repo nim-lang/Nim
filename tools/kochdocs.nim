@@ -265,7 +265,7 @@ proc buildDoc(nimArgs, destPath: string) =
       [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
-    commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
