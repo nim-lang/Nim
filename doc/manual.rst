@@ -2592,6 +2592,17 @@ been declared with the `discardable`:idx: pragma:
 
   p(3, 4) # now valid
 
+however the discardable pragma does not work on templates as templates substitute the AST in place. For example:
+
+.. code-block:: nim
+  {.push discardable .}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  example()
+
+This template will resolve into "https://nim-lang.org" which is a string literal and since {.discardable.} doesn't apply to literals, the compiler will error.
+
 An empty ``discard`` statement is often used as a null statement:
 
 .. code-block:: nim
