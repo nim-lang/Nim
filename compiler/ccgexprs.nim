@@ -2328,10 +2328,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t, skVar)])
   of mAlignOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t)])
+    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t, skVar)])
   of mOffsetOf:
     var dotExpr: PNode
     if e[1].kind == nkDotExpr:
@@ -2341,7 +2341,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
-    let tname = getTypeDesc(p.module, t)
+    let tname = getTypeDesc(p.module, t, skVar)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
