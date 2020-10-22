@@ -1229,15 +1229,15 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
   of mNIdent: genUnaryABC(c, n, dest, opcNIdent)
   of mNGetType:
-      let tmp = c.genx(n[1])
-      if dest < 0: dest = c.getTemp(n.typ)
-      let rc = case n[0].sym.name.s:
-        of "getType": 0
-        of "typeKind": 1
-        of "getTypeInst": 2
-        else: 3  # "getTypeImpl"
-      c.gABC(n, opcNGetType, dest, tmp, rc)
-      c.freeTemp(tmp)
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n.typ)
+    let rc = case n[0].sym.name.s:
+      of "getType": 0
+      of "typeKind": 1
+      of "getTypeInst": 2
+      else: 3  # "getTypeImpl"
+    c.gABC(n, opcNGetType, dest, tmp, rc)
+    c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNSizeOf:
     let imm = case n[0].sym.name.s:
