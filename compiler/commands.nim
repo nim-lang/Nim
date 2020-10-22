@@ -396,8 +396,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   var
     key, val: string
   case switch.normalize
-  of "input", "i": # PRTEMP
-    expectArg(conf, switch, arg, pass, info)
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
     for path in nimbleSubs(conf, arg):
