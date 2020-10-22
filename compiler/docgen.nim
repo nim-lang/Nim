@@ -777,6 +777,26 @@ type DocFlags = enum
   kDefault
   kForceExport
 
+proc genSeeSrcRope(d: PDoc, path: string, line: int): Rope =
+  let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
+  if docItemSeeSrc.len > 0:
+    let path = relativeTo(AbsoluteFile path, AbsoluteDir getCurrentDir(), '/')
+    when false:
+      let cwd = canonicalizePath(d.conf, getCurrentDir())
+      var path = path
+      if path.startsWith(cwd):
+        path = path[cwd.len+1..^1].replace('\\', '/')
+    let gitUrl = getConfigVar(d.conf, "git.url")
+    if gitUrl.len > 0:
+      let defaultBranch =
+        if NimPatch mod 2 == 1: "devel"
+        else: "version-$1-$2" % [$NimMajor, $NimMinor]
+      let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
+      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
+      dispA(d.conf, result, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
+          ["path", "line", "url", "commit", "devel"], [rope path.string,
+          rope($line), rope gitUrl, rope commit, rope develBranch])])
+
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
@@ -822,26 +842,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms}, symbolOrIdEncRope)
 
-  var seeSrcRope: Rope = nil
-  let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
-  if docItemSeeSrc.len > 0:
-    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), AbsoluteDir getCurrentDir(), '/')
-    when false:
-      let cwd = canonicalizePath(d.conf, getCurrentDir())
-      var path = toFullPath(d.conf, n.info)
-      if path.startsWith(cwd):
-        path = path[cwd.len+1..^1].replace('\\', '/')
-    let gitUrl = getConfigVar(d.conf, "git.url")
-    if gitUrl.len > 0:
-      let defaultBranch =
-        if NimPatch mod 2 == 1: "devel"
-        else: "version-$1-$2" % [$NimMajor, $NimMinor]
-      let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
-      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
-      dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
-          ["path", "line", "url", "commit", "devel"], [rope path.string,
-          rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
-
+  let seeSrcRope = genSeeSrcRope(d, toFullPath(d.conf, n.info), n.info.line.int)
   d.section[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
@@ -1234,10 +1235,11 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
                    "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
+  let seeSrcRope = genSeeSrcRope(d, d.filename, 1)
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
