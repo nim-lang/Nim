@@ -586,8 +586,6 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
-    let paramType = fntyp.n[i].typ
-    if paramType != nil and paramType.kind == tyTypeDesc: continue
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.len:
@@ -1231,15 +1229,15 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
   of mNIdent: genUnaryABC(c, n, dest, opcNIdent)
   of mNGetType:
-    let tmp = c.genx(n[1])
-    if dest < 0: dest = c.getTemp(n.typ)
-    let rc = case n[0].sym.name.s:
-      of "getType": 0
-      of "typeKind": 1
-      of "getTypeInst": 2
-      else: 3  # "getTypeImpl"
-    c.gABC(n, opcNGetType, dest, tmp, rc)
-    c.freeTemp(tmp)
+      let tmp = c.genx(n[1])
+      if dest < 0: dest = c.getTemp(n.typ)
+      let rc = case n[0].sym.name.s:
+        of "getType": 0
+        of "typeKind": 1
+        of "getTypeInst": 2
+        else: 3  # "getTypeImpl"
+      c.gABC(n, opcNGetType, dest, tmp, rc)
+      c.freeTemp(tmp)
     #genUnaryABC(c, n, dest, opcNGetType)
   of mNSizeOf:
     let imm = case n[0].sym.name.s:
@@ -1925,20 +1923,21 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-  for i in 0..<n.len:
-    let it = n[i]
-    if it.kind == nkExprColonExpr:
-      let idx = genField(c, it[0])
-      let tmp = c.genx(it[1])
-      c.preventFalseAlias(it[1], opcWrObj,
-                          dest, idx, tmp)
-      c.freeTemp(tmp)
-    else:
-      let tmp = c.genx(it)
-      c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
-      c.freeTemp(tmp)
+  if n.typ.kind != tyTypeDesc:
+    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+    # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
+    for i in 0..<n.len:
+      let it = n[i]
+      if it.kind == nkExprColonExpr:
+        let idx = genField(c, it[0])
+        let tmp = c.genx(it[1])
+        c.preventFalseAlias(it[1], opcWrObj,
+                            dest, idx, tmp)
+        c.freeTemp(tmp)
+      else:
+        let tmp = c.genx(it)
+        c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
+        c.freeTemp(tmp)
 
 proc genProc*(c: PCtx; s: PSym): int
 
