@@ -17,7 +17,7 @@ import
   pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
-from strutils import cmpIgnoreStyle, contains
+from strutils import cmpIgnoreStyle, contains, startsWith
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
@@ -110,7 +110,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
-      setResult(a, osproc.execCmd getString(a, 0))
+      var cmd = getString(a, 0)
+      if graph.config.nimExecReplace.len > 0:
+        let prefix = "nim "
+        if cmd.startsWith prefix:
+          cmd = graph.config.nimExecReplace.quoteShell & " " & cmd[prefix.len..^1]
+      setResult(a, osproc.execCmd cmd)
 
   cbconf getEnv:
     setResult(a, os.getEnv(a.getString 0, a.getString 1))

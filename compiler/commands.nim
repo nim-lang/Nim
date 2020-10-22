@@ -769,6 +769,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "cc":
     expectArg(conf, switch, arg, pass, info)
     setCC(conf, arg, info)
+  of "nimexecreplace":
+    conf.nimExecReplace = if arg.len == 0: getAppFilename() else: arg
   of "track":
     expectArg(conf, switch, arg, pass, info)
     track(conf, arg, info)

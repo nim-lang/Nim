@@ -69,6 +69,9 @@ Advanced options:
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
   --cc:SYMBOL               specify the C compiler
+  --nimExecReplacec:exe    `exec("nim args...")` calls in nimscript are replaced
+                            by changing nim to `exe`, or `getAppFilename()` when `exe`
+                            is not specified
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library

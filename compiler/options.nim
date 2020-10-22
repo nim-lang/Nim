@@ -246,6 +246,7 @@ type
     evalMacroCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
+    nimExecReplace*: string
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
