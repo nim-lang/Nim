@@ -27,6 +27,7 @@ import
   os, strutils, parseopt, osproc, streams
 
 import tools / kochdocs
+import tools / deps
 
 const VersionAsString = system.NimVersion
 
@@ -115,6 +116,7 @@ proc copyExe(source, dest: string) =
 
 const
   compileNimInst = "tools/niminst/niminst"
+  distDir = "dist"
 
 proc csource(args: string) =
   nimexec(("cc $1 -r $3 --var:version=$2 --var:mingw=none csource " &
@@ -122,45 +124,17 @@ proc csource(args: string) =
        [args, VersionAsString, compileNimInst])
 
 proc bundleC2nim(args: string) =
-  if not dirExists("dist/c2nim/.git"):
-    exec("git clone https://github.com/nim-lang/c2nim.git dist/c2nim")
+  cloneDependency(distDir, "https://github.com/nim-lang/c2nim.git")
   nimCompile("dist/c2nim/c2nim",
              options = "--noNimblePath --path:. " & args)
 
 proc bundleNimbleExe(latest: bool, args: string) =
-  if not dirExists("dist/nimble/.git"):
-    exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  if not latest:
-    withDir("dist/nimble"):
-      exec("git fetch")
-      exec("git checkout " & NimbleStableCommit)
+  let commit = if latest: "HEAD" else: NimbleStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git",
+                  commit = commit, allowBundled = true)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
-             options = "-d:release --nilseqs:on " & args)
-
-proc buildNimble(latest: bool, args: string) =
-  # if koch is used for a tar.xz, build the dist/nimble we shipped
-  # with the tarball:
-  var installDir = "dist/nimble"
-  if not latest and dirExists(installDir) and not dirExists("dist/nimble/.git"):
-    discard "don't do the git dance"
-  else:
-    if not dirExists("dist/nimble/.git"):
-      if dirExists(installDir):
-        var id = 0
-        while dirExists("dist/nimble" & $id):
-          inc id
-        installDir = "dist/nimble" & $id
-      exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-    withDir(installDir):
-      if latest:
-        exec("git checkout -f master")
-        exec("git pull")
-      else:
-        exec("git fetch")
-        exec("git checkout " & NimbleStableCommit)
-  nimCompile(installDir / "src/nimble.nim",
-             options = "--noNimblePath --nilseqs:on -d:release " & args)
+             options = "-d:release --noNimblePath --nilseqs:on " & args)
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
@@ -318,10 +292,10 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
-      [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
-      [nimi, args, smartNimcache]
+    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, smartNimcache, args]
+    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -479,7 +453,7 @@ proc runCI(cmd: string) =
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release -d:danger")
+  kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
@@ -491,7 +465,7 @@ proc runCI(cmd: string) =
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
-    buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+    buildTools()
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -628,13 +602,13 @@ when isMainModule:
       of "temp": temp(op.cmdLineRest)
       of "xtemp": xtemp(op.cmdLineRest)
       of "wintools": bundleWinTools(op.cmdLineRest)
-      of "nimble": buildNimble(latest, op.cmdLineRest)
+      of "nimble": bundleNimbleExe(latest, op.cmdLineRest)
       of "nimsuggest": bundleNimsuggest(op.cmdLineRest)
       of "toolsnonimble":
         buildTools(op.cmdLineRest)
       of "tools":
         buildTools(op.cmdLineRest)
-        buildNimble(latest, op.cmdLineRest)
+        bundleNimbleExe(latest, op.cmdLineRest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
