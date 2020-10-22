@@ -760,7 +760,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       # See tmissingderef. So we get rid of the deref instead. The codegen
       # ends up using 'memcpy' for the array assignment,
       # so the '&' and '*' cancel out:
-      putIntoDest(p, d, lodeTyp(a.t[0]), rdLoc(a), a.storage)
+      putIntoDest(p, d, e, rdLoc(a), a.storage)
     else:
       putIntoDest(p, d, e, "(*$1)" % [rdLoc(a)], a.storage)
 
