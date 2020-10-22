@@ -586,9 +586,8 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
-    #if i > 0 and i < fntyp.len:
-    #  let paramType = fntyp.n[i]
-    #  if paramType.typ.isCompileTimeOnly: continue
+    let paramType = fntyp.n[i].typ
+    if paramType != nil and paramType.kind == tyTypeDesc: continue
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.len:
