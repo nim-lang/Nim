@@ -1022,6 +1022,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
+    lit ",\L\"projectIsCmd\": "
+    lit $(%* conf.projectIsCmd)
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
@@ -1051,9 +1053,14 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       return true
     if not data.hasKey("stdinInput"): return true
     let stdinInput = data["stdinInput"].getBool
+    let projectIsCmd = data["projectIsCmd"].getBool
     if conf.projectIsStdin or stdinInput:
       # could optimize by returning false if stdin input was the same,
       # but I'm not sure how to get full stding input
+      return true
+
+    if conf.projectIsCmd or projectIsCmd:
+      # PRTEMP compare cmdInput
       return true
 
     let depfilesPairs = data["depfiles"]

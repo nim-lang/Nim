@@ -82,6 +82,13 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
+
+  template processModuleAux =
+    var s: PLLStream
+    if sfMainModule in flags:
+      if graph.config.projectIsStdin: s = stdin.llStreamOpen 
+      elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
+    discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     result = loadModuleSym(graph, fileIdx, filename)
@@ -91,15 +98,13 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       registerModule(graph, result)
     else:
       partialInitModule(result, graph, fileIdx, filename)
-    discard processModule(graph, result, idGeneratorFromModule(result),
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    processModuleAux()
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
-    discard processModule(graph, result, idGeneratorFromModule(result),
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    processModuleAux()
     graph.markClientsDirty(fileIdx)
 
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
@@ -134,9 +139,12 @@ proc compileSystemModule*(graph: ModuleGraph) =
     discard graph.compileModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
 proc wantMainModule*(conf: ConfigRef) =
-  if conf.projectFull.isEmpty:
-    fatal(conf, newLineInfo(conf, AbsoluteFile(commandLineDesc), 1, 1), errGenerated,
-        "command expects a filename")
+  template bail(msg) =
+    fatal(conf, newLineInfo(conf, AbsoluteFile(commandLineDesc), 1, 1), errGenerated, msg)
+  if conf.projectIsCmd:
+    if conf.cmdInput.len == 0: # PRTEMP
+      bail "--input expects a command"
+  elif conf.projectFull.isEmpty: bail "command expects a filename"
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =

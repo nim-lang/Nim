@@ -41,7 +41,9 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
-  if self.supportsStdinFile and conf.projectName == "-":
+  if conf.projectIsCmd and conf.projectName in ["-", ""]:
+    handleCmdInput(conf)
+  elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
     try:
