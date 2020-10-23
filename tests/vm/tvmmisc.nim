@@ -231,6 +231,35 @@ block:
   doAssert e == @[]
   doAssert f == @[]
 
+block: # bug #10815
+  block:
+    # this used to crash
+    type
+      Opcode = enum
+        iChar, iSet
+      Inst = object
+        case code: Opcode
+          of iChar:
+            c: char
+          of iSet:
+            cs: set[char]
+
+      Patt = seq[Inst]
+    proc `$`(p: Patt): string =
+      discard
+    proc P(): Patt =
+      result.add Inst(code: iSet)
+    const a = P()
+    doAssert $a == ""
+
+  block:
+    # probably used to crash
+    type CharSet {.union.} = object 
+      cs: set[char]
+      vs: array[4, uint64]
+    const a = Charset(cs: {'a'..'z'})
+    doAssert a.repr.len > 0
+
 import tables
 
 block: # bug #8007
@@ -281,3 +310,4 @@ block: # bug #8007
   # OK with seq & object variants
   const d = @[Cost(kind: Fixed, cost: 999), Cost(kind: Dynamic, handler: foo)]
   doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
+
