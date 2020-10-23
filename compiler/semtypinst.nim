@@ -302,8 +302,11 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
 
 proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
-  result = copyType(t, nextId(cl.c.idgen), t.owner)
-  #cl.typeMap.topLayer.idTablePut(result, t)
+  if cl.allowMetaTypes:
+    result = t.exactReplica
+  else:
+    result = copyType(t, nextId(cl.c.idgen), t.owner)
+    #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
   result.flags.incl tfFromGeneric

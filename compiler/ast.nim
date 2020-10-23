@@ -934,6 +934,8 @@ type
     loc*: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
+    uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
+                              # required by the --incremental:on mode.
 
   TPair* = object
     key*, val*: RootRef
@@ -1373,7 +1375,8 @@ proc `$`*(s: PSym): string =
 proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
   result = PType(kind: kind, owner: owner, size: defaultSize,
                  align: defaultAlignment, itemId: id,
-                 lockLevel: UnspecifiedLockLevel)
+                 lockLevel: UnspecifiedLockLevel,
+                 uniqueId: id)
   when false:
     if result.id == 76426:
       echo "KNID ", kind
@@ -1419,6 +1422,9 @@ proc copyType*(t: PType, id: ItemId, owner: PSym): PType =
   result = newType(t.kind, id, owner)
   assignType(result, t)
   result.sym = t.sym          # backend-info should not be copied
+
+proc exactReplica*(t: PType): PType =
+  result = copyType(t, t.itemId, t.owner)
 
 proc copySym*(s: PSym; id: ItemId): PSym =
   result = newSym(s.kind, s.name, id, s.owner, s.info, s.options)

@@ -738,14 +738,16 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         case typ.kind
         of tyStatic:
           param = paramSym skConst
-          param.typ = copyType(typ, nextId(c.idgen), typ.owner)
+          param.typ = typ.exactReplica
+          #copyType(typ, nextId(c.idgen), typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
             param.ast = typ.n
         of tyUnknown:
           param = paramSym skVar
-          param.typ = copyType(typ, nextId(c.idgen), typ.owner)
+          param.typ = typ.exactReplica
+          #copyType(typ, nextId(c.idgen), typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -796,7 +798,8 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = copyType(ff, nextId(c.idgen), ff.owner)
+    result = ff.exactReplica
+    #copyType(ff, nextId(c.idgen), ff.owner)
 
   result.n = checkedBody
 
@@ -1501,18 +1504,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyGenericInvocation:
     var x = a.skipGenericAlias
 
-    when false:
-      var preventHack = false
-      if x.kind == tyOwned and f[0].kind != tyOwned:
-        preventHack = true
-        x = x.lastSon
-      # XXX: This is very hacky. It should be moved back into liftTypeParam
-      if x.kind in {tyGenericInst, tyArray} and
-        c.calleeSym != nil and
-        c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
-        let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
-        #echo "inferred ", typeToString(inst), " for ", f
-        return typeRel(c, inst, a, flags)
+    var preventHack = false
+    if x.kind == tyOwned and f[0].kind != tyOwned:
+      preventHack = true
+      x = x.lastSon
+    # XXX: This is very hacky. It should be moved back into liftTypeParam
+    if x.kind in {tyGenericInst, tyArray} and
+      c.calleeSym != nil and
+      c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
+      let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
+      #echo "inferred ", typeToString(inst), " for ", f
+      return typeRel(c, inst, a, flags)
 
     if x.kind == tyGenericInvocation:
       if f[0] == x[0]:
