@@ -2180,9 +2180,14 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #deallocShared($1.p);$n" &
-        "}$n", [rdLoc(a)])
+      if optThreads in p.config.globalOptions:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #deallocShared($1.p);$n" &
+          "}$n", [rdLoc(a)])
+      else:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #dealloc($1.p);$n" &
+          "}$n", [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)

@@ -204,3 +204,29 @@ block: # bug #13081
   doAssert j1.x1 == 12
   static:
     doAssert j1.x1 == 12
+
+# bug #15363
+import sequtils
+
+block:
+  func identity(a: bool): bool = a
+
+  var a: seq[bool] = static:
+      newSeq[bool](0).mapIt(it) # segfaults
+  var b: seq[bool] = static:
+      newSeq[bool](0).filterIt(it) # does not segfault
+  var c: seq[bool] = static:
+      newSeq[bool](0).map(identity) # does not segfault
+  var d: seq[bool] = static:
+      newSeq[bool](0).map(proc (a: bool): bool = false) # segfaults
+  var e: seq[bool] = static:
+      newSeq[bool](0).filter(identity) # does not segfault
+  var f: seq[bool] = static:
+      newSeq[bool](0).filter(proc (a: bool): bool = false) # segfaults
+
+  doAssert a == @[]
+  doAssert b == @[]
+  doAssert c == @[]
+  doAssert d == @[]
+  doAssert e == @[]
+  doAssert f == @[]

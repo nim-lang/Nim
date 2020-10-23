@@ -9,6 +9,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 ## Community
 
 [![Join the IRC chat][badge-nim-irc]][nim-irc]
+[![Join the Discord server][badge-nim-discord]][nim-discord]
 [![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
 [![Get help][badge-nim-forum-gethelp]][nim-forum]
 [![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
@@ -17,10 +18,12 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 * The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
 * [#nim IRC Channel (Freenode)][nim-irc] - a place to discuss Nim in real-time.
   Also where most development decisions get made.
+* [Discord][nim-discord] - an additional place to discuss Nim in real-time. Most
+  channels there are bridged to IRC.
 * [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
   is a bridge between Gitter and the IRC channel.
 * [Telegram][nim-telegram] - an additional place to discuss Nim in real-time. There
-  is the official Telegram channel.
+  is the official Telegram channel. Not bridged to IRC.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
 * [Github Wiki][nim-wiki] - Misc user-contributed content.
@@ -211,6 +214,7 @@ Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 [nim-twitter]: https://twitter.com/nim_lang
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
+[nim-discord]: https://discord.gg/nim
 [nim-gitter]: https://gitter.im/nim-lang/Nim
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim
@@ -220,6 +224,7 @@ Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 [csources-repo]: https://github.com/nim-lang/csources
 [badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
+[badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square
 [badge-nim-gitter]: https://img.shields.io/badge/chat-on_gitter-blue.svg?style=flat-square
 [badge-nim-forum-gethelp]: https://img.shields.io/badge/Forum-get%20help-4eb899.svg?style=flat-square
 [badge-nim-twitter]: https://img.shields.io/twitter/follow/nim_lang.svg?style=social

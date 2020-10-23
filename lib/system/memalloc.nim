@@ -174,7 +174,7 @@ when hasAlloc and not defined(js):
     ## from a shared heap.
     cast[ptr T](realloc(p, T.sizeof * newSize))
 
-  template dealloc*(p: pointer) =
+  proc dealloc*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
     ## Frees the memory allocated with ``alloc``, ``alloc0`` or
     ## ``realloc``.
     ##
