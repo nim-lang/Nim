@@ -306,12 +306,11 @@ when hasAlloc and not defined(js):
 
   
   template needsAlignmentOnPlatform(align: int): bool = 
-    when defined(amd64):
-      when defined(useMalloc): align > 16
+    when defined(useMalloc):
+      when defined(amd64): align > 16
       else: align > 8
-    elif defined(windows):
-      when defined(useMalloc): align > 4
-      else: align > 8
+    else:
+      align > MemAlign
 
   proc alignedAlloc(size, align: Natural): pointer =
     if not needsAlignmentOnPlatform(align):
