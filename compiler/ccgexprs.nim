@@ -1278,11 +1278,11 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
 
   if optTinyRtti in p.config.globalOptions:
     if needsInit:
-      b.r = ropecg(p.module, "($1) #nimNewObj($2)",
-          [getTypeDesc(p.module, typ), sizeExpr])
+      b.r = ropecg(p.module, "($1) #nimNewObj($2, NIM_ALINGOF($3))",
+          [getTypeDesc(p.module, typ), sizeExpr, getTypeDesc(p.module, bt)])
     else:
-      b.r = ropecg(p.module, "($1) #nimNewObjUninit($2)",
-          [getTypeDesc(p.module, typ), sizeExpr])
+      b.r = ropecg(p.module, "($1) #nimNewObjUninit($2, NIM_ALIGN_OF($3))",
+          [getTypeDesc(p.module, typ), sizeExpr, getTypeDesc(p.module, bt)])
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfoV1(p.module, typ, a.lode.info)
@@ -2213,7 +2213,7 @@ proc genDispose(p: BProc; n: PNode) =
       if elemType.destructor != nil:
         var destroyCall = newNodeI(nkCall, n.info)
         genStmts(p, destroyCall)
-      lineCg(p, cpsStmts, ["#nimRawDispose($#)", rdLoc(a)])
+      lineFmt(p, cpsStmts, "#nimRawDispose($1, NIM_ALIGNOF($2))", [rdLoc(a), getTypeDesc(p.module, elemType)])
     else:
       # ``nimRawDisposeVirtual`` calls the ``finalizer`` which is the same as the
       # destructor, but it uses the runtime type. Afterwards the memory is freed:

@@ -160,10 +160,10 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       let hdrSize = align(sizeof(RefHeader), alignment)
       alignedDealloc(p -! hdrSize, alingment)
 
-template dispose*[T](x: owned(ref T), alignment: int) = nimRawDispose(cast[pointer](x), alignment)
+template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
-proc nimDestroyAndDispose(p: pointer, alignment: int) {.compilerRtl, raises: [].} =
+proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   let d = cast[ptr PNimTypeV2](p)[].destructor
   if d != nil: cast[DestructorProc](d)(p)
   when false:
@@ -173,7 +173,7 @@ proc nimDestroyAndDispose(p: pointer, alignment: int) {.compilerRtl, raises: [].
       cstderr.rawWrite "bah, nil\n"
     else:
       cstderr.rawWrite "has destructor!\n"
-  nimRawDispose(p, alignment)
+  nimRawDispose(p, d.align)
 
 when defined(gcOrc):
   when defined(nimThinout):
