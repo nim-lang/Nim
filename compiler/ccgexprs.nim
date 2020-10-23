@@ -2187,7 +2187,7 @@ proc genDestroy(p: BProc; n: PNode) =
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #alignedDealloc($1.p, ((NI)NIM_ALIGNOF($2))"
+        " #alignedDealloc($1.p, ((NI)NIM_ALIGNOF($2))" &
         "}$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"

@@ -345,14 +345,16 @@ when hasAlloc and not defined(js):
         result = reallocShared0(p, oldSize, newSize)
       else:
         result = realloc0(p, oldSize, newSize)
-    else: 
-      when compileOption("threads"):
-        let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
-      else:
-        let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
-      let offset = int8(align - (cast[int](base) and (align - 1)))
-      base[offset - 1] = offset
-      result = base[offset].addr
+    else:
+      result = nil
+      # when compileOption("threads"):
+      #   let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
+      # else:
+      #   let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
+      # result = base
+      # let offset = int8(align - (cast[int](base) and (align - 1)))
+      # base[offset - 1] = offset
+      # result = base[offset].addr
 
   proc alignedDealloc(p: pointer, align: int) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} = 
     if not needsAlignment(align):
