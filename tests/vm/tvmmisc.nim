@@ -230,3 +230,54 @@ block:
   doAssert d == @[]
   doAssert e == @[]
   doAssert f == @[]
+
+import tables
+
+block: # bug #8007
+  type
+    CostKind = enum
+      Fixed,
+      Dynamic
+
+    Cost = object
+      case kind*: CostKind
+      of Fixed:
+        cost*: int
+      of Dynamic:
+        handler*: proc(value: int): int {.nimcall.}
+
+  proc foo(value: int): int {.nimcall.} =
+    sizeof(value)
+
+  const a: array[2, Cost] =[
+    Cost(kind: Fixed, cost: 999),
+    Cost(kind: Dynamic, handler: foo)
+  ]
+
+  # OK with arrays & object variants
+  doAssert $a == "[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
+
+  const b: Table[int, Cost] = {
+    0: Cost(kind: Fixed, cost: 999),
+    1: Cost(kind: Dynamic, handler: foo)
+  }.toTable
+
+  # KO with Tables & object variants
+  # echo b # {0: (kind: Fixed, cost: 0), 1: (kind: Dynamic, handler: ...)} # <----- wrong behaviour
+  doAssert $b == "{0: (kind: Fixed, cost: 999), 1: (kind: Dynamic, handler: ...)}"
+
+  const c: Table[int, int] = {
+    0: 100,
+    1: 999
+  }.toTable
+
+  # OK with Tables and primitive int
+  doAssert $c == "{0: 100, 1: 999}"
+
+  # For some reason the following gives
+  #    Error: invalid type for const: Cost
+  const d0 = Cost(kind: Fixed, cost: 999)
+
+  # OK with seq & object variants
+  const d = @[Cost(kind: Fixed, cost: 999), Cost(kind: Dynamic, handler: foo)]
+  doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
