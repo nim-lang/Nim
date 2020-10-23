@@ -29,6 +29,11 @@ for _ in 1..1000:
   isAlignedCheck(x[0].addr, alignof(m256d))
   res.add x
 
+var res2: seq[m256d]
+for i in 1..10000:
+  res2.setLen(res2.len + 1) # check if realloc works
+  isAlignedCheck(res2[0].addr, alignof(m256d))  
+
 proc lambdaGen(a, b: float, z: ref m256d) : auto =
   var x1 = new(m256d)
   var x2 = new(m256d)
