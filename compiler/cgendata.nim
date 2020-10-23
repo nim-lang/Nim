@@ -398,8 +398,7 @@ proc bumpCounter*(g: BModuleList; key: ConflictKey; sig: SigHash; to: int) =
 proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
                                                       name: BNameInput;
                                                       key: ConflictKey;
-                                                      sig: SigHash): bool
-  {.deprecated: "hack".} =
+                                                      sig: SigHash): bool =
   ## XXX: remove me; used by the mangler to skip global names
   ##      previously defined in unrelated modules...
   let name = BName $name

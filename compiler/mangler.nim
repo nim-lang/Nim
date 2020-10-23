@@ -176,8 +176,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
                                         s: PType or PSym;
                                         sig: SigHash;
                                         name: string;
-                                        counter: var int): BName
-  {.deprecated: "hack".} =
+                                        counter: var int): BName =
   let m = getem()
   var key = conflictKey(s)
   var broken = false
