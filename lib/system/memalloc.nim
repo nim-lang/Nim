@@ -355,7 +355,7 @@ when hasAlloc and not defined(js):
       when compileOption("threads"):
         deallocShared(addr pbyte[-offset])
       else:
-        deallocShared(addr pbyte[-offset])
+        dealloc(addr pbyte[-offset])
 
   proc alignedRealloc(p: pointer, oldSize, newSize, align: Natural): pointer =
     if not needsAlignmentOnPlatform(align):
@@ -371,7 +371,7 @@ when hasAlloc and not defined(js):
 
   template `+!`(p: pointer, s: int): pointer =
     cast[pointer](cast[int](p) +% s)
-    
+
   proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
     if not needsAlignmentOnPlatform(align):
       when compileOption("threads"):
