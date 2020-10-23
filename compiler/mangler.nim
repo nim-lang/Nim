@@ -114,23 +114,12 @@ template maybeAddCounter(result: typed; p: PType or PSym; count: int) =
       else:
         ""
 
-proc `[]`(conflicts: var ConflictsTable; s: string): int =
-  # missing key values are -1; missing names are 0
-  result = getOrDefault(conflicts, s, if s[0].isDigit: -1 else: 0)
-
-proc `[]=`(conflicts: var ConflictsTable; s: string; v: int) =
-  # key values are at least 0; name values are at least 1
-  let v = max(v, if s[0].isDigit: 0 else: 1)
-  if mgetOrPut(conflicts, s, v) < v:
-    tables.`[]=`(conflicts, s, v)
-
-proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
+proc getOrSet(p: ModuleOrProc; name: string; key: ConflictKey): int =
   ## Add/get a mangled name from the scope's conflicts table and return
   ## the number of conflicts for that name at the time of its insertion.
   template conflicts(): var ConflictsTable = p.sigConflicts
-  let key = $key
 
-  result = getOrDefault(conflicts, key, -1)
+  result = conflicts[key]
   if result == -1:
     when debugMangle:
       if startsWith(name, inspect):
@@ -142,7 +131,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
           echo "getorset (proc) ", p.prc.name.s
 
     # start counting at zero so we can omit an initial append
-    result = getOrDefault(conflicts, name, 0)
+    result = conflicts[name]
     # set the value for the name to indicate the NEXT available counter
     conflicts[name] = result + 1
     # cache the association between key and result
@@ -150,7 +139,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
 
     when debugMangle:
       if startsWith(name, inspect):
-        echo "getorset at ", $conflictKey(p), " for ", name, " with key ", key, " is ", result
+        echo "getorset at ", conflictKey(p), " for ", name, " with key ", key, " is ", result
 
   else:
     # set the value for the name to indicate the NEXT available counter
@@ -166,7 +155,7 @@ proc getOrSet(p: ModuleOrProc; name: string; key: int): int =
 
 template purgeConflict(m: ModuleOrProc; key: ConflictKey) =
   ## Remove a cached symbol or type identity from a conflicts table.
-  del m.sigConflicts, $key
+  del(m.sigConflicts, key)
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym or PType) =
   ## Remove a cached symbol or type from a conflicts table.
@@ -181,7 +170,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
   var key = conflictKey(s)
   var broken = false
   when s is PType:
-    broken = $key in m.sigConflicts
+    broken = key in m.sigConflicts
     # if we already have this key cached, then we'll use the original key
     # so that we don't confuse our local cache in the getOrSet operation
     key = unaliasTypeBySignature(m.g, key, sig)
@@ -239,8 +228,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
       echo "the collision hack chose counter ", counter, " for ", name
     echo "collision hack yielding ", result
 
-proc floatConflict(p: ModuleOrProc; s: PType or PSym;
-                   name: string; key: ConflictKey): BName =
+proc floatConflict(p: ModuleOrProc; s: PType or PSym; name: string): BName =
   ## Mix a local name into any parent scopes of `s`.
   var m = getem()
   m = findPendingModule(m, s)   # redirect to the source module for `s`
@@ -251,7 +239,7 @@ proc floatConflict(p: ModuleOrProc; s: PType or PSym;
 
   # copy the cache to the local module or proc if necessary
   if (when p is BProc: true else: m != p):
-    p.sigConflicts[$key] = counter              # set the local counter
+    p.sigConflicts[s] = counter                 # set the local counter
     p.sigConflicts[name] = m.sigConflicts[name] # set the local name
 
   result = m.g.setName(m, s, result, sig)
@@ -455,7 +443,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): BName =
     if atModuleScope(p, s):
       # critically, we must check for conflicts at the source module
       # in the event a global symbol is actually foreign to `p`
-      result = floatConflict(p, s, name, key)
+      result = floatConflict(p, s, name)
       if not m.g.hasName(key, sig):
         result = m.g.setName(m, s, result, sig)
       break
@@ -548,7 +536,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
     assert atModuleScope(p, t), "we're not prepared to scope types"
 
     # make sure we use the source module for any type requested
-    result = floatConflict(p, t, name, conflictKey(t))
+    result = floatConflict(p, t, name)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -580,7 +568,7 @@ proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
   else:
     name = tempNameForLabel(m, id)
     # make sure it's not in the conflicts table under a different id
-    assert getOrDefault(m.sigConflicts, name, 1) == 1
+    assert m.sigConflicts[name] == 1
     # make sure it's in the conflicts table with the NEXT available counter
     m.sigConflicts[name] = 1
 

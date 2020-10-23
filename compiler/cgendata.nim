@@ -140,7 +140,10 @@ type
                             # not a list of IDs nor can it be made to be one.
     nameCache: MangleCache
 
-  ConflictsTable* = Table[string, int]
+  ConflictsTable* = object
+    names: Table[string, int]
+    identities: Table[int, int]
+
   ConflictKey* = int
 
   # this mangling stuff is intentionally verbose; err on side of caution!
@@ -225,7 +228,6 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
-  result.sigConflicts = initTable[string, int]()
 
 template getem*() =
   # get a BModule when we might only have a BProc
@@ -311,8 +313,11 @@ proc newMangling(m: BModule; p: PSym or PType; name: BNameInput;
         BName $name
       else:
         BName name
-  result = Mangling(key: conflictKey(p), sig: sig, module: m.module.id,
-                    immutable: hasImmutableName(p), name: name)
+  when defined(release):
+    result = Mangling(key: conflictKey(p), sig: sig, name: name)
+  else:
+    result = Mangling(key: conflictKey(p), sig: sig, module: m.module.id,
+                      immutable: hasImmutableName(p), name: name)
 
 proc nextMangling(man: Mangling; m: BModule; p: PSym or PType;
                   name: BNameInput; sig: SigHash): Mangling =
@@ -359,7 +364,8 @@ proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
 
         # the sig can differ in, eg. the case of CFile -> FILE where
         # two types with differing signatures both import the same name
-        #assert man.sig == sig, "input sig " & $sig & " doesn't match " & $man.sig
+        #assert man.sig == sig,
+        #  "input sig " & $sig & " doesn't match " & $man.sig
         assert man.name == g.nameCache.identities[key]
       except:
         echo "looking for key ", key, " with sig ", sig
@@ -441,6 +447,50 @@ when not defined(release):
 
 proc cacheGetType*(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type
-  # since types are now unique via the ``getUniqueType`` mechanism, this slow
-  # linear search is not necessary anymore:
+  # since types are now unique via the ``getUniqueType`` mechanism, this
+  # slow linear search is not necessary anymore:
   result = tab.getOrDefault(sig)
+
+proc `[]`*(conflicts: ConflictsTable; key: ConflictKey): int =
+  ## pending IC, this will be removed
+  getOrDefault(conflicts.identities, key, -1)
+
+proc `[]`*(conflicts: ConflictsTable; p: PSym or PType): int =
+  ## pending IC, this will be removed
+  conflicts[conflictKey(p)]
+
+proc `[]`*(conflicts: ConflictsTable; s: string): int =
+  ## pending IC, this will be removed
+  getOrDefault(conflicts.names, s, 0)
+
+proc `[]=`*(conflicts: var ConflictsTable; key: ConflictKey; v: int) =
+  ## pending IC, this will be removed
+  let v = max(v, 0)
+  if mgetOrPut(conflicts.identities, key, v) < v:
+    conflicts.identities[key] = v
+
+proc `[]=`*(conflicts: var ConflictsTable; p: PSym or PType; v: int) =
+  ## pending IC, this will be removed
+  conflicts[conflictKey(p)] = v
+
+proc `[]=`*(conflicts: var ConflictsTable; s: string; v: int) =
+  ## pending IC, this will be removed
+  let v = max(v, 1)
+  if mgetOrPut(conflicts.names, s, v) < v:
+    conflicts.names[s] = v
+
+proc contains*(conflicts: ConflictsTable; key: ConflictKey): bool =
+  ## pending IC, this will be removed
+  key in conflicts.identities
+
+proc contains*(conflicts: ConflictsTable; p: PSym or PType): bool =
+  ## pending IC, this will be removed
+  conflictKey(p) in conflicts
+
+proc contains*(conflicts: ConflictsTable; name: string): bool =
+  ## pending IC, this will be removed
+  conflicts[name] > 0
+
+proc del*(conflicts: var ConflictsTable; key: ConflictKey) =
+  ## pending IC, this will be removed
+  del(conflicts.identities, key)

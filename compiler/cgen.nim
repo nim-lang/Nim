@@ -1803,7 +1803,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.forwTypeCache = initTable[SigHash, Rope]()
   result.module = module
   result.typeInfoMarker = initTable[SigHash, Rope]()
-  result.sigConflicts = initTable[string, int]()
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newProc(nil, result)
