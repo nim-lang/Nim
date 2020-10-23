@@ -52,6 +52,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       if p.val.len > 0:
         config.commandLine.add ':'
         config.commandLine.add p.val.quoteShell
+
       if p.key == "": # `-` was passed to indicate main project is stdin
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break

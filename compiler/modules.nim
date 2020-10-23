@@ -86,7 +86,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   template processModuleAux =
     var s: PLLStream
     if sfMainModule in flags:
-      if graph.config.projectIsStdin: s = stdin.llStreamOpen 
+      if graph.config.projectIsStdin: s = stdin.llStreamOpen
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
@@ -139,12 +139,9 @@ proc compileSystemModule*(graph: ModuleGraph) =
     discard graph.compileModule(graph.config.m.systemFileIdx, {sfSystemModule})
 
 proc wantMainModule*(conf: ConfigRef) =
-  template bail(msg) =
-    fatal(conf, newLineInfo(conf, AbsoluteFile(commandLineDesc), 1, 1), errGenerated, msg)
-  if conf.projectIsCmd:
-    if conf.cmdInput.len == 0: # PRTEMP
-      bail "--input expects a command"
-  elif conf.projectFull.isEmpty: bail "command expects a filename"
+  if conf.projectFull.isEmpty:
+    fatal(conf, newLineInfo(conf, AbsoluteFile(commandLineDesc), 1, 1), errGenerated,
+        "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =

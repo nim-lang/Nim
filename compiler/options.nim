@@ -247,6 +247,8 @@ type
     exitcode*: int8
     cmd*: TCommands  # the command
     cmdInput*: string  # input command
+    projectIsCmd*: bool # whether we're compiling from a command input
+    implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
@@ -293,8 +295,6 @@ type
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    projectIsCmd*: bool # whether we're compiling from a command input
-    implicitCmd*: bool # whether some flag triggered an implicit `command`
     lastMsgWasDot*: bool # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
@@ -442,7 +442,6 @@ proc newConfigRef*(): ConfigRef =
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: AbsoluteFile"", # projectPath/projectName
     projectIsStdin: false, # whether we're compiling from stdin
-    projectIsCmd: false,
     projectMainIdx: FileIndex(0'i32), # the canonical path id of the main module
     command: "", # the main command (e.g. cc, check, scan, etc)
     commandArgs: @[], # any arguments after the main command
