@@ -305,12 +305,16 @@ when hasAlloc and not defined(js):
     deallocShared(p)
 
   
-  template needsAlignment(a: int): bool = 
-    when sizeof(int) == 4: a > 8
-    else: a > 16
+  template needsAlignmentOnPlatform(align: int): bool = 
+    when defined(amd64):
+      when defined(useMalloc): align > 16
+      else: align > 8
+    elif defined(windows):
+      when defined(useMalloc): align > 4
+      else: align > 8
 
   proc alignedAlloc(size, align: Natural): pointer =
-    if not needsAlignment(align):
+    if not needsAlignmentOnPlatform(align):
       when compileOption("threads"):
         result = allocShared(size)
       else:
@@ -325,7 +329,7 @@ when hasAlloc and not defined(js):
       result = base[offset].addr
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if not needsAlignment(align):
+    if not needsAlignmentOnPlatform(align):
       when compileOption("threads"):
         result = allocShared0(size)
       else:
@@ -339,25 +343,8 @@ when hasAlloc and not defined(js):
       base[offset - 1] = offset
       result = base[offset].addr
 
-  proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
-    if not needsAlignment(align):
-      when compileOption("threads"):
-        result = reallocShared0(p, oldSize, newSize)
-      else:
-        result = realloc0(p, oldSize, newSize)
-    else:
-      result = nil
-      # when compileOption("threads"):
-      #   let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
-      # else:
-      #   let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
-      # result = base
-      # let offset = int8(align - (cast[int](base) and (align - 1)))
-      # base[offset - 1] = offset
-      # result = base[offset].addr
-
   proc alignedDealloc(p: pointer, align: int) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} = 
-    if not needsAlignment(align):
+    if not needsAlignmentOnPlatform(align):
       when compileOption("threads"):
         deallocShared(p)
       else:
@@ -369,6 +356,33 @@ when hasAlloc and not defined(js):
         deallocShared(addr pbyte[-offset])
       else:
         deallocShared(addr pbyte[-offset])
+
+  proc alignedRealloc(p: pointer, oldSize, newSize, align: Natural): pointer =
+    if not needsAlignmentOnPlatform(align):
+      when compileOption("threads"):
+        result = reallocShared(p, newSize)
+      else:
+        result = realloc(p, newSize)
+    else:
+      result = alignedAlloc(newSize, align)
+      copyMem(result, p, oldSize)
+      alignedDealloc(p, align)
+
+
+  template `+!`(p: pointer, s: int): pointer =
+    cast[pointer](cast[int](p) +% s)
+    
+  proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
+    if not needsAlignmentOnPlatform(align):
+      when compileOption("threads"):
+        result = reallocShared0(p, oldSize, newSize)
+      else:
+        result = realloc0(p, oldSize, newSize)
+    else:
+      result = alignedAlloc(newSize, align)
+      copyMem(result, p, oldSize)
+      zeroMem(result +! oldSize, newSize - oldSize)
+      alignedDealloc(p, align)
 
   {.pop.}
 
