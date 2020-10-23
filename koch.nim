@@ -15,7 +15,7 @@ const
 
 when not defined(windows):
   const
-    Z3StableCommit = "65de3f748a6812eecd7db7c478dcd5fc54424d368b" # the version of Z3 that DrNim uses
+    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):

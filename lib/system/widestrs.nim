@@ -27,7 +27,10 @@ when defined(nimv2):
 
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
-      deallocShared(a.data)
+      when compileOption("threads"):
+        deallocShared(a.data)
+      else:
+        dealloc(a.data)
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
@@ -37,7 +40,10 @@ when defined(nimv2):
 
   proc createWide(a: var WideCStringObj; bytes: int) =
     a.bytes = bytes
-    a.data = cast[typeof(a.data)](allocShared0(bytes))
+    when compileOption("threads"):
+      a.data = cast[typeof(a.data)](allocShared0(bytes))
+    else:
+      a.data = cast[typeof(a.data)](alloc0(bytes))
 
   template `[]`*(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
   template `[]=`*(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val

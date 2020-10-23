@@ -883,7 +883,7 @@ type
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
     when hasFFI:
-      cname*: string          # resolved C declaration name in importc decl, eg:
+      cname*: string          # resolved C declaration name in importc decl, e.g.:
                               # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope

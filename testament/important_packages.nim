@@ -42,7 +42,7 @@ pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
 pkg1 "ggplotnim", true, "nim c -d:noCairo -r tests/tests.nim"
 # pkg1 "gittyup", true, "nimble test", "https://github.com/disruptek/gittyup"
-pkg1 "glob"
+# pkg1 "glob" # pending https://github.com/citycide/glob/issues/49
 pkg1 "gnuplot", false, "nim c gnuplot.nim"
 pkg1 "hts", false, "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth", true

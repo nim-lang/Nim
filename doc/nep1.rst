@@ -149,7 +149,7 @@ changed in the future.
   an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
 
 
-- Use `subjectVerb`, not `verbSubject`, eg: `fileExists`, not `existsFile`.
+- Use `subjectVerb`, not `verbSubject`, e.g.: `fileExists`, not `existsFile`.
 
 The stdlib API is designed to be **easy to use** and consistent. Ease of use is
 measured by the number of calls to achieve a concrete high level action. The

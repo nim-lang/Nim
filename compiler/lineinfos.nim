@@ -69,6 +69,7 @@ type
     hintUser, hintUserRaw,
     hintExtendedContext,
     hintMsgOrigin, # since 1.3.5
+    hintDeclaredLoc, # since 1.5.1
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -159,6 +160,7 @@ const
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
     hintMsgOrigin: "$1",
+    hintDeclaredLoc: "$1",
   ]
 
 const
@@ -186,7 +188,7 @@ const
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
-    "User", "UserRaw", "ExtendedContext", "MsgOrigin",
+    "User", "UserRaw", "ExtendedContext", "MsgOrigin", "DeclaredLoc"
   ]
 
 const
@@ -215,7 +217,7 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores}
-  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}

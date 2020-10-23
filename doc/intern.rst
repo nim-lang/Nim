@@ -125,7 +125,7 @@ you can rebuild the compiler as follows:
 A faster approach if you don't need to run the full bootstrapping implied by `koch boot`,
 is the following:
 * `pathto/nim c --lib:lib -d:release -o:bin/nim_temp compiler/nim.nim`
-Where `pathto/nim` is any nim binary sufficiently recent (eg `bin/nim_cources`
+Where `pathto/nim` is any nim binary sufficiently recent (e.g. `bin/nim_cources`
 built during bootstrap or `$HOME/.nimble/bin/nim` installed by `choosenim 1.2.0`)
 
 You can pass any additional options such as `-d:leanCompiler` if you don't need

@@ -586,9 +586,6 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
-    #if i > 0 and i < fntyp.len:
-    #  let paramType = fntyp.n[i]
-    #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.len:
@@ -1926,20 +1923,21 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-  for i in 0..<n.len:
-    let it = n[i]
-    if it.kind == nkExprColonExpr:
-      let idx = genField(c, it[0])
-      let tmp = c.genx(it[1])
-      c.preventFalseAlias(it[1], opcWrObj,
-                          dest, idx, tmp)
-      c.freeTemp(tmp)
-    else:
-      let tmp = c.genx(it)
-      c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
-      c.freeTemp(tmp)
+  if n.typ.kind != tyTypeDesc:
+    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+    # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
+    for i in 0..<n.len:
+      let it = n[i]
+      if it.kind == nkExprColonExpr:
+        let idx = genField(c, it[0])
+        let tmp = c.genx(it[1])
+        c.preventFalseAlias(it[1], opcWrObj,
+                            dest, idx, tmp)
+        c.freeTemp(tmp)
+      else:
+        let tmp = c.genx(it)
+        c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
+        c.freeTemp(tmp)
 
 proc genProc*(c: PCtx; s: PSym): int
 
