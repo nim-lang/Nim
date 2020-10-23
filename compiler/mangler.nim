@@ -107,12 +107,9 @@ proc isNimOrCKeyword*(w: PIdent): bool =
     false
 
 template maybeAddCounter(result: typed; p: PType or PSym; count: int) =
-  if not p.hasImmutableName:
-    add_and result:
-      if count > 0:
-        $count
-      else:
-        ""
+  if count > 0:
+    if not p.hasImmutableName:
+      add_and result, $count
 
 proc getOrSet(p: ModuleOrProc; name: string; key: ConflictKey): int =
   ## Add/get a mangled name from the scope's conflicts table and return
