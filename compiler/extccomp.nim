@@ -1024,6 +1024,8 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit $(%* conf.projectIsStdin)
     lit ",\L\"projectIsCmd\": "
     lit $(%* conf.projectIsCmd)
+    lit ",\L\"cmdInput\": "
+    lit $(%* conf.cmdInput)
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
@@ -1060,8 +1062,10 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       return true
 
     if conf.projectIsCmd or projectIsCmd:
-      # PRTEMP compare cmdInput
-      return true
+      if not (conf.projectIsCmd and projectIsCmd): return true
+      if not data.hasKey("cmdInput"): return true
+      let cmdInput = data["cmdInput"].getStr
+      if cmdInput != conf.cmdInput: return true
 
     let depfilesPairs = data["depfiles"]
     doAssert depfilesPairs.kind == JArray
