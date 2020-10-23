@@ -304,7 +304,8 @@ when hasAlloc and not defined(js):
     ## or other memory may be corrupted.
     deallocShared(p)
 
-  
+  include bitmasks  
+
   template needsAlignmentOnPlatform(align: int): bool = 
     when defined(useMalloc):
       when defined(amd64): align > 16

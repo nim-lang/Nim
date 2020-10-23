@@ -638,7 +638,9 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   if isFinal(elemType):
     addDestructorCall(c, elemType, actions, genDeref(x, nkDerefExpr))
-    actions.add callCodegenProc(c.g, "nimRawDispose", c.info, x, genBuiltin(c.g, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType)))
+    var alignOf = genBuiltin(c.g, mAlignOf, "alignof", newNodeIT(nkType, c.info, elemType))
+    alignOf.typ = getSysType(c.g, c.info, tyInt)
+    actions.add callCodegenProc(c.g, "nimRawDispose", c.info, x, alignOf)
   else:
     addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
