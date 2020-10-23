@@ -158,14 +158,15 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       freedCells.incl head(p)
     else:
       let hdrSize = align(sizeof(RefHeader), alignment)
-      alignedDealloc(p -! hdrSize, alingment)
+      alignedDealloc(p -! hdrSize, alignment)
 
 template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
-  let d = cast[ptr PNimTypeV2](p)[].destructor
-  if d != nil: cast[DestructorProc](d)(p)
+  let rti = cast[ptr PNimTypeV2](p)
+  if rti.destructor != nil: 
+    cast[DestructorProc](rti.destructor)(p)
   when false:
     cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
     cstderr.rawWrite "\n"
@@ -173,7 +174,7 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
       cstderr.rawWrite "bah, nil\n"
     else:
       cstderr.rawWrite "has destructor!\n"
-  nimRawDispose(p, d.align)
+  nimRawDispose(p, rti.align)
 
 when defined(gcOrc):
   when defined(nimThinout):

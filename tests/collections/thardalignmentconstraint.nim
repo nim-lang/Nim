@@ -1,5 +1,7 @@
 discard """
-disabled: true
+disabled: "arm64"
+cmd: "nim c --gc:arc $file"
+output: "y"
 """
 
 # does not yet work
