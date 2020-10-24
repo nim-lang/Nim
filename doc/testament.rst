@@ -104,6 +104,10 @@ Example "template" **to edit** and write a Testament unittest:
     output: ""
     outputsub: ""
 
+    # Whether to sort the output lines before comparing them to the desired
+    # output.
+    sortoutput: true
+
     # Each line in the stringgiven here appear in the same order in the
     # compiler output, but there may be more lines that appear before, after, or
     # in between them.
