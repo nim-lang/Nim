@@ -1831,7 +1831,6 @@ proc `$`*(address: IpAddress): string =
           if not afterLeadingZeros:
             result.add '0'
 
-            result.add('0')
           printedLastGroup = true
 
 proc dial*(address: string, port: Port,
