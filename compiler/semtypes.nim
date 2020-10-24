@@ -385,7 +385,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
           localError(c.config, n.info, errTypeExpected)
           return errorSym(c, n)
         result = result.typ.sym.copySym(nextId c.idgen)
-        result.typ = copyType(result.typ, nextId c.idgen, result.owner)
+        result.typ = exactReplica(result.typ)
         result.typ.flags.incl tfUnresolved
 
       if result.kind == skGenericParam:
@@ -1085,7 +1085,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0..<paramType.len - 1:
       if paramType[i].kind == tyStatic:
-        var staticCopy = copyType(paramType[i], nextId c.idgen, paramType[i].owner)
+        var staticCopy = paramType[i].exactReplica
         staticCopy.flags.incl tfInferrableStatic
         result.rawAddSon staticCopy
       else:
