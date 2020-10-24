@@ -31,9 +31,9 @@ Options:
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  -e, --eval:cmd            evaluates (compiles and runs) nim code directly
-                            implies `e` (nimscript) if no command is provided, but
-                            customizable and works with all other flags.
+  -e, --eval:cmd            evaluates nim code directly; e.g.: `nim -e:"echo 1"`
+                            defaults to `e` (nimscript) but customizable:
+                            `nim r -e:'for a in stdin.lines: echo a'`
   --fullhelp                show all command line switches
   -h, --help                show this help
   -v, --version             show detailed version information
