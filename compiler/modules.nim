@@ -91,16 +91,14 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       registerModule(graph, result)
     else:
       partialInitModule(result, graph, fileIdx, filename)
-    var idgen = IdGenerator(module: result.itemId.module, item: result.itemId.item)
-    discard processModule(graph, result, idgen,
+    discard processModule(graph, result, idGeneratorFromModule(result),
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
-    var idgen = IdGenerator(module: result.itemId.module, item: result.itemId.item)
-    discard processModule(graph, result, idgen,
+    discard processModule(graph, result, idGeneratorFromModule(result),
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
     graph.markClientsDirty(fileIdx)
 

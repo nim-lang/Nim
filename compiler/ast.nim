@@ -1078,6 +1078,10 @@ type
 const
   PackageModuleId* = -3'i32
 
+proc idGeneratorFromModule*(m: PSym): IdGenerator =
+  assert m.kind == skModule
+  result = IdGenerator(module: m.itemId.module, item: m.itemId.item)
+
 proc nextId*(x: IdGenerator): ItemId {.inline.} =
   inc x.item
   result = x[]
