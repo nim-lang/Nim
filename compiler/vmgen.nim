@@ -1508,7 +1508,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let tmp = c.genx(ri)
     c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
     c.freeTemp(tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX, see nkDotExpr
     c.freeTemp(objR)
   of nkDotExpr:
     let dest = c.genx(le[0], {gfNode})
