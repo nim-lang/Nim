@@ -258,7 +258,7 @@ func foo(input: string): int =
   try:
     parseInt(input)
   except:
-    0
+    return
 
 func foo2(b, input: string): int =
   case b:
