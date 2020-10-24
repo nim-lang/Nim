@@ -9,12 +9,15 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default Testament looks for test files on ``"./tests/*.nim"``,
-you can overwrite this pattern glob using ``pattern <glob>``,
-the default working directory path can be changed using ``--directory:"folder/subfolder/"``.
+By default Testament looks for test files on ``"./tests/*.nim"``.
+You can overwrite this pattern glob using ``pattern <glob>``.
+The default working directory path can be changed using
+``--directory:"folder/subfolder/"``.
 
-Testament uses the nim compiler on ``PATH`` you can change that using ``--nim:"folder/subfolder/nim"``,
-running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on ``PATH``.
+Testament uses the ``nim`` compiler on ``PATH``.
+You can change that using ``--nim:"folder/subfolder/nim"``.
+Running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on
+``PATH``.
 
 
 Options
