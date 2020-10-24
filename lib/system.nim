@@ -929,7 +929,7 @@ when defined(nimHasDefault):
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*[T](x: typedesc[T]): T {.magic: "Default", noSideEffect.}
+  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
   proc reset*[T](obj: var T) {.noSideEffect.} =
