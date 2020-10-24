@@ -512,23 +512,31 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       let involveNimble = url == "" or useHead
 
       if not dirExists(buildPath):
-        if useHead:
-          let (cloneCmd, cloneOutput, cloneStatus) = execCmdEx2("git", ["clone", url, buildPath])
-          if cloneStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "git clone failed:\n$ " & cloneCmd & "\n" & cloneOutput, reInstallFailed)
+        let (cloneCmd, cloneOutput, cloneStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        if cloneStatus != QuitSuccess:
+          r.addResult(test, targetC, "", cloneCmd & "\n" & cloneOutput, reInstallFailed)
+          continue
+
+        if not useHead:
+          let (fetchCmd, fetchOutput, fetchStatus) = execCmdEx2("git", ["fetch", "--tags"], workingDir = buildPath)
+          if fetchStatus != QuitSuccess:
+            r.addResult(test, targetC, "", fetchCmd & "\n" & fetchOutput, reInstallFailed)
             continue
 
-          let (installDepsCmd, installDepsOutput, installDepsStatus) = execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
-          if installDepsStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
+          let (describeCmd, describeOutput, describeStatus) = execCmdEx2("git", ["describe", "--tags", "--abbrev=0"], workingDir = buildPath)
+          if describeStatus != QuitSuccess:
+            r.addResult(test, targetC, "", describeCmd & "\n" & describeOutput, reInstallFailed)
             continue
 
-        else:
-          #XXX: This doesn't actually work, since nimble develop always installs head :/
-          let (developCmd, developOutput, status) = execCmdEx2("nimble", ["develop", name, "-y"], workingDir = packagesDir)
-          if status != QuitSuccess:
-            r.addResult(test, targetC, "", "nimble develop failed:\n$ " & developCmd & "\n" & developOutput, reInstallFailed)
+          let (checkoutCmd, checkoutOutput, checkoutStatus) = execCmdEx2("git", ["checkout", describeOutput.strip], workingDir = buildPath)
+          if checkoutStatus != QuitSuccess:
+            r.addResult(test, targetC, "", checkoutCmd & "\n" & checkoutOutput, reInstallFailed)
             continue
+
+        let (installDepsCmd, installDepsOutput, installDepsStatus) = execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
+        if installDepsStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
+          continue
 
       let cmdArgs = parseCmdLine(cmd)
 
