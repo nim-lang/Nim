@@ -452,22 +452,6 @@ type
     ppOne
     ppTwo
 
-proc makeSupTest(test, options: string, cat: Category): TTest =
-  result.cat = cat
-  result.name = test
-  result.options = options
-  result.startTime = epochTime()
-
-proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
-  ## retry `action` up to `maxRetry` times with exponential backoff and initial
-  ## duraton of `backoffDuration` seconds
-  var t = backoffDuration
-  for i in 0..<maxRetry:
-    if action(): return true
-    if i == maxRetry - 1: break
-    sleep(int(t * 1000))
-    t *= 2 # exponential backoff
-
 iterator listPackages(part: PkgPart): tuple[name, cmd, url: string, useHead: bool] =
   let packageList = parseFile(packageIndex)
   let importantList =
@@ -488,6 +472,22 @@ iterator listPackages(part: PkgPart): tuple[name, cmd, url: string, useHead: boo
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
+
+proc makeSupTest(test, options: string, cat: Category): TTest =
+  result.cat = cat
+  result.name = test
+  result.options = options
+  result.startTime = epochTime()
+
+proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
+  ## retry `action` up to `maxRetry` times with exponential backoff and initial
+  ## duraton of `backoffDuration` seconds
+  var t = backoffDuration
+  for i in 0..<maxRetry:
+    if action(): return true
+    if i == maxRetry - 1: break
+    sleep(int(t * 1000))
+    t *= 2 # exponential backoff
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
