@@ -99,7 +99,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       inc i
     else:
       result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
-    result.add("\t#")
+    result.add("\t# ")
     result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
