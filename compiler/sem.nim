@@ -184,7 +184,7 @@ proc endsInNoReturn(n: PNode): bool =
   var it = n
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
     it = it.lastSon
-  result = it.kind in (nkLastBlockStmts-{nkReturnStmt}) or
+  result = it.kind in nkLastBlockStmts or
     it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc commonType*(c: PContext; x: PType, y: PNode): PType =
