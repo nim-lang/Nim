@@ -85,32 +85,66 @@ Example "template" **to edit** and write a Testament unittest:
 
   discard """
 
-    action: "run"     # What to do, one of "compile" OR "run".
+    # What actions to expect completion on.
+    # Options:
+    #   "compile"
+    #   "run"
+    #   "reject"
+    action: "run"
 
-    exitcode: 0       # This is the Exit Code the test should return, zero typically.
+    # The exit code that the test is expected to return. Typically, the default
+    # value of 0 is fine. Note that if the test will be run by valgrind, then
+    # the test will exit with either a code of 0 on success or 1 on failure.
+    exitcode: 0
 
-    output: ""        # This is the Standard Output the test should print, if any.
+    # Provide an `output` string to assert that the test prints to standard out
+    # exatly the expected string. Provide an `outputsub` string to assert that
+    # the string given here is a substring of the standard out output of the
+    # test.
+    output: ""
+    outputsub: ""
 
-    input:  ""        # This is the Standard Input the test should take, if any.
+    # This is the Standard Input the test should take, if any.
+    input: ""
 
-    errormsg: ""      # Error message the test should print, if any.
+    # Error message the test should print, if any.
+    errormsg: ""
 
-    batchable: true   # Can be run in batch mode, or not.
+    # Can be run in batch mode, or not.
+    batchable: true
 
-    joinable: true    # Can be run Joined with other tests to run all togheter, or not.
+    # Can be run Joined with other tests to run all togheter, or not.
+    joinable: true
 
+    # On Linux 64-bit machines, whether to use Valgrind to check for bad memory
+    # accesses or memory leaks. On other architectures, the test will be run
+    # as-is, without Valgrind.
+    # Options:
+    #   true: run the test with Valgrind
+    #   false: run the without Valgrind
+    #   "leaks": run the test with Valgrind, but do not check for memory leaks
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
-    cmd: "nim c -r $file" # Command the test should use to run.
+    # Command the test should use to run. If left out or an empty string is
+    # provided, the command is taken to be:
+    # "nim $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    # You can use the $target, $options, and $file placeholders in your own
+    # command, too.
+    cmd: "nim c -r $file"
 
-    maxcodesize: 666  # Maximum generated temporary intermediate code file size for the test.
+    # Maximum generated temporary intermediate code file size for the test.
+    maxcodesize: 666
 
-    timeout: 666      # Timeout microseconds to run the test.
+    # Timeout seconds to run the test. Fractional values are supported.
+    timeout: 1.5
 
-    target: "c js"    # Targets to run the test into (C, C++, JavaScript, etc).
+    # Targets to run the test into (C, C++, JavaScript, etc).
+    target: "c js"
 
-    disabled: "bsd"   # Disable the test by condition, here BSD is disabled just as an example.
-    disabled: "win"   # Can disable multiple OSes at once
+    # Conditions that will skip this test. Use of multiple "disabled" clauses
+    # is permitted.
+    disabled: "bsd"   # Can disable OSes...
+    disabled: "win"
     disabled: "32bit" # ...or architectures
     disabled: "i386"
     disabled: "azure" # ...or pipeline runners
