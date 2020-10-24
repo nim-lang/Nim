@@ -479,16 +479,6 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
-  ## retry `action` up to `maxRetry` times with exponential backoff and initial
-  ## duraton of `backoffDuration` seconds
-  var t = backoffDuration
-  for i in 0..<maxRetry:
-    if action(): return true
-    if i == maxRetry - 1: break
-    sleep(int(t * 1000))
-    t *= 2 # exponential backoff
-
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
@@ -508,8 +498,6 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       inc r.total
       var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
-
-      let involveNimble = url == "" or useHead
 
       if not dirExists(buildPath):
         let (cloneCmd, cloneOutput, cloneStatus) = execCmdEx2("git", ["clone", url, buildPath])
