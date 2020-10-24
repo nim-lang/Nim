@@ -478,6 +478,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
 
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   let packagesDir = "pkgstemp"
+  createDir(packagesDir)
   var errors = 0
   try:
     let importantList =
