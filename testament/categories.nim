@@ -507,17 +507,16 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
               continue
 
         else:
-          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", if useHead: name & "@#head" else: name, "-y"])
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", if useHead: name & "@#head" else: name, "-y"], workingDir = packagesDir)
           if installStatus != QuitSuccess:
             r.addResult(test, targetC, "", "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
             continue
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir = buildPath)
       if buildStatus != QuitSuccess:
-        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
-        r.addResult(test, targetC, "", message, reBuildFailed)
+        r.addResult(test, targetC, "", "package test failed\n$ " & buildCmdLine & "\n" & buildOutput, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
