@@ -1515,7 +1515,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let idx = genField(c, le[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX: idx is an immediate (field position), not a register
     c.freeTemp(tmp)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
