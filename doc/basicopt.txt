@@ -31,7 +31,7 @@ Options:
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  -e:cmd                    evaluates (compiles and runs) nim code directly
+  -e, --eval:cmd            evaluates (compiles and runs) nim code directly
                             implies `r` command if no command is provided.
   --fullhelp                show all command line switches
   -h, --help                show this help
