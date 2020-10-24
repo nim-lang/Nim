@@ -47,8 +47,6 @@ not very useful for production, but easy to understand:
   $ testament r test0
     PASS: tests/test0.nim C                                       ( 0.2 sec)
 
-  $
-
 
 Running all tests from a directory
 ==================================
@@ -56,6 +54,12 @@ Running all tests from a directory
 .. code::
 
   $ testament pattern "tests/*.nim"
+
+To recursively search for all tests in a directory, use
+
+.. code::
+
+  $ testament pattern "tests/**/*.nim"
 
 
 HTML Reports
