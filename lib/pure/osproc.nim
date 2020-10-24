@@ -1547,12 +1547,13 @@ elif not defined(useNimRtl):
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
-                workingDir = "", input = ""): tuple[
+                workingDir = "", input = "", args: openArray[string] = [], useArgs = false): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
-  ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.
+  ## `exitCode`. `env`, `workingDir`, `args` params behave as for `startProcess`.
+  ## Use `useArgs=true` to avoid setting `poEvalCommand` if you're unsure args.len > 0.
   ## If `input.len > 0`, it is passed as stdin.
   ##
   ## Note: this could block if `input.len` is greater than your OS's maximum
@@ -1576,14 +1577,20 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   when defined(posix):
   ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
   ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+  ##   echo execCmdEx("nim", args=["dump", "--dump.format:json", "."]).output
 
   when (NimMajor, NimMinor, NimPatch) < (1, 3, 5):
     doAssert input.len == 0
     doAssert workingDir.len == 0
     doAssert env == nil
+  when (NimMajor, NimMinor, NimPatch) < (1, 5, 1):
+    doAssert args.len == 0
 
-  var p = startProcess(command, options = options + {poEvalCommand},
-    workingDir = workingDir, env = env)
+  var options = options
+  if args.len == 0 and not useArgs:
+    options.incl poEvalCommand
+  var p = startProcess(command, options = options,
+    workingDir = workingDir, env = env, args = args)
   var outp = outputStream(p)
 
   if input.len > 0:

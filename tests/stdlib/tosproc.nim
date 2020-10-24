@@ -81,7 +81,7 @@ elif defined(case_testfile4):
 
 else: # main driver
   import stdtest/[specialpaths, unittest_light]
-  import os, osproc, strutils
+  import os, osproc, strutils, strformat
   const nim = getCurrentCompilerExe()
   const sourcePath = currentSourcePath()
   let dir = getCurrentDir() / "tests" / "osproc"
@@ -267,10 +267,17 @@ else: # main driver
     doAssert waitForExit(p) == QuitFailure # avoid zombies
 
   import std/strtabs
-  block execProcessTest:
-    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+  block execProcess:
+    var result = execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
+
+    block: # args
+      var result2 = execCmdEx(fmt"{nim}", options = {}, input = "echo 3*4", args = ["r", "--hints:off", "-"])
+      stripLineEnd(result2[0])
+      doAssert result2 == result
+      doAssertRaises(OSError): discard execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4", useArgs = true)
+
     when not defined(windows):
       doAssert execCmdEx("ls --nonexistant").exitCode != 0
     when false:

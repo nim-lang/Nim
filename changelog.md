@@ -3,6 +3,7 @@
 
 
 ## Standard library additions and changes
+- Added `args` optional param to `osproc.execCmdEx`
 
 - `prelude` now works with the JavaScript target.
 
