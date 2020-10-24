@@ -32,7 +32,8 @@ Options:
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
   -e, --eval:cmd            evaluates (compiles and runs) nim code directly
-                            implies `r` command if no command is provided.
+                            implies `e` (nimscript) if no command is provided, but
+                            customizable and works with all other flags.
   --fullhelp                show all command line switches
   -h, --help                show this help
   -v, --version             show detailed version information
