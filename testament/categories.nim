@@ -484,7 +484,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       case part
       of ppOne: important_packages.packages1
       of ppTwo: important_packages.packages2
-    for name, url, cmd, useHead in importantList.items:
+    for name, cmd, url, useHead in importantList.items:
       if packageFilter notin name:
         continue
       inc r.total
