@@ -452,27 +452,6 @@ type
     ppOne
     ppTwo
 
-iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool, useHead: bool] =
-  let packageList = parseFile(packageIndex)
-  let importantList =
-    case part
-    of ppOne: important_packages.packages1
-    of ppTwo: important_packages.packages2
-  for n, cmd, hasDeps, url, useHead in importantList.items:
-    if url.len != 0:
-      yield (n, url, cmd, hasDeps, useHead)
-    else:
-      var found = false
-      for package in packageList.items:
-        let name = package["name"].str
-        if name == n:
-          found = true
-          let pUrl = package["url"].str
-          yield (name, pUrl, cmd, hasDeps, useHead)
-          break
-      if not found:
-        raise newException(ValueError, "Cannot find package '$#'." % n)
-
 proc makeSupTest(test, options: string, cat: Category): TTest =
   result.cat = cat
   result.name = test
@@ -501,37 +480,36 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep, useHead in listPackages(part):
+    let importantList =
+      case part
+      of ppOne: important_packages.packages1
+      of ppTwo: important_packages.packages2
+    for name, url, cmd, useHead in importantList.items:
       if packageFilter notin name:
         continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
+
+      let involveNimble = url == "" or useHead
+
       if not dirExists(buildPath):
-        if useHead:
+        if url != "":
           let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
           if installStatus != QuitSuccess:
-            let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
-            r.addResult(test, targetC, "", message, reInstallFailed)
+            r.addResult(test, targetC, "", "git clone failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
             continue
 
-          if hasDep:
-            var message: string
-            if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
-              proc: bool =
-                 let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
-                 if status != 0:
-                   message = "'$1' failed:\n$2" % [cmd, outp]
-                   false
-                 else: true
-              ):
-              r.addResult(test, targetC, "", message, reInstallFailed)
+          if involveNimble:
+            let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", "-y"], workingDir = buildPath)
+            if installStatus != QuitSuccess:
+              r.addResult(test, targetC, "", "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
               continue
+
         else:
-          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", name, "-y"])
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", if useHead: name & "@#head" else: name, "-y"])
           if installStatus != QuitSuccess:
-            let message = "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput
-            r.addResult(test, targetC, "", message, reInstallFailed)
+            r.addResult(test, targetC, "", "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
             continue
 
       let cmdArgs = parseCmdLine(cmd)
@@ -543,6 +521,12 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
+
+      if involveNimble:
+        let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["uninstall", name, "-y"])
+        if installStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "nimble uninstall failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
+          continue
 
     errors = r.total - r.passed
     if errors == 0:
