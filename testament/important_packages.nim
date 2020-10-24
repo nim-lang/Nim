@@ -7,9 +7,6 @@ template pkg2(name: string; cmd = "nimble test"; url = "", useHead = true): unty
 var packages1*: seq[tuple[name, cmd: string; url: string, useHead: bool]] = @[]
 var packages2*: seq[tuple[name, cmd: string; url: string, useHead: bool]] = @[]
 
-# If url == "" useHead indicates wether nimble will install the latest head or release version
-# If url != "" useHead indicates wether nimble will be involved at all (useHead = false: nimble won't be involved)
-
 # packages A-M
 # pkg1 "alea"
 pkg1 "argparse"

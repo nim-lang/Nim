@@ -468,6 +468,27 @@ proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): boo
     sleep(int(t * 1000))
     t *= 2 # exponential backoff
 
+iterator listPackages(part: PkgPart): tuple[name, cmd, url: string, useHead: bool] =
+  let packageList = parseFile(packageIndex)
+  let importantList =
+    case part
+    of ppOne: important_packages.packages1
+    of ppTwo: important_packages.packages2
+  for n, cmd, url, useHead in importantList.items:
+    if url.len != 0:
+      yield (n, cmd, url, useHead)
+    else:
+      var found = false
+      for package in packageList.items:
+        let name = package["name"].str
+        if name == n:
+          found = true
+          let pUrl = package["url"].str
+          yield (name, cmd, pUrl, useHead)
+          break
+      if not found:
+        raise newException(ValueError, "Cannot find package '$#'." % n)
+
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
@@ -481,52 +502,42 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   createDir(packagesDir)
   var errors = 0
   try:
-    let importantList =
-      case part
-      of ppOne: important_packages.packages1
-      of ppTwo: important_packages.packages2
-    for name, cmd, url, useHead in importantList.items:
+    for name, cmd, url, useHead in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
-      var test = makeSupTest(url, "", cat)
+      var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
 
       let involveNimble = url == "" or useHead
 
       if not dirExists(buildPath):
-        if url != "":
-          let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
-          if installStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "git clone failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
+        if useHead:
+          let (cloneCmd, cloneOutput, cloneStatus) = execCmdEx2("git", ["clone", url, buildPath])
+          if cloneStatus != QuitSuccess:
+            r.addResult(test, targetC, "", "git clone failed:\n$ " & cloneCmd & "\n" & cloneOutput, reInstallFailed)
             continue
 
-          if involveNimble:
-            let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", "-y"], workingDir = buildPath)
-            if installStatus != QuitSuccess:
-              r.addResult(test, targetC, "", "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
-              continue
+          let (installDepsCmd, installDepsOutput, installDepsStatus) = execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
+          if installDepsStatus != QuitSuccess:
+            r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
+            continue
 
         else:
-          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", if useHead: name & "@#head" else: name, "-y"], workingDir = packagesDir)
-          if installStatus != QuitSuccess:
-            r.addResult(test, targetC, "", "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
+          #XXX: This doesn't actually work, since nimble develop always installs head :/
+          let (developCmd, developOutput, status) = execCmdEx2("nimble", ["develop", name, "-y"], workingDir = packagesDir)
+          if status != QuitSuccess:
+            r.addResult(test, targetC, "", "nimble develop failed:\n$ " & developCmd & "\n" & developOutput, reInstallFailed)
             continue
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir = buildPath)
-      if buildStatus != QuitSuccess:
-        r.addResult(test, targetC, "", "package test failed\n$ " & buildCmdLine & "\n" & buildOutput, reBuildFailed)
+      let (buildCmd, buildOutput, status) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir = buildPath)
+      if status != QuitSuccess:
+        r.addResult(test, targetC, "", "package test failed\n$ " & buildCmd & "\n" & buildOutput, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
-
-      if involveNimble:
-        let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["uninstall", name, "-y"])
-        if installStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "nimble uninstall failed:\n$ " & installCmdLine & "\n" & installOutput, reInstallFailed)
-          continue
 
     errors = r.total - r.passed
     if errors == 0:
