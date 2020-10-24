@@ -87,9 +87,9 @@ Example "template" **to edit** and write a Testament unittest:
 
     # What actions to expect completion on.
     # Options:
-    #   "compile"
-    #   "run"
-    #   "reject"
+    #   "compile": expect successful compilation
+    #   "run": expect successful compilation and execution
+    #   "reject": expect failed compilation
     action: "run"
 
     # The exit code that the test is expected to return. Typically, the default
