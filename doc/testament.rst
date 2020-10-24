@@ -104,6 +104,14 @@ Example "template" **to edit** and write a Testament unittest:
     output: ""
     outputsub: ""
 
+    # Each line in the stringgiven here appear in the same order in the
+    # compiler output, but there may be more lines that appear before, after, or
+    # in between them.
+    nimout: '''
+  a very long,
+  multi-line
+  string'''
+
     # This is the Standard Input the test should take, if any.
     input: ""
 
