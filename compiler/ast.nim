@@ -1068,9 +1068,12 @@ proc getnimblePkg*(a: PSym): PSym =
     else:
       assert false, $result.kind
 
+const
+  moduleShift = when defined(cpu32): 20 else: 24
+
 template id*(a: PIdObj): int =
   let x = a
-  (x.itemId.module.int shl 24) + x.itemId.item.int
+  (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
 type
   IdGenerator* = ref ItemId # unfortunately, we really need the 'shared mutable' aspect here.
