@@ -205,6 +205,30 @@ block: # bug #13081
   static:
     doAssert j1.x1 == 12
 
+block: # bug #15595
+  proc fn0()=echo 0
+  proc fn1()=discard
+  proc main=
+    var local = 0
+    proc fn2()=echo local
+    var a0 = fn0
+    var a1 = fn1
+    var a2 = fn2
+    var a3: proc()
+    var a4: proc()
+    doAssert a0 == fn0 # bugfix
+    doAssert a1 == fn1 # ditto
+    doAssert a2 == fn2 # ditto
+
+    doAssert fn0 != fn1
+
+    doAssert a2 != nil
+    doAssert a3 == nil # bugfix
+
+    doAssert a3 == a4 # bugfix
+  static: main()
+  main()
+
 # bug #15363
 import sequtils
 
