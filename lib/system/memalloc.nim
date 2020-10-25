@@ -343,7 +343,7 @@ when hasAlloc and not defined(js):
       base[offset - 1] = offset
       result = base[offset].addr
 
-  proc alignedDealloc(p: pointer, align: int) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} = 
+  proc alignedDealloc(p: pointer, align: int) {.compilerproc.} = 
     if not needsAlignmentOnPlatform(align):
       when compileOption("threads"):
         deallocShared(p)
