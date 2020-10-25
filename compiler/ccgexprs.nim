@@ -1765,20 +1765,20 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else: putIntoDest(p, d, e, rope(lengthOrd(p.config, typ)))
   else: internalError(p.config, e.info, "genArrayLen()")
 
-proc makePtrType(baseType: PType): PType =
-  result = newType(tyPtr, baseType.owner)
-  addSonSkipIntLit(result, baseType)
+proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
+  result = newType(tyPtr, nextId idgen, baseType.owner)
+  addSonSkipIntLit(result, baseType, idgen)
 
-proc makeAddr(n: PNode): PNode =
+proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenAddr:
     result = n
   else:
     result = newTree(nkHiddenAddr, n)
-    result.typ = makePtrType(n.typ)
+    result.typ = makePtrType(n.typ, idgen)
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   if optSeqDestructors in p.config.globalOptions:
-    e[1] = makeAddr(e[1])
+    e[1] = makeAddr(e[1], p.module.idgen)
     genCall(p, e, d)
     return
   var a, b, call: TLoc
@@ -2240,7 +2240,7 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
       toStrProc = p
       break
   if toStrProc == nil:
-    toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph)
+    toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph, p.module.idgen)
     t.methods.add((ToStringProcSlot, toStrProc))
   var n = copyTree(e)
   n[0] = newSymNode(toStrProc)
@@ -2294,7 +2294,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAppendStrStr: genStrAppend(p, e, d)
   of mAppendSeqElem:
     if optSeqDestructors in p.config.globalOptions:
-      e[1] = makeAddr(e[1])
+      e[1] = makeAddr(e[1], p.module.idgen)
       genCall(p, e, d)
     else:
       genSeqElemAppend(p, e, d)
@@ -2393,13 +2393,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     when defined(leanCompiler):
       quit "compiler built without support for the 'spawn' statement"
     else:
-      let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.module, e, e.typ, nil, nil)
+      let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.idgen, p.module.module, e, e.typ, nil, nil)
       expr(p, n, d)
   of mParallel:
     when defined(leanCompiler):
       quit "compiler built without support for the 'parallel' statement"
     else:
-      let n = semparallel.liftParallel(p.module.g.graph, p.module.module, e)
+      let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
   of mDeepCopy:
     if p.config.selectedGC in {gcArc, gcOrc} and optEnableDeepCopy notin p.config.globalOptions:

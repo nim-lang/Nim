@@ -107,11 +107,11 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
       s.ast[resultPos] = newNodeI(nkEmpty, s.info)
     s.ast[dispatcherPos] = dispatcher
 
-proc createDispatcher(s: PSym): PSym =
-  var disp = copySym(s)
+proc createDispatcher(s: PSym; idgen: IdGenerator): PSym =
+  var disp = copySym(s, nextId(idgen))
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
-  disp.typ = copyType(disp.typ, disp.typ.owner, false)
+  disp.typ = copyType(disp.typ, nextId(idgen), disp.typ.owner)
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)
@@ -119,7 +119,7 @@ proc createDispatcher(s: PSym): PSym =
   disp.loc.r = nil
   if s.typ[0] != nil:
     if disp.ast.len > resultPos:
-      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym)
+      disp.ast[resultPos].sym = copySym(s.ast[resultPos].sym, nextId(idgen))
     else:
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
@@ -157,7 +157,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
       if disp.typ.lockLevel < meth.typ.lockLevel:
         disp.typ.lockLevel = meth.typ.lockLevel
 
-proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
+proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym, fromCache: bool) =
   var witness: PSym
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
@@ -177,7 +177,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
-  g.methods.add((methods: @[s], dispatcher: createDispatcher(s)))
+  g.methods.add((methods: @[s], dispatcher: createDispatcher(s, idgen)))
   #echo "adding ", s.info
   #if fromCache:
   #  internalError(s.info, "no method dispatcher found")

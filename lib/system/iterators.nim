@@ -82,7 +82,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       yield a[i]
       inc(i)
 
-iterator items*(E: typedesc[enum]): E =
+iterator items*[T: enum](E: typedesc[T]): T =
   ## Iterates over the values of the enum ``E``.
   for v in low(E) .. high(E):
     yield v

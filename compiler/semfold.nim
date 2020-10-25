@@ -17,7 +17,7 @@ import
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
-  result = newType(tyError, g.owners[^1])
+  result = newType(tyError, nextId(g.idgen), g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
@@ -42,7 +42,7 @@ proc newStrNodeT*(strVal: string, n: PNode; g: ModuleGraph): PNode =
   result.typ = n.typ
   result.info = n.info
 
-proc getConstExpr*(m: PSym, n: PNode; g: ModuleGraph): PNode
+proc getConstExpr*(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
   # evaluates the constant expression or returns nil if it is no constant
   # expression
 proc evalOp*(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode
@@ -112,45 +112,6 @@ proc pickIntRange(a, b: PType): PType =
 
 proc isIntRangeOrLit(t: PType): bool =
   result = isIntRange(t) or isIntLit(t)
-
-proc makeRange(typ: PType, first, last: BiggestInt; g: ModuleGraph): PType =
-  let minA = min(first, last)
-  let maxA = max(first, last)
-  let lowerNode = newIntNode(nkIntLit, minA)
-  if typ.kind == tyInt and minA == maxA:
-    result = getIntLitType(g, lowerNode)
-  elif typ.kind in {tyUInt, tyUInt64}:
-    # these are not ordinal types, so you get no subrange type for these:
-    result = typ
-  else:
-    var n = newNode(nkRange)
-    n.add lowerNode
-    n.add newIntNode(nkIntLit, maxA)
-    result = newType(tyRange, typ.owner)
-    result.n = n
-    addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
-
-proc makeRangeF(typ: PType, first, last: BiggestFloat; g: ModuleGraph): PType =
-  var n = newNode(nkRange)
-  n.add newFloatNode(nkFloatLit, min(first.float, last.float))
-  n.add newFloatNode(nkFloatLit, max(first.float, last.float))
-  result = newType(tyRange, typ.owner)
-  result.n = n
-  addSonSkipIntLit(result, skipTypes(typ, {tyRange}))
-
-proc fitLiteral(c: ConfigRef, n: PNode): PNode {.deprecated: "no substitute".} =
-  # Trim the literal value in order to make it fit in the destination type
-  if n == nil:
-    # `n` may be nil if the overflow check kicks in
-    return
-
-  doAssert n.kind in {nkIntLit, nkCharLit}
-
-  result = n
-
-  let typ = n.typ.skipTypes(abstractRange)
-  if typ.kind in tyUInt..tyUInt32:
-    result.intVal = result.intVal and castToInt64(lastOrd(c, typ))
 
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   # b and c may be nil
@@ -342,19 +303,19 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
         exprStructuralEquivalent(a, b, strictSymEquality=true))), n, g)
   else: discard
 
-proc getConstIfExpr(c: PSym, n: PNode; g: ModuleGraph): PNode =
+proc getConstIfExpr(c: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
   for i in 0..<n.len:
     var it = n[i]
     if it.len == 2:
-      var e = getConstExpr(c, it[0], g)
+      var e = getConstExpr(c, it[0], idgen, g)
       if e == nil: return nil
       if getOrdValue(e) != 0:
         if result == nil:
-          result = getConstExpr(c, it[1], g)
+          result = getConstExpr(c, it[1], idgen, g)
           if result == nil: return
     elif it.len == 1:
-      if result == nil: result = getConstExpr(c, it[0], g)
+      if result == nil: result = getConstExpr(c, it[0], idgen, g)
     else: internalError(g.config, it.info, "getConstIfExpr()")
 
 proc leValueConv*(a, b: PNode): bool =
@@ -372,18 +333,18 @@ proc leValueConv*(a, b: PNode): bool =
     else: result = false # internalError(a.info, "leValueConv")
   else: result = false # internalError(a.info, "leValueConv")
 
-proc magicCall(m: PSym, n: PNode; g: ModuleGraph): PNode =
+proc magicCall(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   if n.len <= 1: return
 
   var s = n[0].sym
-  var a = getConstExpr(m, n[1], g)
+  var a = getConstExpr(m, n[1], idgen, g)
   var b, c: PNode
   if a == nil: return
   if n.len > 2:
-    b = getConstExpr(m, n[2], g)
+    b = getConstExpr(m, n[2], idgen, g)
     if b == nil: return
     if n.len > 3:
-      c = getConstExpr(m, n[3], g)
+      c = getConstExpr(m, n[3], idgen, g)
       if c == nil: return
   result = evalOp(s.magic, n, a, b, c, g)
 
@@ -451,19 +412,19 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
     result = a
     result.typ = n.typ
 
-proc getArrayConstr(m: PSym, n: PNode; g: ModuleGraph): PNode =
+proc getArrayConstr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   if n.kind == nkBracket:
     result = n
   else:
-    result = getConstExpr(m, n, g)
+    result = getConstExpr(m, n, idgen, g)
     if result == nil: result = n
 
-proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
-  var x = getConstExpr(m, n[0], g)
+proc foldArrayAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
+  var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyTypeDesc:
     return
 
-  var y = getConstExpr(m, n[1], g)
+  var y = getConstExpr(m, n[1], idgen, g)
   if y == nil: return
 
   var idx = toInt64(getOrdValue(y))
@@ -486,9 +447,9 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       localError(g.config, n.info, formatErrorIndexBound(idx, x.strVal.len-1) & $n)
   else: discard
 
-proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
+proc foldFieldAccess(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   # a real field access; proc calls have already been transformed
-  var x = getConstExpr(m, n[0], g)
+  var x = getConstExpr(m, n[0], idgen, g)
   if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n[1].sym
@@ -504,23 +465,23 @@ proc foldFieldAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
       return
   localError(g.config, n.info, "field not found: " & field.name.s)
 
-proc foldConStrStr(m: PSym, n: PNode; g: ModuleGraph): PNode =
+proc foldConStrStr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
   result.strVal = ""
   for i in 1..<n.len:
-    let a = getConstExpr(m, n[i], g)
+    let a = getConstExpr(m, n[i], idgen, g)
     if a == nil: return nil
     result.strVal.add(getStrOrChar(a))
 
-proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
+proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
-    result.typ = newType(tyTypeDesc, s.owner)
-    result.typ.addSonSkipIntLit(s.typ)
+    result.typ = newType(tyTypeDesc, idgen.nextId, s.owner)
+    result.typ.addSonSkipIntLit(s.typ, idgen)
   else:
     result.typ = s.typ
 
-proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
+proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode =
   result = nil
   case n.kind
   of nkSym:
@@ -570,12 +531,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       result = n
     of skParam:
       if s.typ != nil and s.typ.kind == tyTypeDesc:
-        result = newSymNodeTypeDesc(s, n.info)
+        result = newSymNodeTypeDesc(s, idgen, n.info)
     of skType:
       # XXX gensym'ed symbols can come here and cannot be resolved. This is
       # dirty, but correct.
       if s.typ != nil:
-        result = newSymNodeTypeDesc(s, n.info)
+        result = newSymNodeTypeDesc(s, idgen, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
         if s.typ.n != nil and tfUnresolved notin s.typ.flags:
@@ -584,12 +545,12 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       elif s.typ.isIntLit:
         result = s.typ.n
       else:
-        result = newSymNodeTypeDesc(s, n.info)
+        result = newSymNodeTypeDesc(s, idgen, n.info)
     else: discard
   of nkCharLit..nkNilLit:
     result = copyNode(n)
   of nkIfExpr:
-    result = getConstIfExpr(m, n, g)
+    result = getConstIfExpr(m, n, idgen, g)
   of nkCallKinds:
     if n[0].kind != nkSym: return
     var s = n[0].sym
@@ -612,17 +573,17 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
           else:
             result = newIntNodeT(lastOrd(g.config, skipTypes(n[1].typ, abstractVar)), n, g)
         else:
-          var a = getArrayConstr(m, n[1], g)
+          var a = getArrayConstr(m, n[1], idgen, g)
           if a.kind == nkBracket:
             # we can optimize it away:
             result = newIntNodeT(toInt128(a.len-1), n, g)
       of mLengthOpenArray:
-        var a = getArrayConstr(m, n[1], g)
+        var a = getArrayConstr(m, n[1], idgen, g)
         if a.kind == nkBracket:
           # we can optimize it away! This fixes the bug ``len(134)``.
           result = newIntNodeT(toInt128(a.len), n, g)
         else:
-          result = magicCall(m, n, g)
+          result = magicCall(m, n, idgen, g)
       of mLengthArray:
         # It doesn't matter if the argument is const or not for mLengthArray.
         # This fixes bug #544.
@@ -636,33 +597,33 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mAstToStr:
         result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, g)
       of mConStrStr:
-        result = foldConStrStr(m, n, g)
+        result = foldConStrStr(m, n, idgen, g)
       of mIs:
         # The only kind of mIs node that comes here is one depending on some
         # generic parameter and that's (hopefully) handled at instantiation time
         discard
       else:
-        result = magicCall(m, n, g)
+        result = magicCall(m, n, idgen, g)
     except OverflowDefect:
       localError(g.config, n.info, "over- or underflow")
     except DivByZeroDefect:
       localError(g.config, n.info, "division by zero")
   of nkAddr:
-    var a = getConstExpr(m, n[0], g)
+    var a = getConstExpr(m, n[0], idgen, g)
     if a != nil:
       result = n
       n[0] = a
   of nkBracket, nkCurly:
     result = copyNode(n)
     for i, son in n.pairs:
-      var a = getConstExpr(m, son, g)
+      var a = getConstExpr(m, son, idgen, g)
       if a == nil: return nil
       result.add a
     incl(result.flags, nfAllConst)
   of nkRange:
-    var a = getConstExpr(m, n[0], g)
+    var a = getConstExpr(m, n[0], idgen, g)
     if a == nil: return
-    var b = getConstExpr(m, n[1], g)
+    var b = getConstExpr(m, n[1], idgen, g)
     if b == nil: return
     result = copyNode(n)
     result.add a
@@ -681,18 +642,18 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       for i, expr in n.pairs:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]
-        let a = getConstExpr(m, expr[1], g)
+        let a = getConstExpr(m, expr[1], idgen, g)
         if a == nil: return nil
         exprNew.add a
         result.add exprNew
     else:
       for i, expr in n.pairs:
-        let a = getConstExpr(m, expr, g)
+        let a = getConstExpr(m, expr, idgen, g)
         if a == nil: return nil
         result.add a
     incl(result.flags, nfAllConst)
   of nkChckRangeF, nkChckRange64, nkChckRange:
-    var a = getConstExpr(m, n[0], g)
+    var a = getConstExpr(m, n[0], idgen, g)
     if a == nil: return
     if leValueConv(n[1], a) and leValueConv(a, n[2]):
       result = a              # a <= x and x <= b
@@ -702,31 +663,31 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         "conversion from $1 to $2 is invalid" %
           [typeToString(n[0].typ), typeToString(n.typ)])
   of nkStringToCString, nkCStringToString:
-    var a = getConstExpr(m, n[0], g)
+    var a = getConstExpr(m, n[0], idgen, g)
     if a == nil: return
     result = a
     result.typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    var a = getConstExpr(m, n[1], g)
+    var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
     result = foldConv(n, a, g, check=true)
   of nkCast:
-    var a = getConstExpr(m, n[1], g)
+    var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
     if n.typ != nil and n.typ.kind in NilableTypes:
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ
-  of nkBracketExpr: result = foldArrayAccess(m, n, g)
-  of nkDotExpr: result = foldFieldAccess(m, n, g)
+  of nkBracketExpr: result = foldArrayAccess(m, n, idgen, g)
+  of nkDotExpr: result = foldFieldAccess(m, n, idgen, g)
   of nkCheckedFieldExpr:
-    result = foldFieldAccess(m, n[0], g)
+    result = foldFieldAccess(m, n[0], idgen, g)
   of nkStmtListExpr:
     var i = 0
     while i <= n.len - 2:
       if n[i].kind in {nkComesFrom, nkCommentStmt, nkEmpty}: i.inc
       else: break
     if i == n.len - 1:
-      result = getConstExpr(m, n[i], g)
+      result = getConstExpr(m, n[i], idgen, g)
   else:
     discard
