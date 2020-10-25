@@ -4,6 +4,7 @@
 
 ## Standard library additions and changes
 
+- `prelude` now works with the JavaScript targets.
 
 
 ## Language changes
