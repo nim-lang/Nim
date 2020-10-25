@@ -142,9 +142,9 @@ type
 
   ConflictsTable* = object
     names: Table[string, int]
-    identities: Table[int, int]
+    identities: Table[ConflictKey, int]
 
-  ConflictKey* = int
+  ConflictKey* = ItemId
 
   # this mangling stuff is intentionally verbose; err on side of caution!
   #
@@ -255,8 +255,8 @@ proc findPendingModule*(m: BModule; t: PType): BModule =
     result = findPendingModule(m.g, t.owner)
 
 # get a ConflictKey from a PSym or PType
-template conflictKey*(s: PSym): ConflictKey = ConflictKey s.id
-template conflictKey*(s: PType): ConflictKey = ConflictKey s.uniqueId
+template conflictKey*(s: PSym): ConflictKey = s.itemId
+template conflictKey*(s: PType): ConflictKey = s.uniqueId
 
 # same idea, but for signatures
 template conflictSig*(s: PType): SigHash = hashTypeDef(s)

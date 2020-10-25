@@ -54,20 +54,22 @@ const
   # these types get unwrapped and discarded from mangling
   unwrapTypeArg = irrelevantForNaming - {tyRange} + {tyRef, tyPtr,
                                          tyUserTypeClass, tyUserTypeClassInst}
+  unIdentity = ItemId(module: -1, item: -1)
 
 type
   ModuleOrProc* = BProc or BModule
 
 template config(): ConfigRef = cache.modules.config
 template add_and(s: typed; chs: string) = s.add "_"; s.add chs
+template add_and(s: typed; key: ConflictKey) = s.add_and $key.item
 
 using
   g: ModuleGraph
 
 # useful for debugging
-template conflictKey(s: BModule): int = conflictKey(s.module)
-template conflictKey(s: BProc): int =
-  if s.prc == nil: 0 else: conflictKey(s.prc)
+template conflictKey(s: BModule): ConflictKey = conflictKey(s.module)
+template conflictKey(s: BProc): ConflictKey =
+  if s.prc == nil: unIdentity else: conflictKey(s.prc)
 
 template mangle*(p: ModuleOrProc; t: PType): string = $getTypeName(p, t)
 proc mangle*(p: ModuleOrProc; s: PSym): string
@@ -352,7 +354,7 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
     if result:
       if name.len == 0:
         name = mangle(s.name.s)
-      name.add_and $conflictKey(s)
+      name.add_and conflictKey(s)
       assert not s.hasImmutableName
 
 proc mangle*(p: ModuleOrProc; s: PSym): string =
@@ -387,7 +389,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
 
       # something like `default` might need this check
       if (unlikely) result in m.config.cppDefines:
-        result.add_and $conflictKey(s)
+        result.add_and conflictKey(s)
 
   #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
   # XXX: we don't do anything special with regard to m.hcrOn
@@ -463,7 +465,7 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
   when debugMangle:
     if s.name.s == inspect:
       echo "p is module ", p is BModule
-      echo "p key ", $conflictKey(p)
+      echo "p key ", conflictKey(p)
 
   result = Rope getSetConflict(p, s)
   when debugMangle:
@@ -671,7 +673,7 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
   ## make new local identifiers of the same name without colliding with it.
 
   # It's likely that the symbol is already in the module scope!
-  if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
+  if s.loc.r == nil or conflictKey(s) notin p.sigConflicts:
     # discard any existing counter for this sym from the module scope
     purgeConflict(p.module, s)
     s.loc.r = nil              # critically, destroy the location
