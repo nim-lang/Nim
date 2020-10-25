@@ -433,4 +433,3 @@ when hasAlloc and hasThreadSupport and not defined(useMalloc):
   proc getTotalSharedMem*(): int {.rtl.}
     ## Returns the number of bytes on the shared heap that are owned by the
     ## process. This is only available when threads are enabled.
-
