@@ -66,6 +66,7 @@ testament.db
 /tests/**/*.js
 /csources
 /dist/
+/lib/fusion
 
 # Private directories and files (IDEs)
 .*/
@@ -82,6 +83,8 @@ megatest.nim
 
 /outputExpected.txt
 /outputGotten.txt
+/t15148.txt
+/tests/vm/tfile_rw.txt
 
 /lib/pure/*.js
 

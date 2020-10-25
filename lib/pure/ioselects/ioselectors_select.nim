@@ -110,6 +110,7 @@ proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
+    deinitLock(s.lock)
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =

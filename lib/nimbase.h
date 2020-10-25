@@ -588,4 +588,7 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
   #endif
 #endif
 
+#define NIM_NOALIAS __restrict
+/* __restrict is said to work for all the C(++) compilers out there that we support */
+
 #endif /* NIMBASE_H */

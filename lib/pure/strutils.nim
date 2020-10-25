@@ -82,6 +82,7 @@ when defined(nimVmExportFixed):
   export toLower, toUpper
 
 include "system/inclrtl"
+import std/private/since
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -938,6 +939,31 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
+proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.noSideEffect.} =
+  const
+    HexChars = "0123456789ABCDEF"
+  var n = x
+  result = newString(len)
+  for j in countdown(len-1, 0):
+    result[j] = HexChars[int(n and 0xF)]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and handleNegative: n = not(BiggestUInt 0)
+
+proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## The resulting string will be exactly `len` characters long. No prefix like
+  ## ``0x`` is generated.
+  runnableExamples:
+    let
+      a = 62'u64
+      b = 4097'u64
+    doAssert a.toHex(3) == "03E"
+    doAssert b.toHex(3) == "001"
+    doAssert b.toHex(4) == "1001"
+  toHexImpl(x, len, false)
+
 proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
   rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation.
@@ -948,25 +974,19 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     let
       a = 62
       b = 4097
+      c = -8
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  const
-    HexChars = "0123456789ABCDEF"
-  var
-    n = x
-  result = newString(len)
-  for j in countdown(len-1, 0):
-    result[j] = HexChars[int(n and 0xF)]
-    n = n shr 4
-    # handle negative overflow
-    if n == 0 and x < 0: n = -1
+    doAssert c.toHex(6) == "FFFFF8"
+  toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
-proc toHex*[T: SomeInteger](x: T): string =
+proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
   ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
-  toHex(BiggestInt(x), T.sizeof * 2)
+    doAssert toHex(1984'i16) == "07C0"
+  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1275,8 +1295,7 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   let typ = typ.getTypeInst[1]
   let impl = typ.getImpl[2]
   expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
-                                                  bindSym"nimIdentNormalize"))
+  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
   var fStr = "" # string of current field
@@ -1493,6 +1512,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural,string>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1506,21 +1526,25 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural, padding: string = " "): string
+proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `dedent proc<#dedent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
-    doAssert unindent("  First line\l   and second line", 3) ==
-             "First line\land second line"
+    let x = """
+      Hello
+        There
+    """.unindent()
+
+    doAssert x == "Hello\nThere\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1535,11 +1559,30 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc unindent*(s: string): string
-    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
-  ## Removes all indentation composed of whitespace from each line in ``s``.
+proc indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## ignoring lines that consist only of whitespace.
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ':
+        result = i
+        break
+  if result == int.high:
+    result = 0
+
+proc dedent*(s: string, count: Natural = indentation(s)): string
+    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
+  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
+  ## is that this by default only cuts off the amount of indentation that all
+  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ##
+  ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
+  ## * `unindent proc<#unindent,string,Natural,string>`
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1547,11 +1590,11 @@ proc unindent*(s: string): string
   runnableExamples:
     let x = """
       Hello
-      There
-    """.unindent()
+        There
+    """.dedent()
 
-    doAssert x == "Hello\nThere\n"
-  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
+    doAssert x == "Hello\n  There\n"
+  unindent(s, count, " ")
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
@@ -1887,7 +1930,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
 
 proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed
+  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##

@@ -1264,6 +1264,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     for j in 0..<a.len-2:
       var arg = newSymG(skParam, if a[j].kind == nkPragmaExpr: a[j][0] else: a[j], c)
+      if a[j].kind == nkPragmaExpr:
+        pragma(c, arg, a[j][1], paramPragmas)
       if not hasType and not hasDefault and kind notin {skTemplate, skMacro}:
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
@@ -1286,6 +1288,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addParamOrResult(c, arg, kind)
       styleCheckDef(c.config, a[j].info, arg)
       onDef(a[j].info, arg)
+      if {optNimV1Emulation, optNimV12Emulation} * c.config.globalOptions == {}:
+        a[j] = newSymNode(arg)
 
   var r: PType
   if n[0].kind != nkEmpty:
@@ -1909,7 +1913,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, n.info, "type expected, but symbol '$1' has no type." % [s.name.s])
         else:
           localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
-            [s.name.s, substr($s.kind, 2)])
+            [s.name.s, s.kind.toHumanStr])
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
   of nkTupleTy: result = semTuple(c, n, prev)
@@ -2054,72 +2058,80 @@ proc semGenericConstraints(c: PContext, x: PType): PType =
   result = newTypeWithSons(c, tyGenericParam, @[x])
 
 proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
+
+  template addSym(result: PNode, s: PSym): untyped =
+    if father != nil: addSonSkipIntLit(father, s.typ)
+    if sfGenSym notin s.flags: addDecl(c, s)
+    result.add newSymNode(s)
+
   result = copyNode(n)
   if n.kind != nkGenericParams:
     illFormedAst(n, c.config)
     return
   for i in 0..<n.len:
     var a = n[i]
-    if a.kind != nkIdentDefs: illFormedAst(n, c.config)
-    var def = a[^1]
-    let constraint = a[^2]
-    var typ: PType
+    case a.kind
+    of nkSym: result.addSym(a.sym)
+    of nkIdentDefs:
+      var def = a[^1]
+      let constraint = a[^2]
+      var typ: PType
 
-    if constraint.kind != nkEmpty:
-      typ = semTypeNode(c, constraint, nil)
-      if typ.kind != tyStatic or typ.len == 0:
-        if typ.kind == tyTypeDesc:
-          if typ[0].kind == tyNone:
-            typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
-            incl typ.flags, tfCheckedForDestructor
+      if constraint.kind != nkEmpty:
+        typ = semTypeNode(c, constraint, nil)
+        if typ.kind != tyStatic or typ.len == 0:
+          if typ.kind == tyTypeDesc:
+            if typ[0].kind == tyNone:
+              typ = newTypeWithSons(c, tyTypeDesc, @[newTypeS(tyNone, c)])
+              incl typ.flags, tfCheckedForDestructor
+          else:
+            typ = semGenericConstraints(c, typ)
+
+      if def.kind != nkEmpty:
+        def = semConstExpr(c, def)
+        if typ == nil:
+          if def.typ.kind != tyTypeDesc:
+            typ = newTypeWithSons(c, tyStatic, @[def.typ])
         else:
-          typ = semGenericConstraints(c, typ)
+          # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
+          # from manyloc/named_argument_bug/triengine:
+          def.typ = def.typ.skipTypes({tyTypeDesc})
+          if not containsGenericType(def.typ):
+            def = fitNode(c, typ, def, def.info)
 
-    if def.kind != nkEmpty:
-      def = semConstExpr(c, def)
       if typ == nil:
-        if def.typ.kind != tyTypeDesc:
-          typ = newTypeWithSons(c, tyStatic, @[def.typ])
-      else:
-        # the following line fixes ``TV2*[T:SomeNumber=TR] = array[0..1, T]``
-        # from manyloc/named_argument_bug/triengine:
-        def.typ = def.typ.skipTypes({tyTypeDesc})
-        if not containsGenericType(def.typ):
-          def = fitNode(c, typ, def, def.info)
+        typ = newTypeS(tyGenericParam, c)
+        if father == nil: typ.flags.incl tfWildcard
 
-    if typ == nil:
-      typ = newTypeS(tyGenericParam, c)
-      if father == nil: typ.flags.incl tfWildcard
+      typ.flags.incl tfGenericTypeParam
 
-    typ.flags.incl tfGenericTypeParam
+      for j in 0..<a.len-2:
+        let finalType = if j == 0: typ
+                        else: copyType(typ, typ.owner, false)
+                        # it's important the we create an unique
+                        # type for each generic param. the index
+                        # of the parameter will be stored in the
+                        # attached symbol.
+        var paramName = a[j]
+        var covarianceFlag = tfUnresolved
 
-    for j in 0..<a.len-2:
-      let finalType = if j == 0: typ
-                      else: copyType(typ, typ.owner, false)
-                      # it's important the we create an unique
-                      # type for each generic param. the index
-                      # of the parameter will be stored in the
-                      # attached symbol.
-      var paramName = a[j]
-      var covarianceFlag = tfUnresolved
+        if paramName.safeLen == 2:
+          if not nimEnableCovariance or paramName[0].ident.s == "in":
+            if father == nil or sfImportc notin father.sym.flags:
+              localError(c.config, paramName.info, errInOutFlagNotExtern % $paramName[0])
+          covarianceFlag = if paramName[0].ident.s == "in": tfContravariant
+                          else: tfCovariant
+          if father != nil: father.flags.incl tfCovariant
+          paramName = paramName[1]
 
-      if paramName.safeLen == 2:
-        if not nimEnableCovariance or paramName[0].ident.s == "in":
-          if father == nil or sfImportc notin father.sym.flags:
-            localError(c.config, paramName.info, errInOutFlagNotExtern % $paramName[0])
-        covarianceFlag = if paramName[0].ident.s == "in": tfContravariant
-                         else: tfCovariant
-        if father != nil: father.flags.incl tfCovariant
-        paramName = paramName[1]
+        var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
+            newSymG(skGenericParam, paramName, c).linkTo(finalType)
+          else:
+            newSymG(skType, paramName, c).linkTo(finalType)
 
-      var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
-          newSymG(skGenericParam, paramName, c).linkTo(finalType)
-        else:
-          newSymG(skType, paramName, c).linkTo(finalType)
-
-      if covarianceFlag != tfUnresolved: s.typ.flags.incl(covarianceFlag)
-      if def.kind != nkEmpty: s.ast = def
-      if father != nil: addSonSkipIntLit(father, s.typ)
-      s.position = result.len
-      result.add newSymNode(s)
-      if sfGenSym notin s.flags: addDecl(c, s)
+        if covarianceFlag != tfUnresolved: s.typ.flags.incl(covarianceFlag)
+        if def.kind != nkEmpty: s.ast = def
+        s.position = result.len
+        result.addSym(s)
+    else:
+      illFormedAst(n, c.config)

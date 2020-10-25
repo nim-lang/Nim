@@ -26,3 +26,11 @@ const t = mac("HEllo World")
 echo s, " ", t
 
 
+#-----------------------------------------------------------------------------
+# issue #15326
+macro m(n:typed):auto =
+  result = n
+
+proc f[T](x:T): T {.m.} = x
+
+discard f(3)

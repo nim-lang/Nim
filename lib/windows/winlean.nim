@@ -96,6 +96,12 @@ type
     dwPlatformId*: DWORD
     szCSDVersion*: array[0..127, WinChar]
 
+  Protoent* = object
+    p_name*: cstring
+    p_aliases*: cstringArray
+    p_proto*: cshort
+
+
 const
   STARTF_USESHOWWINDOW* = 1'i32
   STARTF_USESTDHANDLES* = 256'i32
@@ -572,6 +578,14 @@ proc gethostbyname*(name: cstring): ptr Hostent {.
 
 proc gethostname*(hostname: cstring, len: cint): cint {.
   stdcall, importc: "gethostname", dynlib: ws2dll, sideEffect.}
+
+proc getprotobyname*(
+  name: cstring
+): ptr Protoent {.stdcall, importc: "getprotobyname", dynlib: ws2dll, sideEffect.}
+
+proc getprotobynumber*(
+  proto: cint
+): ptr Protoent {.stdcall, importc: "getprotobynumber", dynlib: ws2dll, sideEffect.}
 
 proc socket*(af, typ, protocol: cint): SocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}

@@ -29,6 +29,8 @@ FAIL: tests/shouldfail/tsortoutput.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/ttimeout.nim C
 Failure: reTimeout
+FAIL: tests/shouldfail/tvalgrind.nim C
+Failure: reExitcodesDiffer
 '''
 """
 

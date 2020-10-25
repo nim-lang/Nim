@@ -666,6 +666,9 @@ proc parseAttribute(my: var XmlParser) =
         parseEntity(my, my.b)
         my.kind = xmlAttribute # parseEntity overwrites my.kind!
         pos = my.bufpos
+      elif c == '/':
+        pos = lexbase.handleRefillChar(my, pos)
+        add(my.b, '/')
       else:
         add(my.b, c)
         inc(pos)

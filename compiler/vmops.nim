@@ -261,3 +261,26 @@ proc registerAdditionalOps*(c: PCtx) =
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
     registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
       setResult(a, times.getTime().toLit)
+
+  proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
+    let fn = getNode(a, 0)
+    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
+        fn.typ.n[0][effectIndex] != nil:
+      var list = newNodeI(nkBracket, fn.info)
+      for e in fn.typ.n[0][effectIndex]:
+        list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info)
+      setResult(a, list)
+
+  registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, exceptionEffects)
+  registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, tagEffects)
+
+  registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, fn.typ != nil and tfGcSafe in fn.typ.flags)
+
+  registerCallback c, "stdlib.effecttraits.hasNoSideEffectsImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
+                 (fn.kind == nkSym and fn.sym.kind == skFunc))

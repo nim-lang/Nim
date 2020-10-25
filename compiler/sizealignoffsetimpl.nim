@@ -138,12 +138,13 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       accum.offset  = szUnknownSize
       accum.maxAlign = szUnknownSize
     else:
-      # the union neds to be aligned first, before the offsets can be assigned
+      # the union needs to be aligned first, before the offsets can be assigned
       accum.align(maxChildAlign)
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1..<n.len:
-        var branchAccum = accumRoot
+        var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
         computeObjectOffsetsFoldFunction(conf, n[i].lastSon, packed, branchAccum)
+        discard finish(branchAccum)
         accum.mergeBranch(branchAccum)
   of nkRecList:
     for i, child in n.sons:
@@ -173,9 +174,10 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bo
     localError(conf, n.info, "Illegal use of ``case`` in union type.")
   of nkRecList:
     let accumRoot = accum # copy, because each branch should start af the same offset
-    for i, child in n.sons:
-      var branchAccum = accumRoot
+    for child in n.sons:
+      var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
       computeUnionObjectOffsetsFoldFunction(conf, child, packed, branchAccum)
+      discard finish(branchAccum)
       accum.mergeBranch(branchAccum)
   of nkSym:
     var size = szUnknownSize
@@ -240,7 +242,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent:
     let base = typ.lastSon
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``

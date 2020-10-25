@@ -228,11 +228,14 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC == gcUnselected:
-    conf.selectedGC = oldSelectedGC
+  if conf.selectedGC in {gcArc, gcOrc}:
+    conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

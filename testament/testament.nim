@@ -12,7 +12,7 @@
 import
   strutils, pegs, os, osproc, streams, json,
   backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, sequtils, azure
+  algorithm, times, md5, sequtils, azure, intsets
 from std/sugar import dup
 import compiler/nodejs
 
@@ -71,6 +71,7 @@ type
 let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
+
   pegLineTemplate =
     peg"""
       {[^(]*} '(' {\d+} ', ' {\d+} ') '
@@ -317,8 +318,50 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       discard waitForExit(p)
       close(p)
 
+proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
+  let pegLine = peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' {[^:]*} ':' \s* {.*}"
+  var covered = initIntSet()
+  for line in splitLines(given.nimout):
+
+    if line =~ pegLine:
+      let file = extractFilename(matches[0])
+      let line = try: parseInt(matches[1]) except: -1
+      let col = try: parseInt(matches[2]) except: -1
+      let kind = matches[3]
+      let msg = matches[4]
+
+      if file == extractFilename test.name:
+        var i = 0
+        for x in expected.inlineErrors:
+          if x.line == line and (x.col == col or x.col < 0) and
+              x.kind == kind and x.msg in msg:
+            covered.incl i
+          inc i
+
+  block coverCheck:
+    for j in 0..high(expected.inlineErrors):
+      if j notin covered:
+        var e = test.name
+        e.add "("
+        e.addInt expected.inlineErrors[j].line
+        if expected.inlineErrors[j].col > 0:
+          e.add ", "
+          e.addInt expected.inlineErrors[j].col
+        e.add ") "
+        e.add expected.inlineErrors[j].kind
+        e.add ": "
+        e.add expected.inlineErrors[j].msg
+
+        r.addResult(test, target, e, given.nimout, reMsgsDiffer)
+        break coverCheck
+
+    r.addResult(test, target, "", given.msg, reSuccess)
+    inc(r.passed)
+
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
-  if strip(expected.msg) notin strip(given.msg):
+  if expected.inlineErrors.len > 0:
+    checkForInlineErrors(r, expected, given, test, target)
+  elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
   elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
@@ -389,6 +432,8 @@ proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
       given.err = reMsgsDiffer
       break
 
+
+
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
@@ -456,8 +501,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             args = concat(@[exeFile], args)
           else:
             exeCmd = exeFile.dup(normalizeExe)
-            if expected.useValgrind:
-              args = @["--error-exitcode=1"] & exeCmd & args
+            if expected.useValgrind != disabled:
+              var valgrindOptions = @["--error-exitcode=1"]
+              if expected.useValgrind != leaking:
+                valgrindOptions.add "--leak-check=yes"
+              args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used

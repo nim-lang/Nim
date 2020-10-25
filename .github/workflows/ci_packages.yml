@@ -3,6 +3,8 @@ on: [push, pull_request]
 
 jobs:
   build:
+    if: |
+      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:

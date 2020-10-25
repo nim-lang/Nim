@@ -35,7 +35,7 @@ To choose the memory management strategy use the ``--gc:`` switch.
   It offers deterministic performance for `hard realtime`:idx: systems. Reference cycles
   cause memory leaks, beware.
 
-- ``--gc:orc``. Same as ``-gc:arc`` but adds a cycle collector based on "trial deletion".
+- ``--gc:orc``. Same as ``--gc:arc`` but adds a cycle collector based on "trial deletion".
   Unfortunately that makes its performance profile hard to reason about so it is less
   useful for hard realtime systems.
 
@@ -176,8 +176,7 @@ useful for us, so it might be useful for you. To get a heap dump, compile
 with ``-d:nimTypeNames`` and call ``dumpNumberOfInstances`` at a strategic place in your program.
 This produces a list of used types in your program and for every type
 the total amount of object instances for this type as well as the total
-amount of bytes these instances take up. This list is currently unsorted!
-You need to use external shell script hacking to sort it.
+amount of bytes these instances take up.
 
 The numbers count the number of objects in all garbage collector heaps, they refer to
 all running threads, not only to the current thread. (The current thread

@@ -448,6 +448,7 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     # follow all elements:
     forallElements(c, t, body, x, y)
   of attachedDispose:
+    forallElements(c, t, body, x, y)
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
 
 proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
@@ -462,6 +463,7 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
+    # XXX: replace these with assertions.
     if t.assignment == nil:
       return # protect from recursion
     body.add newHookCall(c, t.assignment, x, y)
@@ -516,12 +518,12 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
-  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(t)
+  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(elemType)
 
   var cond: PNode
   if isCyclic:
     if isFinal(elemType):
-      let typInfo = genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
+      let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
       typInfo.typ = getSysType(c.g, c.info, tyPointer)
       cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicStatic", c.info, x, typInfo)
     else:
@@ -544,7 +546,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
     if isFinal(elemType):
-      let typInfo = genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
+      let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
       typInfo.typ = getSysType(c.g, c.info, tyPointer)
       body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x), typInfo, y)
     else:
@@ -827,7 +829,10 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info)
 
-  result = symPrototype(g, typ, typ.owner, kind, info)
+  result = typ.attachedOps[kind]
+  if result == nil:
+    result = symPrototype(g, typ, typ.owner, kind, info)
+
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ)
   a.fn = result
 
@@ -947,9 +952,18 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   let lastAttached = if g.config.selectedGC == gcOrc: attachedDispose
                      else: attachedSink
 
+  # bug #15122: We need to produce all prototypes before entering the
+  # mind boggling recursion. Hacks like these imply we shoule rewrite
+  # this module.
+  var generics: array[attachedDestructor..attachedDispose, bool]
+  for k in attachedDestructor..lastAttached:
+    generics[k] = canon.attachedOps[k] != nil
+    if not generics[k]:
+      canon.attachedOps[k] = symPrototype(g, canon, canon.owner, k, info)
+
   # we generate the destructor first so that other operators can depend on it:
   for k in attachedDestructor..lastAttached:
-    if canon.attachedOps[k] == nil:
+    if not generics[k]:
       discard produceSym(g, c, canon, k, info)
     else:
       inst(canon.attachedOps[k], canon)
