@@ -276,7 +276,7 @@ else: # main driver
       var result2 = execCmdEx(fmt"{nim}", options = {}, input = "echo 3*4", args = ["r", "--hints:off", "-"])
       stripLineEnd(result2[0])
       doAssert result2 == result
-      doAssertRaises(OSError): discard execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4", useArgs = true)
+      doAssertRaises(OSError): discard execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4", args = [])
 
     when not defined(windows):
       doAssert execCmdEx("ls --nonexistant").exitCode != 0
