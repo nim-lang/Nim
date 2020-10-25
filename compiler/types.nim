@@ -123,8 +123,13 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
-proc addDeclaredLoc(result: var string, conf: ConfigRef; sym: PSym) =
-  result.add " [declared in " & conf$sym.info & "]"
+proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
+  # result.add " [declared in " & conf$sym.info & "]"
+  result.add " [declared in " & toFileLineCol(conf, sym.info) & "]"
+
+proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
+  if optDeclaredLocs in conf.globalOptions:
+    addDeclaredLoc(result, conf, sym)
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)

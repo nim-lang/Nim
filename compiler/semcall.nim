@@ -208,6 +208,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
       candidates.add(getProcHeader(c.config, err.sym, prefer))
+    candidates.addDeclaredLocMaybe(c.config, err.sym)
     candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
@@ -230,6 +231,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
         candidates.add typeToString(wanted)
+        if wanted.sym != nil:
+          candidates.addDeclaredLocMaybe(c.config, wanted.sym)
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
@@ -239,6 +242,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "' is of type: "
           var got = nArg.typ
           candidates.add typeToString(got)
+          if got.sym != nil:
+            candidates.addDeclaredLocMaybe(c.config, got.sym)
+
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"

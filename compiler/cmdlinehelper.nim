@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Helpers for binaries that use compiler passes, eg: nim, nimsuggest, nimfix
+## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest, nimfix
 
 import
   options, idents, nimconf, extccomp, commands, msgs,

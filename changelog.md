@@ -12,6 +12,8 @@
 
 ## Compiler changes
 
+- Added `--declaredlocs` to show symbol declaration location in messages.
+- Source+Edit links now appear on top of every docgen'd page when `nim doc --git.url:url ...` is given.
 
 
 ## Tool changes

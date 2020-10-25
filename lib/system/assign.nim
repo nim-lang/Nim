@@ -248,9 +248,7 @@ proc genericReset(dest: pointer, mt: PNimType) =
       unsureAsgnRef(cast[PPointer](dest), nil)
   of tySequence:
     when defined(nimSeqsV2):
-      var s = cast[ptr NimSeqV2Reimpl](dest)
-      if s.p != nil:
-        deallocShared(s.p)
+      frees(cast[ptr NimSeqV2Reimpl](dest)[])
       zeroMem(dest, mt.size)
     else:
       unsureAsgnRef(cast[PPointer](dest), nil)

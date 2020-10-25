@@ -502,7 +502,7 @@ weirdScopes()
 # bug #14985
 proc getScope(): string =
   if true:
-    "hi"
+    return "hi"
   else:
     "else"
 
@@ -512,14 +512,14 @@ proc getScope3(): string =
   try:
     "try"
   except:
-    "except"
+    return "except"
 
 echo getScope3()
 
 proc getScope2(): string =
   case true
   of true:
-    "bye"
+    return "bye"
   else:
     "else"
 

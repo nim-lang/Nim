@@ -70,3 +70,8 @@ static: # issue #11861
   var ifb2: InheritedFromBase
   initBase(ifb2)
   doAssert(ifb2.txt == "Initialized string from base")
+
+
+static: # issue #15662
+  proc a(T: typedesc) = echo T.type
+  a((int, int))

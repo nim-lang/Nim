@@ -760,7 +760,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc) =
       # See tmissingderef. So we get rid of the deref instead. The codegen
       # ends up using 'memcpy' for the array assignment,
       # so the '&' and '*' cancel out:
-      putIntoDest(p, d, lodeTyp(a.t[0]), rdLoc(a), a.storage)
+      putIntoDest(p, d, e, rdLoc(a), a.storage)
     else:
       putIntoDest(p, d, e, "(*$1)" % [rdLoc(a)], a.storage)
 
@@ -2180,17 +2180,25 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #deallocShared($1.p);$n" &
-        "}$n",
-        [rdLoc(a)])
+      if optThreads in p.config.globalOptions:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #deallocShared($1.p);$n" &
+          "}$n", [rdLoc(a)])
+      else:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #dealloc($1.p);$n" &
+          "}$n", [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
-        " #deallocShared($1.p);$n" &
-        "}$n",
-        [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
+      if optThreads in p.config.globalOptions:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #deallocShared($1.p);$n" &
+          "}$n", [rdLoc(a)])
+      else:
+        linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+          " #dealloc($1.p);$n" &
+          "}$n", [rdLoc(a)])
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
@@ -2320,10 +2328,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t, skVar)])
   of mAlignOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t)])
+    putIntoDest(p, d, e, "((NI)NIM_ALIGNOF($1))" % [getTypeDesc(p.module, t, skVar)])
   of mOffsetOf:
     var dotExpr: PNode
     if e[1].kind == nkDotExpr:
@@ -2333,7 +2341,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
-    let tname = getTypeDesc(p.module, t)
+    let tname = getTypeDesc(p.module, t, skVar)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)

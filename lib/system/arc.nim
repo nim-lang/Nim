@@ -79,10 +79,6 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = c_malloc(cuint s)
-    nimZeroMem(orig, s)
-    result = orig +! sizeof(RefHeader)
   elif compileOption("threads"):
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
@@ -102,8 +98,6 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = cast[ptr RefHeader](c_malloc(cuint s))
   elif compileOption("threads"):
     var orig = cast[ptr RefHeader](allocShared(s))
   else:
@@ -171,8 +165,6 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
-    elif defined(useMalloc):
-      c_free(p -! sizeof(RefHeader))
     elif compileOption("threads"):
       deallocShared(p -! sizeof(RefHeader))
     else:

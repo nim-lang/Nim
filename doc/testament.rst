@@ -94,7 +94,7 @@ Example "template" **to edit** and write a Testament unittest:
 
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
-    cmd: "c -r $file" # Command the test should use to run.
+    cmd: "nim c -r $file" # Command the test should use to run.
 
     maxcodesize: 666  # Maximum generated temporary intermediate code file size for the test.
 
@@ -103,6 +103,11 @@ Example "template" **to edit** and write a Testament unittest:
     target: "c js"    # Targets to run the test into (C, C++, JavaScript, etc).
 
     disabled: "bsd"   # Disable the test by condition, here BSD is disabled just as an example.
+    disabled: "win"   # Can disable multiple OSes at once
+    disabled: "32bit" # ...or architectures
+    disabled: "i386"
+    disabled: "azure" # ...or pipeline runners
+    disabled: true    # ...or can disable the test entirely
 
   """
   assert true

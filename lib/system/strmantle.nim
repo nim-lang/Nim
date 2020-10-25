@@ -283,26 +283,6 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-  ## The stringify operator for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
-
 when defined(gcDestructors):
   proc GC_getStatistics*(): string =
     result = "[GC] total memory: "
