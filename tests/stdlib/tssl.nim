@@ -1,8 +1,9 @@
 discard """
   joinable: false
   disabled: "freebsd"
+  disabled: "openbsd"
 """
-# disabled: "freebsd" pending bug #15713
+# disabled: pending bug #15713
 import net, nativesockets
 
 when defined(posix): import os, posix
