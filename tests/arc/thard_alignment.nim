@@ -72,7 +72,7 @@ isAlignedCheck(f2(xx), alignOf(m256d))
 #-----------------------------------------------------------------------------
 
 type
-  MyAligned = object
+  MyAligned = object of RootObj
     a{.align: 128.}: float
 
 
@@ -83,7 +83,7 @@ var fref = new(MyAligned)
 isAlignedCheck(fref, MyAligned.alignOf)
 
 var fs: seq[MyAligned]
-var fr: seq[ref MyAligned]
+var fr: seq[RootRef]
 
 for i in 0..1000:
   fs.add MyAligned()
@@ -92,12 +92,12 @@ for i in 0..1000:
   
   fr.add new(MyAligned)
   isAlignedCheck(fr[^1], MyAligned.alignOf)
-  fr[^1][].a = i.float
+  ((ref MyAligned)fr[^1])[].a = i.float
 
 
 for i in 0..1000:
   doAssert(fs[i].a == i.float)
-  doAssert(fr[i].a == i.float)
+  doAssert(((ref MyAligned)fr[i]).a == i.float)
 
 
 proc lambdaTest2(a: MyAligned, z: ref MyAligned): auto =
