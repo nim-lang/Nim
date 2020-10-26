@@ -18,7 +18,8 @@ type
 proc toPackedType(t: PType; ir: var Tree; c: var Context): TypeId =
   result = TypeId(0)
 
-proc toPackedSym(n: PNode; ir: var Tree; c: var Context) =
+proc toPackedSymNode(n: PNode; ir: var Tree; c: var Context) =
+  assert n.kind == nkSym
   let t = toPackedType(n.typ, ir, c)
 
   var o = n.sym.owner
@@ -45,7 +46,7 @@ proc toPackedNode*(n: PNode; ir: var Tree; c: var Context) =
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
       typeId: toPackedType(n.typ, ir, c), info: n.info)
   of nkSym:
-    toPackedSym(n, ir, c)
+    toPackedSymNode(n, ir, c)
   of directIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(n.intVal),
       typeId: toPackedType(n.typ, ir, c), info: n.info)

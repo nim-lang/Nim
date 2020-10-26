@@ -47,23 +47,55 @@ type
   ModuleId* = distinct int32
   NodePos* = distinct int
 
-  Sym* = object
+  NodeId* = distinct int32
+
+  PackedLib* = object
+    kind*: TLibKind
+    generated*: bool
+    isOverriden*: bool
+    name*: LitId
+    path*: NodeId
+
+  PackedSym* = object
     kind*: TSymKind
     name*: LitId
     typeId*: TypeId
-    flags*: set[TSymFlag]
+    flags*: TSymFlags
     magic*: TMagic
-    info*: TLineInfo # redundant
+    info*: TLineInfo
     ast*: NodePos
+    owner*: ItemId
+    guard*: ItemId
+    bitsize*: int
+    alignment*: int # for alignment
+    options*: TOptions
+    position*: int
+    offset*: int
+    externalName*: LitId # instead of TLoc
+    annex*: PackedLib
+    when hasFFI:
+      cname*: LitId
+    constraint*: NodeId
 
   PackedType* = object
     kind*: TTypeKind
     nodekind*: TNodeKind
-    flags*: set[TTypeFlag]
-    operand*: int32
+    flags*: TTypeFlags
+    types*: int32
+    nodes*: int32
+    methods*: int32
     nodeflags*: TNodeFlags
     info*: TLineInfo
-    sym*: (ModuleId, SymId) # external refs are possible!
+    sym*: ItemId
+    owner*: ItemId
+    attachedOps*: array[TTypeAttachedOp, ItemId]
+    size*: BiggestInt
+    align*: int16
+    paddingAtEnd*: int16
+    lockLevel*: TLockLevel # lock level as required for deadlock checking
+    # not serialized: loc*: TLoc because it is backend-specific
+    typeInst*: TypeId
+    nonUniqueId*: ItemId
 
   Node* = object     # 20 bytes
     kind*: TNodeKind
@@ -91,7 +123,7 @@ type
   Shared* = ref object # shared between different versions of 'Module'.
                        # (though there is always exactly one valid
                        # version of a module)
-    syms*: seq[Sym]
+    syms*: seq[PackedSym]
     types*: seq[seq[Node]]
     strings*: BiTable[string] # we could share these between modules.
     integers*: BiTable[BiggestInt]
