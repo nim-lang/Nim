@@ -37,13 +37,18 @@ proc duplicate*(oldfd: FileHandle): FileHandle =
   Calls POSIX function `dup` on Posix platform and `_dup` on Windows
   ]##
   runnableExamples:
-    # Duplicating stdout and writing to it
-    let stdoutHolder = duplicate(stdout.getFileHandle)
-    var f : File
-    let res = open(f, stdoutHolder, mode=fmWrite)
-    f.write("Test\n")
-    # Output "Test"
-    f.close()
+    # stdoutDuplicate is a copy of stdout FileHandle that points to STDOUT
+    let stdoutDuplicate = duplicate(stdout.getFileHandle())
+    # Writing to stdoutDuplicate will write to stdout
+    doAssert(stdoutDuplicate != stdout.getFileHandle())
+    # On windows, opening a file from a FileHandle does not work
+    when not defined(windows):
+      var f : File
+      let res = open(f, stdoutHolder, mode=fmWrite)
+      let msg = "This is a test message that will be displayed ! \n"
+      f.write(msg)
+      # Output "Test"
+      f.close()
 
   result = c_dup(oldfd)
   checkError(result)
