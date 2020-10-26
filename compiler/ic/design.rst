@@ -40,3 +40,10 @@ Global state
 ------------
 
 Global persistent state will be kept in a project specific `.rod` file.
+
+Rod File Format
+---------------
+
+A string encoded with frosty which represents the version of the format,
+followed by a Module object encoded with frosty and then compressed with
+supersnappy.
