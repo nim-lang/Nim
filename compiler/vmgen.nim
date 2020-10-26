@@ -247,6 +247,8 @@ proc freeTemp(c: PCtx; r: TRegister) =
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
   let c = cc.prc
+  # we could also customize via the following (with proper caching in ConfigRef):
+  # let highRegisterPressure = cc.config.getConfigVar("vm.highRegisterPressure", "40").parseInt
   if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
     for i in 0..c.maxSlots-n:
       if not c.slots[i].inUse:
@@ -1508,14 +1510,14 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let tmp = c.genx(ri)
     c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
     c.freeTemp(tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX, see nkDotExpr
     c.freeTemp(objR)
   of nkDotExpr:
     let dest = c.genx(le[0], {gfNode})
     let idx = genField(c, le[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX: idx is an immediate (field position), not a register
     c.freeTemp(tmp)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
