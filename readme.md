@@ -2,7 +2,7 @@
 
 [![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
 
-This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
+This repository contains the Nim compiler, Nim's stdlib, tools, and documentation.
 For more information about Nim, including downloads and documentation for
 the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](https://nim-lang.github.io/Nim/).
 
@@ -37,7 +37,7 @@ architecture combinations:
   * Linux (most, if not all, distributions) - x86, x86_64, ppc64 and armv6l
   * Mac OS X (10.04 or greater) - x86, x86_64 and ppc64
 
-More platforms are supported, however they are not tested regularly and they
+More platforms are supported, however, they are not tested regularly and they
 may not be as stable as the above-listed platforms.
 
 Compiling the Nim compiler is quite straightforward if you follow these steps:
@@ -60,10 +60,10 @@ Next, to build from source you will need:
     * [MinGW32.7z](https://nim-lang.org/download/mingw32.7z)
     * [MinGW64.7z](https://nim-lang.org/download/mingw64.7z)
 
-**Windows Note: Cygwin and similar posix runtime environments are not supported.**
+**Windows Note: Cygwin and similar POSIX runtime environments are not supported.**
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
-Nim from source using ``gcc``, ``git`` and the ``koch`` build tool.
+Nim from source using ``gcc``, ``git``, and the ``koch`` build tool.
 
 **Note: The following commands are for the development version of the compiler.**
 For most users, installing the latest stable version is enough. Check out
@@ -72,14 +72,14 @@ the installation instructions on the website to do so: https://nim-lang.org/inst
 For package maintainers: see [packaging guidelines](https://nim-lang.github.io/Nim/packaging.html).
 
 
-First get Nim from github:
+First, get Nim from github:
 
 ```
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
 ```
 
-Next run the appropriate build shell script for your platform:
+Next, run the appropriate build shell script for your platform:
 
 * `build_all.sh` (Linux, Mac)
 * `build_all.bat` (Windows)
@@ -88,7 +88,7 @@ Windows requires a number of other dependencies that you may need to install inc
 PCRE and OpenSSL. Nim hosts a zip package containing known working versions of the
 required DLLs [here](https://nim-lang.org/download/dlls.zip).
 
-Finally, once you have finished the build steps (on Windows, Mac or Linux) you
+Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
 
 See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
@@ -140,11 +140,11 @@ you should familiarize yourself with the following repository structure:
     * ``pure/`` - modules in the standard library written in pure Nim.
     * ``impure/`` - modules in the standard library written in pure Nim with
     dependencies written in other languages.
-    * ``wrappers/`` - modules which wrap dependencies written in other languages.
+    * ``wrappers/`` - modules that wrap dependencies written in other languages.
 * ``tests/`` - contains categorized tests for the compiler and standard library.
 * ``tools/`` - the tools including ``niminst`` and ``nimweb`` (mostly invoked via
   ``koch``).
-* ``koch.nim`` - tool used to bootstrap Nim, generate C sources, build the website,
+* ``koch.nim`` - the tool used to bootstrap Nim, generate C sources, build the website,
   and generate the documentation.
 
 If you are not familiar with making a pull request using GitHub and/or git, please
@@ -198,7 +198,7 @@ You can also see a list of all our sponsors/backers from various payment service
 
 ## License
 The compiler and the standard library are licensed under the MIT license, except
-for some modules which explicitly state otherwise. As a result you may use any
+for some modules which explicitly state otherwise. As a result, you may use any
 compatible license (essentially any license) for your own programs developed with
 Nim. You are explicitly permitted to develop commercial applications using Nim.
 
