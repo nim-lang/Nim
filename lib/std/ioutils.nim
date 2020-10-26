@@ -55,8 +55,9 @@ proc duplicateTo*(oldfd: FileHandle, newfd: FileHandle) =
   Calls POSIX function `dup2` on Posix platform and `_dup2` on Windows.
   ]##
   runnableExamples:
+    import os
     # Redirect stdout to a file temporarily
-    let tmpFileName = "./hidden_output.txt"
+    let tmpFileName = getTmpDir() / "hidden_output.txt"
     let stdoutFileno = stdout.getFileHandle()
     let stdoutDupFd = duplicate(stdoutFileno)
 
