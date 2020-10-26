@@ -403,7 +403,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   var
     key, val: string
   case switch.normalize
-  of "eval", "e": # (switch `e` not to be confused with command `e` for nimscript)
+  of "eval":
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
