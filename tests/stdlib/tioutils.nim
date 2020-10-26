@@ -7,44 +7,43 @@ hello1
 
 import std/ioutils
 import os
+from stdtest/specialpaths import buildDir
 
-let tmpFileName = "./tmpFile.txt"
+block: # duplicate, duplicateTo
+  let tmpFileName = buildDir / "tioutils.txt"
+  template captureStdout(body) : untyped =
+    let stdoutFileno = stdout.getFileHandle()
+    # Duplicate stoudFileno
+    let stdout_dupfd = duplicate(stdoutFileno)
+    # Create a new file
+    # You can use append strategy if you'd like
+    let tmpFile: File = open(tmpFileName, fmWrite)
+    # Get the FileHandle (the file descriptor) of your file
+    let tmpFileFd: FileHandle = tmpFile.getFileHandle()
+    # dup2 tmpFileFd to stdoutFileno -> writing to stdoutFileno now writes to tmpFile
+    duplicateTo(tmpFileFd, stdoutFileno)
+    body
+    # Force flush
+    tmpFile.flushFile()
+    # Close tmp
+    tmpFile.close()
+    # Read tmp
+    let ret = readFile(tmpFileName)
+    # Restore stdout
+    duplicateTo(stdout_dupfd, stdoutFileno)
+    ret
 
-template captureStdout*(ident: untyped, body: untyped) =
-  var stdoutFileno = stdout.getFileHandle()
-  # Duplicate stoudFileno
-  var stdout_dupfd = duplicate(stdoutFileno)
-  # Create a new file
-  # You can use append strategy if you'd like
-  var tmpFile: File = open(tmpFileName, fmWrite)
-  # Get the FileHandle (the file descriptor) of your file
-  var tmpFileFd: FileHandle = tmpFile.getFileHandle()
-  # dup2 tmpFileFd to stdoutFileno -> writing to stdoutFileno now writes to tmpFile
-  duplicateTo(tmpFileFd, stdoutFileno)
-  body
-  # Force flush
-  tmpFile.flushFile()
-  # Close tmp
-  tmpFile.close()
-  # Read tmp
-  ident = readFile(tmpFileName)
-  # Restore stdout
-  duplicateTo(stdout_dupfd, stdoutFileno)
+  proc duplicateStdout() =
+    var msg = "hello"
+    echo msg & "1"
 
-proc main() =
-  var msg = "hello"
-  echo msg & "1"
-  var s: string
+    let s = captureStdout:
+      echo msg & "2"
 
-  captureStdout(s):
-    echo msg & "2"
-    msg = "ciao"
+    doAssert s == "hello2\n"
 
-  doAssert s == "hello2\n"
-
-# Dummy filename
-discard tryRemoveFile(tmpFileName)
-main()
-# Check it works twice
-main()
-discard tryRemoveFile(tmpFileName)
+  discard tryRemoveFile(tmpFileName)
+  duplicateStdout()
+  # Check it works twice
+  duplicateStdout()
+  doAssert tryRemoveFile(tmpFileName)
