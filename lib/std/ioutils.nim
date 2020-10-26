@@ -1,6 +1,6 @@
 when defined(windows):
   proc c_dup(oldfd: FileHandle): FileHandle {.
-    importc:"_dup", header: "<io.h>".}
+    importc: "_dup", header: "<io.h>".}
   proc c_dup2(oldfd: FileHandle, newfd: FileHandle): cint {.
     importc: "_dup2", header: "<io.h>".}
 else:
@@ -19,12 +19,12 @@ else:
 
 ## Also defined in std/posix and system/io
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
-when not defined(nimScript):
+when not defined(nimscript):
   var errno {.importc, header: "<errno.h>".}: cint ## error variable
 
-template checkError(ret: cint)=
+template checkError(ret: cint) =
   if ret == -1:
-    when not defined(nimScript):
+    when not defined(nimscript):
       raise newException(IOError, $strerror(errno))
     else:
       doAssert(false)
@@ -34,7 +34,7 @@ proc duplicate*(oldfd: FileHandle): FileHandle =
   Return a copy of the file handle `oldfd`.
   After a successful return, both `FileHandle` may be used interchangeably.
   They refer to the same open file description and share file offset and status flags.
-  Calls POSIX function `dup` on Posix platform and  `_dup` on Windows
+  Calls POSIX function `dup` on Posix platform and `_dup` on Windows
   ]##
   runnableExamples:
     # Duplicating stdout and writing to it
