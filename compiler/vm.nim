@@ -1501,6 +1501,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
+      dbg node.kind, node.flags, node.typ
       regs[ra].intVal = ord(
         # Note that `nfIsRef` + `nkNilLit` represents an allocated
         # reference with the value `nil`, so `isNil` should be false!
