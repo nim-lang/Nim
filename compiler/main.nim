@@ -17,7 +17,7 @@ import
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, passaux, depends, vm, idgen,
+  platform, nimconf, passaux, depends, vm,
   modules,
   modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
 
@@ -137,12 +137,8 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    processModule(graph, m, llStreamOpenStdIn())
-
-const evalPasses = [verbosePass, semPass, evalPass]
-
-proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
-  carryPasses(graph, nodes, module, evalPasses)
+    var idgen = IdGenerator(module: m.itemId.module, item: m.itemId.item)
+    processModule(graph, m, idgen, llStreamOpenStdIn())
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -173,7 +169,6 @@ proc mainCommand*(graph: ModuleGraph) =
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
-  setId(100)
 
   proc customizeForBackend(backend: TBackend) =
     ## Sets backend specific options but don't compile to backend yet in
@@ -219,7 +214,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       wantMainModule(conf)
       conf.cmd = cmdDoc
-      loadConfigs(DocConfig, cache, conf)
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
@@ -277,14 +272,14 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2html
-      loadConfigs(DocConfig, cache, conf)
+      loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of "rst2tex":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2tex
-      loadConfigs(DocTexConfig, cache, conf)
+      loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
   of "jsondoc0": docLikeCmd commandJson(cache, conf)
   of "jsondoc2", "jsondoc": docLikeCmd commandDoc2(graph, true)

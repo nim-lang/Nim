@@ -22,6 +22,7 @@ type
     config: ConfigRef
     ic: IdentCache
     instID: int
+    idgen: IdGenerator
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -48,7 +49,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s)
+          x = copySym(s, nextId(c.idgen))
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
@@ -168,6 +169,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
                    ic: IdentCache; instID: ref int;
+                   idgen: IdGenerator;
                    fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
@@ -183,6 +185,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.ic = ic
   initIdTable(ctx.mapping)
   ctx.instID = instID[]
+  ctx.idgen = idgen
 
   let body = tmpl.getBody
   #echo "instantion of ", renderTree(body, {renderIds})
