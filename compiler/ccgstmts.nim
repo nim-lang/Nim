@@ -66,7 +66,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   # if we have a something that's been captured, use the lowering instead:
   for i in 0..<n.len-2:
     if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
+      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.module.idgen, p.prc))
       return
 
   # check only the first son
@@ -1525,7 +1525,7 @@ proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLo
       theProc = p
       break
   if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
     t.methods.add((ObjDiscMappingProcSlot, theProc))
   var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
   call.add newSymNode(theProc)

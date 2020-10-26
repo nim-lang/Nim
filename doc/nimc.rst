@@ -423,7 +423,7 @@ complete list.
 Define                   Effect
 ======================   =========================================================
 ``release``              Turns on the optimizer.
-                         More aggressive optimizations are possible, eg:
+                         More aggressive optimizations are possible, e.g.:
                          ``--passC:-ffast-math`` (but see issue #10305)
 ``danger``               Turns off all runtime checks and turns on the optimizer.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.

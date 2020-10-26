@@ -99,7 +99,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       inc i
     else:
       result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
-    result.add("\t#")
+    result.add("\t# ")
     result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
@@ -247,6 +247,8 @@ proc freeTemp(c: PCtx; r: TRegister) =
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
   let c = cc.prc
+  # we could also customize via the following (with proper caching in ConfigRef):
+  # let highRegisterPressure = cc.config.getConfigVar("vm.highRegisterPressure", "40").parseInt
   if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
     for i in 0..c.maxSlots-n:
       if not c.slots[i].inUse:
@@ -586,9 +588,6 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
-    #if i > 0 and i < fntyp.len:
-    #  let paramType = fntyp.n[i]
-    #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.len:
@@ -1121,7 +1120,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(d)
   of mSwap:
     unused(c, n, dest)
-    c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
+    c.gen(lowerSwap(c.graph, n, c.idgen, if c.prc == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1511,14 +1510,14 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let tmp = c.genx(ri)
     c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
     c.freeTemp(tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX, see nkDotExpr
     c.freeTemp(objR)
   of nkDotExpr:
     let dest = c.genx(le[0], {gfNode})
     let idx = genField(c, le[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
-    c.freeTemp(idx)
+    # c.freeTemp(idx) # BUGFIX: idx is an immediate (field position), not a register
     c.freeTemp(tmp)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
@@ -1822,7 +1821,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a[i].kind == nkSym:
           if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
           checkCanEval(c, a[i])
-      c.gen(lowerTupleUnpacking(c.graph, a, c.getOwner))
+      c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
     elif a[0].kind == nkSym:
       let s = a[0].sym
       checkCanEval(c, a[0])
@@ -1926,20 +1925,21 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-  for i in 0..<n.len:
-    let it = n[i]
-    if it.kind == nkExprColonExpr:
-      let idx = genField(c, it[0])
-      let tmp = c.genx(it[1])
-      c.preventFalseAlias(it[1], opcWrObj,
-                          dest, idx, tmp)
-      c.freeTemp(tmp)
-    else:
-      let tmp = c.genx(it)
-      c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
-      c.freeTemp(tmp)
+  if n.typ.kind != tyTypeDesc:
+    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+    # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
+    for i in 0..<n.len:
+      let it = n[i]
+      if it.kind == nkExprColonExpr:
+        let idx = genField(c, it[0])
+        let tmp = c.genx(it[1])
+        c.preventFalseAlias(it[1], opcWrObj,
+                            dest, idx, tmp)
+        c.freeTemp(tmp)
+      else:
+        let tmp = c.genx(it)
+        c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
+        c.freeTemp(tmp)
 
 proc genProc*(c: PCtx; s: PSym): int
 
@@ -2237,7 +2237,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
+    let body = transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

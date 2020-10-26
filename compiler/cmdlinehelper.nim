@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Helpers for binaries that use compiler passes, eg: nim, nimsuggest, nimfix
+## Helpers for binaries that use compiler passes, e.g.: nim, nimsuggest, nimfix
 
 import
   options, idents, nimconf, extccomp, commands, msgs,
@@ -59,7 +59,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.command = "nimsuggest"
-  loadConfigs(DefaultConfig, cache, conf) # load all config files
+  loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
   if not self.suggestMode:
     let scriptFile = conf.projectFull.changeFileExt("nims")

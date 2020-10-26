@@ -43,7 +43,7 @@ Stdlib
 ------
 
 Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
-preferably have a corresponding separate test file, eg `tests/stdlib/tos.nim`.
+preferably have a corresponding separate test file, e.g. `tests/stdlib/tos.nim`.
 The old convention was to add a ``when isMainModule:`` block in the source file,
 which only gets executed when the tester is building the file.
 
@@ -71,7 +71,7 @@ Sample test:
 
 Always refer to a github issue using the following exact syntax: `bug #1234` as shown
 above, so that it's consistent and easier to search or for tooling. Some browser
-extensions (eg https://github.com/sindresorhus/refined-github) will even turn those
+extensions (e.g. https://github.com/sindresorhus/refined-github) will even turn those
 in clickable links when it works.
 
 Rationale for using a separate test file instead of `when isMainModule:` block:
@@ -462,7 +462,7 @@ Debugging CI failures, flaky tests, etc
    follow these instructions to only restart the jobs that failed:
 
   * Azure: if on your own fork, it's possible from inside azure console
-    (eg `dev.azure.com/username/username/_build/results?buildId=1430&view=results`) via `rerun failed jobs` on top.
+    (e.g. `dev.azure.com/username/username/_build/results?buildId=1430&view=results`) via `rerun failed jobs` on top.
     If either on you own fork or in Nim repo, it's possible from inside github UI
     under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
   * github actions: under "Checks" tab, click "Re-run jobs" in the right.
@@ -580,10 +580,10 @@ Conventions
 1. New stdlib modules should go under `Nim/lib/std/`. The rationale is to require
 users to import via `import std/foo` instead of `import foo`, which would cause
 potential conflicts with nimble packages. Note that this still applies for new modules
-in existing logical directories, eg:
+in existing logical directories, e.g.:
 use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
 
-2. New module names should prefer plural form whenever possible, eg:
+2. New module names should prefer plural form whenever possible, e.g.:
 `std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
 between module name and the symbols it defines. Furthermore, is should use `snake_case`
 and not use capital letters, which cause issues when going from an OS without case

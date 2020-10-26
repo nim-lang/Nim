@@ -230,3 +230,184 @@ block:
   doAssert d == @[]
   doAssert e == @[]
   doAssert f == @[]
+
+import tables
+
+block: # bug #8007
+  type
+    CostKind = enum
+      Fixed,
+      Dynamic
+
+    Cost = object
+      case kind*: CostKind
+      of Fixed:
+        cost*: int
+      of Dynamic:
+        handler*: proc(value: int): int {.nimcall.}
+
+  proc foo(value: int): int {.nimcall.} =
+    sizeof(value)
+
+  const a: array[2, Cost] =[
+    Cost(kind: Fixed, cost: 999),
+    Cost(kind: Dynamic, handler: foo)
+  ]
+
+  # OK with arrays & object variants
+  doAssert $a == "[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
+
+  const b: Table[int, Cost] = {
+    0: Cost(kind: Fixed, cost: 999),
+    1: Cost(kind: Dynamic, handler: foo)
+  }.toTable
+
+  # KO with Tables & object variants
+  # echo b # {0: (kind: Fixed, cost: 0), 1: (kind: Dynamic, handler: ...)} # <----- wrong behaviour
+  doAssert $b == "{0: (kind: Fixed, cost: 999), 1: (kind: Dynamic, handler: ...)}"
+
+  const c: Table[int, int] = {
+    0: 100,
+    1: 999
+  }.toTable
+
+  # OK with Tables and primitive int
+  doAssert $c == "{0: 100, 1: 999}"
+
+  # For some reason the following gives
+  #    Error: invalid type for const: Cost
+  const d0 = Cost(kind: Fixed, cost: 999)
+
+  # OK with seq & object variants
+  const d = @[Cost(kind: Fixed, cost: 999), Cost(kind: Dynamic, handler: foo)]
+  doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
+
+block: # VM wrong register free causes errors in unrelated code
+  block: # bug #15597
+    #[
+    Error: unhandled exception: 'sym' is not accessible using discriminant 'kind' of type 'TNode' [FieldDefect]
+    in /Users/timothee/git_clone/nim/Nim_prs/compiler/vm.nim(1176) rawExecute
+    in opcIndCall
+    in let prc = if not isClosure: bb.sym else: bb[0].sym
+    ]#
+    proc bar2(head: string): string = "asdf"
+    proc gook(u1: int) = discard
+
+    type PathEntry = object
+      kind: int
+      path: string
+
+    iterator globOpt(): int =
+      var u1: int
+
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+      gook(u1)
+
+      var entry = PathEntry()
+      entry.path = bar2("")
+      if false:
+        echo "here2"
+
+    proc processAux(a: float) = discard
+
+    template bar(iter: untyped): untyped =
+      var ret: float
+      for x in iter: break
+      ret
+
+    proc main() =
+      processAux(bar(globOpt()))
+    static: main()
+
+  block: # ditto
+    # D20201024T133245
+    type Deque = object
+    proc initDeque2(initialSize: int = 4): Deque = Deque()
+    proc len2(a: Deque): int = 2
+    proc baz(dir: string): bool = true
+    proc bar2(head: string): string = "asdf"
+    proc bar3(path: var string) = path = path
+
+    type PathEntry = object
+      kind: int
+      path: string
+
+    proc initGlobOpt(dir: string, a1=false,a2=false,a3=false,a4=false): string = dir
+
+    iterator globOpt(dir: string): int =
+      var stack = initDeque2()
+      doAssert baz("")
+      let z = stack.len2
+      if stack.len2 >= 0:
+        var entry = PathEntry()
+        let current = if true: stack.len2 else: stack.len2
+        entry.path = bar2("")
+        bar3(entry.path)
+      if false:
+        echo "here2" # comment here => you get same error as https://github.com/nim-lang/Nim/issues/15704
+
+    proc processAux(a: float) = discard
+
+    template bar(iter: untyped): untyped =
+      var ret: float
+      for x in iter: break
+      ret
+    proc main() =
+      processAux(bar(globOpt(initGlobOpt("."))))
+    static: main()
+
+  block: # bug #15704
+    #[
+    Error: attempt to access a nil address kind: rkFloat
+    ]#
+    type Deque = object
+    proc initDeque2(initialSize: int = 4): Deque = Deque()
+    proc len2(a: Deque): int = 2
+
+    proc baz(dir: string): bool = true
+    proc bar2(head: string): string = "asdf"
+    proc bar3(path: var string) = path = path
+
+    type PathEntry = object
+      kind: int
+      path: string
+      depth: int
+
+    proc initGlobOpt(dir: string, a1=false,a2=false,a3=false,a4=false): string =
+      dir
+
+    iterator globOpt(dir: string): int =
+      var stack = initDeque2()
+      doAssert baz("")
+      let z = stack.len2
+      var a5: int
+      if stack.len2 >= 0:
+        var entry = PathEntry()
+        if false:
+          echo "here"
+        let current = if true: stack.len2 else: stack.len2
+        entry.depth = 1
+        entry.path = bar2("")
+        bar3(entry.path)
+    proc processAux(a: float) = discard
+    template bar(iter: untyped): untyped =
+      var ret: float
+      for x in iter:
+        break
+      ret
+    const dir = "."
+    proc main() =
+      processAux(bar(globOpt(initGlobOpt(dir))))
+    static: main()
