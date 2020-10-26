@@ -326,9 +326,9 @@ when hasAlloc and not defined(js):
         result = alloc(size)
     else: 
       when compileOption("threads"):
-        let base = allocShared(size + align - platformAlignment() + sizeof(uint16))
+        let base = allocShared(size + align - 1 + sizeof(uint16))
       else:
-        let base = alloc(size + align - platformAlignment() + sizeof(uint16))
+        let base = alloc(size + align - 1 + sizeof(uint16))
       let offset = align - (cast[int](base) and (align - 1))
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
@@ -341,9 +341,9 @@ when hasAlloc and not defined(js):
         result = alloc0(size)
     else: 
       when compileOption("threads"):
-        let base = allocShared0(size + align - platformAlignment() + sizeof(uint16))
+        let base = allocShared0(size + align - 1 + sizeof(uint16))
       else:
-        let base = alloc0(size + align - platformAlignment() + sizeof(uint16))
+        let base = alloc0(size + align - 1 + sizeof(uint16))
       let offset = align - (cast[int](base) and (align - 1))
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
