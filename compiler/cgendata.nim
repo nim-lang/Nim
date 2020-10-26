@@ -142,9 +142,9 @@ type
 
   ConflictsTable* = object
     names: Table[string, int]
-    identities: Table[ConflictKey, int]
+    identities: Table[ManglingId, int]
 
-  ConflictKey* = ItemId
+  ManglingId* = ItemId
 
   # this mangling stuff is intentionally verbose; err on side of caution!
   #
@@ -152,7 +152,7 @@ type
   BNameInput = BName or string or Rope  # you can make a BName from these
 
   Mangling = object
-    key: ConflictKey                         # unique id of type/symbol
+    key: ManglingId                         # unique id of type/symbol
     sig: SigHash                             # signature of type/symbol
     name: BName                              # mangled backend name
     module: int                              # source module
@@ -161,8 +161,8 @@ type
 
   MangleCache = object
     manglings: Table[BName, Mangling]        # link name to debug info
-    identities: Table[ConflictKey, BName]    # link unique id to name
-    signatures: Table[SigHash, ConflictKey]  # unifies types by sig
+    identities: Table[ManglingId, BName]    # link unique id to name
+    signatures: Table[SigHash, ManglingId]  # unifies types by sig
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -254,13 +254,13 @@ proc findPendingModule*(m: BModule; t: PType): BModule =
   else:
     result = findPendingModule(m.g, t.owner)
 
-# get a ConflictKey from a PSym or PType
-template conflictKey*(s: PSym): ConflictKey = s.itemId
-template conflictKey*(s: PType): ConflictKey = s.uniqueId
+# get a ManglingId from a PSym or PType
+template manglingId*(s: PSym): ManglingId = s.itemId
+template manglingId*(s: PType): ManglingId = s.uniqueId
 
 # same idea, but for signatures
-template conflictSig*(s: PType): SigHash = hashTypeDef(s)
-template conflictSig*(s: PSym): SigHash = sigHash(s)
+template manglingSig*(s: PType): SigHash = hashTypeDef(s)
+template manglingSig*(s: PSym): SigHash = sigHash(s)
 
 proc initMangleCache(): MangleCache = discard
 
@@ -314,9 +314,9 @@ proc newMangling(m: BModule; p: PSym or PType; name: BNameInput;
       else:
         BName name
   when defined(release):
-    result = Mangling(key: conflictKey(p), sig: sig, name: name)
+    result = Mangling(key: manglingId(p), sig: sig, name: name)
   else:
-    result = Mangling(key: conflictKey(p), sig: sig, module: m.module.id,
+    result = Mangling(key: manglingId(p), sig: sig, module: m.module.id,
                       immutable: hasImmutableName(p), name: name)
 
 proc nextMangling(man: Mangling; m: BModule; p: PSym or PType;
@@ -328,7 +328,7 @@ proc nextMangling(man: Mangling; m: BModule; p: PSym or PType;
 proc setName*(g: BModuleList; m: BModule; p: PSym or PType;
               name: BNameInput; sig: SigHash): BName =
   ## register a name in the global mangle cache
-  template key: ConflictKey = conflictKey(p)
+  template key: ManglingId = manglingId(p)
   let man =
     if g.hasName(key, sig):
       g.nameCache.manglings[g.name(key, sig)].nextMangling(m, p, name, sig)
@@ -344,7 +344,7 @@ proc setName*(g: BModuleList; m: BModule; p: PSym or PType;
 
 proc setName*(g: BModuleList; p: PSym or PType; name: BNameInput) =
   assert p.owner != nil
-  g.setName(findPendingModule(g, p.owner), p, name, conflictSig(p))
+  g.setName(findPendingModule(g, p.owner), p, name, manglingSig(p))
 
 proc tryGet*(g: BModuleList; sig: SigHash; name: var BName): bool =
   ## try to get a name using only a signature; for tyProc|tyTuple use
@@ -352,7 +352,7 @@ proc tryGet*(g: BModuleList; sig: SigHash; name: var BName): bool =
     name = g.nameCache.identities[value[]]
     result = true
 
-proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
+proc hasName*(g: BModuleList; key: ManglingId; sig: SigHash): bool =
   result = key in g.nameCache.identities
   when not defined(release):
     if result:
@@ -377,33 +377,33 @@ proc hasName*(g: BModuleList; key: ConflictKey; sig: SigHash): bool =
           echo "there is no existing mangle"
         raise
 
-proc tryGet*(g: BModuleList; key: ConflictKey; sig: SigHash;
+proc tryGet*(g: BModuleList; key: ManglingId; sig: SigHash;
              name: var BName): bool =
   ## convenience for the mangler because withValue won't work for result
   withValue(g.nameCache.identities, key, value):
     name = value[]   # sadly, passing name to withValue will corrupt it
     result = true
 
-proc unaliasTypeBySignature*(g: BModuleList; key: ConflictKey;
-                             sig: SigHash): ConflictKey =
+proc unaliasTypeBySignature*(g: BModuleList; key: ManglingId;
+                             sig: SigHash): ManglingId =
   ## used by the mangler to avoid out-of-order name introductions for
   ## sig-equal types that vary in identity and do not share source
   ## modules... fun, right?
   assert sig != default(SigHash)
   result = getOrDefault(g.nameCache.signatures, sig, key)
 
-proc retrieveCounter*(g: BModuleList; key: ConflictKey; sig: SigHash): int =
+proc retrieveCounter*(g: BModuleList; key: ManglingId; sig: SigHash): int =
   ## used by the mangler to update local sigConflicts counters
   result = g.nameCache.manglings[g.nameCache.identities[key]].counter
 
-proc bumpCounter*(g: BModuleList; key: ConflictKey; sig: SigHash; to: int) =
+proc bumpCounter*(g: BModuleList; key: ManglingId; sig: SigHash; to: int) =
   ## used by the mangler to update global sigConflicts counters
   template future: int = max(to, retrieveCounter(g, key, sig))
   g.nameCache.manglings[g.nameCache.identities[key]].counter = future
 
 proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
                                                       name: BNameInput;
-                                                      key: ConflictKey;
+                                                      key: ManglingId;
                                                       sig: SigHash): bool =
   ## XXX: remove me; used by the mangler to skip global names
   ##      previously defined in unrelated modules...
@@ -422,7 +422,7 @@ proc hackIfThisNameIsAlreadyInUseInTheGlobalRegistry*(g: BModuleList;
     # the name may also clash if the signatures don't match
     #result = result or g.nameCache.manglings[name].sig != sig
 
-proc name*(g: BModuleList; key: ConflictKey; sig: SigHash): BName =
+proc name*(g: BModuleList; key: ManglingId; sig: SigHash): BName =
   # let it raise a KeyError as necessary...
   result = g.nameCache.identities[key]
 
@@ -451,19 +451,19 @@ proc cacheGetType*(tab: TypeCache; sig: SigHash): Rope =
   # slow linear search is not necessary anymore:
   result = tab.getOrDefault(sig)
 
-proc `[]`*(conflicts: ConflictsTable; key: ConflictKey): int =
+proc `[]`*(conflicts: ConflictsTable; key: ManglingId): int =
   ## pending IC, this will be removed
   getOrDefault(conflicts.identities, key, -1)
 
 proc `[]`*(conflicts: ConflictsTable; p: PSym or PType): int =
   ## pending IC, this will be removed
-  conflicts[conflictKey(p)]
+  conflicts[manglingId(p)]
 
 proc `[]`*(conflicts: ConflictsTable; s: string): int =
   ## pending IC, this will be removed
   getOrDefault(conflicts.names, s, 0)
 
-proc `[]=`*(conflicts: var ConflictsTable; key: ConflictKey; v: int) =
+proc `[]=`*(conflicts: var ConflictsTable; key: ManglingId; v: int) =
   ## pending IC, this will be removed
   let v = max(v, 0)
   if mgetOrPut(conflicts.identities, key, v) < v:
@@ -471,7 +471,7 @@ proc `[]=`*(conflicts: var ConflictsTable; key: ConflictKey; v: int) =
 
 proc `[]=`*(conflicts: var ConflictsTable; p: PSym or PType; v: int) =
   ## pending IC, this will be removed
-  conflicts[conflictKey(p)] = v
+  conflicts[manglingId(p)] = v
 
 proc `[]=`*(conflicts: var ConflictsTable; s: string; v: int) =
   ## pending IC, this will be removed
@@ -479,18 +479,18 @@ proc `[]=`*(conflicts: var ConflictsTable; s: string; v: int) =
   if mgetOrPut(conflicts.names, s, v) < v:
     conflicts.names[s] = v
 
-proc contains*(conflicts: ConflictsTable; key: ConflictKey): bool =
+proc contains*(conflicts: ConflictsTable; key: ManglingId): bool =
   ## pending IC, this will be removed
   key in conflicts.identities
 
 proc contains*(conflicts: ConflictsTable; p: PSym or PType): bool =
   ## pending IC, this will be removed
-  conflictKey(p) in conflicts
+  manglingId(p) in conflicts
 
 proc contains*(conflicts: ConflictsTable; name: string): bool =
   ## pending IC, this will be removed
   conflicts[name] > 0
 
-proc del*(conflicts: var ConflictsTable; key: ConflictKey) =
+proc del*(conflicts: var ConflictsTable; key: ManglingId) =
   ## pending IC, this will be removed
   del(conflicts.identities, key)

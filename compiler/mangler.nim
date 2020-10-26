@@ -35,8 +35,8 @@ import # stdlib imports
   std / [ strutils, tables, sets ]
 
 const
-  inspect = "foo_int"
-  debugMangle = true and not defined(release)
+  inspect = "TGenericSeq"
+  debugMangle = false and not defined(release)
   symbolicTypes =
     when true:
       {tyObject, tyEnum} # obey the boss
@@ -61,15 +61,15 @@ type
 
 template config(): ConfigRef = cache.modules.config
 template add_and(s: typed; chs: string) = s.add "_"; s.add chs
-template add_and(s: typed; key: ConflictKey) = s.add_and $key.item
+template add_and(s: typed; key: ManglingId) = s.add_and $key.item
 
 using
   g: ModuleGraph
 
 # useful for debugging
-template conflictKey(s: BModule): ConflictKey = conflictKey(s.module)
-template conflictKey(s: BProc): ConflictKey =
-  if s.prc == nil: unIdentity else: conflictKey(s.prc)
+template manglingId(s: BModule): ManglingId = manglingId(s.module)
+template manglingId(s: BProc): ManglingId =
+  if s.prc == nil: unIdentity else: manglingId(s.prc)
 
 template mangle*(p: ModuleOrProc; t: PType): string = $getTypeName(p, t)
 proc mangle*(p: ModuleOrProc; s: PSym): string
@@ -113,7 +113,7 @@ template maybeAddCounter(result: typed; p: PType or PSym; count: int) =
     if not p.hasImmutableName:
       add_and result, $count
 
-proc getOrSet(p: ModuleOrProc; name: string; key: ConflictKey): int =
+proc getOrSet(p: ModuleOrProc; name: string; key: ManglingId): int =
   ## Add/get a mangled name from the scope's conflicts table and return
   ## the number of conflicts for that name at the time of its insertion.
   template conflicts(): var ConflictsTable = p.sigConflicts
@@ -122,7 +122,8 @@ proc getOrSet(p: ModuleOrProc; name: string; key: ConflictKey): int =
   if result == -1:
     when debugMangle:
       if startsWith(name, inspect):
-        echo "getorset on ", $typeof(p), " ", conflictKey(p), " addr ", cast[uint](p), " table ", cast[uint](addr conflicts)
+        echo "getorset on ", $typeof(p), " ", manglingId(p).module,
+          " addr ", cast[uint](p), " table ", cast[uint](addr conflicts)
         when p is BModule:
           echo "getorset (module) ", p.cfilename.string
           echo "getorset (module) ", p.module.flags
@@ -138,27 +139,28 @@ proc getOrSet(p: ModuleOrProc; name: string; key: ConflictKey): int =
 
     when debugMangle:
       if startsWith(name, inspect):
-        echo "getorset at ", conflictKey(p), " for ", name, " with key ", key, " is ", result
+        echo "getorset at ", manglingId(p).module, " for ",
+          name, " with key ", key, " is ", result
 
   else:
     # set the value for the name to indicate the NEXT available counter
     # (this will ignore lower values)
     conflicts[name] = result + 1
     when debugMangle:
-      echo "getorset has ", key, " has ", result, " for ", name
+      echo "getorset of ", key.item, " has ", result, " for ", name
       if result >= conflicts[name]:
-        echo "module ", conflictKey(p), " and name ", name
+        echo "module ", manglingId(p).module, " and name ", name
         internalError(p.config,
           "clash count unexpectedly low; result " & $result &
           "; table is " & $conflicts[name])
 
-template purgeConflict(m: ModuleOrProc; key: ConflictKey) =
+template purgeConflict(m: ModuleOrProc; key: ManglingId) =
   ## Remove a cached symbol or type identity from a conflicts table.
   del(m.sigConflicts, key)
 
 proc purgeConflict*(m: ModuleOrProc; s: PSym or PType) =
   ## Remove a cached symbol or type from a conflicts table.
-  purgeConflict(m, conflictKey(s))
+  purgeConflict(m, manglingId(s))
 
 proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
                                         s: PType or PSym;
@@ -166,7 +168,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
                                         name: string;
                                         counter: var int): BName =
   let m = getem()
-  var key = conflictKey(s)
+  var key = manglingId(s)
   var broken = false
   when s is PType:
     broken = key in m.sigConflicts
@@ -174,8 +176,8 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
     # so that we don't confuse our local cache in the getOrSet operation
     key = unaliasTypeBySignature(m.g, key, sig)
     when debugMangle:
-      if conflictKey(s) != key:
-        echo "unaliased ", name, " from ", conflictKey(s), " to ", $key,
+      if manglingId(s) != key:
+        echo "unaliased ", name, " from ", manglingId(s), " to ", $key,
           " for sig ", $sig
 
   if s.hasImmutableName:
@@ -208,7 +210,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
                                                          key, sig):
         when debugMangle:
           echo "purge $1 for $2 name $3; counter $4" %
-            [ $conflictKey(s), $key, aNameForTesting, $counter ]
+            [ $manglingId(s), $key, aNameForTesting, $counter ]
 
         # if we already have a counter for this name and yet
         # it stands in conflict against the global registry,
@@ -216,7 +218,7 @@ proc hackAroundGlobalRegistryCollisions(p: ModuleOrProc;
         if broken:
           internalError(m.config, "attempt to recount " & name)
 
-        # we need to purge `key`, not conflictKey(s)
+        # we need to purge `key`, not manglingId(s)
         purgeConflict(m, key)
       else:
         result = BName aNameForTesting
@@ -233,7 +235,7 @@ proc floatConflict(p: ModuleOrProc; s: PType or PSym; name: string): BName =
   m = findPendingModule(m, s)   # redirect to the source module for `s`
 
   var counter = -1
-  let sig = conflictSig(s)
+  let sig = manglingSig(s)
   result = hackAroundGlobalRegistryCollisions(m, s, sig, name, counter)
 
   # copy the cache to the local module or proc if necessary
@@ -297,7 +299,7 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
     # these can figure into the signature though they may not be exported
     # as types, so signature won't match when it comes time to link
     let m = getem()
-    let sig = conflictSig(typ)
+    let sig = manglingSig(typ)
     var name: BName
     # consult the global cache for a usename name for the type
     if tryGet(m.g, sig, name):
@@ -307,7 +309,7 @@ proc naiveTypeName(p: ModuleOrProc; typ: PType; shorten = false): string =
       shortKind(typ.kind) & typeName(p, typ.lastSon, shorten).capitalizeAscii
     # else, compose an ugly name using the signature
     else:
-      shortKind(typ.kind) & $conflictSig(typ)
+      shortKind(typ.kind) & $manglingSig(typ)
   else:
     shortKind(typ.kind)
 
@@ -327,7 +329,7 @@ proc maybeAddProcArgument(p: ModuleOrProc; s: PSym; name: var string): bool =
   if result:
     if s.typ != nil:
       if s.typ.sons.len >= 2:
-        # avoid including the conflictKey of the 1st param
+        # avoid including the manglingId of the 1st param
         name.add_and typeName(p, s.typ.sons[1], shorten = true)
 
 proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
@@ -354,7 +356,7 @@ proc mayCollide(p: ModuleOrProc; s: PSym; name: var string): bool =
     if result:
       if name.len == 0:
         name = mangle(s.name.s)
-      name.add_and conflictKey(s)
+      name.add_and manglingId(s)
       assert not s.hasImmutableName
 
 proc mangle*(p: ModuleOrProc; s: PSym): string =
@@ -389,7 +391,7 @@ proc mangle*(p: ModuleOrProc; s: PSym): string =
 
       # something like `default` might need this check
       if (unlikely) result in m.config.cppDefines:
-        result.add_and conflictKey(s)
+        result.add_and manglingId(s)
 
   #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
   # XXX: we don't do anything special with regard to m.hcrOn
@@ -421,8 +423,8 @@ proc getSetConflict(p: ModuleOrProc; s: PSym): BName =
   ## Produce an appropriate name for a symbol, and the instances of its
   ## occurence, which may have been incremented for this instance.
   let m = getem()
-  let key = conflictKey(s)
-  let sig = conflictSig(s)
+  let key = manglingId(s)
+  let sig = manglingSig(s)
 
   # for now, use the global registry everywhere if possible
   if tryGet(m.g, key, sig, result):
@@ -465,22 +467,22 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
   when debugMangle:
     if s.name.s == inspect:
       echo "p is module ", p is BModule
-      echo "p key ", conflictKey(p)
+      echo "p key ", manglingId(p).module
 
   result = Rope getSetConflict(p, s)
   when debugMangle:
     if startsWith($result, inspect):
       debug s
       when p is BModule:
-        result.add "/*" & $conflictKey(s) & "*/"
+        result.add "/*" & $manglingId(s) & "*/"
         debug p.cfilename.string
         debug "module $4 >> $1 .. $2 -> $3" %
-          [ $conflictKey(s), s.name.s, $result, $conflictKey(p.module) ]
+          [ $manglingId(s), s.name.s, $result, $manglingId(p.module).module ]
       elif p is BProc:
-        result.add "/*" & $conflictKey(s) & "*/"
+        result.add "/*" & $manglingId(s) & "*/"
         debug "  proc $4 >> $1 .. $2 -> $3" %
-          [ $conflictKey(s), s.name.s, $result,
-           if p.prc != nil: $conflictKey(p.prc) else: "(nil)" ]
+          [ $manglingId(s), s.name.s, $result,
+           if p.prc != nil: $manglingId(p.prc) else: "(nil)" ]
 
 proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
   ## Retrieve (or produce) a useful name for the given type; this is what
@@ -513,7 +515,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
   # this is temporary, but the goal here is to explicitly show
   # the control flow that demonstrates the needed logic for types
 
-  let tsig = conflictSig(t)
+  let tsig = manglingSig(t)
   var counter = -1
   var r = hackAroundGlobalRegistryCollisions(m, t, tsig, name, counter)
 
@@ -521,13 +523,13 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
     # name is "foo"
     # r is "foo_#"
 
-    if tryGet(m.g, conflictKey(typ), sig, result):
+    if tryGet(m.g, manglingId(typ), sig, result):
       # found cached name from input type
       break
 
-    if tryGet(m.g, conflictKey(t), tsig, result):
+    if tryGet(m.g, manglingId(t), tsig, result):
       # found cached name from refined type
-      if conflictKey(t) != conflictKey(typ):
+      if manglingId(t) != manglingId(typ):
         # cache the name for the input type and signature
         discard m.g.setName(m, typ, result, sig)
       break
@@ -536,6 +538,21 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
 
     # make sure we use the source module for any type requested
     result = floatConflict(p, t, name)
+
+  when debugMangle:
+    if startsWith($result, inspect):
+      debug t
+      when p is BModule:
+        result.add $manglingId(t)
+        debug p.cfilename.string
+        debug "module $3 >> $1 .. $2" %
+          [ $manglingId(t), $result, $manglingId(p.module).module ]
+      elif p is BProc:
+        result.add $manglingId(t)
+        debug "  proc $3 >> $1 .. $2" %
+          [ $manglingId(t), $result,
+           if p.prc != nil: $manglingId(p.prc) else: "(nil)" ]
+
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -673,7 +690,7 @@ proc mangleParamName*(p: BProc; s: PSym): Rope =
   ## make new local identifiers of the same name without colliding with it.
 
   # It's likely that the symbol is already in the module scope!
-  if s.loc.r == nil or conflictKey(s) notin p.sigConflicts:
+  if s.loc.r == nil or manglingId(s) notin p.sigConflicts:
     # discard any existing counter for this sym from the module scope
     purgeConflict(p.module, s)
     s.loc.r = nil              # critically, destroy the location
