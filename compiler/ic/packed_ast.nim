@@ -459,3 +459,7 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
+
+proc byteSize*(m: Module): int =
+  ## roughly how large is the module in bytes?
+  Module.sizeof + len(m.ast) * Tree.sizeof
