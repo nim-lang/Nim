@@ -2113,14 +2113,14 @@ proc evalStmt*(c: PCtx, n: PNode) =
   if c.code[start].opcode != opcEof:
     discard execute(c, start)
 
-when false:
-  proc evalExpr*(c: PCtx, n: PNode): PNode =
-    # `nim --eval:"expr"` might've used it at some point for idetools; could
-    # be revived for nimsuggest
-    let n = transformExpr(c.graph, c.idgen, c.module, n)
-    let start = genExpr(c, n)
-    assert c.code[start].opcode != opcEof
-    result = execute(c, start)
+proc evalExpr*(c: PCtx, n: PNode): PNode =
+  # deadcode
+  # `nim --eval:"expr"` might've used it at some point for idetools; could
+  # be revived for nimsuggest
+  let n = transformExpr(c.graph, c.idgen, c.module, n)
+  let start = genExpr(c, n)
+  assert c.code[start].opcode != opcEof
+  result = execute(c, start)
 
 proc getGlobalValue*(c: PCtx; s: PSym): PNode =
   internalAssert c.config, s.kind in {skLet, skVar} and sfGlobal in s.flags
