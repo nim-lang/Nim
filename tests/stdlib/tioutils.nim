@@ -5,34 +5,31 @@ hello1
   '''
 """
 
-import ../../lib/std/ioutils
-# import std/ioutils
+import std/ioutils
 import os
 
-# Dummy filename
 let tmpFileName = "./tmpFile.txt"
-discard tryRemoveFile(tmpFileName)
 
 template captureStdout*(ident: untyped, body: untyped) =
-  var stdout_fileno = stdout.getFileHandle()
-  # Duplicate stoud_fileno
-  var stdout_dupfd = duplicate(stdout_fileno)
+  var stdoutFileno = stdout.getFileHandle()
+  # Duplicate stoudFileno
+  var stdout_dupfd = duplicate(stdoutFileno)
   # Create a new file
   # You can use append strategy if you'd like
-  var tmp_file: File = open(tmpFileName, fmWrite)
+  var tmpFile: File = open(tmpFileName, fmWrite)
   # Get the FileHandle (the file descriptor) of your file
-  var tmp_file_fd: FileHandle = tmp_file.getFileHandle()
-  # dup2 tmp_file_fd to stdout_fileno -> writing to stdout_fileno now writes to tmp_file
-  duplicateTo(tmp_file_fd, stdout_fileno)
+  var tmpFileFd: FileHandle = tmpFile.getFileHandle()
+  # dup2 tmpFileFd to stdoutFileno -> writing to stdoutFileno now writes to tmpFile
+  duplicateTo(tmpFileFd, stdoutFileno)
   body
   # Force flush
-  tmp_file.flushFile()
+  tmpFile.flushFile()
   # Close tmp
-  tmp_file.close()
+  tmpFile.close()
   # Read tmp
   ident = readFile(tmpFileName)
   # Restore stdout
-  duplicateTo(stdout_dupfd, stdout_fileno)
+  duplicateTo(stdout_dupfd, stdoutFileno)
 
 proc main() =
   var msg = "hello"
@@ -45,8 +42,9 @@ proc main() =
 
   doAssert s == "hello2\n"
 
-when isMainModule:
-  main()
-  # Check it works twice
-  main()
-  discard tryRemoveFile(tmpFileName)
+# Dummy filename
+discard tryRemoveFile(tmpFileName)
+main()
+# Check it works twice
+main()
+discard tryRemoveFile(tmpFileName)
