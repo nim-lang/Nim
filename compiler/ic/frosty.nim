@@ -13,7 +13,6 @@ const
   frostySorted* {.booldefine.} = false
 
 when frostySorted:
-  {.hint: "frosty using sorta".}
   import sorta
 
   type
@@ -25,7 +24,6 @@ when frostySorted:
         indent: int
 
 else:
-  {.hint: "frosty using stdlib".}
   import std/tables
 
   type
