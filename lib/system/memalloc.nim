@@ -306,59 +306,67 @@ when hasAlloc and not defined(js):
 
   include bitmasks  
 
-  template needsAlignmentOnPlatform(align: int): bool = 
+  template `+!`(p: pointer, s: SomeInteger): pointer =
+    cast[pointer](cast[int](p) +% s)
+
+  template `-!`(p: pointer, s: SomeInteger): pointer =
+    cast[pointer](cast[int](p) -% s)
+
+  template platformAlignment: int = 
     when defined(useMalloc):
-      when defined(amd64): align > 16
-      else: align > 8
-    else:
-      align > MemAlign
+      when defined(amd64): 16
+      else: 8
+    else: MemAlign
+
+  import ansi_c
 
   proc alignedAlloc(size, align: Natural): pointer =
-    if not needsAlignmentOnPlatform(align):
+    if align <= platformAlignment():
       when compileOption("threads"):
         result = allocShared(size)
       else:
         result = alloc(size)
     else: 
       when compileOption("threads"):
-        let base = cast[ptr UncheckedArray[int8]](allocShared(size + align))
+        let base = allocShared(size + align - platformAlignment() + sizeof(uint16))
       else:
-        let base = cast[ptr UncheckedArray[int8]](alloc(size + align))
-      let offset = int8(align - (cast[int](base) and (align - 1)))
-      base[offset - 1] = offset
-      result = base[offset].addr
+        let base = alloc(size + align - platformAlignment() + sizeof(uint16))
+      let offset = align - (cast[int](base) and (align - 1))
+      sysAssert(offset >= sizeof(uint16), "offset can't be negative")
+      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
+      result = base +! offset
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if not needsAlignmentOnPlatform(align):
+    if align <= platformAlignment():
       when compileOption("threads"):
         result = allocShared0(size)
       else:
         result = alloc0(size)
     else: 
       when compileOption("threads"):
-        let base = cast[ptr UncheckedArray[int8]](allocShared0(size + align))
+        let base = allocShared0(size + align - platformAlignment() + sizeof(uint16))
       else:
-        let base = cast[ptr UncheckedArray[int8]](alloc0(size + align))
-      let offset = int8(align - (cast[int](base) and (align - 1)))
-      base[offset - 1] = offset
-      result = base[offset].addr
+        let base = alloc0(size + align - platformAlignment() + sizeof(uint16))
+      let offset = align - (cast[int](base) and (align - 1))
+      sysAssert(offset >= sizeof(uint16), "offset can't be negative")
+      cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
+      result = base +! offset
 
   proc alignedDealloc(p: pointer, align: int) {.compilerproc.} = 
-    if not needsAlignmentOnPlatform(align):
+    if align <= platformAlignment():
       when compileOption("threads"):
         deallocShared(p)
       else:
         dealloc(p)
     else:      
-      let pbyte = cast[ptr UncheckedArray[int8]](p)
-      let offset = pbyte[-1]
+      let offset = int(cast[ptr uint16](p -! sizeof(uint16))[])
       when compileOption("threads"):
-        deallocShared(addr pbyte[-offset])
+        deallocShared(p -! offset)
       else:
-        dealloc(addr pbyte[-offset])
+        dealloc(p -! offset)
 
   proc alignedRealloc(p: pointer, oldSize, newSize, align: Natural): pointer =
-    if not needsAlignmentOnPlatform(align):
+    if align <= platformAlignment():
       when compileOption("threads"):
         result = reallocShared(p, newSize)
       else:
@@ -368,12 +376,8 @@ when hasAlloc and not defined(js):
       copyMem(result, p, oldSize)
       alignedDealloc(p, align)
 
-
-  template `+!`(p: pointer, s: int): pointer =
-    cast[pointer](cast[int](p) +% s)
-
   proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
-    if not needsAlignmentOnPlatform(align):
+    if align <= platformAlignment():
       when compileOption("threads"):
         result = reallocShared0(p, oldSize, newSize)
       else:
