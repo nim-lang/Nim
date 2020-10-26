@@ -393,9 +393,17 @@ proc handleStdinInput*(conf: ConfigRef) =
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
+  let switch2 = switch.normalize
+  if conf.switchesProcessed.contains switch2:
+    if conf.switchesProcessedLazy:
+      # eg: if -d:danger sets stacktrace:off but some config already set `stacktrace`, skip
+      return
+  else:
+    conf.switchesProcessed.add switch2
+
   var
     key, val: string
-  case switch.normalize
+  case switch2
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
     for path in nimbleSubs(conf, arg):

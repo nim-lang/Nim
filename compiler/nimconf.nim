@@ -287,16 +287,34 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if cfg == DefaultConfig:
       runNimScriptIfExists(pd / DefaultConfigNims)
 
-  for filename in configFiles:
-    # delayed to here so that `hintConf` is honored
-    rawMessage(conf, hintConf, filename.string)
-
   let scriptFile = conf.projectFull.changeFileExt("nims")
+  let isMain = scriptFile == conf.projectFull
+
+  template epilogue() =
+    if optSkipSystemConfigFile notin conf.globalOptions:
+      conf.switchesProcessedLazy = true
+      readConfigFile(getSystemConfigPath(conf, DefaultConfigEpilogue))
+      conf.switchesProcessedLazy = false
+
+  template showConf() =
+    for filename in configFiles:
+      # delayed to here so that `hintConf` is honored
+      rawMessage(conf, hintConf, filename.string)
+    configFiles.setLen 0
+
+  if isMain:
+    showConf()
+    epilogue() # likely not significant for nimscript
+
   if conf.command != "nimsuggest":
     runNimScriptIfExists(scriptFile)
   else:
-    if scriptFile != conf.projectFull:
+    if not isMain:
       runNimScriptIfExists(scriptFile)
     else:
       # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
       discard
+
+  if not isMain:
+    epilogue()
+  showConf()
