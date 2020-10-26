@@ -49,6 +49,11 @@ type
 
   NodeId* = distinct int32
 
+  PackedLineInfo* = object
+    line*: uint16
+    col*: int16
+    file*: LitId
+
   PackedLib* = object
     kind*: TLibKind
     generated*: bool
@@ -62,7 +67,7 @@ type
     typeId*: TypeId
     flags*: TSymFlags
     magic*: TMagic
-    info*: TLineInfo
+    info*: PackedLineInfo
     ast*: NodePos
     owner*: ItemId
     guard*: ItemId
@@ -85,7 +90,7 @@ type
     nodes*: int32
     methods*: int32
     nodeflags*: TNodeFlags
-    info*: TLineInfo
+    info*: PackedLineInfo
     sym*: ItemId
     owner*: ItemId
     attachedOps*: array[TTypeAttachedOp, ItemId]
@@ -105,7 +110,7 @@ type
                      # for kind in nkInt32Lit: direct value
                      # for non-atom kinds: the number of nodes (for easy skipping)
     typeId*: TypeId
-    info*: TLineInfo
+    info*: PackedLineInfo
 
   ModulePhase* = enum
     preLookup, lookedUpTopLevelStmts
@@ -145,9 +150,9 @@ proc `==`*(a, b: TypeId): bool {.borrow.}
 proc `==`*(a, b: ModuleId): bool {.borrow.}
 
 proc declareSym*(tree: var Tree; kind: TSymKind;
-                 name: LitId; info: TLineInfo): SymId =
+                 name: LitId; info: PackedLineInfo): SymId =
   result = SymId(tree.sh.syms.len)
-  tree.sh.syms.add Sym(kind: kind, name: name, flags: {}, magic: mNone, info: info)
+  tree.sh.syms.add PackedSym(kind: kind, name: name, flags: {}, magic: mNone, info: info)
 
 proc newTreeFrom*(old: Tree): Tree =
   result.nodes = @[]
@@ -156,25 +161,25 @@ proc newTreeFrom*(old: Tree): Tree =
 proc litIdFromName*(tree: Tree; name: string): LitId =
   result = tree.sh.strings.getOrIncl(name)
 
-proc add*(tree: var Tree; kind: TNodeKind; token: string; info: TLineInfo) =
+proc add*(tree: var Tree; kind: TNodeKind; token: string; info: PackedLineInfo) =
   tree.nodes.add Node(kind: kind, operand: int32 getOrIncl(tree.sh.strings, token), info: info)
 
-proc add*(tree: var Tree; kind: TNodeKind; info: TLineInfo) =
+proc add*(tree: var Tree; kind: TNodeKind; info: PackedLineInfo) =
   tree.nodes.add Node(kind: kind, operand: 0, info: info)
 
 proc throwAwayLastNode*(tree: var Tree) =
   tree.nodes.setLen(tree.nodes.len-1)
 
-proc addIdent*(tree: var Tree; s: LitId; info: TLineInfo) =
+proc addIdent*(tree: var Tree; s: LitId; info: PackedLineInfo) =
   tree.nodes.add Node(kind: nkIdent, operand: int32(s), info: info)
 
-proc addSym*(tree: var Tree; s: SymId; info: TLineInfo) =
+proc addSym*(tree: var Tree; s: SymId; info: PackedLineInfo) =
   tree.nodes.add Node(kind: nkSym, operand: int32(s), info: info)
 
-proc addModuleId*(tree: var Tree; s: ModuleId; info: TLineInfo) =
+proc addModuleId*(tree: var Tree; s: ModuleId; info: PackedLineInfo) =
   tree.nodes.add Node(kind: nkInt32Lit, operand: int32(s), info: info)
 
-proc addSymDef*(tree: var Tree; s: SymId; info: TLineInfo) =
+proc addSymDef*(tree: var Tree; s: SymId; info: PackedLineInfo) =
   tree.nodes.add Node(kind: nkSym, operand: int32(s), info: info)
 
 proc isAtom*(tree: Tree; pos: int): bool {.inline.} = tree.nodes[pos].kind <= nkNilLit
@@ -199,11 +204,11 @@ type
   PatchPos = distinct int
 
 when false:
-  proc prepare*(tree: var Tree; kind: TNodeKind; info: TLineInfo): PatchPos =
+  proc prepare*(tree: var Tree; kind: TNodeKind; info: PackedLineInfo): PatchPos =
     result = PatchPos tree.nodes.len
     tree.nodes.add Node(kind: kind, operand: 0, info: info)
 
-proc prepare*(tree: var Tree; kind: TNodeKind; flags: TNodeFlags; typeId: TypeId; info: TLineInfo): PatchPos =
+proc prepare*(tree: var Tree; kind: TNodeKind; flags: TNodeFlags; typeId: TypeId; info: PackedLineInfo): PatchPos =
   result = PatchPos tree.nodes.len
   tree.nodes.add Node(kind: kind, flags: flags, operand: 0, typeId: typeId, info: info)
 
@@ -299,7 +304,7 @@ proc hasAtLeastXsons*(tree: Tree; n: NodePos; x: int): bool =
 proc firstSon*(tree: Tree; n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 proc kind*(tree: Tree; n: NodePos): TNodeKind {.inline.} = tree.nodes[n.int].kind
 proc litId*(tree: Tree; n: NodePos): LitId {.inline.} = LitId tree.nodes[n.int].operand
-proc info*(tree: Tree; n: NodePos): TLineInfo {.inline.} = tree.nodes[n.int].info
+proc info*(tree: Tree; n: NodePos): PackedLineInfo {.inline.} = tree.nodes[n.int].info
 
 proc span(tree: Tree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
@@ -328,7 +333,7 @@ proc ithSon*(tree: Tree; n: NodePos; i: int): NodePos =
 proc `@`*(tree: Tree; lit: LitId): lent string {.inline.} = tree.sh.strings[lit]
 
 template kind*(n: NodePos): TNodeKind = tree.nodes[n.int].kind
-template info*(n: NodePos): TLineInfo = tree.nodes[n.int].info
+template info*(n: NodePos): PackedLineInfo = tree.nodes[n.int].info
 template litId*(n: NodePos): LitId = LitId tree.nodes[n.int].operand
 
 template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
