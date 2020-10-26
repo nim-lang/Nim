@@ -925,7 +925,7 @@ type
     attachedOps*: array[TTypeAttachedOp, PSym] # destructors, etc.
     methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
-                              # -1 means that the size is unkwown
+                              # -1 means that the size is unknown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
