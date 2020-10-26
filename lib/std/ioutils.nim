@@ -57,7 +57,7 @@ proc duplicateTo*(oldfd: FileHandle, newfd: FileHandle) =
   runnableExamples:
     import os
     # Redirect stdout to a file temporarily
-    let tmpFileName = getTmpDir() / "hidden_output.txt"
+    let tmpFileName = getTempDir() / "hidden_output.txt"
     let stdoutFileno = stdout.getFileHandle()
     let stdoutDupFd = duplicate(stdoutFileno)
 
