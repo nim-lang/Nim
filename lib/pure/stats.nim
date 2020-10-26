@@ -349,7 +349,7 @@ when isMainModule:
   doAssert(rs.skewness() =~ 0.81649658)
   doAssert(rs.skewnessS() =~ 1.01835015)
   doAssert(rs.kurtosis() =~ -1.0)
-  doAssert(rs.kurtosisS() =~ -0.7000000000000001)
+  doAssert(rs.kurtosisS() =~ -0.7)
 
   var rs1, rs2: RunningStat
   rs1.push(@[1.0, 2.0, 1.0, 4.0])
