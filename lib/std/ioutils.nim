@@ -44,7 +44,7 @@ proc duplicate*(oldfd: FileHandle): FileHandle =
     # On windows, opening a file from a FileHandle does not work
     when not defined(windows):
       var f : File
-      let res = open(f, stdoutHolder, mode=fmWrite)
+      let res = open(f, stdoutDuplicate, mode=fmWrite)
       let msg = "This is a test message that will be displayed ! \n"
       f.write(msg)
       # Output "Test"
