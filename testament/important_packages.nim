@@ -65,24 +65,6 @@ pkg1 "stint", "nim c -o:stintt -r stint.nim"
 
 
 # packages N-Z
-<<<<<<< HEAD
-pkg2 "nake", false, "nim c nakefile.nim"
-pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
-# pkg2 "nesm", false, "nimble tests" # notice plural 'tests'
-# pkg2 "nico", true
-pkg2 "nicy", false, "nim c -r src/nicy.nim"
-pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
-pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
-pkg2 "nimes", true, "nim c src/nimes.nim"
-# pkg2 "nimfp", true, "nim c -o:nfp -r src/fp.nim"  # See https://github.com/nim-lang/Nim/pull/14887
-pkg2 "nimgame2", true, "nim c nimgame2/nimgame.nim"
-pkg2 "nimgen", true, "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
-pkg2 "nimlsp", true
-pkg2 "nimly", true, "nim c -r tests/test_readme_example.nim"
-# pkg2 "nimongo", true, "nimble test_ci"
-# pkg2 "nimph", true, "nimble test", "https://github.com/disruptek/nimph"
-pkg2 "nimpy", false, "nim c -r tests/nimfrompy.nim"
-=======
 pkg2 "nake", "nim c nakefile.nim"
 pkg2 "neo", "nim c -d:blas=openblas tests/all.nim"
 # pkg2 "nesm", "nimble tests" # notice plural 'tests'
@@ -99,7 +81,6 @@ pkg2 "nimly", "nim c -r tests/test_readme_example.nim"
 # pkg2 "nimongo", "nimble test_ci"
 # pkg2 "nimph", "nimble test", "https://github.com/disruptek/nimph"
 pkg2 "nimpy", "nim c -r tests/nimfrompy.nim"
->>>>>>> 64eb62889a3c95986074b3e0d5656d7ad42ab826
 pkg2 "nimquery"
 pkg2 "nimsl"
 pkg2 "nimsvg"
@@ -111,13 +92,8 @@ pkg2 "norm", "nim c -r tests/tsqliterows.nim"
 pkg2 "npeg", "nimble testarc"
 pkg2 "numericalnim", "nim c -r tests/test_integrate.nim"
 pkg2 "optionsutils"
-<<<<<<< HEAD
-pkg2 "ormin", true, "nim c -o:orminn ormin.nim"
-# pkg2 "parsetoml"  # See https://github.com/nim-lang/Nim/pull/14887
-=======
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
->>>>>>> 64eb62889a3c95986074b3e0d5656d7ad42ab826
 pkg2 "patty"
 pkg2 "plotly", "nim c examples/all.nim"
 pkg2 "pnm"
