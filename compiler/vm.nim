@@ -2086,6 +2086,7 @@ proc execute(c: PCtx, start: int): PNode =
   result = rawExecute(c, start, tos).regToNode
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
+  c.loopIterations = c.config.maxLoopIterationsVM
   if sym.kind in routineKinds:
     if sym.typ.len-1 != args.len:
       localError(c.config, sym.info,
