@@ -1059,6 +1059,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = not regs[rb].intVal
     of opcEqStr:
       decodeBC(rkInt)
+      dbg regs[rb].node.kind, regs[rc].node.kind
       regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)
     of opcLeStr:
       decodeBC(rkInt)
