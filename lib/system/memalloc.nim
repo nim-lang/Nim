@@ -318,8 +318,6 @@ when hasAlloc and not defined(js):
       else: 8
     else: MemAlign
 
-  import ansi_c
-
   proc alignedAlloc(size, align: Natural): pointer =
     if align <= platformAlignment():
       when compileOption("threads"):
@@ -332,7 +330,6 @@ when hasAlloc and not defined(js):
       else:
         let base = alloc(size + align - platformAlignment() + sizeof(uint16))
       let offset = align - (cast[int](base) and (align - 1))
-      sysAssert(offset >= sizeof(uint16), "offset can't be negative")
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
 
@@ -348,7 +345,6 @@ when hasAlloc and not defined(js):
       else:
         let base = alloc0(size + align - platformAlignment() + sizeof(uint16))
       let offset = align - (cast[int](base) and (align - 1))
-      sysAssert(offset >= sizeof(uint16), "offset can't be negative")
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
 
