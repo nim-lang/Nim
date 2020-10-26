@@ -2,7 +2,7 @@ discard """
   output: '''
 hello1
 hello1
-  '''
+'''
 """
 
 import std/ioutils
