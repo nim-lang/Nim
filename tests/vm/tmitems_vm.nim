@@ -1,4 +1,5 @@
 discard """
+  targets: "c"
   nimout: '''13'''
   output: '''3
 3
