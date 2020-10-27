@@ -641,6 +641,16 @@ initialised with the type's default value. Note that referential data types will
 be ``nil`` at the start of the procedure, and thus may require manual
 initialisation.
 
+A procedure that does not have any ``return`` statement and does not use the
+special ``result`` variable returns the value of its last expression. For example,
+this procedure
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc helloWorld(): string =
+      "Hello, World!"
+
+returns the string "Hello, World!".
 
 Parameters
 ----------
