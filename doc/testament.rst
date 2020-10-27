@@ -115,7 +115,7 @@ Example "template" **to edit** and write a Testament unittest:
 
 
 * As you can see the "Spec" is just a ``discard """ """``.
-* Spec has sane defaults, so you don't need to provide them all, any simple assert will work Ok.
+* Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
 * `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
 * `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
