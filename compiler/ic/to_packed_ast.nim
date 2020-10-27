@@ -18,6 +18,18 @@ type
     lastLit: LitId
     filenames: Table[FileIndex, LitId]
 
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
+proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
+
+proc addItemId(tree: var PackedTree; s: ItemId; info: PackedLineInfo) =
+  tree.nodes.add Node(kind: nkInt32Lit, operand: s.module, info: info)
+  tree.nodes.add Node(kind: nkInt32Lit, operand: s.item, info: info)
+
+proc toLitId(x: int64 | uint64; ir: var PackedTree; c: var Context): LitId =
+  # i think smaller integers aren't worth putting into a table
+  # because there they become 32bit hash values on the heap...
+  result = getOrIncl(ir.sh.integers, x)
+
 proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
   if x == c.lastFile:
     result = c.lastLit
@@ -35,6 +47,75 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   result = TypeId(0)
+  assert not t.n.isNil
+  assert not t.sym.isNil
+  assert not t.owner.isNil
+  template
+    info: PackedLineInfo = t.n.info.toPackedInfo(ir, c)
+
+  template addDirect(x: typed) =
+    ir.nodes.add Node(kind: directIntLit, operand: int32 x,
+                      info: t.n.info.toPackedInfo(ir, c))
+
+  # probably want a local id mechanism; for now, just invent a number
+  result = TypeId(t.id)
+
+  # add the type
+  ir.addType(result, info)
+  let patchPos = ir.prepare(kind = nkType, flags = t.n.flags,
+                            typeId = result, info = info)
+  # XXX: finally: template for this, yes?  because defer: sucks.
+  defer: ir.patch patchPos
+
+  # kind, nodekind
+  addDirect t.kind
+  addDirect t.n.kind
+
+  # typeflags, nodeflags
+  # XXX: figure how how we want to do larger sets
+  # addDirect t.flags
+  # XXX: this shouldn't work without a .size., right?
+  addDirect cast[int32](t.n.flags)
+
+  ir.addItemId(t.sym.itemId, info)
+  ir.addItemId(t.owner.itemId, info)
+
+  for s in items t.attachedOps:
+    ir.addSym(if s.isNil: SymId(-1) else: s.toPackedSym(ir, c), info)
+
+  addDirect:
+    {.warning: "arch assumptions are fun".}
+    when BiggestInt.sizeof <= int32.sizeof:
+      t.size
+    else:
+      t.size.toLitId(ir, c)
+
+  # some more easy stuff
+  addDirect t.align
+  addDirect t.paddingAtEnd
+  addDirect t.lockLevel
+
+  # nonUniqueId appears before typeInst just to confuse you
+  ir.addItemId(t.itemId, info)
+
+  #
+  # does putting trees near the end of the object help?  doubtful.
+  #
+
+  ir.addType(t.typeInst.toPackedType(ir, c), info)
+
+  # types: i decided that this is a counter
+  addDirect t.sons.len
+  for kid in items t.sons:
+    ir.addType(kid.toPackedType(ir, c), info)
+
+  # nodes: XXX no idea what this is; we only have one node, right?  RIGHT?
+
+  # methods: i decided that this is a counter
+  addDirect t.methods.len
+  # XXX if you dunno what a value is for, just ignore it.  it's probably fine.
+  for (_, s) in items t.methods:
+    ir.addSym(s.toPackedSym(ir, c), info)
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   result = SymId(0)
