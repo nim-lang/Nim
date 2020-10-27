@@ -5602,7 +5602,7 @@ possible type mismatch error.
 typedesc[T]
 -----------
 
-In many contexts, Nim allows us to treat the names of types as regular
+In many contexts, Nim treats the names of types as regular
 values. These values exist only during the compilation phase, but since
 all values must have a type, ``typedesc`` is considered their special type.
 
