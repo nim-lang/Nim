@@ -154,7 +154,7 @@ Output::
   }
 
 Similarly to the old ``doc`` command, the old ``jsondoc`` command has been
-renamed ``jsondoc0``.
+renamed to ``jsondoc0``.
 
 The ``jsondoc0`` command::
   nim jsondoc0 sample
