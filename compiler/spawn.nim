@@ -325,7 +325,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
   if n.kind notin nkCallKinds:
     localError(g.config, n.info, "'spawn' takes a call expression; got " & $n)
     return
-  if optThreadAnalysis in g.config.globalOptions:
+  if optThreadAnalysis in g.config.globalOptions and g.config.selectedGC notin {gcArc, gcOrc}:
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
       localError(g.config, n.info, "'spawn' takes a GC safe call expression")
 
