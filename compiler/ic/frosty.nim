@@ -65,43 +65,6 @@ proc write(s: var Serializer[Stream]; o: string)
 proc read(s: var Serializer[Stream]; o: var string)
 proc readPrimitive[T](s: var Serializer[Stream]; o: var T)
 
-when false:
-  import std/lists
-
-  template makeListSupport(name: untyped): untyped =
-    proc write[T](s: var Serializer; o: name[T]) =
-      when compiles(len(o)):
-        var l = len(o)           # type inference
-      else:
-        var l = 0
-        for item in items(o):
-          inc l
-
-      s.write l
-      for item in items(o):
-        s.write item.value
-        dec l
-      assert l == 0
-
-    proc read[T](s: var Serializer; o: var name[T]) =
-      o = `init name`[T]()
-      when compiles(len(o)):
-        var l = len(o)           # type inference
-      else:
-        var l = 0
-      s.read l
-      while l > 0:
-        var value: T
-        s.read value
-        o.append value
-        dec l
-
-  # generate serialize/deserialize for some linked lists and rings
-  makeListSupport SinglyLinkedList
-  makeListSupport DoublyLinkedList
-  makeListSupport SinglyLinkedRing
-  makeListSupport DoublyLinkedRing
-
 template greatenIndent(s: var Serializer; body: untyped): untyped =
   ## Used for debugging.
   when not defined(release):
