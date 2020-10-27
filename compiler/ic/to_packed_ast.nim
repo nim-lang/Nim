@@ -48,7 +48,7 @@ proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
     # packing:
     let sid = toPackedSym(n.sym, ir, c)
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(sid),
-      typeId: t, info: toPackedInfo(n.info, ir, c))
+                      typeId: t, info: toPackedInfo(n.info, ir, c))
   else:
     # store it as an external module reference:
     #  nkModuleRef
@@ -61,28 +61,28 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: 0,
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   of nkIdent:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   of nkSym:
     toPackedSymNode(n, ir, c)
   of directIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(n.intVal),
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   of externIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.integers, n.intVal),
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   of nkStrLit..nkTripleStrLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.strings, n.strVal),
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   of nkFloatLit..nkFloat128Lit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.floats, n.floatVal),
-      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
                               toPackedType(n.typ, ir, c), toP n.info)
