@@ -71,7 +71,7 @@ template manglingId(s: BModule): ManglingId = manglingId(s.module)
 template manglingId(s: BProc): ManglingId =
   if s.prc == nil: unIdentity else: manglingId(s.prc)
 
-template mangle*(p: ModuleOrProc; t: PType): string = $getTypeName(p, t)
+template mangle*(p: BModule; t: PType): string = $getTypeName(p, t)
 proc mangle*(p: ModuleOrProc; s: PSym): string
 proc mangleName*(p: ModuleOrProc; s: PSym): Rope
 proc typeName(p: ModuleOrProc; typ: PType; shorten = false): string
@@ -484,14 +484,10 @@ proc idOrSig*(p: ModuleOrProc; s: PSym): Rope =
           [ $manglingId(s), s.name.s, $result,
            if p.prc != nil: $manglingId(p.prc) else: "(nil)" ]
 
-proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
+proc getTypeName*(m: BModule; typ: PType; sig: SigHash): BName =
   ## Retrieve (or produce) a useful name for the given type; this is what
   ## codegen uses exclusively.
-  let m = getem()
   var t = typ
-  # we don't currently use the proc scope for types; this is just a guard
-  # to ensure that we don't do so accidentally
-  var p = m
 
   var name: string
   block found:
@@ -500,7 +496,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
       # use an immutable symbol name if we find one
       if t.sym != nil and hasImmutableName(t.sym):
         # the symbol might need mangling, first
-        name = $mangleName(p, t.sym)
+        name = $mangleName(m, t.sym)
         break found
       elif t.kind in irrelevantForNaming:
         t = t.lastSon    # continue into more precise types
@@ -508,7 +504,7 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
         break            # this looks like a good place to stop
 
     assert t != nil
-    name = typeName(p, t)
+    name = typeName(m, t)
 
   # XXX: dogshit ahead
   #
@@ -534,10 +530,10 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
         discard m.g.setName(m, typ, result, sig)
       break
 
-    assert atModuleScope(p, t), "we're not prepared to scope types"
+    assert atModuleScope(m, t), "we're not prepared to scope types"
 
     # make sure we use the source module for any type requested
-    result = floatConflict(p, t, name)
+    result = floatConflict(m, t, name)
 
   when debugMangle:
     if startsWith($result, inspect):
@@ -552,7 +548,6 @@ proc getTypeName*(p: ModuleOrProc; typ: PType; sig: SigHash): BName =
         debug "  proc $3 >> $1 .. $2" %
           [ $manglingId(t), $result,
            if p.prc != nil: $manglingId(p.prc) else: "(nil)" ]
-
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label

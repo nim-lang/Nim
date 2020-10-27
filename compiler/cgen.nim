@@ -489,7 +489,7 @@ proc localVarDecl(p: BProc; n: PNode): Rope =
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
-  result.add getTypeDesc(p, s.typ, skVar)
+  result.add getTypeDesc(p.module, s.typ, skVar)
   if s.constraint.isNil:
     if sfRegister in s.flags: result.add(" register")
     #elif skipTypes(s.typ, abstractInst).kind in GcTypeKinds:
@@ -520,13 +520,14 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
-  let s = n.sym
+  template m: BModule = p.module
+  template s: PSym = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
-    if treatGlobalDifferentlyForHCR(p.module, s): incl(s.loc.flags, lfIndirect)
+    fillLoc(s.loc, locGlobalVar, n, mangleName(m, s), OnHeap)
+    if treatGlobalDifferentlyForHCR(m, s): incl(s.loc.flags, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
-    var q = findPendingModule(p.module, s)
+    var q = findPendingModule(m, s)
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
@@ -534,16 +535,16 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     if value != nil:
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
-  useHeader(p.module, s)
+  useHeader(m, s)
   if lfNoDecl in s.loc.flags: return
-  if not containsOrIncl(p.module.declaredThings, s.id):
+  if not containsOrIncl(m.declaredThings, s.id):
     if sfThread in s.flags:
-      declareThreadVar(p.module, s, sfImportc in s.flags)
+      declareThreadVar(m, s, sfImportc in s.flags)
       if value != nil:
         internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = nil
-      var td = getTypeDesc(p, s.loc.t, skVar)
+      var td = getTypeDesc(m, s.loc.t, skVar)
       if s.constraint.isNil:
         if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
@@ -566,7 +567,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
           decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
         else:
           decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
-      p.module.s[cfsVars].add(decl)
+      m.s[cfsVars].add(decl)
   if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
@@ -961,8 +962,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       allPathsInBranch(n[i])
 
 proc getProcTypeCast(p: ModuleOrProc, prc: PSym): Rope =
-  let m = getem()
-  result = getTypeDesc(p, prc.loc.t)
+  result = getTypeDesc(getem(), prc.loc.t)
   if prc.typ.callConv == ccClosure:
     var rettype, params: Rope
     var check = initIntSet()
