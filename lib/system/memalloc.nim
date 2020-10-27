@@ -312,14 +312,8 @@ when hasAlloc and not defined(js):
   template `-!`(p: pointer, s: SomeInteger): pointer =
     cast[pointer](cast[int](p) -% s)
 
-  template platformAlignment: int = 
-    when defined(useMalloc):
-      when defined(amd64): 16
-      else: 8
-    else: MemAlign
-
   proc alignedAlloc(size, align: Natural): pointer =
-    if align <= platformAlignment():
+    if align <= MemAlign:
       when compileOption("threads"):
         result = allocShared(size)
       else:
@@ -334,7 +328,7 @@ when hasAlloc and not defined(js):
       result = base +! offset
 
   proc alignedAlloc0(size, align: Natural): pointer =
-    if align <= platformAlignment():
+    if align <= MemAlign:
       when compileOption("threads"):
         result = allocShared0(size)
       else:
@@ -349,7 +343,7 @@ when hasAlloc and not defined(js):
       result = base +! offset
 
   proc alignedDealloc(p: pointer, align: int) {.compilerproc.} = 
-    if align <= platformAlignment():
+    if align <= MemAlign:
       when compileOption("threads"):
         deallocShared(p)
       else:
@@ -362,7 +356,7 @@ when hasAlloc and not defined(js):
         dealloc(p -! offset)
 
   proc alignedRealloc(p: pointer, oldSize, newSize, align: Natural): pointer =
-    if align <= platformAlignment():
+    if align <= MemAlign:
       when compileOption("threads"):
         result = reallocShared(p, newSize)
       else:
@@ -373,7 +367,7 @@ when hasAlloc and not defined(js):
       alignedDealloc(p, align)
 
   proc alignedRealloc0(p: pointer, oldSize, newSize, align: Natural): pointer =
-    if align <= platformAlignment():
+    if align <= MemAlign:
       when compileOption("threads"):
         result = reallocShared0(p, oldSize, newSize)
       else:
