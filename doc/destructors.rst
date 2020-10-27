@@ -88,7 +88,7 @@ Lifetime-tracking hooks
 =======================
 
 The memory management for Nim's standard ``string`` and ``seq`` types as
-well as other standard collections are performed via so-called
+well as other standard collections is performed via so-called
 "Lifetime-tracking hooks" or "type-bound operators". There are 3 different
 hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
 ``distinct`` type) that are called implicitly by the compiler.
