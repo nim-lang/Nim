@@ -277,14 +277,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = 4              # use signed int32
       typ.align = 4
     else:
-      let length = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
-      if length + 1 < `shl`(1, 8):
+      let lastOrd = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
+      if lastOrd < `shl`(1, 8):
         typ.size = 1
         typ.align = 1
-      elif length + 1 < `shl`(1, 16):
+      elif lastOrd < `shl`(1, 16):
         typ.size = 2
         typ.align = 2
-      elif length + 1 < `shl`(BiggestInt(1), 32):
+      elif lastOrd < `shl`(BiggestInt(1), 32):
         typ.size = 4
         typ.align = 4
       else:
