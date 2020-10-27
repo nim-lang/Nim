@@ -1553,7 +1553,7 @@ proc execCmdExImpl(command: string, options: set[ProcessOption], env: StringTabl
     doAssert workingDir.len == 0
     doAssert env == nil
   var options = options
-  if args.len == 0 and not useArgs:
+  if not useArgs:
     options.incl poEvalCommand
   var p = startProcess(command, options = options,
     workingDir = workingDir, env = env, args = args)
@@ -1579,17 +1579,14 @@ proc execCmdExImpl(command: string, options: set[ProcessOption], env: StringTabl
       if result[1] != -1: break
   close(p)
 
-proc execCmdEx*(command: string, options: set[ProcessOption] = {
-                poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
-                workingDir = "", input = "", args: openArray[string]): tuple[
-                output: TaintedString,
-                exitCode: int] {.tags:
-                [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe, inline, since: (1,5,1).} =
-  ## A convenience proc that runs the `command`, and returns its `output` and
-  ## `exitCode`. `env`, `workingDir`, `args` params behave as for `startProcess`.
+proc execArgs*(exe: string, args: openArray[string], options: set[ProcessOption] = {
+  poStdErrToStdOut, poUsePath}, env: StringTableRef = nil, workingDir = "", input = ""):
+  tuple[output: TaintedString, exitCode: int] {.
+  tags: [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe, inline, since: (1,5,1).} =
+  ## A convenience proc that runs `exe` with arguments `args`, and returns its `output` and
+  ## `exitCode`. `env`, `workingDir` behave as for `startProcess`.
   ## If `input.len > 0`, it is passed as stdin.
-  ## When `args` is not specified, another overload is used that treats `command`
-  ## as a shell command, implying `poEvalCommand`.
+  ## Raises `OSError` if `exe` is not found.
   ##
   ## Note: this could block if `input.len` is greater than your OS's maximum
   ## pipe buffer size.
@@ -1600,20 +1597,18 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ## * `execProcess proc
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
-  ##   import strutils, strtabs
-  ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
-  ##   doAssert result == ("12", 0)
-  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
-  ##   when defined(posix):
-  ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
-  ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
-  ##   echo execCmdEx("nim", args=["dump", "--dump.format:json", "."]).output
-  execCmdExImpl(command, options, env, workingDir, input, args, useArgs = true)
+  runnableExamples:
+    import strutils, strtabs
+    var result = execArgs("nim", ["r", "--hints:off", "-"], options = {poUsePath}, input = "echo 3*4")
+    stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
+    doAssert result == ("12", 0)
+    doAssertRaises(OSError): discard execArgs("nonexistant", []).exitCode != 0
+    when defined(posix):
+      assert execArgs("sh", @["-c", "echo $FO"], env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      assert execArgs("sh", @["-c", "echo $PWD"], workingDir = "/") == ("/\n", 0)
+    assert "version" in execArgs("nim", ["dump", "--dump.format:json", "."]).output
+
+  execCmdExImpl(exe, options, env, workingDir, input, args, useArgs = true)
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
@@ -1621,4 +1616,14 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe, inline.} =
+  ## Same as `execArgs` but takes a `command` to be run by the shell.
+  runnableExamples:
+    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    import strutils, strtabs
+    stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
+    doAssert result == ("12", 0)
+    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when defined(posix):
+      assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
   execCmdExImpl(command, options, env, workingDir, input, [], useArgs = false)

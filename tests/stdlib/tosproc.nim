@@ -267,16 +267,16 @@ else: # main driver
     doAssert waitForExit(p) == QuitFailure # avoid zombies
 
   import std/strtabs
-  block execProcess:
+  block: # execArgs, execCmdEx
     var result = execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
 
-    block: # args
-      var result2 = execCmdEx(fmt"{nim}", options = {}, input = "echo 3*4", args = ["r", "--hints:off", "-"])
+    block:
+      var result2 = execArgs(fmt"{nim}", ["r", "--hints:off", "-"], options = {}, input = "echo 3*4")
       stripLineEnd(result2[0])
       doAssert result2 == result
-      doAssertRaises(OSError): discard execCmdEx(fmt"{nim} r --hints:off -", options = {}, input = "echo 3*4", args = [])
+      doAssertRaises(OSError): discard execArgs(fmt"{nim} r --hints:off -", @[], options = {}, input = "echo 3*4")
 
     when not defined(windows):
       doAssert execCmdEx("ls --nonexistant").exitCode != 0
