@@ -361,7 +361,7 @@ Parsers
   The ``parsexml`` module implements a simple high performance XML/HTML parser.
   The only encoding that is supported is UTF-8. The parser has been designed
   to be somewhat error-correcting, so that even some "wild HTML" found on the
-  The web can be parsed with it.
+  web can be parsed with it.
 
 
 Docutils
