@@ -140,7 +140,7 @@ Example: insertionSort
         swap a[t], a[t-1]
         dec t
 
-Unfortunately, the invariants required to prove this code correctly take more
+Unfortunately, the invariants required to prove that this code is correct take more
 code than the imperative instructions. However, this effort can be compensated
 by the fact that the result needs very little testing. Be aware though that
 DrNim only proves that after ``insertionSort`` this condition holds::
