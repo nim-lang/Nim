@@ -1059,8 +1059,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = not regs[rb].intVal
     of opcEqStr:
       decodeBC(rkInt)
-      dbg regs[rb].node.kind, regs[rc].node.kind
-      regs[ra].intVal = ord(regs[rb].node.strVal == regs[rc].node.strVal)
+      var ret = false
+      if regs[rb].node.kind == nkNilLit:
+        ret = regs[rc].node.kind == nkNilLit:
+      elif regs[rb].node.kind == nkStrLit and regs[rc].node.kind == nkStrLit:
+        ret = regs[rb].node.strVal == regs[rc].node.strVal
+      # could add some sanity assert's
+      regs[ra].intVal = ret.ord
     of opcLeStr:
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].node.strVal <= regs[rc].node.strVal)
@@ -1501,7 +1506,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
-      dbg node.kind, node.flags, node.typ
       regs[ra].intVal = ord(
         # Note that `nfIsRef` + `nkNilLit` represents an allocated
         # reference with the value `nil`, so `isNil` should be false!
