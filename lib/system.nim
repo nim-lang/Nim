@@ -2360,7 +2360,7 @@ when notJSnotNims and hostOS != "standalone":
     ##
     ## **Warning**: Only use this if you know what you are doing.
     currException = exc
-else:
+elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
 
 when notJSnotNims:
