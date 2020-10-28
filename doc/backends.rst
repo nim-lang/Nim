@@ -333,7 +333,7 @@ The `nimcache`:idx: directory is generated during compilation and will hold
 either temporary or final files depending on your backend target. The default
 name for the directory depends on the used backend and on your OS but you can
 use the ``--nimcache`` `compiler switch
-<nimc.html#compiler-usage-command-line-switches>`_ to change it.
+<nimc.html#compiler-usage-commandminusline-switches>`_ to change it.
 
 
 Memory management
