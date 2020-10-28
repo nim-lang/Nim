@@ -99,7 +99,7 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   when defined(nimscript):
     discard
   else:
-    result = cast[ptr RefHeader](alignedAlloc0(s, alignment) +! hdrSize)
+    result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
   head(result).rc = 0
   when defined(gcOrc):
     head(result).rootIdx = 0
@@ -165,7 +165,7 @@ template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignO
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   let rti = cast[ptr PNimTypeV2](p)
-  if rti.destructor != nil: 
+  if rti.destructor != nil:
     cast[DestructorProc](rti.destructor)(p)
   when false:
     cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
