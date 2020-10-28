@@ -124,7 +124,7 @@ compiler may instead choose to allow the program to die with a fatal error.
     echo "invalid index"
 
 The current implementation allows to switch between these different behaviors
-via ``--panics:on|off``. When panics are turned on, the program dies in a
+via ``--panics:on|off``. When panics are turned on, the program dies with a
 panic, if they are turned off the runtime errors are turned into
 exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
 code and the compiler has more freedom to optimize the code.
