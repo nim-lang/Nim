@@ -91,6 +91,8 @@
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+- Added `socketstream` module that wraps sockets in the stream interface
+
 
 
 ## Language changes
