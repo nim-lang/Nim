@@ -7,7 +7,7 @@ NIM
 NIM
 Hello server!
 Hi there client!
-"""
+'''"""
 import socketstreams, net, streams
 
 block UDP:
