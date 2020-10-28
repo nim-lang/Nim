@@ -83,26 +83,18 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   for s in items t.attachedOps:
     ir.addSym(if s.isNil: SymId(-1) else: s.toPackedSym(ir, c), info)
 
-  addDirect:
-    {.warning: "arch assumptions are fun".}
-    when BiggestInt.sizeof <= int32.sizeof:
-      t.size
-    else:
-      t.size.toLitId(ir, c)
+  # chose to cut a different corner here
+  assert t.size.sizeof <= int64.sizeof
+  addDirect int64(t.size).toLitId(ir, c)
 
   # some more easy stuff
   addDirect t.align
   addDirect t.paddingAtEnd
   addDirect t.lockLevel
 
-  # nonUniqueId appears before typeInst just to confuse you
-  ir.addItemId(t.itemId, info)
-
-  #
-  # does putting trees near the end of the object help?  doubtful.
-  #
-
   ir.addType(t.typeInst.toPackedType(ir, c), info)
+
+  ir.addItemId(t.itemId, info)
 
   # types: i decided that this is a counter
   addDirect t.sons.len
