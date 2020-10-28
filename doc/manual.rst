@@ -8,7 +8,8 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the end-user to one/some of the other players, but the total amount seems to remain
+  "Complexity" seems to be a lot like "energy": you can transfer it from the 
+  end-user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
 
