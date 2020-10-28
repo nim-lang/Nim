@@ -58,7 +58,7 @@ To compile a release version use::
 By default, the Nim compiler generates a large number of runtime checks
 aiming for your debugging pleasure. With ``-d:release`` some checks are
 `turned off and optimizations are turned on
-<nimc.html#compiler-usage-compile-time-symbols>`_.
+<nimc.html#compiler-usage-compileminustime-symbols>`_.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
