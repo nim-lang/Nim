@@ -824,7 +824,7 @@ Forward declarations
 
 Every variable, procedure, etc. needs to be declared before it can be used.
 (The reason for this is that it is non-trivial to avoid this need in a
-language that supports meta-programming as extensively as Nim does.)
+language that supports metaprogramming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
 .. code-block:: nim
