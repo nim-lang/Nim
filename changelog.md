@@ -4,6 +4,9 @@
 
 ## Standard library additions and changes
 
+- `prelude` now works with the JavaScript target.
+
+- Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
 
 
 ## Language changes
@@ -17,4 +20,3 @@
 
 
 ## Tool changes
-
