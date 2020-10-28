@@ -23,7 +23,7 @@ block tableadds:
   proc main =
     var tab = newTable[string, string]()
     for i in 0..1000:
-      tab.add "key", "value " & $i
+      tab["key"] = "value " & $i
 
   main()
   echo "done tableadds"
@@ -133,8 +133,8 @@ block tindexby:
   doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
 
   var tbl1 = initTable[int, int]()
-  tbl1.add(1,1)
-  tbl1.add(2,2)
+  tbl1[1] = 1
+  tbl1[2] = 2
   doAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
 
   type
@@ -147,8 +147,8 @@ block tindexby:
     elem2 = TElem(foo: 2, bar: "baz")
 
   var tbl2 = initTable[string, TElem]()
-  tbl2.add("bar", elem1)
-  tbl2.add("baz", elem2)
+  tbl2["bar"] = elem1
+  tbl2["baz"] = elem2
   doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
 
 
@@ -196,24 +196,6 @@ block ttables2:
 
   run1()
   echo "2"
-
-block allValues:
-  var t: Table[int, string]
-  var key = 0
-  let n = 1000
-  for i in 0..<n: t.add(i, $i)
-  const keys = [0, -1, 12]
-  for i in 0..1:
-    for key in keys:
-      t.add(key, $key & ":" & $i)
-  for i in 0..<n:
-    if i notin keys:
-      t.del(i)
-  doAssert t.sortedPairs == @[(-1, "-1:0"), (-1, "-1:1"), (0, "0"), (0, "0:0"), (0, "0:1"), (12, "12"), (12, "12:0"), (12, "12:1")]
-  doAssert sortedItems(t.allValues(0)) == @["0", "0:0", "0:1"]
-  doAssert sortedItems(t.allValues(-1)) == @["-1:0", "-1:1"]
-  doAssert sortedItems(t.allValues(12)) == @["12", "12:0", "12:1"]
-  doAssert sortedItems(t.allValues(1)) == @[]
 
 block tablesref:
   const
