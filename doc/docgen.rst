@@ -379,7 +379,7 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-`Nim Compiler User Guide <nimc.html#compiler-usage-command-line-switches>`_
+`Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
 
 `RST Quick Reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
