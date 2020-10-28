@@ -41,7 +41,8 @@
 
 - Added `cmpMem` to `system`.
 
-- `doAssertRaises` now correctly handles foreign exceptions.
+- `doAssertRaises` now correctly handles foreign exceptions;
+  it also allows a catch-all form that includes foreign exceptions.
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
@@ -116,7 +117,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+- `nimscript` now handles `except Exception as e`
 
+- The `cstring` doesn't support `[]=` operator in JS backend.
 
 ## Compiler changes
 
