@@ -57,7 +57,7 @@ line invocations::
 
 The compiler commands select the target backend, but if needed you can
 `specify additional switches for cross-compilation
-<nimc.html#cross-compilation>`_ to select the target CPU, operative system
+<nimc.html#crossminuscompilation>`_ to select the target CPU, operative system
 or compiler/linker commands.
 
 
@@ -424,4 +424,3 @@ leaks by calling
 .. code-block:: nim
 
   system.tearDownForeignThreadGc()
-
