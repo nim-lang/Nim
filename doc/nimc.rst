@@ -217,7 +217,7 @@ The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
 This makes it easy to delete all generated files.
 
 The ``--nimcache``
-`compiler switch <#compiler-usage-command-line-switches>`_ can be used to
+`compiler switch <#compiler-usage-commandminusline-switches>`_ can be used to
 to change the ``nimcache`` directory.
 
 However, the generated C code is not platform-independent. C code generated for
