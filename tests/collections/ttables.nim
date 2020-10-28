@@ -28,7 +28,13 @@ block tableadds:
   main()
   echo "done tableadds"
 
+block:
+  block:
+    var t1 = OrderedTable[int, string]()
+    var t2 = OrderedTable[int, string]()
 
+    doAssert t1 == t2
+  
 block tcounttable:
   # bug #2625
   const s_len = 32
