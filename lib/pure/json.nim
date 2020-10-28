@@ -792,7 +792,10 @@ proc parseJson(p: var JsonParser): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    try:
+      result = newJInt(parseBiggestInt(p.a))
+    except ValueError:
+      result = newJString(p.a)
     discard getTok(p)
   of tkFloat:
     result = newJFloat(parseFloat(p.a))
