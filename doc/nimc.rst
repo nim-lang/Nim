@@ -338,7 +338,7 @@ sign everything.
 Because Nim is part of a library it can't have its own c style ``main()`` so you
 would need to define `main` that calls ``autoreleasepool`` and
 ``UIApplicationMain`` to do it, or use a library like SDL2 or GLFM. After
-the iOS setup is done, it's very important to call ``NimMain()``to
+the iOS setup is done, it's very important to call ``NimMain()`` to
 initialize Nim's garbage collector and to run the top-level statements
 of your program.
 
