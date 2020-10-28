@@ -15,3 +15,15 @@ proc get_Contig2Reads(sin: Stream, fn: string, contig2len: TableRef[string, int]
     if contig2len.haskey(parser.row[1]):
       mgetOrPut(result, parser.row[1], @[]).add(parser.row[0])
 
+
+
+block:
+  # issue #15756
+  func `&&&`[T](x: sink seq[T], y: sink T): seq[T] =
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    result[x.len] = move(y)
+
+  let x = @["a", "b"]
+  let z = x &&& "c"
