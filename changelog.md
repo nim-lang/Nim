@@ -7,7 +7,7 @@
 - `prelude` now works with the JavaScript target.
 
 - Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
-
+- Added `randState` template that exposes the default random number generator. Useful for library authors.
 
 ## Language changes
 
