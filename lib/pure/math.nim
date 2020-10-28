@@ -56,7 +56,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops
+import bitops, fenv
 
 proc binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -157,6 +157,23 @@ proc classify*(x: float): FloatClass =
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
+
+proc approxEqual*[T: SomeFloat](x, y: T; ulp: Natural = 4): bool {.noSideEffect.} =
+  ## Checks if two float values are considered equal, using machine epsilon.
+  ##
+  ## `ulp` is the max number of ulp (units in last place) difference tolerated between
+  ## two numbers to still be almost equal.
+  ##
+  ## The machine epsilon has to be scaled to the magnitude of the values used
+  ## and multiplied by the desired precision in ULPs unless the result is subnormal.
+  ##
+  ## Refs: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
+  runnableExamples:
+    doAssert approxEqual(1.0000, 0.9999) == false
+    doAssert approxEqual(1.0000, 0.99999) == true
+    doAssert approxEqual(1e7, 1.00001e7) == true
+  result = abs(x - y) <= epsilon(T) * abs(x + y) * T(ulp) or
+      abs(x - y) < minimumPositiveValue(T)
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
