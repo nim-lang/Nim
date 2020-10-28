@@ -41,7 +41,7 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the ``--run`` `switch <nimc.html#compiler-usage-command-line-switches>`_ Nim
+With the ``--run`` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
 command-line arguments by appending them after the filename::
 
