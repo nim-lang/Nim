@@ -19,11 +19,11 @@ proc get_Contig2Reads(sin: Stream, fn: string, contig2len: TableRef[string, int]
 
 block:
   # issue #15756
-  func `&&&`[T](x: sink seq[T], y: sink T): seq[T] =
+  func `&&&`[T](x: var seq[T], y: sink T): seq[T] =
     newSeq(result, x.len + 1)
     for i in 0..x.len-1:
       result[i] = move(x[i])
     result[x.len] = move(y)
 
-  let x = @["a", "b"]
-  let z = x &&& "c"
+  var x = @[0, 1]
+  let z = x &&& 2
