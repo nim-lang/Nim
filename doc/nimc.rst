@@ -140,7 +140,7 @@ activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
 which may be used in conjunction with the `compile-time define
-pragmas<manual.html#implementation-specific-pragmas-compile-time-define-pragmas>`_
+pragmas<manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
 to override symbols during build time.
 
 Compile-time symbols are completely **case insensitive** and underscores are
