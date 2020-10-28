@@ -307,10 +307,10 @@ when hasAlloc and not defined(js):
   include bitmasks  
 
   template `+!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) +% s)
+    cast[pointer](cast[int](p) +% int(s))
 
   template `-!`(p: pointer, s: SomeInteger): pointer =
-    cast[pointer](cast[int](p) -% s)
+    cast[pointer](cast[int](p) -% int(s))
 
   proc alignedAlloc(size, align: Natural): pointer =
     if align <= MemAlign:
@@ -319,10 +319,15 @@ when hasAlloc and not defined(js):
       else:
         result = alloc(size)
     else: 
+      # allocate (size + align - 1) necessary for alignment,
+      # plus 2 bytes to store offset
       when compileOption("threads"):
         let base = allocShared(size + align - 1 + sizeof(uint16))
       else:
         let base = alloc(size + align - 1 + sizeof(uint16))
+      # memory layout: padding + offset (2 bytes) + user_data
+      # in order to deallocate: read offset at user_data - 2 bytes, 
+      # then deallocate user_data - offset
       let offset = align - (cast[int](base) and (align - 1))
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
@@ -334,6 +339,7 @@ when hasAlloc and not defined(js):
       else:
         result = alloc0(size)
     else: 
+      # see comments for alignedAlloc
       when compileOption("threads"):
         let base = allocShared0(size + align - 1 + sizeof(uint16))
       else:
@@ -349,7 +355,8 @@ when hasAlloc and not defined(js):
       else:
         dealloc(p)
     else:      
-      let offset = int(cast[ptr uint16](p -! sizeof(uint16))[])
+      # read offset at p - 2 bytes, then deallocate (p - offset) pointer
+      let offset = cast[ptr uint16](p -! sizeof(uint16))[]
       when compileOption("threads"):
         deallocShared(p -! offset)
       else:
