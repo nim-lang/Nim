@@ -2360,7 +2360,8 @@ when notJSnotNims and hostOS != "standalone":
     ##
     ## **Warning**: Only use this if you know what you are doing.
     currException = exc
-
+else:
+  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
