@@ -140,33 +140,29 @@ proc rsClose(s: Stream) =
   s.data.close()
 
 proc newReadSocketStream*(s: Socket): owned ReadSocketStream =
-  new(result)
-  result.data = s
-  result.pos = 0
-  result.closeImpl = rsClose
-  result.atEndImpl = rsAtEnd
-  result.setPositionImpl = rsSetPosition
-  result.getPositionImpl = rsGetPosition
-  result.readDataImpl = rsReadData
-  result.peekDataImpl = rsPeekData
-  result.readDataStrImpl = rsReadDataStr
+  result = ReadSocketStream(data: s, pos: 0,
+    closeImpl: rsClose,
+    atEndImpl: rsAtEnd,
+    setPositionImpl: rsSetPosition,
+    getPositionImpl: rsGetPosition,
+    readDataImpl: rsReadData,
+    peekDataImpl: rsPeekData,
+    readDataStrImpl: rsReadDataStr)
 
 proc resetStream*(s: ReadSocketStream) =
   s.buf = @[]
   s.pos = 0
 
 proc newWriteSocketStream*(s: Socket): owned WriteSocketStream =
-  new(result)
-  result.data = s
-  result.pos = 0
-  result.closeImpl = rsClose
-  result.atEndImpl = wsAtEnd
-  result.setPositionImpl = rsSetPosition
-  result.getPositionImpl = rsGetPosition
-  result.writeDataImpl = wsWriteData
-  result.readDataImpl = wsReadData
-  result.peekDataImpl = wsPeekData
-  result.flushImpl = wsFlush
+  result = WriteSocketStream(data: s, pos: 0,
+    closeImpl: rsClose,
+    atEndImpl: wsAtEnd,
+    setPositionImpl: rsSetPosition,
+    getPositionImpl: rsGetPosition,
+    writeDataImpl: wsWriteData,
+    readDataImpl: wsReadData,
+    peekDataImpl: wsPeekData,
+    flushImpl: wsFlush)
 
 proc resetStream*(s: WriteSocketStream) =
   s.buf = @[]
