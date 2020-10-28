@@ -456,3 +456,9 @@ block testNonPowerOf2:
   var b = initTable[int, int](9)
   b[1] = 10
   assert b[1] == 10
+
+block emptyOrdered:
+  var t1: OrderedTable[int, string]
+  var t2: OrderedTable[int, string]
+  assert t1 == t2
+
