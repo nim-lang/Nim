@@ -40,6 +40,7 @@
 
 ## Language changes
 
+- `nimscript` now handles `except Exception as e`
 
 
 ## Compiler changes
