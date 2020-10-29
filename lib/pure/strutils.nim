@@ -3269,4 +3269,3 @@ bar
   nonStaticTests()
   staticTests()
   static: staticTests()
-
