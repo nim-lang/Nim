@@ -119,6 +119,12 @@ else:
     a0: 0x69B4C98CB8530805u64,
     a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
 
+since (1, 5):
+  template randState*(): untyped =
+    ## Makes the default Rand state accessible from other modules.
+    ## Useful for module authors.
+    state
+
 proc rotl(x, k: Ui): Ui =
   result = (x shl k) or (x shr (Ui(64) - k))
 

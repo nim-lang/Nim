@@ -14,6 +14,7 @@
   `rawIntegers` and `rawFloats` parameters that can be used to enforce that all integer or float literals remain
   in the "raw" string form so that client code can easily treat small and large numbers uniformly.
 
+- Added `randState` template that exposes the default random number generator. Useful for library authors.
 
 ## Language changes
 
