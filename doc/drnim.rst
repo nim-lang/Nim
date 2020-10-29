@@ -13,7 +13,7 @@ Introduction
 
 This document describes the usage of the *DrNim* tool. DrNim combines
 the Nim frontend with the `Z3 <https://github.com/Z3Prover/z3>`_ proof
-engine, in order to allow verify/ validate software written in Nim.
+engine, in order to allow verify/validate software written in Nim.
 DrNim's command-line options are the same as the Nim compiler's.
 
 
