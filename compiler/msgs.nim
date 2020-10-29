@@ -489,7 +489,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let kind = if msg != hintUserRaw: msg.msgToStr else: "" # xxx not sure why hintUserRaw is special
+  let kind = if msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
@@ -536,7 +536,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
-            KindFormat % hintMsgOrigin.msgToStr,
+            KindFormat % $hintMsgOrigin,
             resetStyle)
   handleError(conf, msg, eh, s)
 
@@ -612,7 +612,7 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
 
 template listMsg(title, r) =
   msgWriteln(conf, title)
-  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
+  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", $a])
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)

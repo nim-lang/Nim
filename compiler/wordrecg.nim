@@ -34,7 +34,7 @@ type
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
     wStar = "*", wMinus = "-",
-    wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profile", 
+    wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler", 
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 
     wCursor = "cursor", wNoalias = "noalias",
@@ -46,7 +46,7 @@ type
     wExportNims = "exportnims",
     wIncompleteStruct = "incompleteStruct", # deprecated
     wCompleteStruct = "completeStruct", wRequiresInit = "requiresInit", wAlign = "align",
-    wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEsffect", wHeader = "header",
+    wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideEffect", wHeader = "header",
     wNoSideEffect = "noSideEffect", wGcSafe = "gcsafe", wNoreturn = "noreturn",
     wNosinks = "nosinks", wMerge = "merge", wLib = "lib", wDynlib = "dynlib",
     wCompilerProc = "compilerproc", wCore = "core", wProcVar = "procvar", 
@@ -130,3 +130,9 @@ proc findStr*(a: openArray[string], s: string): int =
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
+
+proc findStr*[T:enum](a: Slice[T], s: string, default: T): T =  
+  for i in a:
+    if cmpIgnoreStyle($i, s) == 0:
+      return i
+  result = default
