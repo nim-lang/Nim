@@ -45,5 +45,7 @@ Rod File Format
 ---------------
 
 A string encoded with frosty which represents the version of the format,
-followed by a Module object encoded with frosty and then compressed with
-supersnappy.
+followed by hash for the Module object encoded with frosty, followed by
+the Module object itself encoded with frosty and subsequently compressed
+with supersnappy.  This lets us check versions and hashes without regard
+to the remaining payload.
