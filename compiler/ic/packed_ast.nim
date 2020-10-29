@@ -463,3 +463,8 @@ when false:
 proc byteSize*(m: Module): int =
   ## roughly how large is the module in bytes?
   Module.sizeof + len(m.ast) * PackedTree.sizeof
+
+proc hash*(m: Module): Hash =
+  var h: Hash = 0
+  h = h !& hash(m.name)
+  result = !$h
