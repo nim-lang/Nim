@@ -10,7 +10,7 @@ var packages2*: seq[tuple[name, cmd: string; url: string, useHead: bool]] = @[]
 # packages A-M
 # pkg1 "alea"
 pkg1 "argparse"
-pkg1 "arraymancer", "nim c tests/tests_cpu.nim"
+# pkg1 "arraymancer", "nim c tests/tests_cpu.nim" # See https://github.com/nim-lang/Nim/pull/14887
 #pkg1 "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk"
 pkg1 "bigints", url = "https://github.com/Araq/nim-bigints"
