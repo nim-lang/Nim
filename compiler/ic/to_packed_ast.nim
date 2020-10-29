@@ -9,7 +9,7 @@
 
 import std / [hashes, tables]
 import packed_ast, bitabs
-import ".." / [ast, idents, lineinfos, msgs]
+import ".." / [ast, idents, lineinfos, msgs, ropes]
 
 type
   Context = object
@@ -25,6 +25,7 @@ type
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId
+proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib
 
 proc flush(ir: var PackedTree; c: var Context) =
   ## serialize any pending types or symbols from the context
@@ -42,6 +43,9 @@ proc addItemId(tree: var PackedTree; id: ItemId; typ: TypeId; info: PackedLineIn
   tree.nodes.add Node(kind: nkInt32Lit, operand: id.module, info: info)
   tree.nodes.add Node(kind: nkInt32Lit, operand: id.item, info: info)
   tree.patch patchPos
+
+proc toLitId(x: string; ir: var PackedTree; c: var Context): LitId =
+  result = getOrIncl(ir.sh.strings, x)
 
 proc toLitId(x: BiggestInt; ir: var PackedTree; c: var Context): LitId =
   # i think smaller integers aren't worth putting into a table
@@ -65,13 +69,13 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc addMissing(c: var Context; p: PSym) =
   if p.itemId.module == c.thisModule:
-      if not p.itemId.item in c.symMap:
-        c.pendingSyms.add p
+    if not p.itemId.item in c.symMap:
+      c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
   if p.uniqueId.module == c.thisModule:
-      if not p.uniqueId.item in c.typeMap:
-        c.pendingTypes.add p
+    if not p.uniqueId.item in c.typeMap:
+      c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   template info: PackedLineInfo =
@@ -118,7 +122,48 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
-  result = SymId(0)
+  assert s.itemId.module == c.thisModule   # should we even be here?
+  template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
+
+  assert s.itemId.module == c.thisModule   # should we even be here?
+
+  # short-circuit if we already have the SymId
+  result = getOrDefault(c.symMap, s.itemId.item, SymId(-1))
+  if result != SymId(-1): return
+
+  ir.sh.syms.add:
+    PackedSym(kind: s.kind, flags: s.flags, info: info, magic: s.magic,
+              position: s.position, offset: s.offset, options: s.options,
+              name: s.name.s.toLitId(ir, c),
+              ast: newTreeFrom(ir), constraint: newTreeFrom(ir))
+  result = SymId(ir.sh.syms.high)
+  c.symMap[s.itemId.item] = result
+  template p: PackedSym = ir.sh.syms[int result]
+
+  if s.kind in {skLet, skVar, skField, skForVar}:
+    c.addMissing s.guard
+    p.guard = s.guard.itemId
+    p.bitsize = s.bitsize
+    p.alignment = s.alignment
+
+  if s.loc.r != nil:
+    p.externalName = toLitId($s.loc.r, ir, c)
+
+  p.typeId = s.typ.toPackedType(ir, c)
+
+  c.addMissing s.owner
+  p.owner = s.owner.itemId
+
+  if not s.annex.isNil:
+    p.annex = toPackedLib(s.annex, ir, c)
+
+  if not s.constraint.isNil:
+    s.constraint.toPackedNode(p.constraint, c)
+
+  if not s.ast.isNil:
+    s.ast.toPackedNode(p.ast, c)
+
+  ir.flush c
 
 proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   assert n.kind == nkSym
@@ -130,6 +175,14 @@ proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   else:
     # store it as an external module reference:
     ir.addItemId(n.sym.itemId, n.typ.toPackedType(ir, c), info)
+
+proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
+  result.kind = l.kind
+  result.generated = l.generated
+  result.isOverriden = l.isOverriden
+  result.name = toLitId($l.name, ir, c)
+  result.path = newTreeFrom(ir)
+  l.path.toPackedNode(result.path, c)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   template info: PackedLineInfo = toPackedInfo(n.info, ir, c)

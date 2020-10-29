@@ -59,7 +59,7 @@ type
     generated*: bool
     isOverriden*: bool
     name*: LitId
-    path*: NodeId
+    path*: PackedTree
 
   PackedSym* = object
     kind*: TSymKind
@@ -68,7 +68,7 @@ type
     flags*: TSymFlags
     magic*: TMagic
     info*: PackedLineInfo
-    ast*: NodePos
+    ast*: PackedTree
     owner*: ItemId
     guard*: ItemId
     bitsize*: int
@@ -80,7 +80,7 @@ type
     annex*: PackedLib
     when hasFFI:
       cname*: LitId
-    constraint*: NodeId
+    constraint*: PackedTree
 
   PackedType* = object
     kind*: TTypeKind
