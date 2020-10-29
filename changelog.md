@@ -92,10 +92,31 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 - Removed `ospaths` module, was deprecated since `0.19`, use `os` instead.
+- Removed `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
 
 - There is a new experimental feature called "strictFuncs" which makes the definition of
   `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
   for more information.
+
+- "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
+  an experimental feature. In other words, you don't have to write pragma
+  `{.experimental: "forLoopMacros".}` if you want to use them.
+
+- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
+  performance this keyword can enable.
+
+- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
+- `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
+  `--deepcopy:on`.
+
+- Remove `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
+- Removed `ospaths` module, was deprecated since `0.19`, use `os` instead.
+- Added a `std/effecttraits` module for introspection of the inferred effects.
+  We hope this enables `async` macros that are precise about the possible exceptions that
+  can be raised.
+- The pragma blocks `{.gcsafe.}: ...` and `{.noSideEffect.}: ...` can now also be
+  written as `{.cast(gcsafe).}: ...` and `{.cast(noSideEffect).}: ...`. This is the new
+  preferred way of writing these, emphasizing their unsafe nature.
 
 
 ## Compiler changes
