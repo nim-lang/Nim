@@ -983,17 +983,13 @@ else:
     ## field but kept as raw numbers via `JString`.
     result = parseJson(newStringStream(buffer), "input", rawIntegers, rawFloats)
 
-  proc parseFile*(filename: string; rawIntegers = false, rawFloats = false): JsonNode =
+  proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
     ## If `file` contains extra data, it will raise `JsonParsingError`.
-    ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
-    ## field but kept as raw numbers via `JString`.
-    ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
-    ## field but kept as raw numbers via `JString`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
-    result = parseJson(stream, filename, rawIntegers, rawFloats)
+    result = parseJson(stream, filename, rawIntegers=false, rawFloats=false)
 
 # -- Json deserialiser. --
 
