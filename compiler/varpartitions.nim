@@ -126,7 +126,7 @@ proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
       return true
   return false
 
-template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
+template isConstParam(a): bool = a.kind == skParam and a.typ.kind notin {tyVar, tySink}
 
 proc variableId(c: Partitions; x: PSym): int =
   for i in 0 ..< c.s.len:
@@ -545,6 +545,9 @@ proc borrowingCall(c: var Partitions; destType: PType; n: PNode; i: int) =
     localError(c.config, n[i].info, "cannot determine the target of the borrow")
 
 proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
+  proc mutableParameter(n: PNode): bool {.inline.} =
+    result = n.kind == nkSym and n.sym.kind == skParam and n.sym.typ.kind == tyVar
+
   if dest.kind == nkSym:
     if directViewType(dest.typ) != noView:
       borrowFrom(c, dest.sym, src)
@@ -559,7 +562,11 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
         if vid >= 0:
           c.s[vid].flags.incl viewDoesMutate
     of immutableView:
-      localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+      if dest.kind == nkBracketExpr and dest[0].kind == nkHiddenDeref and
+          mutableParameter(dest[0][0]):
+        discard "remains a mutable location anyhow"
+      else:
+        localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
     of noView: discard "nothing to do"
 
 proc containsPointer(t: PType): bool =

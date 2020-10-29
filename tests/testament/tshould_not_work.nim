@@ -25,6 +25,8 @@ FAIL: tests/shouldfail/toutput.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/toutputsub.nim C
 Failure: reOutputsDiffer
+FAIL: tests/shouldfail/treject.nim C
+Failure: reFilesDiffer
 FAIL: tests/shouldfail/tsortoutput.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/ttimeout.nim C
