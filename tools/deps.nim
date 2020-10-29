@@ -1,4 +1,4 @@
-import os, uri, strformat, osproc
+import os, uri, strformat, osproc, strutils
 
 proc exec(cmd: string) =
   echo "deps.cmd: " & cmd
@@ -14,7 +14,11 @@ proc isGitRepo(dir: string): bool =
   # Using this, we can verify whether a folder is a git repository by checking
   # whether the command success and if the output is empty.
   let (output, status) = execEx fmt"git -C {quoteShell(dir)} rev-parse --show-cdup"
-  result = status == 0 and output == ""
+  # On Windows there will be a trailing newline on success, remove it.
+  # The value of a successful call typically won't have a whitespace (it's
+  # usually a series of ../), so we know that it's safe to unconditionally
+  # remove trailing whitespaces from the result.
+  result = status == 0 and output.strip() == ""
 
 const commitHead* = "HEAD"
 

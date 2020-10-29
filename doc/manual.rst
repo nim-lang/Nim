@@ -8,8 +8,8 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the end
-  user to one/some of the other players, but the total amount seems to remain
+  "Complexity" seems to be a lot like "energy": you can transfer it from the 
+  end-user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
 
@@ -22,7 +22,7 @@ precise wording. This manual is constantly evolving into a proper specification.
 **Note**: The experimental features of Nim are
 covered `here <manual_experimental.html>`_.
 
-**Note**: Assignments, moves and destruction are specified in
+**Note**: Assignments, moves, and destruction are specified in
 the `destructors <destructors.html>`_ document.
 
 
@@ -90,9 +90,9 @@ for example, be a native binary or JavaScript source code.
 
 In a typical Nim program, most of the code is compiled into the executable.
 However, some of the code may be executed at
-`compile time`:idx:. This can include constant expressions, macro definitions,
+`compile-time`:idx:. This can include constant expressions, macro definitions,
 and Nim procedures used by macro definitions. Most of the Nim language is
-supported at compile time, but there are some restrictions -- see `Restrictions
+supported at compile-time, but there are some restrictions -- see `Restrictions
 on Compile-Time Execution <#restrictions-on-compileminustime-execution>`_ for
 details. We use the term `runtime`:idx: to cover both compile-time execution
 and code execution in the executable.
@@ -125,18 +125,18 @@ compiler may instead choose to allow the program to die with a fatal error.
     echo "invalid index"
 
 The current implementation allows to switch between these different behaviors
-via ``--panics:on|off``. When panics are turned on, the program dies on a
+via ``--panics:on|off``. When panics are turned on, the program dies with a
 panic, if they are turned off the runtime errors are turned into
 exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
 code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
-detected, and can cause the subsequent behavior of the computation to
+detected and can cause the subsequent behavior of the computation to
 be arbitrary. Unchecked runtime errors cannot occur if only `safe`:idx:
 language features are used and if no runtime checks are disabled.
 
 A `constant expression`:idx: is an expression whose value can be computed during
-semantic analysis of the code in which it appears. It is never an l-value and
+a semantic analysis of the code in which it appears. It is never an l-value and
 never has side effects. Constant expressions are not limited to the capabilities
 of semantic analysis, such as constant folding; they can use all Nim language
 features that are supported for compile-time execution. Since constant
@@ -163,7 +163,7 @@ encodings are not supported. Any of the standard platform line termination
 sequences can be used - the Unix form using ASCII LF (linefeed), the Windows
 form using the ASCII sequence CR LF (return followed by linefeed), or the old
 Macintosh form using the ASCII CR (return) character. All of these forms can be
-used equally, regardless of platform.
+used equally, regardless of the platform.
 
 
 Indentation
@@ -180,7 +180,7 @@ lookahead.
 
 The parser uses a stack of indentation levels: the stack consists of integers
 counting the spaces. The indentation information is queried at strategic
-places in the parser but ignored otherwise: The pseudo terminal ``IND{>}``
+places in the parser but ignored otherwise: The pseudo-terminal ``IND{>}``
 denotes an indentation that consists of more spaces than the entry at the top
 of the stack; ``IND{=}`` an indentation that has the same number of spaces. ``DED``
 is another pseudo terminal that describes the *action* of popping a value
@@ -265,7 +265,7 @@ and underscores, with the following restrictions:
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
 
-Currently any Unicode character with an ordinal value > 127 (non ASCII) is
+Currently, any Unicode character with an ordinal value > 127 (non-ASCII) is
 classified as a ``letter`` and may thus be part of an identifier but later
 versions of the language may assign some Unicode characters to belong to the
 operator characters instead.
@@ -289,11 +289,11 @@ Two identifiers are considered equal if the following algorithm returns true:
     a[0] == b[0] and
       a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
 
-That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively within the ASCII range and underscores are ignored.
+That means only the first letters are compared in a case-sensitive manner. Other
+letters are compared case-insensitively within the ASCII range and underscores are ignored.
 
 This rather unorthodox way to do identifier comparisons is called
-`partial case insensitivity`:idx: and has some advantages over the conventional
+`partial case-insensitivity`:idx: and has some advantages over the conventional
 case sensitivity:
 
 It allows programmers to mostly use their own preferred
@@ -455,7 +455,7 @@ literals:
                            exactly two hex digits are allowed
 ==================         ===================================================
 
-A character is not an Unicode character but a single byte. The reason for this
+A character is not a Unicode character but a single byte. The reason for this
 is efficiency: for the overwhelming majority of use-cases, the resulting
 programs will still handle UTF-8 properly as UTF-8 was specially designed for
 this. Another reason is that Nim can thus support ``array[char, int]`` or
@@ -504,18 +504,18 @@ Numerical constants are of a single type and have the form::
 
 
 As can be seen in the productions, numerical constants can contain underscores
-for readability. Integer and floating point literals may be given in decimal (no
-prefix), binary (prefix ``0b``), octal (prefix ``0o``) and hexadecimal
+for readability. Integer and floating-point literals may be given in decimal (no
+prefix), binary (prefix ``0b``), octal (prefix ``0o``), and hexadecimal
 (prefix ``0x``) notation.
 
 There exists a literal for each numerical type that is
 defined. The suffix starting with an apostrophe ('\'') is called a
-`type suffix`:idx:. Literals without a type suffix are of an integer type,
+`type suffix`:idx:. Literals without a type suffix are of an integer type
 unless the literal contains a dot or ``E|e`` in which case it is of
 type ``float``. This integer type is ``int`` if the literal is in the range
 ``low(i32)..high(i32)``, otherwise it is ``int64``.
-For notational convenience the apostrophe of a type suffix
-is optional if it is not ambiguous (only hexadecimal floating point literals
+For notational convenience, the apostrophe of a type suffix
+is optional if it is not ambiguous (only hexadecimal floating-point literals
 with a type suffix can be ambiguous).
 
 
@@ -539,12 +539,12 @@ The type suffixes are:
   ``'f64``           float64
 =================    =========================
 
-Floating point literals may also be in binary, octal or hexadecimal
+Floating-point literals may also be in binary, octal or hexadecimal
 notation:
 ``0B0_10001110100_0000101001000111101011101111111011000101001101001001'f64``
-is approximately 1.72826e35 according to the IEEE floating point standard.
+is approximately 1.72826e35 according to the IEEE floating-point standard.
 
-Literals are bounds checked so that they fit the datatype. Non base-10
+Literals are bounds checked so that they fit the datatype. Non-base-10
 literals are used mainly for flags and bit pattern representations, therefore
 bounds checking is done on bit width, not value range. If the literal fits in
 the bit width of the datatype, it is accepted.
@@ -626,7 +626,7 @@ operator which binds stronger than a ``primarySuffix``: ``@x.abc`` is parsed
 as ``(@x).abc`` whereas ``$x.abc`` is parsed as ``$(x.abc)``.
 
 
-For binary operators that are not keywords the precedence is determined by the
+For binary operators that are not keywords, the precedence is determined by the
 following rules:
 
 Operators ending in either ``->``, ``~>`` or ``=>`` are called
@@ -634,9 +634,9 @@ Operators ending in either ``->``, ``~>`` or ``=>`` are called
 
 If the operator ends with ``=`` and its first character is none of
 ``<``, ``>``, ``!``, ``=``, ``~``, ``?``, it is an *assignment operator* which
-has the second lowest precedence.
+has the second-lowest precedence.
 
-Otherwise precedence is determined by the first character.
+Otherwise, precedence is determined by the first character.
 
 ================  =======================================================  ==================  ===============
 Precedence level    Operators                                              First character     Terminal symbol
@@ -655,7 +655,7 @@ Precedence level    Operators                                              First
 ================  =======================================================  ==================  ===============
 
 
-Whether an operator is used a prefix operator is also affected by preceding
+Whether an operator is used as a prefix operator is also affected by preceding
 whitespace (this parsing change was introduced with version 0.13.0):
 
 .. code-block:: nim
@@ -664,7 +664,7 @@ whitespace (this parsing change was introduced with version 0.13.0):
   echo($foo)
 
 
-Spacing also determines whether ``(a, b)`` is parsed as an the argument list
+Spacing also determines whether ``(a, b)`` is parsed as an argument list
 of a call or whether it is parsed as a tuple constructor:
 
 .. code-block:: nim
@@ -798,7 +798,7 @@ block.
 The ability to access and modify compile-time variables adds flexibility to
 constant expressions that may be surprising to those coming from other
 statically typed languages. For example, the following code echoes the beginning
-of the Fibonacci series **at compile time**. (This is a demonstration of
+of the Fibonacci series **at compile-time**. (This is a demonstration of
 flexibility in defining constants, not a recommended style for solving this
 problem!)
 
@@ -854,7 +854,7 @@ Some or all of these restrictions are likely to be lifted over time.
 Types
 =====
 
-All expressions have a type which is known during semantic analysis. Nim
+All expressions have a type that is known during semantic analysis. Nim
 is statically typed. One can declare new types, which is in essence defining
 an identifier that can be used to denote this custom type.
 
@@ -862,7 +862,7 @@ These are the major type classes:
 
 * ordinal types (consist of integer, bool, character, enumeration
   (and subranges thereof) types)
-* floating point types
+* floating-point types
 * string type
 * structured types
 * reference (pointer) type
@@ -877,12 +877,12 @@ Ordinal types have the following characteristics:
 - Ordinal types are countable and ordered. This property allows
   the operation of functions as ``inc``, ``ord``, ``dec`` on ordinal types to
   be defined.
-- Ordinal values have a smallest possible value. Trying to count further
+- Ordinal values have the smallest possible value. Trying to count further
   down than the smallest value produces a panic or a static error.
-- Ordinal values have a largest possible value. Trying to count further
+- Ordinal values have the largest possible value. Trying to count further
   than the largest value produces a panic or a static error.
 
-Integers, bool, characters and enumeration types (and subranges of these
+Integers, bool, characters, and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
 the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
 in later versions of the language.)
@@ -895,25 +895,23 @@ Pre-defined integer types
 These integer types are pre-defined:
 
 ``int``
-  the generic signed integer type; its size is platform dependent and has the
+  the generic signed integer type; its size is platform-dependent and has the
   same size as a pointer. This type should be used in general. An integer
   literal that has no type suffix is of this type if it is in the range
   ``low(int32)..high(int32)`` otherwise the literal's type is ``int64``.
 
 intXX
   additional signed integer types of XX bits use this naming scheme
-  (example: int16 is a 16 bit wide integer).
+  (example: int16 is a 16-bit wide integer).
   The current implementation supports ``int8``, ``int16``, ``int32``, ``int64``.
   Literals of these types have the suffix 'iXX.
 
 ``uint``
-  the generic `unsigned integer`:idx: type; its size is platform dependent and
-  has the same size as a pointer. An integer literal with the type
-  suffix ``'u`` is of this type.
+  the generic `unsigned integer`:idx: type; its size is platform-dependent and has the same size as a pointer. An integer literal with the type suffix ``'u`` is of this type.
 
 uintXX
   additional unsigned integer types of XX bits use this naming scheme
-  (example: uint16 is a 16 bit wide unsigned integer).
+  (example: uint16 is a 16-bit wide unsigned integer).
   The current implementation supports ``uint8``, ``uint16``, ``uint32``,
   ``uint64``. Literals of these types have the suffix 'uXX.
   Unsigned operations all wrap around; they cannot lead to over- or
@@ -977,7 +975,7 @@ For further details, see `Convertible relation
 
 Subrange types
 --------------
-A subrange type is a range of values from an ordinal or floating point type (the base
+A subrange type is a range of values from an ordinal or floating-point type (the base
 type). To define a subrange type, one must specify its limiting values -- the
 lowest and highest value of the type. For example:
 
@@ -988,8 +986,8 @@ lowest and highest value of the type. For example:
 
 
 ``Subrange`` is a subrange of an integer which can only hold the values 0
-to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
-NaN does not belong to any subrange of floating point types.
+to 5. ``PositiveFloat`` defines a subrange of all positive floating-point values.
+NaN does not belong to any subrange of floating-point types.
 Assigning any other value to a variable of type ``Subrange`` is a
 panic (or a static error if it can be determined during
 semantic analysis). Assignments from the base type to one of its subrange types
@@ -999,27 +997,27 @@ A subrange type has the same size as its base type (``int`` in the
 Subrange example).
 
 
-Pre-defined floating point types
+Pre-defined floating-point types
 --------------------------------
 
-The following floating point types are pre-defined:
+The following floating-point types are pre-defined:
 
 ``float``
-  the generic floating point type; its size used to be platform dependent,
+  the generic floating-point type; its size used to be platform-dependent,
   but now it is always mapped to ``float64``.
   This type should be used in general.
 
 floatXX
-  an implementation may define additional floating point types of XX bits using
-  this naming scheme (example: float64 is a 64 bit wide float). The current
+  an implementation may define additional floating-point types of XX bits using
+  this naming scheme (example: float64 is a 64-bit wide float). The current
   implementation supports ``float32`` and ``float64``. Literals of these types
   have the suffix 'fXX.
 
 
 Automatic type conversion in expressions with different kinds
-of floating point types is performed: See `Convertible relation`_ for further
-details. Arithmetic performed on floating point types follows the IEEE
-standard. Integer types are not converted to floating point types automatically
+of floating-point types is performed: See `Convertible relation`_ for further
+details. Arithmetic performed on floating-point types follows the IEEE
+standard. Integer types are not converted to floating-point types automatically
 and vice versa.
 
 The IEEE standard defines five types of floating-point exceptions:
@@ -1059,7 +1057,7 @@ combination of ``nanChecks`` and ``infChecks`` pragmas. ``floatChecks`` are
 turned off as default.
 
 The only operations that are affected by the ``floatChecks`` pragma are
-the ``+``, ``-``, ``*``, ``/`` operators for floating point types.
+the ``+``, ``-``, ``*``, ``/`` operators for floating-point types.
 
 An implementation should always use the maximum precision available to evaluate
 floating pointer values during semantic analysis; this means expressions like
@@ -1094,9 +1092,9 @@ The size of the bool type is one byte.
 Character type
 --------------
 The character type is named ``char`` in Nim. Its size is one byte.
-Thus it cannot represent an UTF-8 character, but a part of it.
+Thus it cannot represent a UTF-8 character, but a part of it.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
-the resulting programs will still handle UTF-8 properly as UTF-8 was specially
+the resulting programs will still handle UTF-8 properly as UTF-8 was especially
 designed for this.
 Another reason is that Nim can support ``array[char, int]`` or
 ``set[char]`` efficiently as many algorithms rely on this feature. The
@@ -1144,7 +1142,7 @@ An explicit ordered enum can have *holes*:
     TokenType = enum
       a = 2, b = 4, c = 89 # holes are valid
 
-However, it is then not an ordinal anymore, so it is not possible to use these
+However, it is then not ordinal anymore, so it is not possible to use these
 enums as an index type for arrays. The procedures ``inc``, ``dec``, ``succ``
 and ``pred`` are not available for them either.
 
@@ -1166,8 +1164,8 @@ As can be seen from the example, it is possible to both specify a field's
 ordinal value and its string value by using a tuple. It is also
 possible to only specify one of them.
 
-An enum can be marked with the ``pure`` pragma so that it's fields are
-added to a special module specific hidden scope that is only queried
+An enum can be marked with the ``pure`` pragma so that its fields are
+added to a special module-specific hidden scope that is only queried
 as the last attempt. Only non-ambiguous symbols are added to this scope.
 But one can always access these via type qualification written
 as ``MyEnum.value``:
@@ -1254,7 +1252,7 @@ cstring type
 The ``cstring`` type meaning `compatible string` is the native representation
 of a string for the compilation backend. For the C backend the ``cstring`` type
 represents a pointer to a zero-terminated char array
-compatible to the type ``char*`` in Ansi C. Its primary purpose lies in easy
+compatible with the type ``char*`` in Ansi C. Its primary purpose lies in easy
 interfacing with C. The index operation ``s[i]`` means the i-th *char* of
 ``s``; however no bounds checking for ``cstring`` is performed making the
 index operation unsafe.
@@ -1271,7 +1269,7 @@ variadic proc, it is implicitly converted to ``cstring`` too:
 
 Even though the conversion is implicit, it is not *safe*: The garbage collector
 does not consider a ``cstring`` to be a root and may collect the underlying
-memory. However in practice this almost never happens as the GC considers
+memory. However, in practice, this almost never happens as the GC considers
 stack roots conservatively. One can use the builtin procs ``GC_ref`` and
 ``GC_unref`` to keep the string data alive for the rare cases where it does
 not work.
@@ -1288,7 +1286,7 @@ Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
 time. Structured types can be nested to unlimited levels. Arrays, sequences,
-tuples, objects and sets belong to the structured types.
+tuples, objects, and sets belong to the structured types.
 
 Array and sequence types
 ------------------------
@@ -1341,7 +1339,7 @@ The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
 Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
-``--boundChecks:off`` command line switch.
+``--boundChecks:off`` command-line switch.
 
 An array constructor can have explicit indexes for readability:
 
@@ -1456,7 +1454,7 @@ Unchecked arrays
 ----------------
 The ``UncheckedArray[T]`` type is a special kind of ``array`` where its bounds
 are not checked. This is often useful to implement customized flexibly sized
-arrays. Additionally an unchecked array is translated into a C array of
+arrays. Additionally, an unchecked array is translated into a C array of
 undetermined size:
 
 .. code-block:: nim
@@ -1526,7 +1524,7 @@ trailing comma:
 
 In fact, a trailing comma is allowed for every tuple construction.
 
-The implementation aligns the fields for best access performance. The alignment
+The implementation aligns the fields for the best access performance. The alignment
 is compatible with the way the C compiler does it.
 
 For consistency  with ``object`` declarations, tuples in a ``type`` section
@@ -1540,7 +1538,7 @@ can also be defined with indentation instead of ``[]``:
 
 Objects provide many features that tuples do not. Object provide inheritance and
 the ability to hide fields from other modules. Objects with inheritance enabled
-have information about their type at runtime, so that the ``of`` operator can be
+have information about their type at runtime so that the ``of`` operator can be
 used to determine the object's type. The ``of``
 operator is similar to the ``instanceof`` operator in Java.
 
@@ -1592,8 +1590,8 @@ For a ``ref object`` type ``system.new`` is invoked implicitly.
 
 Object variants
 ---------------
-Often an object hierarchy is overkill in certain situations where simple variant
-types are needed. Object variants are tagged unions discriminated via a
+Often an object hierarchy is an overkill in certain situations where simple variant
+types are needed. Object variants are tagged unions discriminated via an
 enumerated type used for runtime type flexibility, mirroring the concepts of
 *sum types* and *algebraic data types (ADTs)* as found in other languages.
 
@@ -1638,14 +1636,14 @@ An example:
   # valid: does not change the active object branch:
   x.kind = nkSub
 
-As can been seen from the example, an advantage to an object hierarchy is that
+As can be seen from the example, an advantage to an object hierarchy is that
 no casting between different object types is needed. Yet, access to invalid
 object fields raises an exception.
 
 The syntax of ``case`` in an object declaration follows closely the syntax of
 the ``case`` statement: The branches in a ``case`` section may be indented too.
 
-In the example the ``kind`` field is called the `discriminator`:idx:\: For
+In the example, the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. Also, when the
 fields of a particular branch are specified during object construction, the
@@ -1708,16 +1706,16 @@ point to and modify the same location in memory (also called `aliasing`:idx:).
 
 Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
-objects of a garbage collected heap, untraced references point to
-manually allocated objects or to objects somewhere else in memory. Thus
-untraced references are *unsafe*. However for certain low-level operations
+objects of a garbage-collected heap, untraced references point to
+manually allocated objects or objects somewhere else in memory. Thus
+untraced references are *unsafe*. However, for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
 are declared with the **ptr** keyword.  In general, a `ptr T` is implicitly
 convertible to the `pointer` type.
 
-An empty subscript ``[]`` notation can be used to derefer a reference,
+An empty subscript ``[]`` notation can be used to de-refer a reference,
 the ``addr`` procedure returns the address of an item. An address is always
 an untraced reference.
 Thus the usage of ``addr`` is an *unsafe* feature.
@@ -1807,7 +1805,7 @@ Mixing GC'ed memory with ``ptr``
 --------------------------------
 
 Special care has to be taken if an untraced object contains traced objects like
-traced references, strings or sequences: in order to free everything properly,
+traced references, strings, or sequences: in order to free everything properly,
 the built-in procedure ``reset`` has to be called before freeing the untraced
 memory manually:
 
@@ -1828,8 +1826,7 @@ memory manually:
   dealloc(d)
 
 Without the ``reset`` call the memory allocated for the ``d.s`` string would
-never be freed. The example also demonstrates two important features for low
-level programming: the ``sizeof`` proc returns the size of a type or value
+never be freed. The example also demonstrates two important features for low-level programming: the ``sizeof`` proc returns the size of a type or value
 in bytes. The ``cast`` operator can circumvent the type system: the compiler
 is forced to treat the result of the ``alloc0`` call (which returns an untyped
 pointer) as if it would have the type ``ptr Data``. Casting should only be
@@ -1838,8 +1835,8 @@ mysterious crashes.
 
 **Note**: The example only works because the memory is initialized to zero
 (``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
-binary zero which the string assignment can handle. One needs to know low level
-details like this when mixing garbage collected data with unmanaged memory.
+binary zero which the string assignment can handle. One needs to know low-level
+details like this when mixing garbage-collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
 
@@ -1948,7 +1945,7 @@ accesses its environment. If it does so, it has the calling convention
 Distinct type
 -------------
 
-A ``distinct`` type is new type derived from a `base type`:idx: that is
+A ``distinct`` type is a new type derived from a `base type`:idx: that is
 incompatible with its base type. In particular, it is an essential property
 of a distinct type that it **does not** imply a subtype relation between it
 and its base type. Explicit type conversions from a distinct type to its
@@ -1958,7 +1955,7 @@ reverse operation.
 A distinct type is an ordinal type if its base type is an ordinal type.
 
 
-Modelling currencies
+Modeling currencies
 ~~~~~~~~~~~~~~~~~~~~
 
 A distinct type can be used to model different physical `units`:idx: with a
@@ -2002,7 +1999,7 @@ number without unit; and the same holds for division:
 This quickly gets tedious. The implementations are trivial and the compiler
 should not generate all this code only to optimize it away later - after all
 ``+`` for dollars should produce the same binary code as ``+`` for ints.
-The pragma `borrow`:idx: has been designed to solve this problem; in principle
+The pragma `borrow`:idx: has been designed to solve this problem; in principle,
 it generates the above trivial implementations:
 
 .. code-block:: nim
@@ -2067,14 +2064,14 @@ certain builtin operations to be lifted:
   bb.a = 90
   bb.s = "abc"
 
-Currently only the dot accessor can be borrowed in this way.
+Currently, only the dot accessor can be borrowed in this way.
 
 
 Avoiding SQL injection attacks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 An SQL statement that is passed from Nim to an SQL database might be
-modelled as a string. However, using string templates and filling in the
+modeled as a string. However, using string templates and filling in the
 values is vulnerable to the famous `SQL injection attack`:idx:\:
 
 .. code-block:: nim
@@ -2152,7 +2149,7 @@ Is the same as:
 .. code-block:: nim
   proc foo[T1, T2](a: T1, b: T2) = discard
 
-However later versions of the language might change this to mean "infer the
+However, later versions of the language might change this to mean "infer the
 parameters' types from the body". Then the above ``foo`` would be rejected as
 the parameters' types can not be inferred from an empty ``discard`` statement.
 
@@ -2375,8 +2372,8 @@ of the argument.
 1. Exact match: ``a`` and ``f`` are of the same type.
 2. Literal match: ``a`` is an integer literal of value ``v``
    and ``f`` is a signed or unsigned integer type and ``v`` is in ``f``'s
-   range. Or:  ``a`` is a floating point literal of value ``v``
-   and ``f`` is a floating point type and ``v`` is in ``f``'s
+   range. Or:  ``a`` is a floating-point literal of value ``v``
+   and ``f`` is a floating-point type and ``v`` is in ``f``'s
    range.
 3. Generic match: ``f`` is a generic type and ``a`` matches, for
    instance ``a`` is ``int`` and ``f`` is a generic (constrained) parameter
@@ -2384,7 +2381,7 @@ of the argument.
 4. Subrange or subtype match: ``a`` is a ``range[T]`` and ``T``
    matches ``f`` exactly. Or: ``a`` is a subtype of ``f``.
 5. Integral conversion match: ``a`` is convertible to ``f`` and ``f`` and ``a``
-   is some integer or floating point type.
+   is some integer or floating-point type.
 6. Conversion match: ``a`` is convertible to ``f``, possibly via a user
    defined ``converter``.
 
@@ -2507,7 +2504,7 @@ Lazy type resolution for untyped
 lookups and no type checking have been performed.
 
 Since templates and macros that are not declared as ``immediate`` participate
-in overloading resolution it's essential to have a way to pass unresolved
+in overloading resolution, it's essential to have a way to pass unresolved
 expressions to a template or macro. This is what the meta-type ``untyped``
 accomplishes:
 
@@ -2549,7 +2546,7 @@ statements.
 Statements are separated into `simple statements`:idx: and
 `complex statements`:idx:.
 Simple statements are statements that cannot contain other statements like
-assignments, calls or the ``return`` statement; complex statements can
+assignments, calls, or the ``return`` statement; complex statements can
 contain other statements. To avoid the `dangling else problem`:idx:, complex
 statements always have to be indented. The details can be found in the grammar.
 
@@ -2559,7 +2556,7 @@ Statement list expression
 
 Statements can also occur in an expression context that looks
 like ``(stmt1; stmt2; ...; ex)``. This is called
-an statement list expression or ``(;)``. The type
+a statement list expression or ``(;)``. The type
 of ``(stmt1; stmt2; ...; ex)`` is the type of ``ex``. All the other statements
 must be of type ``void``. (One can use ``discard`` to produce a ``void`` type.)
 ``(;)`` does not introduce a new scope.
@@ -2591,6 +2588,17 @@ been declared with the `discardable`:idx: pragma:
     result = x + y
 
   p(3, 4) # now valid
+
+however the discardable pragma does not work on templates as templates substitute the AST in place. For example:
+
+.. code-block:: nim
+  {.push discardable .}
+  template example(): string = "https://nim-lang.org"
+  {.pop.}
+
+  example()
+
+This template will resolve into "https://nim-lang.org" which is a string literal and since {.discardable.} doesn't apply to literals, the compiler will error.
 
 An empty ``discard`` statement is often used as a null statement:
 
@@ -2624,7 +2632,7 @@ Var statement
 -------------
 
 Var statements declare new local and global variables and
-initialize them. A comma separated list of variables can be used to specify
+initialize them. A comma-separated list of variables can be used to specify
 variables of the same type:
 
 .. code-block:: nim
@@ -2673,7 +2681,7 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 
 The implicit initialization can be also prevented by the `requiresInit`:idx:
 type pragma. The compiler requires an explicit initialization for the object
-and all of its fields. However it does a `control flow analysis`:idx: to prove
+and all of its fields. However, it does a `control flow analysis`:idx: to prove
 the variable has been initialized and does not rely on syntactic properties:
 
 .. code-block:: nim
@@ -2699,7 +2707,7 @@ statement, except that the keyword ``var`` is replaced by the keyword ``let``.
 Let variables are not l-values and can thus not be passed to ``var`` parameters
 nor can their address be taken. They cannot be assigned new values.
 
-For let variables the same pragmas are available as for ordinary variables.
+For let variables, the same pragmas are available as for ordinary variables.
 
 As ``let`` statements are immutable after creation they need to define a value
 when they are declared. The only exception to this is if the ``{.importc.}``
@@ -2826,7 +2834,7 @@ ordinal types. "All possible values" of ``expr`` are determined by ``expr``'s
 type. To suppress the static error an ``else`` part with an
 empty ``discard`` statement should be used.
 
-For non ordinal types it is not possible to list every possible value and so
+For non-ordinal types, it is not possible to list every possible value and so
 these always require an ``else`` part.
 
 Because case statements are checked for exhaustiveness during semantic analysis,
@@ -2917,8 +2925,8 @@ within ``object`` definitions.
 When nimvm statement
 --------------------
 
-``nimvm`` is a special symbol, that may be used as expression of ``when nimvm``
-statement to differentiate execution path between compile time and the
+``nimvm`` is a special symbol, that may be used as an expression of ``when nimvm``
+statement to differentiate execution path between compile-time and the
 executable.
 
 Example:
@@ -2984,7 +2992,7 @@ Example:
 The ``yield`` statement is used instead of the ``return`` statement in
 iterators. It is only valid in iterators. Execution is returned to the body
 of the for loop that called the iterator. Yield does not end the iteration
-process, but execution is passed back to the iterator if the next iteration
+process, but the execution is passed back to the iterator if the next iteration
 starts. See the section about iterators (`Iterators and the for statement`_)
 for further information.
 
@@ -3144,7 +3152,7 @@ name ``c`` should default to type ``Context``, ``n`` should default to
 The ``using`` section uses the same indentation based grouping syntax as
 a ``var`` or ``let`` section.
 
-Note that ``using`` is not applied for ``template`` since untyped template
+Note that ``using`` is not applied for ``template`` since the untyped template
 parameters default to the type ``system.untyped``.
 
 Mixing parameters that should use the ``using`` declaration with parameters
@@ -3191,9 +3199,9 @@ Block expression
 ----------------
 
 A `block expression` is almost like a block statement, but it is an expression
-that uses last expression under the block as the value.
+that uses the last expression under the block as the value.
 It is similar to the statement list expression, but the statement list expression
-does not open new block scope.
+does not open a new block scope.
 
 .. code-block:: nim
   let a = block:
@@ -3225,7 +3233,7 @@ has lots of advantages:
   can easily put it into the executable's data section just like it can
   for arrays and the generated data section requires a minimal amount
   of memory.
-* Every table implementation is treated equal syntactically.
+* Every table implementation is treated equally syntactically.
 * Apart from the minimal syntactic sugar the language core does not need to
   know about tables.
 
@@ -3240,9 +3248,9 @@ results in an exception (if it cannot be determined statically).
 
 Ordinary procs are often preferred over type conversions in Nim: For instance,
 ``$`` is the ``toString`` operator by convention and ``toFloat`` and ``toInt``
-can be used to convert from floating point to integer or vice versa.
+can be used to convert from floating-point to integer or vice versa.
 
-A type conversion can also be used to disambiguate overloaded routines:
+Type conversion can also be used to disambiguate overloaded routines:
 
 .. code-block:: nim
 
@@ -3275,16 +3283,16 @@ programming and are inherently unsafe.
 
 .. code-block:: nim
   cast[int](x)
-  
+
 The target type of a cast must be a concrete type, for instance, a target type
 that is a type class (which is non-concrete) would be invalid:
 
 .. code-block:: nim
   type Foo = int or float
   var x = cast[Foo](1) # Error: cannot cast to a non concrete type: 'Foo'
-  
+
 Type casts should not be confused with *type conversions,* as mentioned in the
-prior section. Unlike type conversions, a type cast cannot change the underlying 
+prior section. Unlike type conversions, a type cast cannot change the underlying
 bit pattern of the data being casted (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
 languages or C++'s ``reinterpret_cast`` and ``bit_cast`` features.
@@ -3336,7 +3344,7 @@ declaration consists of an identifier, zero or more formal parameters, a return
 value type and a block of code. Formal parameters are declared as a list of
 identifiers separated by either comma or semicolon. A parameter is given a type
 by ``: typename``. The type applies to all parameters immediately before it,
-until either the beginning of the parameter list, a semicolon separator or an
+until either the beginning of the parameter list, a semicolon separator, or an
 already typed parameter, is reached. The semicolon can be used to make
 separation of types and subsequent identifiers more distinct.
 
@@ -3449,7 +3457,7 @@ current module:
 Method call syntax
 ------------------
 
-For object oriented programming, the syntax ``obj.method(args)`` can be used
+For object-oriented programming, the syntax ``obj.method(args)`` can be used
 instead of ``method(obj, args)``. The parentheses can be omitted if there are no
 remaining arguments: ``obj.len`` (instead of ``len(obj)``).
 
@@ -3483,7 +3491,7 @@ Properties
 ----------
 Nim has no need for *get-properties*: Ordinary get-procedures that are called
 with the *method call syntax* achieve the same. But setting a value is
-different; for this a special setter syntax is needed:
+different; for this, a special setter syntax is needed:
 
 .. code-block:: nim
   # Module asocket
@@ -3555,8 +3563,8 @@ more argument in this case:
 
 The command invocation syntax also can't have complex expressions as arguments.
 For example: (`anonymous procs <#procedures-anonymous-procs>`_), ``if``,
-``case`` or ``try``. Function calls with no arguments still needs () to
-distinguish between a call and the function itself as a first class value.
+``case`` or ``try``. Function calls with no arguments still need () to
+distinguish between a call and the function itself as a first-class value.
 
 
 Closures
@@ -3592,7 +3600,7 @@ procedures:
       cmp(x.len, y.len))
 
 
-Procs as expressions can appear both as nested procs and inside top level
+Procs as expressions can appear both as nested procs and inside top-level
 executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
 which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
@@ -3616,7 +3624,7 @@ Is short for:
 Nonoverloadable builtins
 ------------------------
 
-The following builtin procs cannot be overloaded for reasons of implementation
+The following built-in procs cannot be overloaded for reasons of implementation
 simplicity (they require specialized semantic checking)::
 
   declared, defined, definedInScope, compiles, sizeof,
@@ -3625,7 +3633,7 @@ simplicity (they require specialized semantic checking)::
 Thus they act more like keywords than like ordinary identifiers; unlike a
 keyword however, a redefinition may `shadow`:idx: the definition in
 the ``system`` module. From this list the following should not be written in dot
-notation ``x.f`` since ``x`` cannot be type checked before it gets passed
+notation ``x.f`` since ``x`` cannot be type-checked before it gets passed
 to ``f``::
 
   declared, defined, definedInScope, compiles, getAst, astToStr
@@ -3692,7 +3700,7 @@ free to pass arguments by reference if it considers it can speed up execution.
 Var return type
 ---------------
 
-A proc, converter or iterator may return a ``var`` type which means that the
+A proc, converter, or iterator may return a ``var`` type which means that the
 returned value is an l-value and can be modified by the caller:
 
 .. code-block:: nim
@@ -3983,7 +3991,7 @@ the rewriting step, so that all overloads of ``items``/``pairs`` are taken
 into account.
 
 
-First class iterators
+First-class iterators
 ---------------------
 
 There are 2 kinds of iterators in Nim: *inline* and *closure* iterators.
@@ -3998,7 +4006,7 @@ to avoid code bloat.
 
 Inline iterators are second class citizens;
 They can be passed as parameters only to other inlining code facilities like
-templates, macros and other inline iterators.
+templates, macros, and other inline iterators.
 
 In contrast to that, a `closure iterator`:idx: can be passed around more freely:
 
@@ -4273,7 +4281,7 @@ above, ``IOError``), one must convert it explicitly:
     # "e" is now of the proper type
 
 However, this is seldom needed. The most common case is to extract an
-error message from ``e``, and for such situations it is enough to use
+error message from ``e``, and for such situations, it is enough to use
 ``getCurrentExceptionMsg``:
 
 .. code-block:: nim
@@ -4328,7 +4336,7 @@ Is rewritten to:
     finally:
       close(f)
 
-Top level ``defer`` statements are not supported
+Top-level ``defer`` statements are not supported
 since it's unclear what such a statement should refer to.
 
 
@@ -4463,9 +4471,7 @@ possibly raised exceptions; the algorithm operates on ``p``'s call graph:
 1. Every indirect call via some proc type ``T`` is assumed to
    raise ``system.Exception`` (the base type of the exception hierarchy) and
    thus any exception unless ``T`` has an explicit ``raises`` list.
-   However if the call is of the form ``f(...)`` where ``f`` is a parameter
-   of the currently analysed routine it is ignored. The call is optimistically
-   assumed to have no effect. Rule 2 compensates for this case.
+   However, if the call is of the form ``f(...)`` where ``f`` is a parameter of the currently analyzed routine it is ignored. The call is optimistically assumed to have no effect. Rule 2 compensates for this case.
 2. Every expression of some proc type within a call that is not a call
    itself (and not nil) is assumed to be called indirectly somehow and thus
    its raises list is added to ``p``'s raises list.
@@ -4568,10 +4574,10 @@ Generics
 ========
 
 Generics are Nim's means to parametrize procs, iterators or types with
-`type parameters`:idx:. Depending on context, the brackets are used either to
-introduce type parameters or to instantiate a generic proc, iterator or type.
+`type parameters`:idx:. Depending on the context, the brackets are used either to
+introduce type parameters or to instantiate a generic proc, iterator, or type.
 
-The following example shows a generic binary tree can be modelled:
+The following example shows a generic binary tree can be modeled:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -4694,7 +4700,7 @@ more complex type classes:
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
 constraints to be enforced at type instantiations. Type classes are not really
-types in themselves, but are instead a system of providing generic "checks" that
+types in themselves but are instead a system of providing generic "checks" that
 ultimately *resolve* to some singular type. Type classes do not allow for
 runtime type dynamism, unlike object variants or methods.
 
@@ -4731,11 +4737,11 @@ A type class can be used directly as the parameter's type.
       echo key, " = ", value
 
 
-Procedures utilizing type classes in such manner are considered to be
+Procedures utilizing type classes in such a manner are considered to be
 `implicitly generic`:idx:. They will be instantiated once for each unique
 combination of param types used within the program.
 
-By default, during overload resolution each named type class will bind to
+By default, during overload resolution, each named type class will bind to
 exactly one concrete type. We call such type classes `bind once`:idx: types.
 Here is an example taken directly from the system module to illustrate this:
 
@@ -4888,7 +4894,7 @@ at definition and the context at instantiation are considered:
 
   echo a == b # works!
 
-In the example the generic ``==`` for tuples (as defined in the system module)
+In the example, the generic ``==`` for tuples (as defined in the system module)
 uses the ``==`` operators of the tuple's components. However, the ``==`` for
 the ``Index`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
@@ -4997,7 +5003,7 @@ example *undeclared* identifiers can be passed to the template:
   template declareInt(x: typed) =
     var x: int
 
-  declareInt(x) # invalid, because x has not been declared and so has no type
+  declareInt(x) # invalid, because x has not been declared and so it has no type
 
 A template where every parameter is ``untyped`` is called an `immediate`:idx:
 template. For historical reasons templates can be explicitly annotated with
@@ -5333,7 +5339,7 @@ A macro is a special function that is executed at compile time.
 Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
 transformations on it and return the transformed AST. This can be used to
-add custom language features and implement `domain specific languages`:idx:.
+add custom language features and implement `domain-specific languages`:idx:.
 
 Macro invocation is a case where semantic analysis does **not** entirely proceed
 top to bottom and left to right. Instead, semantic analysis happens at least
@@ -5597,11 +5603,11 @@ possible type mismatch error.
 typedesc[T]
 -----------
 
-In many contexts, Nim allows to treat the names of types as regular
-values. These values exists only during the compilation phase, but since
+In many contexts, Nim treats the names of types as regular
+values. These values exist only during the compilation phase, but since
 all values must have a type, ``typedesc`` is considered their special type.
 
-``typedesc`` acts like a generic type. For instance, the type of the symbol
+``typedesc`` acts as a generic type. For instance, the type of the symbol
 ``int`` is ``typedesc[int]``. Just like with regular generic types, when the
 generic param is omitted, ``typedesc`` denotes the type class of all types.
 As a syntactic convenience, one can also use ``typedesc`` as a modifier.
@@ -5638,7 +5644,7 @@ Once bound, type params can appear in the rest of the proc signature:
 
 
 Overload resolution can be further influenced by constraining the set
-of types that will match the type param. This works in practice to
+of types that will match the type param. This works in practice by
 attaching attributes to types via templates. The constraint can be a
 concrete type or a type class.
 
@@ -5694,7 +5700,7 @@ operator):
 
 If ``typeof`` is used to determine the result type of a proc/iterator/converter
 call ``c(X)`` (where ``X`` stands for a possibly empty list of arguments), the
-interpretation where ``c`` is an iterator is preferred over the
+interpretation, where ``c`` is an iterator, is preferred over the
 other interpretations, but this behavior can be changed by
 passing ``typeOfProc`` as the second argument to ``typeof``:
 
@@ -5772,7 +5778,7 @@ imported:
 
 
 It is not checked that the ``except`` list is really exported from the module.
-This feature allows to compile against an older version of the module that
+This feature allows us to compile against an older version of the module that
 does not export these identifiers.
 
 The ``import`` statement is only allowed at the top level.
@@ -5825,7 +5831,7 @@ and so one **cannot** do:
   import lib/pure/strutils
   echo lib/pure/strutils.toUpperAscii("abc")
 
-Likewise the following does not make sense as the name is ``strutils`` already:
+Likewise, the following does not make sense as the name is ``strutils`` already:
 
 .. code-block:: nim
   import lib/pure/strutils as strutils
@@ -5847,7 +5853,7 @@ name is not a valid Nim identifier it needs to be a string literal:
 Pseudo import/include paths
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A directory can also be a so called "pseudo directory". They can be used to
+A directory can also be a so-called "pseudo directory". They can be used to
 avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
@@ -5864,7 +5870,7 @@ library locations*. In other words, it is the opposite of ``std``.
 From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
-After the ``from`` statement a module name follows followed by
+After the ``from`` statement, a module name follows followed by
 an ``import`` to list the symbols one likes to use without explicit
 full qualification:
 
@@ -5953,7 +5959,7 @@ the end of the module. Identifiers from indirectly dependent modules are *not*
 available. The `system`:idx: module is automatically imported in every module.
 
 If a module imports an identifier by two different modules, each occurrence of
-the identifier has to be qualified, unless it is an overloaded procedure or
+the identifier has to be qualified unless it is an overloaded procedure or
 iterator in which case the overloading resolution takes place:
 
 .. code-block:: nim
@@ -6031,12 +6037,12 @@ so that it can be used for debugging routines marked as ``noSideEffect``.
 
 
 To override the compiler's side effect analysis a ``{.noSideEffect.}``
-pragma block can be used:
+``cast`` pragma block can be used:
 
 .. code-block:: nim
 
   func f() =
-    {.noSideEffect.}:
+    {.cast(noSideEffect).}:
       echo "test"
 
 
@@ -6110,7 +6116,7 @@ Or if we directly use a ref object:
       left, right: Node
       data: string
 
-In the example a tree structure is declared with the ``Node`` type. Note that
+In the example, a tree structure is declared with the ``Node`` type. Note that
 the type definition is recursive and the GC has to assume that objects of
 this type may form a cyclic graph. The ``acyclic`` pragma passes the
 information that this cannot happen to the GC. If the programmer uses the
@@ -6171,7 +6177,7 @@ assembler statements.
 error pragma
 ------------
 The ``error`` pragma is used to make the compiler output an error message
-with the given content. Compilation does not necessarily abort after an error
+with the given content. The compilation does not necessarily abort after an error
 though.
 
 The ``error`` pragma can also be used to
@@ -6187,7 +6193,7 @@ operation is valid due to overloading and type conversions:
 fatal pragma
 ------------
 The ``fatal`` pragma is used to make the compiler output an error message
-with the given content. In contrast to the ``error`` pragma, compilation
+with the given content. In contrast to the ``error`` pragma, the compilation
 is guaranteed to be aborted by this pragma. Example:
 
 .. code-block:: nim
@@ -6207,7 +6213,7 @@ the given content. Compilation continues after the hint.
 line pragma
 -----------
 The ``line`` pragma can be used to affect line information of the annotated
-statement as seen in stack backtraces:
+statement, as seen in stack backtraces:
 
 .. code-block:: nim
 
@@ -6240,9 +6246,9 @@ statement:
 
 In the example, the case branches ``0`` and ``1`` are much more common than
 the other cases. Therefore the generated assembler code should test for these
-values first, so that the CPU's branch predictor has a good chance to succeed
+values first so that the CPU's branch predictor has a good chance to succeed
 (avoiding an expensive CPU pipeline stall). The other cases might be put into a
-jump table for O(1) overhead, but at the cost of a (very likely) pipeline
+jump table for O(1) overhead but at the cost of a (very likely) pipeline
 stall.
 
 The ``linearScanEnd`` pragma should be put into the last branch that should be
@@ -6372,7 +6378,7 @@ but are used to override the settings temporarily. Example:
   proc sample(): bool = true
   {.pop.}
 
-For third party pragmas it depends on its implementation, but uses the same syntax.
+For third party pragmas, it depends on its implementation but uses the same syntax.
 
 
 register pragma
@@ -6434,7 +6440,7 @@ is particularly useful when the symbol was generated by a macro:
   implementArithOps(int)
   echoAdd 3, 5
 
-``used`` can also be used as a top level statement to mark a module as "used".
+``used`` can also be used as a top-level statement to mark a module as "used".
 This prevents the "Unused import" warning:
 
 .. code-block:: nim
@@ -6451,9 +6457,9 @@ experimental pragma
 -------------------
 
 The ``experimental`` pragma enables experimental language features. Depending
-on the concrete feature this means that the feature is either considered
+on the concrete feature, this means that the feature is either considered
 too unstable for an otherwise stable release or that the future of the feature
-is uncertain (it may be removed any time).
+is uncertain (it may be removed at any time).
 
 Example:
 
@@ -6472,9 +6478,9 @@ Example:
   useParallel()
 
 
-As a top level statement, the experimental pragma enables a feature for the
+As a top-level statement, the experimental pragma enables a feature for the
 rest of the module it's enabled in. This is problematic for macro and generic
-instantiations that cross a module scope. Currently these usages have to be
+instantiations that cross a module scope. Currently, these usages have to be
 put into a ``.push/pop`` environment:
 
 .. code-block:: nim
@@ -6528,7 +6534,7 @@ The `align`:idx: pragma is for variables and object field members. It
 modifies the alignment requirement of the entity being declared. The
 argument must be a constant power of 2. Valid non-zero
 alignments that are weaker than other align pragmas on the same
-declaration are ignored. Alignments that are weaker that the
+declaration are ignored. Alignments that are weaker than the
 alignment requirement of the type are ignored.
 
 .. code-block:: Nim
@@ -6551,7 +6557,7 @@ alignment requirement of the type are ignored.
 
    main()
 
-This pragma has no effect for the JS backend.
+This pragma has no effect on the JS backend.
 
 
 Volatile pragma
@@ -6584,7 +6590,7 @@ Header pragma
 -------------
 The ``header`` pragma is very similar to the ``noDecl`` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared
-and instead the generated code should contain an ``#include``:
+and instead, the generated code should contain an ``#include``:
 
 .. code-block:: Nim
   type
@@ -6619,8 +6625,16 @@ with the project:
   {.compile: "myfile.cpp".}
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
-has changed. One can use the ``-f`` command line option to force recompilation
+has changed. One can use the ``-f`` command-line option to force the recompilation
 of the file.
+
+Since 1.4 the `compile` pragma is also available with this syntax:
+
+.. code-block:: Nim
+  {.compile("myfile.cpp", "--custom flags here").}
+
+As can be seen in the example, this new variant allows for custom flags
+that are passed to the C compiler when the file is recompiled.
 
 
 Link pragma
@@ -6634,7 +6648,7 @@ The ``link`` pragma can be used to link an additional file with the project:
 PassC pragma
 ------------
 The ``passc`` pragma can be used to pass additional parameters to the C
-compiler like one would using the commandline switch ``--passc``:
+compiler like one would using the command-line switch ``--passc``:
 
 .. code-block:: Nim
   {.passc: "-Wall -Werror".}
@@ -6662,7 +6676,7 @@ the pragma resides in:
 PassL pragma
 ------------
 The ``passL`` pragma can be used to pass additional parameters to the linker
-like one would using the commandline switch ``--passL``:
+like one would be using the command-line switch ``--passL``:
 
 .. code-block:: Nim
   {.passL: "-lSDLmain -lSDL".}
@@ -6699,7 +6713,7 @@ Example:
   embedsC()
 
 ``nimbase.h`` defines ``NIM_EXTERNC`` C macro that can be used for
-``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, eg:
+``extern "C"`` code to work with both ``nim c`` and ``nim cpp``, e.g.:
 
 .. code-block:: Nim
   proc foobar() {.importc:"$1".}
@@ -6709,7 +6723,7 @@ Example:
   void fun(){}
   """.}
 
-For backwards compatibility, if the argument to the ``emit`` statement
+For backward compatibility, if the argument to the ``emit`` statement
 is a single string literal, Nim symbols can be referred to via backticks.
 This usage is however deprecated.
 
@@ -6809,8 +6823,7 @@ language for maximum flexibility:
 - A hash ``#`` symbol is replaced by the first or next argument.
 - A dot following the hash ``#.`` indicates that the call should use C++'s dot
   or arrow notation.
-- An at symbol ``@`` is replaced by the remaining arguments, separated by
-  commas.
+- An at symbol ``@`` is replaced by the remaining arguments, separated by commas.
 
 For example:
 
@@ -6824,7 +6837,7 @@ Produces:
 .. code-block:: C
   x->CppMethod(1, 2, 3)
 
-As a special rule to keep backwards compatibility with older versions of the
+As a special rule to keep backward compatibility with older versions of the
 ``importcpp`` pragma, if there is no special pattern
 character (any of ``# ' @``) at all, C++'s
 dot or arrow notation is assumed, so the above example can also be written as:
@@ -6843,7 +6856,7 @@ capabilities:
 - An apostrophe ``'`` followed by an integer ``i`` in the range 0..9
   is replaced by the i'th parameter *type*. The 0th position is the result
   type. This can be used to pass types to C++ function templates. Between
-  the ``'`` and the digit an asterisk can be used to get to the base type
+  the ``'`` and the digit, an asterisk can be used to get to the base type
   of the type. (So it "takes away a star" from the type; ``T*`` becomes ``T``.)
   Two stars can be used to get to the element type of the element type etc.
 
@@ -6910,7 +6923,7 @@ Wrapping destructors
 
 Since Nim generates C++ directly, any destructor is called implicitly by the
 C++ compiler at the scope exits. This means that often one can get away with
-not wrapping the destructor at all! However when it needs to be invoked
+not wrapping the destructor at all! However, when it needs to be invoked
 explicitly, it needs to be wrapped. The pattern language provides
 everything that is required:
 
@@ -7027,7 +7040,7 @@ The ``codegenDecl`` pragma can be used to directly influence Nim's code
 generator. It receives a format string that determines how the variable
 or proc is declared in the generated code.
 
-For variables $1 in the format string represents the type of the variable
+For variables, $1 in the format string represents the type of the variable
 and $2 is the name of the variable.
 
 The following Nim code:
@@ -7068,7 +7081,7 @@ debugging:
 
   # ... complex code here that produces crashes ...
 
-compile time define pragmas
+compile-time define pragmas
 ---------------------------
 
 The pragmas listed here can be used to optionally accept values from
@@ -7093,7 +7106,7 @@ pragma             description
    nim c -d:FooBar=42 foobar.nim
 
 In the above example, providing the -d flag causes the symbol
-``FooBar`` to be overwritten at compile time, printing out 42. If the
+``FooBar`` to be overwritten at compile-time, printing out 42. If the
 ``-d:FooBar=42`` were to be omitted, the default value of 5 would be
 used. To see if a value was provided, `defined(FooBar)` can be used.
 
@@ -7106,9 +7119,8 @@ User-defined pragmas
 pragma pragma
 -------------
 
-The ``pragma`` pragma can be used to declare user defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User
-defined pragmas are in a different module-wide scope than all other symbols.
+The ``pragma`` pragma can be used to declare user-defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User-defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -7122,14 +7134,14 @@ Example:
   proc p*(a, b: int): int {.rtl.} =
     result = a+b
 
-In the example a new pragma named ``rtl`` is introduced that either imports
+In the example, a new pragma named ``rtl`` is introduced that either imports
 a symbol from a dynamic library or exports the symbol for dynamic library
 generation.
 
 
 Custom annotations
 ------------------
-It is possible to define custom typed pragmas. Custom pragmas do not effect
+It is possible to define custom typed pragmas. Custom pragmas do not affect
 code generation directly, but their presence can be detected by macros.
 Custom pragmas are defined using templates annotated with pragma ``pragma``:
 
@@ -7159,7 +7171,7 @@ Consider stylized example of possible Object Relation Mapping (ORM) implementati
       write_access: bool
       admin_acess: bool
 
-In this example custom pragmas are used to describe how Nim objects are
+In this example, custom pragmas are used to describe how Nim objects are
 mapped to the schema of the relational database. Custom pragmas can have
 zero or more arguments. In order to pass multiple arguments use one of
 template call syntaxes. All arguments are typed and follow standard
@@ -7197,7 +7209,7 @@ Macro pragmas
 -------------
 
 All macros and templates can also be used as pragmas. They can be attached
-to routines (procs, iterators, etc), type names or type expressions. The
+to routines (procs, iterators, etc), type names, or type expressions. The
 compiler will perform the following simple syntactic transformations:
 
 .. code-block:: nim
@@ -7280,7 +7292,7 @@ is not set to C, other pragmas are available:
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}
 
-In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
+In the example, the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
 
@@ -7320,7 +7332,7 @@ mangling. The string literal passed to ``extern`` can be a format string:
   proc p(s: string) {.extern: "prefix$1".} =
     echo s
 
-In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
+In the example, the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
 
@@ -7411,7 +7423,7 @@ At runtime the dynamic library is searched for (in this order)::
   libtcl8.3.so.1
   libtcl8.3.so.0
 
-The ``dynlib`` pragma supports not only constant strings as argument but also
+The ``dynlib`` pragma supports not only constant strings as an argument but also
 string expressions in general:
 
 .. code-block:: nim
@@ -7433,7 +7445,7 @@ strings, because they are precompiled.
 because of order of initialization problems.
 
 **Note**: A ``dynlib`` import can be overridden with
-the ``--dynlibOverride:name`` command line option. The Compiler User Guide
+the ``--dynlibOverride:name`` command-line option. The Compiler User Guide
 contains further information.
 
 
@@ -7448,23 +7460,23 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option.
+``--app:lib`` command-line option.
 
 
 
 Threads
 =======
 
-To enable thread support the ``--threads:on`` command line switch needs to
+To enable thread support the ``--threads:on`` command-line switch needs to
 be used. The ``system`` module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
-for the low level thread API. There are also high level parallelism constructs
+for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.
 
 Nim's memory model for threads is quite different than that of other common
 programming languages (C, Pascal, Java): Each thread has its own (garbage
-collected) heap and sharing of memory is restricted to global variables. This
+collected) heap, and sharing of memory is restricted to global variables. This
 helps to prevent race conditions. GC efficiency is improved quite a lot,
 because the GC never has to stop other threads and see what they reference.
 
@@ -7476,7 +7488,7 @@ A proc that is executed as a new thread of execution should be marked by the
 ``thread`` pragma for reasons of readability. The compiler checks for
 violations of the `no heap sharing restriction`:idx:\: This restriction implies
 that it is invalid to construct a data structure that consists of memory
-allocated from different (thread local) heaps.
+allocated from different (thread-local) heaps.
 
 A thread proc is passed to ``createThread`` or ``spawn`` and invoked
 indirectly; so the ``thread`` pragma implies ``procvar``.
@@ -7497,11 +7509,11 @@ any of its parameters contain a ``ref`` or ``closure`` type. This enforces
 the *no heap sharing restriction*.
 
 Routines that are imported from C are always assumed to be ``gcsafe``.
-To disable the GC-safety checking the ``--threadAnalysis:off`` command line
+To disable the GC-safety checking the ``--threadAnalysis:off`` command-line
 switch can be used. This is a temporary workaround to ease the porting effort
 from old code to the new threading model.
 
-To override the compiler's gcsafety analysis a ``{.gcsafe.}`` pragma block can
+To override the compiler's gcsafety analysis a ``{.cast(gcsafe).}`` pragma block can
 be used:
 
 .. code-block:: nim
@@ -7511,7 +7523,7 @@ be used:
     perThread {.threadvar.}: string
 
   proc setPerThread() =
-    {.gcsafe.}:
+    {.cast(gcsafe).}:
       deepCopy(perThread, someGlobal)
 
 
@@ -7530,8 +7542,8 @@ of the ``global`` pragma.
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]
 
-Due to implementation restrictions thread local variables cannot be
-initialized within the ``var`` section. (Every thread local variable needs to
+Due to implementation restrictions thread-local variables cannot be
+initialized within the ``var`` section. (Every thread-local variable needs to
 be replicated at thread creation.)
 
 

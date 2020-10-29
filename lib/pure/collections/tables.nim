@@ -300,7 +300,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -484,7 +484,7 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -839,7 +839,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -968,7 +968,7 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -1217,7 +1217,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -1268,7 +1268,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -1455,7 +1455,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -1619,6 +1619,8 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
 
   if s.counter != t.counter:
     return false
+  if s.counter == 0 and t.counter == 0:
+    return true
   var ht = t.first
   var hs = s.first
   while ht >= 0 and hs >= 0:
@@ -1810,7 +1812,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -1939,7 +1941,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -2599,7 +2601,7 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `mget proc<#mget,CountTableRef[A],A>`_
+  ## * `inc proc<#inc,CountTableRef[A],A>`_ to inc even if missing
   ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key

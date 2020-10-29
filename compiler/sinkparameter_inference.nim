@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
+proc checkForSink*(config: ConfigRef; idgen: IdGenerator; owner: PSym; arg: PNode) =
   #[ Patterns we seek to detect:
 
     someLocation = p # ---> p: sink T
@@ -32,7 +32,7 @@ proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
       if sfWasForwarded notin owner.flags:
         let argType = arg.sym.typ
 
-        let sinkType = newType(tySink, owner)
+        let sinkType = newType(tySink, nextId(idgen), owner)
         sinkType.size = argType.size
         sinkType.align = argType.align
         sinkType.paddingAtEnd = argType.paddingAtEnd
@@ -52,18 +52,18 @@ proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
       #echo config $ arg.info, " candidate for a sink parameter here"
   of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
     if not isEmptyType(arg.typ):
-      checkForSink(config, owner, arg.lastSon)
+      checkForSink(config, idgen, owner, arg.lastSon)
   of nkIfStmt, nkIfExpr, nkWhen:
     for branch in arg:
       let value = branch.lastSon
       if not isEmptyType(value.typ):
-        checkForSink(config, owner, value)
+        checkForSink(config, idgen, owner, value)
   of nkCaseStmt:
     for i in 1..<arg.len:
       let value = arg[i].lastSon
       if not isEmptyType(value.typ):
-        checkForSink(config, owner, value)
+        checkForSink(config, idgen, owner, value)
   of nkTryStmt:
-    checkForSink(config, owner, arg[0])
+    checkForSink(config, idgen, owner, arg[0])
   else:
     discard "nothing to do"

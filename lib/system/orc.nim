@@ -88,7 +88,7 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
     else:
       cstderr.rawWrite "has dispose!\n"
 
-  nimRawDispose(p)
+  nimRawDispose(p, desc.align)
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)
@@ -297,8 +297,10 @@ proc collectCyclesBacon(j: var GcEnv) =
 const
   defaultThreshold = when defined(nimAdaptiveOrc): 128 else: 10_000
 
-var
-  rootsThreshold = defaultThreshold
+when defined(nimStressOrc):
+  const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
+else:
+  var rootsThreshold = defaultThreshold
 
 proc collectCycles() =
   ## Collect cycles.
@@ -320,40 +322,62 @@ proc collectCycles() =
 
   deinit j.traceStack
   deinit roots
-  # compute the threshold based on the previous history
-  # of the cycle collector's effectiveness:
-  # we're effective when we collected 50% or more of the nodes
-  # we touched. If we're effective, we can reset the threshold:
-  if j.freed * 2 >= j.touched:
-    when defined(nimAdaptiveOrc):
-      rootsThreshold = max(rootsThreshold div 2, 16)
-    else:
-      rootsThreshold = defaultThreshold
-    #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
-  elif rootsThreshold < high(int) div 4:
-    rootsThreshold = rootsThreshold * 3 div 2
+
+  when not defined(nimStressOrc):
+    # compute the threshold based on the previous history
+    # of the cycle collector's effectiveness:
+    # we're effective when we collected 50% or more of the nodes
+    # we touched. If we're effective, we can reset the threshold:
+    if j.freed * 2 >= j.touched:
+      when defined(nimAdaptiveOrc):
+        rootsThreshold = max(rootsThreshold div 2, 16)
+      else:
+        rootsThreshold = defaultThreshold
+      #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
+    elif rootsThreshold < high(int) div 4:
+      rootsThreshold = rootsThreshold * 3 div 2
   when logOrc:
     cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld\n", j.freed, rootsThreshold, j.touched,
       getOccupiedMem())
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
+  s.rootIdx = roots.len
+  if roots.d == nil: init(roots)
+  add(roots, s, desc)
+
   if roots.len >= rootsThreshold:
     collectCycles()
-  if roots.d == nil: init(roots)
-  s.rootIdx = roots.len
-  add(roots, s, desc)
   #writeCell("[added root]", s)
+
+proc GC_runOrc* =
+  ## Forces a cycle collection pass.
+  collectCycles()
+
+proc GC_enableOrc*() =
+  ## Enables the cycle collector subsystem of ``--gc:orc``. This is a ``--gc:orc``
+  ## specific API. Check with ``when defined(gcOrc)`` for its existence.
+  when not defined(nimStressOrc):
+    rootsThreshold = defaultThreshold
+
+proc GC_disableOrc*() =
+  ## Disables the cycle collector subsystem of ``--gc:orc``. This is a ``--gc:orc``
+  ## specific API. Check with ``when defined(gcOrc)`` for its existence.
+  when not defined(nimStressOrc):
+    rootsThreshold = high(int)
+
 
 proc GC_fullCollect* =
   ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
-  ## collector.
+  ## collector. This is an alias for ``GC_runOrc``.
   collectCycles()
 
 proc GC_enableMarkAndSweep*() =
-  rootsThreshold = defaultThreshold
+  ## For ``--gc:orc`` an alias for ``GC_enableOrc``.
+  GC_enableOrc()
 
 proc GC_disableMarkAndSweep*() =
-  rootsThreshold = high(int)
+  ## For ``--gc:orc`` an alias for ``GC_disableOrc``.
+  GC_disableOrc()
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:

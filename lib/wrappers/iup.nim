@@ -34,6 +34,46 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ****************************************************************************
 
+
+## Wrapper for the `IUP native GUI library <http://webserver2.tecgraf.puc-rio.br/iup>`_.
+##
+## Requires `iup.dll` on Windows, `libiup.so` on Linux, `libiup.dylib` on OS X.
+## Compile with `-d:nimDebugDlOpen` to debug the shared library opening.
+##
+## Examples
+## ========
+##
+## .. image:: http://webserver2.tecgraf.puc-rio.br/iup/en/tutorial/example2_1.png
+##
+## .. code-block:: nim
+##   import os, iup
+##   var argc = create(cint)
+##   argc[] = paramCount().cint
+##   var argv = allocCstringArray(commandLineParams())
+##   assert open(argc, argv.addr) == 0         # UIP requires calling open()
+##   message(r"Hello world 1", r"Hello world") # Message popup
+##   close()                                   # UIP requires calling close()
+##
+##
+## .. image:: http://webserver2.tecgraf.puc-rio.br/iup/en/tutorial/example3_1.png
+##
+## .. code-block:: nim
+##   import os, iup
+##   var argc = create(cint)
+##   argc[] = paramCount().cint
+##   var argv = allocCstringArray(commandLineParams())
+##   assert open(argc, argv.addr) == 0            # UIP requires open()
+##   let textarea = text(nil)                     # Text widget.
+##   setAttribute(textarea, r"MULTILINE", r"YES") # Set text widget to multiline.
+##   setAttribute(textarea, r"EXPAND", r"YES")    # Set text widget to auto expand.
+##   let layout = vbox(textarea)                  # Vertical layout.
+##   let window = dialog(layout)                  # Dialog window.
+##   setAttribute(window, "TITLE", "Nim Notepad") # Set window title.
+##   showXY(window, IUP_CENTER, IUP_CENTER)       # Show window.
+##   mainLoop()                                   # Main loop.
+##   close()                                      # UIP requires calling close()
+
+
 when defined(windows):
   const dllname = "iup(|30|27|26|25|24).dll"
 elif defined(macosx):

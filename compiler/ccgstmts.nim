@@ -66,7 +66,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   # if we have a something that's been captured, use the lowering instead:
   for i in 0..<n.len-2:
     if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
+      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.module.idgen, p.prc))
       return
 
   # check only the first son
@@ -272,7 +272,7 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
 
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
@@ -280,7 +280,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
-    result = genBracedInit(p, value, isConst = false)
+    result = genBracedInit(p, value, isConst = false, v.typ)
   else:
     result = nil
 
@@ -1525,7 +1525,7 @@ proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLo
       theProc = p
       break
   if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
     t.methods.add((ObjDiscMappingProcSlot, theProc))
   var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
   call.add newSymNode(theProc)

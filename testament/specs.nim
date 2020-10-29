@@ -43,7 +43,7 @@ type
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,
+    reExitcodesDiffer,  # exit codes of program or of valgrind differ
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
@@ -67,6 +67,9 @@ type
     msg*: string
     line*, col*: int
 
+  ValgrindSpec* = enum
+    disabled, enabled, leaking
+  
   TSpec* = object
     action*: TTestAction
     file*, cmd*: string
@@ -92,7 +95,7 @@ type
       # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
       # few tests are not batchable; the ones that are not could be turned batchable
       # by making the dependencies explicit
-    useValgrind*: bool
+    useValgrind*: ValgrindSpec
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
@@ -306,14 +309,15 @@ proc parseSpec*(filename: string): TSpec =
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
         when defined(linux) and sizeof(int) == 8:
-          result.useValgrind = parseCfgBool(e.value)
+          result.useValgrind = if e.value.normalize == "leaks": leaking
+                               else: ValgrindSpec(parseCfgBool(e.value))
           result.unjoinable = true
-          if result.useValgrind:
+          if result.useValgrind != disabled:
             result.outputCheck = ocSubstr
         else:
           # Windows lacks valgrind. Silly OS.
           # Valgrind only supports OSX <= 17.x
-          result.useValgrind = false
+          result.useValgrind = disabled
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled

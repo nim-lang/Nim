@@ -33,7 +33,7 @@ type
     root: Node[T]
     count: int
 
-proc len*[T](c: CritBitTree[T]): int =
+func len*[T](c: CritBitTree[T]): int {.inline.} =
   ## Returns the number of elements in `c` in O(1).
   runnableExamples:
     var c: CritBitTree[void]
@@ -53,7 +53,7 @@ proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
     else:
       return if it.key == key: it else: nil
 
-proc contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
+func contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   ## Returns true if `c` contains the given `key`.
   runnableExamples:
     var c: CritBitTree[void]
@@ -62,7 +62,7 @@ proc contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
 
   result = rawGet(c, key) != nil
 
-proc hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
+func hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   ## Alias for `contains <#contains,CritBitTree[T],string>`_.
   result = rawGet(c, key) != nil
 
@@ -116,7 +116,7 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     wherep[] = inner
   inc c.count
 
-proc exclImpl[T](c: var CritBitTree[T], key: string): int =
+func exclImpl[T](c: var CritBitTree[T], key: string): int =
   var p = c.root
   var wherep = addr(c.root)
   var whereq: ptr Node[T] = nil
@@ -285,7 +285,7 @@ template get[T](c: CritBitTree[T], key: string): T =
 
   n.val
 
-proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
+func `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## Retrieves the value at ``c[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
@@ -295,7 +295,7 @@ proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
   get(c, key)
 
-proc `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
+func `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
   ## Retrieves the value at ``c[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ##
@@ -485,7 +485,7 @@ iterator mpairsWithPrefix*[T](c: var CritBitTree[T],
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield (x.key, x.val)
 
-proc `$`*[T](c: CritBitTree[T]): string =
+func `$`*[T](c: CritBitTree[T]): string =
   ## Turns `c` into a string representation. Example outputs:
   ## ``{keyA: value, keyB: value}``, ``{:}``
   ## If `T` is void the outputs look like:
@@ -515,7 +515,7 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
-proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
+func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
   ## Returns longest common prefix length of all keys of `c`.
   ## If `c` is empty, returns 0.
   runnableExamples:
@@ -530,6 +530,18 @@ proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
     if c.root.isLeaf: len(c.root.key)
     else: c.root.byte
   else: 0
+
+func toCritBitTree*[A, B](pairs: openArray[(A, B)]): CritBitTree[A] {.since: (1, 3).} =
+  ## Creates a new `CritBitTree` that contains the given `pairs`.
+  runnableExamples:
+    doAssert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
+  for item in pairs: result.incl item[0], item[1]
+
+func toCritBitTree*[T](items: openArray[T]): CritBitTree[void] {.since: (1, 3).} =
+  ## Creates a new `CritBitTree` that contains the given `items`.
+  runnableExamples:
+    doAssert ["a", "b", "c"].toCritBitTree is CritBitTree[void]
+  for item in items: result.incl item
 
 
 runnableExamples:

@@ -345,10 +345,8 @@ The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
 the ``msg`` field.
 
-A convention is that exceptions should be raised in *exceptional* cases:
-For example, if a file cannot be opened, this should not raise an
-exception since this is quite common (the file may not exist).
-
+A convention is that exceptions should be raised in *exceptional* cases,
+they should not be used as an alternative method of control flow.
 
 Raise statement
 ---------------

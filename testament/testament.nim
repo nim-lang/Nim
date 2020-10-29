@@ -501,8 +501,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             args = concat(@[exeFile], args)
           else:
             exeCmd = exeFile.dup(normalizeExe)
-            if expected.useValgrind:
-              args = @["--error-exitcode=1"] & exeCmd & args
+            if expected.useValgrind != disabled:
+              var valgrindOptions = @["--error-exitcode=1"]
+              if expected.useValgrind != leaking:
+                valgrindOptions.add "--leak-check=yes"
+              args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used

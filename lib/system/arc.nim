@@ -75,18 +75,13 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
-proc nimNewObj(size: int): pointer {.compilerRtl.} =
-  let s = size + sizeof(RefHeader)
+proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
+  let hdrSize = align(sizeof(RefHeader), alignment)
+  let s = size + hdrSize
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = c_malloc(cuint s)
-    nimZeroMem(orig, s)
-    result = orig +! sizeof(RefHeader)
-  elif compileOption("threads"):
-    result = allocShared0(s) +! sizeof(RefHeader)
   else:
-    result = alloc0(s) +! sizeof(RefHeader)
+    result = alignedAlloc0(s, alignment) +! hdrSize
   when defined(nimArcDebug) or defined(nimArcIds):
     head(result).refId = gRefId
     atomicInc gRefId
@@ -96,22 +91,18 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
-proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
   # The codegen proved for us that this is not necessary.
-  let s = size + sizeof(RefHeader)
+  let hdrSize = align(sizeof(RefHeader), alignment)
+  let s = size + hdrSize
   when defined(nimscript):
     discard
-  elif defined(useMalloc):
-    var orig = cast[ptr RefHeader](c_malloc(cuint s))
-  elif compileOption("threads"):
-    var orig = cast[ptr RefHeader](allocShared(s))
   else:
-    var orig = cast[ptr RefHeader](alloc(s))
-  orig.rc = 0
+    result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
+  head(result).rc = 0
   when defined(gcOrc):
-    orig.rootIdx = 0
-  result = orig +! sizeof(RefHeader)
+    head(result).rootIdx = 0
   when defined(nimArcDebug):
     head(result).refId = gRefId
     atomicInc gRefId
@@ -153,7 +144,7 @@ when not defined(nimscript) and defined(nimArcDebug):
     else:
       result = 0
 
-proc nimRawDispose(p: pointer) {.compilerRtl.} =
+proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
   when not defined(nimscript):
     when traceCollector:
       cprintf("[Freed] %p\n", p -! sizeof(RefHeader))
@@ -165,19 +156,17 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
-    elif defined(useMalloc):
-      c_free(p -! sizeof(RefHeader))
-    elif compileOption("threads"):
-      deallocShared(p -! sizeof(RefHeader))
     else:
-      dealloc(p -! sizeof(RefHeader))
+      let hdrSize = align(sizeof(RefHeader), alignment)
+      alignedDealloc(p -! hdrSize, alignment)
 
-template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
+template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
-  let d = cast[ptr PNimTypeV2](p)[].destructor
-  if d != nil: cast[DestructorProc](d)(p)
+  let rti = cast[ptr PNimTypeV2](p)
+  if rti.destructor != nil:
+    cast[DestructorProc](rti.destructor)(p)
   when false:
     cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
     cstderr.rawWrite "\n"
@@ -185,7 +174,7 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
       cstderr.rawWrite "bah, nil\n"
     else:
       cstderr.rawWrite "has destructor!\n"
-  nimRawDispose(p)
+  nimRawDispose(p, rti.align)
 
 when defined(gcOrc):
   when defined(nimThinout):
@@ -218,7 +207,7 @@ proc GC_unref*[T](x: ref T) =
   if nimDecRefIsLast(cast[pointer](x)):
     # XXX this does NOT work for virtual destructors!
     `=destroy`(x[])
-    nimRawDispose(cast[pointer](x))
+    nimRawDispose(cast[pointer](x), T.alignOf)
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

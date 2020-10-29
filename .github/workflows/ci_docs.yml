@@ -4,6 +4,7 @@ on:
     paths:
       - 'compiler/docgen.nim'
       - 'compiler/renderverbatim.nim'
+      - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
@@ -17,6 +18,7 @@ on:
     paths:
       - 'compiler/docgen.nim'
       - 'compiler/renderverbatim.nim'
+      - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
@@ -28,6 +30,8 @@ on:
 
 jobs:
   build:
+    if: |
+      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:

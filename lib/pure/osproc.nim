@@ -80,7 +80,7 @@ proc execProcess*(command: string, workingDir: string = "",
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
-  ## **WARNING:** This function uses `poEvalCommand` by default for backward
+  ## **WARNING:** This function uses `poEvalCommand` by default for backwards
   ## compatibility.
   ## Make sure to pass options explicitly.
   ##
@@ -443,6 +443,57 @@ proc execProcesses*(cmds: openArray[string],
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
+
+iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
+  ## Convenience iterator for working with `startProcess` to read data from a
+  ## background process.
+  ##
+  ## See also:
+  ## * `readLines proc <#readLines,Process>`_
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
+  ##   var ps: seq[Process]
+  ##   for prog in ["a", "b"]: # run 2 progs in parallel
+  ##     ps.add startProcess("nim", "", ["r", prog], nil, opts)
+  ##   for p in ps:
+  ##     var i = 0
+  ##     for line in p.lines:
+  ##       echo line
+  ##       i.inc
+  ##       if i > 100: break
+  ##     p.close
+  var outp = p.outputStream
+  var line = newStringOfCap(120)
+  while true:
+    if outp.readLine(line):
+      yield line
+    else:
+      if p.peekExitCode != -1: break
+
+proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
+  ## Convenience function for working with `startProcess` to read data from a
+  ## background process.
+  ##
+  ## See also:
+  ## * `lines iterator <#lines.i,Process>`_
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
+  ##   var ps: seq[Process]
+  ##   for prog in ["a", "b"]: # run 2 progs in parallel
+  ##     ps.add startProcess("nim", "", ["r", prog], nil, opts)
+  ##   for p in ps:
+  ##     let (lines, exCode) = p.readLines
+  ##     if exCode != 0:
+  ##       for line in lines: echo line
+  ##     p.close
+  for line in p.lines: result[0].add(line)
+  result[1] = p.peekExitCode
 
 when not defined(useNimRtl):
   proc execProcess(command: string, workingDir: string = "",

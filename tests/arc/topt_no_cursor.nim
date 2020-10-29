@@ -33,9 +33,9 @@ result = (
 var
   sibling
   saved
-`=`(sibling, target.parent.left)
-`=`(saved, sibling.right)
-`=`(sibling.right, saved.left)
+`=copy`(sibling, target.parent.left)
+`=copy`(saved, sibling.right)
+`=copy`(sibling.right, saved.left)
 `=sink`(sibling.parent, saved)
 `=destroy`(sibling)
 -- end of expandArc ------------------------
@@ -46,7 +46,7 @@ var
   lvalue
   lnext
   _
-`=`(lresult, [123])
+`=copy`(lresult, [123])
 _ = (
   let blitTmp = lresult
   blitTmp, ";")
@@ -67,10 +67,10 @@ try:
   var it_cursor = x
   a = (
     wasMoved(:tmpD)
-    `=`(:tmpD, it_cursor.key)
+    `=copy`(:tmpD, it_cursor.key)
     :tmpD,
     wasMoved(:tmpD_1)
-    `=`(:tmpD_1, it_cursor.val)
+    `=copy`(:tmpD_1, it_cursor.val)
     :tmpD_1)
   echo [
     :tmpD_2 = `$`(a)
