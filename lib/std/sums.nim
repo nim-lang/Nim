@@ -10,7 +10,7 @@
 
 
 func sumKbn*[T](x: openArray[T]): T =
-  ## Kahan (compensated) summation: O(1) error growth, at the expense
+  ## Kahan-Babuška-Neumaier summation: O(1) error growth, at the expense
   ## of a considerable increase in computational expense.
   if len(x) == 0: return
   var sum = x[0]
