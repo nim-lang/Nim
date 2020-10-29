@@ -39,7 +39,7 @@ const
   routineBodyPos* = 7
 
 const
-  nkModuleRef = nkNone # pair of (ModuleId, SymId)
+  nkModuleRef* = nkNone # pair of (ModuleId, SymId)
 
 type
   SymId* = distinct int32
