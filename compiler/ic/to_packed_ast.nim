@@ -18,7 +18,7 @@ type
     lastLit: LitId
     filenames: Table[FileIndex, LitId]
 
-proc toLitId(x: FileIndex; ir: var Tree; c: var Context): LitId =
+proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
   if x == c.lastFile:
     result = c.lastLit
   else:
@@ -30,16 +30,16 @@ proc toLitId(x: FileIndex; ir: var Tree; c: var Context): LitId =
     c.lastFile = x
     c.lastLit = result
 
-proc toPackedInfo(x: TLineInfo; ir: var Tree; c: var Context): PackedLineInfo =
+proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
 
-proc toPackedType(t: PType; ir: var Tree; c: var Context): TypeId =
+proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   result = TypeId(0)
 
-proc toPackedSym(s: PSym; ir: var Tree; c: var Context): SymId =
+proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   result = SymId(0)
 
-proc toPackedSymNode(n: PNode; ir: var Tree; c: var Context) =
+proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   assert n.kind == nkSym
   let t = toPackedType(n.typ, ir, c)
 
@@ -55,7 +55,7 @@ proc toPackedSymNode(n: PNode; ir: var Tree; c: var Context) =
     discard
 
 
-proc toPackedNode*(n: PNode; ir: var Tree; c: var Context) =
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   template toP(x: TLineInfo): PackedLineInfo = toPackedInfo(x, ir, c)
 
   case n.kind
@@ -85,6 +85,6 @@ proc toPackedNode*(n: PNode; ir: var Tree; c: var Context) =
       toPackedNode(n[i], ir, c)
     ir.patch patchPos
 
-proc moduleToIr*(n: PNode; ir: var Tree; module: PSym) =
+proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
   var c = Context(thisModule: module.itemId.module)
   toPackedNode(n, ir, c)

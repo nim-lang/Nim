@@ -70,6 +70,11 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  ImportedModule* = object
+    m: CachedModule
+    isImportNil*: bool
+    exceptSet*: IntSet
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled

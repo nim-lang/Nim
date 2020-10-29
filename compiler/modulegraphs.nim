@@ -28,6 +28,13 @@
 import ast, intsets, tables, options, lineinfos, hashes, idents,
   incremental, btrees, md5
 
+import ic / packed_ast
+
+type
+  CachedModule* = ref object
+    asSym*: PSym
+    asPacked*: PackedTree
+
 type
   SigHash* = distinct MD5Digest
 
