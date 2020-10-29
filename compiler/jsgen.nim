@@ -1736,11 +1736,16 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode: string
     varName = mangleName(p.module, v)
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
+    useGlobalPragmas = sfGlobal in v.flags and sfPure in v.flags
 
   if v.constraint.isNil:
     if useReloadingGuard:
       lineF(p, "var $1;$n", varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
+      varCode = $varName
+      inc p.extraIndent
+    elif useGlobalPragmas:
+      lineF(p, "if (this.$1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     else:
@@ -1795,7 +1800,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
 
-  if useReloadingGuard:
+  if useReloadingGuard or useGlobalPragmas:
     dec p.extraIndent
     lineF(p, "}$n")
 
