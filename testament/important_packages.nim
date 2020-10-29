@@ -66,7 +66,7 @@ pkg1 "stint", "nim c -o:stintt -r stint.nim"
 
 # packages N-Z
 pkg2 "nake", "nim c nakefile.nim"
-pkg2 "neo", "nim c -d:blas=openblas tests/all.nim"
+# pkg2 "neo", "nim c -d:blas=openblas tests/all.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 # pkg2 "nesm", "nimble tests" # notice plural 'tests'
 # pkg2 "nico"
 pkg2 "nicy", "nim c -r src/nicy.nim"
