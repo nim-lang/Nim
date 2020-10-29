@@ -159,7 +159,8 @@ proc classify*(x: float): FloatClass =
   return fcNormal
 
 proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.inline, noSideEffect.} =
-  ## Checks if two float values are almost equal, using machine epsilon.
+  ## Checks if two float values are almost equal, using
+  ## `machine epsilon <https://en.wikipedia.org/wiki/Machine_epsilon>`_.
   ##
   ## `unitsInLastPlace` is the max number of
   ## `units in last place <https://en.wikipedia.org/wiki/Unit_in_the_last_place>`_
@@ -175,9 +176,9 @@ proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
   runnableExamples:
     doAssert almostEqual(3.141592653589793, 3.1415926535897936)
     doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
-  let e = abs(x - y)
-  result = e <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
-      e < minimumPositiveValue(T)
+  let diff = abs(x - y)
+  result = diff <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
+      diff < minimumPositiveValue(T)
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
