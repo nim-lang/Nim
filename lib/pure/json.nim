@@ -199,7 +199,7 @@ proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
 
-proc newJRawNumber*(s: string): JsonNode {.since: (1, 5).} =
+proc newJRawNumber(s: string): JsonNode =
   ## Creates a "raw JS number", that is a number that does not
   ## fit into Nim's ``BiggestInt`` field. This is really a `JString`
   ## with the additional information that it should be converted back
