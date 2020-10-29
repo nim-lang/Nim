@@ -17,25 +17,98 @@ from strutils import cmpIgnoreStyle
 
 # Keywords must be kept sorted and within a range
 
-type
-  TSpecialWord* = enum
-    wInvalid,
 
-    wAddr, wAnd, wAs, wAsm,
+  specialWords*: array[TSpecialWord, string] = ["",
+    
+    "immediate", "constructor", "destructor", "delegator", "override",
+    "importcpp", "importobjc",
+    "importCompilerProc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
+    "incompleteStruct",
+    "completeStruct",
+    "requiresInit", "align", "nodecl", "pure", "sideEffect",
+    "header", "noSideEffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
+    "compilerproc", "core", "procvar", "base", "used",
+    "fatal", "error", "warning", "hint", "warningAsError", "line",
+    "push", "pop", "define", "undef", "lineDir", "stackTrace", "lineTrace",
+    "link", "compile", "linksys", "deprecated", "varargs",
+    "callconv", "debugger", "nimcall", "stdcall",
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall", "closure",
+    "noconv", "on", "off", "checks", "rangeChecks", "boundChecks",
+    "overflowChecks", "nilChecks",
+    "floatChecks", "nanChecks", "infChecks", "styleChecks", "staticBoundChecks",
+    "nonReloadable", "executeOnReload",
+
+    "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
+    "optimization", "raises", "writes", "reads", "size", "effects", "tags",
+    "requires", "ensures", "invariant", "assume", "assert",
+    "deadCodeElim",  # deprecated, dead code elim always happens
+    "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
+    "pragma",
+    "compileTime", "noinit",
+    "passc", "passl", "localPassC", "borrow", "discardable", "fieldChecks",
+    "subschar", "acyclic", "shallow", "unroll", "linearScanEnd",
+    "computedGoto", "injectStmt", "experimental",
+    "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
+    "asmNoStackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
+    "guard", "locks", "partial", "explain", "liftLocals",
+
+    "auto", "bool", "catch", "char", "class", "compl",
+    "const_cast", "default", "delete", "double",
+    "dynamic_cast", "explicit", "extern", "false",
+    "float", "friend", "goto", "int", "long", "mutable",
+    "namespace", "new", "operator",
+    "private", "protected", "public", "register", "reinterpret_cast", "restrict",
+    "short", "signed", "sizeof", "static_cast", "struct", "switch",
+    "this", "throw", "true", "typedef", "typeid", "typeof",
+    "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
+    "wchar_t",
+
+
+    ]
+
+
+type
+  TSpecialWord* {.pure.} = enum
+    wInvalid = "",
+
+    wAddr =  , wAnd, wAs, wAsm,
     wBind, wBlock, wBreak, wCase, wCast, wConcept, wConst,
     wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo,
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
     wFinally, wFor, wFrom, wFunc, wIf, wImport, wIn,
     wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
-    wMacro, wMethod, wMixin, wMod, wNil,
-    wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn,
-    wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar,
-    wWhen, wWhile, wXor, wYield,
+    wMacro = "macro", wMethod = "method", wMixin = "mixin", wMod = "mod", wNil = "nil",
+    wNot = "not", wNotin = "notin", wObject = "object", wOf = "of", wOr = "or", wOut = "out", wProc = "proc", 
+    wPtr = "ptr", wRaise = "raise", wRef = "ref", wReturn = "return",
+    wShl = "shl", wShr = "shr", wStatic = "static", wTemplate = "template", wTry = "try", 
+    wTuple = "tuple", wType = "type", wUsing = "using", wVar = "var",
+    wWhen = "when", wWhile = "while", wXor = "xor", wYield = "yield",
 
-    wColon, wColonColon, wEquals, wDot, wDotDot,
-    wStar, wMinus,
-    wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
-    wIntDefine, wStrDefine, wBoolDefine, wCursor, wNoalias,
+
+        "bind", "block", "break", "case", "cast",
+    "concept", "const", "continue", "converter",
+    "defer", "discard", "distinct", "div", "do",
+    "elif", "else", "end", "enum", "except", "export",
+    "finally", "for", "from", "func", "if",
+    "import", "in", "include", "interface", "is", "isnot", "iterator",
+    "let",
+    "macro", "method", "mixin", "mod", "nil", "not", "notin",
+    "object", "of", "or",
+    "out", "proc", "ptr", "raise", "ref", "return",
+    "shl", "shr", "static",
+    "template", "try", "tuple", "type", "using", "var",
+    "when", "while", "xor",
+    "yield",
+
+
+
+
+    wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
+    wStar = "*", wMinus = "-",
+    wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profile", 
+    wMemTracker = "memtracker", wObjChecks = "objchecks",
+    wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 
+    wCursor = "cursor", wNoalias = "noalias",
 
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
@@ -80,13 +153,15 @@ type
     wThis, wThrow, wTrue, wTypedef, wTypeid, wTypeof, wTypename,
     wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
-    wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
-    wThread_local, wStatic_assert, wChar16_t, wChar32_t,
+    wAlignas = "alignas", wAlignof = "alignof", wConstexpr = "constexpr", wDecltype = "decltype", 
+    wNullptr = "nullptr", wNoexcept = "noexcept",
+    wThread_local = "thread_local", wStatic_assert = "static_assert", 
+    wChar16_t = "char16_t", wChar32_t = "char32_t",
 
-    wStdIn, wStdOut, wStdErr,
+    wStdIn = "stdin", wStdOut = "stdout", wStdErr = "stderr",
 
-    wInOut, wByCopy, wByRef, wOneWay,
-    wBitsize
+    wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
+    wBitsize = "bitsize"
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -103,80 +178,6 @@ const
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
-
-  specialWords*: array[TSpecialWord, string] = ["",
-    "addr", "and", "as", "asm",
-    "bind", "block", "break", "case", "cast",
-    "concept", "const", "continue", "converter",
-    "defer", "discard", "distinct", "div", "do",
-    "elif", "else", "end", "enum", "except", "export",
-    "finally", "for", "from", "func", "if",
-    "import", "in", "include", "interface", "is", "isnot", "iterator",
-    "let",
-    "macro", "method", "mixin", "mod", "nil", "not", "notin",
-    "object", "of", "or",
-    "out", "proc", "ptr", "raise", "ref", "return",
-    "shl", "shr", "static",
-    "template", "try", "tuple", "type", "using", "var",
-    "when", "while", "xor",
-    "yield",
-
-    ":", "::", "=", ".", "..",
-    "*", "-",
-    "magic", "thread", "final", "profiler", "memtracker", "objchecks",
-    "intdefine", "strdefine", "booldefine", "cursor", "noalias",
-
-    "immediate", "constructor", "destructor", "delegator", "override",
-    "importcpp", "importobjc",
-    "importCompilerProc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
-    "incompleteStruct",
-    "completeStruct",
-    "requiresInit", "align", "nodecl", "pure", "sideEffect",
-    "header", "noSideEffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
-    "compilerproc", "core", "procvar", "base", "used",
-    "fatal", "error", "warning", "hint", "warningAsError", "line",
-    "push", "pop", "define", "undef", "lineDir", "stackTrace", "lineTrace",
-    "link", "compile", "linksys", "deprecated", "varargs",
-    "callconv", "debugger", "nimcall", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall", "closure",
-    "noconv", "on", "off", "checks", "rangeChecks", "boundChecks",
-    "overflowChecks", "nilChecks",
-    "floatChecks", "nanChecks", "infChecks", "styleChecks", "staticBoundChecks",
-    "nonReloadable", "executeOnReload",
-
-    "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
-    "optimization", "raises", "writes", "reads", "size", "effects", "tags",
-    "requires", "ensures", "invariant", "assume", "assert",
-    "deadCodeElim",  # deprecated, dead code elim always happens
-    "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
-    "pragma",
-    "compileTime", "noinit",
-    "passc", "passl", "localPassC", "borrow", "discardable", "fieldChecks",
-    "subschar", "acyclic", "shallow", "unroll", "linearScanEnd",
-    "computedGoto", "injectStmt", "experimental",
-    "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
-    "asmNoStackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
-    "guard", "locks", "partial", "explain", "liftLocals",
-
-    "auto", "bool", "catch", "char", "class", "compl",
-    "const_cast", "default", "delete", "double",
-    "dynamic_cast", "explicit", "extern", "false",
-    "float", "friend", "goto", "int", "long", "mutable",
-    "namespace", "new", "operator",
-    "private", "protected", "public", "register", "reinterpret_cast", "restrict",
-    "short", "signed", "sizeof", "static_cast", "struct", "switch",
-    "this", "throw", "true", "typedef", "typeid", "typeof",
-    "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
-    "wchar_t",
-
-    "alignas", "alignof", "constexpr", "decltype", "nullptr", "noexcept",
-    "thread_local", "static_assert", "char16_t", "char32_t",
-
-    "stdin", "stdout", "stderr",
-
-    "inout", "bycopy", "byref", "oneway",
-    "bitsize"
-    ]
 
 proc findStr*(a: openArray[string], s: string): int =
   for i in low(a)..high(a):
