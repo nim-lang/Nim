@@ -52,6 +52,82 @@ from strutils import cmpIgnoreStyle
     "asmNoStackFrame", "implicitStatic", "global", "codegenDecl", "unchecked",
     "guard", "locks", "partial", "explain", "liftLocals",
 
+
+    ]
+
+
+type
+  TSpecialWord* {.pure.} = enum
+    wInvalid = "",
+    wAddr = "addr", wAnd = "and", wAs = "as", wAsm = "asm",
+    wBind = "bind", wBlock = "block", wBreak = "break", wCase = "case", wCast = "cast", 
+    wConcept = "concept", wConst = "const", wContinue = "continue", wConverter = "converter", 
+    wDefer = "defer", wDiscard = "discard", wDistinct = "distinct", wDiv = "div", wDo = "do",
+    wElif = "elif", wElse = "else", wEnd = "end", wEnum = "enum", wExcept = "except", wExport = "export",
+    wFinally = "finally", wFor = "for", wFrom = "from", wFunc = "func", wIf = "if", wImport = "import",
+    wIn = "in", wInclude = "include", wInterface = "interface", wIs = "is", wIsnot = "isnot", 
+    wIterator = "iterator", wLet = "let", wMacro = "macro", wMethod = "method", wMixin = "mixin", 
+    wMod = "mod", wNil = "nil", wNot = "not", wNotin = "notin", wObject = "object", wOf = "of", wOr = "or",     
+    wOut = "out", wProc = "proc", wPtr = "ptr", wRaise = "raise", wRef = "ref", wReturn = "return",
+    wShl = "shl", wShr = "shr", wStatic = "static", wTemplate = "template", wTry = "try", 
+    wTuple = "tuple", wType = "type", wUsing = "using", wVar = "var",
+    wWhen = "when", wWhile = "while", wXor = "xor", wYield = "yield",
+
+    wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
+    wStar = "*", wMinus = "-",
+    wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profile", 
+    wMemTracker = "memtracker", wObjChecks = "objchecks",
+    wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 
+    wCursor = "cursor", wNoalias = "noalias",
+
+    wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor", wDelegator = "delegator", wOverride = "override",
+    wImportCpp = "importcpp", wImportObjC = "importobjc",
+    wImportCompilerProc = "importcompilerproc",
+    wImportc = "importc", wImportJs = "importjs", wExportc = "exportc", wExportCpp = "exportcpp", wExportNims = "exportnims",
+    wIncompleteStruct = "incompletestruct", # deprecated
+    wCompleteStruct = "completestruct",
+    wRequiresInit = "requiresinit",
+    wAlign = "align", wNodecl = "nodecl", wPure = "pure", wSideEffect = "sideeffect", wHeader = "header",
+    wNoSideEffect = "nosideeffect", wGcSafe = "gcsafe", wNoreturn = "noreturn", wNosinks = "nosinks", wMerge = "merge", wLib = "lib", wDynlib = "dynlib",
+    wCompilerProc = "compilerproc", wCore = "core", wProcVar = "procvar", wBase = "base", wUsed = "used",
+    wFatal = "fatal", wError = "error", wWarning = "warning", wHint = "hint", wWarningAsError = "warningaserror", wLine = "line", wPush = "push", wPop = "pop", wDefine = "define", wUndef = "undef",
+    wLineDir = "linedir", wStackTrace = "stacktrace", wLineTrace = "linetrace", wLink = "link", wCompile = "compile",
+    wLinksys = "linksys", wDeprecated = "deprecated", wVarargs = "varargs", wCallconv = "callconv", wDebugger = "debugger",
+    wNimcall = "nimcall", wStdcall = "stdcall", wCdecl = "cdecl", wSafecall = "safecall", wSyscall = "syscall", wInline = "inline", wNoInline = "noinline",
+    wFastcall = "fastcall", wThiscall = "thiscall", wClosure = "closure", wNoconv = "noconv", wOn = "on", wOff = "off", wChecks = "checks", wRangeChecks = "rangechecks",
+    wBoundChecks = "boundchecks", wOverflowChecks = "overflowchecks", wNilChecks = "nilchecks",
+    wFloatChecks = "floatchecks", wNanChecks = "nanchecks", wInfChecks = "infchecks", wStyleChecks = "stylechecks", wStaticBoundchecks = "staticboundchecks",
+    wNonReloadable = "nonreloadable", wExecuteOnReload = "executeonreload",
+    wAssertions = "assertions", wPatterns = "patterns", wTrMacros = "trmacros", wSinkInference = "sinkinference", wWarnings = "warnings",
+    wHints = "hints", wOptimization = "optimization", wRaises = "raises", wWrites = "writes", wReads = "reads", wSize = "size", wEffects = "effects", wTags = "tags",
+    wRequires = "requires", wEnsures = "ensures", wInvariant = "invariant", wAssume = "assume", wAssert = "assert",
+    wDeadCodeElimUnused = "deadcodeelimunused",  # deprecated, dead code elim always happens
+    wSafecode = "safecode", wPackage = "package", wNoForward = "noforward", wReorder = "reorder", wNoRewrite = "norewrite", wNoDestroy = "nodestroy",
+    wPragma = "pragma",
+    wCompileTime = "compiletime", wNoInit = "noinit",
+    wPassc = "passc", wPassl = "passl", wLocalPassc = "localpassc", wBorrow = "borrow", wDiscardable = "discardable",
+    wFieldChecks = "fieldchecks",
+    wSubsChar = "subschar", wAcyclic = "acyclic", wShallow = "shallow", wUnroll = "unroll", wLinearScanEnd = "linearscanend", wComputedGoto = "computedgoto",
+    wInjectStmt = "injectstmt", wExperimental = "experimental",
+    wWrite = "write", wGensym = "gensym", wInject = "inject", wDirty = "dirty", wInheritable = "inheritable", wThreadVar = "threadvar", wEmit = "emit",
+    wAsmNoStackFrame = "asmnostackframe",
+    wImplicitStatic = "implicitstatic", wGlobal = "global", wCodegenDecl = "codegendecl", wUnchecked = "unchecked", wGuard = "guard", wLocks = "locks",
+    wPartial = "partial", wExplain = "explain", wLiftLocals = "liftlocals",
+
+    wAuto = "auto", wBool = "Bool", wCatch = "catch", wChar = "char", 
+    wClass = "class", wCompl = "compl", wConst_cast = "const_cast", wDefault = "default", 
+    wDelete = "delete", wDouble = "double", wDynamic_cast = "dynamic_cast", 
+    wExplicit = "explicit", wExtern = "extern", wFalse = "false", wFloat = "float",
+    wFriend = "friend", wGoto = "goto", wInt = "int", wLong = "long", wMutable = "mutable", 
+    wNamespace = "namespace", wNew = "new", wOperator = "operator", wPrivate = "private", 
+    wProtected = "protected", wPublic = "public", wRegister = "register", 
+    wReinterpret_cast = "reinterpret_cast", wRestrict = "restrict", wShort = "short", 
+    wSigned = "signed", wSizeof = "sizeof", wStatic_cast = "static_cast", wStruct = "struct", wSwitch = "switch",
+    wThis = "this", wThrow = "throw", wTrue = "true", wTypedef = "typedef", wTypeid = "typeid", wTypeof = "typeof", 
+    wTypename = "typename",
+    wUnion = "union", wPacked = "packed", wUnsigned = "unsigned", wVirtual = "virtual", wVoid = "void", wVolatile = "volatile", wWchar_t = "wchar_t",
+
+
     "auto", "bool", "catch", "char", "class", "compl",
     "const_cast", "default", "delete", "double",
     "dynamic_cast", "explicit", "extern", "false",
@@ -63,95 +139,6 @@ from strutils import cmpIgnoreStyle
     "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
-
-    ]
-
-
-type
-  TSpecialWord* {.pure.} = enum
-    wInvalid = "",
-
-    wAddr =  , wAnd, wAs, wAsm,
-    wBind, wBlock, wBreak, wCase, wCast, wConcept, wConst,
-    wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo,
-    wElif, wElse, wEnd, wEnum, wExcept, wExport,
-    wFinally, wFor, wFrom, wFunc, wIf, wImport, wIn,
-    wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
-    wMacro = "macro", wMethod = "method", wMixin = "mixin", wMod = "mod", wNil = "nil",
-    wNot = "not", wNotin = "notin", wObject = "object", wOf = "of", wOr = "or", wOut = "out", wProc = "proc", 
-    wPtr = "ptr", wRaise = "raise", wRef = "ref", wReturn = "return",
-    wShl = "shl", wShr = "shr", wStatic = "static", wTemplate = "template", wTry = "try", 
-    wTuple = "tuple", wType = "type", wUsing = "using", wVar = "var",
-    wWhen = "when", wWhile = "while", wXor = "xor", wYield = "yield",
-
-
-        "bind", "block", "break", "case", "cast",
-    "concept", "const", "continue", "converter",
-    "defer", "discard", "distinct", "div", "do",
-    "elif", "else", "end", "enum", "except", "export",
-    "finally", "for", "from", "func", "if",
-    "import", "in", "include", "interface", "is", "isnot", "iterator",
-    "let",
-    "macro", "method", "mixin", "mod", "nil", "not", "notin",
-    "object", "of", "or",
-    "out", "proc", "ptr", "raise", "ref", "return",
-    "shl", "shr", "static",
-    "template", "try", "tuple", "type", "using", "var",
-    "when", "while", "xor",
-    "yield",
-
-
-
-
-    wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
-    wStar = "*", wMinus = "-",
-    wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profile", 
-    wMemTracker = "memtracker", wObjChecks = "objchecks",
-    wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 
-    wCursor = "cursor", wNoalias = "noalias",
-
-    wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
-    wImportCpp, wImportObjC,
-    wImportCompilerProc,
-    wImportc, wImportJs, wExportc, wExportCpp, wExportNims,
-    wIncompleteStruct, # deprecated
-    wCompleteStruct,
-    wRequiresInit,
-    wAlign, wNodecl, wPure, wSideEffect, wHeader,
-    wNoSideEffect, wGcSafe, wNoreturn, wNosinks, wMerge, wLib, wDynlib,
-    wCompilerProc, wCore, wProcVar, wBase, wUsed,
-    wFatal, wError, wWarning, wHint, wWarningAsError, wLine, wPush, wPop, wDefine, wUndef,
-    wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
-    wLinksys, wDeprecated, wVarargs, wCallconv, wDebugger,
-    wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
-    wFastcall, wThiscall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
-    wBoundChecks, wOverflowChecks, wNilChecks,
-    wFloatChecks, wNanChecks, wInfChecks, wStyleChecks, wStaticBoundchecks,
-    wNonReloadable, wExecuteOnReload,
-    wAssertions, wPatterns, wTrMacros, wSinkInference, wWarnings,
-    wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
-    wRequires, wEnsures, wInvariant, wAssume, wAssert,
-    wDeadCodeElimUnused,  # deprecated, dead code elim always happens
-    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
-    wPragma,
-    wCompileTime, wNoInit,
-    wPassc, wPassl, wLocalPassc, wBorrow, wDiscardable,
-    wFieldChecks,
-    wSubsChar, wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
-    wInjectStmt, wExperimental,
-    wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
-    wAsmNoStackFrame,
-    wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
-    wPartial, wExplain, wLiftLocals,
-
-    wAuto, wBool, wCatch, wChar, wClass, wCompl
-    wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
-    wExplicit, wExtern, wFalse, wFloat, wFriend,
-    wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
-    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast, wRestrict,
-    wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
-    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypeof, wTypename,
-    wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas = "alignas", wAlignof = "alignof", wConstexpr = "constexpr", wDecltype = "decltype", 
     wNullptr = "nullptr", wNoexcept = "noexcept",
