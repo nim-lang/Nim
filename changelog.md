@@ -8,6 +8,7 @@
 
 - Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
 
+- `json` now supports parsing numbers beyond `BiggestInt` range, via a specially encoded `JString`.
 
 ## Language changes
 

@@ -3,6 +3,7 @@ Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
 import std/[json,parsejson,strutils,streams]
+# when not defined 
 
 let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
 # nil passthrough
@@ -198,13 +199,12 @@ block:
 
   doAssert(obj == to(%obj, type(obj)))
 
-  when not defined(js):
-    const fragments = """[1,2,3] {"hi":3} 12 [] """
-    var res = ""
-    for x in parseJsonFragments(newStringStream(fragments)):
-      res.add($x)
-      res.add " "
-    doAssert res == fragments
+  const fragments = """[1,2,3] {"hi":3} 12 [] """
+  var res = ""
+  for x in parseJsonFragments(newStringStream(fragments)):
+    res.add($x)
+    res.add " "
+  doAssert res == fragments
 
 
 # test isRefSkipDistinct
@@ -232,3 +232,29 @@ doAssert isRefSkipDistinct(MyRef)
 doAssert not isRefSkipDistinct(MyObject)
 doAssert isRefSkipDistinct(MyDistinct)
 doAssert isRefSkipDistinct(MyOtherDistinct)
+
+template main() = 
+  # xxx put everything inside `main` so it can be tested with and without static
+  block: # uint64; bug #15413
+    when not defined(js):
+      let a = 18446744073709551605'u64
+      doAssert a > cast[uint64](int64.high)
+      let s = $a
+      let j = parseJson(s)
+      doAssert j.isBiggestUInt
+      doAssert $j == s
+      doAssert j.pretty == s
+      doAssert j.getBiggestUInt == a
+
+  block: # BigInt
+    let s = "184467440737095516151"
+    let j = parseJson(s)
+    when not defined(js):
+      doAssert uint64.high == 18446744073709551615'u64
+      doAssert j.isLargeNumber
+      doAssert $j == s
+      doAssert j.pretty == s
+      doAssert j.getLargeNumber == s
+
+main()
+static: main()

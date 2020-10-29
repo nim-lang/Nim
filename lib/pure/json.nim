@@ -165,6 +165,8 @@ export
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
   errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
 
+const numTerm = '\0'
+
 type
   JsonNodeKind* = enum ## possible JSON node types
     JNull,
@@ -201,6 +203,10 @@ proc newJStringMove(s: string): JsonNode =
   result = JsonNode(kind: JString)
   shallowCopy(result.str, s)
 
+proc newJLargeNumber*(n: string): JsonNode =
+  ## Creates a new `JString JsonNode` representing an un-parseable number.
+  result = JsonNode(kind: JString, str: n & numTerm)
+
 proc newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
   result = JsonNode(kind: JInt, num: n)
@@ -225,12 +231,36 @@ proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
   result = JsonNode(kind: JArray, elems: @[])
 
+proc isLargeNumber*(n: JsonNode): bool =
+  n != nil and n.kind == JString and n.str.endsWith(numTerm)
+
+proc getLargeNumberUnchecked*(n: JsonNode): string =
+  n.str[0..^2]
+
+proc isBiggestUint*(n: JsonNode): bool =
+  if n.isLargeNumber:
+    try:
+      discard n.getLargeNumberUnchecked.parseBiggestUInt()
+      return true
+    except ValueError: return false
+  elif n!=nil and n.kind == JInt and n.num >= 0:
+    return true
+
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JString``, or if ``n`` is nil.
   if n.isNil or n.kind != JString: return default
   else: return n.str
+
+proc getLargeNumber*(n: JsonNode, default: string = ""): string =
+  if n.isLargeNumber: n.getLargeNumberUnchecked
+  else: default
+
+proc getBiggestUInt*(n: JsonNode, default: BiggestUInt = 0): BiggestUInt =
+  if n.isLargeNumber: n.getLargeNumberUnchecked.parseBiggestUInt()
+  elif n!=nil and n.kind == JInt: n.num.BiggestUInt
+  else: default
 
 proc getInt*(n: JsonNode, default: int = 0): int =
   ## Retrieves the int value of a `JInt JsonNode`.
@@ -295,7 +325,10 @@ proc `%`*(s: string): JsonNode =
 
 proc `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  if cast[int](n) < 0:
+    result = newJLargeNumber($n)
+  else:
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -303,7 +336,10 @@ proc `%`*(n: int): JsonNode =
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  if cast[BiggestInt](n) < 0:
+    result = newJLargeNumber($n)
+  else:
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -652,7 +688,10 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    escapeJson(node.str, result)
+    if node.isLargeNumber:
+      result.add node.getLargeNumberUnchecked
+    else:
+      escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
@@ -734,7 +773,10 @@ proc toUgly*(result: var string, node: JsonNode) =
       result.toUgly value
     result.add "}"
   of JString:
-    node.str.escapeJson(result)
+    if node.isLargeNumber:
+      result.add node.getLargeNumberUnchecked
+    else:
+      node.str.escapeJson(result)
   of JInt:
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
@@ -795,7 +837,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     try:
       result = newJInt(parseBiggestInt(p.a))
     except ValueError:
-      result = newJString(p.a)
+      result = newJLargeNumber(p.a)
     discard getTok(p)
   of tkFloat:
     result = newJFloat(parseFloat(p.a))
@@ -871,11 +913,9 @@ when defined(js):
 
   proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 
-  proc getVarType(x: JSObject): JsonNodeKind =
+  proc getVarType2(proto: cstring, x: JSObject): JsonNodeKind =
     result = JNull
-    proc getProtoName(y: JSObject): cstring
-      {.importc: "Object.prototype.toString.call".}
-    case $getProtoName(x) # TODO: Implicit returns fail here.
+    case $proto # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
     of "[object Object]": return JObject
     of "[object Number]":
@@ -886,7 +926,14 @@ when defined(js):
     of "[object Boolean]": return JBool
     of "[object Null]": return JNull
     of "[object String]": return JString
+    of "[object BigInt]": return JString
     else: assert false
+
+  proc getProtoName(y: JSObject): cstring
+    {.importc: "Object.prototype.toString.call".}
+
+  proc getVarType(x: JSObject): JsonNodeKind =
+    result = getVarType2(getProtoName(x), x)
 
   proc len(x: JSObject): int =
     assert x.getVarType == JArray
@@ -907,31 +954,35 @@ when defined(js):
     """
 
   proc convertObject(x: JSObject): JsonNode =
-    case getVarType(x)
-    of JArray:
-      result = newJArray()
-      for i in 0 ..< x.len:
-        result.add(x[i].convertObject())
-    of JObject:
-      result = newJObject()
-      asm """for (var property in `x`) {
-        if (`x`.hasOwnProperty(property)) {
-      """
-      var nimProperty: cstring
-      var nimValue: JSObject
-      asm "`nimProperty` = property; `nimValue` = `x`[property];"
-      result[$nimProperty] = nimValue.convertObject()
-      asm "}}"
-    of JInt:
-      result = newJInt(cast[int](x))
-    of JFloat:
-      result = newJFloat(cast[float](x))
-    of JString:
-      result = newJString($cast[cstring](x))
-    of JBool:
-      result = newJBool(cast[bool](x))
-    of JNull:
-      result = newJNull()
+    let proto = getProtoName(x)
+    if proto == "[object BigInt]":
+       result = newJLargeNumber($x)
+    else:
+      case getVarType2(proto, x)
+      of JArray:
+        result = newJArray()
+        for i in 0 ..< x.len:
+          result.add(x[i].convertObject())
+      of JObject:
+        result = newJObject()
+        asm """for (var property in `x`) {
+          if (`x`.hasOwnProperty(property)) {
+        """
+        var nimProperty: cstring
+        var nimValue: JSObject
+        asm "`nimProperty` = property; `nimValue` = `x`[property];"
+        result[$nimProperty] = nimValue.convertObject()
+        asm "}}"
+      of JInt:
+        result = newJInt(cast[int](x))
+      of JFloat:
+        result = newJFloat(cast[float](x))
+      of JString:
+        result = newJString($cast[cstring](x))
+      of JBool:
+        result = newJBool(cast[bool](x))
+      of JNull:
+        result = newJNull()
 
   proc parseJson*(buffer: string): JsonNode =
     when nimvm:
@@ -1017,8 +1068,14 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt}, jsonPath)
-    dst = T(jsonNode.num)
+    template fn() = 
+      verifyJsonKind(jsonNode, {JInt}, jsonPath)
+      dst = T(jsonNode.num)
+    when T is BiggestUInt:
+      if jsonNode.isBiggestUint:
+        dst = T(jsonNode.getBiggestUInt)
+      else: fn()
+    else: fn()
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
