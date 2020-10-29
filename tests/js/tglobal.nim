@@ -5,3 +5,7 @@ proc getState*(): int =
 
 for i in 0 ..< 3:
   doAssert getState() == i + 1
+
+for i in 0 ..< 3:
+  once:
+    doAssert i == 0

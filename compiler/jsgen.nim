@@ -1745,7 +1745,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       varCode = $varName
       inc p.extraIndent
     elif useGlobalPragmas:
-      lineF(p, "if (this.$1 === undefined) {$n", varName)
+      lineF(p, "if (globalThis.$1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     else:
