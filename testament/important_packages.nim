@@ -73,7 +73,7 @@ pkg2 "nicy", "nim c -r src/nicy.nim"
 pkg2 "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg2 "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg2 "nimes", "nim c src/nimes.nim"
-pkg2 "nimfp", "nim c -o:nfp -r src/fp.nim"
+# pkg2 "nimfp", "nim c -o:nfp -r src/fp.nim"  # See https://github.com/nim-lang/Nim/pull/14887
 pkg2 "nimgame2", "nim c nimgame2/nimgame.nim"
 pkg2 "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg2 "nimlsp"
