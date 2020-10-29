@@ -2,7 +2,7 @@ Testament is an advanced automatic unittests runner for Nim tests, is used for t
 offers process isolation for your tests, it can generate statistics about test cases,
 supports multiple targets (C, C++, ObjectiveC, JavaScript, etc),
 simulated `Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
-has logging, can generate HTML reports, skip tests from a file and more,
+has logging, can generate HTML reports, skip tests from a file, and more,
 so can be useful to run your tests, even the most complex ones.
 
 
@@ -115,9 +115,9 @@ Example "template" **to edit** and write a Testament unittest:
 
 
 * As you can see the "Spec" is just a ``discard """ """``.
-* Spec has sane defaults, so you dont need to provide them all, any simple assert will work Ok.
+* Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
 * `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
-* `Nim itself uses Testament, so theres plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
+* `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
 * `Testament supports inlined error messages on Unittests, basically comments with the expected error directly on the code. <https://github.com/nim-lang/Nim/blob/9a110047cbe2826b1d4afe63e3a1f5a08422b73f/tests/effects/teffects1.nim>`_
 
@@ -172,7 +172,7 @@ JavaScript tests:
     import jsconsole
     console.log("My Frontend Project")
 
-Compile time tests:
+Compile-time tests:
 
 .. code-block:: nim
 

@@ -177,6 +177,8 @@ type
 
   JsonNode* = ref JsonNodeObj ## JSON node
   JsonNodeObj* {.acyclic.} = object
+    isUnquoted: bool # the JString was a number-like token and
+                     # so shouldn't be quoted
     case kind*: JsonNodeKind
     of JString:
       str*: string
@@ -196,6 +198,13 @@ type
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
+
+proc newJRawNumber(s: string): JsonNode =
+  ## Creates a "raw JS number", that is a number that does not
+  ## fit into Nim's ``BiggestInt`` field. This is really a `JString`
+  ## with the additional information that it should be converted back
+  ## to the string representation without the quotes.
+  result = JsonNode(kind: JString, str: s, isUnquoted: true)
 
 proc newJStringMove(s: string): JsonNode =
   result = JsonNode(kind: JString)
@@ -562,6 +571,7 @@ proc copy*(p: JsonNode): JsonNode =
   case p.kind
   of JString:
     result = newJString(p.str)
+    result.isUnquoted = p.isUnquoted
   of JInt:
     result = newJInt(p.num)
   of JFloat:
@@ -652,7 +662,10 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    escapeJson(node.str, result)
+    if node.isUnquoted:
+      result.add node.str
+    else:
+      escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
@@ -734,7 +747,10 @@ proc toUgly*(result: var string, node: JsonNode) =
       result.toUgly value
     result.add "}"
   of JString:
-    node.str.escapeJson(result)
+    if node.isUnquoted:
+      result.add node.str
+    else:
+      node.str.escapeJson(result)
   of JInt:
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
@@ -783,7 +799,7 @@ iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   for key, val in mpairs(node.fields):
     yield (key, val)
 
-proc parseJson(p: var JsonParser): JsonNode =
+proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -792,10 +808,22 @@ proc parseJson(p: var JsonParser): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    if rawIntegers:
+      result = newJRawNumber(p.a)
+    else:
+      try:
+        result = newJInt(parseBiggestInt(p.a))
+      except ValueError:
+        result = newJRawNumber(p.a)
     discard getTok(p)
   of tkFloat:
-    result = newJFloat(parseFloat(p.a))
+    if rawFloats:
+      result = newJRawNumber(p.a)
+    else:
+      try:
+        result = newJFloat(parseFloat(p.a))
+      except ValueError:
+        result = newJRawNumber(p.a)
     discard getTok(p)
   of tkTrue:
     result = newJBool(true)
@@ -815,7 +843,7 @@ proc parseJson(p: var JsonParser): JsonNode =
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
-      var val = parseJson(p)
+      var val = parseJson(p, rawIntegers, rawFloats)
       result[key] = val
       if p.tok != tkComma: break
       discard getTok(p)
@@ -824,39 +852,47 @@ proc parseJson(p: var JsonParser): JsonNode =
     result = newJArray()
     discard getTok(p)
     while p.tok != tkBracketRi:
-      result.add(parseJson(p))
+      result.add(parseJson(p, rawIntegers, rawFloats))
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkBracketRi)
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
-iterator parseJsonFragments*(s: Stream, filename: string = ""): JsonNode =
+iterator parseJsonFragments*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats = false): JsonNode =
   ## Parses from a stream `s` into `JsonNodes`. `filename` is only needed
   ## for nice error messages.
   ## The JSON fragments are separated by whitespace. This can be substantially
   ## faster than the comparable loop
   ## ``for x in splitWhitespace(s): yield parseJson(x)``.
   ## This closes the stream `s` after it's done.
+  ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+  ## field but kept as raw numbers via `JString`.
+  ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+  ## field but kept as raw numbers via `JString`.
   var p: JsonParser
   p.open(s, filename)
   try:
     discard getTok(p) # read first token
     while p.tok != tkEof:
-      yield p.parseJson()
+      yield p.parseJson(rawIntegers, rawFloats)
   finally:
     p.close()
 
-proc parseJson*(s: Stream, filename: string = ""): JsonNode =
+proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats = false): JsonNode =
   ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
   ## for nice error messages.
   ## If `s` contains extra data, it will raise `JsonParsingError`.
   ## This closes the stream `s` after it's done.
+  ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+  ## field but kept as raw numbers via `JString`.
+  ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+  ## field but kept as raw numbers via `JString`.
   var p: JsonParser
   p.open(s, filename)
   try:
     discard getTok(p) # read first token
-    result = p.parseJson()
+    result = p.parseJson(rawIntegers, rawFloats)
     eat(p, tkEof) # check if there is no extra data
   finally:
     p.close()
@@ -924,6 +960,7 @@ when defined(js):
     of JFloat:
       result = newJFloat(cast[float](x))
     of JString:
+      # Dunno what to do with isUnquoted here
       result = newJString($cast[cstring](x))
     of JBool:
       result = newJBool(cast[bool](x))
@@ -937,10 +974,14 @@ when defined(js):
       return parseNativeJson(buffer).convertObject()
 
 else:
-  proc parseJson*(buffer: string): JsonNode =
+  proc parseJson*(buffer: string; rawIntegers = false, rawFloats = false): JsonNode =
     ## Parses JSON from `buffer`.
     ## If `buffer` contains extra data, it will raise `JsonParsingError`.
-    result = parseJson(newStringStream(buffer), "input")
+    ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+    ## field but kept as raw numbers via `JString`.
+    ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+    ## field but kept as raw numbers via `JString`.
+    result = parseJson(newStringStream(buffer), "input", rawIntegers, rawFloats)
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
@@ -948,7 +989,7 @@ else:
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
-    result = parseJson(stream, filename)
+    result = parseJson(stream, filename, rawIntegers=false, rawFloats=false)
 
 # -- Json deserialiser. --
 
@@ -986,9 +1027,9 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[S, T](dst: var array[S, T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Table[string, T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedTable[string, T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
@@ -1082,7 +1123,7 @@ when defined(nimFixedForwardGeneric):
       dst = some(default(T))
       initFromJson(dst.get, jsonNode, jsonPath)
 
-  macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
+  macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
     let typInst = getTypeInst(dst)
     let typImpl = getTypeImpl(dst)
     let baseTyp = typImpl[0]
@@ -1096,7 +1137,7 @@ when defined(nimFixedForwardGeneric):
       else:
         initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
-  proc initFromJson[T : distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
   proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
@@ -1186,7 +1227,6 @@ when defined(nimFixedForwardGeneric):
     else:
       error("unhandled kind: " & $typeNode.kind, typeNode)
 
-
   macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     let typeSym = getTypeInst(dst)
     let originalJsonPathLen = genSym(nskLet, "originalJsonPathLen")
@@ -1201,7 +1241,7 @@ when defined(nimFixedForwardGeneric):
     else:
       foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, originalJsonPathLen)
 
-  proc initFromJson[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignObjectImpl(dst, jsonNode, jsonPath)
 
   proc to*[T](node: JsonNode, t: typedesc[T]): T =
