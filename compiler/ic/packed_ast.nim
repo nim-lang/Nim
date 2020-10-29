@@ -86,9 +86,9 @@ type
     kind*: TTypeKind
     nodekind*: TNodeKind
     flags*: TTypeFlags
-    types*: int32
-    nodes*: int32
-    methods*: int32
+    types*: seq[TypeId]
+    node*: PackedTree
+    methods*: seq[ItemId]
     nodeflags*: TNodeFlags
     info*: PackedLineInfo
     sym*: ItemId
@@ -117,9 +117,9 @@ type
 
   Module* = object
     name*: string
-    file*: AbsoluteFile
+    file* {.deprecated.}: AbsoluteFile
     ast*: PackedTree
-    phase*: ModulePhase
+    phase* {.deprecated.}: ModulePhase
     iface*: Table[string, seq[SymId]] # 'seq' because of overloading
 
   Program* = ref object
@@ -129,7 +129,7 @@ type
                        # (though there is always exactly one valid
                        # version of a module)
     syms*: seq[PackedSym]
-    types*: seq[seq[Node]]
+    types*: seq[PackedType]
     strings*: BiTable[string] # we could share these between modules.
     integers*: BiTable[BiggestInt]
     floats*: BiTable[BiggestFloat]
@@ -139,7 +139,7 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[Node]
-    toPosition*: Table[SymId, NodePos]
+    toPosition* {.deprecated.}: Table[SymId, NodePos]
     sh*: Shared
 
 proc `==`*(a, b: SymId): bool {.borrow.}
@@ -462,4 +462,4 @@ when false:
 
 proc byteSize*(m: Module): int =
   ## roughly how large is the module in bytes?
-  Module.sizeof + len(m.ast) * Tree.sizeof
+  Module.sizeof + len(m.ast) * PackedTree.sizeof
