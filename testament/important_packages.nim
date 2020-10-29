@@ -90,7 +90,7 @@ pkg2 "nimwc", "nim c nimwc.nim"
 # pkg2 "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg2 "norm", "nim c -r tests/tsqliterows.nim"
 pkg2 "npeg", "nimble testarc"
-pkg2 "numericalnim", "nim c -r tests/test_integrate.nim"
+# pkg2 "numericalnim", "nim c -r tests/test_integrate.nim" # See https://github.com/nim-lang/Nim/pull/14887
 pkg2 "optionsutils"
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
