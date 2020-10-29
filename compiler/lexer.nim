@@ -62,6 +62,7 @@ type
     tkComma, tkSemiColon,
     tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, tkBracketLeColon,
     tkOpr, tkComment, tkAccent,
+    # these are fake tokens used by renderer.nim
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TokTypes* = set[TokType]
@@ -757,8 +758,9 @@ proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
-    if col > MaxLineLength:
-      lexMessagePos(L, hintLineTooLong, pos)
+    when not defined(nimpretty):
+      if col > MaxLineLength:
+        lexMessagePos(L, hintLineTooLong, pos)
 
   case L.buf[pos]
   of CR:
@@ -1040,7 +1042,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
   tok.iNumber = 0
   assert L.buf[pos+1] == '#'
   when defined(nimpretty):
-    tok.commentOffsetA = L.offsetBase + pos - 1
+    tok.commentOffsetA = L.offsetBase + pos
 
   if L.buf[pos+2] == '[':
     skipMultiLineComment(L, tok, pos+3, true)

@@ -825,6 +825,22 @@ when defineSsl:
     else:
       result = getPeerCertificates(socket.sslHandle)
 
+  proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
+    ## Sets the session id context in which a session can be reused.
+    ## Used for permitting clients to reuse a session id instead of
+    ## doing a new handshake.
+    ##
+    ## TLS clients might attempt to resume a session using the session id context,
+    ## thus it must be set if verifyMode is set to CVerifyPeer or CVerifyPeerUseEnvVars,
+    ## otherwise the connection will fail and SslError will be raised if resumption occurs.
+    ##
+    ## - Only useful if set server-side.
+    ## - Should be unique per-application to prevent clients from malfunctioning.
+    ## - sidCtx must be at most 32 characters in length.
+    if sidCtx.len > 32:
+      raiseSSLError("sessionIdContext must be shorter than 32 characters")
+    SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
+  
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
   ## the last error stored in the socket object.
@@ -1045,7 +1061,7 @@ proc accept*(server: Socket, client: var owned(Socket),
   var addrDummy = ""
   acceptAddr(server, client, addrDummy, flags)
 
-when defined(posix):
+when defined(posix) and not defined(lwip):
   from posix import Sigset, sigwait, sigismember, sigemptyset, sigaddset,
     sigprocmask, pthread_sigmask, SIGPIPE, SIG_BLOCK, SIG_UNBLOCK
 
@@ -1063,7 +1079,7 @@ template blockSigpipe(body: untyped): untyped =
   ##
   ## For convenience, this template is also available for non-POSIX system,
   ## where `body` will be executed as-is.
-  when not defined(posix):
+  when not defined(posix) or defined(lwip):
     body
   else:
     template sigmask(how: cint, set, oset: var Sigset): untyped {.gensym.} =
@@ -1811,6 +1827,10 @@ proc `$`*(address: IpAddress): string =
                 result.add(chr(uint16(ord('a'))+val-0xA))
               afterLeadingZeros = true
             mask = mask shr 4
+
+          if not afterLeadingZeros:
+            result.add '0'
+
           printedLastGroup = true
 
 proc dial*(address: string, port: Port,
@@ -1989,5 +2009,8 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
       newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
     else:
       newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-  socket.connect($dest, 80.Port)
-  socket.getLocalAddr()[0].parseIpAddress()
+  try:
+    socket.connect($dest, 80.Port)
+    result = socket.getLocalAddr()[0].parseIpAddress()
+  finally:
+    socket.close()

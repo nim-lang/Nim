@@ -372,7 +372,6 @@ proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
   assert self.isSome
   result = self.val
 
-
 when isMainModule:
   import unittest, sequtils
 

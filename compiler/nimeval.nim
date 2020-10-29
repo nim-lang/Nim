@@ -10,15 +10,16 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils, passaux,
-  scriptconfig
+  options, sem, semdata, llstream, lineinfos, vm,
+  vmdef, modulegraphs, idents, os, pathutils,
+  passaux, scriptconfig
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
     mainModule: PSym
     graph: ModuleGraph
     scriptName: string
+    idgen: IdGenerator
 
 iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
@@ -74,7 +75,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, s)
+  processModule(i.graph, i.mainModule, i.idgen, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -121,18 +122,24 @@ proc createInterpreter*(scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  var vm = newCtx(m, cache, graph)
+  var idgen = idGeneratorFromModule(m)
+  var vm = newCtx(m, cache, graph, idgen)
   vm.mode = emRepl
   vm.features = flags
   if registerOps:
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
-  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
+  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
+
+proc registerErrorHook*(i: Interpreter, hook:
+                        proc (config: ConfigRef; info: TLineInfo; msg: string;
+                              severity: Severity) {.gcsafe.}) =
+  i.graph.config.structuredErrorHook = hook
 
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
@@ -157,6 +164,8 @@ proc runRepl*(r: TLLRepl;
   registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
-  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph)
+  var idgen = idGeneratorFromModule(m)
+
+  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
   graph.compileSystemModule()
-  processModule(graph, m, llStreamOpenStdIn(r))
+  processModule(graph, m, idgen, llStreamOpenStdIn(r))

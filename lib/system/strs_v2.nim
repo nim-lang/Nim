@@ -29,7 +29,10 @@ template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
 
 template frees(s) =
   if not isLiteral(s):
-    deallocShared(s.p)
+    when compileOption("threads"):
+      deallocShared(s.p)
+    else:
+      dealloc(s.p)
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
@@ -40,7 +43,10 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
-    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+    when compileOption("threads"):
+      s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+    else:
+      s.p = cast[ptr NimStrPayload](alloc0(contentSize(s.len + addlen)))
     s.p.cap = s.len + addlen
     if s.len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -49,10 +55,14 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
     let oldCap = s.p.cap and not strlitFlag
     if s.len + addlen > oldCap:
       let newCap = max(s.len + addlen, resize(oldCap))
-      s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
+      when compileOption("threads"):
+        s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
+      else:
+        s.p = cast[ptr NimStrPayload](realloc0(s.p, contentSize(oldCap), contentSize(newCap)))
       s.p.cap = newCap
 
-proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
+proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl, inline.} =
+  #if (s.p == nil) or (s.len+1 > s.p.cap and not strlitFlag):
   prepareAdd(s, 1)
   s.p.data[s.len] = c
   s.p.data[s.len+1] = '\0'
@@ -62,7 +72,10 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    when compileOption("threads"):
+      var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    else:
+      var p = cast[ptr NimStrPayload](alloc0(contentSize(len)))
     p.cap = len
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -93,7 +106,10 @@ proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    var p = cast[ptr NimStrPayload](allocShared0(contentSize(space)))
+    when compileOption("threads"):
+      var p = cast[ptr NimStrPayload](allocShared0(contentSize(space)))
+    else:
+      var p = cast[ptr NimStrPayload](alloc0(contentSize(space)))
     p.cap = space
     result = NimStringV2(len: 0, p: p)
 
@@ -101,7 +117,10 @@ proc mnewString(len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    when compileOption("threads"):
+      var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    else:
+      var p = cast[ptr NimStrPayload](alloc0(contentSize(len)))
     p.cap = len
     result = NimStringV2(len: len, p: p)
 
@@ -127,7 +146,10 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
       frees(a)
-      a.p = cast[ptr NimStrPayload](allocShared0(contentSize(b.len)))
+      when compileOption("threads"):
+        a.p = cast[ptr NimStrPayload](allocShared0(contentSize(b.len)))
+      else:
+        a.p = cast[ptr NimStrPayload](alloc0(contentSize(b.len)))
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
@@ -135,7 +157,10 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
 proc nimPrepareStrMutationImpl(s: var NimStringV2) =
   let oldP = s.p
   # can't mutate a literal, so we need a fresh copy here:
-  s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
+  when compileOption("threads"):
+    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
+  else:
+    s.p = cast[ptr NimStrPayload](alloc0(contentSize(s.len)))
   s.p.cap = s.len
   copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)
 

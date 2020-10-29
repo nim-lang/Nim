@@ -91,13 +91,15 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
 
+proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
+
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
-  result = strTableGet(c.currentScope.symbols, s)
-  var shadow = c.currentScope
-  while result == nil and shadow.parent != nil and shadow.depthLevel == shadow.parent.depthLevel:
+  var scope = c.currentScope
+  result = strTableGet(scope.symbols, s)
+  while result == nil and scope.isShadowScope:
     # We are in a shadow scope, check in the parent too
-    result = strTableGet(shadow.parent.symbols, s)
-    shadow = shadow.parent
+    scope = scope.parent
+    result = strTableGet(scope.symbols, s)
 
 proc searchInScopes*(c: PContext, s: PIdent): PSym =
   for scope in walkScopes(c.currentScope):
@@ -133,7 +135,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, nextId(c.idgen), getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
@@ -152,12 +154,14 @@ type
     scope*: PScope
     inSymChoice: IntSet
 
-proc getSymRepr*(conf: ConfigRef; s: PSym): string =
+proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
   case s.kind
   of routineKinds, skType:
-    result = getProcHeader(conf, s)
+    result = getProcHeader(conf, s, getDeclarationPath = getDeclarationPath)
   else:
-    result = s.name.s
+    result = "'$1'" % s.name.s
+    if getDeclarationPath:
+      result.addDeclaredLoc(conf, s)
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   # check if all symbols have been used and defined:
@@ -170,7 +174,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
       # and slow 'suggest' down:
       if missingImpls == 0:
         localError(c.config, s.info, "implementation of '$1' expected" %
-            getSymRepr(c.config, s))
+            getSymRepr(c.config, s, getDeclarationPath=false))
       inc missingImpls
     elif {sfUsed, sfExported} * s.flags == {}:
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:

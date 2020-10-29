@@ -67,7 +67,7 @@ proc renderType(n: PNode): string =
     let typeStr = renderType(n[typePos])
     result = typeStr
     for i in 1..<typePos:
-      assert n[i].kind == nkIdent
+      assert n[i].kind in {nkSym, nkIdent}
       result.add(',' & typeStr)
   of nkTupleTy:
     result = "tuple["
@@ -78,6 +78,11 @@ proc renderType(n: PNode): string =
     result = renderType(n[0]) & '['
     for i in 1..<n.len: result.add(renderType(n[i]) & ',')
     result[^1] = ']'
+  of nkCommand:
+    result = renderType(n[0])
+    for i in 1..<n.len:
+      if i > 1: result.add ", "
+      result.add(renderType(n[i]))
   else: result = ""
 
 

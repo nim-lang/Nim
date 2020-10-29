@@ -176,7 +176,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), nextId c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -239,12 +239,12 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, n.info)
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, n.info)
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
@@ -662,10 +662,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
   elif n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, "implementation of '$1' expected" % s.name.s)
-  var proto = searchForProc(c, c.currentScope, s)
+  var (proto, comesFromShadowscope) = searchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
-  else:
+  elif not comesFromShadowscope:
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
@@ -706,11 +706,6 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     else:
       localError(c.c.config, n.info, "invalid expression")
       result = n
-
-  proc stupidStmtListExpr(n: PNode): bool =
-    for i in 0..<n.len-1:
-      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
-    result = true
 
   result = n
   case n.kind

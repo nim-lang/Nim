@@ -66,7 +66,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   # if we have a something that's been captured, use the lowering instead:
   for i in 0..<n.len-2:
     if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
+      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.module.idgen, p.prc))
       return
 
   # check only the first son
@@ -272,7 +272,7 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
+proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
 
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
@@ -280,7 +280,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
-    result = genBracedInit(p, value, isConst = false)
+    result = genBracedInit(p, value, isConst = false, v.typ)
   else:
     result = nil
 
@@ -1040,7 +1040,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
           else:
-            genTypeInfo(p.module, typeNode.typ, typeNode.info)
+            genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1255,7 +1255,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1383,7 +1383,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1508,7 +1508,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfo(p.module, t, a.lode.info)
+  discard genTypeInfoV1(p.module, t, a.lode.info)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
@@ -1525,7 +1525,7 @@ proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLo
       theProc = p
       break
   if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
     t.methods.add((ObjDiscMappingProcSlot, theProc))
   var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
   call.add newSymNode(theProc)
@@ -1556,7 +1556,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

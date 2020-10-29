@@ -1682,7 +1682,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
-  ## Copies a file from `source` to `dest`.
+  ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -1737,6 +1737,12 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     close(s)
     flushFile(d)
     close(d)
+
+proc copyFileToDir*(source, dir: string) {.noWeirdTarget, since: (1,3,7).} =
+  ## Copies a file `source` into directory `dir`, which must exist.
+  if dir.len == 0: # treating "" as "." is error prone
+    raise newException(ValueError, "dest is empty")
+  copyFile(source, dir / source.lastPathPart)
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -2814,7 +2820,7 @@ else:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
-when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
+when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -2826,12 +2832,19 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
 
   when defined(freebsd):
     const KERN_PROC_PATHNAME = 12
+  elif defined(netbsd):
+    const KERN_PROC_ARGS = 48
+    const KERN_PROC_PATHNAME = 5
   else:
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize_t(0)
-    var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
+
+    when defined(netbsd):
+      var req = [CTL_KERN.cint, KERN_PROC_ARGS.cint, -1.cint, KERN_PROC_PATHNAME.cint]
+    else:
+      var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
 
     # first call to get the required length
     var res = sysctl(addr req[0], 4, nil, addr pathLength, nil, 0)
@@ -2984,13 +2997,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if result.len > 0:
       result = result.expandFilename
   else:
-    when defined(linux) or defined(aix) or defined(netbsd):
+    when defined(linux) or defined(aix):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
-    elif defined(freebsd) or defined(dragonfly):
+    elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
