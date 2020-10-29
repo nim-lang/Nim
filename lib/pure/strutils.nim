@@ -76,6 +76,7 @@ import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
 import macros # for `parseEnum`
+import std/private/since
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -1284,7 +1285,7 @@ proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
     nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
   )
 
-macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
+macro genEnumStmt(typ: typedesc, argSym: typed, default: typed, userMin, userMax: static[int]): untyped =
   # generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
@@ -1316,13 +1317,14 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
       else: error("Invalid tuple syntax!", f[1])
     else: error("Invalid node for enum type!", f)
     # add field if string not already added
-    fStr = nimIdentNormalize(fStr)
-    if fStr notin foundFields:
-      result.add addOfBranch(fStr, newLit fNum, typ)
-      foundFields.add fStr
-    else:
-      error("Ambiguous enums cannot be parsed, field " & $fStr &
-        " appears multiple times!", f)
+    if fNum >= userMin and fNum <= userMax:
+      fStr = nimIdentNormalize(fStr)
+      if fStr notin foundFields:
+        result.add addOfBranch(fStr, newLit fNum, typ)
+        foundFields.add fStr
+      else:
+        error("Ambiguous enums cannot be parsed, field " & $fStr &
+          " appears multiple times!", f)
     inc fNum
   # finally add else branch to raise or use default
   if default == nil:
@@ -1351,7 +1353,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumStmt(T, s, default = nil)
+  genEnumStmt(T, s, default = nil, ord(low(T)), ord(high(T)))
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
@@ -1370,7 +1372,52 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumStmt(T, s, default)
+  genEnumStmt(T, s, default, ord(low(T)), ord(high(T)))
+
+proc parseEnumRange*[T: enum](s: string, a, b: static[T]): T {.since: (1, 5).} =
+  ## Parses an enum ``T`` but consider only enum values in `a` .. `b` range,
+  ## range should be known at compile time.
+  ## This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
+  ##
+  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
+  ## done in a style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        hintA = "hintOne",
+        hintB = "hintTwo",
+        warnA = "warnOne",
+        warnB = "warnTwo"
+
+    doAssert parseEnumRange("hintOne", hintA, hintB) == hintA
+    doAssert parseEnumRange("hintTwo", hintA, hintB) == hintB
+    doAssertRaises(ValueError):
+      echo parseEnumRange("hintOne", warnA..warnB)
+
+  genEnumStmt(T, s, default = nil, ord(a), ord(b))
+
+
+proc parseEnumRange*[T: enum](s: string, a, b: static[T], default: T): T {.since: (1, 5).} =
+  ## Parses an enum ``T``,  but consider only enum values in `a` .. `b` range,
+  ## range should be known at compile time. 
+  ## This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
+  ##
+  ## Uses `default` for an invalid value in `s`. The comparison is done in a
+  ## style insensitive way.
+  runnableExamples:
+    type
+      MyEnum = enum
+        unknown,
+        hintA = "hintOne",
+        hintB = "hintTwo",
+        warnA = "warnOne",
+        warnB = "warnTwo"
+
+    doAssert parseEnumRange("warnOne", hintA, hintB, unknown) == unknown
+    doAssert parseEnumRange("hintTwo", hintA, hintB, unknown) == hintB
+  genEnumStmt(T, s, default, ord(a), ord(b))
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
@@ -3073,6 +3120,23 @@ when isMainModule:
 
     doAssert parseEnum("invalid enum value", enC) == enC
 
+    type
+      MyMsgEnum = enum
+        unknown,
+        hintA = "hintOne",
+        hintB = "hintTwo",
+        warnA = "warnOne",
+        warnB = "warnTwo"
+
+    doAssert parseEnumRange("hintOne", hintA, hintB) == hintA
+    doAssert parseEnumRange("hintTwo", hintA, hintB) == hintB
+    doAssertRaises(ValueError):
+      echo parseEnumRange("hintOne", warnA, warnB)
+
+    doAssert parseEnumRange("warnOne", hintA, hintB, unknown) == unknown
+    doAssert parseEnumRange("hintTwo", hintA, hintB, unknown) == hintB
+
+
     doAssert center("foo", 13) == "     foo     "
     doAssert center("foo", 0) == "foo"
     doAssert center("foo", 3, fillChar = 'a') == "foo"
@@ -3205,3 +3269,4 @@ bar
   nonStaticTests()
   staticTests()
   static: staticTests()
+
