@@ -9,7 +9,7 @@
 
 import std / [hashes, tables]
 import packed_ast, bitabs
-import ".." / [ast, idents, lineinfos, options, pathutils, msgs]
+import ".." / [ast, idents, lineinfos, msgs]
 
 type
   Context = object
@@ -17,15 +17,33 @@ type
     lastFile: FileIndex # remember the last lookup entry.
     lastLit: LitId
     filenames: Table[FileIndex, LitId]
+    pendingTypes: seq[PType]
+    pendingSyms: seq[PSym]
+    typeMap: Table[int32, TypeId]  # ItemId.item -> TypeId
+    symMap: Table[int32, SymId]    # ItemId.item -> SymId
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
+proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId
 
-proc addItemId(tree: var PackedTree; s: ItemId; info: PackedLineInfo) =
-  tree.nodes.add Node(kind: nkInt32Lit, operand: s.module, info: info)
-  tree.nodes.add Node(kind: nkInt32Lit, operand: s.item, info: info)
+proc flush(ir: var PackedTree; c: var Context) =
+  ## serialize any pending types or symbols from the context
+  while true:
+    if c.pendingTypes.len > 0:
+      discard toPackedType(c.pendingTypes.pop, ir, c)
+    elif c.pendingSyms.len > 0:
+      discard toPackedSym(c.pendingSyms.pop, ir, c)
+    else:
+      break
 
-proc toLitId(x: int64 | uint64; ir: var PackedTree; c: var Context): LitId =
+proc addItemId(tree: var PackedTree; id: ItemId; typ: TypeId; info: PackedLineInfo) =
+  ## add an itemid to the tree; we trust that it's foreign
+  let patchPos = tree.prepare(nkModuleRef, flags = {}, typ, info)
+  tree.nodes.add Node(kind: nkInt32Lit, operand: id.module, info: info)
+  tree.nodes.add Node(kind: nkInt32Lit, operand: id.item, info: info)
+  tree.patch patchPos
+
+proc toLitId(x: BiggestInt; ir: var PackedTree; c: var Context): LitId =
   # i think smaller integers aren't worth putting into a table
   # because there they become 32bit hash values on the heap...
   result = getOrIncl(ir.sh.integers, x)
@@ -45,120 +63,105 @@ proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
 proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
 
+proc addMissing(c: var Context; p: PSym) =
+  if p.itemId.module == c.thisModule:
+      if not p.itemId.item in c.symMap:
+        c.pendingSyms.add p
+
+proc addMissing(c: var Context; p: PType) =
+  if p.uniqueId.module == c.thisModule:
+      if not p.uniqueId.item in c.typeMap:
+        c.pendingTypes.add p
+
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
-  result = TypeId(0)
-  assert not t.n.isNil
-  assert not t.sym.isNil
-  assert not t.owner.isNil
-  template
-    info: PackedLineInfo = t.n.info.toPackedInfo(ir, c)
+  template info: PackedLineInfo =
+    # too bad the most variant part of the operation comes first...
+    (if t.n.isNil: TLineInfo() else: t.n.info).toPackedInfo(ir, c)
 
-  template addDirect(x: typed) =
-    ir.nodes.add Node(kind: directIntLit, operand: int32 x,
-                      info: t.n.info.toPackedInfo(ir, c))
+  assert t.itemId.module == c.thisModule   # should we even be here?
 
-  # probably want a local id mechanism; for now, just invent a number
-  result = TypeId(t.id)
+  # short-circuit if we already have the TypeId
+  result = getOrDefault(c.typeMap, t.uniqueId.item, TypeId(-1))
+  if result != TypeId(-1): return
 
-  # add the type
-  ir.addType(result, info)
-  let patchPos = ir.prepare(kind = nkType, flags = t.n.flags,
-                            typeId = result, info = info)
-  # XXX: finally: template for this, yes?  because defer: sucks.
-  defer: ir.patch patchPos
+  ir.sh.types.add:
+    PackedType(kind: t.kind, flags: t.flags, info: info,
+               size: t.size, align: t.align, nonUniqueId: t.itemId,
+               paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+               node: newTreeFrom(ir))
+  result = TypeId(ir.sh.types.high)
+  c.typeMap[t.itemId.item] = result
+  template p: PackedType = ir.sh.types[int result]
 
-  # kind, nodekind
-  addDirect t.kind
-  addDirect t.n.kind
+  for op, s in pairs t.attachedOps:
+    c.addMissing s
+    p.attachedOps[op] = s.itemId
 
-  # typeflags, nodeflags
-  # XXX: figure how how we want to do larger sets
-  # addDirect t.flags
-  # XXX: this shouldn't work without a .size., right?
-  addDirect cast[int32](t.n.flags)
+  p.typeInst = t.typeInst.toPackedType(ir, c)
 
-  ir.addItemId(t.sym.itemId, info)
-  ir.addItemId(t.owner.itemId, info)
-
-  for s in items t.attachedOps:
-    ir.addSym(if s.isNil: SymId(-1) else: s.toPackedSym(ir, c), info)
-
-  # chose to cut a different corner here
-  assert t.size.sizeof <= int64.sizeof
-  addDirect int64(t.size).toLitId(ir, c)
-
-  # some more easy stuff
-  addDirect t.align
-  addDirect t.paddingAtEnd
-  addDirect t.lockLevel
-
-  ir.addType(t.typeInst.toPackedType(ir, c), info)
-
-  ir.addItemId(t.itemId, info)
-
-  # types: i decided that this is a counter
-  addDirect t.sons.len
   for kid in items t.sons:
-    ir.addType(kid.toPackedType(ir, c), info)
+    p.types.add kid.toPackedType(ir, c)
 
-  # nodes: XXX no idea what this is; we only have one node, right?  RIGHT?
+  for _, s in items t.methods:
+    c.addMissing s
+    p.methods.add s.itemId
 
-  # methods: i decided that this is a counter
-  addDirect t.methods.len
-  # XXX if you dunno what a value is for, just ignore it.  it's probably fine.
-  for (_, s) in items t.methods:
-    ir.addSym(s.toPackedSym(ir, c), info)
+  if not t.sym.isNil:
+    c.addMissing t.sym
+    p.sym = t.sym.itemId
+
+  if not t.n.isNil:
+    p.nodekind = t.n.kind
+    p.nodeflags = t.n.flags
+    t.n.toPackedNode(p.node, c)
+
+  ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   result = SymId(0)
 
 proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   assert n.kind == nkSym
-  let t = toPackedType(n.typ, ir, c)
-
+  template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
   if n.sym.itemId.module == c.thisModule:
     # it is a symbol that belongs to the module we're currently
     # packing:
-    let sid = toPackedSym(n.sym, ir, c)
-    ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(sid),
-                      typeId: t, info: toPackedInfo(n.info, ir, c))
+    ir.addSym(n.sym.toPackedSym(ir, c), info)
   else:
     # store it as an external module reference:
-    #  nkModuleRef
-    discard
-
+    ir.addItemId(n.sym.itemId, n.typ.toPackedType(ir, c), info)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
-  template toP(x: TLineInfo): PackedLineInfo = toPackedInfo(x, ir, c)
+  template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
 
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: 0,
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   of nkIdent:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   of nkSym:
     toPackedSymNode(n, ir, c)
   of directIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(n.intVal),
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   of externIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.integers, n.intVal),
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   of nkStrLit..nkTripleStrLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.strings, n.strVal),
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   of nkFloatLit..nkFloat128Lit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags,
                       operand: int32 getOrIncl(ir.sh.floats, n.floatVal),
-                      typeId: toPackedType(n.typ, ir, c), info: toP n.info)
+                      typeId: toPackedType(n.typ, ir, c), info: info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
-                              toPackedType(n.typ, ir, c), toP n.info)
+                              toPackedType(n.typ, ir, c), info)
     for i in 0..<n.len:
       toPackedNode(n[i], ir, c)
     ir.patch patchPos
