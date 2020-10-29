@@ -1375,7 +1375,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
   genEnumStmt(T, s, default, ord(low(T)), ord(high(T)))
 
 proc parseEnumRange*[T: enum](s: string, a, b: static[T]): T {.since: (1, 5).} =
-  ## Parses an enum ``T`` but consider only enum values in `a` .. `b` range,
+  ## Parses an enum ``T`` but considers only enum values in `a` .. `b` range,
   ## range should be known at compile time.
   ## This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
@@ -1399,7 +1399,7 @@ proc parseEnumRange*[T: enum](s: string, a, b: static[T]): T {.since: (1, 5).} =
 
 
 proc parseEnumRange*[T: enum](s: string, a, b: static[T], default: T): T {.since: (1, 5).} =
-  ## Parses an enum ``T``,  but consider only enum values in `a` .. `b` range,
+  ## Parses an enum ``T``,  but considers only enum values in `a` .. `b` range,
   ## range should be known at compile time. 
   ## This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
