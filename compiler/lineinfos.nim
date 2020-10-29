@@ -45,7 +45,7 @@ type
     warnLanguageXNotSupported = "LanguageXNotSupported", warnFieldXNotSupported = "FieldXNotSupported", 
     warnCommentXIgnored = "CommentXIgnored", warnTypelessParam = "TypelessParam",
     warnUseBase = "UseBase", warnWriteToForeignHeap = "WriteToForeignHeap", 
-    warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImportX",
+    warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImport",
     warnInheritFromException = "InheritFromException", warnEachIdentIsTuple = "EachIdentIsTuple",
     warnUnsafeSetLen = "UnsafeSetLen", warnUnsafeDefault = "UnsafeDefault",
     warnProveInit = "ProveInit", warnProveField = "ProveField", warnProveIndex = "ProveIndex",
