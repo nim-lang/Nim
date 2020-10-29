@@ -158,22 +158,26 @@ proc classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
-proc approxEqual*[T: SomeFloat](x, y: T; ulp: Natural = 4): bool {.noSideEffect.} =
-  ## Checks if two float values are considered equal, using machine epsilon.
+proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.inline, noSideEffect.} =
+  ## Checks if two float values are almost equal, using machine epsilon.
   ##
-  ## `ulp` is the max number of ulp (units in last place) difference tolerated between
-  ## two numbers to still be almost equal.
+  ## `unitsInLastPlace` is the max number of
+  ## `units in last place <https://en.wikipedia.org/wiki/Unit_in_the_last_place>`_
+  ## difference tolerated when comparing two numbers. The larger the value, the
+  ## more error is allowed. A ``0`` value means that two numbers must be exactly the
+  ## same to be considered equal.
   ##
   ## The machine epsilon has to be scaled to the magnitude of the values used
-  ## and multiplied by the desired precision in ULPs unless the result is subnormal.
+  ## and multiplied by the desired precision in ULPs unless the difference is
+  ## subnormal.
   ##
-  ## Refs: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
+  # taken from: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
   runnableExamples:
-    doAssert approxEqual(1.0000, 0.9999) == false
-    doAssert approxEqual(1.0000, 0.99999) == true
-    doAssert approxEqual(1e7, 1.00001e7) == true
-  result = abs(x - y) <= epsilon(T) * abs(x + y) * T(ulp) or
-      abs(x - y) < minimumPositiveValue(T)
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+  let e = abs(x - y)
+  result = e <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
+      e < minimumPositiveValue(T)
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
