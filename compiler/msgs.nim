@@ -489,7 +489,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let kind = if msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
+  let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
