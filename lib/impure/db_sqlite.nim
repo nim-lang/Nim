@@ -247,8 +247,7 @@ proc setRow(stmt: PStmt, r: var Row, cols: cint) =
     if column_type(stmt, col) == SQLITE_BLOB:
       copyMem(addr(r[col][0]), column_blob(stmt, col), cb)
     else:
-      # setLen(r[col], 0)
-      # it seems weird to use setLen(0) after setLen(cb)
+      setLen(r[col], 0)
       let x = column_text(stmt, col)
       if not isNil(x): add(r[col], x)
 
