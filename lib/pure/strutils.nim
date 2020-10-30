@@ -59,12 +59,13 @@
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
 ## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
+## * `parsecsv module<parsecsv.html>`_ for a high-performance CSV parser
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
 ## * `parseopt module<parseopt.html>`_ for command-line parsing
+## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   (dictionaries, in some programming languages) mapping from strings to strings
-## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
