@@ -66,7 +66,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
 
 proc isValueOnlyType(t: PType): bool = 
   # t doesn't contain pointers and references
-  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar}
+  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
   result = not types.searchTypeFor(t, wrap)
 
 proc canAlias*(arg, ret: PType): bool =
