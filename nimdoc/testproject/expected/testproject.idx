@@ -54,3 +54,7 @@ asyncFun1	testproject.html#asyncFun1	testproject: asyncFun1(): Future[int]
 asyncFun2	testproject.html#asyncFun2	testproject: asyncFun2(): owned(Future[void])	
 asyncFun3	testproject.html#asyncFun3	testproject: asyncFun3(): owned(Future[void])	
 testNimDocTrailingExample	testproject.html#testNimDocTrailingExample.t	testproject: testNimDocTrailingExample()	
+Circle	testproject.html#Circle	Shapes.Circle	
+Triangle	testproject.html#Triangle	Shapes.Triangle	
+Rectangle	testproject.html#Rectangle	Shapes.Rectangle	
+Shapes	testproject.html#Shapes	testproject: Shapes	
