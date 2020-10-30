@@ -51,3 +51,24 @@ suite "httpcore":
     doAssert parseHeader("Accept: foo, bar") == (key: "Accept", value: @["foo", "bar"])
     doAssert parseHeader("Accept: foo, bar, prologue") == (key: "Accept", value: @["foo", "bar", "prologue"])
     doAssert parseHeader("Accept: foo, bar, prologue, starlight") == (key: "Accept", value: @["foo", "bar", "prologue", "starlight"])
+
+  test "add empty sequence to HTTP headers":
+    block:
+      var headers = newHttpHeaders()
+      headers["empty"] = @[]
+
+      doAssert not headers.hasKey("empty")
+
+    block:
+      var headers = newHttpHeaders()
+      headers["existing"] = "true"
+      headers["existing"] = @[]
+
+      doAssert not headers.hasKey("existing")
+
+    block:
+      var headers = newHttpHeaders()
+      headers["existing"] = @["true"]
+      headers["existing"] = @[]
+
+      doAssert not headers.hasKey("existing")
