@@ -981,6 +981,18 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     doAssert c.toHex(6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
+proc toHex*(x: int, len: Positive): string {.noSideEffect.} =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## The resulting string will be exactly `len` characters long. No prefix like
+  ## ``0x`` is generated. `x` is treated as an unsigned value.
+  runnableExamples:
+    doAssert toHex(62, 3) == "03E"
+    doAssert toHex(4097, 3) == "001"
+    doAssert toHex(4097, 4) == "1001"
+    doAssert toHex(-8, 6) == "FFFFF8"
+  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+
 proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
   ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
