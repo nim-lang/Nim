@@ -12,11 +12,19 @@ block global:
       doAssert i == 0
 
 
-block:
-  proc getThreadState(): int =
+block threadvar:
+  proc getThreadState0(): int =
     var state0 {.threadvar.}: int
     inc state0
     result = state0
 
   for i in 0 ..< 3:
-    doAssert getThreadState() == i + 1
+    doAssert getThreadState0() == i + 1
+
+  proc getThreadState1(): int =
+    var state1 {.threadvar.}: int
+    inc state1
+    result = state1
+
+  for i in 0 ..< 3:
+    doAssert getThreadState1() == i + 1
