@@ -436,7 +436,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## predicate `pred` (function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
-  ## from `sugar` module.
+  ## from the `sugar` module.
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
@@ -460,7 +460,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ## predicate `pred` (function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
-  ## from `sugar` module.
+  ## from the `sugar` module.
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
@@ -580,7 +580,7 @@ template filterIt*(s, pred: untyped): untyped =
   ## for testing, like: ``filterIt("abcxyz", it == 'x')``.
   ##
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
-  ## from `sugar` module.
+  ## from the `sugar` module.
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
@@ -940,7 +940,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ## expression.
   ##
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
-  ## from `sugar` module.
+  ## from the `sugar` module.
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
