@@ -1,3 +1,8 @@
+discard """
+  output: '''fish
+fish'''
+"""
+
 import macros
 
 block:
