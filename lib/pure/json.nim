@@ -559,6 +559,26 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
 
+proc delete*(arr: JsonNode, value: JsonNode) =
+  ## Find and deletes value on the json array.
+  assert(arr.kind == JArray)
+  var foundIndex = -1
+  for index, element in arr.elems:
+    if element == value:
+      foundIndex = index
+  if foundIndex >= 0:
+    arr.elems.delete(foundIndex)
+  else:
+    raise newException(Exception, "value not in array")
+
+proc delete*(arr: JsonNode, index: int) =
+  ## Deletes an item in array by index
+  assert(arr.kind == JArray)
+  if arr.elems.len >= (index + 1) and index >= 0:
+    arr.elems.delete(index)
+  else:
+    raise newException(IndexDefect, "index out of bounds")
+
 proc delete*(obj: JsonNode, key: string) =
   ## Deletes ``obj[key]``.
   assert(obj.kind == JObject)
