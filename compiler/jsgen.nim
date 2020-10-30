@@ -2534,6 +2534,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
+      r.res = "var _ = " & r.res
   of nkAsmStmt: genAsmOrEmitStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
