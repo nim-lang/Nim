@@ -1,5 +1,4 @@
 discard """
-  file: "tcompile_time_var_at_runtime.nim"
   output: "1\n2\n2\n3"
 """
 var a {.compileTime.} = 1
