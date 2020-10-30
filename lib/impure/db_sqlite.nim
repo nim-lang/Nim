@@ -94,6 +94,57 @@
 ##
 ##    db.close()
 ##
+## Storing binary data example
+##----------------------------
+##
+## .. code-block:: nim
+##
+##   import random
+##
+##   ## Generate random float datas
+##   var orig = newSeq[float64](150)
+##   randomize()
+##   for x in orig.mitems:
+##     x = rand(1.0)/10.0
+##
+##   let db = open("mysqlite.db", "", "", "")
+##   block: ## Create database
+##     ## Binary datas needs to be of type BLOB in SQLite
+##     let createTableStr = sql"""CREATE TABLE test(
+##       id INTEGER NOT NULL PRIMARY KEY,
+##       data BLOB
+##     )
+##     """
+##     db.exec(createTableStr)
+##
+##   block: ## Insert data
+##     var id = 1
+##     ## Data needs to be converted to seq[byte] to be interpreted as binary by bindParams
+##     var dbuf = newSeq[byte](orig.len*sizeof(float64))
+##     copyMem(unsafeAddr(dbuf[0]), unsafeAddr(orig[0]), dbuf.len)
+##
+##     ## Use prepared statement to insert binary data into database
+##     var insertStmt = db.prepare("INSERT INTO test (id, data) VALUES (?, ?)")
+##     insertStmt.bindParams(id, dbuf)
+##     let bres = db.tryExec(insertStmt)
+##     ## Check insert
+##     doAssert(bres)
+##     # Destroy statement
+##     finalize(insertStmt)
+##
+##   block: ## Use getValue to select data
+##     var dataTest = db.getValue(sql"SELECT data FROM test WHERE id = ?", 1)
+##     ## Calculate sequence size from buffer size
+##     let seqSize = int(dataTest.len*sizeof(byte)/sizeof(float64))
+##     ## Copy binary string data in dataTest into a seq
+##     var res: seq[float64] = newSeq[float64](seqSize)
+##     copyMem(unsafeAddr(res[0]), addr(dataTest[0]), dataTest.len)
+##
+##     ## Check datas obtained is identical
+##     doAssert res == orig
+##
+##   db.close()
+##
 ##
 ## Note
 ## ====
