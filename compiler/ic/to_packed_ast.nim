@@ -125,8 +125,6 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   assert s.itemId.module == c.thisModule   # should we even be here?
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
-  assert s.itemId.module == c.thisModule   # should we even be here?
-
   # short-circuit if we already have the SymId
   result = getOrDefault(c.symMap, s.itemId.item, SymId(-1))
   if result != SymId(-1): return
