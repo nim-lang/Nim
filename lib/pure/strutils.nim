@@ -1393,7 +1393,7 @@ proc parseEnumRange*[T: enum](s: string, a, b: static[T]): T {.since: (1, 5).} =
     doAssert parseEnumRange("hintOne", hintA, hintB) == hintA
     doAssert parseEnumRange("hintTwo", hintA, hintB) == hintB
     doAssertRaises(ValueError):
-      echo parseEnumRange("hintOne", warnA..warnB)
+      echo parseEnumRange("hintOne", warnA, warnB)
 
   genEnumStmt(T, s, default = nil, ord(a), ord(b))
 
