@@ -369,7 +369,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ## transform the type of the elements in the input container.
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
-  ## from `sugar` module.
+  ## from the `sugar` module.
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
