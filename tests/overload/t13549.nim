@@ -7,7 +7,7 @@ proc foo[T](x: T) = echo "a"
 
 
 proc foo[T: tuple](x: T) = echo "b"
-proc foo(x: tuple) = echo "b"
+
 
 foo((1, 2, 3))
 
