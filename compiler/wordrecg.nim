@@ -85,7 +85,7 @@ type
     wGuard = "guard", wLocks = "locks", wPartial = "partial", wExplain = "explain",
     wLiftLocals = "liftlocals",
 
-    wAuto = "auto", wBool = "Bool", wCatch = "catch", wChar = "char", 
+    wAuto = "auto", wBool = "bool", wCatch = "catch", wChar = "char", 
     wClass = "class", wCompl = "compl", wConst_cast = "const_cast", wDefault = "default", 
     wDelete = "delete", wDouble = "double", wDynamic_cast = "dynamic_cast", 
     wExplicit = "explicit", wExtern = "extern", wFalse = "false", wFloat = "float",
