@@ -8,7 +8,8 @@
 
 - Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
 
-- Added `parseEnumRange` to `strutils` module parse enum but considering only range of enum values. Used in compiler internals.
+- Added `parseEnumRange` to `strutils` that parses enum but considering only range of enum values. Used in compiler internals.
+  Useful to deal with enum values having the same string representation.
 
 ## Language changes
 
