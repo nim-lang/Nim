@@ -72,7 +72,7 @@ type
 
   ImportedModule* = object
     m: CachedModule
-    isImportNil*: bool
+    rawImport*: bool # "from X import nil"
     exceptSet*: IntSet
 
   PContext* = ref TContext
@@ -81,7 +81,7 @@ type
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    importTable*: PScope       # scope for all imported symbols
+    importTable*: Table[PIdent, ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
