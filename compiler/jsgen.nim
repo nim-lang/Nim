@@ -1736,7 +1736,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode: string
     varName = mangleName(p.module, v)
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
-    useGlobalPragmas = sfGlobal in v.flags and (sfPure in v.flags or sfThread in v.flags)
+    useGlobalPragmas = sfGlobal in v.flags and ({sfPure, sfThread} * v.flags != {})
 
   if v.constraint.isNil:
     if useReloadingGuard:
