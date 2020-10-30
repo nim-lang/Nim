@@ -1,3 +1,5 @@
+import macros
+
 block:
   template init(initHook: proc(s: string)) =
     proc dostuff =
@@ -7,8 +9,6 @@ block:
 
   init do(s: string):
     echo s
-
-import macros
 
 block:
   macro init(initHook: proc(s: string)) =
