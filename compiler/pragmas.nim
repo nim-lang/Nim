@@ -1110,9 +1110,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           sym.typ.kind = tyUncheckedArray
       of wUnion:
-        noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfUnion)
+        if c.config.backend == backendJs:
+          localError(c.config, it.info, "`{.union.}` is not implemented for js backend.")
+        else:
+          noVal(c, it)
+          if sym.typ == nil: invalidPragma(c, it)
+          else: incl(sym.typ.flags, tfUnion)
       of wRequiresInit:
         noVal(c, it)
         if sym.kind == skField:

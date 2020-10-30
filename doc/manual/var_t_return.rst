@@ -17,4 +17,4 @@ then it has to be derived from the routine's first parameter:
 
 In other words, the lifetime of what ``result`` points to is attached to the
 lifetime of the first parameter and that is enough knowledge to verify
-memory safety at the callsite.
+memory safety at the call site.

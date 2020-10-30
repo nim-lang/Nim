@@ -88,7 +88,7 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
     else:
       cstderr.rawWrite "has dispose!\n"
 
-  nimRawDispose(p)
+  nimRawDispose(p, desc.align)
 
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)

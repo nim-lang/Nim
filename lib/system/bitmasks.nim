@@ -15,7 +15,11 @@ const
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
-  MemAlign = 16 # also minimal allocatable memory block
+  MemAlign = # also minimal allocatable memory block
+    when defined(useMalloc):
+      when defined(amd64): 16 
+      else: 8
+    else: 16
 
   BitsPerPage = PageSize div MemAlign
   UnitsPerPage = BitsPerPage div (sizeof(int)*8)
