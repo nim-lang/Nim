@@ -27,6 +27,7 @@
 ## languages.
 ##
 ## For functional style programming you have different options at your disposal:
+## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
 ## * pass `anonymous proc<manual.html#procedures-anonymous-procs>`_
 ## * import `sugar module<sugar.html>`_  and use
 ##   `=> macro<sugar.html#%3D>.m,untyped,untyped>`_
@@ -45,8 +46,14 @@
 ##   let
 ##     foo = toSeq(1..10).map(x => x*2).filter(x => x mod 6 != 0)
 ##     bar = toSeq(1..10).mapIt(it*2).filterIt(it mod 6 != 0)
+##     baz = collect(newSeq):
+##       for i in 1..10:
+##         let j = 2*i
+##         if j mod 6 != 0:
+##           j
 ##
 ##   doAssert foo == bar
+##   doAssert foo == baz
 ##   echo foo                  # @[2, 4, 8, 10, 14, 16, 20]
 ##
 ##   echo foo.any(x => x > 17) # true
@@ -361,7 +368,11 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ## Since the input is not modified you can use it to
   ## transform the type of the elements in the input container.
   ##
+  ## Instead of using `map` and `filter`, consider using the `collect` macro
+  ## from the `sugar` module.
+  ##
   ## See also:
+  ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
   ##
@@ -424,7 +435,11 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (function that returns a `bool`).
   ##
+  ## Instead of using `map` and `filter`, consider using the `collect` macro
+  ## from `sugar` module.
+  ##
   ## See also:
+  ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `fliter proc<#filter,openArray[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
@@ -444,7 +459,11 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ## Returns a new sequence with all the items of `s` that fulfilled the
   ## predicate `pred` (function that returns a `bool`).
   ##
+  ## Instead of using `map` and `filter`, consider using the `collect` macro
+  ## from `sugar` module.
+  ##
   ## See also:
+  ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
   ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_ for the in-place version
@@ -560,7 +579,11 @@ template filterIt*(s, pred: untyped): untyped =
   ## the predicate needs to be an expression using the ``it`` variable
   ## for testing, like: ``filterIt("abcxyz", it == 'x')``.
   ##
+  ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
+  ## from `sugar` module.
+  ##
   ## See also:
+  ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `fliter proc<#filter,openArray[T],proc(T)>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
   ##
@@ -916,7 +939,11 @@ template mapIt*(s: typed, op: untyped): untyped =
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression.
   ##
+  ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
+  ## from `sugar` module.
+  ##
   ## See also:
+  ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
   ##
