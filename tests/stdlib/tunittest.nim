@@ -176,3 +176,7 @@ when defined(testing):
       check false == matchFilter("suite1", "foo", "*ite2::")
       check matchFilter("suite1", "q**we::foo", "q**we::foo")
       check matchFilter("suite1", "a::b*c::d*e", "a::b*c::d*e")
+
+block:
+  func double(n: float): float = n * 2
+  test "double -2": check(double(-2) == -4)

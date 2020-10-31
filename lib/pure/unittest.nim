@@ -644,7 +644,6 @@ macro check*(conditions: untyped): untyped =
           if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr}:
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
-            result.check[i] = callVar
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
