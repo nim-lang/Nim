@@ -108,7 +108,7 @@ Example "template" **to edit** and write a Testament unittest:
     # output.
     sortoutput: true
 
-    # Each line in the stringgiven here appear in the same order in the
+    # Each line in the string given here appears in the same order in the
     # compiler output, but there may be more lines that appear before, after, or
     # in between them.
     nimout: '''
