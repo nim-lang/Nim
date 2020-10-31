@@ -1927,7 +1927,6 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     genReprAux(p, n, r, "reprJSONStringify")
   else:
     genReprAux(p, n, r, "reprAny", genTypeInfo(p, t))
-  echo r.kind
   r.kind = resExpr
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
