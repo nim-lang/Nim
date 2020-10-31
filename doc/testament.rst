@@ -9,12 +9,15 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default Testament looks for test files on ``"./tests/*.nim"``,
-you can overwrite this pattern glob using ``pattern <glob>``,
-the default working directory path can be changed using ``--directory:"folder/subfolder/"``.
+By default Testament looks for test files on ``"./tests/*.nim"``.
+You can overwrite this pattern glob using ``pattern <glob>``.
+The default working directory path can be changed using
+``--directory:"folder/subfolder/"``.
 
-Testament uses the nim compiler on ``PATH`` you can change that using ``--nim:"folder/subfolder/nim"``,
-running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on ``PATH``.
+Testament uses the ``nim`` compiler on ``PATH``.
+You can change that using ``--nim:"folder/subfolder/nim"``.
+Running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on
+``PATH``.
 
 
 Options
@@ -47,8 +50,6 @@ not very useful for production, but easy to understand:
   $ testament r test0
     PASS: tests/test0.nim C                                       ( 0.2 sec)
 
-  $
-
 
 Running all tests from a directory
 ==================================
@@ -56,6 +57,12 @@ Running all tests from a directory
 .. code::
 
   $ testament pattern "tests/*.nim"
+
+To recursively search for all tests in a directory, use
+
+.. code::
+
+  $ testament pattern "tests/**/*.nim"
 
 
 HTML Reports
@@ -78,32 +85,78 @@ Example "template" **to edit** and write a Testament unittest:
 
   discard """
 
-    action: "run"     # What to do, one of "compile" OR "run".
+    # What actions to expect completion on.
+    # Options:
+    #   "compile": expect successful compilation
+    #   "run": expect successful compilation and execution
+    #   "reject": expect failed compilation
+    action: "run"
 
-    exitcode: 0       # This is the Exit Code the test should return, zero typically.
+    # The exit code that the test is expected to return. Typically, the default
+    # value of 0 is fine. Note that if the test will be run by valgrind, then
+    # the test will exit with either a code of 0 on success or 1 on failure.
+    exitcode: 0
 
-    output: ""        # This is the Standard Output the test should print, if any.
+    # Provide an `output` string to assert that the test prints to standard out
+    # exatly the expected string. Provide an `outputsub` string to assert that
+    # the string given here is a substring of the standard out output of the
+    # test.
+    output: ""
+    outputsub: ""
 
-    input:  ""        # This is the Standard Input the test should take, if any.
+    # Whether to sort the output lines before comparing them to the desired
+    # output.
+    sortoutput: true
 
-    errormsg: ""      # Error message the test should print, if any.
+    # Each line in the stringgiven here appear in the same order in the
+    # compiler output, but there may be more lines that appear before, after, or
+    # in between them.
+    nimout: '''
+  a very long,
+  multi-line
+  string'''
 
-    batchable: true   # Can be run in batch mode, or not.
+    # This is the Standard Input the test should take, if any.
+    input: ""
 
-    joinable: true    # Can be run Joined with other tests to run all togheter, or not.
+    # Error message the test should print, if any.
+    errormsg: ""
 
+    # Can be run in batch mode, or not.
+    batchable: true
+
+    # Can be run Joined with other tests to run all togheter, or not.
+    joinable: true
+
+    # On Linux 64-bit machines, whether to use Valgrind to check for bad memory
+    # accesses or memory leaks. On other architectures, the test will be run
+    # as-is, without Valgrind.
+    # Options:
+    #   true: run the test with Valgrind
+    #   false: run the without Valgrind
+    #   "leaks": run the test with Valgrind, but do not check for memory leaks
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
-    cmd: "nim c -r $file" # Command the test should use to run.
+    # Command the test should use to run. If left out or an empty string is
+    # provided, the command is taken to be:
+    # "nim $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    # You can use the $target, $options, and $file placeholders in your own
+    # command, too.
+    cmd: "nim c -r $file"
 
-    maxcodesize: 666  # Maximum generated temporary intermediate code file size for the test.
+    # Maximum generated temporary intermediate code file size for the test.
+    maxcodesize: 666
 
-    timeout: 666      # Timeout microseconds to run the test.
+    # Timeout seconds to run the test. Fractional values are supported.
+    timeout: 1.5
 
-    target: "c js"    # Targets to run the test into (C, C++, JavaScript, etc).
+    # Targets to run the test into (C, C++, JavaScript, etc).
+    target: "c js"
 
-    disabled: "bsd"   # Disable the test by condition, here BSD is disabled just as an example.
-    disabled: "win"   # Can disable multiple OSes at once
+    # Conditions that will skip this test. Use of multiple "disabled" clauses
+    # is permitted.
+    disabled: "bsd"   # Can disable OSes...
+    disabled: "win"
     disabled: "32bit" # ...or architectures
     disabled: "i386"
     disabled: "azure" # ...or pipeline runners
