@@ -2250,6 +2250,7 @@ proc semSizeof(c: PContext, n: PNode): PNode =
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
   result = n
+  if result.len > 1 and result[1].kind == nkEarlySemArg: result[1] = result[1][0]
   case s.magic # magics that need special treatment
   of mAddr:
     markUsed(c, n.info, s)
@@ -2285,7 +2286,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     result = semQuoteAst(c, n)
   of mAstToStr:
-    if n[1].kind == nkEarlySemArg: n[1] = n[1][0]
     markUsed(c, n.info, s)
     checkSonsLen(n, 2, c.config)
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n, c.graph)
