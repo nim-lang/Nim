@@ -641,7 +641,7 @@ macro check*(conditions: untyped): untyped =
           let paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
-          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr}:
+          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar}:
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar
