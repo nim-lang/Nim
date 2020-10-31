@@ -10,12 +10,12 @@
 ## The ``ordsets`` module implements an efficient `Ordinal` set implemented as a
 ## `sparse bit set`:idx:.
 ##
-## Supported `A: Ordinal` types include enums and distincts with int base.
+## Supports any Ordinal type.
 ##
 ## **Note**: Currently the assignment operator ``=`` for ``OrdSet[A]``
 ## performs some rather meaningless shallow copy. Since Nim currently does
 ## not allow the assignment operator to be overloaded, use `assign proc
-## <#assign,OrdinalSet[A],OrdinalSet[A]>`_ to get a deep copy.
+## <#assign,OrdSet[A],OrdSet[A]>`_ to get a deep copy.
 ##
 ## **See also:**
 ## * `sets module <sets.html>`_ for more general hash sets
@@ -45,7 +45,7 @@ type
 
   TrunkSeq = seq[PTrunk]
 
-  ## An efficient set of `Ordinal` implemented as a sparse bit set.
+  ## An efficient set of `Ordinal` types implemented as a sparse bit set.
   OrdSet*[A: Ordinal] = object
     elems: int           # only valid for small numbers
     counter, max: int
@@ -64,7 +64,7 @@ proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   perturb = cast[Hash](perturb2)
   result = ((5*h) + 1 + perturb) and maxHash
 
-proc intSetGet[A](t: OrdSet[A], key: int): PTrunk =
+proc ordSetGet[A](t: OrdSet[A], key: int): PTrunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -125,7 +125,7 @@ proc exclImpl[A](s: var OrdSet[A], key: int) =
         dec s.elems
         return
   else:
-    var t = intSetGet(s, key shr TrunkShift)
+    var t = ordSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
       t.bits[u shr IntShift] = t.bits[u shr IntShift] and
@@ -135,7 +135,7 @@ template dollarImpl(): untyped =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
-    result.add($(ord(key)))
+    result.add $key
   result.add("}")
 
 iterator items*[A](s: OrdSet[A]): A {.inline.} =
@@ -170,8 +170,8 @@ proc initOrdSet*[A]: OrdSet[A] =
     var a = initOrdSet[int]()
     assert len(a) == 0
 
-    type id = distinct int
-    var ids = initOrdSet[id]()
+    type Id = distinct int
+    var ids = initOrdSet[Id]()
     ids.incl(3.id)
     #assert 3.id in ids #Type safe: `3 in ids` wouldn't compile
 
@@ -209,7 +209,7 @@ proc contains*[A](s: OrdSet[A], key: A): bool =
     for i in 0..<s.elems:
       if s.a[i] == ord(key): return true
   else:
-    var t = intSetGet(s, `shr`(ord(key), TrunkShift))
+    var t = ordSetGet(s, `shr`(ord(key), TrunkShift))
     if t != nil:
       var u = ord(key) and TrunkMask
       result = (t.bits[u shr IntShift] and
@@ -310,7 +310,7 @@ proc containsOrIncl*[A](s: var OrdSet[A], key: A): bool =
     incl(s, key)
     result = false
   else:
-    var t = intSetGet(s, `shr`(ord(key), TrunkShift))
+    var t = ordSetGet(s, `shr`(ord(key), TrunkShift))
     if t != nil:
       var u = ord(key) and TrunkMask
       result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
@@ -606,177 +606,3 @@ proc `$`*[A](s: OrdSet[A]): string =
   ##
   ## Converts the set `s` to a string, mostly for logging and printing purposes.
   dollarImpl()
-
-
-
-when isMainModule:
-  import sequtils, algorithm
-
-  var y = initOrdSet[int]()
-  y.incl(1)
-  y.incl(2)
-  y.incl(7)
-  y.incl(1056)
-
-  y.incl(1044)
-  y.excl(1044)
-
-  assert y == [1, 2, 7, 1056].toOrdSet
-
-  assert y.containsOrIncl(888) == false
-  assert 888 in y
-  assert y.containsOrIncl(888) == true
-
-  assert y.missingOrExcl(888) == false
-  assert 888 notin y
-  assert y.missingOrExcl(888) == true
-
-  template genericTests(typ: typedesc, x: typed) =
-    block:
-      proc typSeq(s: seq[int]): seq[`typ`] = s.map(proc (i: int): `typ` = `typ`(i))
-      x.incl(`typ`(1))
-      x.incl(`typ`(2))
-      x.incl(`typ`(7))
-      x.incl(`typ`(1056))
-
-      x.incl(`typ`(1044))
-      x.excl(`typ`(1044))
-
-      assert x == typSeq(@[1, 2, 7, 1056]).toOrdSet
-
-      assert x.containsOrIncl(`typ`(888)) == false
-      assert `typ`(888) in x
-      assert x.containsOrIncl(`typ`(888)) == true
-
-      assert x.missingOrExcl(`typ`(888)) == false
-      assert `typ`(888) notin x
-      assert x.missingOrExcl(`typ`(888)) == true
-
-      var xs = toSeq(items(x))
-      xs.sort(cmp[`typ`])
-      assert xs == typSeq(@[1, 2, 7, 1056])
-
-      var y: OrdSet[`typ`]
-      assign(y, x)
-      var ys = toSeq(items(y))
-      ys.sort(cmp[`typ`])
-      assert ys == typSeq(@[1, 2, 7, 1056])
-
-      assert x == y
-
-      var z: OrdSet[`typ`]
-      for i in 0..1000:
-        incl z, `typ`(i)
-        assert z.len() == i+1
-      for i in 0..1000:
-        assert z.contains(`typ`(i))
-
-      var w = initOrdSet[`typ`]()
-      w.incl(`typ`(1))
-      w.incl(`typ`(4))
-      w.incl(`typ`(50))
-      w.incl(`typ`(1001))
-      w.incl(`typ`(1056))
-
-      var xuw = x.union(w)
-      var xuws = toSeq(items(xuw))
-      xuws.sort(cmp)
-      assert xuws == typSeq(@[1, 2, 4, 7, 50, 1001, 1056])
-
-      var xiw = x.intersection(w)
-      var xiws = toSeq(items(xiw))
-      xiws.sort(cmp)
-      assert xiws == @[`typ`(1), `typ`(1056)]
-
-      var xdw = x.difference(w)
-      var xdws = toSeq(items(xdw))
-      xdws.sort(cmp[`typ`])
-      assert xdws == @[`typ`(2), `typ`(7)]
-
-      var xsw = x.symmetricDifference(w)
-      var xsws = toSeq(items(xsw))
-      xsws.sort(cmp[`typ`])
-      assert xsws == typSeq(@[2, 4, 7, 50, 1001])
-
-      x.incl(w)
-      xs = toSeq(items(x))
-      xs.sort(cmp[`typ`])
-      assert xs == typSeq(@[1, 2, 4, 7, 50, 1001, 1056])
-
-      assert w <= x
-
-      assert w < x
-
-      assert(not disjoint(w, x))
-
-      var u = initOrdSet[`typ`]()
-      u.incl(`typ`(3))
-      u.incl(`typ`(5))
-      u.incl(`typ`(500))
-      assert disjoint(u, x)
-
-      var v = initOrdSet[`typ`]()
-      v.incl(`typ`(2))
-      v.incl(`typ`(50))
-
-      x.excl(v)
-      xs = toSeq(items(x))
-      xs.sort(cmp[`typ`])
-      assert xs == typSeq(@[1, 4, 7, 1001, 1056])
-
-      proc bug12366 =
-        var
-
-          x = initOrdSet[`typ`]()
-          y = initOrdSet[`typ`]()
-          n = 3584
-
-        for i in 0..n:
-          x.incl(`typ`(i))
-          y.incl(`typ`(i))
-
-        let z = symmetricDifference(x, y)
-        doAssert z.len == 0
-        doAssert $z == "{}"
-
-      bug12366()
-
-  var legacy = initOrdSet[int]()
-  genericTests(int, legacy)
-
-  var intGenericInit = initOrdSet[int]()
-  genericTests(int, intGenericInit)
-
-  # Test distincts
-  type id = distinct int
-  proc cmp(a: id, b: id): int {.borrow.}
-  proc `==`(a: id, b: id): bool {.borrow.}
-  proc `<`(a: id, b: id): bool {.borrow.}
-
-  var idSet = initOrdSet[id]()
-  genericTests(id, idSet)
-
-  assert union(idSet, initOrdSet[id]()) == idSet
-
-  #Should fail
-  #var nonSupportedTypeParam: OrdSet[string]
-
-  # mixing sets of different types doesn't compile
-  #assert union(idSet, initOrdSet[int]()) == idSet # KO! typesafe
-
-  #Should fail
-  type nonIntDistinct = distinct string
-  #initOrdSet[nonIntDistinct]().incl("not typesafe") #KO!
-
-  # Test enums
-  type enumABCD = enum A, B, C, D
-  var letterSet = initOrdSet[enumABCD]()
-
-  for x in [A, C]:
-    letterSet.incl(x)
-
-  assert A in letterSet
-  assert B notin letterSet
-  assert C in letterSet
-  assert D notin letterSet
-
