@@ -460,6 +460,13 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_
@@ -473,6 +480,17 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('a', 99) == 5
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
+
+    # An example of accidentally creating a copy
+    var t = initTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
 
   mgetOrPutImpl(enlarge)
 
@@ -944,6 +962,12 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
@@ -958,6 +982,16 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newTable
 
+    # An example of accidentally creating a copy
+    var t = newTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: TableRef[A, B]): int =
