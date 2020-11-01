@@ -683,6 +683,8 @@ proc genNewSeq(c: PCtx; n: PNode) =
 
 proc genNewSeqOfCap(c: PCtx; n: PNode; dest: var TDest) =
   let t = n.typ
+  if dest < 0:
+    dest = c.getTemp(n.typ)
   let tmp = c.getTemp(n[1].typ)
   c.gABx(n, opcLdNull, dest, c.genType(t))
   c.gABx(n, opcLdImmInt, tmp, 0)
