@@ -1,5 +1,5 @@
 discard """
-  nimout: "t8821.nim(6, 3) Error: Your case statement contains too many branches, consider using if/else instead!"
+  errormsg: "Your case statement contains too many branches, consider using if/else instead!"
 """
 
 proc isInt32(i: int): bool =
