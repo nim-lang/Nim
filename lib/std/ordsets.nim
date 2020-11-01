@@ -172,8 +172,7 @@ proc initOrdSet*[A]: OrdSet[A] =
 
     type Id = distinct int
     var ids = initOrdSet[Id]()
-    ids.incl(3.id)
-    #assert 3.id in ids #Type safe: `3 in ids` wouldn't compile
+    ids.incl(3.Id)
 
   result = OrdSet[A](
     elems: 0,
