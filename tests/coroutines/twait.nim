@@ -1,4 +1,5 @@
 discard """
+  matrix: "--gc:refc; --gc:arc; --gc:orc"
   output: "Exit 1\nExit 2"
   target: "c"
 """

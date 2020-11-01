@@ -1,4 +1,5 @@
 discard """
+  matrix: "--gc:refc; --gc:arc; --gc:orc"
   target: "c"
 """
 
