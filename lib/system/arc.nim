@@ -226,8 +226,6 @@ template tearDownForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
   discard
 
-proc nimGC_setStackBottom*(theStackBottom: pointer) = 
-  discard
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}

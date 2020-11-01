@@ -32,7 +32,10 @@ import lists
 include system/timers
 
 const defaultStackSize = 512 * 1024
-const notOrcArc = not (defined(gcOrc) or defined(gcArc))
+const useOrcArc = defined(gcOrc) or defined(gcArc)
+
+when useOrcArc:
+  proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
 
 proc GC_addStack(bottom: pointer) {.cdecl, importc.}
 proc GC_removeStack(bottom: pointer) {.cdecl, importc.}
@@ -186,7 +189,7 @@ proc initialize() =
     ctx.coroutines = initDoublyLinkedList[CoroutinePtr]()
     ctx.loop = Coroutine()
     ctx.loop.state = CORO_EXECUTING
-    when notOrcArc:
+    when not useOrcArc:
       ctx.ncbottom = GC_getActiveStack()
     when coroBackend == CORO_BACKEND_FIBERS:
       ctx.loop.execContext = ConvertThreadToFiberEx(nil, FIBER_FLAG_FLOAT_SWITCH)
@@ -197,7 +200,7 @@ proc switchTo(current, to: CoroutinePtr) =
   ## Switches execution from `current` into `to` context.
   to.lastRun = getTicks()
   # Update position of current stack so gc invoked from another stack knows how much to scan.
-  when notOrcArc:
+  when not useOrcArc:
     GC_setActiveStack(current.stack.bottom)
   nimGC_setStackBottom(current.stack.bottom)
   var frame = getFrameState()
@@ -221,7 +224,7 @@ proc switchTo(current, to: CoroutinePtr) =
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
   setFrameState(frame)
-  when notOrcArc:
+  when not useOrcArc:
     GC_setActiveStack(current.stack.bottom)
   nimGC_setStackBottom(ctx.ncbottom)
 
@@ -245,7 +248,7 @@ proc runCurrentTask() =
     # have to set active stack here as well. GC_removeStack() has to be called in main loop
     # because we still need stack available in final suspend(0) call from which we will not
     # return.
-    when notOrcArc:
+    when not useOrcArc:
       GC_addStack(sp)
       # Activate current stack because we are executing in a new coroutine.
       GC_setActiveStack(sp)
@@ -317,7 +320,7 @@ proc run*() =
         next = ctx.current.next
       current.reference.coro = nil
       ctx.coroutines.remove(ctx.current)
-      when notOrcArc:
+      when not useOrcArc:
         GC_removeStack(current.stack.bottom)
       when coroBackend == CORO_BACKEND_FIBERS:
         DeleteFiber(current.execContext)
