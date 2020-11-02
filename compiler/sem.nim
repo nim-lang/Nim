@@ -472,7 +472,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
   template evalMacroCallAux: untyped =
-    result = evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
+    evalMacroCall(c.module, c.idgen, c.graph, c.templInstCounter, n, nOrig, sym)
 
   proc evalAux(): PNode = # MOVE
     # c.p.wasForwarded = proto != nil

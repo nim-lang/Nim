@@ -2222,7 +2222,7 @@ proc semAlias2(c: PContext, n: PNode): PNode =
     return nil
 
   let sc = symChoice(c, nodeOrigin, sym, scClosed)
-  let sym2 = newSym(skAliasGroup, sym.name, owner = c.getCurrOwner, info = n.info)
+  let sym2 = newSym(skAliasGroup, sym.name, nextId c.idgen, owner = c.getCurrOwner, info = n.info)
   sym2.nodeAliasGroup = sc
 
   result = newSymNode(sym2)
