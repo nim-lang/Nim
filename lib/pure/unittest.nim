@@ -99,7 +99,7 @@
 ## supporting checkpoints(Namely assigns expressions to variables).
 ## Some type conversions are not supported.
 ## For example `check 4.0 == 2 + 2` won't work. But `doAssert 4.0 == 2 + 2` works.
-## Make sure the same type on both sides of the operator(such as `=`, `==`, `>=` and so on).
+## Make sure the same type on both sides of the operator(such as `==`, `>=` and so on).
 ##
 
 import std/private/since
