@@ -69,12 +69,12 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc addMissing(c: var Context; p: PSym) =
   if p.itemId.module == c.thisModule:
-    if not p.itemId in c.symMap:
+    if p.itemId notin c.symMap:
       c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
   if p.uniqueId.module == c.thisModule:
-    if not p.uniqueId in c.typeMap:
+    if p.uniqueId notin c.typeMap:
       c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
@@ -88,7 +88,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   if result != TypeId(-1): return
 
   ir.sh.types.add:
-    PackedType(kind: t.kind, flags: t.flags, info: info, callConv; t.callConv,
+    PackedType(kind: t.kind, flags: t.flags, info: info, callConv: t.callConv,
                size: t.size, align: t.align, nonUniqueId: t.itemId,
                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
                node: newTreeFrom(ir))
@@ -125,7 +125,7 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
   # short-circuit if we already have the SymId
-  result = getOrDefault(c.symMap, s.itemId.item, SymId(-1))
+  result = getOrDefault(c.symMap, s.itemId, SymId(-1))
   if result != SymId(-1): return
 
   ir.sh.syms.add:

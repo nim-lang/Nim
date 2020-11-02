@@ -1971,3 +1971,9 @@ proc toHumanStr*(kind: TTypeKind): string =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
+
+proc hash*(id: ItemId): Hash =
+  var h: Hash = 0
+  h = h !& hash(id.module)
+  h = h !& hash(id.item)
+  result = !$h
