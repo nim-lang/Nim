@@ -19,8 +19,8 @@ type
     filenames: Table[FileIndex, LitId]
     pendingTypes: seq[PType]
     pendingSyms: seq[PSym]
-    typeMap: Table[int32, TypeId]  # ItemId.item -> TypeId
-    symMap: Table[int32, SymId]    # ItemId.item -> SymId
+    typeMap: Table[ItemId, TypeId]  # ItemId.item -> TypeId
+    symMap: Table[ItemId, SymId]    # ItemId.item -> SymId
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
@@ -69,23 +69,22 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc addMissing(c: var Context; p: PSym) =
   if p.itemId.module == c.thisModule:
-    if not p.itemId.item in c.symMap:
+    if not p.itemId in c.symMap:
       c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
   if p.uniqueId.module == c.thisModule:
-    if not p.uniqueId.item in c.typeMap:
+    if not p.uniqueId in c.typeMap:
       c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
+  #assert t.itemId.module == c.thisModule   # should we even be here?
   template info: PackedLineInfo =
     # too bad the most variant part of the operation comes first...
     (if t.n.isNil: TLineInfo() else: t.n.info).toPackedInfo(ir, c)
 
-  assert t.itemId.module == c.thisModule   # should we even be here?
-
   # short-circuit if we already have the TypeId
-  result = getOrDefault(c.typeMap, t.uniqueId.item, TypeId(-1))
+  result = getOrDefault(c.typeMap, t.uniqueId, TypeId(-1))
   if result != TypeId(-1): return
 
   ir.sh.types.add:
@@ -94,7 +93,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
                node: newTreeFrom(ir))
   result = TypeId(ir.sh.types.high)
-  c.typeMap[t.itemId.item] = result
+  c.typeMap[t.itemId] = result
   template p: PackedType = ir.sh.types[int result]
 
   for op, s in pairs t.attachedOps:
@@ -122,7 +121,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
-  assert s.itemId.module == c.thisModule   # should we even be here?
+  #assert s.itemId.module == c.thisModule   # should we even be here?
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
   # short-circuit if we already have the SymId
@@ -135,7 +134,7 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
               name: s.name.s.toLitId(ir, c),
               ast: newTreeFrom(ir), constraint: newTreeFrom(ir))
   result = SymId(ir.sh.syms.high)
-  c.symMap[s.itemId.item] = result
+  c.symMap[s.itemId] = result
   template p: PackedSym = ir.sh.syms[int result]
 
   if s.kind in {skLet, skVar, skField, skForVar}:
