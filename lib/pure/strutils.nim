@@ -951,11 +951,11 @@ proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.no
     # handle negative overflow
     if n == 0 and handleNegative: n = not(BiggestUInt 0)
 
-proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+proc toHex*[T: SomeInteger](x: T, len: Positive): string {.noSideEffect.} =
   ## Converts `x` to its hexadecimal representation.
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated.
+  ## ``0x`` is generated. `x` is treated as an unsigned value.
   runnableExamples:
     let
       a = 62'u64
@@ -963,34 +963,7 @@ proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  toHexImpl(x, len, false)
-
-proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
-  rtl, extern: "nsuToHex".} =
-  ## Converts `x` to its hexadecimal representation.
-  ##
-  ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated. `x` is treated as an unsigned value.
-  runnableExamples:
-    let
-      a = 62
-      b = 4097
-      c = -8
-    doAssert a.toHex(3) == "03E"
-    doAssert b.toHex(3) == "001"
-    doAssert b.toHex(4) == "1001"
-    doAssert c.toHex(6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
-
-proc toHex*(x: int, len: Positive): string {.noSideEffect.} =
-  ## Converts `x` to its hexadecimal representation.
-  ##
-  ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated. `x` is treated as an unsigned value.
-  runnableExamples:
     doAssert toHex(62, 3) == "03E"
-    doAssert toHex(4097, 3) == "001"
-    doAssert toHex(4097, 4) == "1001"
     doAssert toHex(-8, 6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
