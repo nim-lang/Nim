@@ -106,9 +106,9 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   for kid in items t.sons:
     p.types.add kid.toPackedType(ir, c)
 
-  for _, s in items t.methods:
+  for i, s in items t.methods:
     c.addMissing s
-    p.methods.add s.itemId
+    p.methods.add (i, s.itemId)
 
   if not t.sym.isNil:
     c.addMissing t.sym

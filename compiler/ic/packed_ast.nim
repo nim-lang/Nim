@@ -88,7 +88,7 @@ type
     flags*: TTypeFlags
     types*: seq[TypeId]
     node*: PackedTree
-    methods*: seq[ItemId]
+    methods*: seq[(int, ItemId)]
     nodeflags*: TNodeFlags
     info*: PackedLineInfo
     sym*: ItemId
