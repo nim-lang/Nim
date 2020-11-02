@@ -76,8 +76,7 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
-import macros # for `parseEnum`
-import std/private/since
+import std/enumutils
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -1292,62 +1291,6 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
-  result = nnkOfBranch.newTree(
-    newLit s,
-    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
-  )
-
-macro genEnumStmt(typ: typedesc, argSym: typed, default: typed, userMin, userMax: static[int]): untyped =
-  # generates a case stmt, which assigns the correct enum field given
-  # a normalized string comparison to the `argSym` input.
-  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
-  # `of "Foo".nimIdentNormalize: Foo`.
-  # This will fail, if the enum is not defined at top level (e.g. in a block).
-  # Thus we check for the field value of the (possible holed enum) and convert
-  # the integer value to the generic argument `typ`.
-  let typ = typ.getTypeInst[1]
-  let impl = typ.getImpl[2]
-  expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
-  # stores all processed field strings to give error msg for ambiguous enums
-  var foundFields: seq[string] = @[]
-  var fStr = "" # string of current field
-  var fNum = BiggestInt(0) # int value of current field
-  for f in impl:
-    case f.kind
-    of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent: fStr = f.strVal
-    of nnkEnumFieldDef:
-      case f[1].kind
-      of nnkStrLit: fStr = f[1].strVal
-      of nnkTupleConstr:
-        fStr = f[1][1].strVal
-        fNum = f[1][0].intVal
-      of nnkIntLit:
-        fStr = f[0].strVal
-        fNum = f[1].intVal
-      else: error("Invalid tuple syntax!", f[1])
-    else: error("Invalid node for enum type!", f)
-    # add field if string not already added
-    if fNum >= userMin and fNum <= userMax:
-      fStr = nimIdentNormalize(fStr)
-      if fStr notin foundFields:
-        result.add addOfBranch(fStr, newLit fNum, typ)
-        foundFields.add fStr
-      else:
-        error("Ambiguous enums cannot be parsed, field " & $fStr &
-          " appears multiple times!", f)
-    inc fNum
-  # finally add else branch to raise or use default
-  if default == nil:
-    let raiseStmt = quote do:
-      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
-    result.add nnkElse.newTree(raiseStmt)
-  else:
-    expectKind(default, nnkSym)
-    result.add nnkElse.newTree(default)
-
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
@@ -1366,7 +1309,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumStmt(T, s, default = nil, ord(low(T)), ord(high(T)))
+  genEnumStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize, nimIdentNormalize)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
@@ -1385,52 +1328,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumStmt(T, s, default, ord(low(T)), ord(high(T)))
-
-proc parseEnumRange*[T: enum](s: string, a, b: static[T]): T {.since: (1, 5).} =
-  ## Parses an enum ``T`` but considers only enum values in `a` .. `b` range,
-  ## range should be known at compile time.
-  ## This errors at compile time, if the given enum
-  ## type contains multiple fields with the same string value.
-  ##
-  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
-  ## done in a style insensitive way.
-  runnableExamples:
-    type
-      MyEnum = enum
-        hintA = "hintOne",
-        hintB = "hintTwo",
-        warnA = "warnOne",
-        warnB = "warnTwo"
-
-    doAssert parseEnumRange("hintOne", hintA, hintB) == hintA
-    doAssert parseEnumRange("hintTwo", hintA, hintB) == hintB
-    doAssertRaises(ValueError):
-      echo parseEnumRange("hintOne", warnA, warnB)
-
-  genEnumStmt(T, s, default = nil, ord(a), ord(b))
-
-
-proc parseEnumRange*[T: enum](s: string, a, b: static[T], default: T): T {.since: (1, 5).} =
-  ## Parses an enum ``T``,  but considers only enum values in `a` .. `b` range,
-  ## range should be known at compile time. 
-  ## This errors at compile time, if the given enum
-  ## type contains multiple fields with the same string value.
-  ##
-  ## Uses `default` for an invalid value in `s`. The comparison is done in a
-  ## style insensitive way.
-  runnableExamples:
-    type
-      MyEnum = enum
-        unknown,
-        hintA = "hintOne",
-        hintB = "hintTwo",
-        warnA = "warnOne",
-        warnB = "warnTwo"
-
-    doAssert parseEnumRange("warnOne", hintA, hintB, unknown) == unknown
-    doAssert parseEnumRange("hintTwo", hintA, hintB, unknown) == hintB
-  genEnumStmt(T, s, default, ord(a), ord(b))
+  genEnumStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize, nimIdentNormalize)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
@@ -3132,23 +3030,6 @@ when isMainModule:
     doAssert parseEnum[MyEnum]("enu_D") == enuD
 
     doAssert parseEnum("invalid enum value", enC) == enC
-
-    type
-      MyMsgEnum = enum
-        unknown,
-        hintA = "hintOne",
-        hintB = "hintTwo",
-        warnA = "warnOne",
-        warnB = "warnTwo"
-
-    doAssert parseEnumRange("hintOne", hintA, hintB) == hintA
-    doAssert parseEnumRange("hintTwo", hintA, hintB) == hintB
-    doAssertRaises(ValueError):
-      echo parseEnumRange("hintOne", warnA, warnB)
-
-    doAssert parseEnumRange("warnOne", hintA, hintB, unknown) == unknown
-    doAssert parseEnumRange("hintTwo", hintA, hintB, unknown) == hintB
-
 
     doAssert center("foo", 13) == "     foo     "
     doAssert center("foo", 0) == "foo"

@@ -13,8 +13,6 @@
 # does not support strings. Without this the code would
 # be slow and unreadable.
 
-import strutils
-
 type
   TSpecialWord* = enum
     wInvalid = "",
@@ -125,10 +123,21 @@ const
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
-when not declared(parseEnumRange):
-  proc parseEnumRange*[T:enum](s: string, a, b: static[T], default: T): T {.deprecated.} = 
-    # used only for compiler bootstrapping
+
+const enumUtilsExit = compiles:
+  import std/enumutils
+
+when enumUtilsExit:
+  from std/enumutils import genEnumStmt
+  from strutils import normalize
+  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =  
+    genEnumStmt(T, s, default, ord(a), ord(b), normalize, normalize)
+
+else:
+  from strutils import cmpIgnoreStyle
+  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T {.deprecated.} =  
+    # used for compiler bootstrapping only
     for i in a..b:
       if cmpIgnoreStyle($i, s) == 0:
         return i
-    result = default
+    result = default 
