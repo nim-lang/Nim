@@ -22,6 +22,7 @@
 - Added std/enumutils module containing `genEnumCaseStmt` macro that generates case statement to parse string to enum.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to [nimble](https://github.com/nim-lang/iup).
+- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
 
 ## Language changes
 
