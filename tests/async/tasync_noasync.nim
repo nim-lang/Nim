@@ -1,7 +1,7 @@
 discard """
   errormsg: "'yield' only allowed in an iterator"
   cmd: "nim c $file"
-  file: "tasync_noasync.nim"
+  file: "asyncmacro.nim"
 """
 import async
 
