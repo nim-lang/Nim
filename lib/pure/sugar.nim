@@ -207,6 +207,8 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
   for arg in locals:
+    if arg.strVal == "result":
+      error("The variable name cannot be `result`!", arg)
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
