@@ -84,6 +84,7 @@ type
 
   PackedType* = object
     kind*: TTypeKind
+    callConv*: TCallingConvention
     nodekind*: TNodeKind
     flags*: TTypeFlags
     types*: seq[TypeId]

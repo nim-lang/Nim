@@ -89,7 +89,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   if result != TypeId(-1): return
 
   ir.sh.types.add:
-    PackedType(kind: t.kind, flags: t.flags, info: info,
+    PackedType(kind: t.kind, flags: t.flags, info: info, callConv; t.callConv,
                size: t.size, align: t.align, nonUniqueId: t.itemId,
                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
                node: newTreeFrom(ir))
