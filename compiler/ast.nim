@@ -17,21 +17,17 @@ export int128
 
 type
   TCallingConvention* = enum
-    ccNimCall                 # nimcall, also the default
-    ccStdCall                 # procedure is stdcall
-    ccCDecl                   # cdecl
-    ccSafeCall                # safecall
-    ccSysCall                 # system call
-    ccInline                  # proc should be inlined
-    ccNoInline                # proc should not be inlined
-    ccFastCall                # fastcall (pass parameters in registers)
-    ccThisCall                # thiscall (parameters are pushed right-to-left)
-    ccClosure                 # proc has a closure
-    ccNoConvention            # needed for generating proper C procs sometimes
-
-const CallingConvToStr*: array[TCallingConvention, string] = ["nimcall", "stdcall",
-  "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
-  "closure", "noconv"]
+    ccNimCall = "nimcall"           # nimcall, also the default
+    ccStdCall = "stdcall"           # procedure is stdcall
+    ccCDecl = "cdecl"               # cdecl
+    ccSafeCall = "safecall"         # safecall
+    ccSysCall = "syscall"           # system call
+    ccInline = "inline"             # proc should be inlined
+    ccNoInline = "noinline"         # proc should not be inlined
+    ccFastCall = "fastcall"         # fastcall (pass parameters in registers)
+    ccThisCall = "thiscall"         # thiscall (parameters are pushed right-to-left)
+    ccClosure  = "closure"          # proc has a closure
+    ccNoConvention = "noconv"       # needed for generating proper C procs sometimes
 
 type
   TNodeKind* = enum # order is extremely important, because ranges are used

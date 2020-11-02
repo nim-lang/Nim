@@ -308,10 +308,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
-        hints[a.msgToStr] = %(a in conf.notes)
+        hints[$a] = %(a in conf.notes)
       var warnings = newJObject()
       for a in warnMin..warnMax:
-        warnings[a.msgToStr] = %(a in conf.notes)
+        warnings[$a] = %(a in conf.notes)
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
