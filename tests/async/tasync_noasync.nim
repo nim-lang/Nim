@@ -1,5 +1,5 @@
 discard """
-  errormsg: "undeclared identifier: 'await'"
+  errormsg: "'yield' only allowed in an iterator"
   cmd: "nim c $file"
   file: "tasync_noasync.nim"
 """
