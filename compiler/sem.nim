@@ -28,10 +28,6 @@ when not defined(leanCompiler):
   import spawn
 
 # implementation
-
-proc isMacroRealGeneric*(s: PSym): bool {.importc.}
-proc semAlias2(c: PContext, n: PNode): PNode {.exportc.}
-
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
@@ -452,6 +448,15 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
   errFloatToString = "cannot convert '$1' to '$2'"
+
+proc isMacroRealGeneric(s: PSym): bool =
+  if s.kind != skMacro: return false
+  if s.ast == nil: return false
+  let n = s.ast
+  if n[genericParamsPos].kind == nkEmpty: return false
+  for ai in n[genericParamsPos]:
+    if ai.typ.kind == tyAliasSym:
+      return true
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =

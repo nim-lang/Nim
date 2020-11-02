@@ -1322,6 +1322,31 @@ proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
   else:
     result = tryReadingGenericParam(c, n, i, ty)
 
+proc resolveAliasSym(n: PNode, forceResolve = false): PNode =
+  #[
+  `fun(arg)` where return type is tyAliasSym
+  if it returns a template `bar()` where bar is an iterator, it'd have no type if expanded
+  ]#
+  result = n
+  if result!=nil and result.typ != nil and result.typ.kind == tyAliasSym:
+    case result.kind
+    of {nkStmtListExpr, nkBlockExpr}:
+      # allows defining lambdaIter, lambdaIt, a~>a*2 etc in std/lambdas
+      let typ = result.typ
+      result = newSymNode(typ.n.sym)
+      result.info = typ.n.info
+      result.typ = typ
+    of nkSym:
+      if result.sym.kind == skAliasGroup:
+        if forceResolve: result = result.sym.nodeAliasGroup
+      elif result.sym.kind == skResult:
+        discard
+    else: # the alias is resolved
+      doAssert result.typ.n != nil
+      # nil would mean a aliasSym param was not instantiated; for macros, this
+      # requires macro instantiation
+      result = result.typ.n.sym.nodeAliasGroup
+
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2, c.config)
