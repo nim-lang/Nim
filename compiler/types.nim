@@ -747,8 +747,9 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.len > 0 and t[0] != nil:
       result = firstOrd(conf, t[0])
     else:
-      assert(t.n[0].kind == nkSym)
-      result = toInt128(t.n[0].sym.position)
+      if t.n.len > 0:
+        assert(t.n[0].kind == nkSym)
+        result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
@@ -804,8 +805,9 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt64:
     result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
-    assert(t.n[^1].kind == nkSym)
-    result = toInt128(t.n[^1].sym.position)
+    if t.n.len > 0:
+      assert(t.n[^1].kind == nkSym)
+      result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
