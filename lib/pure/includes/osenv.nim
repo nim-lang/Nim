@@ -34,8 +34,9 @@ when defined(nodejs):
       {.emit: "`key` = `keys`[`i`]; `value` = process.env[`key`];".}
       yield ($key, $value)
 
-elif defined(js):
-  {.error: "requires -d:nodejs".}
+# commented because it must keep working with js+VM
+# elif defined(js):
+#   {.error: "requires -d:nodejs".}
 
 else:
   when defined(windows):
