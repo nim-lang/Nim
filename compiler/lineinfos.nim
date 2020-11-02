@@ -36,40 +36,40 @@ type
     errProveInit, # deadcode
     errGenerated,
     errUser,
-    warnCannotOpenFile,
-    warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
-    warnDeprecated, warnConfigDeprecated,
-    warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel,
-    warnUnknownSubstitutionX, warnLanguageXNotSupported,
-    warnFieldXNotSupported, warnCommentXIgnored,
-    warnTypelessParam,
-    warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
-    warnUnusedImportX,
-    warnInheritFromException,
-    warnEachIdentIsTuple,
-    warnUnsafeSetLen,
-    warnUnsafeDefault,
-    warnProveInit, warnProveField, warnProveIndex,
-    warnUnreachableElse, warnUnreachableCode,
-    warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
-    warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
-    warnObservableStores,
-    warnUser,
-    hintSuccess, hintSuccessX, hintCC,
-    hintLineTooLong, hintXDeclaredButNotUsed,
-    hintXCannotRaiseY,
-    hintConvToBaseNotNeeded,
-    hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
-    hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
-    hintConditionAlwaysTrue, hintConditionAlwaysFalse, hintName, hintPattern,
-    hintExecuting, hintLinking, hintDependency,
-    hintSource, hintPerformance, hintStackTrace, hintGCStats,
-    hintGlobalVar, hintExpandMacro,
-    hintUser, hintUserRaw,
-    hintExtendedContext,
-    hintMsgOrigin, # since 1.3.5
-    hintDeclaredLoc, # since 1.5.1
+    
+    warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape", 
+    warnXIsNeverRead = "XIsNeverRead", warnXmightNotBeenInit = "XmightNotBeenInit",
+    warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
+    warnSmallLshouldNotBeUsed = "SmallLshouldNotBeUsed", warnUnknownMagic = "UnknownMagic", 
+    warnRedefinitionOfLabel = "RedefinitionOfLabel", warnUnknownSubstitutionX = "UnknownSubstitutionX", 
+    warnLanguageXNotSupported = "LanguageXNotSupported", warnFieldXNotSupported = "FieldXNotSupported", 
+    warnCommentXIgnored = "CommentXIgnored", warnTypelessParam = "TypelessParam",
+    warnUseBase = "UseBase", warnWriteToForeignHeap = "WriteToForeignHeap", 
+    warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImport",
+    warnInheritFromException = "InheritFromException", warnEachIdentIsTuple = "EachIdentIsTuple",
+    warnUnsafeSetLen = "UnsafeSetLen", warnUnsafeDefault = "UnsafeDefault",
+    warnProveInit = "ProveInit", warnProveField = "ProveField", warnProveIndex = "ProveIndex",
+    warnUnreachableElse = "UnreachableElse", warnUnreachableCode = "UnreachableCode",
+    warnStaticIndexCheck = "IndexCheck", warnGcUnsafe = "GcUnsafe", warnGcUnsafe2 = "GcUnsafe2",
+    warnUninit = "Uninit", warnGcMem = "GcMem", warnDestructor = "Destructor", 
+    warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed", 
+    warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition", 
+    warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores", 
+    warnUser = "User",
+
+    hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
+    hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
+    hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
+    hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX", 
+    hintQuitCalled = "QuitCalled", hintProcessing = "Processing", hintCodeBegin = "CodeBegin", 
+    hintCodeEnd = "CodeEnd", hintConf = "Conf", hintPath = "Path",
+    hintConditionAlwaysTrue = "CondTrue", hintConditionAlwaysFalse = "CondFalse", hintName = "Name", 
+    hintPattern = "Pattern", hintExecuting = "Exec", hintLinking = "Link", hintDependency = "Dependency",
+    hintSource = "Source", hintPerformance = "Performance", hintStackTrace = "StackTrace", 
+    hintGCStats = "GCStats", hintGlobalVar = "GlobalVar", hintExpandMacro = "ExpandMacro",
+    hintUser = "User", hintUserRaw = "UserRaw", hintExtendedContext = "ExtendedContext",
+    hintMsgOrigin = "MsgOrigin", # since 1.3.5
+    hintDeclaredLoc = "DeclaredLoc", # since 1.5.1
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -164,34 +164,6 @@ const
   ]
 
 const
-  WarningsToStr* = ["CannotOpenFile", "OctalEscape",
-    "XIsNeverRead", "XmightNotBeenInit",
-    "Deprecated", "ConfigDeprecated",
-    "SmallLshouldNotBeUsed", "UnknownMagic",
-    "RedefinitionOfLabel", "UnknownSubstitutionX",
-    "LanguageXNotSupported", "FieldXNotSupported",
-    "CommentXIgnored",
-    "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "UnusedImport", "InheritFromException",
-    "EachIdentIsTuple",
-    "UnsafeSetLen", "UnsafeDefault",
-    "ProveInit", "ProveField", "ProveIndex", "UnreachableElse", "UnreachableCode",
-    "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "CycleCreated",
-    "ObservableStores", "User"]
-
-  HintsToStr* = [
-    "Success", "SuccessX", "CC", "LineTooLong",
-    "XDeclaredButNotUsed", "XCannotRaiseY",
-    "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
-    "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
-    "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
-    "User", "UserRaw", "ExtendedContext", "MsgOrigin", "DeclaredLoc"
-  ]
-
-const
   fatalMin* = errUnknown
   fatalMax* = errInternal
   errMin* = errUnknown
@@ -200,16 +172,6 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
-
-proc msgToStr*(msg: TMsgKind): string =
-  case msg
-  of warnMin..warnMax: WarningsToStr[ord(msg) - ord(warnMin)]
-  of hintMin..hintMax: HintsToStr[ord(msg) - ord(hintMin)]
-  else: "" # we could at least do $msg - prefix `err`
-
-static:
-  doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
-  doAssert WarningsToStr.len == ord(warnMax) - ord(warnMin) + 1
 
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
