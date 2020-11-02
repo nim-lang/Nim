@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal, osproc, tables, algorithm, times
 
 const
-  Version = "1.6"
+  Version = "1.6.0"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -33,20 +33,20 @@ Options:
   --word, -w          the match should have word boundaries (buggy for pegs!)
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
-  --nWorkers:N, -n:N  speed up search by N additional workers (threads)
+  --threads:N, -j:N   speed up search by N additional workers (threads)
   --ext:EX1|EX2|...   only search the files with the given extension(s),
                       empty one ("--ext") means files with missing extension
   --noExt:EX1|...     exclude files having given extension(s), use empty one to
                       skip files with no extension (like some binary files are)
-  --includeFile:PAT   search only files whose names match the given PATttern
+  --includeFile:PAT   search only files whose names match the given PATtern
   --excludeFile:PAT   skip files whose names match the given pattern PAT
   --includeDir:PAT    search only files with full directory name matching PAT
   --excludeDir:PAT    skip directories whose names match the given pattern PAT
   --if,--ef,--id,--ed abbreviations of 4 options above
   --match:PAT         select files containing a (not displayed) match of PAT
   --noMatch:PAT       select files not containing any match of PAT
-  --bin:yes|no|only   process binary files? (detected by \0 in first 1K bytes)
-  --text, -t          process only text files, the same as --bin:no
+  --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
+  --text, -t          process only text files, the same as --bin:off
   --count             only print counts of matches for files that matched
   --nocolor           output will be given without any colours
   --color[:always]    force color even if output is redirected
@@ -62,10 +62,11 @@ Options:
        -s[:asc|desc]  - ascending (default: recent files go last) or descending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
-  --limit[:N], -m[:N] limit max width of lines from files by N characters (80)
-  --fit               calculate --limit from terminal width for every line
-  --onlyAscii, -o     use only printable ASCII Latin characters 0x20-0x7E
-                      (substitutions: 0 -> @, 1-0x1F -> A-_, 0x7F-0xFF -> !)
+  --cols[:N]          limit max width of lines from files by N characters (off)
+  --cols:auto, -%     calculate columns from terminal width for every line
+  --onlyAscii, -@     use only printable ASCII Latin characters 0x20-0x7E
+                      substitutions: 0 -> ^@, 1 -> ^A, ... 0x1F -> ^_,
+                                     0x7F -> '7F, ..., 0xFF -> 'FF
   --verbose           be verbose: list every processed file
   --filenames         find the pattern in the filenames, not in the contents
                       of the file
@@ -103,12 +104,12 @@ type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
     optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
-    optRex, optFollow, optCount, optLimitChars, optFit
+    optRex, optFollow, optCount, optLimitChars
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
   Bin = enum
-    biYes, biOnly, biNo
+    biOn, biOnly, biOff
   Pattern = Regex | Peg
   MatchInfo = tuple[first: int, last: int;
                     lineBeg: int, lineEnd: int, match: string]
@@ -156,8 +157,8 @@ type
   SinglePattern[PAT] = tuple  # compile single pattern for replacef
     pattern: PAT
   Column = tuple  # current column info for the cropping (--limit) feature
-    terminal: int
-    file: int
+    terminal: int  # column in terminal emulator
+    file: int      # column in file (for correct Tab processing)
     overflowMatches: int
 
 var
@@ -169,7 +170,8 @@ var
   sortTime = false
   sortTimeOrder = SortOrder.Ascending
   useWriteStyled = true
-  oneline = true
+  oneline = true  # turned off by --group
+  expandTabs = true  # Tabs are expanded in oneline mode
   linesBefore = 0
   linesAfter = 0
   linesContext = 0
@@ -180,10 +182,11 @@ var
   searchRequestsChan: Channel[Trequest]
   resultsChan: Channel[Tresult]
   colorTheme: string = "simple"
-  limitChar = high(int)  # don't limit line width by default
-  optOnlyAscii: bool
+  limitCharUsr = high(int)  # don't limit line width by default
+  termWidth = 80
+  optOnlyAscii = false
 
-searchOpt.checkBin = biYes
+searchOpt.checkBin = biOn
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -273,7 +276,8 @@ proc printBold(s: string) =
 proc printSpecial(s: string) =
   whenColors:
     case colorTheme
-    of "simple", "bnw": stdout.styledWrite(styleBright, s)
+    of "simple", "bnw":
+      stdout.styledWrite(if s == " ": styleReverse else: styleBright, s)
     of "ack", "gnu": stdout.styledWrite(styleReverse, fgBlue, bgDefault, s)
 
 proc printError(s: string) =
@@ -282,8 +286,6 @@ proc printError(s: string) =
     of "simple", "bnw": stdout.styledWriteLine(styleBright, s)
     of "ack", "gnu": stdout.styledWriteLine(styleReverse, fgRed, bgDefault, s)
   stdout.flushFile()
-
-const alignment = 6
 
 proc printLineN(s: string, isMatch: bool) =
   whenColors:
@@ -317,9 +319,18 @@ proc writeColored(s: string) =
     of "ack": stdout.styledWrite(styleReverse, fgYellow, bgDefault, s)
     of "gnu": stdout.styledWrite(fgRed, s)
 
+proc printContents(s: string, isMatch: bool) =
+  if isMatch:
+    writeColored(s)
+  else:
+    stdout.write(s)
+
 proc writeArrow(s: string) =
   whenColors:
     stdout.styledWrite(styleReverse, s)
+
+const alignment = 6  # selected so that file contents start at 8, i.e.
+                     # Tabs expand correctly without additional care
 
 proc blockHeader(filename: string, line: int|string, replMode=false) =
   if replMode:
@@ -335,7 +346,14 @@ proc blockHeader(filename: string, line: int|string, replMode=false) =
 proc newLn(curCol: var Column) =
   stdout.write("\n")
   curCol.file = 0
-  curcol.terminal = 0
+  curCol.terminal = 0
+
+# We reserve 10+3 chars on the right in --cols mode (optLimitChars).
+# If the current match touches this right margin, subLine before it will
+# be cropped (even if space is enough for subLine after the match — we
+# currently don't have a way to know it since we get it afterwards).
+const matchPaddingFromRight = 10
+const ellipsis = "..."
 
 proc lineHeader(filename: string, line: int|string, isMatch: bool,
                 curCol: var Column) =
@@ -351,67 +369,109 @@ proc lineHeader(filename: string, line: int|string, isMatch: bool,
       printLineN(lineSym.align(alignment+1), isMatch)
       curcol.terminal += lineSym.align(alignment+1).len
     stdout.write(" "); curCol.terminal += 1
-
-proc printMatch(fileName: string, mi: MatchInfo, curCol: var Column) =
-  let sLines = mi.match.splitLines()
-  for i, l in sLines:
-    if i > 0:
-      lineHeader(filename, mi.lineBeg + i, isMatch = true, curCol)
-    if curCol.terminal < limitChar:
-      writeColored(l)
-    else:
-      curCol.overflowMatches += 1
-    if i < sLines.len - 1:
+    curCol.terminal = curCol.terminal mod termWidth
+    if optLimitChars in options and
+        curCol.terminal > limitCharUsr - matchPaddingFromRight - ellipsis.len:
       newLn(curCol)
-  curCol.terminal += mi.match.len
-  curCol.file += mi.match.len
-
-const matchPaddingFromRight = 10
-let ellipsis = "..."
 
 proc reserveChars(mi: MatchInfo): int =
-  if optLimitChars in options or optFit in options:
+  if optLimitChars in options:
     let patternChars = afterPattern(mi.match, 0) + 1
     result = patternChars + ellipsis.len + matchPaddingFromRight
   else:
     result = 0
 
-proc printRaw(c: char, curCol: var Column, allowTabs = true) =
-  # print taking into account tabs and optOnlyAscii
-  if c == '\t':
-    if allowTabs:
-      let spaces = 8 - (curCol.file mod 8)
-      curCol.file += spaces
-      curCol.terminal += spaces
-      if optOnlyAscii:
-        printSpecial " "
-        stdout.write " ".repeat(spaces-1)
-      else:
-        stdout.write " ".repeat(spaces)
-    else:
-      curCol.file += 1
-      curCol.terminal += 1
-      if optOnlyAscii:
-        printSpecial " "
-      else:
-        stdout.write " "
-  elif not optOnlyAscii or (0x20 <= int(c) and int(c) <= 0x7e):
-    stdout.write c
-    curCol.file += 1
-    curCol.terminal += 1
-  else:  # substitute characters that are not ACSII Latin
-    let substitute =
-      if int(c) < 0x20:
-        char(int(c) + 0x40)  # use common "control codes"
-      else: '!'
-    printSpecial $substitute
-    curCol.file += 1
-    curCol.terminal += 1
+# Our substitutions of non-printable symbol to ASCII character are similar to
+# those of programm 'less'.
+const lowestAscii  = 0x20  # lowest ASCII Latin printable symbol (@)
+const largestAscii = 0x7e
+const by2ascii = 2  # number of ASCII chars to represent chars < lowestAscii
+const by3ascii = 3  # number of ASCII chars to represent chars > largestAscii
 
-proc calcTabLen(s: string, chars: int, fromLeft: bool): int =
-  if chars < 0:
-    return 0
-  var col = 0
+proc printExpanded(s: string, curCol: var Column, isMatch: bool,
+                   limitChar: int) =
+  # Print taking into account tabs and optOnlyAscii (and also optLimitChar:
+  # the proc called from printCropped but we need to check column < limitChar
+  # also here, since exact cut points are known only after tab expansion).
+  # With optOnlyAscii non-ascii chars are highlighted even in matches.
+  #
+  # use buffer because:
+  # 1) we need to print non-ascii character inside matches while keeping the
+  #    amount of color escape sequences minimal.
+  # 2) there is a report that fwrite buffering is slow on MacOS
+  #    https://github.com/nim-lang/Nim/pull/15612#discussion_r510538326
+  const bufSize = 8192  # typical for fwrite too
+  var buffer: string
+  const normal = 0
+  const special = 1
+  var lastAdded = normal
+  template dumpBuf() =
+    if lastAdded == normal:
+      printContents(buffer, isMatch)
+    else:
+      printSpecial(buffer)
+  template addBuf(i: int, s: char|string, size: int) =
+    if lastAdded != i or buffer.len + size > bufSize:
+      dumpBuf()
+      buffer.setlen(0)
+    buffer.add s
+    lastAdded = i
+  for c in s:
+    let charsAllowed = limitChar - curCol.terminal
+    if charsAllowed <= 0:
+      break
+    if lowestAscii <= int(c) and int(c) <= largestAscii:  # ASCII latin
+      addBuf(normal, c, 1)
+      curCol.file += 1; curCol.terminal += 1
+    elif (not optOnlyAscii) and c != '\t':  # the same, print raw
+      addBuf(normal, c, 1)
+      curCol.file += 1; curCol.terminal += 1
+    elif c == '\t':
+      let spaces = 8 - (curCol.file mod 8)
+      let spacesAllowed = min(spaces, charsAllowed)
+      curCol.file += spaces
+      curCol.terminal += spacesAllowed
+      if expandTabs:
+        if optOnlyAscii:  # print a nice box for tab
+          addBuf(special, " ", 1)
+          addBuf(normal, " ".repeat(spacesAllowed-1), spacesAllowed-1)
+        else:
+          addBuf(normal, " ".repeat(spacesAllowed), spacesAllowed)
+      else:
+        addBuf(normal, '\t', 1)
+    else:  # substitute characters that are not ACSII Latin
+      if int(c) < lowestAscii:
+        let substitute = char(int(c) + 0x40)  # use common "control codes"
+        addBuf(special, "^" & substitute, by2ascii)
+        curCol.terminal += by2ascii
+      else:  # int(c) > largestAscii
+        curCol.terminal += by3ascii
+        let substitute = '\'' & c.BiggestUInt.toHex(2)
+        addBuf(special, substitute, by3ascii)
+      curCol.file += 1
+  if buffer.len > 0:
+    dumpBuf()
+
+template nextCharacter(c: char, file: var int, term: var int) =
+  if lowestAscii <= int(c) and int(c) <= largestAscii:  # ASCII latin
+    file += 1
+    term += 1
+  elif (not optOnlyAscii) and c != '\t':  # the same, print raw
+    file += 1
+    term += 1
+  elif c == '\t':
+    term += 8 - (file mod 8)
+    file += 8 - (file mod 8)
+  elif int(c) < lowestAscii:
+    file += 1
+    term += by2ascii
+  else:  # int(c) > largestAscii:
+    file += 1
+    term += by3ascii
+
+proc calcTermLen(s: string, firstCol: int, chars: int, fromLeft: bool): int =
+  # calculate additional length added by Tabs expansion and substitutions
+  var col = firstCol
   var first, last: int
   if fromLeft:
     first = max(0, s.len - chars)
@@ -420,37 +480,78 @@ proc calcTabLen(s: string, chars: int, fromLeft: bool): int =
     first = 0
     last = min(s.len - 1, chars - 1)
   for c in s[first .. last]:
-    if c == '\t':
-      result += 8 - (col mod 8) - 1
-      col += 8 - (col mod 8)
+    nextCharacter(c, col, result)
 
-proc printCropped(s: string, curCol: var Column, fromLeft: bool) =
-  let eL = ellipsis.len
-  let charsAllowed = limitChar - curCol.terminal
-  let tabLen = calcTabLen(s, charsAllowed, fromLeft)
-  if s.len + tabLen <= charsAllowed:
-    for c in s:
-      printRaw(c, curCol)
-  elif charsAllowed <= eL:
-    if curCol.overflowMatches == 0:
+proc printCropped(s: string, curCol: var Column, fromLeft: bool,
+                  limitChar: int, isMatch = false) =
+  # print line `s`, may be cropped if option --cols was set
+  const eL = ellipsis.len
+  if optLimitChars notin options:
+    if not expandTabs and not optOnlyAscii:  # for speed mostly
+      printContents(s, isMatch)
+    else:
+      printExpanded(s, curCol, isMatch, limitChar)
+  elif optFilenames in options:
+    printExpanded(s, curCol, isMatch, limitChar - eL)
+    if curCol.terminal == limitChar - eL:
       printBold ellipsis
       curCol.terminal += eL
-  else:
-    if fromLeft:
-      printBold ellipsis
-      curCol.terminal += 3
-      # don't expand tabs when cropped from left
-      let first = max(0, s.len - (charsAllowed - eL))
-      for c in s[first .. s.len - 1]:
-        printRaw(c, curCol, allowTabs=false)
+  else:  # limit columns, expand Tabs is also forced
+    var charsAllowed = limitChar - curCol.terminal
+    if fromLeft and charsAllowed < eL:
+      charsAllowed = eL
+    if (not fromLeft) and charsAllowed <= 0:
+      # already overflown and ellipsis shold be in place
+      return
+    let fullLenWithin = calcTermLen(s, curCol.file, charsAllowed, fromLeft)
+    # additional length from Tabs and special symbols
+    let addLen = fullLenWithin - min(s.len, charsAllowed)
+    # determine that the string is guaranteed to fit within `charsAllowed`
+    let fits =
+      if s.len > charsAllowed:
+        false
+      else:
+        if isMatch: fullLenWithin <= charsAllowed - eL
+        else: fullLenWithin <= charsAllowed
+    if fits:
+      printExpanded(s, curCol, isMatch, limitChar = high(int))
     else:
-      let last = min(s.len - 1, charsAllowed - eL - 1)
-      for c in s[0 .. last]:
-        printRaw(c, curCol, allowTabs=true)
-        if curCol.terminal >= limitChar - eL:
-          break
-      printBold ellipsis
-      curCol.terminal += 3
+      if fromLeft:
+        printBold ellipsis
+        curCol.terminal += eL
+        # find position `pos` where the right side of line will fit charsAllowed
+        var col = 0
+        var term = 0
+        var pos = min(s.len, max(0, s.len - (charsAllowed - eL)))
+        while pos <= s.len - 1:
+          let c = s[pos]
+          nextCharacter(c, col, term)
+          if term >= addLen:
+            break
+          inc pos
+        curCol.file = pos
+        # TODO don't expand tabs when cropped from the left - difficult, meaningless
+        printExpanded(s[pos .. s.len - 1], curCol, isMatch,
+                      limitChar = high(int))
+      else:
+        let last = max(-1, min(s.len - 1, charsAllowed - eL - 1))
+        printExpanded(s[0 .. last], curCol, isMatch, limitChar-eL)
+        let numDots = limitChar - curCol.terminal
+        printBold ".".repeat(numDots)
+        curCol.terminal = limitChar
+
+proc printMatch(fileName: string, mi: MatchInfo, curCol: var Column) =
+  let sLines = mi.match.splitLines()
+  for i, l in sLines:
+    if i > 0:
+      lineHeader(filename, mi.lineBeg + i, isMatch = true, curCol)
+    let charsAllowed = limitCharUsr - curCol.terminal
+    if charsAllowed > 0:
+      printCropped(l, curCol, fromLeft = false, limitCharUsr, isMatch = true)
+    else:
+      curCol.overflowMatches += 1
+    if i < sLines.len - 1:
+      newLn(curCol)
 
 proc getSubLinesBefore(buf: string, curMi: MatchInfo): string =
   let first = beforePattern(buf, curMi.first-1, linesBefore+1)
@@ -466,9 +567,8 @@ proc printSubLinesBefore(filename: string, beforeMatch: string, lineBeg: int,
   for i, l in sLines:
     let isLastLine = i == sLines.len - 1
     lineHeader(filename, startLine + i, isMatch = isLastLine, curCol)
-    if isLastLine: limitChar -= reserveChars
-    l.printCropped(curCol, fromLeft = isLastLine)
-    if isLastLine: limitChar += reserveChars
+    let limit = if isLastLine: limitCharUsr - reserveChars else: limitCharUsr
+    l.printCropped(curCol, fromLeft = isLastLine, limitChar = limit)
     if not isLastLine:
       newLn(curCol)
 
@@ -483,7 +583,7 @@ proc getSubLinesAfter(buf: string, mi: MatchInfo): string =
 proc printOverflow(filename: string, line: int, curCol: var Column) =
   if curCol.overflowMatches > 0:
     lineHeader(filename, line, isMatch = true, curCol)
-    printBold("(" & $curCol.overflowMatches & " more matches skipped)")
+    printBold("(" & $curCol.overflowMatches & " matches skipped)")
     newLn(curCol)
     curCol.overflowMatches = 0
 
@@ -494,13 +594,13 @@ proc printSubLinesAfter(filename: string, afterMatch: string, matchLineEnd: int,
   if sLines.len == 0: # EOF
     newLn(curCol)
   else:
-    sLines[0].printCropped(curCol, fromLeft = false)
+    sLines[0].printCropped(curCol, fromLeft = false, limitCharUsr)
       # complete the line after the match itself
     newLn(curCol)
     printOverflow(filename, matchLineEnd, curCol)
     for i in 1 ..< sLines.len:
       lineHeader(filename, matchLineEnd + i, isMatch = false, curCol)
-      sLines[i].printCropped(curCol, fromLeft = false)
+      sLines[i].printCropped(curCol, fromLeft = false, limitCharUsr)
       newLn(curCol)
 
 proc getSubLinesBetween(buf: string, prevMi: MatchInfo,
@@ -512,7 +612,7 @@ proc printBetweenMatches(filename: string, betweenMatches: string,
                          curCol: var Column, reserveChars: int) =
   # continue block: print between `prevMi` and `curMi`
   let sLines = betweenMatches.splitLines()
-  sLines[0].printCropped(curCol, fromLeft = false)
+  sLines[0].printCropped(curCol, fromLeft = false, limitCharUsr)
     # finish the line of previous Match
   if sLines.len > 1:
     newLn(curCol)
@@ -521,9 +621,8 @@ proc printBetweenMatches(filename: string, betweenMatches: string,
       let isLastLine = i == sLines.len - 1
       lineHeader(filename, lastLineBeg - sLines.len + i + 1,
                  isMatch = isLastLine, curCol)
-      if isLastLine: limitChar -= reserveChars
-      sLines[i].printCropped(curCol, fromLeft = isLastLine)
-      if isLastLine: limitChar += reserveChars
+      let limit = if isLastLine: limitCharUsr - reserveChars else: limitCharUsr
+      sLines[i].printCropped(curCol, fromLeft = isLastLine, limitChar = limit)
       if not isLastLine:
         newLn(curCol)
 
@@ -749,6 +848,7 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
                      yieldContents=false): Output =
   var buffer: string
 
+  var error = false
   if optFilenames in options:
     buffer = filename
   else:
@@ -756,44 +856,47 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
       buffer = system.readFile(filename)
     except IOError as e:
       yield Output(kind: OpenError, msg: "readFile failed")
+      error = true
 
-  var reject = false
-  var reason: string
-  if searchOpt.checkBin in {biNo, biOnly}:
-    let isBin = detectBin(buffer)
-    if isBin and searchOpt.checkBin == biNo:
-      reject = true
-      reason = "binary file"
-    if (not isBin) and searchOpt.checkBin == biOnly:
-      reject = true
-      reason = "text file"
+  if not error:
+    var reject = false
+    var reason: string
+    if searchOpt.checkBin in {biOff, biOnly}:
+      let isBin = detectBin(buffer)
+      if isBin and searchOpt.checkBin == biOff:
+        reject = true
+        reason = "binary file"
+      if (not isBin) and searchOpt.checkBin == biOnly:
+        reject = true
+        reason = "text file"
 
-  if not reject:
-    if searchOpt.checkMatch != "":
-      reject = not contains(buffer, searchOptC.checkMatch, 0)
-      reason = "doesn't contain a requested match"
+    if not reject:
+      if searchOpt.checkMatch != "":
+        reject = not contains(buffer, searchOptC.checkMatch, 0)
+        reason = "doesn't contain a requested match"
 
-  if not reject:
-    if searchOpt.checkNoMatch != "":
-      reject = contains(buffer, searchOptC.checkNoMatch, 0)
-      reason = "contains a forbidden match"
+    if not reject:
+      if searchOpt.checkNoMatch != "":
+        reject = contains(buffer, searchOptC.checkNoMatch, 0)
+        reason = "contains a forbidden match"
 
-  if reject:
-    yield Output(kind: Rejected, reason: move(reason))
-  else:
-    var found = false
-    var cnt = 0
-    for output in searchFile(searchOptC.pattern, filename, buffer):
-      found = true
-      if optCount notin options:
-        yield output
-      else:
-        if output.kind in {BlockFirstMatch, BlockNextMatch}:
-          inc(cnt)
-    if optCount in options and cnt > 0:
-      yield Output(kind: JustCount, matches: cnt)
-    if yieldContents and found and optCount notin options:
-      yield Output(kind: FileContents, buffer: move(buffer))
+    if reject:
+      yield Output(kind: Rejected, reason: move(reason))
+    else:
+      var found = false
+      var cnt = 0
+      for output in searchFile(searchOptC.pattern, filename, buffer):
+        found = true
+        if optCount notin options:
+          yield output
+        else:
+          if output.kind in {BlockFirstMatch, BlockNextMatch}:
+            inc(cnt)
+      if optCount in options and cnt > 0:
+        yield Output(kind: JustCount, matches: cnt)
+      if yieldContents and found and optCount notin options:
+        yield Output(kind: FileContents, buffer: move(buffer))
+
 
 proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   let filename = path.lastPathPart
@@ -1110,7 +1213,7 @@ for kind, key, val in getopt():
     of "word", "w": incl(options, optWord)
     of "ignorecase", "ignore-case", "i": incl(options, optIgnoreCase)
     of "ignorestyle", "ignore-style", "y": incl(options, optIgnoreStyle)
-    of "nworkers", "n":
+    of "threads", "j":
       if val == "":
         nWorkers = countProcessors()
       else:
@@ -1126,11 +1229,11 @@ for kind, key, val in getopt():
       searchOpt.checkNoMatch = val
     of "bin":
       case val
-      of "no": searchOpt.checkBin = biNo
-      of "yes": searchOpt.checkBin = biYes
+      of "on": searchOpt.checkBin = biOn
+      of "off": searchOpt.checkBin = biOff
       of "only": searchOpt.checkBin = biOnly
       else: reportError("unknown value for --bin")
-    of "text", "t": searchOpt.checkBin = biNo
+    of "text", "t": searchOpt.checkBin = biOff
     of "count": incl(options, optCount)
     of "sorttime", "sort-time", "s":
       sortTime = true
@@ -1156,23 +1259,35 @@ for kind, key, val in getopt():
       linesAfter = parseNonNegative(val, key)
     of "context", "c":
       linesContext = parseNonNegative(val, key)
-    of "newline", "l": newLine = true
-    of "oneline": oneline = true
-    of "group", "g": oneline = false
-    of "limit", "m":
+    of "newline", "l":
+      newLine = true
+      # Tabs are aligned automatically for --group, --newLine, --filenames
+      expandTabs = false
+    of "group", "g":
+      oneline = false
+      expandTabs = false
+    of "cols", "%":
       incl(options, optLimitChars)
-      if val == "":
-        limitChar = 80
+      termWidth = terminalWidth()
+      if val == "auto" or key == "%":
+        limitCharUsr = termWidth
+        when defined(windows):  # Windows cmd & powershell add an empty line
+          limitCharUsr -= 1     # when printing '\n' right after the last column
+      elif val == "":
+        limitCharUsr = 80
       else:
-        limitChar = parseNonNegative(val, key)
-    of "fit":
-      incl(options, optFit)
-      limitChar = terminalWidth()
-      when defined(windows):  # Windows cmd&powershell add an empty line when
-        limitChar -= 1        # printing '\n' right after the last column
-    of "onlyascii", "only-ascii", "o": optOnlyAscii = true
+        limitCharUsr = parseNonNegative(val, key)
+    of "onlyascii", "only-ascii", "@":
+      if val == "" or val == "on" or key == "@":
+        optOnlyAscii = true
+      elif val == "off":
+        optOnlyAscii = false
+      else:
+        printError("unknown value for --onlyAscii option")
     of "verbose": incl(options, optVerbose)
-    of "filenames": incl(options, optFilenames)
+    of "filenames":
+      incl(options, optFilenames)
+      expandTabs = false
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: reportError("unrecognized option '" & key & "'")
@@ -1183,7 +1298,6 @@ checkOptions({optCount, optReplace}, "count", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
 checkOptions({optFilenames, optReplace}, "filenames", "replace")
-checkOptions({optFit, optLimitChars}, "fit", "limit")
 
 linesBefore = max(linesBefore, linesContext)
 linesAfter  = max(linesAfter,  linesContext)
