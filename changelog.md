@@ -17,8 +17,6 @@
 
 - Added `randState` template that exposes the default random number generator. Useful for library authors.
 
-- Added `parseEnumRange` to `strutils` that parses enum but considering only range of enum values. Used in compiler internals.
-  Useful to deal with enum values having the same string representation.
 
 ## Language changes
 
