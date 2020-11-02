@@ -124,10 +124,10 @@ const
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
 
-const enumUtilsExit = compiles:
+const enumUtilsExist = compiles:
   import std/enumutils
 
-when enumUtilsExit:
+when enumUtilsExist:
   from std/enumutils import genEnumStmt
   from strutils import normalize
   proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =  
