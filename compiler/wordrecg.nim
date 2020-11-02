@@ -13,7 +13,7 @@
 # does not support strings. Without this the code would
 # be slow and unreadable.
 
-from strutils import cmpIgnoreStyle
+import strutils
 
 type
   TSpecialWord* = enum
@@ -125,8 +125,10 @@ const
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
-proc findStr*[T:enum](a: Slice[T], s: string, default: T): T =  
-  for i in a:
-    if cmpIgnoreStyle($i, s) == 0:
-      return i
-  result = default
+when not declared(parseEnumRange):
+  proc parseEnumRange*[T:enum](s: string, a, b: static[T], default: T): T {.deprecated.} = 
+    # used only for compiler bootstrapping
+    for i in a..b:
+      if cmpIgnoreStyle($i, s) == 0:
+        return i
+    result = default
