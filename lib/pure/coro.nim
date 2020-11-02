@@ -32,7 +32,7 @@ import lists
 include system/timers
 
 const defaultStackSize = 512 * 1024
-const useOrcArc = defined(gcArc)
+const useOrcArc = defined(gcArc) or defined(gcOrc)
 
 when useOrcArc:
   proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
