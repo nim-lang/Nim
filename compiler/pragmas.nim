@@ -330,10 +330,10 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
-  template handleNote(toStrArray, msgMin, notes) =
-    let x = findStr(toStrArray, n[0][1].ident.s)
-    if x >= 0:
-      nk = TNoteKind(x + ord(msgMin))
+  template handleNote(enumVals, notes) =
+    let x = findStr(enumVals, n[0][1].ident.s, errUnknown)
+    if x !=  errUnknown:
+      nk = TNoteKind(x)
       let x = c.semConstBoolExpr(c, n[1])
       n[1] = x
       if x.kind == nkIntLit and x.intVal != 0: incl(notes, nk)
@@ -347,9 +347,9 @@ proc processNote(c: PContext, n: PNode) =
       n[0][1].kind == nkIdent and n[0][0].kind == nkIdent:
     var nk: TNoteKind
     case whichKeyword(n[0][0].ident)
-    of wHint: handleNote(HintsToStr, hintMin, c.config.notes)
-    of wWarning: handleNote(WarningsToStr, warnMin, c.config.notes)
-    of wWarningAsError: handleNote(WarningsToStr, warnMin, c.config.warningAsErrors)
+    of wHint: handleNote(hintMin .. hintMax, c.config.notes)
+    of wWarning: handleNote(warnMin .. warnMax, c.config.notes)
+    of wWarningAsError: handleNote(warnMin .. warnMax, c.config.warningAsErrors)
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
@@ -1110,9 +1110,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           sym.typ.kind = tyUncheckedArray
       of wUnion:
-        noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfUnion)
+        if c.config.backend == backendJs:
+          localError(c.config, it.info, "`{.union.}` is not implemented for js backend.")
+        else:
+          noVal(c, it)
+          if sym.typ == nil: invalidPragma(c, it)
+          else: incl(sym.typ.flags, tfUnion)
       of wRequiresInit:
         noVal(c, it)
         if sym.kind == skField:

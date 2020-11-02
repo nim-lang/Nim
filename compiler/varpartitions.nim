@@ -126,7 +126,7 @@ proc hasSideEffect*(c: var Partitions; info: var MutationInfo): bool =
       return true
   return false
 
-template isConstParam(a): bool = a.kind == skParam and a.typ.kind != tyVar
+template isConstParam(a): bool = a.kind == skParam and a.typ.kind notin {tyVar, tySink}
 
 proc variableId(c: Partitions; x: PSym): int =
   for i in 0 ..< c.s.len:

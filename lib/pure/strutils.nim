@@ -59,12 +59,13 @@
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
 ## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
+## * `parsecsv module<parsecsv.html>`_ for a high-performance CSV parser
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
 ## * `parseopt module<parseopt.html>`_ for command-line parsing
+## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   (dictionaries, in some programming languages) mapping from strings to strings
-## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
@@ -980,6 +981,18 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
     doAssert c.toHex(6) == "FFFFF8"
+  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+
+proc toHex*(x: int, len: Positive): string {.noSideEffect.} =
+  ## Converts `x` to its hexadecimal representation.
+  ##
+  ## The resulting string will be exactly `len` characters long. No prefix like
+  ## ``0x`` is generated. `x` is treated as an unsigned value.
+  runnableExamples:
+    doAssert toHex(62, 3) == "03E"
+    doAssert toHex(4097, 3) == "001"
+    doAssert toHex(4097, 4) == "1001"
+    doAssert toHex(-8, 6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
 proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =

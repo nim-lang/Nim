@@ -56,7 +56,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops
+import bitops, fenv
 
 proc binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -157,6 +157,29 @@ proc classify*(x: float): FloatClass =
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
+
+proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
+      since: (1, 5), inline, noSideEffect.} =
+  ## Checks if two float values are almost equal, using
+  ## `machine epsilon <https://en.wikipedia.org/wiki/Machine_epsilon>`_.
+  ##
+  ## `unitsInLastPlace` is the max number of
+  ## `units in last place <https://en.wikipedia.org/wiki/Unit_in_the_last_place>`_
+  ## difference tolerated when comparing two numbers. The larger the value, the
+  ## more error is allowed. A ``0`` value means that two numbers must be exactly the
+  ## same to be considered equal.
+  ##
+  ## The machine epsilon has to be scaled to the magnitude of the values used
+  ## and multiplied by the desired precision in ULPs unless the difference is
+  ## subnormal.
+  ##
+  # taken from: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
+  runnableExamples:
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+  let diff = abs(x - y)
+  result = diff <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
+      diff < minimumPositiveValue(T)
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
