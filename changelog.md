@@ -17,6 +17,8 @@
 
 - Added `randState` template that exposes the default random number generator. Useful for library authors.
 
+- Updated `iup` module to IUP `3.30`, added 10 examples to the documentation.
+
 
 ## Language changes
 
