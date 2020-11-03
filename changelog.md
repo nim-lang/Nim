@@ -17,6 +17,8 @@
 
 - Added `randState` template that exposes the default random number generator. Useful for library authors.
 
+- Removed deprecated `iup` module from stdlib, they have already moved to [nimble](https://github.com/nim-lang/iup).
+
 
 ## Language changes
 
