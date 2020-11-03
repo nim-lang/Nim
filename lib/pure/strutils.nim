@@ -1309,7 +1309,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize, nimIdentNormalize)
+  genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
@@ -1328,7 +1328,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize, nimIdentNormalize)
+  genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =

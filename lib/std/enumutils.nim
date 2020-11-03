@@ -9,13 +9,11 @@
 
 import macros
 
-macro genEnumStmt*(typ: typedesc, argSym: typed, default: typed, userMin, userMax: static[int], 
-                normalizer1: typed{nkSym}, normalizer2: static[proc(s :string): string]): untyped =
+macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed, 
+            userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
   # generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # string normalization is done using passed normalizer. 
-  # normalizer1 and normalizer2 are the same proc, but passed twice:
-  # Once as a NimNode and once as a callable proc.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
   # `of "Foo".nimIdentNormalize: Foo`.
   # This will fail, if the enum is not defined at top level (e.g. in a block).
@@ -24,7 +22,9 @@ macro genEnumStmt*(typ: typedesc, argSym: typed, default: typed, userMin, userMa
   let typ = typ.getTypeInst[1]
   let impl = typ.getImpl[2]
   expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(newCall(normalizer1, argSym))
+  let normalizerNode = quote: `normalizer`
+  expectKind normalizerNode, nnkSym
+  result = nnkCaseStmt.newTree(newCall(normalizerNode, argSym))
   # stores all processed field strings to give error msg for ambiguous enums
   var foundFields: seq[string] = @[]
   var fStr = "" # string of current field
@@ -46,7 +46,7 @@ macro genEnumStmt*(typ: typedesc, argSym: typed, default: typed, userMin, userMa
     else: error("Invalid node for enum type!", f)
     # add field if string not already added
     if fNum >= userMin and fNum <= userMax:
-      fStr = normalizer2(fStr)
+      fStr = normalizer(fStr)
       if fStr notin foundFields:
         result.add nnkOfBranch.newTree(newLit fStr,  nnkCall.newTree(typ, newLit fNum))
         foundFields.add fStr

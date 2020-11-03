@@ -128,10 +128,10 @@ const enumUtilsExist = compiles:
   import std/enumutils
 
 when enumUtilsExist:
-  from std/enumutils import genEnumStmt
+  from std/enumutils import genEnumCaseStmt
   from strutils import normalize
   proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =  
-    genEnumStmt(T, s, default, ord(a), ord(b), normalize, normalize)
+    genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)
 
 else:
   from strutils import cmpIgnoreStyle
