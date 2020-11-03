@@ -157,8 +157,6 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNod
   result.add newFastAsgnStmt(n[1], n[2])
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
-  debug(result)
-
 proc createObj*(g: ModuleGraph; idgen: IdGenerator; owner: PSym, info: TLineInfo; final=true): PType =
   result = newType(tyObject, nextId(idgen), owner)
   if final:
