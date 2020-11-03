@@ -17,6 +17,7 @@
 
 - Added `randState` template that exposes the default random number generator. Useful for library authors.
 
+- Added std/enumutils module containing `genEnumCaseStmt` macro that generates case statement to parse string to enum.
 
 ## Language changes
 

@@ -13,8 +13,6 @@
 # does not support strings. Without this the code would
 # be slow and unreadable.
 
-from strutils import cmpIgnoreStyle
-
 type
   TSpecialWord* = enum
     wInvalid = "",
@@ -125,8 +123,21 @@ const
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
-proc findStr*[T:enum](a: Slice[T], s: string, default: T): T =  
-  for i in a:
-    if cmpIgnoreStyle($i, s) == 0:
-      return i
-  result = default
+
+const enumUtilsExist = compiles:
+  import std/enumutils
+
+when enumUtilsExist:
+  from std/enumutils import genEnumCaseStmt
+  from strutils import normalize
+  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T =  
+    genEnumCaseStmt(T, s, default, ord(a), ord(b), normalize)
+
+else:
+  from strutils import cmpIgnoreStyle
+  proc findStr*[T: enum](a, b: static[T], s: string, default: T): T {.deprecated.} =  
+    # used for compiler bootstrapping only
+    for i in a..b:
+      if cmpIgnoreStyle($i, s) == 0:
+        return i
+    result = default 

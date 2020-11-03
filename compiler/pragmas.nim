@@ -331,7 +331,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 
 proc processNote(c: PContext, n: PNode) =
   template handleNote(enumVals, notes) =
-    let x = findStr(enumVals, n[0][1].ident.s, errUnknown)
+    let x = findStr(enumVals.a, enumVals.b, n[0][1].ident.s, errUnknown)
     if x !=  errUnknown:
       nk = TNoteKind(x)
       let x = c.semConstBoolExpr(c, n[1])
