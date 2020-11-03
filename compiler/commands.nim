@@ -193,11 +193,11 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
-    let x = findStr(hintMin..hintMax, id, errUnknown)
+    let x = findStr(hintMin, hintMax, id, errUnknown)
     if x != errUnknown: n = TNoteKind(x)
     else: localError(conf, info, "unknown hint: " & id)
   else:
-    let x = findStr(warnMin..warnMax, id, errUnknown)
+    let x = findStr(warnMin, warnMax, id, errUnknown)
     if x != errUnknown: n = TNoteKind(x)
     else: localError(conf, info, "unknown warning: " & id)
 
