@@ -15,7 +15,7 @@ when defined(allow_print):
 else:
   const print = false
 
-proc myResult3*(i:int):X {.exportc.} =
+proc myResult3*(i:int): X {.exportc.} =
   if print: echo "3"
   new(result)
   if print: echo "3-2"

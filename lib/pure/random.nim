@@ -75,20 +75,21 @@
 ##   generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules
-##   <lib.html#pure-libraries-cryptography-and-hashing>`_
+##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm #For upperBound
+import algorithm, math
+import std/private/since
 
 include "system/inclrtl"
 {.push debugger: off.}
 
-when defined(JS):
-  type ui = uint32
+when defined(js):
+  type Ui = uint32
 
   const randMax = 4_294_967_295u32
 else:
-  type ui = uint64
+  type Ui = uint64
 
   const randMax = 18_446_744_073_709_551_615u64
 
@@ -106,9 +107,9 @@ type
                  ## Many procs have two variations: one that takes in a Rand parameter and
                  ## another that uses the default generator. The procs that use the default
                  ## generator are **not** thread-safe!
-    a0, a1: ui
+    a0, a1: Ui
 
-when defined(JS):
+when defined(js):
   var state = Rand(
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
@@ -118,8 +119,14 @@ else:
     a0: 0x69B4C98CB8530805u64,
     a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
 
-proc rotl(x, k: ui): ui =
-  result = (x shl k) or (x shr (ui(64) - k))
+since (1, 5):
+  template randState*(): untyped =
+    ## Makes the default Rand state accessible from other modules.
+    ## Useful for module authors.
+    state
+
+proc rotl(x, k: Ui): Ui =
+  result = (x shl k) or (x shr (Ui(64) - k))
 
 proc next*(r: var Rand): uint64 =
   ## Computes a random ``uint64`` number using the given state.
@@ -190,45 +197,21 @@ proc skipRandomNumbers*(s: var Rand) =
   ##
   ## See also:
   ## * `next proc<#next,Rand>`_
-  when defined(JS):
+  when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
   else:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
   var
-    s0 = ui 0
-    s1 = ui 0
+    s0 = Ui 0
+    s1 = Ui 0
   for i in 0..high(helper):
     for b in 0 ..< 64:
-      if (helper[i] and (ui(1) shl ui(b))) != 0:
+      if (helper[i] and (Ui(1) shl Ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1
       discard next(s)
   s.a0 = s0
   s.a1 = s1
-
-proc random*(max: int): int {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  while true:
-    let x = next(state)
-    if x < randMax - (randMax mod ui(max)):
-      return int(x mod uint64(max))
-
-proc random*(max: float): float {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  let x = next(state)
-  when defined(JS):
-    result = (float(x) / float(high(uint32))) * max
-  else:
-    let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
-    result = (cast[float](u) - 1.0) * max
-
-proc random*[T](x: HSlice[T, T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  result = T(random(x.b - x.a)) + x.a
-
-proc random*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'sample' instead".} =
-  result = a[random(a.low..a.len)]
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
@@ -247,7 +230,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   if max == 0: return
   while true:
     let x = next(r)
-    if x <= randMax - (randMax mod ui(max)):
+    if x <= randMax - (randMax mod Ui(max)):
       return int(x mod (uint64(max)+1u64))
 
 proc rand*(max: int): int {.benign.} =
@@ -287,7 +270,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let f = r.rand(1.0)
     ## f = 8.717181376738381e-07
   let x = next(r)
-  when defined(JS):
+  when defined(js):
     result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
@@ -362,10 +345,6 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(r, a.low..a.high)]
-
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
@@ -394,10 +373,6 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
     result = rand(state, low(T)..high(T))
   else:
     result = cast[T](state.next)
-
-proc rand*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set ``s`` using the given state.
@@ -548,6 +523,33 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``
+  ## using the given state.
+  # Ratio of uniforms method for normal
+  # http://www2.econ.osaka-u.ac.jp/~tanizaki/class/2013/econome3/13.pdf
+  const K = sqrt(2 / E)
+  var
+    a = 0.0
+    b = 0.0
+  while true:
+    a = rand(r, 1.0)
+    b = (2.0 * rand(r, 1.0) - 1.0) * K
+    if  b * b <= -4.0 * a * a * ln(a): break
+  result = mu + sigma * (b / a)
+
+proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  result = gauss(state, mu, sigma)
+
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand<#Rand>`_ state using the given seed.
   ##
@@ -570,8 +572,8 @@ proc initRand*(seed: int64): Rand =
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
   doAssert seed != 0 # 0 causes `rand(int)` to always return 0 for example.
-  result.a0 = ui(seed shr 16)
-  result.a1 = ui(seed and 0xffff)
+  result.a0 = Ui(seed shr 16)
+  result.a1 = Ui(seed and 0xffff)
   discard next(result)
 
 proc randomize*(seed: int64) {.benign.} =
@@ -625,7 +627,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-when not defined(nimscript):
+when not defined(nimscript) and not defined(standalone):
   import times
 
   proc randomize*() {.benign.} =
@@ -641,8 +643,8 @@ when not defined(nimscript):
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
-    when defined(JS):
-      let time = int64(times.epochTime() * 1000)
+    when defined(js):
+      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       randomize(time)
     else:
       let now = times.getTime()
@@ -651,6 +653,8 @@ when not defined(nimscript):
 {.pop.}
 
 when isMainModule:
+  import stats
+
   proc main =
     var occur: array[1000, int]
 
@@ -664,29 +668,40 @@ when isMainModule:
       elif oc > 150:
         doAssert false, "too many occurrences of " & $i
 
+    when false:
+      var rs: RunningStat
+      for j in 1..5:
+        for i in 1 .. 1_000:
+          rs.push(gauss())
+        echo("mean: ", rs.mean,
+          " stdDev: ", rs.standardDeviation(),
+          " min: ", rs.min,
+          " max: ", rs.max)
+        rs.clear()
+
     var a = [0, 1]
     shuffle(a)
     doAssert a[0] == 1
     doAssert a[1] == 0
 
     doAssert rand(0) == 0
-    doAssert rand("a") == 'a'
+    doAssert sample("a") == 'a'
 
     when compileOption("rangeChecks"):
       try:
         discard rand(-1)
         doAssert false
-      except RangeError:
+      except RangeDefect:
         discard
 
       try:
         discard rand(-1.0)
         doAssert false
-      except RangeError:
+      except RangeDefect:
         discard
 
 
     # don't use causes integer overflow
-    doAssert compiles(random[int](low(int) .. high(int)))
+    doAssert compiles(rand[int](low(int) .. high(int)))
 
   main()

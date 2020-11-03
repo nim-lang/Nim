@@ -2,6 +2,9 @@ discard """
   output: '''
 100
 0
+float32
+float32
+(name: "Resource 1", readers: ..., writers: ...)
 '''
 """
 
@@ -110,3 +113,43 @@ block tgeneric4:
       newSeq result.free, 0
 
   var x = newIDGen[int]()
+
+block tgeneric5:
+  # bug #12528
+  proc foo[T](a: T; b: T) =
+    echo T
+
+  foo(0.0'f32, 0.0)
+
+  proc bar[T](a: T; b: T = 0.0) =
+    echo T
+
+  bar(0.0'f32)
+
+# bug #13378
+
+type
+  Resource = ref object of RootObj
+    name: string
+    readers, writers: seq[RenderTask]
+
+  RenderTask = ref object
+    name: string
+
+var res = Resource(name: "Resource 1")
+
+(proc (r: typeof(res)) =
+   echo r[])(res)
+
+# bug #4061
+
+type List[T] = object
+  e: T
+  n: ptr List[T]
+
+proc zip*[T,U](xs: List[T], ys: List[U]): List[(T,U)] = discard
+
+proc unzip*[T,U](xs: List[tuple[t: T, u: U]]): (List[T], List[U]) = discard
+
+proc unzip2*[T,U](xs: List[(T,U)]): (List[T], List[U]) = discard
+

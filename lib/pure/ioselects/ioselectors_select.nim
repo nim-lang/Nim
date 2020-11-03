@@ -110,11 +110,12 @@ proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
+    deinitLock(s.lock)
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =
-    var ssock = newNativeSocket()
-    var wsock = newNativeSocket()
+    var ssock = createNativeSocket()
+    var wsock = createNativeSocket()
     var rsock: SocketHandle = INVALID_SOCKET
     var saddr = Sockaddr_in()
 
@@ -286,7 +287,7 @@ proc unregister*[T](s: Selector[T], fd: SocketHandle|int) =
   s.withSelectLock():
     let fd = fd.SocketHandle
     var pkey = s.getKey(fd)
-    if Event.Read in pkey.events:
+    if Event.Read in pkey.events or Event.User in pkey.events:
       IOFD_CLR(fd, addr s.rSet)
       dec(s.count)
     if Event.Write in pkey.events:
@@ -312,7 +313,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   verifySelectParams(timeout)
 
   if timeout != -1:
-    when defined(genode):
+    when defined(genode) or defined(freertos):
       tv.tv_sec = Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000

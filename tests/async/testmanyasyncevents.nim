@@ -1,6 +1,7 @@
 discard """
 output: '''
 triggerCount: 8000
+hasPendingOperations: false
 '''
 """
 
@@ -18,4 +19,5 @@ for ev in evs:
   ev.trigger()
 
 drain()
+echo "hasPendingOperations: ", hasPendingOperations()
 echo "triggerCount: ", triggerCount

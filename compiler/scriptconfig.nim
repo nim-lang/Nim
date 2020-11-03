@@ -12,9 +12,9 @@
 
 import
   ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands, msgs,
+  options, sem, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  lineinfos, pathutils
+  pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -27,9 +27,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph): PEvalContext =
+              graph: ModuleGraph; idgen: IdGenerator): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph)
+  result = newCtx(module, cache, graph, idgen)
   result.mode = emRepl
   registerAdditionalOps(result)
   let conf = graph.config
@@ -57,15 +57,15 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
-  cbos listFiles:
+  cbos listFilesImpl:
     listDirs(a, {pcFile, pcLinkToFile})
-  cbos listDirs:
+  cbos listDirsImpl:
     listDirs(a, {pcDir})
   cbos removeDir:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
-      os.removeDir getString(a, 0)
+      os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
@@ -198,8 +198,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
+                   idgen: IdGenerator;
                    freshDefines=true; conf: ConfigRef) =
-  rawMessage(conf, hintConf, scriptName.string)
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -217,23 +217,27 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   let oldGlobalOptions = conf.globalOptions
   let oldSelectedGC = conf.selectedGC
   undefSymbol(conf.symbols, "nimv2")
-  conf.globalOptions.excl optNimV2
+  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
   conf.selectedGC = gcUnselected
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, scriptName.string, graph)
+  var vm = setupVM(m, cache, scriptName.string, graph, idgen)
+  graph.vm = vm
 
-  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+  graph.compileSystemModule()
+  discard graph.processModule(m, vm.idgen, llStreamOpen(scriptName, fmRead))
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
-  if optNimV2 in oldGlobalOptions:
-    conf.globalOptions.incl optNimV2
-    defineSymbol(conf.symbols, "nimv2")
   if conf.selectedGC == gcUnselected:
     conf.selectedGC = oldSelectedGC
+  if optOwnedRefs in oldGlobalOptions:
+    conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
+  if conf.selectedGC in {gcArc, gcOrc}:
+    conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

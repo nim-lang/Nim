@@ -69,7 +69,7 @@ type
     tyAnythingHidden,
     tyStaticHidden,
     tyFromExprHidden,
-    tyOpt,
+    tyOptDeprecated,
     tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
@@ -87,9 +87,10 @@ type
     ntfEnumHole = 2    # enum has holes and thus `$` for them needs the slow
                        # version
   TNimType {.compilerproc.} = object
-    when defined(gcDestructors):
+    when defined(gcHooks):
       head*: pointer
     size*: int
+    align*: int
     kind: TNimKind
     flags: set[TNimTypeFlag]
     base*: ptr TNimType
@@ -97,13 +98,15 @@ type
     finalizer*: pointer # the finalizer for the type
     marker*: proc (p: pointer, op: int) {.nimcall, benign, tags: [], raises: [].} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign, tags: [], raises: [].}
+    when defined(nimSeqsV2):
+      typeInfoV2*: pointer
     when defined(nimTypeNames):
       name: cstring
       nextType: ptr TNimType
       instances: int # count the number of instances
       sizes: int # sizes of all instances in bytes
 
-when defined(gcDestructors):
+when defined(gcHooks):
   type
     PNimType* = ptr TNimType
 else:

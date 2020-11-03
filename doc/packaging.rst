@@ -2,6 +2,9 @@
 Packaging Nim
 =============
 
+This page provide hints on distributing Nim using OS packages.
+
+See `distros <distros.html>`_ for tools to detect Linux distribution at runtime.
 
 Supported architectures
 -----------------------

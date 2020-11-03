@@ -582,3 +582,11 @@ template append2*(args: varargs[string, myAppend]): string =
 
 let foo = append2("1", "2", "3")
 echo foo
+
+block t12466:
+  # https://github.com/nim-lang/Nim/issues/12466
+  var a: array[288, uint16]
+  for i in 0'u16 ..< 144'u16:
+    a[0'u16 + i] = i
+  for i in 0'u16 ..< 8'u16:
+    a[0'u16 + i] = i

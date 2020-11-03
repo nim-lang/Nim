@@ -44,7 +44,7 @@ proc next*(it: var PathIter; x: string): (int, int) =
   it.notFirst = true
 
 iterator dirs(x: string): (int, int) =
-  var it: PathIter
+  var it = default PathIter
   while hasNext(it, x): yield next(it, x)
 
 proc isDot(x: string; bounds: (int, int)): bool =
@@ -69,12 +69,18 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
   while hasNext(it, x):
     let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
-      result.add dirSep
+      if result.len == 0 or result[^1] notin {DirSep, AltSep}:
+        result.add dirSep
       state = state or 1
     elif isDotDot(x, b):
       if (state shr 1) >= 1:
         var d = result.len
         # f/..
+        # We could handle stripping trailing sep here: foo// => foo like this:
+        # while (d-1) > (state and 1) and result[d-1] in {DirSep, AltSep}: dec d
+        # but right now we instead handle it inside os.joinPath
+
+        # strip path component: foo/bar => foo
         while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
           dec d
         if d > 0:

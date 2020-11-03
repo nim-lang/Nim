@@ -24,8 +24,6 @@
 ## either casting to float or rounding to int might be preferred, and users
 ## should make an explicit choice.
 
-import typetraits
-
 proc `+`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
   F(i) + f
 proc `+`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =

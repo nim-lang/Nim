@@ -3,7 +3,7 @@ API naming design
 =================
 
 The API is designed to be **easy to use** and consistent. Ease of use is
-measured by the number of calls to achieve a concrete high level action.
+measured by the number of calls to achieve a concrete high-level action.
 
 
 Naming scheme
@@ -44,6 +44,7 @@ delete                  delete, del    del is supposed to be faster than
                                        delete, because it does not keep
                                        the order; delete keeps the order
 remove                  delete, del    inconsistent right now
+remove-and-return       pop            ``Table``/``TableRef`` alias to ``take``
 include                 incl
 exclude                 excl
 command                 cmd

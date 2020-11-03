@@ -61,7 +61,7 @@ proc row*(a: TMatrix; i: int): auto =
 
 proc col*(a: TMatrix; j: int): auto =
   result = TVec[TMatrix.N, TMatrix.T]()
-  for idx in 0 .. <TMatrix.N:
+  for idx in 0 ..< TMatrix.N:
     result.data[idx] = a.data[(TMatrix.N * (idx)) + (j-1)]
 
 proc mul*(a: TMat4f; b: TMat4f): TMat4f =

@@ -4,7 +4,7 @@ abasdfdsmÄhmaИ
 Иnastystring
 A你好
 ИnastystringA你好
-ÖÜhmabasdfdsmÄhmaИ'''
+ÖÜhmabasdfdsmÄhmaИOK'''
   disabled: "posix"
   joinable: "false"
 """
@@ -13,10 +13,10 @@ import winlean
 
 echo "ÄhmÖÜ"
 echo "abasdfdsmÄhmaИ"
-echo "И\0nasty\0\0\0\0string\0"
+echo "Иnastystring"
 echo "A你好"
 
-write stdout, "И\0nasty\0\0\0\0string\0"
+write stdout, "Иnastystring"
 writeLine stdout, "A你好"
 stdout.flushFile()
 
@@ -25,3 +25,17 @@ var a = "ÖÜhmabasdfdsmÄhmaИ"
 var ac = 0'i32
 discard writeFile(handle, addr a[0], int32(len(a)), addr ac, nil)
 stdout.flushFile()
+
+import os
+
+let str = "some nulls: \0\0\0 (three of them)"
+
+let fpath = getTempDir() / "file_with_nulls.bin"
+
+writeFile(fpath, str)
+
+doAssert(getFileSize(fpath) == 31)
+doAssert(readFile(fpath) == str)
+removeFile(fpath)
+
+echo "OK"

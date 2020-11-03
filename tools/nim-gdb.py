@@ -30,7 +30,7 @@ def getNimRti(type_name):
   m = type_hash_regex.match(type_name)
   if m:
     try:
-      return gdb.parse_and_eval("NTI_" + m.group(1) + "_")
+      return gdb.parse_and_eval("NTI__" + m.group(1) + "_")
     except:
       return None
 
@@ -160,6 +160,35 @@ class DollarPrintFunction (gdb.Function):
     return self.invoke_static(arg)
 
 DollarPrintFunction()
+
+
+################################################################################
+#####  GDB Function, Nim string comparison
+################################################################################
+
+class NimStringEqFunction (gdb.Function):
+  """Compare Nim strings for example in conditionals for breakpoints."""
+
+  def __init__ (self):
+    super (NimStringEqFunction, self).__init__("nimstreq")
+
+  @staticmethod
+  def invoke_static(arg1,arg2):
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+      str1 = NimStringPrinter(arg1).to_string()
+    else:
+      str1 = arg1.string()
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+      str2 = NimStringPrinter(arg1).to_string()
+    else:
+      str2 = arg2.string()
+
+    return str1 == str2
+
+  def invoke(self, arg1, arg2):
+    return self.invoke_static(arg1, arg2)
+
+NimStringEqFunction()
 
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
@@ -340,13 +369,13 @@ def reprEnum(e, typ):
   return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyEnum_(\w*)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val      = val
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
@@ -373,7 +402,7 @@ class NimSetPrinter:
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
 
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:

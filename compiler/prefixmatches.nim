@@ -20,14 +20,13 @@ proc prefixMatch*(p, s: string): PrefixMatch =
   template eq(a, b): bool = a.toLowerAscii == b.toLowerAscii
   if p.len > s.len: return PrefixMatch.None
   var i = 0
-  let L = s.len
   # check for prefix/contains:
-  while i < L:
+  while i < s.len:
     if s[i] == '_': inc i
-    if i < L and eq(s[i], p[0]):
+    if i < s.len and eq(s[i], p[0]):
       var ii = i+1
       var jj = 1
-      while ii < L and jj < p.len:
+      while ii < s.len and jj < p.len:
         if p[jj] == '_': inc jj
         if s[ii] == '_': inc ii
         if not eq(s[ii], p[jj]): break

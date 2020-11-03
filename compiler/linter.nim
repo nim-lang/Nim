@@ -37,7 +37,7 @@ proc beautifyName(s: string, k: TSymKind): string =
     # Types should start with a capital unless builtins like 'int' etc.:
     if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
              "char", "byte", "bool", "openArray", "seq", "array", "void",
-             "pointer", "float", "csize", "cdouble", "cchar", "cschar",
+             "pointer", "float", "csize", "csize_t", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
              "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
@@ -71,24 +71,15 @@ proc beautifyName(s: string, k: TSymKind): string =
 
 proc differ*(line: string, a, b: int, x: string): string =
   proc substrEq(s: string, pos, last: int, substr: string): bool =
-    var i = 0
-    var length = substr.len
-    while i < length and pos+i <= last and s[pos+i] == substr[i]:
-      inc i
-    return i == length
-
-  let last = min(b, line.len)
+    result = true
+    for i in 0..<substr.len:
+      if pos+i > last or s[pos+i] != substr[i]: return false
 
   result = ""
   if not substrEq(line, a, b, x):
     let y = line[a..b]
     if cmpIgnoreStyle(y, x) == 0:
       result = y
-
-proc checkStyle(conf: ConfigRef; cache: IdentCache; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
-  let beau = beautifyName(s, k)
-  if s != beau:
-    lintReport(conf, info, beau, s)
 
 proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
@@ -137,6 +128,6 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
     lintReport(conf, info, newName, oldName)
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
-  let wanted = canonPragmaSpelling(w)
+  let wanted = $w
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)

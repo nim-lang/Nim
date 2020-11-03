@@ -1,10 +1,13 @@
 discard """
   nimout: "OK"
-  output: "OK"
+  output: '''
+OK
+OK
+'''
 """
 import bitops
 
-proc main() =
+proc main1() =
   const U8 = 0b0011_0010'u8
   const I8 = 0b0011_0010'i8
   const U16 = 0b00100111_00101000'u16
@@ -15,6 +18,8 @@ proc main() =
   const I64A = 0b01000100_00111111_01111100_10001010_10011001_01001000_01111010_00010001'i64
   const U64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'u64
   const I64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'i64
+  const U64C = 0b00101010_11110101_10001111_00101000_00000100_00000000_00000100_00000000'u64
+  const I64C = 0b00101010_11110101_10001111_00101000_00000100_00000000_00000100_00000000'i64
 
   doAssert( (U8 and U8) == bitand(U8,U8) )
   doAssert( (I8 and I8) == bitand(I8,I8) )
@@ -24,6 +29,8 @@ proc main() =
   doAssert( (I32 and I32) == bitand(I32,I32) )
   doAssert( (U64A and U64B) == bitand(U64A,U64B) )
   doAssert( (I64A and I64B) == bitand(I64A,I64B) )
+  doAssert( (U64A and U64B and U64C) == bitand(U64A,U64B,U64C) )
+  doAssert( (I64A and I64B and I64C) == bitand(I64A,I64B,I64C) )
 
   doAssert( (U8 or U8) == bitor(U8,U8) )
   doAssert( (I8 or I8) == bitor(I8,I8) )
@@ -33,6 +40,8 @@ proc main() =
   doAssert( (I32 or I32) == bitor(I32,I32) )
   doAssert( (U64A or U64B) == bitor(U64A,U64B) )
   doAssert( (I64A or I64B) == bitor(I64A,I64B) )
+  doAssert( (U64A or U64B or U64C) == bitor(U64A,U64B,U64C) )
+  doAssert( (I64A or I64B or I64C) == bitor(I64A,I64B,I64C) )
 
   doAssert( (U8 xor U8) == bitxor(U8,U8) )
   doAssert( (I8 xor I8) == bitxor(I8,I8) )
@@ -42,6 +51,8 @@ proc main() =
   doAssert( (I32 xor I32) == bitxor(I32,I32) )
   doAssert( (U64A xor U64B) == bitxor(U64A,U64B) )
   doAssert( (I64A xor I64B) == bitxor(I64A,I64B) )
+  doAssert( (U64A xor U64B xor U64C) == bitxor(U64A,U64B,U64C) )
+  doAssert( (I64A xor I64B xor I64C) == bitxor(I64A,I64B,I64C) )
 
   doAssert( not(U8) == bitnot(U8) )
   doAssert( not(I8) == bitnot(I8) )
@@ -160,7 +171,7 @@ proc main() =
     doAssert( U64A.rotateRightBits(64) == U64A)
 
   block:
-    # mask operations
+    # basic mask operations (mutating)
     var v: uint8
     v.setMask(0b1100_0000)
     v.setMask(0b0000_1100)
@@ -171,6 +182,75 @@ proc main() =
     doAssert(v == 0b0001_0001)
     v.clearMask(0b0001_0001)
     doAssert(v == 0b0000_0000)
+    v.setMask(0b0001_1110)
+    doAssert(v == 0b0001_1110)
+    v.mask(0b0101_0100)
+    doAssert(v == 0b0001_0100)
+  block:
+    # basic mask operations (non-mutating)
+    let v = 0b1100_0000'u8
+    doAssert(v.masked(0b0000_1100) == 0b0000_0000)
+    doAssert(v.masked(0b1000_1100) == 0b1000_0000)
+    doAssert(v.setMasked(0b0000_1100) == 0b1100_1100)
+    doAssert(v.setMasked(0b1000_1110) == 0b1100_1110)
+    doAssert(v.flipMasked(0b1100_1000) == 0b0000_1000)
+    doAssert(v.flipMasked(0b0000_1100) == 0b1100_1100)
+    let t = 0b1100_0110'u8
+    doAssert(t.clearMasked(0b0100_1100) == 0b1000_0010)
+    doAssert(t.clearMasked(0b1100_0000) == 0b0000_0110)
+  block:
+    # basic bitslice opeartions
+    let a = 0b1111_1011'u8
+    doAssert(a.bitsliced(0 .. 3) == 0b1011)
+    doAssert(a.bitsliced(2 .. 3) == 0b10)
+    doAssert(a.bitsliced(4 .. 7) == 0b1111)
+
+    # same thing, but with exclusive ranges.
+    doAssert(a.bitsliced(0 ..< 4) == 0b1011)
+    doAssert(a.bitsliced(2 ..< 4) == 0b10)
+    doAssert(a.bitsliced(4 ..< 8) == 0b1111)
+
+    # mutating
+    var b = 0b1111_1011'u8
+    b.bitslice(1 .. 3)
+    doAssert(b == 0b101)
+
+    # loop test:
+    let c = 0b1111_1111'u8
+    for i in 0 .. 7:
+      doAssert(c.bitsliced(i .. 7) == c shr i)
+  block:
+    # bitslice versions of mask operations (mutating)
+    var a = 0b1100_1100'u8
+    let b = toMask[uint8](2 .. 3)
+    a.mask(b)
+    doAssert(a == 0b0000_1100)
+    a.setMask(4 .. 7)
+    doAssert(a == 0b1111_1100)
+    a.flipMask(1 .. 3)
+    doAssert(a == 0b1111_0010)
+    a.flipMask(2 .. 4)
+    doAssert(a == 0b1110_1110)
+    a.clearMask(2 .. 4)
+    doAssert(a == 0b1110_0010)
+    a.mask(0 .. 3)
+    doAssert(a == 0b0000_0010)
+
+    # composition of mask from slices:
+    let c = bitor(toMask[uint8](2 .. 3), toMask[uint8](5 .. 7))
+    doAssert(c == 0b1110_1100'u8)
+  block:
+    # bitslice versions of mask operations (non-mutating)
+    let a = 0b1100_1100'u8
+    doAssert(a.masked(toMask[uint8](2 .. 3)) == 0b0000_1100)
+    doAssert(a.masked(2 .. 3) == 0b0000_1100)
+    doAssert(a.setMasked(0 .. 3) == 0b1100_1111)
+    doAssert(a.setMasked(3 .. 4) == 0b1101_1100)
+    doAssert(a.flipMasked(0 .. 3) == 0b1100_0011)
+    doAssert(a.flipMasked(0 .. 7) == 0b0011_0011)
+    doAssert(a.flipMasked(2 .. 3) == 0b1100_0000)
+    doAssert(a.clearMasked(2 .. 3) == 0b1100_0000)
+    doAssert(a.clearMasked(3 .. 6) == 0b1000_0100)
   block:
     # single bit operations
     var v: uint8
@@ -255,13 +335,178 @@ block: # not ready for vm because exception is compile error
     var i = 32
     v.setBit(i)
     doAssert false
-  except RangeError:
+  except RangeDefect:
     discard
   except:
     doAssert false
 
 
-main()
+main1()
 static:
   # test everything on vm as well
-  main()
+  main1()
+
+
+
+proc main2() =
+  const U8 = 0b0011_0010'u8
+  const I8 = 0b0011_0010'i8
+  const U16 = 0b00100111_00101000'u16
+  const I16 = 0b00100111_00101000'i16
+  const U32 = 0b11010101_10011100_11011010_01010000'u32
+  const I32 = 0b11010101_10011100_11011010_01010000'i32
+  const U64A = 0b01000100_00111111_01111100_10001010_10011001_01001000_01111010_00010001'u64
+  const I64A = 0b01000100_00111111_01111100_10001010_10011001_01001000_01111010_00010001'i64
+  const U64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'u64
+  const I64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'i64
+
+  doAssert( U64A.fastLog2 == 62)
+  doAssert( I64A.fastLog2 == 62)
+  doAssert( U64A.countLeadingZeroBits == 1)
+  doAssert( I64A.countLeadingZeroBits == 1)
+  doAssert( U64A.countTrailingZeroBits == 0)
+  doAssert( I64A.countTrailingZeroBits == 0)
+  doAssert( U64A.firstSetBit == 1)
+  doAssert( I64A.firstSetBit == 1)
+  doAssert( U64A.parityBits == 1)
+  doAssert( I64A.parityBits == 1)
+  doAssert( U64A.countSetBits == 29)
+  doAssert( I64A.countSetBits == 29)
+  doAssert( U64A.rotateLeftBits(37) == 0b00101001_00001111_01000010_00101000_10000111_11101111_10010001_01010011'u64)
+  doAssert( U64A.rotateRightBits(37) == 0b01010100_11001010_01000011_11010000_10001010_00100001_11111011_11100100'u64)
+
+  doAssert( U64B.firstSetBit == 36)
+  doAssert( I64B.firstSetBit == 36)
+
+  doAssert( U32.fastLog2 == 31)
+  doAssert( I32.fastLog2 == 31)
+  doAssert( U32.countLeadingZeroBits == 0)
+  doAssert( I32.countLeadingZeroBits == 0)
+  doAssert( U32.countTrailingZeroBits == 4)
+  doAssert( I32.countTrailingZeroBits == 4)
+  doAssert( U32.firstSetBit == 5)
+  doAssert( I32.firstSetBit == 5)
+  doAssert( U32.parityBits == 0)
+  doAssert( I32.parityBits == 0)
+  doAssert( U32.countSetBits == 16)
+  doAssert( I32.countSetBits == 16)
+  doAssert( U32.rotateLeftBits(21) == 0b01001010_00011010_10110011_10011011'u32)
+  doAssert( U32.rotateRightBits(21) == 0b11100110_11010010_10000110_10101100'u32)
+
+  doAssert( U16.fastLog2 == 13)
+  doAssert( I16.fastLog2 == 13)
+  doAssert( U16.countLeadingZeroBits == 2)
+  doAssert( I16.countLeadingZeroBits == 2)
+  doAssert( U16.countTrailingZeroBits == 3)
+  doAssert( I16.countTrailingZeroBits == 3)
+  doAssert( U16.firstSetBit == 4)
+  doAssert( I16.firstSetBit == 4)
+  doAssert( U16.parityBits == 0)
+  doAssert( I16.parityBits == 0)
+  doAssert( U16.countSetBits == 6)
+  doAssert( I16.countSetBits == 6)
+  doAssert( U16.rotateLeftBits(12) == 0b10000010_01110010'u16)
+  doAssert( U16.rotateRightBits(12) == 0b01110010_10000010'u16)
+
+  doAssert( U8.fastLog2 == 5)
+  doAssert( I8.fastLog2 == 5)
+  doAssert( U8.countLeadingZeroBits == 2)
+  doAssert( I8.countLeadingZeroBits == 2)
+  doAssert( U8.countTrailingZeroBits == 1)
+  doAssert( I8.countTrailingZeroBits == 1)
+  doAssert( U8.firstSetBit == 2)
+  doAssert( I8.firstSetBit == 2)
+  doAssert( U8.parityBits == 1)
+  doAssert( I8.parityBits == 1)
+  doAssert( U8.countSetBits == 3)
+  doAssert( I8.countSetBits == 3)
+  doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
+  doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
+
+  static :
+    # test bitopts at compile time with vm
+    doAssert( U8.fastLog2 == 5)
+    doAssert( I8.fastLog2 == 5)
+    doAssert( U8.countLeadingZeroBits == 2)
+    doAssert( I8.countLeadingZeroBits == 2)
+    doAssert( U8.countTrailingZeroBits == 1)
+    doAssert( I8.countTrailingZeroBits == 1)
+    doAssert( U8.firstSetBit == 2)
+    doAssert( I8.firstSetBit == 2)
+    doAssert( U8.parityBits == 1)
+    doAssert( I8.parityBits == 1)
+    doAssert( U8.countSetBits == 3)
+    doAssert( I8.countSetBits == 3)
+    doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
+    doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
+
+
+
+  template test_undefined_impl(ffunc: untyped; expected: int; is_static: bool) =
+    doAssert( ffunc(0'u8) == expected)
+    doAssert( ffunc(0'i8) == expected)
+    doAssert( ffunc(0'u16) == expected)
+    doAssert( ffunc(0'i16) == expected)
+    doAssert( ffunc(0'u32) == expected)
+    doAssert( ffunc(0'i32) == expected)
+    doAssert( ffunc(0'u64) == expected)
+    doAssert( ffunc(0'i64) == expected)
+
+  template test_undefined(ffunc: untyped; expected: int) =
+    test_undefined_impl(ffunc, expected, false)
+    static:
+      test_undefined_impl(ffunc, expected, true)
+
+  when defined(noUndefinedBitOpts):
+    # check for undefined behavior with zero.
+    test_undefined(countSetBits, 0)
+    test_undefined(parityBits, 0)
+    test_undefined(firstSetBit, 0)
+    test_undefined(countLeadingZeroBits, 0)
+    test_undefined(countTrailingZeroBits, 0)
+    test_undefined(fastLog2, -1)
+
+    # check for undefined behavior with rotate by zero.
+    doAssert( U8.rotateLeftBits(0) == U8)
+    doAssert( U8.rotateRightBits(0) == U8)
+    doAssert( U16.rotateLeftBits(0) == U16)
+    doAssert( U16.rotateRightBits(0) == U16)
+    doAssert( U32.rotateLeftBits(0) == U32)
+    doAssert( U32.rotateRightBits(0) == U32)
+    doAssert( U64A.rotateLeftBits(0) == U64A)
+    doAssert( U64A.rotateRightBits(0) == U64A)
+
+    # check for undefined behavior with rotate by integer width.
+    doAssert( U8.rotateLeftBits(8) == U8)
+    doAssert( U8.rotateRightBits(8) == U8)
+    doAssert( U16.rotateLeftBits(16) == U16)
+    doAssert( U16.rotateRightBits(16) == U16)
+    doAssert( U32.rotateLeftBits(32) == U32)
+    doAssert( U32.rotateRightBits(32) == U32)
+    doAssert( U64A.rotateLeftBits(64) == U64A)
+    doAssert( U64A.rotateRightBits(64) == U64A)
+
+    static:    # check for undefined behavior with rotate by zero.
+      doAssert( U8.rotateLeftBits(0) == U8)
+      doAssert( U8.rotateRightBits(0) == U8)
+      doAssert( U16.rotateLeftBits(0) == U16)
+      doAssert( U16.rotateRightBits(0) == U16)
+      doAssert( U32.rotateLeftBits(0) == U32)
+      doAssert( U32.rotateRightBits(0) == U32)
+      doAssert( U64A.rotateLeftBits(0) == U64A)
+      doAssert( U64A.rotateRightBits(0) == U64A)
+
+      # check for undefined behavior with rotate by integer width.
+      doAssert( U8.rotateLeftBits(8) == U8)
+      doAssert( U8.rotateRightBits(8) == U8)
+      doAssert( U16.rotateLeftBits(16) == U16)
+      doAssert( U16.rotateRightBits(16) == U16)
+      doAssert( U32.rotateLeftBits(32) == U32)
+      doAssert( U32.rotateRightBits(32) == U32)
+      doAssert( U64A.rotateLeftBits(64) == U64A)
+      doAssert( U64A.rotateRightBits(64) == U64A)
+
+  echo "OK"
+
+main2()
+

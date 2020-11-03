@@ -80,7 +80,7 @@ proc addEntry(entry: LogEntry) =
       #inc gLog.count
       #gLog.disabled = false
 
-proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
+proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerproc.} =
   addEntry LogEntry(op: "write", address: address,
       size: size, file: file, line: line, thread: myThreadId())
 

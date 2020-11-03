@@ -19,6 +19,9 @@ from sighashes import symBodyDigest
 from times import cpuTime
 
 from hashes import hash
+from osproc import nil
+
+import vmconv
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -82,16 +85,18 @@ template wrap2svoid(op, modop) {.dirty.} =
   modop op
 
 template wrapDangerous(op, modop) {.dirty.} =
-  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
-    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       discard
-    else:
+    modop op
+  else:
+    proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       op(getString(a, 0), getString(a, 1))
-  modop op
+    modop op
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
-               else: a.currentException.sons[3].skipColon.strVal)
+               else: a.currentException[3].skipColon.strVal)
 
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)
@@ -99,14 +104,44 @@ proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
-    result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
-                              newStrNode(nkStrLit, f))
+    result.add toLit((k, f))
+
+when defined(nimHasInvariant):
+  from std / compilesettings import SingleValueSetting, MultipleValueSetting
+
+  proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
+    case SingleValueSetting(switch)
+    of arguments: result = conf.arguments
+    of outFile: result = conf.outFile.string
+    of outDir: result = conf.outDir.string
+    of nimcacheDir: result = conf.getNimcacheDir().string
+    of projectName: result = conf.projectName
+    of projectPath: result = conf.projectPath.string
+    of projectFull: result = conf.projectFull.string
+    of command: result = conf.command
+    of commandLine: result = conf.commandLine
+    of linkOptions: result = conf.linkOptions
+    of compileOptions: result = conf.compileOptions
+    of ccompilerPath: result = conf.cCompilerPath
+    of backend: result = $conf.backend
+
+  proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
+    template copySeq(field: untyped): untyped =
+      for i in field: result.add i.string
+
+    case MultipleValueSetting(switch)
+    of nimblePaths: copySeq(conf.nimblePaths)
+    of searchPaths: copySeq(conf.searchPaths)
+    of lazyPaths: copySeq(conf.lazyPaths)
+    of commandArgs: result = conf.commandArgs
+    of cincludes: copySeq(conf.cIncludes)
+    of clibs: copySeq(conf.cLibs)
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
-    let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
+    let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
                          a.currentLineInfo, c.config)
-    setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
+    setResult a, ret.toLit
 
   proc getProjectPathWrapper(a: VmArgs) =
     setResult a, c.config.projectPath.string
@@ -152,20 +187,29 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    systemop gorgeEx
+    when defined(nimHasInvariant):
+      registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) =
+        setResult(a, querySettingImpl(c.config, getInt(a, 0)))
+      registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
+        setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+
+    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+      discard "don't run staticExec for 'nim suggest'"
+    else:
+      systemop gorgeEx
   macrosop getProjectPath
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
 
-  registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
                   "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
-  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
@@ -174,7 +218,7 @@ proc registerAdditionalOps*(c: PCtx) =
 
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)
@@ -187,11 +231,11 @@ proc registerAdditionalOps*(c: PCtx) =
     let ePos = a.getInt(2).int
     let arr = a.getNode(0)
     var bytes = newSeq[byte](arr.len)
-    for i in 0 ..< arr.len:
+    for i in 0..<arr.len:
       bytes[i] = byte(arr[i].intVal and 0xff)
 
     var res = hashes.hash(bytes, sPos, ePos)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)
@@ -199,8 +243,44 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
 
-  if optBenchmarkVM in c.config.globalOptions:
+  if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)
   else:
     proc cpuTime(): float = 5.391245e-44  # Randomly chosen
     wrap0(cpuTime, timesop)
+
+  if vmopsDanger in c.config.features:
+    ## useful procs but these should be opt-in because they may impact
+    ## reproducible builds and users need to understand that this runs at CT.
+    ## Note that `staticExec` can already do equal amount of damage so it's more
+    ## of a semantic issue than a security issue.
+    registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, os.getCurrentDir())
+    registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
+      let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
+      a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
+    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, times.getTime().toLit)
+
+  proc getEffectList(c: PCtx; a: VmArgs; effectIndex: int) =
+    let fn = getNode(a, 0)
+    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].len >= effectListLen and
+        fn.typ.n[0][effectIndex] != nil:
+      var list = newNodeI(nkBracket, fn.info)
+      for e in fn.typ.n[0][effectIndex]:
+        list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info, c.idgen)
+      setResult(a, list)
+
+  registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, exceptionEffects)
+  registerCallback c, "stdlib.effecttraits.getTagsListImpl", proc (a: VmArgs) =
+    getEffectList(c, a, tagEffects)
+
+  registerCallback c, "stdlib.effecttraits.isGcSafeImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, fn.typ != nil and tfGcSafe in fn.typ.flags)
+
+  registerCallback c, "stdlib.effecttraits.hasNoSideEffectsImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
+                 (fn.kind == nkSym and fn.sym.kind == skFunc))

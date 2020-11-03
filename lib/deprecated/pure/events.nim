@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## :Author: Alexander Mitchell-Robinson (Amrykid)
+## :Author: Alexander Mitchell-Robinson
 ##
 ## Unstable API.
 ##

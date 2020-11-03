@@ -57,7 +57,7 @@
 ## ========
 ##
 ## * `streams module <streams.html>`_ for using
-##   `open proc <#open,CsvParser,Stream,string,Char,Char,Char>`_
+##   `open proc <#open,CsvParser,Stream,string,char,char,char>`_
 ##   and other stream processing (like `close proc <streams.html#close,Stream>`_)
 ## * `parseopt module <parseopt.html>`_ for a command line parser
 ## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
@@ -108,16 +108,16 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ## the diverse optional parameters:
   ## - `separator`: character used to separate fields
   ## - `quote`: Used to quote fields containing special characters like
-  ##   `separator`, `quote` or new-line characters. '\0' disables the parsing
+  ##   `separator`, `quote` or new-line characters. '\\0' disables the parsing
   ##   of quotes.
   ## - `escape`: removes any special meaning from the following character;
-  ##   '\0' disables escaping; if escaping is disabled and `quote` is not '\0',
+  ##   '\\0' disables escaping; if escaping is disabled and `quote` is not '\\0',
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
   ##
   ## See also:
-  ## * `open proc <#open,CsvParser,string,Char,Char,Char>`_ which creates the
+  ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
   ##   file stream for you
   runnableExamples:
     import streams
@@ -139,7 +139,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
 proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## Similar to the `other open proc<#open,CsvParser,Stream,string,Char,Char,Char>`_,
+  ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
   ## but creates the file stream for you.
   runnableExamples:
     from os import removeFile
@@ -322,24 +322,29 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.
+  ## 
+  ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
     import streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-    ## Need calling `readHeaderRow`.
+    ## Requires calling `readHeaderRow`.
     parser.readHeaderRow()
     doAssert parser.readRow()
     doAssert parser.rowEntry("One") == "1"
     doAssert parser.rowEntry("Two") == "2"
     doAssert parser.rowEntry("Three") == "3"
-    ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
+    doAssertRaises(KeyError):
+      discard parser.rowEntry("NonexistentEntry")
     parser.close()
     strm.close()
 
   let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
+  else:
+    raise newException(KeyError, "Entry `" & entry & "` doesn't exist")
 
 when not defined(testing) and isMainModule:
   import os

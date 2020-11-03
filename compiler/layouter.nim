@@ -35,7 +35,7 @@ type
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
-    lastTok: TTokType
+    lastTok: TokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
@@ -146,7 +146,7 @@ proc optionalIsGood(em: var Emitter; pos, currentLen: int): bool =
 
 proc lenOfNextTokens(em: Emitter; pos: int): int =
   result = 0
-  for i in 1 ..< em.tokens.len-pos:
+  for i in 1..<em.tokens.len-pos:
     if em.kinds[pos+i] in {ltCrucialNewline, ltSplittingNewline, ltOptionalNewline}: break
     inc result, em.tokens[pos+i].len
 
@@ -160,13 +160,11 @@ proc guidingInd(em: Emitter; pos: int): int =
     inc i
   result = -1
 
-proc closeEmitter*(em: var Emitter) =
+proc renderTokens*(em: var Emitter): string =
+  ## Render Emitter tokens to a string of code
   template defaultCase() =
     content.add em.tokens[i]
     inc lineLen, em.tokens[i].len
-
-  let outFile = em.config.absOutFile
-
   var content = newStringOfCap(16_000)
   var maxLhs = 0
   var lineLen = 0
@@ -243,6 +241,11 @@ proc closeEmitter*(em: var Emitter) =
       defaultCase()
     inc i
 
+  return content
+
+proc writeOut*(em: Emitter, content: string)  =
+  ## Write to disk
+  let outFile = em.config.absOutFile
   if fileExists(outFile) and readFile(outFile.string) == content:
     discard "do nothing, see #9499"
     return
@@ -252,6 +255,11 @@ proc closeEmitter*(em: var Emitter) =
     return
   f.llStreamWrite content
   llStreamClose(f)
+
+proc closeEmitter*(em: var Emitter) =
+  ## Renders emitter tokens and write to a file
+  let content = renderTokens(em)
+  em.writeOut(content)
 
 proc wr(em: var Emitter; x: string; lt: LayoutToken) =
   em.tokens.add x
@@ -319,7 +327,7 @@ const
 
   splitters = openPars + {tkComma, tkSemiColon} # do not add 'tkColon' here!
   oprSet = {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-            tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
+            tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd, tkOr, tkXor}
 
 template goodCol(col): bool = col >= em.maxLineLen div 2
 
@@ -394,7 +402,7 @@ proc endsInAlpha(em: Emitter): bool =
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
-proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
+proc emitComment(em: var Emitter; tok: Token; dontIndent: bool) =
   var col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
@@ -409,7 +417,7 @@ proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
       inc col
     emitMultilineComment(em, lit, col, dontIndent)
 
-proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
+proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
   template wasExportMarker(em): bool =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
@@ -444,6 +452,9 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       if tok.tokType in openPars and tok.indent > em.indentStack[^1]:
         while em.indentStack[^1] < tok.indent:
           em.indentStack.add(em.indentStack[^1] + em.indWidth)
+      while em.indentStack[^1] > tok.indent:
+        discard em.indentStack.pop()
+
       # aka: we are in an expression context:
       let alignment = max(tok.indent - em.indentStack[^1], 0)
       em.indentLevel = alignment + em.indentStack.high * em.indWidth
@@ -483,7 +494,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       wrSpace em
 
     if not em.inquote:
-      wr(em, TokTypeToStr[tok.tokType], ltKeyword)
+      wr(em, $tok.tokType, ltKeyword)
       if tok.tokType in {tkAnd, tkOr, tkIn, tkNotin}:
         rememberSplit(splitIn)
         wrSpace em
@@ -492,28 +503,28 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
       wr(em, tok.ident.s, ltIdent)
 
   of tkColon:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     wrSpace em
   of tkSemiColon, tkComma:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
     if tok.strongSpaceA > 0 and not em.endsInWhite and
         (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
-    wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
+    wr(em, $tok.tokType, ltSomeParLe)
     rememberSplit(splitParLe)
   of closedPars:
-    wr(em, TokTypeToStr[tok.tokType], ltSomeParRi)
+    wr(em, $tok.tokType, ltSomeParRi)
   of tkColonColon:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
   of tkDot:
     lastTokWasTerse = true
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
   of tkEquals:
     if not em.inquote and not em.endsInWhite: wrSpace(em)
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
     if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
@@ -533,7 +544,7 @@ proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
         wrSpace(em)
   of tkAccent:
     if not em.inquote and endsInAlpha(em): wrSpace(em)
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:
@@ -562,7 +573,7 @@ proc endsWith(em: Emitter; k: varargs[string]): bool =
   return true
 
 proc rfind(em: Emitter, t: string): int =
-  for i in 1 .. 5:
+  for i in 1..5:
     if em.tokens[^i] == t:
       return i
 

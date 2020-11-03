@@ -1,5 +1,8 @@
 discard """
-output: '''
+  disabled: "openbsd"
+  disabled: "netbsd"
+  disabled: "macosx"
+  output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
 main: before
@@ -34,6 +37,7 @@ max mutual recursion reached!
 bar
    0: after - closure iterator: 0
    0: after - closure iterator: 1
+   0: after - c_2 = [1, 2, 3]
 main: after
               The answer is: 9
 main: hasAnyModuleChanged? true

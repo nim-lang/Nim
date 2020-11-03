@@ -81,7 +81,7 @@ proc newSelector*[T](): Selector[T] =
   # Start with a reasonable size, checkFd() will grow this on demand
   const numFD = 1024
 
-  var epollFD = epoll_create(MAX_EPOLL_EVENTS)
+  var epollFD = epoll_create1(O_CLOEXEC)
   if epollFD < 0:
     raiseOSError(osLastError())
 
@@ -110,10 +110,9 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, 0)
+  let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdci)
   result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
   result.efd = fdci
 
@@ -197,7 +196,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
            "Descriptor $# is not registered in the selector!" % $fdi)
   if pkey.events != {}:
     when not defined(android):
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         # TODO: Refactor all these EPOLL_CTL_DEL + dec(s.count) into a proc.
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
@@ -237,7 +236,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
     else:
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
@@ -269,10 +268,9 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   var
     newTs: Itimerspec
     oldTs: Itimerspec
-  let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
+  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC or O_NONBLOCK).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdi.cint)
 
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -314,10 +312,9 @@ when not defined(android):
     discard sigaddset(nmask, cint(signal))
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -341,10 +338,9 @@ when not defined(android):
     discard sigaddset(nmask, posix.SIGCHLD)
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -520,7 +516,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -529,7 +525,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body1
   else:
     body2

@@ -87,7 +87,7 @@ proc has(c: Captures; i: range[0..pegs.MaxSubpatterns-1]): bool {.nosideeffect, 
   result = b.first <= b.last
 
 proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: char): char {.nosideeffect, inline.} =
-  ## If capture `i` is non-empty return that portion of `str` casted
+  ## If capture `i` is non-empty return that portion of `str` cast
   ## to `char`, otherwise return `def`.
   result = if c.has(i): str[c.bounds(i).first] else: def
 
@@ -344,7 +344,7 @@ proc writeformat(o: var Writer; p: pointer; fmt: Format) =
   ## Write pointer `i` according to format `fmt` using output object
   ## `o` and output function `add`.
   ##
-  ## Pointers are casted to unsigned int and formatted as hexadecimal
+  ## Pointers are cast to unsigned int and formatted as hexadecimal
   ## with prefix unless specified otherwise.
   var f = fmt
   if f.typ == 0.char:

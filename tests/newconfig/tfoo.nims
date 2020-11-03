@@ -7,7 +7,26 @@ exec "gcc -v"
 --path: "../friends"
 
 warning("uninit", off)
-hint("processing", off)
+
+block: # supported syntaxes for hint,warning,switch
+  --hint:processing
+  hint("processing", on)
+  hint("processing", off)
+  switch("hint", "processing")
+  switch("hint", "processing:on")
+  switch("hint", "processing:off")
+  switch("hint", "[processing]")
+  switch("hint", "[processing]:on")
+  switch("hint", "[processing]:off") # leave it off
+
+  --warning:UnusedImport
+  switch("warning", "UnusedImport:off")
+  switch("warning", "UnusedImport:on")
+  switch("warning", "[UnusedImport]:off")
+  switch("warning", "[UnusedImport]:on")
+  switch("warning", "[UnusedImport]")
+  switch("warning", "UnusedImport") # leave it on
+
 #--verbosity:2
 patchFile("stdlib", "math", "mymath")
 
@@ -24,8 +43,10 @@ doAssert(existsEnv("dummy") == false)
 
 # issue #7283
 putEnv("dummy", "myval")
-doAssert(existsEnv("dummy") == true)
+doAssert(existsEnv("dummy"))
 doAssert(getEnv("dummy") == "myval")
+delEnv("dummy")
+doAssert(existsEnv("dummy") == false)
 
 # issue #7393
 let wd = getCurrentDir()
@@ -51,8 +72,8 @@ assert cmpic("HeLLO", "hello") == 0
 assert fileExists("tests/newconfig/tfoo.nims") == true
 assert dirExists("tests") == true
 
-assert existsFile("tests/newconfig/tfoo.nims") == true
-assert existsDir("tests") == true
+assert fileExists("tests/newconfig/tfoo.nims") == true
+assert dirExists("tests") == true
 
 discard selfExe()
 
@@ -64,6 +85,8 @@ else:
   assert toDll("nim") == "libnim.so"
 
 rmDir("tempXYZ")
+doAssertRaises(OSError):
+  rmDir("tempXYZ", checkDir = true)
 assert dirExists("tempXYZ") == false
 mkDir("tempXYZ")
 assert dirExists("tempXYZ") == true
@@ -81,8 +104,3 @@ when false:
 
 rmDir("tempXYZ")
 assert dirExists("tempXYZ") == false
-
-putEnv("dummy", "myval")
-doAssert(existsEnv("dummy") == true)
-delEnv("dummy")
-doAssert(existsEnv("dummy") == false)

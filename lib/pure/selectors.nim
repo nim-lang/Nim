@@ -27,14 +27,14 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os, strutils, nativesockets
+import os, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
                                 defined(dragonfly) or
-                                (defined(linux) and not defined(android))
+                                (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by ``ioselectors`` module.
 
@@ -234,6 +234,7 @@ when defined(nimdoc):
     ## For *poll* and *select* selectors ``-1`` is returned.
 
 else:
+  import strutils
   when hasThreadSupport:
     import locks
 
@@ -255,10 +256,10 @@ else:
       VnodeRename, VnodeRevoke
 
   type
-    IOSelectorsException* = object of Exception
+    IOSelectorsException* = object of CatchableError
 
     ReadyKey* = object
-      fd* : int
+      fd*: int
       events*: set[Event]
       errorCode*: OSErrorCode
 
@@ -293,7 +294,7 @@ else:
       skey.ident = pident
       skey.events = pevents
       skey.param = pparam
-      skey.data = data
+      skey.data = pdata
 
   when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
@@ -323,7 +324,7 @@ else:
     # Anything higher is the time to wait in milliseconds.
     doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
 
-  when defined(linux):
+  when defined(linux) and not defined(emscripten):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
     include ioselects/ioselectors_kqueue
@@ -335,24 +336,7 @@ else:
     include ioselects/ioselectors_select # TODO: use the native VFS layer
   elif defined(nintendoswitch):
     include ioselects/ioselectors_select
+  elif defined(freertos) or defined(lwip):
+    include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll
-
-proc register*[T](s: Selector[T], fd: int | SocketHandle,
-                  events: set[Event], data: T) {.deprecated: "use registerHandle instead".} =
-  ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
-  s.registerHandle(fd, events, data)
-
-proc setEvent*(ev: SelectEvent) {.deprecated: "use trigger instead".} =
-  ## Trigger event ``ev``.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
-  ev.trigger()
-
-proc update*[T](s: Selector[T], fd: int | SocketHandle,
-                events: set[Event]) {.deprecated: "use updateHandle instead".} =
-  ## Update file/socket descriptor ``fd``, registered in selector
-  ## ``s`` with new events set ``event``.
-  ##
-  ## **Deprecated since v0.18.0:** Use ``updateHandle`` instead.
-  s.updateHandle()

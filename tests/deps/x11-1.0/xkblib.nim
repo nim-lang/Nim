@@ -33,7 +33,7 @@
 #         while translating this code. ;)
 #
 #         I want to thanks #fpc channel in freenode irc, for helping me, and to put up with my
-#         wierd questions ;)
+#         weird questions ;)
 #
 #         Thanks for mmc in #xlib on freenode irc And so for the channel itself for the helping me to
 #         understanding some of the problems I had converting this headers and pointing me to resources

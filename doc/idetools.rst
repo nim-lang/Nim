@@ -13,6 +13,8 @@
   "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
   </p></blockquote>
 
+Note: this is mostly outdated, see instead `nimsuggest <nimsuggest.html>`_
+
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
@@ -67,7 +69,7 @@ Or::
     pass in the same value as **proj.nim**.
 
 ``DIRTY_FILE``
-    The **FILE** paramater is enough for static analysis, but IDEs
+    The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -124,9 +126,9 @@ separators!).
 
 The typical usage scenario for this option is to call it after the
 user has typed the dot character for `the object oriented call
-syntax <tut2.html#method-call-syntax>`_. Idetools will try to return
-the suggestions sorted first by scope (from innermost to outermost)
-and then by item name.
+syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+Idetools will try to return the suggestions sorted first by scope
+(from innermost to outermost) and then by item name.
 
 
 Invocation context
@@ -208,7 +210,7 @@ tab characters (``\t``). The values of each column are:
    def for definition, ``sug`` for suggestion, etc).
 2. Type of the symbol. This can be ``skProc``, ``skLet``, and just
    about any of the enums defined in the module ``compiler/ast.nim``.
-3. Full qualitifed path of the symbol. If you are querying a symbol
+3. Full qualified path of the symbol. If you are querying a symbol
    defined in the ``proj.nim`` file, this would have the form
    ``proj.symbolName``.
 4. Type/signature. For variables and enums this will contain the
@@ -359,7 +361,8 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the method.
 
-Methods imply `dynamic dispatch <tut2.html#dynamic-dispatch>`_ and
+Methods imply `dynamic dispatch
+<tut2.html#object-oriented-programming-dynamic-dispatch>`_ and
 idetools performs a static analysis on the code. For this reason
 idetools may not return the definition of the correct method you
 are querying because it may be impossible to know until the code

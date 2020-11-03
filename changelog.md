@@ -1,45 +1,31 @@
-# x.x - xxxx-xx-xx
-
-
-## Changes affecting backwards compatibility
+# v1.6.x - yyyy-mm-dd
 
 
 
-### Breaking changes in the standard library
+## Standard library additions and changes
 
+- `prelude` now works with the JavaScript target.
 
+- Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
+- Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
-### Breaking changes in the compiler
+- The JSON module can now handle integer literals and floating point literals of arbitrary length and precision.
+  Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are kept as string literals and
+  one can use external BigNum libraries to handle these. The `parseFloat` family of functions also has now optional
+  `rawIntegers` and `rawFloats` parameters that can be used to enforce that all integer or float literals remain
+  in the "raw" string form so that client code can easily treat small and large numbers uniformly.
 
-- Implicit conversions for `const` behave correctly now, meaning that code like `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
-  Simply write `const SOMECONST = 0` instead.
-
-
-## Library additions
-
-- `macros.newLit` now works for ref object types.
-- `system.writeFile` has been overloaded to also support `openarray[byte]`.
-
-## Library changes
-
-
-
-## Language additions
-
+- Added `randState` template that exposes the default random number generator. Useful for library authors.
 
 
 ## Language changes
 
 
 
-### Tool changes
+## Compiler changes
+
+- Added `--declaredlocs` to show symbol declaration location in messages.
+- Source+Edit links now appear on top of every docgen'd page when `nim doc --git.url:url ...` is given.
 
 
-
-### Compiler changes
-
-
-
-
-## Bugfixes
-
+## Tool changes

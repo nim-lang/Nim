@@ -1,6 +1,8 @@
 discard """
   output: '''[127, 127, 0, 255]
 [127, 127, 0, 255]
+
+(data: 1)
 '''
 
   nimout: '''caught Exception
@@ -10,6 +12,12 @@ main:end
 (width: 0, height: 0, path: "")
 @[(width: 0, height: 0, path: ""), (width: 0, height: 0, path: "")]
 Done!
+foo4
+foo4
+foo4
+(a: 0, b: 0)
+(a: 0, b: 0)
+(a: 0, b: 0)
 '''
 """
 
@@ -180,3 +188,66 @@ static:
   var stream = initCtsStream(file)
   parseAtlas(stream)
   echo "Done!"
+
+
+# bug #12244
+
+type
+  Apple = object
+    data: int
+
+func what(x: var Apple) =
+  x = Apple(data: 1)
+
+func oh_no(): Apple =
+  what(result)
+
+const
+  vmCrash = oh_no()
+
+debugEcho vmCrash
+
+
+# bug #12310
+
+proc someTransform(s: var array[8, uint64]) =
+  var s1 = 5982491417506315008'u64
+  s[1] += s1
+
+static:
+  var state: array[8, uint64]
+  state[1] = 7105036623409894663'u64
+  someTransform(state)
+
+  doAssert state[1] == 13087528040916209671'u64
+
+import macros
+# bug #12670
+
+macro fooImpl(arg: untyped) =
+  result = quote do:
+    `arg`
+
+proc foo(): string {.compileTime.} =
+  fooImpl:
+    result = "foo"
+    result.addInt 4
+
+static:
+  echo foo()
+  echo foo()
+  echo foo()
+
+# bug #12488
+type
+  MyObject = object
+    a,b: int
+  MyObjectRef = ref MyObject
+
+static:
+  let x1 = new(MyObject)
+  echo x1[]
+  let x2 = new(MyObjectRef)
+  echo x2[]
+  let x3 = new(ref MyObject) # cannot generate VM code for ref MyObject
+  echo x3[]

@@ -35,9 +35,9 @@ proc main =
   parallel:
     for n in nums: # Error: cannot prove: i <= len(nums) + -1
       spawn log(n)
-    #for i in 0 .. <nums.len: # Error: cannot prove: i <= len(nums) + -1
+    #for i in 0 ..< nums.len: # Error: cannot prove: i <= len(nums) + -1
     #for i in 0 .. nums.len-1: # WORKS!
-    #for i in 0 .. <nums.len: # WORKS!
+    #for i in 0 ..< nums.len: # WORKS!
     #  spawn log(nums[i])
 
 # Array needs explicit size to work, probably related to issue #2287

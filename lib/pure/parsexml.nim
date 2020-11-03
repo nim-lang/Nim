@@ -299,21 +299,15 @@ template piRest*(my: XmlParser): string =
   assert(my.kind == xmlPI)
   my.b
 
-proc rawData*(my: XmlParser): string {.inline.} =
+proc rawData*(my: var XmlParser): lent string {.inline.} =
   ## returns the underlying 'data' string by reference.
   ## This is only used for speed hacks.
-  when defined(gcDestructors):
-    result = move(my.a)
-  else:
-    shallowCopy(result, my.a)
+  result = my.a
 
-proc rawData2*(my: XmlParser): string {.inline.} =
+proc rawData2*(my: var XmlParser): lent string {.inline.} =
   ## returns the underlying second 'data' string by reference.
   ## This is only used for speed hacks.
-  when defined(gcDestructors):
-    result = move(my.b)
-  else:
-    shallowCopy(result, my.b)
+  result = my.b
 
 proc getColumn*(my: XmlParser): int {.inline.} =
   ## get the current column the parser has arrived at.
@@ -672,6 +666,9 @@ proc parseAttribute(my: var XmlParser) =
         parseEntity(my, my.b)
         my.kind = xmlAttribute # parseEntity overwrites my.kind!
         pos = my.bufpos
+      elif c == '/':
+        pos = lexbase.handleRefillChar(my, pos)
+        add(my.b, '/')
       else:
         add(my.b, c)
         inc(pos)

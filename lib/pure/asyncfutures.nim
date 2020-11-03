@@ -9,6 +9,8 @@
 
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
+import "system/stacktraces"
+
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
   CallbackFunc = proc () {.closure, gcsafe.}
@@ -33,7 +35,7 @@ type
 
   FutureVar*[T] = distinct Future[T]
 
-  FutureError* = object of Exception
+  FutureError* = object of Defect
     cause*: FutureBase
 
 when not defined(release):
@@ -149,7 +151,7 @@ proc checkFinished[T](future: Future[T]) =
       msg.add("\n" & indent(($future.stackTrace).strip(), 4))
       when T is string:
         msg.add("\n  Contents (string): ")
-        msg.add("\n" & indent(future.value.repr, 4))
+        msg.add("\n" & indent($future.value, 4))
       msg.add("\n  Stack trace to moment of secondary completion:")
       msg.add("\n" & indent(getStackTrace().strip(), 4))
       var err = newException(FutureError, msg)
@@ -157,33 +159,15 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  when not defined(nimV2):
-    # strictly speaking a little code duplication here, but we strive
-    # to minimize regressions and I'm not sure I got the 'nimV2' logic
-    # right:
-    var current = callbacks
-    while true:
-      if not current.function.isNil:
-        callSoon(current.function)
+  var current = callbacks
+  while true:
+    if not current.function.isNil:
+      callSoon(current.function)
 
-      if current.next.isNil:
-        break
-      else:
-        current = current.next[]
-  else:
-    var currentFunc = unown callbacks.function
-    var currentNext = unown callbacks.next
-
-    while true:
-      if not currentFunc.isNil:
-        callSoon(currentFunc)
-
-      if currentNext.isNil:
-        break
-      else:
-        currentFunc = currentNext.function
-        currentNext = unown currentNext.next
-
+    if current.next.isNil:
+      break
+    else:
+      current = current.next[]
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
   callbacks.function = nil
@@ -311,7 +295,12 @@ proc getHint(entry: StackTraceEntry): string =
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
-proc `$`*(entries: seq[StackTraceEntry]): string =
+proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
+  when defined(nimStackTraceOverride):
+    let entries = addDebuggingInfo(stackTraceEntries)
+  else:
+    let entries = stackTraceEntries
+
   result = ""
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
@@ -326,10 +315,10 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Format the entries.
   for entry in entries:
     if entry.procname.isNil:
-      if entry.line == -10:
+      if entry.line == reraisedFromBegin:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
-      else:
+      elif entry.line == reraisedFromEnd:
         indent.dec(2)
         result.add(spaces(indent) & "]#\n")
       continue
@@ -382,7 +371,7 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
       injectStacktrace(fut)
       raise fut.error
     when T isnot void:
-      return fut.value
+      result = fut.value
   else:
     # TODO: Make a custom exception type for this?
     raise newException(ValueError, "Future still in progress.")

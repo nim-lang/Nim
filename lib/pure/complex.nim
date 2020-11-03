@@ -451,3 +451,6 @@ when isMainModule:
   doAssert(sizeof(a) == 16)
 
   doAssert 123.0.im + 456.0 == complex64(456, 123)
+
+  var localA = complex(0.1'f32)
+  doAssert localA.im is float32

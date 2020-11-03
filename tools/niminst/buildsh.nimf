@@ -90,6 +90,7 @@ case $uos in
     ;;
   *openbsd* )
     myos="openbsd"
+    CC="clang"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
   *netbsd* )
@@ -180,11 +181,11 @@ case $ucpu in
     ;;
   *alpha* )
     mycpu="alpha" ;;
+  *aarch64*|*arm64* )
+    mycpu="arm64" ;;
   *arm*|*armv6l*|*armv71* )
     mycpu="arm" ;;
-  *aarch64* )
-    mycpu="arm64" ;;
-  *riscv64* )
+  *riscv64|riscv* )
     mycpu="riscv64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
