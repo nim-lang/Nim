@@ -109,3 +109,15 @@ block:
   doAssert Foo2[int,float|int] is Foo
   doAssert Foo2[int,float|int] isnot Bar
   doAssert int is (int|float)
+
+
+block:
+  # Slice[T] as static type issue
+  type
+    MyEnum = enum
+      x1, x2, x3, x4, x5, x6
+
+  proc enumGen[T: enum](s: static[Slice[T]]) = 
+    doAssert($s.a & "  " & $s.b == "x1  x3")
+
+  enumGen(x1..x3)
