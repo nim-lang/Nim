@@ -1076,7 +1076,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     return typeRel(c, f, lastSon(aOrig), flags)
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar, tyLent, tySink}).kind notin {
+      skipTypes(f, {tyStatic, tyVar, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a), flags)
