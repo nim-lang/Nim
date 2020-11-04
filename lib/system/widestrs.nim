@@ -217,7 +217,7 @@ proc `$`*(s: WideCString): string =
 
 when defined(nimv2):
   proc `$`*(s: WideCStringObj, estimate: int, replacement: int = 0xFFFD): string =
-    $(s.data)
+    `$`(s.data, estimate, replacement)
 
   proc `$`*(s: WideCStringObj): string =
     $(s.data)
