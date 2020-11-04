@@ -57,13 +57,11 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
-  ##     f(2, 2)
-  ##
-  ##   passTwoAndTwo((x, y) => x + y) # 4
+  runnableExamples:
+    proc passTwoAndTwo(f: (int, int) -> int): int =
+      f(2, 2)
+  
+    doAssert passTwoAndTwo((x, y) => x + y) == 4
 
   var
     params = @[ident"auto"]
