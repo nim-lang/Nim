@@ -135,11 +135,7 @@ proc lowerTupleUnpackingForAsgn*(g: ModuleGraph; n: PNode; idgen: IdGenerator; o
 proc lowerSwap*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PNode =
   result = newNodeI(nkStmtList, n.info)
   # note: cannot use 'skTemp' here cause we really need the copy for the VM :-(
-  let temp =
-    if owner == nil:
-      newSym(skVar, getIdent(g.cache, genPrefix), nextId(idgen), owner, n.info)
-    else:
-      newSym(skVar, getIdent(g.cache, genPrefix), nextId(idgen), owner, n.info, owner.options)
+  var temp = newSym(skVar, getIdent(g.cache, genPrefix), nextId(idgen), owner, n.info, owner.options)
   temp.typ = n[1].typ
   incl(temp.flags, sfFromGeneric)
   incl(temp.flags, sfGenSym)
