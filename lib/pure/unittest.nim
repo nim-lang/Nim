@@ -96,7 +96,7 @@
 ## Limitations/Bugs
 ## ================
 ## Since `check` will rewrite some programs for
-## supporting checkpoints(Namely assigns expressions to variables).
+## supporting checkpoints (namely assigns expressions to variables).
 ## Some type conversions are not supported.
 ## For example `check 4.0 == 2 + 2` won't work. But `doAssert 4.0 == 2 + 2` works.
 ## Make sure the same type on both sides of the operator(such as `==`, `>=` and so on).
