@@ -96,6 +96,13 @@ proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
   assert idx < t.vals.len
   result = t.vals[idx]
 
+proc hash*[T](t: BiTable[T]): Hash =
+  ## critically, we need to hash the indices alongside their values
+  var h: Hash = 0
+  for i, n in pairs t.vals:
+    h = h !& hash((i, n))
+  result = !$h
+
 when isMainModule:
 
   var t: BiTable[string]

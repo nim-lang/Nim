@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables]
+import std / [hashes, tables, strtabs]
 import bitabs
 import ".." / [ast, lineinfos, options, pathutils]
 
@@ -140,7 +140,8 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[Node]
-    toPosition* {.deprecated.}: Table[SymId, NodePos]
+    # removed to ease my lazy hashing
+    #toPosition* {.deprecated.}: Table[SymId, NodePos]
     sh*: Shared
 
 proc `==`*(a, b: SymId): bool {.borrow.}
@@ -461,11 +462,60 @@ when false:
     copyTree(dest, tree, n)
     patch dest, patchPos
 
-proc byteSize*(m: Module): int =
-  ## roughly how large is the module in bytes?
-  Module.sizeof + len(m.ast) * PackedTree.sizeof
+  proc byteSize*(m: Module): int =
+    ## roughly how large is the module in bytes?
+    Module.sizeof + len(m.ast) * PackedTree.sizeof
+
+proc hash*(table: StringTableRef): Hash =
+  ## XXX: really should be introduced into strtabs...
+  var h: Hash = 0
+  for pair in pairs table:
+    h = h !& hash(pair)
+  result = !$h
+
+proc hash*(config: ConfigRef): Hash =
+  ## XXX: vet and/or extend this
+  var h: Hash = 0
+  h = h !& hash(config.selectedGC)
+  h = h !& hash(config.features)
+  h = h !& hash(config.legacyFeatures)
+  h = h !& hash(config.configVars)
+  h = h !& hash(config.symbols)
+  result = !$h
+
+proc hash*(sh: Shared): Hash
+
+# XXX: lazy hashes for now
+type
+  LazyHashes = PackedSym or PackedType or PackedLib or
+               PackedLineInfo or PackedTree or Node
+
+proc hash*(s: LazyHashes): Hash =
+  var h: Hash = 0
+  for k, v in fieldPairs(s):
+    h = h !& hash((k, v))
+  result = !$h
+
+proc hash*(s: seq[LazyHashes]): Hash =
+  ## critically, we need to hash the indices alongside their values
+  var h: Hash = 0
+  for i, n in pairs s:
+    h = h !& hash((i, n))
+  result = !$h
+
+proc hash*(sh: Shared): Hash =
+  ## might want to edit this...
+  var h: Hash = 0
+  h = h !& hash(sh.syms)
+  h = h !& hash(sh.types)
+  h = h !& hash(sh.strings)
+  h = h !& hash(sh.integers)
+  h = h !& hash(sh.floats)
+  h = h !& hash(sh.config)
+  result = !$h
 
 proc hash*(m: Module): Hash =
   var h: Hash = 0
   h = h !& hash(m.name)
+  h = h !& hash(m.ast)
   result = !$h
