@@ -511,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
