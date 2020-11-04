@@ -1052,6 +1052,8 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.bval
 
   proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
+    if jsonNode == nil:
+      raise newException(KeyError, "key not found: " & jsonPath)
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
