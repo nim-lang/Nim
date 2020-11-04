@@ -36,6 +36,7 @@ type
     meCannotOpenFile,
     meExpected,
     meGridTableNotImplemented,
+    meMarkdownIllformedTable,
     meNewSectionExpected,
     meGeneralParseError,
     meInvalidDirective,
@@ -53,6 +54,7 @@ const
     meCannotOpenFile: "cannot open '$1'",
     meExpected: "'$1' expected",
     meGridTableNotImplemented: "grid table is not implemented",
+    meMarkdownIllformedTable: "illformed delimiter row of a markdown table",
     meNewSectionExpected: "new section expected",
     meGeneralParseError: "general parse error",
     meInvalidDirective: "invalid directive: '$1'",
@@ -1091,6 +1093,13 @@ proc isMarkdownHeadline(p: RstParser): bool =
       if p.tok[p.idx+2].kind in {tkWord, tkOther, tkPunct}:
         result = true
 
+proc findPipe(p: RstParser, start: int): bool =
+  var i = start
+  while true:
+    if p.tok[i].symbol == "|": return true
+    if p.tok[i].kind in {tkIndent, tkEof}: return false
+    inc i
+
 proc whichSection(p: RstParser): RstNodeKind =
   case p.tok[p.idx].kind
   of tkAdornment:
@@ -1104,6 +1113,9 @@ proc whichSection(p: RstParser): RstNodeKind =
   of tkPunct:
     if isMarkdownHeadline(p):
       result = rnHeadline
+    elif roSupportMarkdown in p.s.options and predNL(p) and
+        match(p, p.idx, "| w") and findPipe(p, p.idx+3):
+      result = rnMarkdownTable
     elif p.tok[p.idx].symbol == "```":
       result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
@@ -1279,6 +1291,62 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       add(b, parseDoc(q))
       add(a, b)
     add(result, a)
+
+proc readTableRow(p: var RstParser): seq[string] =
+  if p.tok[p.idx].symbol == "|": inc p.idx
+  while p.tok[p.idx].kind notin {tkIndent, tkEof}:
+    var cell = ""
+    while true:
+      if p.tok[p.idx].kind in {tkIndent, tkEof}: break
+      if p.tok[p.idx].symbol == "|" and p.tok[p.idx-1].symbol != "\\": break
+      cell.add(p.tok[p.idx].symbol)
+      inc p.idx
+    result.add(cell)
+    if p.tok[p.idx].kind in {tkIndent, tkEof}: break
+    inc p.idx
+  p.idx = tokenAfterNewline(p)
+
+proc getTableColumns(p: var RstParser): int =
+  let oldPos = p.idx
+  result = readTableRow(p).len
+  p.idx = oldPos
+
+proc isValidDelimiterRow(p: var RstParser, cols: int): bool =
+  let row = readTableRow(p)
+  if row.len != cols: return false
+  for c in row:
+    var cell = c.strip
+    if cell.len < 3 or not (cell.startsWith("--") or cell.startsWith(":-")):
+      return false
+  return true
+
+proc parseMarkdownTable(p: var RstParser): PRstNode =
+  var
+    row: seq[string]
+    a, b: PRstNode
+    q: RstParser
+  result = newRstNode(rnMarkdownTable)
+  let cols = getTableColumns(p)
+
+  template parseRow(cellKind) =
+    row = readTableRow(p)
+    if row.len < cols: row.setLen(cols)
+    a = newRstNode(rnTableRow)
+    for j in 0 ..< cols:
+      b = newRstNode(cellKind)
+      initParser(q, p.s)
+      q.col = p.col
+      q.line = p.tok[p.idx].line - 1
+      q.filename = p.filename
+      q.col += getTokens(row[j].strip, false, q.tok)
+      b.add(parseDoc(q))
+      a.add(b)
+    result.add(a)
+
+  parseRow(rnTableHeaderCell)
+  if not isValidDelimiterRow(p, cols): rstMessage(p, meMarkdownIllformedTable)
+  while predNL(p) and p.tok[p.idx].symbol == "|":
+    parseRow(rnTableDataCell)
 
 proc parseTransition(p: var RstParser): PRstNode =
   result = newRstNode(rnTransition)
@@ -1461,6 +1529,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnHeadline: a = parseHeadline(p)
     of rnOverline: a = parseOverline(p)
     of rnTable: a = parseSimpleTable(p)
+    of rnMarkdownTable: a = parseMarkdownTable(p)
     of rnOptionList: a = parseOptionList(p)
     else:
       #InternalError("rst.parseSection()")
