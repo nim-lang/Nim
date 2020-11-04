@@ -7,18 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## Deprecated by the generic `OrdSet` for ordinal sparse sets.
+## Deprecated by the generic `PackedSet` for ordinal sparse sets.
 ## **See also:**
-## * `ordinal sets module <ordsets.html>`_ for more general int sets
+## * `Ordinal packed sets module <packedsets.html>`_ for more general packed sets
 
 import std/private/since
-import std/ordsets
-export ordsets
+import std/packedsets
+export packedsets
 
 type
-  IntSet* = OrdSet[int]
+  IntSet* = PackedSet[int]
 
-proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3), inline.} = toOrdSet[int](x)
+proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3), inline.} = toPackedSet[int](x)
 
-proc initIntSet*(): IntSet {.inline.} = initOrdSet[int]()
+proc initIntSet*(): IntSet {.inline.} = initPackedSet[int]()
 

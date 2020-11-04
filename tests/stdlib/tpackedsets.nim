@@ -1,11 +1,11 @@
-import std/ordsets
+import std/packedsets
 import std/sets
 
 import sequtils
 import algorithm
 
 block basicIntSetTests:
-  var y = initOrdSet[int]()
+  var y = initPackedSet[int]()
   y.incl(1)
   y.incl(2)
   y.incl(7)
@@ -14,7 +14,7 @@ block basicIntSetTests:
   y.incl(1044)
   y.excl(1044)
 
-  doAssert y == [1, 2, 7, 1056].toOrdSet
+  doAssert y == [1, 2, 7, 1056].toPackedSet
   doAssert toSeq(y.items) == [1, 2, 7, 1056]
 
   doAssert y.containsOrIncl(888) == false
@@ -88,37 +88,37 @@ block genericTests:
           # issue #13505
           doAssert t.missingOrExcl(A(i))
 
-  var t: OrdSet[int]
+  var t: PackedSet[int]
   var t0: HashSet[int]
   testDel(int, t, t0)
 
-  var distT: OrdSet[Id]
+  var distT: PackedSet[Id]
   var distT0: HashSet[Id]
   testDel(Id, distT, distT0)
 
-  doAssert union(distT, initOrdSet[Id]()) == distT
+  doAssert union(distT, initPackedSet[Id]()) == distT
 
-  var charT: OrdSet[char]
+  var charT: PackedSet[char]
   var charT0: HashSet[char]
   testDel(char, charT, charT0)
 
 
 block typeSafetyTest:
   # mixing sets of different types shouldn't compile
-  doAssert not compiles( union(initOrdSet[Id](), initOrdSet[int]()) )
-  doAssert     compiles( union(initOrdSet[Id](), initOrdSet[Id]()))
+  doAssert not compiles( union(initPackedSet[Id](), initPackedSet[int]()) )
+  doAssert     compiles( union(initPackedSet[Id](), initPackedSet[Id]()))
 
-  var ids: OrdSet[Id]
+  var ids: PackedSet[Id]
   doAssert not compiles( ids.incl(3) )
   doAssert     compiles( ids.incl(Id(3)) )
 
   type NonOrdinal = string
-  doAssert not compiles( initOrdSet[NonOrdinal]() )
+  doAssert not compiles( initPackedSet[NonOrdinal]() )
 
 type EnumABCD = enum A, B, C, D
 
 block enumTest:
-  var letterSet = initOrdSet[EnumABCD]()
+  var letterSet = initPackedSet[EnumABCD]()
 
   for x in [A, C]:
     letterSet.incl(x)
@@ -132,7 +132,7 @@ type Foo = distinct int16
 proc `$`(a: Foo): string {.borrow.} # `echo a` below won't work without `$` defined, as expected
 
 block printTest:
-  var a = initOrdSet[EnumABCD]()
+  var a = initPackedSet[EnumABCD]()
   a.incl A
   a.incl C 
   doAssert $a == "{A, C}"
@@ -151,7 +151,7 @@ block legacyMainModuleTests:
       x.incl(A(1044))
       x.excl(A(1044))
 
-      doAssert x == typSeq(@[1, 2, 7, 1056]).toOrdSet
+      doAssert x == typSeq(@[1, 2, 7, 1056]).toPackedSet
 
       doAssert x.containsOrIncl(A(888)) == false
       doAssert A(888) in x
@@ -165,7 +165,7 @@ block legacyMainModuleTests:
       xs.sort(cmp[A])
       doAssert xs == typSeq(@[1, 2, 7, 1056])
 
-      var y: OrdSet[A]
+      var y: PackedSet[A]
       assign(y, x)
       var ys = toSeq(items(y))
       ys.sort(cmp[A])
@@ -173,14 +173,14 @@ block legacyMainModuleTests:
 
       doAssert x == y
 
-      var z: OrdSet[A]
+      var z: PackedSet[A]
       for i in 0..1000:
         incl z, A(i)
         doAssert z.len() == i+1
       for i in 0..1000:
         doAssert z.contains(A(i))
 
-      var w = initOrdSet[A]()
+      var w = initPackedSet[A]()
       w.incl(A(1))
       w.incl(A(4))
       w.incl(A(50))
@@ -218,13 +218,13 @@ block legacyMainModuleTests:
 
       doAssert(not disjoint(w, x))
 
-      var u = initOrdSet[A]()
+      var u = initPackedSet[A]()
       u.incl(A(3))
       u.incl(A(5))
       u.incl(A(500))
       doAssert disjoint(u, x)
 
-      var v = initOrdSet[A]()
+      var v = initPackedSet[A]()
       v.incl(A(2))
       v.incl(A(50))
 
@@ -235,8 +235,8 @@ block legacyMainModuleTests:
 
       proc bug12366 =
         var
-          x = initOrdSet[A]()
-          y = initOrdSet[A]()
+          x = initPackedSet[A]()
+          y = initPackedSet[A]()
           n = 3584
 
         for i in 0..n:
@@ -252,8 +252,8 @@ block legacyMainModuleTests:
   var legacyInit = initIntSet()
   genericTests(int, legacyInit)
 
-  var intGenericInit = initOrdSet[int]()
+  var intGenericInit = initPackedSet[int]()
   genericTests(int, intGenericInit)
 
-  var intDistinct = initOrdSet[Id]()
+  var intDistinct = initPackedSet[Id]()
   genericTests(Id, intDistinct)
