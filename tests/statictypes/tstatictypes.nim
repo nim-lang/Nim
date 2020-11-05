@@ -10,6 +10,8 @@ b is 2 times a
 17
 ['\x00', '\x00', '\x00', '\x00']
 heyho
+Val1
+Val1
 '''
 """
 
@@ -303,3 +305,19 @@ type
   setB[N: static[int16]] = set[rangeB[N]]
 
 var s : setB[14'i16]
+
+
+#-----------------------------------------------------------------------------------------
+# issue #9520
+
+type
+  MyEnum = enum
+    Val1, Val2
+
+proc myproc(a: static[MyEnum], b: int) =
+  if b < 0:
+    myproc(a, -b)
+
+  echo $a
+
+myproc(Val1, -10)
