@@ -522,7 +522,7 @@ a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
 do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
-afterward. If `dest` is a local variable that is simple to analyze. And if `src` is a
+afterwards. If `dest` is a local variable that is simple to analyze. And if `src` is a
 location derived from a formal parameter, we also know it is not mutated! In other
 words, we do a compile-time copy-on-write analysis.
 
