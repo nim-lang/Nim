@@ -119,7 +119,7 @@ func newHttpHeaders*(titleCase=false): HttpHeaders =
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
 
-func newHttpHeaders*(keyValuePairs:
+proc newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
   ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
@@ -140,7 +140,7 @@ func `$`*(headers: HttpHeaders): string {.inline.} =
 proc clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
-func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
+proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If the returned
   ## values are passed to a procedure expecting a ``string``, the first
   ## value is automatically picked. If there are
@@ -153,7 +153,7 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
-func `[]`*(headers: HttpHeaders, key: string, i: int): string =
+proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
@@ -197,7 +197,7 @@ func contains*(values: HttpHeaderValues, value: string): bool =
 func hasKey*(headers: HttpHeaders, key: string): bool =
   return headers.table.hasKey(headers.toCaseInsensitive(key))
 
-func getOrDefault*(headers: HttpHeaders, key: string,
+proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
