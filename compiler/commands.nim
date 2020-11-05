@@ -903,6 +903,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # undocumented, for debugging purposes only:
     processOnOffSwitch(conf, {optCursorInference}, arg, pass, info)
   of "panics":
+    if conf.backend == backendJs:
+      return
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
