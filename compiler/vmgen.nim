@@ -1122,7 +1122,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(d)
   of mSwap:
     unused(c, n, dest)
-    c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
+    c.gen(lowerSwap(c.graph, n, if c.prc == nil or c.prc.sym == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)

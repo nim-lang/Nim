@@ -136,6 +136,7 @@ proc lowerSwap*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   var temp = newSym(skVar, getIdent(g.cache, genPrefix), owner, n.info, owner.options)
   temp.typ = n[1].typ
   incl(temp.flags, sfFromGeneric)
+  incl(temp.flags, sfGenSym)
 
   var v = newNodeI(nkVarSection, n.info)
   let tempAsNode = newSymNode(temp)
