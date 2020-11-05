@@ -121,17 +121,3 @@ block:
     doAssert($s.a & "  " & $s.b == "x1  x3")
 
   enumGen(x1..x3)
-
-block:
-  # issue #11142
-  type
-    MyObjParam[N: static int] = object
-      x: int
-
-    MyObj[P: static MyObjParam] = object
-      y: int
-
-  const P = MyObjParam[256](x: 2)
-  let Q = MyObj[P](y: 2)
-  doAssert($Q  == "(y: 2)")
-
