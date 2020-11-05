@@ -13,6 +13,8 @@ import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, strutils
 
+import std / tables
+
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
 proc noidentError(conf: ConfigRef; n, origin: PNode) =
@@ -138,9 +140,9 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result = newSym(skError, ident, nextId(c.idgen), getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
-  # pretend it's imported from some unknown module to prevent cascading errors:
+  # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
-    c.importTable.addSym(result)
+    c.topLevelScope.addSym(result)
 
 type
   TOverloadIterMode* = enum
@@ -274,17 +276,38 @@ when defined(nimfix):
 else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
+iterator symbols(im: ImportedModule; name: PIdent): PSym =
+  var ti: TIdentIter
+  var candidate = initIdentIter(ti, im.m.tab, name)
+  while candidate != nil:
+    let b =
+      case im.mode
+      of importAll: true
+      of importSet: candidate.id in im.imported
+      of importExcept: name.id notin im.exceptSet
+    if b:
+      yield candidate
+    candidate = nextIdentIter(ti, im.m.tab)
+
+iterator importedItems*(c: PContext; name: PIdent): PSym =
+  for im in c.imports.mitems:
+    for s in symbols(im, name):
+      yield s
+
+proc someSymFromImportTable*(c: PContext; name: PIdent): PSym =
+  for im in c.imports.mitems:
+    for s in symbols(im, name):
+      return s
+  return nil
+
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var err = "ambiguous identifier: '" & s.name.s & "'"
-  var ti: TIdentIter
-  var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
-  while candidate != nil:
+  for candidate in importedItems(c, s.name):
     if i == 0: err.add " -- use one of the following:\n"
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
-    candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
   localError(c.config, info, errGenerated, err)
 

@@ -70,10 +70,16 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  ImportMode* = enum
+    importAll, importSet, importExcept
   ImportedModule* = object
-    m: CachedModule
-    rawImport*: bool # "from X import nil"
-    exceptSet*: IntSet
+    m*: PSym
+    case mode*: ImportMode
+    of importAll: discard
+    of importSet:
+      imported*: IntSet
+    of importExcept:
+      exceptSet*: IntSet
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -81,7 +87,7 @@ type
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    importTable*: Table[PIdent, ImportedModule] # scope for all imported symbols
+    imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched

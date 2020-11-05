@@ -522,11 +522,10 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
-  c.importTable = openScope(c)
-  c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags:
     graph.systemModule = module
   c.topLevelScope = openScope(c)
+  c.topLevelScope.addSym(module) # a module knows itself
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
@@ -557,7 +556,7 @@ proc isEmptyTree(n: PNode): bool =
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
-      c.importTable.addSym c.graph.systemModule # import the "System" identifier
+      c.topLevelScope.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts
   else:
