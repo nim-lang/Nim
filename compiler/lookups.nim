@@ -13,8 +13,6 @@ import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, strutils
 
-import std / tables
-
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
 proc noidentError(conf: ConfigRef; n, origin: PNode) =

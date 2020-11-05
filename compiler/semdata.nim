@@ -450,7 +450,7 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
   if n.len < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
-  result = c.currentScope.depthLevel <= 2
+  result = c.currentScope.depthLevel <= 1
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
