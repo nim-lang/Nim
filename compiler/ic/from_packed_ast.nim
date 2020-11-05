@@ -18,12 +18,18 @@ type
     lastFile: FileIndex # remember the last lookup entry.
     lastLit: LitId
     filenames: Table[LitId, FileIndex]
+    pendingTypes: seq[ItemId]
+    pendingSyms: seq[ItemId]
     typeMap: Table[ItemId, PType]  # ItemId.item -> PType
     symMap: Table[ItemId, PSym]    # ItemId.item -> PSym
     graph: ModuleGraph
 
 proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
+proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
+
+proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
+  result = getIdent(c.graph.cache, ir.sh.strings[l])
 
 proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo =
   if p.file notin c.filenames:
@@ -55,8 +61,32 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return
 
-  # assume that the itemId is authoritative
-  result = PSym(itemId: id)
+  # XXX: move some decodes out of here for recursion reasons...
+  result = PSym(itemId: id, kind: s.kind, magic: s.magic, flags: s.flags,
+                info: fromLineInfo(s.info, ir, c), options: s.options,
+                position: s.position, annex: fromLib(s.annex, ir, c),
+                typ: fromType(ir.sh.types[int s.typeId], ir, c),
+                ast: fromTree(s.ast, c), name: fromIdent(s.name, ir, c),
+                constraint: fromTree(s.constraint, c))
+  c.symMap[id] = result
+
+  when hasFFI:
+    result.cname = ir.sh.strings[int s.cname]
+
+  case s.kind
+  of skModule, skPackage:
+    # setup tab?
+    discard
+  of skLet, skVar, skField, skForVar:
+    result.guard = fromSym(ir.sh.syms[int s.guard.item], s.guard, ir, c)
+    result.bitsize = s.bitsize
+    result.alignment = s.alignment
+  else:
+    discard
+  result.owner = fromSym(ir.sh.syms[int s.owner.item], s.owner, ir, c)
+  let externalName = ir.sh.strings[s.externalName]
+  if externalName != "":
+    result.loc.r = rope externalName
 
 proc asItemId(ir: PackedTree; index = 0): ItemId =
   ## read an itemId from the tree
@@ -74,8 +104,6 @@ proc fromSymNode(ir: PackedTree; c: var Context; index = 0.NodePos): PSym =
   result = loadSymbol(id, c, ir)
 
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
-  assert t.nonUniqueId.module == c.thisModule   # should we even be here?
-
   # short-circuit if we already have the PType
   result = getOrDefault(c.typeMap, t.nonUniqueId, nil)
   if result != nil: return

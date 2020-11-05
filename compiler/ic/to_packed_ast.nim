@@ -9,7 +9,7 @@
 
 import std / [hashes, tables]
 import packed_ast, bitabs
-import ".." / [ast, idents, lineinfos, msgs, ropes]
+import ".." / [ast, idents, lineinfos, msgs, ropes, options]
 
 type
   Context = object
@@ -78,7 +78,6 @@ proc addMissing(c: var Context; p: PType) =
       c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
-  #assert t.itemId.module == c.thisModule   # should we even be here?
   template info: PackedLineInfo =
     # too bad the most variant part of the operation comes first...
     (if t.n.isNil: TLineInfo() else: t.n.info).toPackedInfo(ir, c)
@@ -121,7 +120,6 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
-  #assert s.itemId.module == c.thisModule   # should we even be here?
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
   # short-circuit if we already have the SymId
@@ -142,24 +140,18 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
     p.guard = s.guard.itemId
     p.bitsize = s.bitsize
     p.alignment = s.alignment
-
-  if s.loc.r != nil:
-    p.externalName = toLitId($s.loc.r, ir, c)
-
+  p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, ir, c)
   p.typeId = s.typ.toPackedType(ir, c)
-
   c.addMissing s.owner
   p.owner = s.owner.itemId
-
   if not s.annex.isNil:
     p.annex = toPackedLib(s.annex, ir, c)
-
   if not s.constraint.isNil:
     s.constraint.toPackedNode(p.constraint, c)
-
   if not s.ast.isNil:
     s.ast.toPackedNode(p.ast, c)
-
+  when hasFFI:
+    p.cname = toLitId(s.cname, ir, c)
   ir.flush c
 
 proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
