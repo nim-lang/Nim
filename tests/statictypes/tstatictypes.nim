@@ -304,7 +304,8 @@ type
   rangeB[N: static[int16]] = range[0'i16 .. N]
   setB[N: static[int16]] = set[rangeB[N]]
 
-var s : setB[14'i16]
+block:
+  var s : setB[14'i16]
 
 
 #-----------------------------------------------------------------------------------------
@@ -321,3 +322,21 @@ proc myproc(a: static[MyEnum], b: int) =
   echo $a
 
 myproc(Val1, -10)
+
+
+#------------------------------------------------------------------------------------------
+# issue #6177
+
+type                                                                                                 
+  G[N,M:static[int], T] = object                                                                      
+    o: T                                                                                             
+                                                                                                     
+proc newG[N,M:static[int],T](x:var G[N,M,T], y:T) =                                                  
+  x.o = y+10*N+100*M                                                                                 
+                                                                                                     
+proc newG[N,M:static[int],T](x:T):G[N,M,T] = result.newG(x)                                          
+                                                                                                     
+var x:G[2,3,int]                                                                                     
+x.newG(4)                                                                                            
+var y = newG[2,3,int](4)
+
