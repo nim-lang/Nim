@@ -70,6 +70,9 @@ king
 hi
 try
 bye
+()
+()
+()
 '''
 """
 
@@ -524,3 +527,33 @@ proc getScope2(): string =
     "else"
 
 echo getScope2()
+
+
+#--------------------------------------------------------------------
+#bug  #15609
+
+type
+  Wrapper = object
+    discard
+
+proc newWrapper(): ref Wrapper =
+  new(result)
+  result
+
+
+proc newWrapper2(a: int): ref Wrapper =
+  new(result)
+  if a > 0:
+    result
+  else:
+    new(Wrapper)
+
+
+let w1 = newWrapper()
+echo $w1[]
+
+let w2 = newWrapper2(1)
+echo $w2[]
+
+let w3 = newWrapper2(-1)
+echo $w3[]
