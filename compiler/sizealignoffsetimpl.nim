@@ -258,11 +258,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyArray:
     computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size
+    let elemSize = typ[1].size 
     let len = lengthOrd(conf, typ[0])
-    if elemSize < 0 or len < 0:
+    if elemSize < 0:
+      typ.size = elemSize
+      typ.align = int16(elemSize)
+    elif len < 0:
       typ.size = szUnknownSize
-      typ.align = szUnknownSize
+      typ.align = szUnknownSize    
     else:
       typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
       typ.align = typ[1].align
