@@ -72,3 +72,9 @@ suite "httpcore":
       headers["existing"] = @[]
 
       doAssert not headers.hasKey("existing")
+
+    block:
+      var headers = newHttpHeaders()
+      headers["existing"] = @[]
+      headers["existing"] = @["true"]
+      doAssert headers.hasKey("existing")
