@@ -239,3 +239,59 @@ let t = T[true](foo: "hey")
 let u = U[false](bar: "ho")
 echo t.foo, u.bar
 
+
+#------------------------------------------------------------------------------
+# issue #9679
+
+discard """
+  output: ''''''
+"""
+type
+  Foo*[T] = object
+    bar*: int
+    dummy: T
+
+proc initFoo(T: type, bar: int): Foo[T] =
+  result.bar = 1
+
+proc fails[T](x: static Foo[T]) = # Change to non-static and it compiles
+  doAssert($x == "(bar: 1, dummy: 0)")
+
+block:
+  const foo = initFoo(int, 2)
+  fails(foo)
+
+
+import macros, tables
+
+var foo{.compileTime.} = [
+  "Foo",
+  "Bar"
+]
+
+var bar{.compileTime.} = {
+  0: "Foo",
+  1: "Bar"
+}.toTable()
+
+macro fooM(): untyped =
+  for i, val in foo:
+    echo i, ": ", val
+
+macro barM(): untyped =
+  for i, val in bar:
+    echo i, ": ", val
+
+macro fooParam(x: static array[2, string]): untyped =
+  for i, val in x:
+    echo i, ": ", val
+
+macro barParam(x: static Table[int, string]): untyped =
+  for i, val in x:
+    echo i, ": ", val
+
+fooM()
+barM()
+fooParam(foo)
+barParam(bar)
+
