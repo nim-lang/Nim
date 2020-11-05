@@ -92,6 +92,15 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
+## 
+## Limitations/Bugs
+## ================
+## Since `check` will rewrite some programs for
+## supporting checkpoints (namely assigns expressions to variables).
+## Some type conversions are not supported.
+## For example `check 4.0 == 2 + 2` won't work. But `doAssert 4.0 == 2 + 2` works.
+## Make sure both sides of the operator (such as `==`, `>=` and so on) have the same type.
+##
 
 import std/private/since
 import std/exitprocs
