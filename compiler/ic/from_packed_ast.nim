@@ -90,7 +90,7 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
     result.attachedOps[op] = loadSymbol(item, c, ir)
   result.typeInst = fromType(ir.sh.types[int t.typeInst], ir, c)
   for son in items t.types:
-    result.sons.add fromType(ir.sh.types[int t.typeInst], ir, c)
+    result.sons.add fromType(ir.sh.types[int son], ir, c)
   result.n = fromTree(t.node, c)
   for generic, id in items t.methods:
     result.methods.add (generic, loadSymbol(id, c, ir))
