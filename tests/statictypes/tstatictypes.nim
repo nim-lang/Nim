@@ -295,3 +295,11 @@ barM()
 fooParam(foo)
 barParam(bar)
 
+
+#-----------------------------------------------------------------------------------------
+# issue #7546
+type
+  rangeB[N: static[int16]] = range[0'i16 .. N]
+  setB[N: static[int16]] = set[rangeB[N]]
+
+var s : setB[14'i16]
