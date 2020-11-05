@@ -997,7 +997,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       effects[i].typ = real[i].typ
 
     result = newTreeI(nkExprColonExpr, n.info,
-      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects)
+      newIdentNode(getIdent(cache, $effectType), n.info), effects)
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym

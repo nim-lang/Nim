@@ -364,3 +364,11 @@ when true:
     # the last character of runnableExamples
     runnableExamples:
       discard 2
+
+when true: # issue #15702
+  type
+    Shapes* = enum
+      ## Some shapes.
+      Circle,     ## A circle
+      Triangle,   ## A three-sided shape
+      Rectangle   ## A four-sided shape

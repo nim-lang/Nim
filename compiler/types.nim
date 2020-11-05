@@ -124,12 +124,21 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  # result.add " [declared in " & conf$sym.info & "]"
-  result.add " [declared in " & toFileLineCol(conf, sym.info) & "]"
+  result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
-  if optDeclaredLocs in conf.globalOptions:
+  if optDeclaredLocs in conf.globalOptions and sym != nil:
     addDeclaredLoc(result, conf, sym)
+
+proc addDeclaredLoc(result: var string, conf: ConfigRef; typ: PType) =
+  let typ = typ.skipTypes(abstractInst - {tyRange})
+  result.add " [$1" % typ.kind.toHumanStr
+  if typ.sym != nil:
+    result.add " declared in " & toFileLineCol(conf, typ.sym.info)
+  result.add "]"
+
+proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
+  if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
@@ -691,7 +700,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < t.len - 1: result.add(", ")
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
-      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: CallingConvToStr[t.callConv]
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
@@ -738,8 +747,9 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.len > 0 and t[0] != nil:
       result = firstOrd(conf, t[0])
     else:
-      assert(t.n[0].kind == nkSym)
-      result = toInt128(t.n[0].sym.position)
+      if t.n.len > 0:
+        assert(t.n[0].kind == nkSym)
+        result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
@@ -795,8 +805,9 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt64:
     result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
-    assert(t.n[^1].kind == nkSym)
-    result = toInt128(t.n[^1].sym.position)
+    if t.n.len > 0:
+      assert(t.n[^1].kind == nkSym)
+      result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
@@ -1473,12 +1484,19 @@ proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
   if formal.kind != tyError and actual.kind != tyError:
-    let named = typeToString(formal)
+    let actualStr = typeToString(actual)
+    let formalStr = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
-    let x = if named == desc: named else: named & " = " & desc
-    var msg = "type mismatch: got <" &
-              typeToString(actual) & "> " &
-              "but expected '" & x & "'"
+    let x = if formalStr == desc: formalStr else: formalStr & " = " & desc
+    let verbose = actualStr == formalStr or optDeclaredLocs in conf.globalOptions
+    var msg = "type mismatch:"
+    if verbose: msg.add "\n"
+    msg.add  " got <$1>" % actualStr
+    if verbose:
+      msg.addDeclaredLoc(conf, actual)
+      msg.add "\n"
+    msg.add " but expected '$1'" % x
+    if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)

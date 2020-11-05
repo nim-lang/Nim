@@ -166,9 +166,12 @@ proc `[]=`*(headers: HttpHeaders, key, value: string) =
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
-  ## values.
-  ## Replaces any existing values.
-  headers.table[headers.toCaseInsensitive(key)] = value
+  ## values. Replaces any existing values. If ``value`` is empty,
+  ## deletes the header entries associated with ``key``.
+  if value.len > 0:
+    headers.table[headers.toCaseInsensitive(key)] = value
+  else:
+    headers.table.del(headers.toCaseInsensitive(key))
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
@@ -179,7 +182,7 @@ proc add*(headers: HttpHeaders, key, value: string) =
     headers.table[headers.toCaseInsensitive(key)].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
-  ## Delete the header entries associated with ``key``
+  ## Deletes the header entries associated with ``key``
   headers.table.del(headers.toCaseInsensitive(key))
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =

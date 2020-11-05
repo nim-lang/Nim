@@ -59,12 +59,13 @@
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
 ## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
+## * `parsecsv module<parsecsv.html>`_ for a high-performance CSV parser
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
 ## * `parseopt module<parseopt.html>`_ for command-line parsing
+## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   (dictionaries, in some programming languages) mapping from strings to strings
-## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
@@ -75,7 +76,7 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
-import macros # for `parseEnum`
+import std/enumutils
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -950,11 +951,11 @@ proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.no
     # handle negative overflow
     if n == 0 and handleNegative: n = not(BiggestUInt 0)
 
-proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+proc toHex*[T: SomeInteger](x: T, len: Positive): string {.noSideEffect.} =
   ## Converts `x` to its hexadecimal representation.
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated.
+  ## ``0x`` is generated. `x` is treated as an unsigned value.
   runnableExamples:
     let
       a = 62'u64
@@ -962,23 +963,8 @@ proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  toHexImpl(x, len, false)
-
-proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
-  rtl, extern: "nsuToHex".} =
-  ## Converts `x` to its hexadecimal representation.
-  ##
-  ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated. `x` is treated as an unsigned value.
-  runnableExamples:
-    let
-      a = 62
-      b = 4097
-      c = -8
-    doAssert a.toHex(3) == "03E"
-    doAssert b.toHex(3) == "001"
-    doAssert b.toHex(4) == "1001"
-    doAssert c.toHex(6) == "FFFFF8"
+    doAssert toHex(62, 3) == "03E"
+    doAssert toHex(-8, 6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
 proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
@@ -1278,61 +1264,6 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
-  result = nnkOfBranch.newTree(
-    newLit s,
-    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
-  )
-
-macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
-  # generates a case stmt, which assigns the correct enum field given
-  # a normalized string comparison to the `argSym` input.
-  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
-  # `of "Foo".nimIdentNormalize: Foo`.
-  # This will fail, if the enum is not defined at top level (e.g. in a block).
-  # Thus we check for the field value of the (possible holed enum) and convert
-  # the integer value to the generic argument `typ`.
-  let typ = typ.getTypeInst[1]
-  let impl = typ.getImpl[2]
-  expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
-  # stores all processed field strings to give error msg for ambiguous enums
-  var foundFields: seq[string] = @[]
-  var fStr = "" # string of current field
-  var fNum = BiggestInt(0) # int value of current field
-  for f in impl:
-    case f.kind
-    of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent: fStr = f.strVal
-    of nnkEnumFieldDef:
-      case f[1].kind
-      of nnkStrLit: fStr = f[1].strVal
-      of nnkTupleConstr:
-        fStr = f[1][1].strVal
-        fNum = f[1][0].intVal
-      of nnkIntLit:
-        fStr = f[0].strVal
-        fNum = f[1].intVal
-      else: error("Invalid tuple syntax!", f[1])
-    else: error("Invalid node for enum type!", f)
-    # add field if string not already added
-    fStr = nimIdentNormalize(fStr)
-    if fStr notin foundFields:
-      result.add addOfBranch(fStr, newLit fNum, typ)
-      foundFields.add fStr
-    else:
-      error("Ambiguous enums cannot be parsed, field " & $fStr &
-        " appears multiple times!", f)
-    inc fNum
-  # finally add else branch to raise or use default
-  if default == nil:
-    let raiseStmt = quote do:
-      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
-    result.add nnkElse.newTree(raiseStmt)
-  else:
-    expectKind(default, nnkSym)
-    result.add nnkElse.newTree(default)
-
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
@@ -1351,7 +1282,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumStmt(T, s, default = nil)
+  genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
@@ -1370,7 +1301,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumStmt(T, s, default)
+  genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =

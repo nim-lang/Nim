@@ -26,8 +26,8 @@ To choose the memory management strategy use the ``--gc:`` switch.
 
 - ``--gc:refc``. This is the default GC. It's a
   deferred reference counting based garbage collector
-  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread local.
-- ``--gc:markAndSweep``. Simple Mark-And-Sweep based garbage collector. Heaps are thread local.
+  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local.
+- ``--gc:markAndSweep``. Simple Mark-And-Sweep based garbage collector. Heaps are thread-local.
 - ``--gc:boehm``. Boehm based garbage collector, it offers a shared heap.
 - ``--gc:go``. Go's garbage collector, useful for interoperability with Go. Offers a shared heap.
 - ``--gc:arc``. Plain reference counting with
@@ -36,10 +36,10 @@ To choose the memory management strategy use the ``--gc:`` switch.
   cause memory leaks, beware.
 
 - ``--gc:orc``. Same as ``--gc:arc`` but adds a cycle collector based on "trial deletion".
-  Unfortunately that makes its performance profile hard to reason about so it is less
-  useful for hard realtime systems.
+  Unfortunately, that makes its performance profile hard to reason about so it is less
+  useful for hard real-time systems.
 
-- ``--gc:none``. No memory management strategy nor garbage collector. Allocated memory is
+- ``--gc:none``. No memory management strategy nor a garbage collector. Allocated memory is
   simply never freed. You should use ``--gc:arc`` instead.
 
 
@@ -71,10 +71,10 @@ The cycle collector can be en-/disabled independently from the other parts of
 the garbage collector with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
 
 
-Soft realtime support
+Soft real-time support
 ---------------------
 
-To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
+To enable real-time support, the symbol `useRealtimeGC`:idx: needs to be
 defined via ``--define:useRealtimeGC`` (you can put this into your config
 file as well).
 With this switch the garbage collector supports the following operations:
@@ -85,7 +85,7 @@ With this switch the garbage collector supports the following operations:
 
 The unit of the parameters ``maxPauseInUs`` and ``us`` is microseconds.
 
-These two procs are the two modus operandi of the realtime garbage collector:
+These two procs are the two modus operandi of the real-time garbage collector:
 
 (1) GC_SetMaxPause Mode
 
@@ -98,21 +98,25 @@ These two procs are the two modus operandi of the realtime garbage collector:
 (2) GC_step Mode
 
     This allows the garbage collector to perform some work for up to ``us`` time.
-    This is useful to call in a main loop to ensure the garbage collector can do its work.
+    This is useful to call in the main loop to ensure the garbage collector can do its work.
     To bind all garbage collector activity to a ``GC_step`` call,
     deactivate the garbage collector with ``GC_disable`` at program startup.
     If ``strongAdvice`` is set to ``true``,
-    then the garbage collector will be forced to perform collection cycle.
+    then the garbage collector will be forced to perform the collection cycle.
     Otherwise, the garbage collector may decide not to do anything,
     if there is not much garbage to collect.
     You may also specify the current stack size via ``stackSize`` parameter.
-    It can improve performance, when you know that there are no unique Nim
-    references below certain point on the stack. Make sure the size you specify
-    is greater than the potential worst case size.
+    It can improve performance when you know that there are no unique Nim references
+    below a certain point on the stack. Make sure the size you specify is greater
+    than the potential worst-case size.
 
-These procs provide a "best effort" realtime guarantee; in particular the
+    It can improve performance when you know that there are no unique Nim
+    references below a certain point on the stack. Make sure the size you specify
+    is greater than the potential worst-case size.
+
+These procs provide a "best effort" real-time guarantee; in particular the
 cycle collector is not aware of deadlines. Deactivate it to get more
-predictable realtime behaviour. Tests show that a 1ms max pause
+predictable real-time behaviour. Tests show that a 1ms max pause
 time will be met in almost all cases on modern CPUs (with the cycle collector
 disabled).
 
@@ -120,14 +124,14 @@ disabled).
 Time measurement with garbage collectors
 ----------------------------------------
 
-The garbage collectors's way of measuring time uses
+The garbage collectors' way of measuring time uses
 (see ``lib/system/timers.nim`` for the implementation):
 
 1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
 2) ``mach_absolute_time`` on Mac OS X.
 3) ``gettimeofday`` on Posix systems.
 
-As such it supports a resolution of nanoseconds internally; however the API
+As such it supports a resolution of nanoseconds internally; however, the API
 uses microseconds for convenience.
 
 Define the symbol ``reportMissedDeadlines`` to make the
@@ -174,7 +178,7 @@ Heap dump
 The heap dump feature is still in its infancy, but it already proved
 useful for us, so it might be useful for you. To get a heap dump, compile
 with ``-d:nimTypeNames`` and call ``dumpNumberOfInstances`` at a strategic place in your program.
-This produces a list of used types in your program and for every type
+This produces a list of the used types in your program and for every type
 the total amount of object instances for this type as well as the total
 amount of bytes these instances take up.
 
