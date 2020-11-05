@@ -823,14 +823,10 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkAsgn, nkFastAsgn:
       if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
           not isCursor(n[0], c):
-        # rule (self-assignment-removal):
-        if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
-          result = newNodeI(nkEmpty, n.info)
-        else:
-          if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
-            cycleCheck(n, c)
-          assert n[1].kind notin {nkAsgn, nkFastAsgn}
-          result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s)
+        if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
+          cycleCheck(n, c)
+        assert n[1].kind notin {nkAsgn, nkFastAsgn}
+        result = moveOrCopy(p(n[0], c, s, mode), n[1], c, s)
       elif isDiscriminantField(n[0]):
         result = c.genDiscriminantAsgn(s, n)
       else:
@@ -953,8 +949,11 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkSym:
-    if isSinkParam(ri.sym) and isLastRead(ri, c):
+  of nkSym:            
+    if dest.kind == nkSym and dest.sym == ri.sym:
+      # rule (self-assignment-removal):
+      result = newNodeI(nkEmpty, dest.info)
+    elif isSinkParam(ri.sym) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       let snk = c.genSink(dest, ri, isDecl)
       result = newTree(nkStmtList, snk, c.genWasMoved(ri))
