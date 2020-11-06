@@ -81,7 +81,7 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: TaintedString] =
+iterator decodeData*(data: string): tuple[key, value: TaintedString] {.deprecated: "use uri.decodeQuery".} =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   try:
@@ -96,8 +96,11 @@ iterator decodeData*(allowedMethods: set[RequestMethod] =
   ## data consists of. If the client does not use a method listed in the
   ## `allowedMethods` set, a ``CgiError`` exception is raised.
   let data = getEncodedData(allowedMethods)
-  for key, value in decodeData(data):
-    yield (key, value)
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 proc readData*(allowedMethods: set[RequestMethod] =
                {methodNone, methodPost, methodGet}): StringTableRef =
