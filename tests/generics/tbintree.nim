@@ -55,8 +55,8 @@ proc find*[Ty2](b: PBinaryTree[Ty2], data: Ty2): bool =
 
 iterator preorder*[T](root: PBinaryTree[T]): T =
   # Preorder traversal of a binary tree.
-  # Since recursive iterators are not yet implemented,
-  # this uses an explicit stack:
+  # This uses an explicit stack (which is more efficient than
+  # a recursive iterator factory).
   var stack: seq[PBinaryTree[T]] = @[root]
   while stack.len > 0:
     var n = stack.pop()
