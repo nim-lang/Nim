@@ -59,6 +59,16 @@ type
     opaque*: bool
     isIpv6: bool # not expose it for compatibility.
 
+  CgiError* = object of IOError ## Exception that is raised if a CGI error occurs
+
+
+proc cgiError*(msg: string) {.noreturn.} =
+  ## Raises an ECgi exception with message `msg`.
+  var e: ref CgiError
+  new(e)
+  e.msg = msg
+  raise e
+
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
@@ -152,6 +162,41 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     if not omitEq or val.len > 0:
       result.add('=')
       result.add(encodeUrl(val, usePlus))
+
+iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
+  ## Reads and decodes query string ``data`` and yields the (name, value) pairs the
+  ## data consists of.
+  runnableExamples:
+    var queryData: seq[(string, string)]
+    for (key, value) in decodeQuery("foo=1&bar=2"):
+      queryData.add((key, value))
+    doAssert queryData == @[("foo", "1"), ("bar", "2")]
+
+  proc parseData(data: string, i: int, field: var string): int =
+    result = i
+    while result < data.len:
+      case data[result]
+      of '%': add(field, decodePercent(data, result))
+      of '+': add(field, ' ')
+      of '=', '&': break
+      else: add(field, data[result])
+      inc(result)
+
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while i < data.len:
+    setLen(name, 0) # reuse memory
+    i = parseData(data, i, name)
+    setLen(value, 0) # reuse memory
+    if i < data.len and data[i] == '=':
+      inc(i) # skip '='
+      i = parseData(data, i, value)
+    yield (name.TaintedString, value.TaintedString)
+    if i < data.len:
+      if data[i] == '&': inc(i)
+      else: cgiError("'&' expected")
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
