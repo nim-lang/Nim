@@ -251,7 +251,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
     var s: PLLStream
-    if isMain and conf.command == "e":
+    if isMain and optWasNimscript in conf.globalOptions:
       if conf.projectIsStdin: s = stdin.llStreamOpen
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
     if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
