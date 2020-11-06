@@ -271,17 +271,12 @@ proc getQuality(s: PSym): range[0..100] =
   return 100
 
 template wholeSymTab(cond, section: untyped) {.dirty.} =
-  var isLocal = true
-  var scopeN = 0
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: isLocal = false
-    dec scopeN
-    for item in scope.symbols:
-      let it = item
-      var pm: PrefixMatch
-      if cond:
-        outputs.add(symToSuggest(c.config, it, isLocal = isLocal, section, info, getQuality(it),
-                                 pm, c.inTypeContext > 0, scopeN))
+  for (item, scopeN, isLocal) in allSyms(c):
+    let it = item
+    var pm: PrefixMatch
+    if cond:
+      outputs.add(symToSuggest(c.config, it, isLocal = isLocal, section, info, getQuality(it),
+                                pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   for i in 0..<list.len:
@@ -348,17 +343,11 @@ proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Sugges
 
 proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   # do not produce too many symbols:
-  var isLocal = true
-  var scopeN = 0
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: isLocal = false
-    dec scopeN
-    for it in items(scope.symbols):
-      var pm: PrefixMatch
-      if filterSym(it, f, pm):
-        outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug, n.info, 0, pm,
-                                 c.inTypeContext > 0, scopeN))
-    #if scope == c.topLevelScope and f.isNil: break
+  for (it, scopeN, isLocal) in allSyms(c):
+    var pm: PrefixMatch
+    if filterSym(it, f, pm):
+      outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug, n.info, 0, pm,
+                                c.inTypeContext > 0, scopeN))
 
 proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -656,17 +645,12 @@ proc suggestSentinel*(c: PContext) =
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
   # suggest everything:
-  var isLocal = true
-  var scopeN = 0
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: isLocal = false
-    dec scopeN
-    for it in items(scope.symbols):
-      var pm: PrefixMatch
-      if filterSymNoOpr(it, nil, pm):
-        outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug,
-            newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), 0,
-            PrefixMatch.None, false, scopeN))
+  for (it, scopeN, isLocal) in allSyms(c):
+    var pm: PrefixMatch
+    if filterSymNoOpr(it, nil, pm):
+      outputs.add(symToSuggest(c.config, it, isLocal = isLocal, ideSug,
+          newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), 0,
+          PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)
   produceOutput(outputs, c.config)

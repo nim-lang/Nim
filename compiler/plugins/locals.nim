@@ -19,8 +19,7 @@ proc semLocals*(c: PContext, n: PNode): PNode =
   tupleType.n = newNodeI(nkRecList, n.info)
   let owner = getCurrOwner(c)
   # for now we skip openarrays ...
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: break
+  for scope in localScopesFrom(c, c.currentScope):
     for it in items(scope.symbols):
       if it.kind in skLocalVars and
           it.typ.skipTypes({tyGenericInst, tyVar}).kind notin

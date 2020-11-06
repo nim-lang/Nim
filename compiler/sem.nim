@@ -625,7 +625,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
-  rawCloseScope(c)      # imported symbols; don't check for unused ones!
+  when false:
+    rawCloseScope(c)      # imported symbols; don't check for unused ones!
   reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
