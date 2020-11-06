@@ -59,11 +59,8 @@ type
     methodGet           ## query uses the GET method
 
 proc cgiError*(msg: string) {.noreturn.} =
-  ## Raises an ECgi exception with message `msg`.
-  var e: ref CgiError
-  new(e)
-  e.msg = msg
-  raise e
+  ## Raises a ``CgiError`` exception with message `msg`.
+  raise newException(CgiError, msg)
 
 proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   case getEnv("REQUEST_METHOD").string
@@ -97,7 +94,7 @@ iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
+  ## `allowedMethods` set, a ``CgiError`` exception is raised.
   let data = getEncodedData(allowedMethods)
   for key, value in decodeData(data):
     yield (key, value)
