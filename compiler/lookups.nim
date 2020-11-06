@@ -528,11 +528,13 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
     inc idx
 
 proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
+  assert o.currentScope == nil
   while o.importIdx < c.imports.len:
     result = initIdentIter(o.it, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
     while result != nil and result.id in o.inSymChoice:
-      result = nextOverloadIterImports(o, c, n)
-    if result != nil and result.id notin o.inSymChoice:
+      result = nextIdentIter(o.it, c.imports[o.importIdx])
+    if result != nil:
+      assert result.id notin o.inSymChoice
       return result
     inc o.importIdx
 
@@ -591,16 +593,17 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = nextIdentExcluding(o.it, o.currentScope.symbols, o.inSymChoice).skipAlias(n, c.config)
       while result == nil:
         o.currentScope = o.currentScope.parent
-        if o.currentScope == nil:
+        if o.currentScope != nil:
+          result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                      n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+        else:
           o.importIdx = 0
           result = symChoiceExtension(o, c, n)
           break
-        result = firstIdentExcluding(o.it, o.currentScope.symbols,
-                                    n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
     elif o.importIdx < c.imports.len:
       result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
       while result != nil and result.id in o.inSymChoice:
-        result = nextOverloadIterImports(o, c, n)
+        result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
       if result == nil:
         inc o.importIdx
         result = symChoiceExtension(o, c, n)
