@@ -409,7 +409,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
     if conf.command == "":
       conf.command = "e" # better than "r" as a default
-      incl(conf.globalOptions, optWasNimscript)
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)

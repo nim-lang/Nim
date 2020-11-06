@@ -61,6 +61,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.command = "nimsuggest"
+  if conf.command == "e":
+    incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
   if not self.suggestMode:
