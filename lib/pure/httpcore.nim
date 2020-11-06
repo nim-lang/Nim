@@ -119,19 +119,21 @@ func newHttpHeaders*(titleCase=false): HttpHeaders =
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
 
-proc newHttpHeaders*(keyValuePairs:
+func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
   ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
+
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
-    if key in result.table:
-      result.table[key].add(pair.val)
-    else:
-      result.table[key] = @[pair.val]
+    {.cast(noSideEffect).}:
+      if key in result.table:
+        result.table[key].add(pair.val)
+      else:
+        result.table[key] = @[pair.val]
 
 
 func `$`*(headers: HttpHeaders): string {.inline.} =
@@ -140,7 +142,7 @@ func `$`*(headers: HttpHeaders): string {.inline.} =
 proc clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
-proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
+func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If the returned
   ## values are passed to a procedure expecting a ``string``, the first
   ## value is automatically picked. If there are
@@ -148,16 +150,18 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
-proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
+func `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  return headers.table[headers.toCaseInsensitive(key)][i]
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
@@ -197,7 +201,7 @@ func contains*(values: HttpHeaderValues, value: string): bool =
 func hasKey*(headers: HttpHeaders, key: string): bool =
   return headers.table.hasKey(headers.toCaseInsensitive(key))
 
-proc getOrDefault*(headers: HttpHeaders, key: string,
+func getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
