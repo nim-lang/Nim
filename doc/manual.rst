@@ -2697,6 +2697,36 @@ the variable has been initialized and does not rely on syntactic properties:
       x = a()
     # use x
 
+`requiresInit` pragma can also be applyied to `distinct` types.
+
+Given the following distinct type definitions:
+
+.. code-block:: nim
+  type
+    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    DistinctString {.requiresInit.} = distinct string
+
+The following code blocks will fail to compile:
+
+.. code-block:: nim
+  var foo: DistinctFoo
+  foo.x = "test"
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  var s: DistinctString
+  s = "test"
+  doAssert s == "test"
+
+But these ones will compile successfully:
+
+.. code-block:: nim
+  let foo = DistinctFoo(Foo(x: "test"))
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  let s = "test"
+  doAssert s == "test"
 
 Let statement
 -------------
