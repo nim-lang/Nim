@@ -25,14 +25,14 @@ when defined(windows):
   const ERROR_BAD_EXE_FORMAT = 193
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
+  proc writeToStdErr(msg: string) = rawWriteString(cstderr, msg)
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
-proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
+proc showErrorMessage(data: string) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
