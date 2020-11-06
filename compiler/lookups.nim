@@ -516,32 +516,41 @@ proc lastOverloadScope*(o: TOverloadIter): int =
   of oimOtherModule: result = 0
   else: result = -1
 
+proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  assert o.currentScope == nil
+  var idx = o.importIdx+1
+  o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
+  while idx < c.imports.len:
+    result = initIdentIter(o.it, c.imports[idx], o.it.name).skipAlias(n, c.config)
+    if result != nil:
+      # oh, we were wrong, some other module had the symbol, so remember that:
+      o.importIdx = idx
+      break
+    inc idx
+
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case o.mode
   of oimDone:
     result = nil
   of oimNoQualifier:
     if o.currentScope != nil:
-      if o.importIdx < 0:
-        result = nextIdentIter(o.it, o.currentScope.symbols).skipAlias(n, c.config)
-        while result == nil:
-          o.currentScope = o.currentScope.parent
-          if o.currentScope == nil: break
-          result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
-          # BUGFIX: o.it.name <-> n.ident
-      elif o.importIdx < c.imports.len:
-        result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
-        if result == nil:
-          o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
-          var idx = o.importIdx+1
-          while idx < c.imports.len:
-            result = initIdentIter(o.it, c.imports[idx], o.it.name).skipAlias(n, c.config)
-            if result != nil:
-              # oh, we were wrong, some other module had the symbol, so remember that:
-              o.importIdx = idx
-              break
-            inc idx
-
+      assert o.importIdx < 0
+      result = nextIdentIter(o.it, o.currentScope.symbols).skipAlias(n, c.config)
+      while result == nil:
+        o.currentScope = o.currentScope.parent
+        if o.currentScope == nil:
+          o.importIdx = 0
+          if c.imports.len > 0:
+            result = initIdentIter(o.it, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+            if result == nil:
+              result = nextOverloadIterImports(o, c, n)
+          break
+        result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
+        # BUGFIX: o.it.name <-> n.ident
+    elif o.importIdx < c.imports.len:
+      result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
+      if result == nil:
+        result = nextOverloadIterImports(o, c, n)
     else:
       result = nil
   of oimSelfModule:
