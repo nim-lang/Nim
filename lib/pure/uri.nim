@@ -190,7 +190,7 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
     if i < data.len:
       if data[i] == '&': inc(i)
       else:
-        raise newException(UriParseError, "'&' expected")
+        raise newException(UriParseError, "'&' expected at " & $i)
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
