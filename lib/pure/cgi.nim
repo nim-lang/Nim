@@ -30,7 +30,7 @@
 ##    writeLine(stdout, "</body></html>")
 
 import strutils, os, strtabs, cookies, uri
-export uri.encodeUrl, uri.decodeUrl, uri.CgiError, uri.cgiError
+export uri.encodeUrl, uri.decodeUrl
 
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
@@ -52,11 +52,18 @@ proc xmlEncode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
+  CgiError* = object of IOError ## Exception that is raised if a CGI error occurs
   RequestMethod* = enum ## the used request method
     methodNone,         ## no REQUEST_METHOD environment variable
     methodPost,         ## query uses the POST method
     methodGet           ## query uses the GET method
 
+proc cgiError*(msg: string) {.noreturn.} =
+  ## Raises an ECgi exception with message `msg`.
+  var e: ref CgiError
+  new(e)
+  e.msg = msg
+  raise e
 
 proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   case getEnv("REQUEST_METHOD").string
@@ -80,8 +87,11 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
-  for (key, value) in uri.decodeQuery(data):
-    yield (key, value)
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =

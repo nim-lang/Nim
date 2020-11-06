@@ -59,15 +59,8 @@ type
     opaque*: bool
     isIpv6: bool # not expose it for compatibility.
 
-  CgiError* = object of IOError ## Exception that is raised if a CGI error occurs
+  UriParseError* = object of ValueError
 
-
-proc cgiError*(msg: string) {.noreturn.} =
-  ## Raises an ECgi exception with message `msg`.
-  var e: ref CgiError
-  new(e)
-  e.msg = msg
-  raise e
 
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
@@ -196,7 +189,8 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
     yield (name.TaintedString, value.TaintedString)
     if i < data.len:
       if data[i] == '&': inc(i)
-      else: cgiError("'&' expected")
+      else:
+        raise newException(UriParseError, "'&' expected")
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
