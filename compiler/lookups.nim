@@ -108,17 +108,16 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     result = strTableGet(scope.symbols, s)
 
 proc initIdentIter(ti: var TIdentIter, im: ImportedModule; name: PIdent): PSym =
-  var candidate = initIdentIter(ti, im.m.tab, name)
-  while candidate != nil:
+  result = initIdentIter(ti, im.m.tab, name)
+  while result != nil:
     let b =
       case im.mode
       of importAll: true
-      of importSet: candidate.id in im.imported
+      of importSet: result.id in im.imported
       of importExcept: name.id notin im.exceptSet
     if b:
-      return candidate
-    candidate = nextIdentIter(ti, im.m.tab)
-  return nil
+      return result
+    result = nextIdentIter(ti, im.m.tab)
 
 proc nextIdentIter(ti: var TIdentIter; im: ImportedModule): PSym =
   while true:
@@ -528,6 +527,15 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
       break
     inc idx
 
+proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
+  while o.importIdx < c.imports.len:
+    result = initIdentIter(o.it, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+    while result != nil and result.id in o.inSymChoice:
+      result = nextOverloadIterImports(o, c, n)
+    if result != nil and result.id notin o.inSymChoice:
+      return result
+    inc o.importIdx
+
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case o.mode
   of oimDone:
@@ -538,15 +546,16 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       result = nextIdentIter(o.it, o.currentScope.symbols).skipAlias(n, c.config)
       while result == nil:
         o.currentScope = o.currentScope.parent
-        if o.currentScope == nil:
+        if o.currentScope != nil:
+          result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
+          # BUGFIX: o.it.name <-> n.ident
+        else:
           o.importIdx = 0
           if c.imports.len > 0:
             result = initIdentIter(o.it, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
             if result == nil:
               result = nextOverloadIterImports(o, c, n)
           break
-        result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
-        # BUGFIX: o.it.name <-> n.ident
     elif o.importIdx < c.imports.len:
       result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
       if result == nil:
@@ -570,16 +579,31 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                    n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
       while result == nil:
         o.currentScope = o.currentScope.parent
-        if o.currentScope == nil: break
-        result = firstIdentExcluding(o.it, o.currentScope.symbols,
-                                     n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+        if o.currentScope != nil:
+          result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                      n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+        else:
+          o.importIdx = 0
+          result = symChoiceExtension(o, c, n)
+          break
   of oimSymChoiceLocalLookup:
-    result = nextIdentExcluding(o.it, o.currentScope.symbols, o.inSymChoice).skipAlias(n, c.config)
-    while result == nil:
-      o.currentScope = o.currentScope.parent
-      if o.currentScope == nil: break
-      result = firstIdentExcluding(o.it, o.currentScope.symbols,
-                                   n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+    if o.currentScope != nil:
+      result = nextIdentExcluding(o.it, o.currentScope.symbols, o.inSymChoice).skipAlias(n, c.config)
+      while result == nil:
+        o.currentScope = o.currentScope.parent
+        if o.currentScope == nil:
+          o.importIdx = 0
+          result = symChoiceExtension(o, c, n)
+          break
+        result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                    n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+    elif o.importIdx < c.imports.len:
+      result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
+      while result != nil and result.id in o.inSymChoice:
+        result = nextOverloadIterImports(o, c, n)
+      if result == nil:
+        inc o.importIdx
+        result = symChoiceExtension(o, c, n)
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
