@@ -32,11 +32,26 @@ else:
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
-proc showErrorMessage(data: string) {.gcsafe, raises: [].} =
+proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
       errorMessageWriter($data)
+      toWrite = false
+    except:
+      discard
+  if toWrite:
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo data
+    else:
+      writeToStdErr(data)
+
+proc showErrorMessage(data: string) {.gcsafe, raises: [].} =
+  var toWrite = true
+  if errorMessageWriter != nil:
+    try:
+      errorMessageWriter(data)
       toWrite = false
     except:
       discard
