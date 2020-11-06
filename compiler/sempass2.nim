@@ -510,7 +510,7 @@ proc procVarCheck(n: PNode; conf: ConfigRef) =
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType.isNil or paramType.kind != tyTypeDesc:
-    procVarCheck skipConvAndClosure(n), tracked.config
+    procVarCheck skipConvCastAndClosure(n), tracked.config
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
@@ -556,7 +556,7 @@ proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
-  let a = skipConvAndClosure(n)
+  let a = skipConvCastAndClosure(n)
   let op = a.typ
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
