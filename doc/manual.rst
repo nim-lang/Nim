@@ -1282,6 +1282,13 @@ string from a cstring:
   var cstr: cstring = str
   var newstr: string = $cstr
 
+You shouldn't modify cstring literals. Otherwise unexpected situations may happen.
+
+.. code-block:: nim
+  # this is wrong!!!
+  var x = cstring"literals"
+  x[1] = 'A'
+
 Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
