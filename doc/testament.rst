@@ -58,12 +58,12 @@ Running all tests from a directory
 
   $ testament pattern "tests/*.nim"
 
-To recursively search for all tests in a directory, use
+To search for tests deeper in a directory, use
 
 .. code::
 
-  $ testament pattern "tests/**/*.nim"
-
+  $ testament pattern "tests/**/*.nim"    # one level deeper
+  $ testament pattern "tests/**/**/*.nim" # two levels deeper
 
 HTML Reports
 ============
