@@ -1561,6 +1561,11 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   else:
     let le = e[0]
     let ri = e[1]
+
+    # disable `[]=` for cstring
+    if le.kind == nkBracketExpr and le.len >= 2 and le[0].typ.kind == tyCString:
+      localError(p.config, le.info, "cstring doesn't support `[]=` operator!")
+
     var a: TLoc
     discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
     initLoc(a, locNone, le, OnUnknown)
