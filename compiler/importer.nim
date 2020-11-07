@@ -96,8 +96,40 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
       rawImportSymbol(c, s, fromMod, importSet)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
+proc addImport(c: PContext; im: sink ImportedModule) =
+  for i in 0..high(c.imports):
+    if c.imports[i].m == im.m:
+      # we have already imported the module: Check which import
+      # is more "powerful":
+      case c.imports[i].mode
+      of importAll: discard "already imported all symbols"
+      of importSet:
+        case im.mode
+        of importAll, importExcept:
+          # XXX: slightly wrong semantics for 'importExcept'...
+          # But we should probably change the spec and disallow this case.
+          c.imports[i] = im
+        of importSet:
+          # merge the import sets:
+          c.imports[i].imported.incl im.imported
+      of importExcept:
+        case im.mode
+        of importAll:
+          c.imports[i] = im
+        of importSet:
+          discard
+        of importExcept:
+          var cut = initIntSet()
+          # only exclude what is consistent between the two sets:
+          for i in im.exceptSet:
+            if i in c.imports[i].exceptSet:
+              cut.incl i
+          c.imports[i].exceptSet = cut
+      return
+  c.imports.add im
+
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
-  c.imports.add ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
+  c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
   when false:
     var i: TTabIter
     var s = initTabIter(i, fromMod.tab)
@@ -111,7 +143,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
       s = nextIter(i, fromMod.tab)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  c.imports.add ImportedModule(m: fromMod, mode: importAll)
+  c.addImport ImportedModule(m: fromMod, mode: importAll)
   when false:
     var exceptSet: IntSet
     importAllSymbolsExcept(c, fromMod, exceptSet)
@@ -234,7 +266,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)
-    c.imports.add im
+    c.addImport im
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
