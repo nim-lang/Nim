@@ -543,7 +543,7 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
   linefmt(p, cpsLocals, "$1 $2;$n", [storage, result])
   lineCg(p, cpsStmts, "if (#$2($3, $4, &$1)) { #raiseOverflow(); $5};$n",
       [result, cpname, rdCharLoc(a), rdCharLoc(b), raiseInstr(p)])
-  if size < p.config.target.intSize or t.kind in {tyRange, tyDistinct, tyEnum}:
+  if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
     linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseOverflow(); $4}$n",
             [result, intLiteral(firstOrd(p.config, t)), intLiteral(lastOrd(p.config, t)),
             raiseInstr(p)])
@@ -2269,7 +2269,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e[1], a)
       initLocExpr(p, e[2], b)
 
-      let ranged = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent})
+      let ranged = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyDistinct})
       let res = binaryArithOverflowRaw(p, ranged, a, b,
         if underlying.kind == tyInt64: fun64[op] else: fun[op])
 
