@@ -128,6 +128,7 @@ const
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
 
+
 const enumUtilsExist = compiles:
   import std/enumutils
 
