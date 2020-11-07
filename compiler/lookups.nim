@@ -508,7 +508,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
   of oimNoQualifier:
-    result = if o.importIdx >= 0: 1
+    result = if o.importIdx >= 0: 0
              elif o.currentScope.isNil: -1
              else: o.currentScope.depthLevel
   of oimSelfModule:  result = 1
