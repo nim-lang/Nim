@@ -897,7 +897,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCompileTime:
         noVal(c, it)
         if comesFromPush:
-          if sym.kind == skProc:
+          if sym.kind in {skProc, skFunc}:
             incl(sym.flags, sfCompileTime)
         else:
           incl(sym.flags, sfCompileTime)
