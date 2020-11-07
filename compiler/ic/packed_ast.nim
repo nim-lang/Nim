@@ -118,9 +118,9 @@ type
 
   Module* = object
     name*: string
-    file* {.deprecated.}: AbsoluteFile
+    #file* {.deprecated.}: AbsoluteFile
     ast*: PackedTree
-    phase* {.deprecated.}: ModulePhase
+    #phase* {.deprecated.}: ModulePhase
     iface*: Table[string, seq[SymId]] # 'seq' because of overloading
 
   Program* = ref object
