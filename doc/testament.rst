@@ -89,7 +89,9 @@ Example "template" **to edit** and write a Testament unittest:
     # Options:
     #   "compile": expect successful compilation
     #   "run": expect successful compilation and execution
-    #   "reject": expect failed compilation
+    #   "reject": expect failed compilation. The "reject" action can catch
+    #             {.error.} pragmas but not {.fatal.} pragmas because
+    #             {.fatal.} pragmas guarantee that compilation will be aborted.
     action: "run"
 
     # The exit code that the test is expected to return. Typically, the default
