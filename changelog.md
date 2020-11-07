@@ -37,6 +37,7 @@
 
 - Removed deprecated `iup` module from stdlib, it has already moved to [nimble](https://github.com/nim-lang/iup).
 - `doAssertRaises` now correctly handles foreign exceptions and allows expecting those.
+- `doAssertRaises` now correctly handles foreign exceptions; it also allows a catch-all form that includes foreign exceptions.
 
 ## Language changes
 

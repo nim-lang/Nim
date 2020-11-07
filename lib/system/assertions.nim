@@ -82,15 +82,14 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
   ## Raises ``AssertionDefect`` if specified ``code`` does not raise the
-  ## specified exception. Use `exception = void` to specify a foreign exception.
+  ## specified exception.
   ## Example:
   ##
   ## .. code-block:: nim
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
   var wrong = false
-  const foreign = exception is void
-  const begin = "expected raising '" & (when foreign: "foreign exception" else: astToStr(exception)) & "', instead"
+  const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
   template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
   when Exception is exception:
@@ -100,14 +99,6 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       wrong = true
     except Exception as e: discard
     except: raisedForeign()
-  elif foreign:
-    try:
-      if true:
-        code
-      wrong = true
-    except Exception as e:
-      raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
-    except: discard
   else:
     try:
       if true:
@@ -119,3 +110,18 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
     except: raisedForeign()
   if wrong:
     raiseAssert(begin & " nothing was raised" & msgEnd)
+
+template doAssertRaises*(code: untyped) =
+  ## Raises `AssertionDefect` if specified `code` does not raise anything,
+  ## including a foreign exception.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##  doAssertRaises: raise newException(ValueError, "Hello World")
+  var wrong = false
+  try:
+    if true: code
+    wrong = true
+  except: discard
+  if wrong:
+    raiseAssert("nothing was raised by: " & astToStr(code))
