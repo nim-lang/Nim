@@ -12,64 +12,106 @@ import
 
 const
   Version = "1.6.0"
-  Usage = "nimgrep - Nim Grep Utility Version " & Version & """
+  Usage = "nimgrep - Nim Grep Searching and Replacement Utility Version " &
+  Version & """
 
-  (c) 2012 Andreas Rumpf
+  (c) 2012-2020 Andreas Rumpf
+
 Usage:
-  nimgrep [options] pattern [replacement] (file/directory)*
+* To search:
+  nimgrep [options] PATTERN [(FILE/DIRECTORY)*/-]
+* To replace:
+  nimgrep [options] PATTERN --replace REPLACEMENT (FILE/DIRECTORY)*/-
+* To list file names:
+  nimgrep [options] --filenames [PATTERN] [(FILE/DIRECTORY)*]
+
+Positional arguments, from left to right:
+* PATERN is either Regex (default) or Peg if --peg is specified.
+  PATTERN and REPLACEMENT should be skipped when --stdin is specified.
+* REPLACEMENT supports $1, $# notations for captured groups in PATTERN.
+  Note: --replace mode DOES NOT ask confirmation unless --confirm is specified!
+* Final arguments are a list of paths (FILE/DIRECTORY) or a standalone
+  minus '-' (pipe) or not specified (empty). Note for the empty case: when
+  no FILE/DIRECTORY/- is specified nimgrep DOES NOT read the pipe, but
+  searches files in the current dir instead!
+    -                   read buffer once from stdin: pipe or terminal input;
+                        in --replace mode the result is directed to stdout.
+    (empty)             current directory '.' is assumed
+  For any given DIRECTORY nimgrep searches only its immediate files without
+  traversing sub-directories unless --recursive is specified.
+  In replacement mode all 3 positional arguments are required to avoid damage.
+
 Options:
-  --find, -f          find the pattern (default)
-  --replace, -!       replace the pattern
-  --peg               pattern is a peg
-  --re                pattern is a regular expression (default)
-  --rex, -x           use the "extended" syntax for the regular expression
-                      so that whitespace is not significant
-  --recursive, -r     process directories recursively
-  --follow            follow all symlinks when processing recursively
+* Mode of operation:
+  --find, -f          find the PATTERN (default)
+  --replace, -!       replace the PATTERN to REPLACEMENT, rewriting the files
   --confirm           confirm each occurrence/replacement; there is a chance
                       to abort any time without touching the file
-  --stdin             read pattern from stdin (to avoid the shell's confusing
-                      quoting rules)
-  --word, -w          the match should have word boundaries (buggy for pegs!)
-  --ignoreCase, -i    be case insensitive
-  --ignoreStyle, -y   be style insensitive
-  --threads:N, -j:N   speed up search by N additional workers (threads)
+  --filenames         just list filenames. Provide a PATTERN to find it in
+                      the filenames (not in the contents of a file) or run
+                      with empty pattern to just list all files:
+                      nimgrep --filenames               # In current directory
+                      nimgrep --filenames "" DIRECTORY  # Note empty pattern ""
+
+* Interprete patterns:
+  --peg               PATTERN and PAT are Peg
+  --re                PATTERN and PAT are regular expressions (default)
+  --rex, -x           use the "extended" syntax for the regular expression
+                      so that whitespace is not significant
+  --word, -w          matches should have word boundaries (buggy for pegs!)
+  --ignoreCase, -i    be case insensitive in PATTERN and PAT
+  --ignoreStyle, -y   be style insensitive in PATTERN and PAT
+  NOTE: PATERN and patterns PAT (see below in other options) are all either
+        Regex or Peg simultaneously and options --rex, --word, --ignoreCase,
+        --ignoreStyle are applied to all of them.
+
+* File system walk:
+  --recursive, -r     process directories recursively
+  --follow            follow all symlinks when processing recursively
   --ext:EX1|EX2|...   only search the files with the given extension(s),
                       empty one ("--ext") means files with missing extension
   --noExt:EX1|...     exclude files having given extension(s), use empty one to
                       skip files with no extension (like some binary files are)
-  --includeFile:PAT   search only files whose names match the given PATtern
-  --excludeFile:PAT   skip files whose names match the given pattern PAT
-  --includeDir:PAT    search only files with full directory name matching PAT
-  --excludeDir:PAT    skip directories whose names match the given pattern PAT
+  --includeFile:PAT   search only files whose names contain pattern PAT
+  --excludeFile:PAT   skip files whose names contain pattern PAT
+  --includeDir:PAT    search only files with whole directory path containing PAT
+  --excludeDir:PAT    skip directories whose name (not path) contain pattern PAT
   --if,--ef,--id,--ed abbreviations of 4 options above
+  --sortTime          order files by the last modification time (default: off):
+       -s[:asc|desc]    ascending (recent files go last) or descending
+
+* Filter file content:
   --match:PAT         select files containing a (not displayed) match of PAT
   --noMatch:PAT       select files not containing any match of PAT
   --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
+                      (default: on - binary and text files treated the same way)
   --text, -t          process only text files, the same as --bin:off
-  --count             only print counts of matches for files that matched
+
+* Represent results:
   --nocolor           output will be given without any colours
-  --color[:always]    force color even if output is redirected
+  --color[:on]        force color even if output is redirected (default: auto)
   --colorTheme:THEME  select color THEME from 'simple' (default),
                       'bnw' (black and white) ,'ack', or 'gnu' (GNU grep)
+  --count             only print counts of matches for files that matched
+  --context:N, -c:N   print N lines of leading context before every match and
+                      N lines of trailing context after it (default N: 0)
   --afterContext:N,
                -a:N   print N lines of trailing context after every match
   --beforeContext:N,
                -b:N   print N lines of leading context before every match
-  --context:N, -c:N   print N lines of leading context before every match and
-                      N lines of trailing context after it
-  --sortTime          order files by the last modification time -
-       -s[:asc|desc]  - ascending (default: recent files go last) or descending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
-  --cols[:N]          limit max width of lines from files by N characters (off)
+  --cols[:N]          limit max displayed columns/width of output lines from
+                      files by N characters, cropping overflows (default: off)
   --cols:auto, -%     calculate columns from terminal width for every line
   --onlyAscii, -@     use only printable ASCII Latin characters 0x20-0x7E
                       substitutions: 0 -> ^@, 1 -> ^A, ... 0x1F -> ^_,
                                      0x7F -> '7F, ..., 0xFF -> 'FF
+* Miscellaneous:
+  --threads:N, -j:N   speed up search by N additional workers (default N: 0)
+  --stdin             read PATTERN from stdin (to avoid the shell's confusing
+                      quoting rules) and, if --replace given, REPLACEMENT
   --verbose           be verbose: list every processed file
-  --filenames         find the pattern in the filenames, not in the contents
-                      of the file
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -104,7 +146,7 @@ type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
     optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames,
-    optRex, optFollow, optCount, optLimitChars
+    optRex, optFollow, optCount, optLimitChars, optPipe
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -115,20 +157,23 @@ type
                     lineBeg: int, lineEnd: int, match: string]
   outputKind = enum
     OpenError, Rejected, JustCount,
-    BlockFirstMatch, BlockNextMatch, BlockEnd, FileContents
+    BlockFirstMatch, BlockNextMatch, BlockEnd, FileContents, FileName
   Output = object
     case kind: outputKind
-    of OpenError: msg: string
-    of Rejected: reason: string
-    of JustCount: matches: int
-    of BlockFirstMatch, BlockNextMatch:
+    of OpenError: msg: string           # file/directory not found
+    of Rejected: reason: string         # when the file contents do not pass
+    of JustCount: matches: int          # the only output for option --count
+    of BlockFirstMatch, BlockNextMatch: # the normal case: match itself
       pre: string
       match: MatchInfo
-    of BlockEnd:
+    of BlockEnd:                        # block ending right after prev. match
       blockEnding: string
-      firstLine: int       # = last lineNo of last match
-    of FileContents:
+      firstLine: int
+        # == last lineN of last match
+    of FileContents:                    # yielded for --replace only
       buffer: string
+    of FileName:                        # yielded for --filenames when no
+      name: string                      #   PATTERN was provided
   Trequest = (int, string)
   FileResult = seq[Output]
   Tresult = tuple[finished: bool, fileNo: int,
@@ -146,10 +191,11 @@ type
     includeDir : seq[Pat]
     excludeDir : seq[Pat]
   SearchOpt = tuple  # used for searching inside a file
-    pattern: string
-    checkMatch: string
-    checkNoMatch: string
-    checkBin: Bin
+    patternSet: bool     # to distinguish uninitialized 'pattern' and empty one
+    pattern: string      # main PATTERN
+    checkMatch: string   # --match
+    checkNoMatch: string # --nomatch
+    checkBin: Bin        # --bin
   SearchOptComp[Pat] = tuple  # a compiled version of the previous
     pattern: Pat
     checkMatch: Pat
@@ -164,6 +210,8 @@ type
 var
   paths: seq[string] = @[]
   replacement = ""
+  replacementSet = false
+    # to distinguish between uninitialized 'replacement' and empty one
   options: TOptions = {optRegex}
   walkOpt {.threadvar.}: WalkOpt
   searchOpt {.threadvar.}: SearchOpt
@@ -335,7 +383,7 @@ const alignment = 6  # selected so that file contents start at 8, i.e.
 proc blockHeader(filename: string, line: int|string, replMode=false) =
   if replMode:
     writeArrow("     ->\n")
-  elif newLine and optFilenames notin options:
+  elif newLine and optFilenames notin options and optPipe notin options:
     if oneline:
       printBlockFile(filename)
       printBlockLineN(":" & $line & ":")
@@ -360,7 +408,7 @@ proc lineHeader(filename: string, line: int|string, isMatch: bool,
   let lineSym =
     if isMatch: $line & ":"
     else: $line & " "
-  if not newLine and optFilenames notin options:
+  if not newLine and optFilenames notin options and optPipe notin options:
     if oneline:
       printFile(filename)
       printLineN(":" & lineSym, isMatch)
@@ -491,11 +539,6 @@ proc printCropped(s: string, curCol: var Column, fromLeft: bool,
       printContents(s, isMatch)
     else:
       printExpanded(s, curCol, isMatch, limitChar)
-  elif optFilenames in options:
-    printExpanded(s, curCol, isMatch, limitChar - eL)
-    if curCol.terminal == limitChar - eL:
-      printBold ellipsis
-      curCol.terminal += eL
   else:  # limit columns, expand Tabs is also forced
     var charsAllowed = limitChar - curCol.terminal
     if fromLeft and charsAllowed < eL:
@@ -671,7 +714,7 @@ proc replace1match(filename: string, buf: string, mi: MatchInfo, i: int,
     of ceNone:
       gVar.reallyReplace = false
       options.excl(optConfirm)
-  else:
+  elif optPipe notin options:
     printReplacement(filename, buf, mi, r, showRepl=gVar.reallyReplace, i,
                      newBuf, curLine)
   if gVar.reallyReplace:
@@ -687,7 +730,7 @@ template updateCounters(output: Output) =
   of BlockFirstMatch, BlockNextMatch: inc(gVar.matches)
   of JustCount: inc(gVar.matches, output.matches)
   of OpenError: inc(gVar.errors)
-  of Rejected, BlockEnd, FileContents: discard
+  of Rejected, BlockEnd, FileContents, FileName: discard
 
 proc printInfo(filename:string, output: Output) =
   case output.kind
@@ -698,12 +741,16 @@ proc printInfo(filename:string, output: Output) =
       echo "(rejected: ", output.reason, ")"
   of JustCount:
     echo " (" & $output.matches & " matches)"
-  else: discard  # impossible
+  of BlockFirstMatch, BlockNextMatch, BlockEnd, FileContents, FileName:
+    discard
 
 proc printOutput(filename: string, output: Output, curCol: var Column) =
   case output.kind
   of OpenError, Rejected, JustCount: printInfo(filename, output)
   of FileContents: discard # impossible
+  of FileName:
+    printCropped(output.name, curCol, fromLeft=false, limitCharUsr)
+    newLn(curCol)
   of BlockFirstMatch:
     printSubLinesBefore(filename, output.pre, output.match.lineBeg,
                         curCol, reserveChars(output.match))
@@ -717,8 +764,7 @@ proc printOutput(filename: string, output: Output, curCol: var Column) =
     if linesAfter + linesBefore >= 2 and not newLine and
        optFilenames notin options: stdout.write("\n")
 
-iterator searchFile(pattern: Pattern; filename: string;
-                    buffer: string): Output =
+iterator searchFile(pattern: Pattern; buffer: string): Output =
   var prevMi, curMi: MatchInfo
   prevMi.lineEnd = 1
   var i = 0
@@ -851,6 +897,8 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
   var error = false
   if optFilenames in options:
     buffer = filename
+  elif optPipe in options:
+    buffer = stdin.readAll()
   else:
     try:
       buffer = system.readFile(filename)
@@ -882,10 +930,12 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
 
     if reject:
       yield Output(kind: Rejected, reason: move(reason))
+    elif optFilenames in options and searchOpt.pattern == "":
+      yield Output(kind: FileName, name: move(buffer))
     else:
       var found = false
       var cnt = 0
-      for output in searchFile(searchOptC.pattern, filename, buffer):
+      for output in searchFile(searchOptC.pattern, buffer):
         found = true
         if optCount notin options:
           yield output
@@ -913,17 +963,17 @@ proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   if walkOptC.includeFile.len != 0:
     var matched = false
     for pat in walkOptC.includeFile:
-      if filename.match(pat):
+      if filename.contains(pat):
         matched = true
         break
     if not matched: return false
   for pat in walkOptC.excludeFile:
-    if filename.match(pat): return false
+    if filename.contains(pat): return false
   let dirname = path.parentDir
   if walkOptC.includeDir.len != 0:
     var matched = false
     for pat in walkOptC.includeDir:
-      if dirname.match(pat):
+      if dirname.contains(pat):
         matched = true
         break
     if not matched: return false
@@ -932,7 +982,7 @@ proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
 proc hasRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
   let dirname = path.lastPathPart
   for pat in walkOptC.excludeDir:
-    if dirname.match(pat): return false
+    if dirname.contains(pat): return false
   result = true
 
 iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string =
@@ -1006,7 +1056,7 @@ proc replaceMatches(pattern: Pattern; filename: string, buffer: string,
       if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
         changed = true
       i = curMi.last + 1
-  if changed:
+  if changed and optPipe notin options:
     newBuf.add(substr(buffer, i))  # finalize new buffer after last match
     var f: File
     if open(f, filename, fmWrite):
@@ -1015,6 +1065,9 @@ proc replaceMatches(pattern: Pattern; filename: string, buffer: string,
     else:
       printError "cannot open file for overwriting: " & filename
       inc(gVar.errors)
+  elif optPipe in options:  # always print new buffer to stdout in pipe mode
+    newBuf.add(substr(buffer, i))  # finalize new buffer after last match
+    stdout.write(newBuf)
 
 template processFileResult(pattern: Pattern; filename: string,
                            fileResult: untyped) =
@@ -1047,7 +1100,7 @@ template processFileResult(pattern: Pattern; filename: string,
     for output in fileResult:
       updateCounters(output)
       case output.kind
-      of Rejected, OpenError, JustCount: printInfo(filename, output)
+      of Rejected, OpenError, JustCount, FileName: printInfo(filename, output)
       of BlockFirstMatch, BlockNextMatch, BlockEnd:
         matches.add(output)
       of FileContents: buffer = output.buffer
@@ -1059,6 +1112,10 @@ proc run1Thread() =
     compile1Pattern(searchOpt.pattern, searchOptC.pattern)
     compile1Pattern(searchOpt.checkMatch, searchOptC.checkMatch)
     compile1Pattern(searchOpt.checkNoMatch, searchOptC.checkNoMatch)
+    if optPipe in options:
+      processFileResult(searchOptC.pattern, "-",
+                        processFile(searchOptC, "-",
+                                    yieldContents=optReplace in options))
     for (err, filename) in walkRec(paths):
       if err != "":
         inc(gVar.errors)
@@ -1076,7 +1133,7 @@ proc run1Thread() =
 #  |  Main thread   |----------------->|  pathProducer   |
 #  ------------------                  -------------------
 #             ^                          |        | 
-# resultsChan |                          |        | searchRequestsChan
+# resultsChan |       walking errors,    |        | searchRequestsChan
 #             |       number of files    |   -----+-----
 #         ----+---------------------------   |         |
 #         |   |   (when walking finished)    |a path   |a path to file
@@ -1186,10 +1243,12 @@ for kind, key, val in getopt():
   of cmdArgument:
     if options.contains(optStdin):
       paths.add(key)
-    elif searchOpt.pattern.len == 0:
+    elif not searchOpt.patternSet:
       searchOpt.pattern = key
-    elif options.contains(optReplace) and replacement.len == 0:
+      searchOpt.patternSet = true
+    elif options.contains(optReplace) and not replacementSet:
       replacement = key
+      replacementSet = true
     else:
       paths.add(key)
   of cmdLongOption, cmdShortOption:
@@ -1225,7 +1284,7 @@ for kind, key, val in getopt():
     of "includefile", "include-file", "if": walkOpt.includeFile.add val
     of "excludefile", "exclude-file", "ef": walkOpt.excludeFile.add val
     of "match": searchOpt.checkMatch = val
-    of "nomatch", "notmatch", "not-match", "no-match":
+    of "nomatch":
       searchOpt.checkNoMatch = val
     of "bin":
       case val
@@ -1236,18 +1295,21 @@ for kind, key, val in getopt():
     of "text", "t": searchOpt.checkBin = biOff
     of "count": incl(options, optCount)
     of "sorttime", "sort-time", "s":
-      sortTime = true
       case normalize(val)
-      of "": discard
-      of "asc", "ascending": sortTimeOrder = SortOrder.Ascending
-      of "desc", "descending": sortTimeOrder = SortOrder.Descending
+      of "off": sortTime = false
+      of "", "on", "asc", "ascending":
+        sortTime = true
+        sortTimeOrder = SortOrder.Ascending
+      of "desc", "descending":
+        sortTime = true
+        sortTimeOrder = SortOrder.Descending
       else: reportError("invalid value '" & val & "' for --sortTime")
     of "nocolor", "no-color": useWriteStyled = false
     of "color":
       case val
       of "auto": discard
-      of "never", "false": useWriteStyled = false
-      of "", "always", "true": useWriteStyled = true
+      of "off", "never", "false": useWriteStyled = false
+      of "", "on", "always", "true": useWriteStyled = true
       else: reportError("invalid value '" & val & "' for --color")
     of "colortheme", "color-theme":
       colortheme = normalize(val)
@@ -1290,6 +1352,7 @@ for kind, key, val in getopt():
       expandTabs = false
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
+    of "": incl(options, optPipe)
     else: reportError("unrecognized option '" & key & "'")
   of cmdEnd: assert(false) # cannot happen
 
@@ -1298,9 +1361,16 @@ checkOptions({optCount, optReplace}, "count", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
 checkOptions({optFilenames, optReplace}, "filenames", "replace")
+checkOptions({optPipe, optStdin}, "-", "stdin")
+checkOptions({optPipe, optFilenames}, "-", "filenames")
+checkOptions({optPipe, optConfirm}, "-", "confirm")
+checkOptions({optPipe, optRecursive}, "-", "recursive")
 
 linesBefore = max(linesBefore, linesContext)
 linesAfter  = max(linesAfter,  linesContext)
+
+if optPipe in options and paths.len != 0:
+  reportError("both - and paths are specified")
 
 if optStdin in options:
   searchOpt.pattern = ask("pattern [ENTER to exit]: ")
@@ -1308,18 +1378,25 @@ if optStdin in options:
   if optReplace in options:
     replacement = ask("replacement [supports $1, $# notations]: ")
 
-if searchOpt.pattern.len == 0:
+if optReplace in options and not replacementSet:
+  reportError("provide REPLACEMENT as second argument (use \"\" for empty one)")
+if optReplace in options and paths.len == 0 and optPipe notin options:
+  reportError("provide paths for replacement explicitly (use . for current directory)")
+
+if searchOpt.pattern == "" and optFilenames notin options:
   reportError("empty pattern was given")
 else:
-  if paths.len == 0:
+  if paths.len == 0 and optPipe notin options:
     paths.add(".")
-  if nWorkers == 0:
+  if optPipe in options or nWorkers == 0:
     run1Thread()
   else:
     runMultiThread()
   if gVar.errors != 0:
     printError $gVar.errors & " errors"
-  printBold($gVar.matches & " matches")
-  stdout.write("\n")
+  if searchOpt.pattern != "":
+    # PATTERN allowed to be empty if --filenames is given
+    printBold($gVar.matches & " matches")
+    stdout.write("\n")
   if gVar.errors != 0:
     quit(1)
