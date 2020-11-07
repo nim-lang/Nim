@@ -462,6 +462,18 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
   c.currentScope.allowPrivateAccess.add t.sym
   result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
 
+import std/exectraces
+
+proc nimExecTraceControl(c: PContext, n: PNode): PNode =
+  let mode = c.semConstExpr(c, n[1])
+  let mode2 = TraceAction(mode.intVal)
+  case mode2
+  of kstart:
+    c.config.options.incl(optExecTrace)
+  of kstop:
+    c.config.options.excl(optExecTrace)
+  result = newNodeI(nkEmpty, n.info)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
