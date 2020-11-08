@@ -285,7 +285,7 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "range")
     result = newOrPrevType(tyError, prev, c)
 
-proc semArrayIndex(c: PContext, n: PNode): PType =
+proc semArrayIndex(c: PContext, n: PNode): PType =  
   if isRange(n):
     result = semRangeAux(c, n, nil)
   else:
