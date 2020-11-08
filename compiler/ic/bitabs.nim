@@ -97,9 +97,9 @@ proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
   result = t.vals[idx]
 
 proc hash*[T](t: BiTable[T]): Hash =
-  ## critically, we need to hash the indices alongside their values
+  ## as the keys are hashes of the values, we simply use them instead
   var h: Hash = 0
-  for i, n in pairs t.vals:
+  for i, n in pairs t.keys:
     h = h !& hash((i, n))
   result = !$h
 
