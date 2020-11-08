@@ -1296,12 +1296,11 @@ proc readTableRow(p: var RstParser): seq[string] =
   if p.tok[p.idx].symbol == "|": inc p.idx
   while p.tok[p.idx].kind notin {tkIndent, tkEof}:
     var cell = ""
-    while true:
-      if p.tok[p.idx].kind in {tkIndent, tkEof}: break
+    while p.tok[p.idx].kind notin {tkIndent, tkEof}:
       if p.tok[p.idx].symbol == "|" and p.tok[p.idx-1].symbol != "\\": break
       cell.add(p.tok[p.idx].symbol)
       inc p.idx
-    result.add(cell)
+    result.add(cell.strip)
     if p.tok[p.idx].kind in {tkIndent, tkEof}: break
     inc p.idx
   p.idx = tokenAfterNewline(p)
@@ -1314,8 +1313,7 @@ proc getTableColumns(p: var RstParser): int =
 proc isValidDelimiterRow(p: var RstParser, cols: int): bool =
   let row = readTableRow(p)
   if row.len != cols: return false
-  for c in row:
-    var cell = c.strip
+  for cell in row:
     if cell.len < 3 or not (cell.startsWith("--") or cell.startsWith(":-")):
       return false
   return true
@@ -1328,7 +1326,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
   result = newRstNode(rnMarkdownTable)
   let cols = getTableColumns(p)
 
-  template parseRow(cellKind) =
+  proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
     if row.len < cols: row.setLen(cols)
     a = newRstNode(rnTableRow)
@@ -1338,15 +1336,15 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
       q.col = p.col
       q.line = p.tok[p.idx].line - 1
       q.filename = p.filename
-      q.col += getTokens(row[j].strip, false, q.tok)
+      q.col += getTokens(row[j], false, q.tok)
       b.add(parseDoc(q))
       a.add(b)
     result.add(a)
 
-  parseRow(rnTableHeaderCell)
+  parseRow(p, rnTableHeaderCell, result)
   if not isValidDelimiterRow(p, cols): rstMessage(p, meMarkdownIllformedTable)
   while predNL(p) and p.tok[p.idx].symbol == "|":
-    parseRow(rnTableDataCell)
+    parseRow(p, rnTableDataCell, result)
 
 proc parseTransition(p: var RstParser): PRstNode =
   result = newRstNode(rnTransition)
