@@ -78,6 +78,7 @@ proc addMissing(c: var Context; p: PType) =
       c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
+  if t.isNil: return TypeId(-1)
   template info: PackedLineInfo =
     # too bad the most variant part of the operation comes first...
     (if t.n.isNil: TLineInfo() else: t.n.info).toPackedInfo(ir, c)
@@ -120,6 +121,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
+  if s.isNil: return SymId(-1)
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
   # short-circuit if we already have the SymId

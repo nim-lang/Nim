@@ -28,6 +28,15 @@ proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
 
+proc fromSym(s: SymId or int32; id: ItemId; ir: PackedTree;
+             c: var Context): PSym =
+  if s.int >= 0:
+    result = fromSym(ir.sh.syms[int s], id, ir, c)
+
+proc fromType(t: TypeId or int32; ir: PackedTree; c: var Context): PType =
+  if t.int >= 0:
+    result = fromType(ir.sh.types[int t], ir, c)
+
 proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
   result = getIdent(c.graph.cache, ir.sh.strings[l])
 
@@ -49,7 +58,7 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
   if result != nil: return
   # if it's our module, then the .item will be a SymId;
   if id.module == c.thisModule:
-    result = fromSym(ir.sh.syms[int id.item], id, ir, c)
+    result = fromSym(id.item, id, ir, c)
   # else, it's a PIdent identity; an index into the symbol table
   else:
     # XXX: temporary hack
@@ -65,7 +74,7 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   result = PSym(itemId: id, kind: s.kind, magic: s.magic, flags: s.flags,
                 info: fromLineInfo(s.info, ir, c), options: s.options,
                 position: s.position, annex: fromLib(s.annex, ir, c),
-                typ: fromType(ir.sh.types[int s.typeId], ir, c),
+                typ: fromType(s.typeId, ir, c),
                 ast: fromTree(s.ast, c), name: fromIdent(s.name, ir, c),
                 constraint: fromTree(s.constraint, c))
   c.symMap[id] = result
@@ -116,18 +125,17 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
   result.owner = loadSymbol(t.owner, c, ir)
   for op, item in pairs t.attachedOps:
     result.attachedOps[op] = loadSymbol(item, c, ir)
-  result.typeInst = fromType(ir.sh.types[int t.typeInst], ir, c)
+  result.typeInst = fromType(t.typeInst, ir, c)
   for son in items t.types:
-    result.sons.add fromType(ir.sh.types[int son], ir, c)
+    result.sons.add fromType(son, ir, c)
   result.n = fromTree(t.node, c)
   for generic, id in items t.methods:
     result.methods.add (generic, loadSymbol(id, c, ir))
 
 proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode =
   template n: Node = ir.nodes[int index]
-  let typ = ir.sh.types[int n.typeId]
-  result = PNode(typ: fromType(typ, ir, c), flags: typ.nodeflags,
-                 kind: typ.nodekind, info: fromLineInfo(n.info, ir, c))
+  result = PNode(typ: fromType(n.typeId, ir, c), flags: n.flags,
+                 kind: n.kind, info: fromLineInfo(n.info, ir, c))
 
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
