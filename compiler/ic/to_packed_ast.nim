@@ -40,11 +40,11 @@ proc flush(ir: var PackedTree; c: var Context) =
       break
 
 proc addItemId(tree: var PackedTree; id: ItemId; typ: TypeId; info: PackedLineInfo) =
-  ## add an itemid to the tree; we trust that it's foreign
-  let patchPos = tree.prepare(nkModuleRef, flags = {}, typ, info)
+  ## add an itemid to the tree
+  tree.nodes.add Node(kind: nkModuleRef, operand: 2.int32,
+                      typeId: typ, info: info)
   tree.nodes.add Node(kind: nkInt32Lit, operand: id.module, info: info)
   tree.nodes.add Node(kind: nkInt32Lit, operand: id.item, info: info)
-  tree.patch patchPos
 
 proc toLitId(x: string; ir: var PackedTree; c: var Context): LitId =
   result = getOrIncl(ir.sh.strings, x)
