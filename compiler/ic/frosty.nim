@@ -26,7 +26,7 @@ when frostySorted:
       stream: T
       stack: seq[pointer]
       ptrs: SortedTable[int, pointer]
-      when not defined(release):
+      when frostyDebug:
         indent: int
 
 else:
@@ -39,7 +39,7 @@ else:
       stream: T
       stack: seq[pointer]
       ptrs: Table[int, pointer]
-      when not defined(release):
+      when frostyDebug:
         indent: int
 
 type
@@ -50,7 +50,7 @@ type
 
   Ice = object
     p: int
-    when not defined(release):
+    when frostyDebug:
       h: Hash
 
 template refAddr(o: typed): int =
@@ -85,7 +85,7 @@ when frostyNet:
 
 template greatenIndent(s: var Serializer; body: untyped): untyped =
   ## Used for debugging.
-  when not defined(release):
+  when frostyDebug:
     s.indent = s.indent + 2
     defer:
       s.indent = s.indent - 2
@@ -93,7 +93,7 @@ template greatenIndent(s: var Serializer; body: untyped): untyped =
 
 template debung(s: Serializer; msg: string): untyped =
   ## Used for debugging.
-  when not defined(release):
+  when frostyDebug:
     when not defined(nimdoc):
       echo spaces(s.indent) & msg
 
@@ -101,7 +101,7 @@ when not defined(nimdoc):
   export greatenIndent, debung
 
 template audit(o: typed; g: typed) =
-  when defined(release):
+  when not frostyDebug:
     discard
   else:
     # if it's a pointer,
