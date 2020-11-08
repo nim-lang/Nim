@@ -24,7 +24,7 @@ type
     symMap: Table[ItemId, PSym]    # ItemId.item -> PSym
     graph: ModuleGraph
 
-proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode
+proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
 
@@ -97,17 +97,17 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   if externalName != "":
     result.loc.r = rope externalName
 
-proc asItemId(ir: PackedTree; index = 0): ItemId =
+proc asItemId(ir: PackedTree; pos = 0.NodePos): ItemId =
   ## read an itemId from the tree
-  assert ir.nodes[index].kind == nkModuleRef
-  result.module = ir.nodes[index + 1].operand
-  result.item = ir.nodes[index + 2].operand
+  assert ir.nodes[pos.int].kind == nkModuleRef
+  result.module = ir.nodes[pos.int + 1].operand
+  result.item = ir.nodes[pos.int + 2].operand
 
-proc fromSymNode(ir: PackedTree; c: var Context; index = 0.NodePos): PSym =
-  template n: Node = ir.nodes[int index]
+proc fromSymNode(ir: PackedTree; c: var Context; pos = 0.NodePos): PSym =
+  template n: Node = ir.nodes[int pos]
   let id = case n.kind
   of nkModuleRef:
-    asItemId(ir, int index)
+    asItemId(ir, pos)
   else:
     ItemId(module: c.thisModule, item: n.operand)
   result = loadSymbol(id, c, ir)
@@ -132,8 +132,8 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
   for generic, id in items t.methods:
     result.methods.add (generic, loadSymbol(id, c, ir))
 
-proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode =
-  template n: Node = ir.nodes[int index]
+proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
+  template n: Node = ir.nodes[int pos]
   result = PNode(typ: fromType(n.typeId, ir, c), flags: n.flags,
                  kind: n.kind, info: fromLineInfo(n.info, ir, c))
 
@@ -143,7 +143,7 @@ proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode =
   of nkIdent:
     result.ident = getIdent(c.graph.cache, ir.sh.strings[LitId n.operand])
   of nkSym:
-    result.sym = fromSymNode(ir, c, index = index.NodePos)
+    result.sym = fromSymNode(ir, c, pos = pos)
   of directIntLit:
     result.intVal = n.operand
   of externIntLit:
@@ -153,5 +153,9 @@ proc fromTree(ir: PackedTree; c: var Context; index = 0): PNode =
   of nkFloatLit..nkFloat128Lit:
     result.floatVal = ir.sh.floats[LitId n.operand]
   else:
-    for i in index ..< index + n.operand:
-      result.sons.add fromTree(ir, c, i)
+    for son in sonsReadonly(ir, pos):
+      result.sons.add fromTree(ir, c, son)
+
+proc irToModule*(n: PackedTree; graph: ModuleGraph; module: PSym): PNode =
+  var c = Context(graph: graph, thisModule: module.itemId.module)
+  result = fromTree(n, c)
