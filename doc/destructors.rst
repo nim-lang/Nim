@@ -191,7 +191,7 @@ that otherwise would lead to a copy is prevented at compile-time. This looks lik
   proc `=copy`(dest: var T; source: T) {.error.}
 
 but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
-by the compiler.
+by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
 
 Move semantics
 ==============
