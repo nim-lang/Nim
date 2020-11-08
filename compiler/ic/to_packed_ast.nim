@@ -68,14 +68,16 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
 
 proc addMissing(c: var Context; p: PSym) =
-  if p.itemId.module == c.thisModule:
-    if p.itemId notin c.symMap:
-      c.pendingSyms.add p
+  if not p.isNil:
+    if p.itemId.module == c.thisModule:
+      if p.itemId notin c.symMap:
+        c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
-  if p.uniqueId.module == c.thisModule:
-    if p.uniqueId notin c.typeMap:
-      c.pendingTypes.add p
+  if not p.isNil:
+    if p.uniqueId.module == c.thisModule:
+      if p.uniqueId notin c.typeMap:
+        c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   if t.isNil: return TypeId(-1)
