@@ -102,7 +102,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   for op, s in pairs t.attachedOps:
     c.addMissing s
-    p.attachedOps[op] = s.itemId
+    p.attachedOps[op] = s.safeItemId itemId
 
   p.typeInst = t.typeInst.toPackedType(ir, c)
 
@@ -111,11 +111,13 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   for i, s in items t.methods:
     c.addMissing s
-    p.methods.add (i, s.itemId)
+    p.methods.add (i, s.safeItemId itemId)
 
-  if not t.sym.isNil:
-    c.addMissing t.sym
-    p.sym = t.sym.itemId
+  c.addMissing t.sym
+  p.sym = t.sym.safeItemId itemId
+
+  c.addMissing t.owner
+  p.owner = t.owner.safeItemId itemId
 
   if not t.n.isNil:
     p.nodekind = t.n.kind
@@ -143,13 +145,13 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
 
   if s.kind in {skLet, skVar, skField, skForVar}:
     c.addMissing s.guard
-    p.guard = s.guard.itemId
+    p.guard = s.guard.safeItemId itemId
     p.bitsize = s.bitsize
     p.alignment = s.alignment
   p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, ir, c)
   p.typeId = s.typ.toPackedType(ir, c)
   c.addMissing s.owner
-  p.owner = s.owner.itemId
+  p.owner = s.owner.safeItemId itemId
   if not s.annex.isNil:
     p.annex = toPackedLib(s.annex, ir, c)
   if not s.constraint.isNil:

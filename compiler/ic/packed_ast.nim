@@ -40,6 +40,8 @@ const
 
 const
   nkModuleRef* = nkNone # pair of (ModuleId, SymId)
+  nilItemId* = ItemId(module: -1.int32, item: -1.int32) ##
+  ## XXX: a way to represent a nil PSym or PType
 
 type
   SymId* = distinct int32
@@ -519,3 +521,10 @@ proc hash*(m: Module): Hash =
   h = h !& hash(m.name)
   h = h !& hash(m.ast)
   result = !$h
+
+template safeItemId*(x: typed; f: untyped): ItemId =
+  ## yield a valid ItemId value for the field of a nillable type
+  if x.isNil:
+    nilItemId
+  else:
+    x.`f`

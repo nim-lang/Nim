@@ -53,6 +53,7 @@ proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
                 path: fromTree(l.path, c))
 
 proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
+  if id == nilItemId: return
   # short-circuit if we already have the PSym
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return
