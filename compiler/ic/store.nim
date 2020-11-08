@@ -42,6 +42,10 @@ proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
     freeze(compress(freeze m), stream)
   finally:
     close stream
+    writeFile("/tmp/module.rod", freeze m)
+    echo "uncompressed module: ", getFileSize("/tmp/module.rod")
+    writeFile("/tmp/config.rod", freeze m.ast.sh.config)
+    echo "uncompressed config: ", getFileSize("/tmp/config.rod")
 
 proc queryRodMeta(stream: Stream): MetaReply {.raises: [].} =
   ## query a rod file stream to see if it is worth attempting to use
@@ -88,6 +92,7 @@ proc tryReadModuleNamed*(config: ConfigRef; name: string): Option[Module] =
   ## populated option if reading the module was successful
   let fn = composeFilename(config, name)
   if fileExists fn:
+    echo "📖", $fn
     var stream = newFileStream($fn, fmRead)
     try:
       let reply = queryRodMeta stream

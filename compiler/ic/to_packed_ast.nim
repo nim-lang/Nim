@@ -11,6 +11,8 @@ import std / [hashes, tables]
 import packed_ast, bitabs
 import ".." / [ast, idents, lineinfos, msgs, ropes, options]
 
+when not defined(release): import ".." / astalgo # debug()
+
 type
   Context = object
     thisModule: int32
