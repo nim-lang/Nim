@@ -349,11 +349,3 @@ type
     a: array[n, int]
   Tile = TileCT #Commenting this out to make it work
 
-
-#------------------------------------------------------------------------------------------
-# issue #15858
-
-proc fn(N1: static int, N2: static int, T: typedesc): array[N1 * N2, T] = 
-  doAssert(len(result) == N1 * N2)
-
-let yy = fn(5, 10, float)
