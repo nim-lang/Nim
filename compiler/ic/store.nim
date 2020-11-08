@@ -73,7 +73,7 @@ proc queryRodMeta(fn: AbsoluteFile): MetaReply =
 
 proc composeFilename(config: ConfigRef; name: string): AbsoluteFile =
   ## turn an arbitrary name into a .rod filename
-  let dir = config.nimcacheDir / RelativeDir "rod"
+  let dir = getNimCacheDir(config) / RelativeDir "rod"
   createDir dir
   result = dir / addFileExt(RelativeFile mangle(name), "rod")
 
