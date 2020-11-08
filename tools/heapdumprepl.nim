@@ -49,7 +49,7 @@ const Help = """
 quit          -- quits this REPL
 locals, l     -- output the list of local stack roots
 globals, g    -- output the list of global roots
-alias name addr -- give addr a name. start 'addr' with 'x' for hexidecimal
+alias name addr -- give addr a name. start 'addr' with 'x' for hexadecimal
                    notation
 print name|addr  -- print a node by name or address
 reachable,r  l|g|node  dest   -- outputs TRUE or FALSE depending on whether

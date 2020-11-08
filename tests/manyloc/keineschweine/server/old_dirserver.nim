@@ -164,7 +164,7 @@ when true:
     of cmdShortOption, cmdLongOption:
       case key
       of "f", "file":
-        if existsFile(val):
+        if fileExists(val):
           cfgFile = val
         else:
           echo("File does not exist: ", val)

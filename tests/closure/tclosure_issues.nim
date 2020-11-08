@@ -1,6 +1,10 @@
 discard """
   output: '''true
-(999, 0)'''
+(999, 0)
+ok 0
+ok 1
+ok 2
+'''
 """
 
 
@@ -61,3 +65,18 @@ proc foo(): proc =
     return (a, 0)
 
 echo foo()()
+
+
+block tissue7104:
+  proc sp(cb: proc())=
+      cb()
+
+  sp:
+      var i = 0
+      echo "ok ", i
+      sp():
+          inc i
+          echo "ok ", i
+          sp do:
+              inc i
+              echo "ok ", i

@@ -22,7 +22,7 @@
 ##  var document {.importc, nodecl.}: JsObject
 ##  var console {.importc, nodecl.}: JsObject
 ##  # import the "$" function
-##  proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
+##  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
 ##
 ##  # Use jQuery to make the following code run, after the document is ready.
 ##  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
@@ -83,7 +83,7 @@ proc toJsKey*[T: SomeFloat](text: cstring, t: type T): T {.importcpp: "parseFloa
 
 type
   JsKey* = concept a, type T
-    cstring.toJsKey(T) is type(a)
+    cstring.toJsKey(T) is T
 
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.
@@ -292,8 +292,8 @@ macro `.()`*(obj: JsObject,
       {.importcpp: `importString`, gensym, discardable.}
     helper(`obj`)
   for idx in 0 ..< args.len:
-    let paramName = newIdentNode(!("param" & $idx))
-    result[0][3].add newIdentDefs(paramName, newIdentNode(!"JsObject"))
+    let paramName = newIdentNode("param" & $idx)
+    result[0][3].add newIdentDefs(paramName, newIdentNode("JsObject"))
     result[1].add args[idx].copyNimTree
 
 macro `.`*[K: cstring, V](obj: JsAssoc[K, V],
@@ -425,7 +425,7 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ##  # This generates roughly the same JavaScript as:
   ##  {.emit: "var obj = {a: 1, k: "foo", d: 42};".}
   ##
-  let a = !"a"
+  let a = ident"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
     {.emit: "`a` = {};".}
@@ -458,6 +458,14 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
 # Macro to build a lambda using JavaScript's `this`
 # from a proc, `this` being the first argument.
 
+proc replaceSyms(n: NimNode): NimNode =
+  if n.kind == nnkSym: 
+    result = newIdentNode($n)
+  else: 
+    result = n
+    for i in 0..<n.len:
+      result[i] = replaceSyms(n[i])
+
 macro bindMethod*(procedure: typed): auto =
   ## Takes the name of a procedure and wraps it into a lambda missing the first
   ## argument, which passes the JavaScript builtin ``this`` as the first
@@ -488,17 +496,17 @@ macro bindMethod*(procedure: typed): auto =
     error("Argument has to be a proc or a symbol corresponding to a proc.")
   var
     rawProc = if procedure.kind == nnkSym:
-        getImpl(procedure.symbol)
+        getImpl(procedure)
       else:
         procedure
-    args = rawProc[3]
+    args = rawProc[3].copyNimTree.replaceSyms
     thisType = args[1][1]
     params = newNimNode(nnkFormalParams).add(args[0])
     body = newNimNode(nnkLambda)
     this = newIdentNode("this")
     # construct the `this` parameter:
     thisQuote = quote do:
-      var `this` {.nodecl, importc.} : `thisType`
+      var `this` {.nodecl, importc: "this".}: `thisType`
     call = newNimNode(nnkCall).add(rawProc[0], thisQuote[0][0][0])
   # construct the procedure call inside the method
   if args.len > 2:

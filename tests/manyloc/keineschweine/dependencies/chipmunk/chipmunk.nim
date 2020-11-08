@@ -455,7 +455,7 @@ proc removeCollisionHandler*(space: PSpace; a: TCollisionType;
 #/ If the shape is attached to a static body, it will be added as a static shape.
 proc addShape*(space: PSpace; shape: PShape): PShape{.
   cdecl, importc: "cpSpaceAddShape", dynlib: Lib.}
-#/ Explicity add a shape as a static shape to the simulation.
+#/ Explicitly add a shape as a static shape to the simulation.
 proc addStaticShape*(space: PSpace; shape: PShape): PShape{.
   cdecl, importc: "cpSpaceAddStaticShape", dynlib: Lib.}
 #/ Add a rigid body to the simulation.
@@ -1028,12 +1028,12 @@ proc getCircleRadius*(shape: PShape): CpFloat {.
 proc allocPolyShape*(): PPolyShape {.
   cdecl, importc: "cpPolyShapeAlloc", dynlib: Lib.}
 #/ Initialize a polygon shape.
-#/ A convex hull will be created from the vertexes.
+#/ A convex hull will be created from the vertices.
 proc init*(poly: PPolyShape; body: PBody, numVerts: cint;
             verts: ptr TVector; offset: TVector): PPolyShape {.
   cdecl, importc: "cpPolyShapeInit", dynlib: Lib.}
 #/ Allocate and initialize a polygon shape.
-#/ A convex hull will be created from the vertexes.
+#/ A convex hull will be created from the vertices.
 proc newPolyShape*(body: PBody; numVerts: cint; verts: ptr TVector;
                     offset: TVector): PShape {.
   cdecl, importc: "cpPolyShapeNew", dynlib: Lib.}
@@ -1050,7 +1050,7 @@ proc newBoxShape*(body: PBody; width, height: CpFloat): PShape {.
 proc newBoxShape*(body: PBody; box: TBB): PShape {.
   cdecl, importc: "cpBoxShapeNew2", dynlib: Lib.}
 
-#/ Check that a set of vertexes is convex and has a clockwise winding.
+#/ Check that a set of vertices is convex and has a clockwise winding.
 #/ NOTE: Due to floating point precision issues, hulls created with cpQuickHull() are not guaranteed to validate!
 proc validatePoly*(verts: ptr TVector; numVerts: cint): bool {.
   cdecl, importc: "cpPolyValidate", dynlib: Lib.}

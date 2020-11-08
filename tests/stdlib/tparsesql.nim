@@ -1,3 +1,6 @@
+discard """
+  targets: "c js"
+"""
 import parsesql
 
 doAssert $parseSQL("SELECT foo FROM table;") == "select foo from table;"

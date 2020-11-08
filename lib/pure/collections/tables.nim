@@ -131,10 +131,11 @@
 ##   let myString = "abracadabra"
 ##   let letterFrequencies = toCountTable(myString)
 ##   echo letterFrequencies
-##   # 'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
+##   # output: {'a': 5, 'b': 2, 'c': 1, 'd': 1, 'r': 2}
 ##
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc<#inc,CountTable[A],A,int>`_:
+## and increasing each key's value with `inc proc
+## <#inc,CountTable[A],A,Positive>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -216,9 +217,9 @@
 ## * `hashes module<hashes.html>`_ for helper functions for hashing
 
 
-import hashes, math, algorithm
+import std/private/since
 
-include "system/inclrtl"
+import hashes, math, algorithm
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
@@ -238,7 +239,7 @@ type
     ## <#newTable,int>`_.
 
 const
-  defaultInitialSize* = 64
+  defaultInitialSize* = 32
 
 # ------------------------------ helpers ---------------------------------
 
@@ -248,8 +249,6 @@ template maxHash(t): untyped = high(t.data)
 template dataLen(t): untyped = len(t.data)
 
 include tableimpl
-
-proc rightSize*(count: Natural): int {.inline.}
 
 template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
@@ -289,12 +288,6 @@ proc enlarge[A, B](t: var Table[A, B]) =
 proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -306,6 +299,22 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
+
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toTable
+
+  putImpl(enlarge)
 
 proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given ``pairs``.
@@ -320,7 +329,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
     let b = toTable(a)
     assert b == {'a': 5, 'b': 9}.toTable
 
-  result = initTable[A, B](rightSize(pairs.len))
+  result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: Table[A, B], key: A): B =
@@ -361,22 +370,6 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -467,6 +460,13 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_
@@ -481,6 +481,17 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
 
+    # An example of accidentally creating a copy
+    var t = initTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
+
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: Table[A, B]): int =
@@ -491,7 +502,8 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: B) =
+proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -500,11 +512,15 @@ proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
+template tabMakeEmpty(i) = t.data[i].hcode = 0
+template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
+template tabCellHash(i)  = t.data[i].hcode
+
 proc del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
@@ -513,9 +529,9 @@ proc del*[A, B](t: var Table[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toTable
 
-  delImpl()
+  delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
-proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -528,11 +544,11 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       i: int
-    doAssert a.take('b', i) == true
+    doAssert a.pop('b', i) == true
     doAssert a == {'a': 5, 'c': 13}.toTable
     doAssert i == 9
     i = 0
-    doAssert a.take('z', i) == false
+    doAssert a.pop('z', i) == false
     doAssert a == {'a': 5, 'c': 13}.toTable
     doAssert i == 0
 
@@ -540,15 +556,20 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   var index = rawGet(t, key, hc)
   result = index >= 0
   if result:
-    shallowCopy(val, t.data[index].val)
-    delImplIdx(t, index)
+    val = move(t.data[index].val)
+    delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
+
+proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
+  ## Alias for:
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
+  pop(t, key, val)
 
 proc clear*[A, B](t: var Table[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     doAssert len(a) == 3
@@ -572,15 +593,6 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
     doAssert a == b
 
   equalsImpl(s, t)
-
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of ``initialSize`` to support ``count`` items.
-  ##
-  ## If more items are expected to be added, simply add that
-  ## expected extra amount to the parameter before calling this.
-  ##
-  ## Internally, we want mustRehash(rightSize(x), x) == false.
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
@@ -754,25 +766,20 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator allValues*[A, B](t: Table[A, B]; key: A): B =
+iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
+    "Deprecated since v1.4; tables with duplicated keys are deprecated".} =
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
   ##
   ## Used if you have a table with duplicate keys (as a result of using
   ## `add proc<#add,Table[A,B],A,B>`_).
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = {'a': 3, 'b': 5}.toTable
-  ##   for i in 1..3:
-  ##     a.add('z', 10*i)
-  ##   echo a # {'a': 3, 'b': 5, 'z': 10, 'z': 20, 'z': 30}
-  ##
-  ##   for v in a.allValues('z'):
-  ##     echo v
-  ##   # 10
-  ##   # 20
-  ##   # 30
+  runnableExamples:
+    import sequtils, algorithm
+
+    var a = {'a': 3, 'b': 5}.toTable
+    for i in 1..3: a.add('z', 10*i)
+    doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
+    doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
   var h: Hash = genHash(key) and high(t.data)
   let L = len(t)
   while isFilled(t.data[h].hcode):
@@ -790,12 +797,6 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
 proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
   ##
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
@@ -856,7 +857,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -961,6 +962,12 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
@@ -975,6 +982,16 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newTable
 
+    # An example of accidentally creating a copy
+    var t = newTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -985,7 +1002,8 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -1000,7 +1018,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
   ## **If duplicate keys were added, this may need to be called multiple times.**
   ##
   ## See also:
-  ## * `take proc<#take,TableRef[A,B],A,B>`_
+  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
   ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
@@ -1011,7 +1029,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -1026,22 +1044,27 @@ proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       i: int
-    doAssert a.take('b', i) == true
+    doAssert a.pop('b', i) == true
     doAssert a == {'a': 5, 'c': 13}.newTable
     doAssert i == 9
     i = 0
-    doAssert a.take('z', i) == false
+    doAssert a.pop('z', i) == false
     doAssert a == {'a': 5, 'c': 13}.newTable
     doAssert i == 0
 
-  result = t[].take(key, val)
+  result = t[].pop(key, val)
+
+proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool {.inline.} =
+  ## Alias for:
+  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
+  pop(t, key, val)
 
 proc clear*[A, B](t: TableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,Table[A,B],A>`_
-  ## * `take proc<#take,Table[A,B],A,B>`_
+  ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     doAssert len(a) == 3
@@ -1228,7 +1251,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -1249,7 +1272,7 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
       var j: Hash = eh and maxHash(t)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t))
-      rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+      rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
 template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
@@ -1266,12 +1289,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -1284,6 +1301,22 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
+
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
+  ## Inserts a ``(key, value)`` pair into ``t``.
+  ##
+  ## See also:
+  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
+  runnableExamples:
+    var a = initOrderedTable[char, int]()
+    a['x'] = 7
+    a['y'] = 33
+    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+
+  putImpl(enlarge)
 
 proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given ``pairs``.
@@ -1299,7 +1332,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
     let b = toOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.toOrderedTable
 
-  result = initOrderedTable[A, B](rightSize(pairs.len))
+  result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
 proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
@@ -1341,22 +1374,6 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   get(t, key)
-
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
-  ## Inserts a ``(key, value)`` pair into ``t``.
-  ##
-  ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
-  runnableExamples:
-    var a = initOrderedTable[char, int]()
-    a['x'] = 7
-    a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
-
-  putImpl(enlarge)
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
@@ -1472,7 +1489,8 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -1487,6 +1505,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## O(n) complexity.
   ##
   ## See also:
+  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
@@ -1495,6 +1514,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     a.del('z')
     doAssert a == {'b': 9, 'c': 13}.toOrderedTable
 
+  if t.counter == 0: return
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -1509,14 +1529,45 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         dec t.counter
       else:
         var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
-        rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+        rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
+
+proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## O(n) complexity.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
+      i: int
+    doAssert a.pop('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.pop('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
+    doAssert i == 0
+
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    del(t, key)
 
 proc clear*[A, B](t: var OrderedTable[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
   ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     doAssert len(a) == 3
@@ -1602,6 +1653,8 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
 
   if s.counter != t.counter:
     return false
+  if s.counter == 0 and t.counter == 0:
+    return true
   var ht = t.first
   var hs = s.first
   while ht >= 0 and hs >= 0:
@@ -1733,22 +1786,12 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
     yield t.data[h].val
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-
-
-
-
 # ---------------------------------------------------------------------------
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
 proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
-  ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
   ##
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
@@ -1776,8 +1819,8 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
     let b = newOrderedTable(a)
     assert b == {'a': 5, 'b': 9}.newOrderedTable
 
-  result = newOrderedTable[A, B](rightSize(pairs.len))
-  for key, val in items(pairs): result.add(key, val)
+  result = newOrderedTable[A, B](pairs.len)
+  for key, val in items(pairs): result[key] = val
 
 
 proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
@@ -1803,7 +1846,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -1932,7 +1975,8 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
+    "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
@@ -1941,7 +1985,7 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
-proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
+proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
   ## Deletes ``key`` from hash table ``t``. Does nothing if the key does not exist.
   ##
   ## See also:
@@ -1955,11 +1999,34 @@ proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc clear*[A, B](t: var OrderedTableRef[A, B]) =
+proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## See also:
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
+  ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
+  runnableExamples:
+    var
+      a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
+      i: int
+    doAssert a.pop('b', i) == true
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 9
+    i = 0
+    doAssert a.pop('z', i) == false
+    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
+    doAssert i == 0
+
+  pop(t[], key, val)
+
+proc clear*[A, B](t: OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTable[A,B],A>`_
+  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     doAssert len(a) == 3
@@ -2165,7 +2232,7 @@ proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
@@ -2188,12 +2255,6 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1)
 proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
@@ -2206,7 +2267,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## Creates a new count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = initCountTable[A](rightSize(keys.len))
+  result = initCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTable[A], key: A): int =
@@ -2224,27 +2285,27 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
-proc mget*[A](t: var CountTable[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  assert(not t.isSorted, "CountTable must not be used after sorting")
-  get(t, key)
+template cntMakeEmpty(i) = t.data[i].val = 0
+template cntCellEmpty(i) = t.data[i].val == 0
+template cntCellHash(i)  = hash(t.data[i].key)
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
-  let h = rawGet(t, key)
-  if h >= 0:
-    t.data[h].val = val
+  if val == 0:
+    delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
-    insertImpl()
+    let h = rawGet(t, key)
+    if h >= 0:
+      t.data[h].val = val
+    else:
+      insertImpl()
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
@@ -2258,16 +2319,22 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter)
+    if t.data[index].val == 0:
+      delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
   else:
-    insertImpl()
+    if val != 0:
+      insertImpl()
+
+proc len*[A](t: CountTable[A]): int =
+  ## Returns the number of keys in ``t``.
+  result = t.counter
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
   ## See also:
   ## * `largest proc<#largest,CountTable[A]>`_
-  assert t.len > 0
+  assert t.len > 0, "counttable is empty"
   var minIdx = -1
   for h in 0 .. high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
@@ -2280,7 +2347,7 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ##
   ## See also:
   ## * `smallest proc<#smallest,CountTable[A]>`_
-  assert t.len > 0
+  assert t.len > 0, "counttable is empty"
   var maxIdx = 0
   for h in 1 .. high(t.data):
     if t.data[maxIdx].val < t.data[h].val: maxIdx = h
@@ -2314,12 +2381,53 @@ proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
   ##   is in the table
   ctget(t, key, default)
 
-proc len*[A](t: CountTable[A]): int =
-  ## Returns the number of keys in ``t``.
-  result = t.counter
+proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## See also:
+  ## * `pop proc<#pop,CountTable[A],A,int>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('b')
+    assert a == toCountTable("aaccccc")
+    a.del('c')
+    assert a == toCountTable("aa")
+
+  delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
+
+proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  runnableExamples:
+    var a = toCountTable("aabbbccccc")
+    var i = 0
+    assert a.pop('b', i)
+    assert i == 3
+    i = 99
+    assert not a.pop('b', i)
+    assert i == 99
+
+  var index = rawGet(t, key)
+  result = index >= 0
+  if result:
+    val = move(t.data[index].val)
+    delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
 
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTable[A],A>`_
+  ## * `pop proc<#pop,CountTable[A],A,int>`_
   clearImpl()
   t.isSorted = false
 
@@ -2359,18 +2467,19 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   for key, value in t:
     s.inc(key, value)
 
-proc merge*[A](s, t: CountTable[A]): CountTable[A] =
-  ## Merges the two tables into a new one.
-  runnableExamples:
-    let
-      a = toCountTable("aaabbc")
-      b = toCountTable("bcc")
-    doAssert merge(a, b) == toCountTable("aaabbbccc")
+when (NimMajor, NimMinor) <= (1, 0):
+  proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+    ## Merges the two tables into a new one.
+    runnableExamples:
+      let
+        a = toCountTable("aaabbc")
+        b = toCountTable("bcc")
+      doAssert merge(a, b) == toCountTable("aaabbbccc")
 
-  result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
-  for table in @[s, t]:
-    for key, value in table:
-      result.inc(key, value)
+    result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
+    for table in @[s, t]:
+      for key, value in table:
+        result.inc(key, value)
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The ``$`` operator for count tables. Used internally when calling `echo`
@@ -2505,12 +2614,6 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
-  ## ``initialSize`` must be a power of two (default: 64).
-  ## If you need to accept runtime values for this you could use the
-  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
-  ## `math module<math.html>`_ or the `rightSize proc<#rightSize,Natural>`_
-  ## from this module.
-  ##
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
@@ -2522,7 +2625,7 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
 proc newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
   ## Creates a new ref count table with every member of a container ``keys``
   ## having a count of how many times it occurs in that container.
-  result = newCountTable[A](rightSize(keys.len))
+  result = newCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
 proc `[]`*[A](t: CountTableRef[A], key: A): int =
@@ -2532,18 +2635,12 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `mget proc<#mget,CountTableRef[A],A>`_
+  ## * `inc proc<#inc,CountTableRef[A],A>`_ to inc even if missing
   ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
   result = t[][key]
-
-proc mget*[A](t: CountTableRef[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  mget(t[], key)
 
 proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
@@ -2564,14 +2661,14 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     doAssert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): (A, int) =
+proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the smallest ``val``. Efficiency: O(n)
   ##
   ## See also:
   ## * `largest proc<#largest,CountTableRef[A]>`_
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): (A, int) =
+proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the ``(key, value)`` pair with the largest ``val``. Efficiency: O(n)
   ##
   ## See also:
@@ -2608,9 +2705,32 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
+proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
+  ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
+  ##
+  ## See also:
+  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  del(t[], key)
+
+proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  pop(t[], key, val)
+
 proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
-  clearImpl()
+  ##
+  ## See also:
+  ## * `del proc<#del,CountTableRef[A],A>`_
+  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
+  clear(t[])
 
 proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
@@ -2857,13 +2977,6 @@ when isMainModule:
   t2l.inc("foo", 4)
   t2l.inc("bar")
   t2l.inc("baz", 11)
-  let
-    t1merging = t1l
-    t2merging = t2l
-  let merged = merge(t1merging, t2merging)
-  assert(merged["foo"] == 5)
-  assert(merged["bar"] == 3)
-  assert(merged["baz"] == 14)
 
   block:
     const testKey = "TESTKEY"
@@ -2890,37 +3003,37 @@ when isMainModule:
   block: #5482
     var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var b = newOrderedTable[string, string](initialSize = 2)
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5482
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string](initialSize = 2)
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5487
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string]()         # notice, default size!
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block: #5487
     var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var b = newOrderedTable[string, string]()         # notice, default size!
-    b.add("wrong?", "foo")
-    b.add("wrong?", "foo2")
+    b["wrong?"] = "foo"
+    b["wrong?"] = "foo2"
     assert a == b
 
   block:
     var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
     var c = newOrderedTable[string, string]()         # notice, default size!
-    c.add("wrong?", "foo")
-    c.add("wrong?", "foo2")
+    c["wrong?"] = "foo"
+    c["wrong?"] = "foo2"
     assert a == b
     assert a == c
 
@@ -2953,6 +3066,13 @@ when isMainModule:
     t_mut['z'] = 1
     doAssert t_mut['z'] == 1
     doAssert t_mut.hasKey('z') == true
+
+  block: #12813 #13079
+    var t = toCountTable("abracadabra")
+    doAssert len(t) == 5
+
+    t['a'] = 0 # remove a key
+    doAssert len(t) == 4
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
@@ -3002,10 +3122,10 @@ when isMainModule:
     doAssert d.mgetOrPut("a", 6) == 3
 
     var x = 99
-    doAssert e.take("a", x) == false
+    doAssert e.pop("a", x) == false
     doAssert x == 99
     e["a"] = 77
-    doAssert e.take("a", x)
+    doAssert e.pop("a", x)
     doAssert x == 77
 
   block orderedTableWithoutInit:

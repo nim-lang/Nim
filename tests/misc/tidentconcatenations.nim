@@ -13,10 +13,10 @@ void keccak_512(void* input, int input_len, void* output, int output_len) {}
 """.}
 
 template defineKeccak(bits: untyped) =
-  proc `extKeccak bits`(output: pointer, outSize: csize, input: pointer, inputSize: csize) {.nodecl, importc: "keccak_" & astToStr(bits).}
+  proc `extKeccak bits`(output: pointer, outSize: csize_t, input: pointer, inputSize: csize_t) {.nodecl, importc: "keccak_" & astToStr(bits).}
 
 template defineSha(bits: static[int]) =
-  proc `extSha bits`(output: pointer, outSize: csize, input: pointer, inputSize: csize) {.nodecl, importc: "sha_" & astToStr(bits).}
+  proc `extSha bits`(output: pointer, outSize: csize_t, input: pointer, inputSize: csize_t) {.nodecl, importc: "sha_" & astToStr(bits).}
 
 template defineHashProcs(bits) =
   defineSha(bits)
@@ -29,4 +29,3 @@ extSha256(nil, 0, nil, 0)
 extSha512(nil, 0, nil, 0)
 extKeccak256(nil, 0, nil, 0)
 extKeccak512(nil, 0, nil, 0)
-

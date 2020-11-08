@@ -147,7 +147,7 @@ when not defined(js):
   import os
 
 type
-  Level* = enum
+  Level* = enum ## \
     ## Enumeration of logging levels.
     ##
     ## Debug messages represent the lowest logging level, and fatal error
@@ -173,22 +173,21 @@ type
     ## any messages with a level lower than the threshold. There is also
     ## a global filter that applies to all log messages, and it can be changed
     ## using the `setLogFilter proc<#setLogFilter,Level>`_.
-    lvlAll,       ## All levels active
-    lvlDebug,     ## Debug level and above are active
-    lvlInfo,      ## Info level and above are active
-    lvlNotice,    ## Notice level and above are active
-    lvlWarn,      ## Warn level and above are active
-    lvlError,     ## Error level and above are active
-    lvlFatal,     ## Fatal level and above are active
-    lvlNone       ## No levels active; nothing is logged
+    lvlAll,     ## All levels active
+    lvlDebug,   ## Debug level and above are active
+    lvlInfo,    ## Info level and above are active
+    lvlNotice,  ## Notice level and above are active
+    lvlWarn,    ## Warn level and above are active
+    lvlError,   ## Error level and above are active
+    lvlFatal,   ## Fatal level and above are active
+    lvlNone     ## No levels active; nothing is logged
 
 const
   LevelNames*: array[Level, string] = [
     "DEBUG", "DEBUG", "INFO", "NOTICE", "WARN", "ERROR", "FATAL", "NONE"
-  ]  ## Array of strings representing each logging level.
+  ] ## Array of strings representing each logging level.
 
-  defaultFmtStr* = "$levelname " ## \
-  ## The default format string.
+  defaultFmtStr* = "$levelname "                         ## The default format string.
   verboseFmtStr* = "$levelid, [$datetime] -- $appname: " ## \
   ## A more verbose format string.
   ##
@@ -211,8 +210,8 @@ type
     ## * `ConsoleLogger<#ConsoleLogger>`_
     ## * `FileLogger<#FileLogger>`_
     ## * `RollingFileLogger<#RollingFileLogger>`_
-    levelThreshold*: Level    ## Only messages that are at or above this
-                              ## threshold will be logged
+    levelThreshold*: Level ## Only messages that are at or above this
+                           ## threshold will be logged
     fmtStr*: string ## Format string to prepend to each log message;
                     ## defaultFmtStr is the default
 
@@ -240,7 +239,7 @@ when not defined(js):
       ## See also:
       ## * `ConsoleLogger<#ConsoleLogger>`_
       ## * `RollingFileLogger<#RollingFileLogger>`_
-      file*: File  ## The wrapped file
+      file*: File ## The wrapped file
 
     RollingFileLogger* = ref object of FileLogger
       ## A logger that writes log messages to a file while performing log
@@ -255,17 +254,18 @@ when not defined(js):
       ## * `ConsoleLogger<#ConsoleLogger>`_
       ## * `FileLogger<#FileLogger>`_
       maxLines: int # maximum number of lines
-      curLine : int
+      curLine: int
       baseName: string # initial filename
       baseMode: FileMode # initial file mode
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
 var
-  level {.threadvar.}: Level   ## global log filter
+  level {.threadvar.}: Level          ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
-proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
+proc substituteLog*(frmt: string, level: Level,
+                    args: varargs[string, `$`]): string =
   ## Formats a log message at the specified level with the given format string.
   ##
   ## The `format variables<#basic-usage-format-strings>`_ present within
@@ -287,6 +287,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
   runnableExamples:
     doAssert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
     doAssert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
+    doAssert substituteLog("$levelid", lvlDebug, "error") == "Derror"
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
@@ -300,14 +301,14 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       inc(i)
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
-      while frmt[i] in IdentChars:
+      while i < frmt.len and frmt[i] in IdentChars:
         v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v
       of "date": result.add(getDateStr())
       of "time": result.add(getClockStr())
       of "datetime": result.add(getDateStr() & "T" & getClockStr())
-      of "app":  result.add(app)
+      of "app": result.add(app)
       of "appdir":
         when not defined(js): result.add(app.splitFile.dir)
       of "appname":
@@ -364,18 +365,24 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
     let ln = substituteLog(logger.fmtStr, level, args)
     when defined(js):
       let cln: cstring = ln
-      {.emit: "console.log(`cln`);".}
+      case level
+      of lvlDebug: {.emit: "console.debug(`cln`);".}
+      of lvlInfo:  {.emit: "console.info(`cln`);".}
+      of lvlWarn:  {.emit: "console.warn(`cln`);".}
+      of lvlError: {.emit: "console.error(`cln`);".}
+      else:        {.emit: "console.log(`cln`);".}
     else:
       try:
         var handle = stdout
         if logger.useStderr:
-          handle = stderr 
+          handle = stderr
         writeLine(handle, ln)
         if level in {lvlError, lvlFatal}: flushFile(handle)
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr, useStderr=false): ConsoleLogger =
+proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
+    useStderr = false): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
   ## By default, log messages are written to ``stdout``. If ``useStderr`` is
@@ -503,7 +510,6 @@ when not defined(js):
   # ------
 
   proc countLogLines(logger: RollingFileLogger): int =
-    result = 0
     let fp = open(logger.baseName, fmRead)
     for line in fp.lines():
       result.inc()
@@ -530,7 +536,7 @@ when not defined(js):
                             mode: FileMode = fmReadWrite,
                             levelThreshold = lvlAll,
                             fmtStr = defaultFmtStr,
-                            maxLines = 1000,
+                            maxLines: Positive = 1000,
                             bufSize: int = -1): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
@@ -563,7 +569,7 @@ when not defined(js):
     result.fmtStr = fmtStr
     result.maxLines = maxLines
     result.bufSize = bufSize
-    result.file = open(filename, mode, bufSize=result.bufSize)
+    result.file = open(filename, mode, bufSize = result.bufSize)
     result.curLine = 0
     result.baseName = filename
     result.baseMode = mode
@@ -616,7 +622,8 @@ when not defined(js):
         rotate(logger)
         logger.logFiles.inc
         logger.curLine = 0
-        logger.file = open(logger.baseName, logger.baseMode, bufSize = logger.bufSize)
+        logger.file = open(logger.baseName, logger.baseMode,
+            bufSize = logger.bufSize)
 
       writeLine(logger.file, substituteLog(logger.fmtStr, level, args))
       if level in {lvlError, lvlFatal}: flushFile(logger.file)

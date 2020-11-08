@@ -2,6 +2,7 @@ discard """
   output: '''(kind: 2.0, twoStr: "TWO STR")
 (kind: 1.0)
 '''
+disabled: "true"
 """
 type
   FloatRange = range[1.0..3.0]

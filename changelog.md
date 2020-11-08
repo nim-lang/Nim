@@ -1,60 +1,36 @@
-# v1.1 - XXXX-XX-XX
+# v1.6.x - yyyy-mm-dd
 
 
-## Changes affecting backwards compatibility
 
-- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
-  stdin/stdout/stderr are binary files again. This change only affects
-  Windows.
-- On Windows console applications the code-page is set at program startup
-  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
-  feature.
+## Standard library additions and changes
 
-### Breaking changes in the standard library
+- Make `{.requiresInit.}` pragma to work for `distinct` types.
 
+- `prelude` now works with the JavaScript target.
 
-### Breaking changes in the compiler
+- Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
+- Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
+- The JSON module can now handle integer literals and floating point literals of arbitrary length and precision.
+  Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are kept as string literals and
+  one can use external BigNum libraries to handle these. The `parseFloat` family of functions also has now optional
+  `rawIntegers` and `rawFloats` parameters that can be used to enforce that all integer or float literals remain
+  in the "raw" string form so that client code can easily treat small and large numbers uniformly.
 
-## Library additions
+- Added `randState` template that exposes the default random number generator. Useful for library authors.
 
-- `encodings.getCurrentEncoding` now distinguishes between the console's
-  encoding and the OS's encoding. This distinction is only meaningful on
-  Windows.
-- Added `system.getOsFileHandle` which is usually more useful
-  than `system.getFileHandle`. This distinction is only meaningful on
-  Windows.
+- Added std/enumutils module containing `genEnumCaseStmt` macro that generates case statement to parse string to enum.
 
-## Library changes
-
-- Added `os.delEnv` and `nimscript.delEnv`. (#11466)
-
-- Enable Oid usage in hashtables. (#11472)
-
-- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
-
-- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
-  `update` and `finalize` procedures from `sha1` module. (#11694)
-
-- Added the `std/monotimes` module which implements monotonic timestamps.
-
-- Consistent error handling of two `exec` overloads. (#10967)
-
-## Language additions
-
+- Removed deprecated `iup` module from stdlib, it has already moved to [nimble](https://github.com/nim-lang/iup).
 
 ## Language changes
 
 
-### Tool changes
 
-- The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
-  no dependent Nim file changed. This feature can be overridden by
-  the ``--forceBuild`` command line option.
+## Compiler changes
 
-### Compiler changes
-
-- VM can now cast integer type arbitrarily. (#11459)
+- Added `--declaredlocs` to show symbol declaration location in messages.
+- Source+Edit links now appear on top of every docgen'd page when `nim doc --git.url:url ...` is given.
 
 
-## Bugfixes
+## Tool changes

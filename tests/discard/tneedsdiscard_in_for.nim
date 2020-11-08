@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''expression 'premultiply(app.gradient[i])' is of type 'Rgba8' and has to be discarded'''
+  errormsg: '''expression 'premultiply(app.gradient[i])' is of type 'Rgba8' and has to be used (or discarded)'''
   line: 22
 """
 
@@ -8,7 +8,7 @@ type
   Rgba8 = object
 
 proc premultiply*(c: var Rgba8): var Rgba8 =
-  discard
+  return c
 
 type
   App = ref object

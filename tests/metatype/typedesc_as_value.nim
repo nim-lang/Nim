@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
+  errormsg: "invalid type: 'type int' for var"
 """
 
 

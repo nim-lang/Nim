@@ -46,7 +46,7 @@ type
   Vect[N: static[int], A] = array[N, A]
 
 proc push[N: static[int], A](a: Vect[N, A], x: A): Vect[N + 1, A] =
-  for n in 0 .. < N:
+  for n in 0 ..<  N:
     result[n] = a[n]
   result[N] = x
 

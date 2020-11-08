@@ -123,7 +123,7 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = cuint
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = culong
   Key* {.importc: "key_t", header: "<sys/types.h>".} = cint
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint # cuint really!
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = uint16
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = culong
   Off* {.importc: "off_t", header: "<sys/types.h>".} = clong
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = cint
@@ -371,7 +371,7 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/socket.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: csize    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr

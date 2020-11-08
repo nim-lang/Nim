@@ -94,7 +94,9 @@
 ## * `asyncstreams module <asyncstreams.html>`_
 ## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
 
-include "system/inclrtl"
+import std/private/since
+
+const taintMode = compileOption("taintmode")
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -122,12 +124,15 @@ type
     readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
+    readLineImpl*: proc(s: Stream, line: var TaintedString): bool
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
-        {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
     flushImpl*: proc (s: Stream)
       {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
@@ -211,6 +216,9 @@ proc getPosition*(s: Stream): int =
 
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size.
+  ## 
+  ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
+  ## ``0..<bufLen``.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
@@ -234,13 +242,23 @@ proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
     result = s.readDataStrImpl(s, buffer, slice)
   else:
     # fallback
-    result = s.readData(addr buffer[0], buffer.len)
+    result = s.readData(addr buffer[slice.a], slice.b + 1 - slice.a)
 
-when not defined(js):
+template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
+  when nimvm:
+    block:
+      caseJsOrVm
+  else:
+    block:
+      when defined(js) or defined(nimscript):
+        # nimscript has to be here to avoid semantic checking of caseElse
+        caseJsOrVm
+      else:
+        caseElse
+
+when (NimMajor, NimMinor) >= (1, 3) or not defined(js):
   proc readAll*(s: Stream): string =
     ## Reads all available data.
-    ##
-    ## **Note:** Not available for JS backend.
     runnableExamples:
       var strm = newStringStream("The first line\nthe second line\nthe third line")
       doAssert strm.readAll() == "The first line\nthe second line\nthe third line"
@@ -248,20 +266,36 @@ when not defined(js):
       strm.close()
 
     const bufferSize = 1024
-    var buffer {.noinit.}: array[bufferSize, char]
-    while true:
-      let readBytes = readData(s, addr(buffer[0]), bufferSize)
-      if readBytes == 0:
-        break
-      let prevLen = result.len
-      result.setLen(prevLen + readBytes)
-      copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
-      if readBytes < bufferSize:
-        break
+    jsOrVmBlock:
+      var buffer2: string
+      buffer2.setLen(bufferSize)
+      while true:
+        let readBytes = readDataStr(s, buffer2, 0..<bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        result[prevLen..<prevLen+readBytes] = buffer2[0..<readBytes]
+        if readBytes < bufferSize:
+          break
+    do: # not JS or VM
+      var buffer {.noinit.}: array[bufferSize, char]
+      while true:
+        let readBytes = readData(s, addr(buffer[0]), bufferSize)
+        if readBytes == 0:
+          break
+        let prevLen = result.len
+        result.setLen(prevLen + readBytes)
+        copyMem(addr(result[prevLen]), addr(buffer[0]), readBytes)
+        if readBytes < bufferSize:
+          break
 
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position.
+  ## 
+  ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
+  ## ``0..<bufLen``.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
@@ -275,6 +309,9 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## Low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
+  ## 
+  ## **JS note:** `buffer` is treated as a ``ptr string`` and read between
+  ## ``0..<bufLen``.
   runnableExamples:
     ## writeData
     var strm = newStringStream("")
@@ -293,9 +330,12 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
 proc write*[T](s: Stream, x: T) =
   ## Generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
+  ## **Note:** Not available for JS backend. Use `write(Stream, string)
+  ## <#write,Stream,string>`_ for now.
+  ##
   ## .. code-block:: Nim
   ##
-  ##     s.writeData(s, addr(x), sizeof(x))
+  ##     s.writeData(s, unsafeAddr(x), sizeof(x))
   runnableExamples:
     var strm = newStringStream("")
     strm.write("abcde")
@@ -303,9 +343,7 @@ proc write*[T](s: Stream, x: T) =
     doAssert strm.readAll() == "abcde"
     strm.close()
 
-  var y: T
-  shallowCopy(y, x)
-  writeData(s, addr(y), sizeof(y))
+  writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
   ## Writes the string `x` to the the stream `s`. No length field or
@@ -320,7 +358,12 @@ proc write*(s: Stream, x: string) =
   when nimvm:
     writeData(s, cstring(x), x.len)
   else:
-    if x.len > 0: writeData(s, cstring(x), x.len)
+    if x.len > 0:
+      when defined(js):
+        var x = x
+        writeData(s, addr(x), x.len)
+      else:
+        writeData(s, cstring(x), x.len)
 
 proc write*(s: Stream, args: varargs[string, `$`]) =
   ## Writes one or more strings to the the stream. No length fields or
@@ -350,6 +393,8 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
 
 proc read*[T](s: Stream, result: var T) =
   ## Generic read procedure. Reads `result` from the stream `s`.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream("012")
     ## readInt
@@ -367,6 +412,8 @@ proc read*[T](s: Stream, result: var T) =
 
 proc peek*[T](s: Stream, result: var T) =
   ## Generic peek procedure. Peeks `result` from the stream `s`.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream("012")
     ## peekInt
@@ -396,7 +443,12 @@ proc readChar*(s: Stream): char =
     doAssert strm.readChar() == '\x00'
     strm.close()
 
-  if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
+  jsOrVmBlock:
+    var str = " "
+    if readDataStr(s, str, 0..0) != 1: result = '\0'
+    else: result = str[0]
+  do:
+    if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc peekChar*(s: Stream): char =
   ## Peeks a char from the stream `s`. Raises `IOError` if an error occurred.
@@ -409,7 +461,12 @@ proc peekChar*(s: Stream): char =
     doAssert strm.peekChar() == '\x00'
     strm.close()
 
-  if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
+  when defined(js):
+    var str = " "
+    if peekData(s, addr(str), sizeof(result)) != 1: result = '\0'
+    else: result = str[0]
+  else:
+    if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
 proc readBool*(s: Stream): bool =
   ## Reads a bool from the stream `s`.
@@ -417,6 +474,8 @@ proc readBool*(s: Stream): bool =
   ## A bool is one byte long and it is `true` for every non-zero
   ## (`0000_0000`) value.
   ## Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -440,6 +499,8 @@ proc peekBool*(s: Stream): bool =
   ## A bool is one byte long and it is `true` for every non-zero
   ## (`0000_0000`) value.
   ## Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -461,6 +522,8 @@ proc peekBool*(s: Stream): bool =
 
 proc readInt8*(s: Stream): int8 =
   ## Reads an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -478,6 +541,8 @@ proc readInt8*(s: Stream): int8 =
 
 proc peekInt8*(s: Stream): int8 =
   ## Peeks an int8 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -497,6 +562,8 @@ proc peekInt8*(s: Stream): int8 =
 
 proc readInt16*(s: Stream): int16 =
   ## Reads an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -514,6 +581,8 @@ proc readInt16*(s: Stream): int16 =
 
 proc peekInt16*(s: Stream): int16 =
   ## Peeks an int16 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -533,6 +602,8 @@ proc peekInt16*(s: Stream): int16 =
 
 proc readInt32*(s: Stream): int32 =
   ## Reads an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -550,6 +621,8 @@ proc readInt32*(s: Stream): int32 =
 
 proc peekInt32*(s: Stream): int32 =
   ## Peeks an int32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -569,6 +642,8 @@ proc peekInt32*(s: Stream): int32 =
 
 proc readInt64*(s: Stream): int64 =
   ## Reads an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -586,6 +661,8 @@ proc readInt64*(s: Stream): int64 =
 
 proc peekInt64*(s: Stream): int64 =
   ## Peeks an int64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -605,6 +682,8 @@ proc peekInt64*(s: Stream): int64 =
 
 proc readUint8*(s: Stream): uint8 =
   ## Reads an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -622,6 +701,8 @@ proc readUint8*(s: Stream): uint8 =
 
 proc peekUint8*(s: Stream): uint8 =
   ## Peeks an uint8 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -641,6 +722,8 @@ proc peekUint8*(s: Stream): uint8 =
 
 proc readUint16*(s: Stream): uint16 =
   ## Reads an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -658,6 +741,8 @@ proc readUint16*(s: Stream): uint16 =
 
 proc peekUint16*(s: Stream): uint16 =
   ## Peeks an uint16 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -677,6 +762,8 @@ proc peekUint16*(s: Stream): uint16 =
 
 proc readUint32*(s: Stream): uint32 =
   ## Reads an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -695,6 +782,8 @@ proc readUint32*(s: Stream): uint32 =
 
 proc peekUint32*(s: Stream): uint32 =
   ## Peeks an uint32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -714,6 +803,8 @@ proc peekUint32*(s: Stream): uint32 =
 
 proc readUint64*(s: Stream): uint64 =
   ## Reads an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -731,6 +822,8 @@ proc readUint64*(s: Stream): uint64 =
 
 proc peekUint64*(s: Stream): uint64 =
   ## Peeks an uint64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -750,6 +843,8 @@ proc peekUint64*(s: Stream): uint64 =
 
 proc readFloat32*(s: Stream): float32 =
   ## Reads a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -767,6 +862,8 @@ proc readFloat32*(s: Stream): float32 =
 
 proc peekFloat32*(s: Stream): float32 =
   ## Peeks a float32 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -786,6 +883,8 @@ proc peekFloat32*(s: Stream): float32 =
 
 proc readFloat64*(s: Stream): float64 =
   ## Reads a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -803,6 +902,8 @@ proc readFloat64*(s: Stream): float64 =
 
 proc peekFloat64*(s: Stream): float64 =
   ## Peeks a float64 from the stream `s`. Raises `IOError` if an error occurred.
+  ##
+  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream()
     ## setup for reading data
@@ -820,6 +921,25 @@ proc peekFloat64*(s: Stream): float64 =
 
   peek(s, result)
 
+template untaint(s: var TaintedString): var string =
+  when taintMode: # for VM, bug #12282
+    s.string
+  else:
+    s
+
+proc readStrPrivate(s: Stream, length: int, str: var TaintedString) =
+  if length > len(str): setLen(str.untaint, length)
+  when defined(js):
+    let L = readData(s, addr(str), length)
+  else:
+    let L = readData(s, cstring(str.string), length)
+  if L != len(str): setLen(str.untaint, L)
+
+proc readStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+  ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
+  ## an error occurred.
+  readStrPrivate(s, length, str)
+
 proc readStr*(s: Stream, length: int): TaintedString =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
@@ -830,10 +950,21 @@ proc readStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "e"
     doAssert strm.readStr(2) == ""
     strm.close()
-
   result = newString(length).TaintedString
-  var L = readData(s, cstring(result), length)
-  if L != length: setLen(result.string, L)
+  readStrPrivate(s, length, result)
+
+proc peekStrPrivate(s: Stream, length: int, str: var TaintedString) =
+  if length > len(str): setLen(str.untaint, length)
+  when defined(js):
+    let L = peekData(s, addr(str), length)
+  else:
+    let L = peekData(s, cstring(str.string), length)
+  if L != len(str): setLen(str.untaint, L)
+
+proc peekStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+  ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
+  ## an error occurred.
+  peekStrPrivate(s, length, str)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
@@ -846,10 +977,8 @@ proc peekStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "ab"
     doAssert strm.peekStr(2) == "cd"
     strm.close()
-
   result = newString(length).TaintedString
-  var L = peekData(s, cstring(result), length)
-  if L != length: setLen(result.string, L)
+  peekStrPrivate(s, length, result)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## Reads a line of text from the stream `s` into `line`. `line` must not be
@@ -877,18 +1006,22 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     doAssert line == ""
     strm.close()
 
-  line.string.setLen(0)
-  while true:
-    var c = readChar(s)
-    if c == '\c':
-      c = readChar(s)
-      break
-    elif c == '\L': break
-    elif c == '\0':
-      if line.len > 0: break
-      else: return false
-    line.string.add(c)
-  result = true
+  if s.readLineImpl != nil:
+    result = s.readLineImpl(s, line)
+  else:
+    # fallback
+    line.untaint.setLen(0)
+    while true:
+      var c = readChar(s)
+      if c == '\c':
+        c = readChar(s)
+        break
+      elif c == '\L': break
+      elif c == '\0':
+        if line.len > 0: break
+        else: return false
+      line.untaint.add(c)
+    result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
   ## Peeks a line of text from the stream `s` into `line`. `line` must not be
@@ -949,7 +1082,7 @@ proc readLine*(s: Stream): TaintedString =
     if c == '\L' or c == '\0':
       break
     else:
-      result.string.add(c)
+      result.untaint.add(c)
 
 proc peekLine*(s: Stream): TaintedString =
   ## Peeks a line from a stream `s`. Raises `IOError` if an error occurred.
@@ -992,21 +1125,69 @@ iterator lines*(s: Stream): TaintedString =
   while s.readLine(line):
     yield line
 
-when not defined(js):
+type
+  StringStream* = ref StringStreamObj
+    ## A stream that encapsulates a string.
+  StringStreamObj* = object of StreamObj
+    ## A string stream object.
+    data*: string ## A string data.
+                  ## This is updated when called `writeLine` etc.
+    pos: int
 
-  type
-    StringStream* = ref StringStreamObj
-      ## A stream that encapsulates a string.
-      ##
-      ## **Note:** Not available for JS backend.
-    StringStreamObj* = object of StreamObj
-      ## A string stream object.
-      ##
-      ## **Note:** Not available for JS backend.
-      data*: string ## A string data.
-                    ## This is updated when called `writeLine` etc.
-      pos: int
+when (NimMajor, NimMinor) < (1, 3) and defined(js):
+  proc ssAtEnd(s: Stream): bool {.compileTime.} =
+    var s = StringStream(s)
+    return s.pos >= s.data.len
 
+  proc ssSetPosition(s: Stream, pos: int) {.compileTime.} =
+    var s = StringStream(s)
+    s.pos = clamp(pos, 0, s.data.len)
+
+  proc ssGetPosition(s: Stream): int {.compileTime.} =
+    var s = StringStream(s)
+    return s.pos
+
+  proc ssReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int {.compileTime.} =
+    var s = StringStream(s)
+    result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
+    if result > 0:
+      buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
+      inc(s.pos, result)
+    else:
+      result = 0
+
+  proc ssClose(s: Stream) {.compileTime.} =
+    var s = StringStream(s)
+    when defined(nimNoNilSeqs):
+      s.data = ""
+    else:
+      s.data = nil
+
+  proc newStringStream*(s: string = ""): owned StringStream {.compileTime.} =
+    new(result)
+    result.data = s
+    result.pos = 0
+    result.closeImpl = ssClose
+    result.atEndImpl = ssAtEnd
+    result.setPositionImpl = ssSetPosition
+    result.getPositionImpl = ssGetPosition
+    result.readDataStrImpl = ssReadDataStr
+
+  proc readAll*(s: Stream): string {.compileTime.} =
+    const bufferSize = 1024
+    var bufferr: string
+    bufferr.setLen(bufferSize)
+    while true:
+      let readBytes = readDataStr(s, bufferr, 0..<bufferSize)
+      if readBytes == 0:
+        break
+      let prevLen = result.len
+      result.setLen(prevLen + readBytes)
+      result[prevLen..<prevLen+readBytes] = bufferr[0..<readBytes]
+      if readBytes < bufferSize:
+        break
+
+else: # after 1.3 or JS not defined  
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
     return s.pos >= s.data.len
@@ -1023,10 +1204,9 @@ when not defined(js):
     var s = StringStream(s)
     result = min(slice.b + 1 - slice.a, s.data.len - s.pos)
     if result > 0:
-      when nimvm:
-        for i in 0 ..< result: # sorry, but no fast string splicing on the vm.
-          buffer[slice.a + i] = s.data[s.pos + i]
-      else:
+      jsOrVmBlock:
+        buffer[slice.a..<slice.a+result] = s.data[s.pos..<s.pos+result]
+      do:
         copyMem(unsafeAddr buffer[slice.a], addr s.data[s.pos], result)
       inc(s.pos, result)
     else:
@@ -1036,7 +1216,14 @@ when not defined(js):
     var s = StringStream(s)
     result = min(bufLen, s.data.len - s.pos)
     if result > 0:
-      copyMem(buffer, addr(s.data[s.pos]), result)
+      when defined(js):
+        try:
+          cast[ptr string](buffer)[][0..<result] = s.data[s.pos..<s.pos+result]
+        except:
+          raise newException(Defect, "could not read string stream, " &
+            "did you use a non-string buffer pointer?", getCurrentException())
+      elif not defined(nimscript):
+        copyMem(buffer, addr(s.data[s.pos]), result)
       inc(s.pos, result)
     else:
       result = 0
@@ -1045,7 +1232,14 @@ when not defined(js):
     var s = StringStream(s)
     result = min(bufLen, s.data.len - s.pos)
     if result > 0:
-      copyMem(buffer, addr(s.data[s.pos]), result)
+      when defined(js):
+        try:
+          cast[ptr string](buffer)[][0..<result] = s.data[s.pos..<s.pos+result]
+        except:
+          raise newException(Defect, "could not peek string stream, " &
+            "did you use a non-string buffer pointer?", getCurrentException())
+      elif not defined(nimscript):
+        copyMem(buffer, addr(s.data[s.pos]), result)
     else:
       result = 0
 
@@ -1055,7 +1249,14 @@ when not defined(js):
       return
     if s.pos + bufLen > s.data.len:
       setLen(s.data, s.pos + bufLen)
-    copyMem(addr(s.data[s.pos]), buffer, bufLen)
+    when defined(js):
+      try:
+        s.data[s.pos..<s.pos+bufLen] = cast[ptr string](buffer)[][0..<bufLen]
+      except:
+        raise newException(Defect, "could not write to string stream, " &
+          "did you use a non-string buffer pointer?", getCurrentException())
+    elif not defined(nimscript):
+      copyMem(addr(s.data[s.pos]), buffer, bufLen)
     inc(s.pos, bufLen)
 
   proc ssClose(s: Stream) =
@@ -1067,8 +1268,6 @@ when not defined(js):
 
   proc newStringStream*(s: string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.
-    ##
-    ## **Note:** Not available for JS backend.
     ##
     ## See also:
     ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
@@ -1091,157 +1290,166 @@ when not defined(js):
     result.atEndImpl = ssAtEnd
     result.setPositionImpl = ssSetPosition
     result.getPositionImpl = ssGetPosition
-    result.readDataImpl = ssReadData
-    result.peekDataImpl = ssPeekData
-    result.writeDataImpl = ssWriteData
     result.readDataStrImpl = ssReadDataStr
+    when nimvm:
+      discard
+    else:
+      result.readDataImpl = ssReadData
+      result.peekDataImpl = ssPeekData
+      result.writeDataImpl = ssWriteData
 
-  type
-    FileStream* = ref FileStreamObj
-      ## A stream that encapsulates a `File`.
-      ##
-      ## **Note:** Not available for JS backend.
-    FileStreamObj* = object of Stream
-      ## A file stream object.
-      ##
-      ## **Note:** Not available for JS backend.
-      f: File
-
-  proc fsClose(s: Stream) =
-    if FileStream(s).f != nil:
-      close(FileStream(s).f)
-      FileStream(s).f = nil
-  proc fsFlush(s: Stream) = flushFile(FileStream(s).f)
-  proc fsAtEnd(s: Stream): bool = return endOfFile(FileStream(s).f)
-  proc fsSetPosition(s: Stream, pos: int) = setFilePos(FileStream(s).f, pos)
-  proc fsGetPosition(s: Stream): int = return int(getFilePos(FileStream(s).f))
-
-  proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
-    result = readBuffer(FileStream(s).f, buffer, bufLen)
-
-  proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
-    result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
-
-  proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
-    let pos = fsGetPosition(s)
-    defer: fsSetPosition(s, pos)
-    result = readBuffer(FileStream(s).f, buffer, bufLen)
-
-  proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
-    if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
-      raise newEIO("cannot write to stream")
-
-  proc newFileStream*(f: File): owned FileStream =
-    ## Creates a new stream from the file `f`.
+type
+  FileStream* = ref FileStreamObj
+    ## A stream that encapsulates a `File`.
     ##
     ## **Note:** Not available for JS backend.
+  FileStreamObj* = object of Stream
+    ## A file stream object.
     ##
-    ## See also:
-    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
-    ##   from string.
-    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
-    ##   as using `open proc <system.html#open,File,string,FileMode,int>`_
-    ##   on Examples.
-    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
-    ##   file stream from the file name and the mode.
-    runnableExamples:
+    ## **Note:** Not available for JS backend.
+    f: File
+
+proc fsClose(s: Stream) =
+  if FileStream(s).f != nil:
+    close(FileStream(s).f)
+    FileStream(s).f = nil
+proc fsFlush(s: Stream) = flushFile(FileStream(s).f)
+proc fsAtEnd(s: Stream): bool = return endOfFile(FileStream(s).f)
+proc fsSetPosition(s: Stream, pos: int) = setFilePos(FileStream(s).f, pos)
+proc fsGetPosition(s: Stream): int = return int(getFilePos(FileStream(s).f))
+
+proc fsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+  result = readBuffer(FileStream(s).f, buffer, bufLen)
+
+proc fsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
+  result = readBuffer(FileStream(s).f, addr buffer[slice.a], slice.b + 1 - slice.a)
+
+proc fsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+  let pos = fsGetPosition(s)
+  defer: fsSetPosition(s, pos)
+  result = readBuffer(FileStream(s).f, buffer, bufLen)
+
+proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+  if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
+    raise newEIO("cannot write to stream")
+
+proc fsReadLine(s: Stream, line: var TaintedString): bool =
+  result = readLine(FileStream(s).f, line)
+
+proc newFileStream*(f: File): owned FileStream =
+  ## Creates a new stream from the file `f`.
+  ##
+  ## **Note:** Not available for JS backend.
+  ##
+  ## See also:
+  ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+  ##   from string.
+  ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_ is the same
+  ##   as using `open proc <io.html#open,File,string,FileMode,int>`_
+  ##   on Examples.
+  ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+  ##   file stream from the file name and the mode.
+  runnableExamples:
+    ## Input (somefile.txt):
+    ## The first line
+    ## the second line
+    ## the third line
+    var f: File
+    if open(f, "somefile.txt", fmRead, -1):
+      var strm = newFileStream(f)
+      var line = ""
+      while strm.readLine(line):
+        echo line
+      ## Output:
+      ## The first line
+      ## the second line
+      ## the third line
+      strm.close()
+
+  new(result)
+  result.f = f
+  result.closeImpl = fsClose
+  result.atEndImpl = fsAtEnd
+  result.setPositionImpl = fsSetPosition
+  result.getPositionImpl = fsGetPosition
+  result.readDataStrImpl = fsReadDataStr
+  result.readDataImpl = fsReadData
+  result.readLineImpl = fsReadLine
+  result.peekDataImpl = fsPeekData
+  result.writeDataImpl = fsWriteData
+  result.flushImpl = fsFlush
+
+proc newFileStream*(filename: string, mode: FileMode = fmRead,
+    bufSize: int = -1): owned FileStream =
+  ## Creates a new stream from the file named `filename` with the mode `mode`.
+  ##
+  ## If the file cannot be opened, `nil` is returned. See the `io module
+  ## <io.html>`_ for a list of available `FileMode enums <io.html#FileMode>`_.
+  ##
+  ## **Note:**
+  ## * **This function returns nil in case of failure.**
+  ##   To prevent unexpected behavior and ensure proper error handling,
+  ##   use `openFileStream proc <#openFileStream,string,FileMode,int>`_
+  ##   instead.
+  ## * Not available for JS backend.
+  ##
+  ## See also:
+  ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+  ##   from string.
+  ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+  ##   opened File.
+  ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
+  ##   file stream from the file name and the mode.
+  runnableExamples:
+    from os import removeFile
+    var strm = newFileStream("somefile.txt", fmWrite)
+    if not isNil(strm):
+      strm.writeLine("The first line")
+      strm.writeLine("the second line")
+      strm.writeLine("the third line")
+      strm.close()
+      ## Output (somefile.txt)
+      ## The first line
+      ## the second line
+      ## the third line
+      removeFile("somefile.txt")
+
+  var f: File
+  if open(f, filename, mode, bufSize): result = newFileStream(f)
+
+proc openFileStream*(filename: string, mode: FileMode = fmRead,
+    bufSize: int = -1): owned FileStream =
+  ## Creates a new stream from the file named `filename` with the mode `mode`.
+  ## If the file cannot be opened, an IO exception is raised.
+  ##
+  ## **Note:** Not available for JS backend.
+  ##
+  ## See also:
+  ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
+  ##   from string.
+  ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
+  ##   opened File.
+  ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
+  ##   file stream from the file name and the mode.
+  runnableExamples:
+    try:
       ## Input (somefile.txt):
       ## The first line
       ## the second line
       ## the third line
-      var f: File
-      if open(f, "somefile.txt", fmRead, -1):
-        var strm = newFileStream(f)
-        var line = ""
-        while strm.readLine(line):
-          echo line
-        ## Output:
-        ## The first line
-        ## the second line
-        ## the third line
-        strm.close()
+      var strm = openFileStream("somefile.txt")
+      echo strm.readLine()
+      ## Output:
+      ## The first line
+      strm.close()
+    except:
+      stderr.write getCurrentExceptionMsg()
 
-    new(result)
-    result.f = f
-    result.closeImpl = fsClose
-    result.atEndImpl = fsAtEnd
-    result.setPositionImpl = fsSetPosition
-    result.getPositionImpl = fsGetPosition
-    result.readDataStrImpl = fsReadDataStr
-    result.readDataImpl = fsReadData
-    result.peekDataImpl = fsPeekData
-    result.writeDataImpl = fsWriteData
-    result.flushImpl = fsFlush
-
-  proc newFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
-    ## Creates a new stream from the file named `filename` with the mode `mode`.
-    ##
-    ## If the file cannot be opened, `nil` is returned. See the `io module
-    ## <io.html>`_ for a list of available `FileMode enums <io.html#FileMode>`_.
-    ##
-    ## **Note:**
-    ## * **This function returns nil in case of failure.**
-    ##   To prevent unexpected behavior and ensure proper error handling,
-    ##   use `openFileStream proc <#openFileStream,string,FileMode,int>`_
-    ##   instead.
-    ## * Not available for JS backend.
-    ##
-    ## See also:
-    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
-    ##   from string.
-    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
-    ##   opened File.
-    ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
-    ##   file stream from the file name and the mode.
-    runnableExamples:
-      from os import removeFile
-      var strm = newFileStream("somefile.txt", fmWrite)
-      if not isNil(strm):
-        strm.writeLine("The first line")
-        strm.writeLine("the second line")
-        strm.writeLine("the third line")
-        strm.close()
-        ## Output (somefile.txt)
-        ## The first line
-        ## the second line
-        ## the third line
-        removeFile("somefile.txt")
-
-    var f: File
-    if open(f, filename, mode, bufSize): result = newFileStream(f)
-
-  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): owned FileStream =
-    ## Creates a new stream from the file named `filename` with the mode `mode`.
-    ## If the file cannot be opened, an IO exception is raised.
-    ##
-    ## **Note:** Not available for JS backend.
-    ##
-    ## See also:
-    ## * `newStringStream proc <#newStringStream,string>`_ creates a new stream
-    ##   from string.
-    ## * `newFileStream proc <#newFileStream,File>`_ creates a file stream from
-    ##   opened File.
-    ## * `newFileStream proc <#newFileStream,string,FileMode,int>`_  creates a
-    ##   file stream from the file name and the mode.
-    runnableExamples:
-      try:
-        ## Input (somefile.txt):
-        ## The first line
-        ## the second line
-        ## the third line
-        var strm = openFileStream("somefile.txt")
-        echo strm.readLine()
-        ## Output:
-        ## The first line
-        strm.close()
-      except:
-        stderr.write getCurrentExceptionMsg()
-
-    var f: File
-    if open(f, filename, mode, bufSize):
-      return newFileStream(f)
-    else:
-      raise newEIO("cannot open file stream: " & filename)
+  var f: File
+  if open(f, filename, mode, bufSize):
+    return newFileStream(f)
+  else:
+    raise newEIO("cannot open file stream: " & filename)
 
 when false:
   type
@@ -1304,11 +1512,11 @@ when false:
     else:
       var flags: cint
       case mode
-      of fmRead:              flags = posix.O_RDONLY
-      of fmWrite:             flags = O_WRONLY or int(O_CREAT)
-      of fmReadWrite:         flags = O_RDWR or int(O_CREAT)
+      of fmRead: flags = posix.O_RDONLY
+      of fmWrite: flags = O_WRONLY or int(O_CREAT)
+      of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
-      of fmAppend:            flags = O_WRONLY or int(O_CREAT) or O_APPEND
+      of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

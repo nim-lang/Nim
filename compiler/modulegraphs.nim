@@ -64,7 +64,7 @@ type
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
     recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
-    cacheSeqs*: Table[string, PNode] # state that is shared to suppor the 'macrocache' API
+    cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
     passes*: seq[TPass]
@@ -72,11 +72,15 @@ type
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     globalDestructors*: seq[PNode]
+    strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
+    compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
+    idgen*: IdGenerator
 
   TPassContext* = object of RootObj # the pass's context
+    idgen*: IdGenerator
   PPassContext* = ref TPassContext
 
-  TPassOpen* = proc (graph: ModuleGraph; module: PSym): PPassContext {.nimcall.}
+  TPassOpen* = proc (graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nimcall.}
   TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
@@ -163,11 +167,13 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
+  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
   result.magic = m
+  result.flags = {sfNeverRaises}
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
+  result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
@@ -215,7 +221,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
   if g.suggestMode:
     g.deps.incl m.position.dependsOn(dep.int)
-    # we compute the transitive closure later when quering the graph lazily.
+    # we compute the transitive closure later when querying the graph lazily.
     # this improves efficiency quite a lot:
     #invalidTransitiveClosure = true
 

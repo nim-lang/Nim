@@ -21,6 +21,7 @@ type
     powerpc64el,               ## Little Endian 64 bit PowerPC
     sparc,                     ## Sparc based processor
     sparc64,                   ## 64-bit Sparc based processor
+    hppa,                      ## HP PA-RISC
     ia64,                      ## Intel Itanium
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
@@ -78,6 +79,7 @@ const
                elif defined(powerpc64el): CpuPlatform.powerpc64el
                elif defined(sparc): CpuPlatform.sparc
                elif defined(sparc64): CpuPlatform.sparc64
+               elif defined(hppa): CpuPlatform.hppa
                elif defined(ia64): CpuPlatform.ia64
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips

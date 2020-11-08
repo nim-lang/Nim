@@ -4,8 +4,7 @@ discard """
 
 # This file tests the JavaScript generator
 
-import
-  dom, strutils
+import strutils
 
 var
   inputElement = "1123"
@@ -51,4 +50,3 @@ block:
   var s: seq[int]
   s.add(2)
   doAssert(s == @[2])
-

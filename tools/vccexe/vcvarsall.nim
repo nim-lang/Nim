@@ -88,7 +88,7 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
   result = newStringTable(modeCaseInsensitive)
 
   # Parse the output of the final SET command to construct a String Table
-  # with the appropiate environment variables
+  # with the appropriate environment variables
   for line in comSpecOut.splitLines:
     let idx = line.find('=')
     if idx > 0:

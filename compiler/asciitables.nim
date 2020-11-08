@@ -71,7 +71,7 @@ iterator parseTableCells*(s: string, delim = '\t'): Cell =
 proc alignTable*(s: string, delim = '\t', fill = ' ', sep = " "): string =
   ## formats a `delim`-delimited `s` representing a table; each cell is aligned
   ## to a width that's computed for each column; consecutive columns are
-  ## delimted by `sep`, and alignment space is filled using `fill`.
+  ## delimited by `sep`, and alignment space is filled using `fill`.
   ## More customized formatting can be done by calling `parseTableCells` directly.
   for cell in parseTableCells(s, delim):
     result.add cell.text

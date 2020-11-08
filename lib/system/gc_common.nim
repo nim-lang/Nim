@@ -78,8 +78,11 @@ template decTypeSize(cell, t) =
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
-      let size = if t.kind == tyString: cap+1+GenericSeqSize
-                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
+      let size =
+        if t.kind == tyString:
+          cap + 1 + GenericSeqSize
+        else:
+          align(GenericSeqSize, t.base.align) + cap * t.base.size
       atomicDec t.sizes, size+sizeof(Cell)
     else:
       atomicDec t.sizes, t.base.size+sizeof(Cell)
@@ -214,7 +217,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
   when nimCoroutines:
     var pos = stack.pos
   else:
-    var pos {.volatile.}: pointer
+    var pos {.volatile, noinit.}: pointer
     pos = addr(pos)
 
   if pos != nil:
@@ -226,6 +229,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
     result = 0
 
 proc stackSize(): int {.noinline.} =
+  result = 0
   for stack in gch.stack.items():
     result = result + stack.stackSize()
 
@@ -269,6 +273,9 @@ when nimCoroutines:
     gch.activeStack = gch.stack.find(bottom)
     gch.activeStack.setPosition(addr(sp))
 
+  proc GC_getActiveStack() : pointer {.cdecl, exportc.} =
+    return gch.activeStack.bottom
+
 when not defined(useNimRtl):
   proc nimGC_setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
@@ -296,11 +303,14 @@ when not defined(useNimRtl):
       else:
         gch.stack.bottom = cast[pointer](max(a, b))
 
+    when nimCoroutines:
+      if theStackBottom != nil: gch.stack.bottom = theStackBottom
+
     gch.stack.setPosition(theStackBottom)
 {.pop.}
 
 proc isOnStack(p: pointer): bool =
-  var stackTop {.volatile.}: pointer
+  var stackTop {.volatile, noinit.}: pointer
   stackTop = addr(stackTop)
   var a = cast[ByteAddress](gch.getActiveStack().bottom)
   var b = cast[ByteAddress](stackTop)
@@ -414,7 +424,7 @@ proc prepareDealloc(cell: PCell) =
     # the finalizer could invoke something that
     # allocates memory; this could trigger a garbage
     # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
+    # prevent recursive entering here by a lock.
     # XXX: we should set the cell's children to nil!
     inc(gch.recGcLock)
     (cast[Finalizer](t.finalizer))(cellToUsr(cell))

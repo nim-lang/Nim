@@ -10,15 +10,16 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, vm, vmdef,
-  modulegraphs, idents, os, pathutils, passaux,
-  scriptconfig
+  options, sem, semdata, llstream, lineinfos, vm,
+  vmdef, modulegraphs, idents, os, pathutils,
+  passaux, scriptconfig
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
     mainModule: PSym
     graph: ModuleGraph
     scriptName: string
+    idgen: IdGenerator
 
 iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
@@ -46,7 +47,7 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
     s = nextIdentIter(it, i.mainModule.tab)
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
-  ## Selects a declared rountine (proc/func/etc) from the main module.
+  ## Selects a declared routine (proc/func/etc) from the main module.
   ## The routine needs to have the export marker ``*``. The only matching
   ## routine is returned and ``nil`` if it is overloaded.
   result = selectUniqueSymbol(i, name, {skTemplate, skMacro, skFunc,
@@ -74,13 +75,16 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, s)
+  processModule(i.graph, i.mainModule, i.idgen, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
   ## Returns "" on failure.
   try:
     let nimexe = os.findExe("nim")
+      # this can't work with choosenim shims, refs https://github.com/dom96/choosenim/issues/189
+      # it'd need `nim dump --dump.format:json . | jq -r .libpath`
+      # which we should simplify as `nim dump --key:libpath`
     if nimexe.len == 0: return ""
     result = nimexe.splitPath()[0] /../ "lib"
     if not fileExists(result / "system.nim"):
@@ -93,20 +97,22 @@ proc findNimStdLib*(): string =
 proc findNimStdLibCompileTime*(): string =
   ## Same as ``findNimStdLib`` but uses source files used at compile time,
   ## and asserts on error.
-  const sourcePath = currentSourcePath()
-  result = sourcePath.parentDir.parentDir / "lib"
+  const exe = getCurrentCompilerExe()
+  result = exe.splitFile.dir.parentDir / "lib"
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
-                        flags: TSandboxFlags = {}): Interpreter =
+                        flags: TSandboxFlags = {},
+                        defines = @[("nimscript", "true")],
+                        registerOps = true): Interpreter =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
   initDefines(conf.symbols)
-  defineSymbol(conf.symbols, "nimscript")
-  defineSymbol(conf.symbols, "nimconfig")
+  for define in defines:
+    defineSymbol(conf.symbols, define[0], define[1])
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
 
@@ -116,20 +122,29 @@ proc createInterpreter*(scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  var vm = newCtx(m, cache, graph)
+  var idgen = idGeneratorFromModule(m)
+  var vm = newCtx(m, cache, graph, idgen)
   vm.mode = emRepl
   vm.features = flags
+  if registerOps:
+    vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
-  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
+  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
   discard "currently nothing to do."
 
+proc registerErrorHook*(i: Interpreter, hook:
+                        proc (config: ConfigRef; info: TLineInfo; msg: string;
+                              severity: Severity) {.gcsafe.}) =
+  i.graph.config.structuredErrorHook = hook
+
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
               supportNimscript: bool) =
+  ## deadcode but please don't remove... might be revived
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
@@ -139,7 +154,7 @@ proc runRepl*(r: TLLRepl;
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
   conf.cmd = cmdInteractive
-  conf.errorMax = high(int)
+  conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
   if supportNimscript: defineSymbol(conf.symbols, "nimconfig")
@@ -149,6 +164,8 @@ proc runRepl*(r: TLLRepl;
   registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
-  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph)
+  var idgen = idGeneratorFromModule(m)
+
+  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
   graph.compileSystemModule()
-  processModule(graph, m, llStreamOpenStdIn(r))
+  processModule(graph, m, idgen, llStreamOpenStdIn(r))

@@ -1,11 +1,17 @@
 discard """
-input: "Arne"
-output: '''
+  input: "Arne"
+  output: '''
 Hello! What is your name?
 Nice name: Arne
 fs is: nil
 
 threw exception
+_heh_
+'''
+  nimout: '''
+I
+AM
+GROOT
 '''
 disabled: "windows"
 """
@@ -38,3 +44,21 @@ block tstreams3:
     var fs = openFileStream("shouldneverexist.txt")
   except IoError:
     echo "threw exception"
+
+  static:
+    var s = newStringStream("I\nAM\nGROOT")
+    for line in s.lines:
+      echo line
+    s.close
+
+# bug #12410
+
+var a = newStringStream "hehohihahuhyh"
+a.readDataStrImpl = nil
+
+var buffer = "_ooo_"
+
+doAssert a.readDataStr(buffer, 1..3) == 3
+
+echo buffer
+

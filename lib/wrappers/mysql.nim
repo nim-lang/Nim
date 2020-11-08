@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
 {.push, callconv: cdecl.}
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -579,7 +578,7 @@ type
     STATUS_READY, STATUS_GET_RESULT, STATUS_USE_RESULT
   Protocol_type* = enum  # There are three types of queries - the ones that have to go to
                           # the master, the ones that go to a slave, and the administrative
-                          # type which must happen on the pivot connectioin
+                          # type which must happen on the pivot connection
     PROTOCOL_DEFAULT, PROTOCOL_TCP, PROTOCOL_SOCKET, PROTOCOL_PIPE,
     PROTOCOL_MEMORY
   Rpl_type* = enum

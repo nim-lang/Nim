@@ -1,5 +1,5 @@
 discard """
-  action: run
+  targets: "c js"
 """
 
 type T = object
@@ -77,3 +77,63 @@ let someGlobalPtr = getSomeGlobalPtr()
 doAssert(someGlobalPtr[] == 5)
 someGlobalPtr[] = 10
 doAssert(someGlobal == 10)
+
+block:
+  # issue #14576
+  # lots of these used to give: Error: internal error: genAddr: 2
+  proc byLent[T](a: T): lent T = a
+  proc byPtr[T](a: T): ptr T = a.unsafeAddr
+
+  block:
+    let a = (10,11)
+    let (x,y) = byLent(a)
+    doAssert (x,y) == a
+
+  block:
+    when defined(c) and defined(release):
+      # bug; pending https://github.com/nim-lang/Nim/issues/14578
+      discard
+    else:
+      let a = 10
+      doAssert byLent(a) == 10
+      let a2 = byLent(a)
+      doAssert a2 == 10
+
+  block:
+    let a = [11,12]
+    doAssert byLent(a) == [11,12]
+    let a2 = (11,)
+    doAssert byLent(a2) == (11,)
+
+  block:
+    when defined(c) and defined(release):
+      discard # probably not a bug since optimizer is free to pass by value, and `unsafeAddr` is used
+    else:
+      var a = @[12]
+      doAssert byPtr(a)[] == @[12]
+      let a2 = [13]
+      doAssert byPtr(a2)[] == [13]
+      let a3 = 14
+      doAssert byPtr(a3)[] == 14
+
+  block:
+    proc byLent2[T](a: seq[T]): lent T = a[1]
+    var a = @[20,21,22]
+    doAssert byLent2(a) == 21
+
+  block: # sanity checks
+    proc bar[T](a: var T): var T = a
+    var a = (10, 11)
+    let (k,v) = bar(a)
+    doAssert (k, v) == a
+    doAssert k == 10
+    bar(a)[0]+=100
+    doAssert a == (110, 11)
+    var a2 = 12
+    doAssert bar(a2) == a2
+    bar(a2).inc
+    doAssert a2 == 13
+
+  block: # xxx: bug this doesn't work
+    when false:
+      proc byLent2[T](a: T): lent type(a[0]) = a[0]

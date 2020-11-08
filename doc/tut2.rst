@@ -126,7 +126,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
+The ``InvalidObjectConversionDefect`` exception is raised if ``x`` is not a
 ``Student``.
 
 
@@ -160,7 +160,7 @@ An example:
         condition, thenPart, elsePart: Node
 
   var n = Node(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
 
@@ -345,10 +345,8 @@ The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
 the ``msg`` field.
 
-A convention is that exceptions should be raised in *exceptional* cases:
-For example, if a file cannot be opened, this should not raise an
-exception since this is quite common (the file may not exist).
-
+A convention is that exceptions should be raised in *exceptional* cases,
+they should not be used as an alternative method of control flow.
 
 Raise statement
 ---------------
@@ -388,7 +386,7 @@ The ``try`` statement handles exceptions:
       let a = readLine(f)
       let b = readLine(f)
       echo "sum: ", parseInt(a) + parseInt(b)
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -443,7 +441,7 @@ instance, if you specify that a proc raises ``IOError``, and at some point it
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [IOError, ArithmeticError].} =
+  proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
   proc simpleProc() {.raises: [].} =
@@ -469,7 +467,8 @@ Generics
 ========
 
 Generics are Nim's means to parametrize procs, iterators or types
-with `type parameters`:idx:. They are most useful for efficient type safe
+with `type parameters`:idx:. Generic parameters are written within square
+brackets, for example ``Foo[T]``. They are most useful for efficient type safe
 containers:
 
 .. code-block:: nim
@@ -512,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
@@ -650,7 +649,7 @@ Example: Lifting Procs
     ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
     proc fname[T](x: openarray[T]): auto =
       var temp: T
-      type outType = type(fname(temp))
+      type outType = typeof(fname(temp))
       result = newSeq[outType](x.len)
       for i in 0..<x.len:
         result[i] = fname(x[i])
@@ -677,4 +676,4 @@ JavaScript-compatible code you should remember the following:
 Part 3
 ======
 
-Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_
+The next part is entirely about metaprogramming via macros: `Part III <tut3.html>`_

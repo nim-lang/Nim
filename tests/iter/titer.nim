@@ -55,3 +55,10 @@ const
 for i in 0..len(stringArray)-1:
   echo(stringArray[i])
 
+# bug #15360
+
+type Rule[T] = (int, T)
+
+var t: seq[Rule[int]]
+for (c, t) in t:
+  discard
