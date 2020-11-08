@@ -34,12 +34,13 @@ Positional arguments, from left to right:
   minus '-' (pipe) or not specified (empty). Note for the empty case: when
   no FILE/DIRECTORY/- is specified nimgrep DOES NOT read the pipe, but
   searches files in the current dir instead!
-    -                   read buffer once from stdin: pipe or terminal input;
-                        in --replace mode the result is directed to stdout.
-    (empty)             current directory '.' is assumed
+    -                 read buffer once from stdin: pipe or terminal input;
+                      in --replace mode the result is directed to stdout;
+                      it's not compatible with --stdin, --filenames, --confirm
+    (empty)           current directory '.' is assumed (not with --replace)
   For any given DIRECTORY nimgrep searches only its immediate files without
   traversing sub-directories unless --recursive is specified.
-  In replacement mode all 3 positional arguments are required to avoid damage.
+  In replacement mode all 3 positional arguments are required to avoid damaging.
 
 Options:
 * Mode of operation:
@@ -88,7 +89,7 @@ Options:
   --text, -t          process only text files, the same as --bin:off
 
 * Represent results:
-  --nocolor           output will be given without any colours
+  --nocolor           output will be given without any colors
   --color[:on]        force color even if output is redirected (default: auto)
   --colorTheme:THEME  select color THEME from 'simple' (default),
                       'bnw' (black and white) ,'ack', or 'gnu' (GNU grep)
@@ -104,17 +105,30 @@ Options:
   --cols[:N]          limit max displayed columns/width of output lines from
                       files by N characters, cropping overflows (default: off)
   --cols:auto, -%     calculate columns from terminal width for every line
-  --onlyAscii, -@     use only printable ASCII Latin characters 0x20-0x7E
+  --onlyAscii, -@     display only printable ASCII Latin characters 0x20-0x7E
                       substitutions: 0 -> ^@, 1 -> ^A, ... 0x1F -> ^_,
                                      0x7F -> '7F, ..., 0xFF -> 'FF
 * Miscellaneous:
-  --threads:N, -j:N   speed up search by N additional workers (default N: 0)
+  --threads:N, -j:N   speed up search by N additional workers (default: 0, off)
   --stdin             read PATTERN from stdin (to avoid the shell's confusing
                       quoting rules) and, if --replace given, REPLACEMENT
   --verbose           be verbose: list every processed file
   --help, -h          shows this help
   --version, -v       shows the version
 """
+
+# Limitations / ideas / TODO:
+# * No unicode support with --cols
+# * Consider making --onlyAscii default, since dumping binary data has
+#   stability and security repercussions
+# * Mode - reads entire buffer by whole from stdin, which is bad for streaming.
+#   To implement line-by-line reading after adding option to turn off
+#   multiline matches
+# * Add some form of file pre-processing, e.g. feed binary files to utility
+#   `strings` and then do the search inside these strings
+# * Add --showCol option to also show column (of match), not just line; it
+#   makes it easier when jump to line+col in an editor or on terminal
+
 
 # Search results for a file are modelled by these levels:
 # FileResult -> Block -> Output/Chunk -> SubLine
@@ -123,7 +137,7 @@ Options:
 #
 # 2. Chunk, which is a sequence of SubLine, represents a match and its
 #    surrounding context.
-#    Output is a Chunk or one of auxiliary results like an OpenError.
+#    Output is a Chunk or one of auxiliary results like an openError.
 #
 # 3. Block, which is a sequence of Chunks, is not present as a separate type.
 #    It will just be separated from another Block by newline when there is
@@ -156,23 +170,23 @@ type
   MatchInfo = tuple[first: int, last: int;
                     lineBeg: int, lineEnd: int, match: string]
   outputKind = enum
-    OpenError, Rejected, JustCount,
-    BlockFirstMatch, BlockNextMatch, BlockEnd, FileContents, FileName
+    openError, rejected, justCount,
+    blockFirstMatch, blockNextMatch, blockEnd, fileContents, outputFileName
   Output = object
     case kind: outputKind
-    of OpenError: msg: string           # file/directory not found
-    of Rejected: reason: string         # when the file contents do not pass
-    of JustCount: matches: int          # the only output for option --count
-    of BlockFirstMatch, BlockNextMatch: # the normal case: match itself
+    of openError: msg: string           # file/directory not found
+    of rejected: reason: string         # when the file contents do not pass
+    of justCount: matches: int          # the only output for option --count
+    of blockFirstMatch, blockNextMatch: # the normal case: match itself
       pre: string
       match: MatchInfo
-    of BlockEnd:                        # block ending right after prev. match
+    of blockEnd:                        # block ending right after prev. match
       blockEnding: string
       firstLine: int
         # == last lineN of last match
-    of FileContents:                    # yielded for --replace only
+    of fileContents:                    # yielded for --replace only
       buffer: string
-    of FileName:                        # yielded for --filenames when no
+    of outputFileName:                  # yielded for --filenames when no
       name: string                      #   PATTERN was provided
   Trequest = (int, string)
   FileResult = seq[Output]
@@ -669,10 +683,9 @@ proc printBetweenMatches(filename: string, betweenMatches: string,
       if not isLastLine:
         newLn(curCol)
 
-proc printReplacement(filename: string, buf: string, mi: MatchInfo,
+proc printReplacement(fileName: string, buf: string, mi: MatchInfo,
                       repl: string, showRepl: bool, curPos: int,
                       newBuf: string, curLine: int) =
-  let filename = fileName
   var curCol: Column
   printSubLinesBefore(fileName, getSubLinesBefore(buf, mi), mi.lineBeg,
                       curCol, reserveChars(mi))
@@ -727,39 +740,39 @@ proc replace1match(filename: string, buf: string, mi: MatchInfo, i: int,
 
 template updateCounters(output: Output) =
   case output.kind
-  of BlockFirstMatch, BlockNextMatch: inc(gVar.matches)
-  of JustCount: inc(gVar.matches, output.matches)
-  of OpenError: inc(gVar.errors)
-  of Rejected, BlockEnd, FileContents, FileName: discard
+  of blockFirstMatch, blockNextMatch: inc(gVar.matches)
+  of justCount: inc(gVar.matches, output.matches)
+  of openError: inc(gVar.errors)
+  of rejected, blockEnd, fileContents, outputFileName: discard
 
 proc printInfo(filename:string, output: Output) =
   case output.kind
-  of OpenError:
+  of openError:
     printError("can not open path " & filename & " " & output.msg)
-  of Rejected:
+  of rejected:
     if optVerbose in options:
       echo "(rejected: ", output.reason, ")"
-  of JustCount:
+  of justCount:
     echo " (" & $output.matches & " matches)"
-  of BlockFirstMatch, BlockNextMatch, BlockEnd, FileContents, FileName:
+  of blockFirstMatch, blockNextMatch, blockEnd, fileContents, outputFileName:
     discard
 
 proc printOutput(filename: string, output: Output, curCol: var Column) =
   case output.kind
-  of OpenError, Rejected, JustCount: printInfo(filename, output)
-  of FileContents: discard # impossible
-  of FileName:
+  of openError, rejected, justCount: printInfo(filename, output)
+  of fileContents: discard # impossible
+  of outputFileName:
     printCropped(output.name, curCol, fromLeft=false, limitCharUsr)
     newLn(curCol)
-  of BlockFirstMatch:
+  of blockFirstMatch:
     printSubLinesBefore(filename, output.pre, output.match.lineBeg,
                         curCol, reserveChars(output.match))
     printMatch(filename, output.match, curCol)
-  of BlockNextMatch:
+  of blockNextMatch:
     printBetweenMatches(filename, output.pre, output.match.lineBeg,
                         curCol, reserveChars(output.match))
     printMatch(filename, output.match, curCol)
-  of BlockEnd:
+  of blockEnd:
     printSubLinesAfter(filename, output.blockEnding, output.firstLine, curCol)
     if linesAfter + linesBefore >= 2 and not newLine and
        optFilenames notin options: stdout.write("\n")
@@ -774,7 +787,7 @@ iterator searchFile(pattern: Pattern; buffer: string): Output =
     let t = findBounds(buffer, pattern, matches, i)
     if t.first < 0 or t.last < t.first:
       if prevMi.lineBeg != 0: # finalize last match
-        yield Output(kind: BlockEnd,
+        yield Output(kind: blockEnd,
                      blockEnding: getSubLinesAfter(buffer, prevMi),
                      firstLine: prevMi.lineEnd)
       break
@@ -788,20 +801,20 @@ iterator searchFile(pattern: Pattern; buffer: string): Output =
     if prevMi.lineBeg == 0: # no prev. match, so no prev. block to finalize
       let pre = getSubLinesBefore(buffer, curMi)
       prevMi = curMi
-      yield Output(kind: BlockFirstMatch, pre: pre, match: move(curMi))
+      yield Output(kind: blockFirstMatch, pre: pre, match: move(curMi))
     else:
       let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
       if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
         let pre =  getSubLinesBetween(buffer, prevMi, curMi)
         prevMi = curMi
-        yield Output(kind: BlockNextMatch, pre: pre, match: move(curMi))
+        yield Output(kind: blockNextMatch, pre: pre, match: move(curMi))
       else: # finalize previous block and then print next block
         let after = getSubLinesAfter(buffer, prevMi)
-        yield Output(kind: BlockEnd, blockEnding: after,
+        yield Output(kind: blockEnd, blockEnding: after,
                      firstLine: prevMi.lineEnd)
         let pre = getSubLinesBefore(buffer, curMi)
         prevMi = curMi
-        yield Output(kind: BlockFirstMatch,
+        yield Output(kind: blockFirstMatch,
                      pre: pre,
                      match: move(curMi))
     i = t.last+1
@@ -903,7 +916,7 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
     try:
       buffer = system.readFile(filename)
     except IOError as e:
-      yield Output(kind: OpenError, msg: "readFile failed")
+      yield Output(kind: openError, msg: "readFile failed")
       error = true
 
   if not error:
@@ -929,9 +942,9 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
         reason = "contains a forbidden match"
 
     if reject:
-      yield Output(kind: Rejected, reason: move(reason))
+      yield Output(kind: rejected, reason: move(reason))
     elif optFilenames in options and searchOpt.pattern == "":
-      yield Output(kind: FileName, name: move(buffer))
+      yield Output(kind: outputFileName, name: move(buffer))
     else:
       var found = false
       var cnt = 0
@@ -940,12 +953,12 @@ iterator processFile(searchOptC: SearchOptComp[Pattern], filename: string,
         if optCount notin options:
           yield output
         else:
-          if output.kind in {BlockFirstMatch, BlockNextMatch}:
+          if output.kind in {blockFirstMatch, blockNextMatch}:
             inc(cnt)
       if optCount in options and cnt > 0:
-        yield Output(kind: JustCount, matches: cnt)
+        yield Output(kind: justCount, matches: cnt)
       if yieldContents and found and optCount notin options:
-        yield Output(kind: FileContents, buffer: move(buffer))
+        yield Output(kind: fileContents, buffer: move(buffer))
 
 
 proc hasRightFileName(path: string, walkOptC: WalkOptComp[Pattern]): bool =
@@ -1037,10 +1050,10 @@ iterator walkRec(paths: seq[string]): (string, string) =
       if dirExists(path):
         for p in walkDirBasic(path, walkOptC):
           yield ("", p)
-      elif fileExists(path):
-        yield ("", path)
       else:
-        yield ("Error: no such file or directory: ", path)
+        yield (
+          if fileExists(path): ("", path)
+          else: ("Error: no such file or directory: ", path))
 
 proc replaceMatches(pattern: Pattern; filename: string, buffer: string,
                     fileResult: FileResult) =
@@ -1050,7 +1063,7 @@ proc replaceMatches(pattern: Pattern; filename: string, buffer: string,
   var lineRepl = 1
   var i = 0
   for output in fileResult:
-    if output.kind in {BlockFirstMatch, BlockNextMatch}:
+    if output.kind in {blockFirstMatch, blockNextMatch}:
       let curMi = output.match
       let r = replacef(curMi.match, pattern, replacement)
       if replace1match(filename, buffer, curMi, i, r, newBuf, lineRepl):
@@ -1086,12 +1099,12 @@ template processFileResult(pattern: Pattern; filename: string,
     for output in fileResult:
       updateCounters(output)
       toFlush = true
-      if output.kind notin {Rejected, OpenError, JustCount} and not oneline:
+      if output.kind notin {rejected, openError, justCount} and not oneline:
         showFilename
-      if output.kind == JustCount and oneline:
+      if output.kind == justCount and oneline:
         printFile(filename & ":")
       printOutput(filename, output, curCol)
-      if nWorkers == 0 and output.kind in {BlockFirstMatch, BlockNextMatch}:
+      if nWorkers == 0 and output.kind in {blockFirstMatch, blockNextMatch}:
         stdout.flushFile()  # flush immediately in single thread mode
     if toFlush: stdout.flushFile()
   else:
@@ -1100,10 +1113,11 @@ template processFileResult(pattern: Pattern; filename: string,
     for output in fileResult:
       updateCounters(output)
       case output.kind
-      of Rejected, OpenError, JustCount, FileName: printInfo(filename, output)
-      of BlockFirstMatch, BlockNextMatch, BlockEnd:
+      of rejected, openError, justCount, outputFileName:
+        printInfo(filename, output)
+      of blockFirstMatch, blockNextMatch, blockEnd:
         matches.add(output)
-      of FileContents: buffer = output.buffer
+      of fileContents: buffer = output.buffer
     if matches.len > 0:
       replaceMatches(pattern, filename, buffer, matches)
 
@@ -1173,7 +1187,7 @@ proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
       searchRequestsChan.send((nextFileN,filename))
     else:
       resultsChan.send((false, nextFileN,
-                        filename, @[Output(kind: OpenError, msg: err)]))
+                        filename, @[Output(kind: openError, msg: err)]))
     nextFileN += 1
   resultsChan.send((true, nextFileN, "", @[]))  # pass total number of files
 
