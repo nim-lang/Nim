@@ -467,11 +467,12 @@ import std/exectraces
 proc nimExecTraceControl(c: PContext, n: PNode): PNode =
   let mode = c.semConstExpr(c, n[1])
   let mode2 = TraceAction(mode.intVal)
+  # c.config.execTraceMode = mode2
   case mode2
   of kstart:
-    c.config.options.incl(optExecTrace)
+    c.config.options.incl(optExecTraceLive)
   of kstop:
-    c.config.options.excl(optExecTrace)
+    c.config.options.excl(optExecTraceLive)
   result = newNodeI(nkEmpty, n.info)
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,

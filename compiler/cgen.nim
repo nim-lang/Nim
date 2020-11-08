@@ -279,7 +279,8 @@ proc genLineDir(p: BProc, t: PNode) =
       (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx
   if isTrace(optStackTrace) and freshLineInfo(p, t.info):
     linefmt(p, cpsStmts, "nimln_($1, $2);$n", [line, quotedFilename(p.config, t.info)])
-  if isTrace(optExecTrace) and freshLineInfo(p, t.info):
+  # IMPROVE
+  if isTrace(optExecTraceLive) and execTracingEnabled(p.config, p) and freshLineInfo(p, t.info):
     linefmt(p, cpsStmts, "$3($1, $2);$n", [line, quotedFilename(p.config, t.info), nimExecTraceLineDefine])
 
 proc postStmtActions(p: BProc) {.inline.} =
@@ -1115,7 +1116,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       generatedProc.add(initFrame(p, procname, quotedFilename(p.config, prc.info)))
     else:
       generatedProc.add(p.s(cpsLocals))
-    if optExecTrace in prc.options:
+    if execTracingEnabled(m.config, prc):
       var procname = makeCString(prc.name.s)
       generatedProc.add(initExecTrace(p, procname, quotedFilename(p.config, prc.info), prc.info.line.int))
     if optProfiler in prc.options:
@@ -1127,7 +1128,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
     if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
-    if optExecTrace in prc.options: generatedProc.add(deinitExecTrace(p))
+    if execTracingEnabled(p.config, prc): generatedProc.add(deinitExecTrace(p))
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add(~"}$N")

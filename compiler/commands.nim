@@ -658,7 +658,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs: discard
     else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
-  of "exectrace": processOnOffSwitch(conf, {optExecTrace}, arg, pass, info)
+  of "exectrace":
+    # TODO: optExecTrace should be processOnOffSwitchG ?
+    processOnOffSwitch(conf, {optExecTrace, optExecTraceScope}, arg, pass, info)
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)

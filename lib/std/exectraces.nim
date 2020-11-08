@@ -12,7 +12,7 @@ options to enable/disable:
 dtrace
 ]#
 
-type TraceAction* = enum
+type TraceAction* = enum # RENAME
   # kdefault
   kstart
   kstop
