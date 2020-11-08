@@ -24,7 +24,6 @@ proc foobar(a, b, c: Foo): tuple[bar, baz, buzz: Foo] =
   result.baz += b
   result.buzz += b
 
-  echo result
 
 block: # Compile-Time
   let
