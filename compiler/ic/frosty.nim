@@ -4,7 +4,10 @@ import std/streams
 const
   frostyMagic* {.intdefine.} = 0xBADCAB ##
   ## A magic file value for our "format".
-  frostyDebug* {.booldefine.} = when defined(release): false else: true
+  frostyDebug* {.booldefine.} =
+    when defined(nimcore): false
+    elif defined(release): false
+    else: true
   frostySorted* {.booldefine.} = false
   frostyNet* {.booldefine.} = when defined(nimcore): false else: true
 
