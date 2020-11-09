@@ -495,11 +495,10 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   result = prevTok(p).kind notin {tkIndent, tkWhite}
   if not result: return
   # Rule 7:
-  result = (nextTok(p).kind in {tkIndent, tkWhite, tkEof}) or
-      (markup in ["``", "`"] and nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof}) or
-      (nextTok(p).symbol[0] in
-      {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!',
-       '?', '_'})
+  result = nextTok(p).kind in {tkIndent, tkWhite, tkEof} or
+      markup in ["``", "`"] and nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof} or
+      nextTok(p).symbol[0] in
+      {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!', '?', '_'}
   if not result: return
   # Rule 4:
   if p.idx > 0:
@@ -559,7 +558,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
     of 'T': result = true
     of 'E': result = p.tok[j].kind in {tkEof, tkWhite, tkIndent}
     of 'e':
-      result = (p.tok[j].kind == tkWord) or (p.tok[j].symbol == "#")
+      result = p.tok[j].kind == tkWord or p.tok[j].symbol == "#"
       if result:
         case p.tok[j].symbol[0]
         of 'a'..'z', 'A'..'Z', '#': result = len(p.tok[j].symbol) == 1
@@ -572,8 +571,8 @@ proc match(p: RstParser, start: int, expr: string): bool =
         inc i
         inc length
       dec(i)
-      result = (p.tok[j].kind in {tkPunct, tkAdornment}) and
-          (len(p.tok[j].symbol) == length) and (p.tok[j].symbol[0] == c)
+      result = p.tok[j].kind in {tkPunct, tkAdornment} and
+          len(p.tok[j].symbol) == length and p.tok[j].symbol[0] == c
     if not result: return
     inc j
     inc i
@@ -659,9 +658,9 @@ when false:
                  '\128'..'\255'}
 
 proc isUrl(p: RstParser, i: int): bool =
-  result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
-    (p.tok[i+3].kind == tkWord) and
-    (p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"])
+  result = p.tok[i+1].symbol == ":" and p.tok[i+2].symbol == "//" and
+    p.tok[i+3].kind == tkWord and
+    p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
 proc parseUrl(p: var RstParser, father: PRstNode) =
   #if currentTok(p).symbol[strStart] == '<':
@@ -1048,8 +1047,8 @@ proc tokenAfterNewline(p: RstParser): int =
 
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
-  result = (currentTok(p).col == p.tok[j].col) and (p.tok[j].symbol == "|") or
-      (p.tok[j].col > currentTok(p).col)
+  result = currentTok(p).col == p.tok[j].col and p.tok[j].symbol == "|" or
+      p.tok[j].col > currentTok(p).col
 
 proc predNL(p: RstParser): bool =
   result = true
@@ -1059,9 +1058,9 @@ proc predNL(p: RstParser): bool =
 
 proc isDefList(p: RstParser): bool =
   var j = tokenAfterNewline(p)
-  result = (currentTok(p).col < p.tok[j].col) and
-      (p.tok[j].kind in {tkWord, tkOther, tkPunct}) and
-      (p.tok[j - 2].symbol != "::")
+  result = currentTok(p).col < p.tok[j].col and
+      p.tok[j].kind in {tkWord, tkOther, tkPunct} and
+      p.tok[j - 2].symbol != "::"
 
 proc isOptionList(p: RstParser): bool =
   result = match(p, p.idx, "-w") or match(p, p.idx, "--w") or
