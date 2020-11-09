@@ -896,7 +896,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
-        incl(sym.flags, sfCompileTime)
+        if comesFromPush:
+          if sym.kind in {skProc, skFunc}:
+            incl(sym.flags, sfCompileTime)
+        else:
+          incl(sym.flags, sfCompileTime)
         #incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
         noVal(c, it)
