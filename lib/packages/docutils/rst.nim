@@ -1140,8 +1140,8 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
         break
     of tkPunct:
       if currentTok(p).symbol == "::" and
-          (nextTok(p).kind == tkIndent) and
-          (currInd(p) < nextTok(p).ival):
+          nextTok(p).kind == tkIndent and
+          currInd(p) < nextTok(p).ival:
         result.add(newRstNode(rnLeaf, ":"))
         inc p.idx            # skip '::'
         result.add(parseLiteralBlock(p))
@@ -1363,8 +1363,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
         a.add(newLeaf(p))
         inc p.idx
       var j = tokenAfterNewline(p)
-      if j > 0 and (p.tok[j - 1].kind == tkIndent) and
-          (p.tok[j - 1].ival > currInd(p)):
+      if j > 0 and p.tok[j - 1].kind == tkIndent and p.tok[j - 1].ival > currInd(p):
         pushInd(p, p.tok[j - 1].ival)
         parseSection(p, b)
         popInd(p)
@@ -1380,7 +1379,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
 proc parseDefinitionList(p: var RstParser): PRstNode =
   result = nil
   var j = tokenAfterNewline(p) - 1
-  if j >= 1 and (p.tok[j].kind == tkIndent) and
+  if j >= 1 and p.tok[j].kind == tkIndent and
       p.tok[j].ival > currInd(p) and p.tok[j - 1].symbol != "::":
     var col = currentTok(p).col
     result = newRstNode(rnDefList)
