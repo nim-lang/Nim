@@ -538,7 +538,7 @@ There is a special [:T] syntax when using generics with universal function call 
 
 .. code-block:: nim
   proc foo[T](i: T) =
-      discard
+    discard
 
   var i : int
 
