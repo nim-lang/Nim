@@ -156,7 +156,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: TaintedString] {.since: (1, 5, 1).} =
+iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes query string ``data`` and yields the (name, value) pairs the
   ## data consists of.
   runnableExamples:
