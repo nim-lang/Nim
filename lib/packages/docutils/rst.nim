@@ -358,7 +358,7 @@ proc addNodesAux(n: PRstNode, result: var string) =
   if n.kind == rnLeaf:
     result.add(n.text)
   else:
-    for i in countup(0, len(n) - 1): addNodesAux(n.sons[i], result)
+    for i in 0 ..< n.len: addNodesAux(n.sons[i], result)
 
 proc addNodes(n: PRstNode): string =
   result = ""
@@ -373,7 +373,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
 
   if n == nil: return
   if n.kind == rnLeaf:
-    for i in countup(0, len(n.text) - 1):
+    for i in 0 ..< len(n.text):
       case n.text[i]
       of '0'..'9':
         if b:
@@ -413,7 +413,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
       else:
         if len(r) > 0: b = true
   else:
-    for i in countup(0, len(n) - 1): rstnodeToRefnameAux(n.sons[i], r, b)
+    for i in 0 ..< len(n): rstnodeToRefnameAux(n.sons[i], r, b)
 
 proc rstnodeToRefname(n: PRstNode): string =
   result = ""
@@ -433,7 +433,7 @@ proc findSub(p: var RstParser, n: PRstNode): int =
 
 proc setSub(p: var RstParser, key: string, value: PRstNode) =
   var length = len(p.s.subs)
-  for i in countup(0, length - 1):
+  for i in 0 ..< length:
     if key == p.s.subs[i].key:
       p.s.subs[i].value = value
       return
@@ -443,7 +443,7 @@ proc setSub(p: var RstParser, key: string, value: PRstNode) =
 
 proc setRef(p: var RstParser, key: string, value: PRstNode) =
   var length = len(p.s.refs)
-  for i in countup(0, length - 1):
+  for i in 0 ..< length:
     if key == p.s.refs[i].key:
       if p.s.refs[i].value.addNodes != value.addNodes:
         rstMessage(p, mwRedefinitionOfLabel, key)
@@ -994,7 +994,7 @@ proc getFieldValue(n: PRstNode, fieldname: string): string =
     #InternalError("getFieldValue (2): " & $n.sons[1].kind)
     # We don't like internal errors here anymore as that would break the forum!
     return
-  for i in countup(0, len(n.sons[1]) - 1):
+  for i in 0 ..< len(n.sons[1]):
     var f = n.sons[1].sons[i]
     if cmpIgnoreStyle(addNodes(f.sons[0]), fieldname) == 0:
       result = addNodes(f.sons[1])
@@ -1875,7 +1875,7 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
   of rnContents:
     p.hasToc = true
   else:
-    for i in countup(0, len(n) - 1): n.sons[i] = resolveSubs(p, n.sons[i])
+    for i in 0 ..< len(n): n.sons[i] = resolveSubs(p, n.sons[i])
 
 proc rstParse*(text, filename: string,
                line, column: int, hasToc: var bool,
