@@ -283,6 +283,10 @@ type
 
   EParseError* = object of ValueError
 
+template currentTok(p: RstParser): Token = p.tok[p.idx]
+template prevTok(p: RstParser): Token = p.tok[p.idx - 1]
+template nextTok(p: RstParser): Token = p.tok[p.idx + 1]
+
 proc whichMsgClass*(k: MsgKind): MsgClass =
   ## returns which message class `k` belongs to.
   case ($k)[1]
@@ -319,17 +323,17 @@ proc findRelativeFile(p: RstParser; filename: string): string =
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
-  p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
-                             p.col + p.tok[p.idx].col, msgKind, arg)
+  p.s.msgHandler(p.filename, p.line + currentTok(p).line,
+                             p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
   p.s.msgHandler(p.filename, p.line + line,
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
-  p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
-                             p.col + p.tok[p.idx].col, msgKind,
-                             p.tok[p.idx].symbol)
+  p.s.msgHandler(p.filename, p.line + currentTok(p).line,
+                             p.col + currentTok(p).col, msgKind,
+                             currentTok(p).symbol)
 
 proc currInd(p: RstParser): int =
   result = p.indentStack[high(p.indentStack)]
@@ -456,16 +460,16 @@ proc findRef(p: var RstParser, key: string): PRstNode =
       return p.s.refs[i].value
 
 proc newLeaf(p: var RstParser): PRstNode =
-  result = newRstNode(rnLeaf, p.tok[p.idx].symbol)
+  result = newRstNode(rnLeaf, currentTok(p).symbol)
 
 proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
   var res = newRstNode(rnInner)
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkWord, tkOther, tkWhite:
       add(res, newLeaf(p))
     of tkPunct:
-      if p.tok[p.idx].symbol == endStr:
+      if currentTok(p).symbol == endStr:
         inc(p.idx)
         break
       else:
@@ -478,51 +482,51 @@ proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
 
 proc untilEol(p: var RstParser): PRstNode =
   result = newRstNode(rnInner)
-  while not (p.tok[p.idx].kind in {tkIndent, tkEof}):
+  while not (currentTok(p).kind in {tkIndent, tkEof}):
     add(result, newLeaf(p))
     inc(p.idx)
 
 proc expect(p: var RstParser, tok: string) =
-  if p.tok[p.idx].symbol == tok: inc(p.idx)
+  if currentTok(p).symbol == tok: inc(p.idx)
   else: rstMessage(p, meExpected, tok)
 
 proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
-  result = p.tok[p.idx].symbol == markup
+  result = currentTok(p).symbol == markup
   if not result:
     return                    # Rule 3:
-  result = not (p.tok[p.idx - 1].kind in {tkIndent, tkWhite})
+  result = not (prevTok(p).kind in {tkIndent, tkWhite})
   if not result:
     return                    # Rule 4:
-  result = (p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkEof}) or
-      (markup in ["``", "`"] and p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkWord, tkEof}) or
-      (p.tok[p.idx + 1].symbol[0] in
+  result = (nextTok(p).kind in {tkIndent, tkWhite, tkEof}) or
+      (markup in ["``", "`"] and nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof}) or
+      (nextTok(p).symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!',
        '?', '_'})
   if not result:
     return                    # Rule 7:
   if p.idx > 0:
-    if (markup != "``") and (p.tok[p.idx - 1].symbol == "\\"):
+    if (markup != "``") and (prevTok(p).symbol == "\\"):
       result = false
 
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   var d: char
-  result = p.tok[p.idx].symbol == markup
+  result = currentTok(p).symbol == markup
   if not result:
     return                    # Rule 1:
-  result = (p.idx == 0) or (p.tok[p.idx - 1].kind in {tkIndent, tkWhite}) or
-      (markup in ["``", "`"] and p.tok[p.idx - 1].kind in {tkIndent, tkWhite, tkWord}) or
-      (p.tok[p.idx - 1].symbol[0] in
+  result = (p.idx == 0) or (prevTok(p).kind in {tkIndent, tkWhite}) or
+      (markup in ["``", "`"] and prevTok(p).kind in {tkIndent, tkWhite, tkWord}) or
+      (prevTok(p).symbol[0] in
       {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'})
   if not result:
     return                    # Rule 2:
-  result = not (p.tok[p.idx + 1].kind in {tkIndent, tkWhite, tkEof})
+  result = not (nextTok(p).kind in {tkIndent, tkWhite, tkEof})
   if not result:
     return                    # Rule 5 & 7:
   if p.idx > 0:
-    if p.tok[p.idx - 1].symbol == "\\":
+    if prevTok(p).symbol == "\\":
       result = false
     else:
-      var c = p.tok[p.idx - 1].symbol[0]
+      var c = prevTok(p).symbol[0]
       case c
       of '\'', '\"': d = c
       of '(': d = ')'
@@ -530,7 +534,7 @@ proc isInlineMarkupStart(p: RstParser, markup: string): bool =
       of '{': d = '}'
       of '<': d = '>'
       else: d = '\0'
-      if d != '\0': result = p.tok[p.idx + 1].symbol[0] != d
+      if d != '\0': result = nextTok(p).symbol[0] != d
 
 proc match(p: RstParser, start: int, expr: string): bool =
   # regular expressions are:
@@ -610,25 +614,25 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       add(result, n)
   elif match(p, p.idx, ":w:"):
     # a role:
-    if p.tok[p.idx + 1].symbol == "idx":
+    if nextTok(p).symbol == "idx":
       n.kind = rnIdx
-    elif p.tok[p.idx + 1].symbol == "literal":
+    elif nextTok(p).symbol == "literal":
       n.kind = rnInlineLiteral
-    elif p.tok[p.idx + 1].symbol == "strong":
+    elif nextTok(p).symbol == "strong":
       n.kind = rnStrongEmphasis
-    elif p.tok[p.idx + 1].symbol == "emphasis":
+    elif nextTok(p).symbol == "emphasis":
       n.kind = rnEmphasis
-    elif (p.tok[p.idx + 1].symbol == "sub") or
-        (p.tok[p.idx + 1].symbol == "subscript"):
+    elif (nextTok(p).symbol == "sub") or
+        (nextTok(p).symbol == "subscript"):
       n.kind = rnSub
-    elif (p.tok[p.idx + 1].symbol == "sup") or
-        (p.tok[p.idx + 1].symbol == "supscript"):
+    elif (nextTok(p).symbol == "sup") or
+        (nextTok(p).symbol == "supscript"):
       n.kind = rnSup
     else:
       result = newRstNode(rnGeneralRole)
       n.kind = rnInner
       add(result, n)
-      add(result, newRstNode(rnLeaf, p.tok[p.idx + 1].symbol))
+      add(result, newRstNode(rnLeaf, nextTok(p).symbol))
     inc(p.idx, 3)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
@@ -641,7 +645,7 @@ proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   if j < expr.len: result = 0
 
 proc parseSmiley(p: var RstParser): PRstNode =
-  if p.tok[p.idx].symbol[0] notin SmileyStartChars: return
+  if currentTok(p).symbol[0] notin SmileyStartChars: return
   for key, val in items(Smilies):
     let m = matchVerbatim(p, p.idx, key)
     if m > 0:
@@ -662,14 +666,14 @@ proc isUrl(p: RstParser, i: int): bool =
     (p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"])
 
 proc parseUrl(p: var RstParser, father: PRstNode) =
-  #if p.tok[p.idx].symbol[strStart] == '<':
+  #if currentTok(p).symbol[strStart] == '<':
   if isUrl(p, p.idx):
     var n = newRstNode(rnStandaloneHyperlink)
     while true:
-      case p.tok[p.idx].kind
+      case currentTok(p).kind
       of tkWord, tkAdornment, tkOther: discard
       of tkPunct:
-        if p.tok[p.idx+1].kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
+        if nextTok(p).kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
           break
       else: break
       add(n, newLeaf(p))
@@ -678,19 +682,19 @@ proc parseUrl(p: var RstParser, father: PRstNode) =
   else:
     var n = newLeaf(p)
     inc(p.idx)
-    if p.tok[p.idx].symbol == "_": n = parsePostfix(p, n)
+    if currentTok(p).symbol == "_": n = parsePostfix(p, n)
     add(father, n)
 
 proc parseBackslash(p: var RstParser, father: PRstNode) =
-  assert(p.tok[p.idx].kind == tkPunct)
-  if p.tok[p.idx].symbol == "\\\\":
+  assert(currentTok(p).kind == tkPunct)
+  if currentTok(p).symbol == "\\\\":
     add(father, newRstNode(rnLeaf, "\\"))
     inc(p.idx)
-  elif p.tok[p.idx].symbol == "\\":
+  elif currentTok(p).symbol == "\\":
     # XXX: Unicode?
     inc(p.idx)
-    if p.tok[p.idx].kind != tkWhite: add(father, newLeaf(p))
-    if p.tok[p.idx].kind != tkEof: inc(p.idx)
+    if currentTok(p).kind != tkWhite: add(father, newLeaf(p))
+    if currentTok(p).kind != tkEof: inc(p.idx)
   else:
     add(father, newLeaf(p))
     inc(p.idx)
@@ -700,10 +704,10 @@ when false:
     if not verbatim and isURL(p, p.idx):
       var n = newRstNode(rnStandaloneHyperlink)
       while true:
-        case p.tok[p.idx].kind
+        case currentTok(p).kind
         of tkWord, tkAdornment, tkOther: nil
         of tkPunct:
-          if p.tok[p.idx+1].kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
+          if nextTok(p).kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
             break
         else: break
         add(n, newLeaf(p))
@@ -716,17 +720,17 @@ when false:
     else:
       var n = newLeaf(p)
       inc(p.idx)
-      if p.tok[p.idx].symbol == "_": n = parsePostfix(p, n)
+      if currentTok(p).symbol == "_": n = parsePostfix(p, n)
       add(father, n)
 
 proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
                 interpretBackslash: bool) =
   let
-    line = p.tok[p.idx].line
-    col = p.tok[p.idx].col
+    line = currentTok(p).line
+    col = currentTok(p).col
   inc p.idx
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkPunct:
       if isInlineMarkupEnd(p, postfix):
         inc(p.idx)
@@ -742,7 +746,7 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     of tkIndent:
       add(father, newRstNode(rnLeaf, " "))
       inc(p.idx)
-      if p.tok[p.idx].kind == tkIndent:
+      if currentTok(p).kind == tkIndent:
         rstMessage(p, meExpected, postfix, line, col)
         break
     of tkWhite:
@@ -752,26 +756,26 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   var args = newRstNode(rnDirArg)
-  if p.tok[p.idx].kind == tkWord:
+  if currentTok(p).kind == tkWord:
     add(args, newLeaf(p))
     inc(p.idx)
   else:
     args = nil
   var n = newRstNode(rnLeaf, "")
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkEof:
       rstMessage(p, meExpected, "```")
       break
     of tkPunct:
-      if p.tok[p.idx].symbol == "```":
+      if currentTok(p).symbol == "```":
         inc(p.idx)
         break
       else:
-        add(n.text, p.tok[p.idx].symbol)
+        add(n.text, currentTok(p).symbol)
         inc(p.idx)
     else:
-      add(n.text, p.tok[p.idx].symbol)
+      add(n.text, currentTok(p).symbol)
       inc(p.idx)
   var lb = newRstNode(rnLiteralBlock)
   add(lb, n)
@@ -806,7 +810,7 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   result = true
 
 proc parseInline(p: var RstParser, father: PRstNode) =
-  case p.tok[p.idx].kind
+  case currentTok(p).kind
   of tkPunct:
     if isInlineMarkupStart(p, "***"):
       var n = newRstNode(rnTripleEmphasis)
@@ -820,7 +824,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       add(father, n)
-    elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "```":
+    elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc(p.idx)
       add(father, parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
@@ -837,7 +841,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       parseUntil(p, n, "|", false)
       add(father, n)
     elif roSupportMarkdown in p.s.options and
-        p.tok[p.idx].symbol == "[" and p.tok[p.idx+1].symbol != "[" and
+        currentTok(p).symbol == "[" and nextTok(p).symbol != "[" and
         parseMarkdownLink(p, father):
       discard "parseMarkdownLink already processed it"
     else:
@@ -865,19 +869,19 @@ proc parseInline(p: var RstParser, father: PRstNode) =
   else: discard
 
 proc getDirective(p: var RstParser): string =
-  if p.tok[p.idx].kind == tkWhite and p.tok[p.idx+1].kind == tkWord:
+  if currentTok(p).kind == tkWhite and nextTok(p).kind == tkWord:
     var j = p.idx
     inc(p.idx)
-    result = p.tok[p.idx].symbol
+    result = currentTok(p).symbol
     inc(p.idx)
-    while p.tok[p.idx].kind in {tkWord, tkPunct, tkAdornment, tkOther}:
-      if p.tok[p.idx].symbol == "::": break
-      add(result, p.tok[p.idx].symbol)
+    while currentTok(p).kind in {tkWord, tkPunct, tkAdornment, tkOther}:
+      if currentTok(p).symbol == "::": break
+      add(result, currentTok(p).symbol)
       inc(p.idx)
-    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
-    if p.tok[p.idx].symbol == "::":
+    if currentTok(p).kind == tkWhite: inc(p.idx)
+    if currentTok(p).symbol == "::":
       inc(p.idx)
-      if (p.tok[p.idx].kind == tkWhite): inc(p.idx)
+      if (currentTok(p).kind == tkWhite): inc(p.idx)
     else:
       p.idx = j               # set back
       result = ""             # error
@@ -885,23 +889,23 @@ proc getDirective(p: var RstParser): string =
     result = ""
 
 proc parseComment(p: var RstParser): PRstNode =
-  case p.tok[p.idx].kind
+  case currentTok(p).kind
   of tkIndent, tkEof:
-    if p.tok[p.idx].kind != tkEof and p.tok[p.idx + 1].kind == tkIndent:
+    if currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
       inc(p.idx)              # empty comment
     else:
-      var indent = p.tok[p.idx].ival
+      var indent = currentTok(p).ival
       while true:
-        case p.tok[p.idx].kind
+        case currentTok(p).kind
         of tkEof:
           break
         of tkIndent:
-          if (p.tok[p.idx].ival < indent): break
+          if (currentTok(p).ival < indent): break
         else:
           discard
         inc(p.idx)
   else:
-    while p.tok[p.idx].kind notin {tkIndent, tkEof}: inc(p.idx)
+    while currentTok(p).kind notin {tkIndent, tkEof}: inc(p.idx)
   result = nil
 
 type
@@ -921,13 +925,13 @@ proc getDirKind(s: string): DirKind =
 
 proc parseLine(p: var RstParser, father: PRstNode) =
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkWhite, tkWord, tkOther, tkPunct: parseInline(p, father)
     else: break
 
 proc parseUntilNewline(p: var RstParser, father: PRstNode) =
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkWhite, tkWord, tkAdornment, tkOther, tkPunct: parseInline(p, father)
     of tkEof, tkIndent: break
 
@@ -937,13 +941,13 @@ proc parseField(p: var RstParser): PRstNode =
   ##
   ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
   result = newRstNode(rnField)
-  var col = p.tok[p.idx].col
+  var col = currentTok(p).col
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
   var fieldbody = newRstNode(rnFieldBody)
-  if p.tok[p.idx].kind != tkIndent: parseLine(p, fieldbody)
-  if p.tok[p.idx].kind == tkIndent:
-    var indent = p.tok[p.idx].ival
+  if currentTok(p).kind != tkIndent: parseLine(p, fieldbody)
+  if currentTok(p).kind == tkIndent:
+    var indent = currentTok(p).ival
     if indent > col:
       pushInd(p, indent)
       parseSection(p, fieldbody)
@@ -958,15 +962,15 @@ proc parseFields(p: var RstParser): PRstNode =
   ## otherwise it will return a node of rnFieldList type with children.
   result = nil
   var atStart = p.idx == 0 and p.tok[0].symbol == ":"
-  if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx + 1].symbol == ":") or
+  if (currentTok(p).kind == tkIndent) and (nextTok(p).symbol == ":") or
       atStart:
-    var col = if atStart: p.tok[p.idx].col else: p.tok[p.idx].ival
+    var col = if atStart: currentTok(p).col else: currentTok(p).ival
     result = newRstNode(rnFieldList)
     if not atStart: inc(p.idx)
     while true:
       add(result, parseField(p))
-      if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col) and
-          (p.tok[p.idx + 1].symbol == ":"):
+      if (currentTok(p).kind == tkIndent) and (currentTok(p).ival == col) and
+          (nextTok(p).symbol == ":"):
         inc(p.idx)
       else:
         break
@@ -1005,26 +1009,26 @@ proc parseDotDot(p: var RstParser): PRstNode {.gcsafe.}
 proc parseLiteralBlock(p: var RstParser): PRstNode =
   result = newRstNode(rnLiteralBlock)
   var n = newRstNode(rnLeaf, "")
-  if p.tok[p.idx].kind == tkIndent:
-    var indent = p.tok[p.idx].ival
+  if currentTok(p).kind == tkIndent:
+    var indent = currentTok(p).ival
     inc(p.idx)
     while true:
-      case p.tok[p.idx].kind
+      case currentTok(p).kind
       of tkEof:
         break
       of tkIndent:
-        if (p.tok[p.idx].ival < indent):
+        if (currentTok(p).ival < indent):
           break
         else:
           add(n.text, "\n")
-          add(n.text, spaces(p.tok[p.idx].ival - indent))
+          add(n.text, spaces(currentTok(p).ival - indent))
           inc(p.idx)
       else:
-        add(n.text, p.tok[p.idx].symbol)
+        add(n.text, currentTok(p).symbol)
         inc(p.idx)
   else:
-    while not (p.tok[p.idx].kind in {tkIndent, tkEof}):
-      add(n.text, p.tok[p.idx].symbol)
+    while not (currentTok(p).kind in {tkIndent, tkEof}):
+      add(n.text, currentTok(p).symbol)
       inc(p.idx)
   add(result, n)
 
@@ -1047,18 +1051,18 @@ proc tokenAfterNewline(p: RstParser): int =
 
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
-  result = (p.tok[p.idx].col == p.tok[j].col) and (p.tok[j].symbol == "|") or
-      (p.tok[j].col > p.tok[p.idx].col)
+  result = (currentTok(p).col == p.tok[j].col) and (p.tok[j].symbol == "|") or
+      (p.tok[j].col > currentTok(p).col)
 
 proc predNL(p: RstParser): bool =
   result = true
   if p.idx > 0:
-    result = p.tok[p.idx-1].kind == tkIndent and
-        p.tok[p.idx-1].ival == currInd(p)
+    result = prevTok(p).kind == tkIndent and
+        prevTok(p).ival == currInd(p)
 
 proc isDefList(p: RstParser): bool =
   var j = tokenAfterNewline(p)
-  result = (p.tok[p.idx].col < p.tok[j].col) and
+  result = (currentTok(p).col < p.tok[j].col) and
       (p.tok[j].kind in {tkWord, tkOther, tkPunct}) and
       (p.tok[j - 2].symbol != "::")
 
@@ -1074,7 +1078,7 @@ proc isMarkdownHeadlinePattern(s: string): bool =
 
 proc isMarkdownHeadline(p: RstParser): bool =
   if roSupportMarkdown in p.s.options:
-    if isMarkdownHeadlinePattern(p.tok[p.idx].symbol) and p.tok[p.idx+1].kind == tkWhite:
+    if isMarkdownHeadlinePattern(currentTok(p).symbol) and nextTok(p).kind == tkWhite:
       if p.tok[p.idx+2].kind in {tkWord, tkOther, tkPunct}:
         result = true
 
@@ -1086,7 +1090,7 @@ proc findPipe(p: RstParser, start: int): bool =
     inc i
 
 proc whichSection(p: RstParser): RstNodeKind =
-  case p.tok[p.idx].kind
+  case currentTok(p).kind
   of tkAdornment:
     if match(p, p.idx + 1, "ii"): result = rnTransition
     elif match(p, p.idx + 1, " a"): result = rnTable
@@ -1101,22 +1105,22 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
-    elif p.tok[p.idx].symbol == "```":
+    elif currentTok(p).symbol == "```":
       result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
-    elif p.tok[p.idx].symbol == "::":
+    elif currentTok(p).symbol == "::":
       result = rnLiteralBlock
     elif predNL(p) and
-        ((p.tok[p.idx].symbol == "+") or (p.tok[p.idx].symbol == "*") or
-        (p.tok[p.idx].symbol == "-")) and (p.tok[p.idx + 1].kind == tkWhite):
+        ((currentTok(p).symbol == "+") or (currentTok(p).symbol == "*") or
+        (currentTok(p).symbol == "-")) and (nextTok(p).kind == tkWhite):
       result = rnBulletList
-    elif (p.tok[p.idx].symbol == "|") and isLineBlock(p):
+    elif (currentTok(p).symbol == "|") and isLineBlock(p):
       result = rnLineBlock
-    elif (p.tok[p.idx].symbol == "..") and predNL(p):
+    elif (currentTok(p).symbol == "..") and predNL(p):
       result = rnDirective
     elif match(p, p.idx, ":w:") and predNL(p):
-      # (p.tok[p.idx].symbol == ":")
+      # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
       result = rnEnumList
@@ -1138,8 +1142,8 @@ proc whichSection(p: RstParser): RstNodeKind =
 
 proc parseLineBlock(p: var RstParser): PRstNode =
   result = nil
-  if p.tok[p.idx + 1].kind == tkWhite:
-    var col = p.tok[p.idx].col
+  if nextTok(p).kind == tkWhite:
+    var col = currentTok(p).col
     result = newRstNode(rnLineBlock)
     pushInd(p, p.tok[p.idx + 2].col)
     inc(p.idx, 2)
@@ -1147,8 +1151,8 @@ proc parseLineBlock(p: var RstParser): PRstNode =
       var item = newRstNode(rnLineBlockItem)
       parseSection(p, item)
       add(result, item)
-      if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col) and
-          (p.tok[p.idx + 1].symbol == "|") and
+      if (currentTok(p).kind == tkIndent) and (currentTok(p).ival == col) and
+          (nextTok(p).symbol == "|") and
           (p.tok[p.idx + 2].kind == tkWhite):
         inc(p.idx, 3)
       else:
@@ -1157,12 +1161,12 @@ proc parseLineBlock(p: var RstParser): PRstNode =
 
 proc parseParagraph(p: var RstParser, result: PRstNode) =
   while true:
-    case p.tok[p.idx].kind
+    case currentTok(p).kind
     of tkIndent:
-      if p.tok[p.idx + 1].kind == tkIndent:
+      if nextTok(p).kind == tkIndent:
         inc(p.idx)
         break
-      elif (p.tok[p.idx].ival == currInd(p)):
+      elif (currentTok(p).ival == currInd(p)):
         inc(p.idx)
         case whichSection(p)
         of rnParagraph, rnLeaf, rnHeadline, rnOverline, rnDirective:
@@ -1173,9 +1177,9 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
       else:
         break
     of tkPunct:
-      if (p.tok[p.idx].symbol == "::") and
-          (p.tok[p.idx + 1].kind == tkIndent) and
-          (currInd(p) < p.tok[p.idx + 1].ival):
+      if (currentTok(p).symbol == "::") and
+          (nextTok(p).kind == tkIndent) and
+          (currInd(p) < nextTok(p).ival):
         add(result, newRstNode(rnLeaf, ":"))
         inc(p.idx)            # skip '::'
         add(result, parseLiteralBlock(p))
@@ -1189,15 +1193,15 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
 proc parseHeadline(p: var RstParser): PRstNode =
   result = newRstNode(rnHeadline)
   if isMarkdownHeadline(p):
-    result.level = p.tok[p.idx].symbol.len
-    assert(p.tok[p.idx+1].kind == tkWhite)
+    result.level = currentTok(p).symbol.len
+    assert(nextTok(p).kind == tkWhite)
     inc p.idx, 2
     parseUntilNewline(p, result)
   else:
     parseUntilNewline(p, result)
-    assert(p.tok[p.idx].kind == tkIndent)
-    assert(p.tok[p.idx + 1].kind == tkAdornment)
-    var c = p.tok[p.idx + 1].symbol[0]
+    assert(currentTok(p).kind == tkIndent)
+    assert(nextTok(p).kind == tkAdornment)
+    var c = nextTok(p).symbol[0]
     inc(p.idx, 2)
     result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
 
@@ -1208,7 +1212,7 @@ type
   ColSeq = seq[ColumnLimits]
 
 proc tokEnd(p: RstParser): int =
-  result = p.tok[p.idx].col + len(p.tok[p.idx].symbol) - 1
+  result = currentTok(p).col + len(currentTok(p).symbol) - 1
 
 proc getColumns(p: var RstParser, cols: var IntSeq) =
   var L = 0
@@ -1216,12 +1220,12 @@ proc getColumns(p: var RstParser, cols: var IntSeq) =
     inc(L)
     setLen(cols, L)
     cols[L - 1] = tokEnd(p)
-    assert(p.tok[p.idx].kind == tkAdornment)
+    assert(currentTok(p).kind == tkAdornment)
     inc(p.idx)
-    if p.tok[p.idx].kind != tkWhite: break
+    if currentTok(p).kind != tkWhite: break
     inc(p.idx)
-    if p.tok[p.idx].kind != tkAdornment: break
-  if p.tok[p.idx].kind == tkIndent: inc(p.idx)
+    if currentTok(p).kind != tkAdornment: break
+  if currentTok(p).kind == tkIndent: inc(p.idx)
   # last column has no limit:
   cols[L - 1] = 32000
 
@@ -1239,9 +1243,9 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
   cols = @[]
   row = @[]
   a = nil
-  c = p.tok[p.idx].symbol[0]
+  c = currentTok(p).symbol[0]
   while true:
-    if p.tok[p.idx].kind == tkAdornment:
+    if currentTok(p).kind == tkAdornment:
       last = tokenAfterNewline(p)
       if p.tok[last].kind in {tkEof, tkIndent}:
         # skip last adornment line:
@@ -1251,22 +1255,22 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       setLen(row, len(cols))
       if a != nil:
         for j in 0..len(a)-1: a.sons[j].kind = rnTableHeaderCell
-    if p.tok[p.idx].kind == tkEof: break
+    if currentTok(p).kind == tkEof: break
     for j in countup(0, high(row)): row[j] = ""
     # the following while loop iterates over the lines a single cell may span:
-    line = p.tok[p.idx].line
+    line = currentTok(p).line
     while true:
       i = 0
-      while not (p.tok[p.idx].kind in {tkIndent, tkEof}):
+      while not (currentTok(p).kind in {tkIndent, tkEof}):
         if (tokEnd(p) <= cols[i]):
-          add(row[i], p.tok[p.idx].symbol)
+          add(row[i], currentTok(p).symbol)
           inc(p.idx)
         else:
-          if p.tok[p.idx].kind == tkWhite: inc(p.idx)
+          if currentTok(p).kind == tkWhite: inc(p.idx)
           inc(i)
-      if p.tok[p.idx].kind == tkIndent: inc(p.idx)
+      if currentTok(p).kind == tkIndent: inc(p.idx)
       if tokEnd(p) <= cols[0]: break
-      if p.tok[p.idx].kind in {tkEof, tkAdornment}: break
+      if currentTok(p).kind in {tkEof, tkAdornment}: break
       for j in countup(1, high(row)): add(row[j], '\x0A')
     a = newRstNode(rnTableRow)
     for j in countup(0, high(row)):
@@ -1281,16 +1285,16 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
     add(result, a)
 
 proc readTableRow(p: var RstParser): ColSeq =
-  if p.tok[p.idx].symbol == "|": inc p.idx
-  while p.tok[p.idx].kind notin {tkIndent, tkEof}:
+  if currentTok(p).symbol == "|": inc p.idx
+  while currentTok(p).kind notin {tkIndent, tkEof}:
     var limits: ColumnLimits
     limits.first = p.idx
-    while p.tok[p.idx].kind notin {tkIndent, tkEof}:
-      if p.tok[p.idx].symbol == "|" and p.tok[p.idx-1].symbol != "\\": break
+    while currentTok(p).kind notin {tkIndent, tkEof}:
+      if currentTok(p).symbol == "|" and prevTok(p).symbol != "\\": break
       inc p.idx
     limits.last = p.idx
     result.add(limits)
-    if p.tok[p.idx].kind in {tkIndent, tkEof}: break
+    if currentTok(p).kind in {tkIndent, tkEof}: break
     inc p.idx
   p.idx = tokenAfterNewline(p)
 
@@ -1325,7 +1329,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
       b = newRstNode(cellKind)
       initParser(q, p.s)
       q.col = p.col
-      q.line = p.tok[p.idx].line - 1
+      q.line = currentTok(p).line - 1
       q.filename = p.filename
       q.col += getTokens(getColContents(p, row[j]), false, q.tok)
       b.add(parseDoc(q))
@@ -1334,39 +1338,39 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
 
   parseRow(p, rnTableHeaderCell, result)
   if not isValidDelimiterRow(p, colNum): rstMessage(p, meMarkdownIllformedTable)
-  while predNL(p) and p.tok[p.idx].symbol == "|":
+  while predNL(p) and currentTok(p).symbol == "|":
     parseRow(p, rnTableDataCell, result)
 
 proc parseTransition(p: var RstParser): PRstNode =
   result = newRstNode(rnTransition)
   inc(p.idx)
-  if p.tok[p.idx].kind == tkIndent: inc(p.idx)
-  if p.tok[p.idx].kind == tkIndent: inc(p.idx)
+  if currentTok(p).kind == tkIndent: inc(p.idx)
+  if currentTok(p).kind == tkIndent: inc(p.idx)
 
 proc parseOverline(p: var RstParser): PRstNode =
-  var c = p.tok[p.idx].symbol[0]
+  var c = currentTok(p).symbol[0]
   inc(p.idx, 2)
   result = newRstNode(rnOverline)
   while true:
     parseUntilNewline(p, result)
-    if p.tok[p.idx].kind == tkIndent:
+    if currentTok(p).kind == tkIndent:
       inc(p.idx)
-      if p.tok[p.idx - 1].ival > currInd(p):
+      if prevTok(p).ival > currInd(p):
         add(result, newRstNode(rnLeaf, " "))
       else:
         break
     else:
       break
   result.level = getLevel(p.s.overlineToLevel, p.s.oLevel, c)
-  if p.tok[p.idx].kind == tkAdornment:
+  if currentTok(p).kind == tkAdornment:
     inc(p.idx)                # XXX: check?
-    if p.tok[p.idx].kind == tkIndent: inc(p.idx)
+    if currentTok(p).kind == tkIndent: inc(p.idx)
 
 proc parseBulletList(p: var RstParser): PRstNode =
   result = nil
-  if p.tok[p.idx + 1].kind == tkWhite:
-    var bullet = p.tok[p.idx].symbol
-    var col = p.tok[p.idx].col
+  if nextTok(p).kind == tkWhite:
+    var bullet = currentTok(p).symbol
+    var col = currentTok(p).col
     result = newRstNode(rnBulletList)
     pushInd(p, p.tok[p.idx + 2].col)
     inc(p.idx, 2)
@@ -1374,8 +1378,8 @@ proc parseBulletList(p: var RstParser): PRstNode =
       var item = newRstNode(rnBulletItem)
       parseSection(p, item)
       add(result, item)
-      if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col) and
-          (p.tok[p.idx + 1].symbol == bullet) and
+      if (currentTok(p).kind == tkIndent) and (currentTok(p).ival == col) and
+          (nextTok(p).symbol == bullet) and
           (p.tok[p.idx + 2].kind == tkWhite):
         inc(p.idx, 3)
       else:
@@ -1390,8 +1394,8 @@ proc parseOptionList(p: var RstParser): PRstNode =
       var b = newRstNode(rnDescription)
       var c = newRstNode(rnOptionListItem)
       if match(p, p.idx, "//w"): inc(p.idx)
-      while not (p.tok[p.idx].kind in {tkIndent, tkEof}):
-        if (p.tok[p.idx].kind == tkWhite) and (len(p.tok[p.idx].symbol) > 1):
+      while not (currentTok(p).kind in {tkIndent, tkEof}):
+        if (currentTok(p).kind == tkWhite) and (len(currentTok(p).symbol) > 1):
           inc(p.idx)
           break
         add(a, newLeaf(p))
@@ -1404,7 +1408,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
         popInd(p)
       else:
         parseLine(p, b)
-      if (p.tok[p.idx].kind == tkIndent): inc(p.idx)
+      if (currentTok(p).kind == tkIndent): inc(p.idx)
       add(c, a)
       add(c, b)
       add(result, c)
@@ -1416,17 +1420,17 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
   var j = tokenAfterNewline(p) - 1
   if (j >= 1) and (p.tok[j].kind == tkIndent) and
       (p.tok[j].ival > currInd(p)) and (p.tok[j - 1].symbol != "::"):
-    var col = p.tok[p.idx].col
+    var col = currentTok(p).col
     result = newRstNode(rnDefList)
     while true:
       j = p.idx
       var a = newRstNode(rnDefName)
       parseLine(p, a)
-      if (p.tok[p.idx].kind == tkIndent) and
-          (p.tok[p.idx].ival > currInd(p)) and
-          (p.tok[p.idx + 1].symbol != "::") and
-          not (p.tok[p.idx + 1].kind in {tkIndent, tkEof}):
-        pushInd(p, p.tok[p.idx].ival)
+      if (currentTok(p).kind == tkIndent) and
+          (currentTok(p).ival > currInd(p)) and
+          (nextTok(p).symbol != "::") and
+          not (nextTok(p).kind in {tkIndent, tkEof}):
+        pushInd(p, currentTok(p).ival)
         var b = newRstNode(rnDefBody)
         parseSection(p, b)
         var c = newRstNode(rnDefItem)
@@ -1437,7 +1441,7 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
       else:
         p.idx = j
         break
-      if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col):
+      if (currentTok(p).kind == tkIndent) and (currentTok(p).ival == col):
         inc(p.idx)
         j = tokenAfterNewline(p) - 1
         if j >= 1 and p.tok[j].kind == tkIndent and p.tok[j].ival > col and
@@ -1457,17 +1461,17 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc(w)
   if w <= 2:
-    var col = p.tok[p.idx].col
+    var col = currentTok(p).col
     result = newRstNode(rnEnumList)
     inc(p.idx, wildpos[w] + 3)
     var j = tokenAfterNewline(p)
-    if (p.tok[j].col == p.tok[p.idx].col) or match(p, j, wildcards[w]):
-      pushInd(p, p.tok[p.idx].col)
+    if (p.tok[j].col == currentTok(p).col) or match(p, j, wildcards[w]):
+      pushInd(p, currentTok(p).col)
       while true:
         var item = newRstNode(rnEnumItem)
         parseSection(p, item)
         add(result, item)
-        if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival == col) and
+        if (currentTok(p).kind == tkIndent) and (currentTok(p).ival == col) and
             match(p, p.idx + 1, wildcards[w]):
           inc(p.idx, wildpos[w] + 4)
         else:
@@ -1485,11 +1489,11 @@ proc parseSection(p: var RstParser, result: PRstNode) =
   while true:
     var leave = false
     assert(p.idx >= 0)
-    while p.tok[p.idx].kind == tkIndent:
-      if currInd(p) == p.tok[p.idx].ival:
+    while currentTok(p).kind == tkIndent:
+      if currInd(p) == currentTok(p).ival:
         inc(p.idx)
-      elif p.tok[p.idx].ival > currInd(p):
-        pushInd(p, p.tok[p.idx].ival)
+      elif currentTok(p).ival > currInd(p):
+        pushInd(p, currentTok(p).ival)
         var a = newRstNode(rnBlockQuote)
         parseSection(p, a)
         add(result, a)
@@ -1497,7 +1501,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       else:
         leave = true
         break
-    if leave or p.tok[p.idx].kind == tkEof: break
+    if leave or currentTok(p).kind == tkEof: break
     var a: PRstNode = nil
     var k = whichSection(p)
     case k
@@ -1541,14 +1545,14 @@ proc `$`(t: Token): string =
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
-  if p.tok[p.idx].kind != tkEof:
+  if currentTok(p).kind != tkEof:
     when false:
       assert isAllocatedPtr(cast[pointer](p.tok))
       for i in 0 .. high(p.tok):
         assert isNil(p.tok[i].symbol) or
                isAllocatedPtr(cast[pointer](p.tok[i].symbol))
       echo "index: ", p.idx, " length: ", high(p.tok), "##",
-          p.tok[p.idx-1], p.tok[p.idx], p.tok[p.idx+1]
+          prevTok(p), currentTok(p), nextTok(p)
     #assert isAllocatedPtr(cast[pointer](p.indentStack))
     rstMessage(p, meGeneralParseError)
 
@@ -1575,14 +1579,14 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
     args = newRstNode(rnDirArg)
     if argIsFile in flags:
       while true:
-        case p.tok[p.idx].kind
+        case currentTok(p).kind
         of tkWord, tkOther, tkPunct, tkAdornment:
           add(args, newLeaf(p))
           inc(p.idx)
         else: break
     elif argIsWord in flags:
-      while p.tok[p.idx].kind == tkWhite: inc(p.idx)
-      if p.tok[p.idx].kind == tkWord:
+      while currentTok(p).kind == tkWhite: inc(p.idx)
+      if currentTok(p).kind == tkWord:
         add(args, newLeaf(p))
         inc(p.idx)
       else:
@@ -1591,13 +1595,13 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
       parseLine(p, args)
   add(result, args)
   if hasOptions in flags:
-    if (p.tok[p.idx].kind == tkIndent) and (p.tok[p.idx].ival >= 3) and
-        (p.tok[p.idx + 1].symbol == ":"):
+    if (currentTok(p).kind == tkIndent) and (currentTok(p).ival >= 3) and
+        (nextTok(p).symbol == ":"):
       options = parseFields(p)
   add(result, options)
 
 proc indFollows(p: RstParser): bool =
-  result = p.tok[p.idx].kind == tkIndent and p.tok[p.idx].ival > currInd(p)
+  result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
 
 proc parseDirective(p: var RstParser, flags: DirFlags,
                     contentParser: SectionParser): PRstNode =
@@ -1606,7 +1610,7 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
   ## The children are rnDirArg, rnFieldList and rnLineBlock. Any might be nil.
   result = parseDirective(p, flags)
   if not isNil(contentParser) and indFollows(p):
-    pushInd(p, p.tok[p.idx].ival)
+    pushInd(p, currentTok(p).ival)
     var content = contentParser(p)
     popInd(p)
     add(result, content)
@@ -1615,7 +1619,7 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
 
 proc parseDirBody(p: var RstParser, contentParser: SectionParser): PRstNode =
   if indFollows(p):
-    pushInd(p, p.tok[p.idx].ival)
+    pushInd(p, currentTok(p).ival)
     result = contentParser(p)
     popInd(p)
 
@@ -1791,7 +1795,7 @@ proc dirRaw(p: var RstParser): PRstNode =
 
 proc parseDotDot(p: var RstParser): PRstNode =
   result = nil
-  var col = p.tok[p.idx].col
+  var col = currentTok(p).col
   inc(p.idx)
   var d = getDirective(p)
   if d != "":
@@ -1817,7 +1821,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
     # hyperlink target:
     inc(p.idx, 2)
     var a = getReferenceName(p, ":")
-    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
+    if currentTok(p).kind == tkWhite: inc(p.idx)
     var b = untilEol(p)
     setRef(p, rstnodeToRefname(a), b)
   elif match(p, p.idx, " |"):
@@ -1825,22 +1829,22 @@ proc parseDotDot(p: var RstParser): PRstNode =
     inc(p.idx, 2)
     var a = getReferenceName(p, "|")
     var b: PRstNode
-    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
-    if cmpIgnoreStyle(p.tok[p.idx].symbol, "replace") == 0:
+    if currentTok(p).kind == tkWhite: inc(p.idx)
+    if cmpIgnoreStyle(currentTok(p).symbol, "replace") == 0:
       inc(p.idx)
       expect(p, "::")
       b = untilEol(p)
-    elif cmpIgnoreStyle(p.tok[p.idx].symbol, "image") == 0:
+    elif cmpIgnoreStyle(currentTok(p).symbol, "image") == 0:
       inc(p.idx)
       b = dirImage(p)
     else:
-      rstMessage(p, meInvalidDirective, p.tok[p.idx].symbol)
+      rstMessage(p, meInvalidDirective, currentTok(p).symbol)
     setSub(p, addNodes(a), b)
   elif match(p, p.idx, " ["):
     # footnotes, citations
     inc(p.idx, 2)
     var a = getReferenceName(p, "]")
-    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
+    if currentTok(p).kind == tkWhite: inc(p.idx)
     var b = untilEol(p)
     setRef(p, rstnodeToRefname(a), b)
   else:
