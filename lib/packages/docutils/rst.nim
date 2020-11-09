@@ -445,7 +445,6 @@ proc setRef(p: var RstParser, key: string, value: PRstNode) =
     if key == p.s.refs[i].key:
       if p.s.refs[i].value.addNodes != value.addNodes:
         rstMessage(p, mwRedefinitionOfLabel, key)
-
       p.s.refs[i].value = value
       return
   setLen(p.s.refs, length + 1)
@@ -489,37 +488,38 @@ proc expect(p: var RstParser, tok: string) =
   else: rstMessage(p, meExpected, tok)
 
 proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
+  # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
   result = currentTok(p).symbol == markup
-  if not result:
-    return                    # Rule 3:
+  if not result: return
+  # Rule 2:
   result = prevTok(p).kind notin {tkIndent, tkWhite}
-  if not result:
-    return                    # Rule 4:
+  if not result: return
+  # Rule 7:
   result = (nextTok(p).kind in {tkIndent, tkWhite, tkEof}) or
       (markup in ["``", "`"] and nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof}) or
       (nextTok(p).symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!',
        '?', '_'})
-  if not result:
-    return                    # Rule 7:
+  if not result: return
+  # Rule 4:
   if p.idx > 0:
     if markup != "``" and prevTok(p).symbol == "\\":
       result = false
 
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
+  # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
   var d: char
   result = currentTok(p).symbol == markup
-  if not result:
-    return                    # Rule 1:
-  result = (p.idx == 0) or (prevTok(p).kind in {tkIndent, tkWhite}) or
+  if not result: return
+  # Rule 6:
+  result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
       (markup in ["``", "`"] and prevTok(p).kind in {tkIndent, tkWhite, tkWord}) or
-      (prevTok(p).symbol[0] in
-      {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'})
-  if not result:
-    return                    # Rule 2:
+      prevTok(p).symbol[0] in {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'}
+  if not result: return
+  # Rule 1:
   result = nextTok(p).kind notin {tkIndent, tkWhite, tkEof}
-  if not result:
-    return                    # Rule 5 & 7:
+  if not result: return
+  # Rules 4 & 5:
   if p.idx > 0:
     if prevTok(p).symbol == "\\":
       result = false
