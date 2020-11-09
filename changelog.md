@@ -25,7 +25,7 @@
 
 - Removed deprecated `iup` module from stdlib, it has already moved to [nimble](https://github.com/nim-lang/iup).
 
-- Added `decodeQuery` to `std/uri` and deprecated `decodeData` in `std/cgi`.
+- Added `decodeQuery` to `std/uri`.
 
 ## Language changes
 

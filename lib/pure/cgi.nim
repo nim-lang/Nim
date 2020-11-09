@@ -81,7 +81,7 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
 
-iterator decodeData*(data: string): tuple[key, value: TaintedString] {.deprecated: "use uri.decodeQuery".} =
+iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   try:
