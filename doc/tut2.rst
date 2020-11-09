@@ -543,7 +543,7 @@ There is a special [:T] syntax when using generics with universal function call 
 
   var i: int
 
-  #i.foo[int]() #Error: expression 'foo(i)' has no type (or is ambiguous)
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
 
   i.foo[:int]() #Success
 
