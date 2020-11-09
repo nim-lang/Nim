@@ -48,6 +48,9 @@ proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo 
   TLineInfo(line: p.line, col: p.col, fileIndex: c.filenames[p.file])
 
 proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
+  # XXX: hack; assume a zero LitId means the PackedLib is all zero (empty)
+  if l.name.int == 0: return
+
   result = PLib(generated: l.generated, isOverriden: l.isOverriden,
                 kind: l.kind, name: rope ir.sh.strings[l.name],
                 path: fromTree(l.path, c))
