@@ -1218,6 +1218,9 @@ proc parseHeadline(p: var RstParser): PRstNode =
 
 type
   IntSeq = seq[int]
+  ColumnLimits = tuple
+    first, last: int
+  ColSeq = seq[ColumnLimits]
 
 proc tokEnd(p: RstParser): int =
   result = p.tok[p.idx].col + len(p.tok[p.idx].symbol) - 1
@@ -1292,57 +1295,60 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       add(a, b)
     add(result, a)
 
-proc readTableRow(p: var RstParser): seq[string] =
+proc readTableRow(p: var RstParser): ColSeq =
   if p.tok[p.idx].symbol == "|": inc p.idx
   while p.tok[p.idx].kind notin {tkIndent, tkEof}:
-    var cell = ""
+    var limits: ColumnLimits
+    limits.first = p.idx
     while p.tok[p.idx].kind notin {tkIndent, tkEof}:
       if p.tok[p.idx].symbol == "|" and p.tok[p.idx-1].symbol != "\\": break
-      cell.add(p.tok[p.idx].symbol)
       inc p.idx
-    result.add(cell.strip)
+    limits.last = p.idx
+    result.add(limits)
     if p.tok[p.idx].kind in {tkIndent, tkEof}: break
     inc p.idx
   p.idx = tokenAfterNewline(p)
 
-proc getTableColumns(p: var RstParser): int =
-  let oldPos = p.idx
-  result = readTableRow(p).len
-  p.idx = oldPos
+proc getColContents(p: var RstParser, colLim: ColumnLimits): string =
+  for i in colLim.first ..< colLim.last:
+    result.add(p.tok[i].symbol)
+  result.strip
 
-proc isValidDelimiterRow(p: var RstParser, cols: int): bool =
+proc isValidDelimiterRow(p: var RstParser, colNum: int): bool =
   let row = readTableRow(p)
-  if row.len != cols: return false
-  for cell in row:
-    if cell.len < 3 or not (cell.startsWith("--") or cell.startsWith(":-")):
+  if row.len != colNum: return false
+  for limits in row:
+    let content = getColContents(p, limits)
+    if content.len < 3 or not (content.startsWith("--") or content.startsWith(":-")):
       return false
   return true
 
 proc parseMarkdownTable(p: var RstParser): PRstNode =
   var
-    row: seq[string]
+    row: ColSeq
+    colNum: int
     a, b: PRstNode
     q: RstParser
   result = newRstNode(rnMarkdownTable)
-  let cols = getTableColumns(p)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
-    if row.len < cols: row.setLen(cols)
+    if colNum == 0: colNum = row.len # table header
+    elif row.len < colNum: row.setLen(colNum)
     a = newRstNode(rnTableRow)
-    for j in 0 ..< cols:
+    for j in 0 ..< colNum:
       b = newRstNode(cellKind)
       initParser(q, p.s)
       q.col = p.col
       q.line = p.tok[p.idx].line - 1
       q.filename = p.filename
-      q.col += getTokens(row[j], false, q.tok)
+      q.col += getTokens(getColContents(p, row[j]), false, q.tok)
       b.add(parseDoc(q))
       a.add(b)
     result.add(a)
 
   parseRow(p, rnTableHeaderCell, result)
-  if not isValidDelimiterRow(p, cols): rstMessage(p, meMarkdownIllformedTable)
+  if not isValidDelimiterRow(p, colNum): rstMessage(p, meMarkdownIllformedTable)
   while predNL(p) and p.tok[p.idx].symbol == "|":
     parseRow(p, rnTableDataCell, result)
 
