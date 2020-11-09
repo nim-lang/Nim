@@ -184,8 +184,14 @@ The general pattern in ``=copy`` looks like:
 
 
 The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
-that otherwise would lead to a copy is prevented at compile-time.
+that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
+.. code-block:: nim
+
+  proc `=copy`(dest: var T; source: T) {.error.}
+
+but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
+by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
 
 Move semantics
 ==============
