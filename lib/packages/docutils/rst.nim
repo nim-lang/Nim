@@ -361,7 +361,6 @@ proc addNodesAux(n: PRstNode, result: var string) =
     for i in 0 ..< n.len: addNodesAux(n.sons[i], result)
 
 proc addNodes(n: PRstNode): string =
-  result = ""
   n.addNodesAux(result)
 
 proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
@@ -416,7 +415,6 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
     for i in 0 ..< len(n): rstnodeToRefnameAux(n.sons[i], r, b)
 
 proc rstnodeToRefname(n: PRstNode): string =
-  result = ""
   var b = false
   rstnodeToRefnameAux(n, result, b)
 
@@ -988,7 +986,6 @@ proc getFieldValue*(n: PRstNode): string =
   result = addNodes(n.sons[1]).strip
 
 proc getFieldValue(n: PRstNode, fieldname: string): string =
-  result = ""
   if n.sons[1] == nil: return
   if n.sons[1].kind != rnFieldList:
     #InternalError("getFieldValue (2): " & $n.sons[1].kind)
