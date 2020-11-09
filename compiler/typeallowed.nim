@@ -260,4 +260,5 @@ proc directViewType*(t: PType): ViewTypeKind =
     result = noView
 
 proc requiresInit*(t: PType): bool =
-  (t.flags * {tfRequiresInit, tfNotNil} != {}) or classifyViewType(t) != noView
+  (t.flags * {tfRequiresInit, tfNeedsFullInit, tfNotNil} != {}) or
+  classifyViewType(t) != noView

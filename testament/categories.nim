@@ -262,6 +262,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
   if fileExists("tools/nimgrep.nim"):
     var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
     t.spec.action = actionCompile
+    # force target to C because of MacOS 10.15 SDK headers bug
+    # https://github.com/nim-lang/Nim/pull/15612#issuecomment-712471879
+    t.spec.targets = { targetC }
     testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
