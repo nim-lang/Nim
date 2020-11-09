@@ -545,7 +545,7 @@ There is a special [:T] syntax when using generics with universal function call 
 
   # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
 
-  i.foo[:int]() #Success
+  i.foo[:int]() # Success
 
 
 Templates
