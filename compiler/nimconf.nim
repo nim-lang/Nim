@@ -255,7 +255,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       if conf.projectIsStdin: s = stdin.llStreamOpen
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
     if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
-    if s!=nil:
+    if s != nil:
       configFiles.add(p)
       runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
