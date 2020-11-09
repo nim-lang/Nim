@@ -534,7 +534,7 @@ iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
 
-There is a special [:T] syntax when using generics with universal function call syntax:
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
 
 .. code-block:: nim
     :test: "nim c $1"
