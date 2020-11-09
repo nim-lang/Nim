@@ -33,36 +33,21 @@ type
     mcError = "Error"
 
   MsgKind* = enum          ## the possible messages
-    meCannotOpenFile,
-    meExpected,
-    meGridTableNotImplemented,
-    meMarkdownIllformedTable,
-    meNewSectionExpected,
-    meGeneralParseError,
-    meInvalidDirective,
-    mwRedefinitionOfLabel,
-    mwUnknownSubstitution,
-    mwUnsupportedLanguage,
-    mwUnsupportedField
+    meCannotOpenFile = "cannot open '$1'",
+    meExpected = "'$1' expected",
+    meGridTableNotImplemented = "grid table is not implemented",
+    meMarkdownIllformedTable = "illformed delimiter row of a markdown table",
+    meNewSectionExpected = "new section expected",
+    meGeneralParseError = "general parse error",
+    meInvalidDirective = "invalid directive: '$1'",
+    mwRedefinitionOfLabel = "redefinition of label '$1'",
+    mwUnknownSubstitution = "unknown substitution '$1'",
+    mwUnsupportedLanguage = "language '$1' not supported",
+    mwUnsupportedField = "field '$1' not supported"
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
   FindFileHandler* = proc (filename: string): string {.closure, gcsafe.}
-
-const
-  messages: array[MsgKind, string] = [
-    meCannotOpenFile: "cannot open '$1'",
-    meExpected: "'$1' expected",
-    meGridTableNotImplemented: "grid table is not implemented",
-    meMarkdownIllformedTable: "illformed delimiter row of a markdown table",
-    meNewSectionExpected: "new section expected",
-    meGeneralParseError: "general parse error",
-    meInvalidDirective: "invalid directive: '$1'",
-    mwRedefinitionOfLabel: "redefinition of label '$1'",
-    mwUnknownSubstitution: "unknown substitution '$1'",
-    mwUnsupportedLanguage: "language '$1' not supported",
-    mwUnsupportedField: "field '$1' not supported"
-  ]
 
 proc rstnodeToRefname*(n: PRstNode): string
 proc addNodes*(n: PRstNode): string
@@ -309,7 +294,7 @@ proc whichMsgClass*(k: MsgKind): MsgClass =
 proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
                         arg: string) =
   let mc = msgkind.whichMsgClass
-  let a = messages[msgkind] % arg
+  let a = $msgkind % arg
   let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
