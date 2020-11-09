@@ -507,14 +507,16 @@ proc hash*(s: seq[LazyHashes]): Hash =
 
 proc hash*(sh: Shared): Hash =
   ## might want to edit this...
-  var h: Hash = 0
-  h = h !& hash(sh.syms)
-  h = h !& hash(sh.types)
-  h = h !& hash(sh.strings)
-  h = h !& hash(sh.integers)
-  h = h !& hash(sh.floats)
-  h = h !& hash(sh.config)
-  result = !$h
+  # XXX: these have too many references
+  when false:
+    var h: Hash = 0
+    h = h !& hash(sh.syms)
+    h = h !& hash(sh.types)
+    h = h !& hash(sh.strings)
+    h = h !& hash(sh.integers)
+    h = h !& hash(sh.floats)
+    h = h !& hash(sh.config)
+    result = !$h
 
 proc hash*(m: Module): Hash =
   var h: Hash = 0
