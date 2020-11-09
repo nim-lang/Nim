@@ -1058,7 +1058,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
 
-  of tyAlias, tyOwned:
+  of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
