@@ -1056,11 +1056,11 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
 
-  of tyAlias, tyOwned:
+  of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
-     tyVar, tyLent, tyPtr, tyRef, tyProc, tySink:
+     tyVar, tyLent, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
