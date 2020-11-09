@@ -62,6 +62,10 @@ type
   UriParseError* = object of ValueError
 
 
+proc uriParseError*(msg: string) {.noreturn.} =
+  ## Raises a ``UriParseError`` exception with message `msg`.
+  raise newException(UriParseError, msg)
+
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
@@ -190,7 +194,7 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
     if i < data.len:
       if data[i] == '&': inc(i)
       else:
-        raise newException(UriParseError, "'&' expected at " & $i)
+        uriParseError("'&' expected at " & $i)
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
