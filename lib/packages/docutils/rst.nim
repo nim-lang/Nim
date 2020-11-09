@@ -566,7 +566,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
       while i <= last and expr[i] == c:
         inc i
         inc length
-      dec(i)
+      dec i
       result = p.tok[j].kind in {tkPunct, tkAdornment} and
           p.tok[j].symbol.len == length and p.tok[j].symbol[0] == c
     if not result: return
@@ -1470,7 +1470,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
           break
       popInd(p)
     else:
-      dec(p.idx, wildpos[w] + 3)
+      dec p.idx, wildpos[w] + 3
       result = nil
 
 proc sonKind(father: PRstNode, i: int): RstNodeKind =
@@ -1508,7 +1508,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
     of rnFieldList:
-      if p.idx > 0: dec(p.idx)
+      if p.idx > 0: dec p.idx
       a = parseFields(p)
     of rnTransition: a = parseTransition(p)
     of rnHeadline: a = parseHeadline(p)
