@@ -126,12 +126,14 @@ func newHttpHeaders*(keyValuePairs:
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
+
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
-    if key in result.table:
-      result.table[key].add(pair.val)
-    else:
-      result.table[key] = @[pair.val]
+    {.cast(noSideEffect).}:
+      if key in result.table:
+        result.table[key].add(pair.val)
+      else:
+        result.table[key] = @[pair.val]
 
 
 func `$`*(headers: HttpHeaders): string {.inline.} =
@@ -148,7 +150,8 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -157,7 +160,8 @@ func `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  return headers.table[headers.toCaseInsensitive(key)][i]
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.

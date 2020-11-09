@@ -2114,6 +2114,9 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
+  # deadcode
+  # `nim --eval:"expr"` might've used it at some point for idetools; could
+  # be revived for nimsuggest
   let n = transformExpr(c.graph, c.idgen, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof

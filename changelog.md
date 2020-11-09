@@ -4,6 +4,10 @@
 
 ## Standard library additions and changes
 
+- Make `{.requiresInit.}` pragma to work for `distinct` types.
+
+- Added a macros `enumLen` for returning the number of items in an enum to the `typetraits.nim` module.
+
 - `prelude` now works with the JavaScript target.
 
 - Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
@@ -29,6 +33,7 @@
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
 - Source+Edit links now appear on top of every docgen'd page when `nim doc --git.url:url ...` is given.
+- Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`
 
 
 ## Tool changes

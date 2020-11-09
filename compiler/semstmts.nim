@@ -610,7 +610,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       if def.kind == nkEmpty:
         let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
                                           tyUserTypeClassInst})
-        if actualType.kind == tyObject and actualType.requiresInit:
+        if actualType.kind in {tyObject, tyDistinct} and
+           actualType.requiresInit:
           defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
