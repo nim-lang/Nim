@@ -435,9 +435,7 @@ proc setSub(p: var RstParser, key: string, value: PRstNode) =
     if key == p.s.subs[i].key:
       p.s.subs[i].value = value
       return
-  setLen(p.s.subs, length + 1)
-  p.s.subs[length].key = key
-  p.s.subs[length].value = value
+  p.s.subs.add(Substitution(key: key, value: value))
 
 proc setRef(p: var RstParser, key: string, value: PRstNode) =
   var length = p.s.refs.len
@@ -447,9 +445,7 @@ proc setRef(p: var RstParser, key: string, value: PRstNode) =
         rstMessage(p, mwRedefinitionOfLabel, key)
       p.s.refs[i].value = value
       return
-  setLen(p.s.refs, length + 1)
-  p.s.refs[length].key = key
-  p.s.refs[length].value = value
+  p.s.refs.add(Substitution(key: key, value: value))
 
 proc findRef(p: var RstParser, key: string): PRstNode =
   for i in countup(0, high(p.s.refs)):
@@ -1250,7 +1246,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       getColumns(p, cols)
       setLen(row, cols.len)
       if a != nil:
-        for j in 0..a.len-1: a.sons[j].kind = rnTableHeaderCell
+        for j in 0 ..< a.len: a.sons[j].kind = rnTableHeaderCell
     if currentTok(p).kind == tkEof: break
     for j in countup(0, high(row)): row[j] = ""
     # the following while loop iterates over the lines a single cell may span:
