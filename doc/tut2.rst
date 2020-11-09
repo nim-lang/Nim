@@ -534,6 +534,19 @@ iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
 
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc foo[T](i: T) =
+    discard
+
+  var i: int
+
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
+
+  i.foo[:int]() # Success
+
 
 Templates
 =========
