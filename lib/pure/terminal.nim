@@ -37,10 +37,7 @@ type
 
 var gTerm {.threadvar.}: owned(PTerminal)
 
-when defined(windows) and defined(consoleapp):
-  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [OSError].}
-else:
-  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
+proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
