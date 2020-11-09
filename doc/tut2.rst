@@ -540,7 +540,7 @@ There is a special [:T] syntax when using generics with universal function call 
   proc foo[T](i: T) =
     discard
 
-  var i : int
+  var i: int
 
   i.foo[int]() #Error: expression 'foo(i)' has no type (or is ambiguous)
 
