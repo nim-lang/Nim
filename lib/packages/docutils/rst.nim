@@ -204,7 +204,7 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
      '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
      '|', '~':
     getAdornment(L, tok)
-    if len(tok.symbol) <= 3: tok.kind = tkPunct
+    if tok.symbol.len <= 3: tok.kind = tkPunct
   of '(', ')', '[', ']', '{', '}':
     getBracket(L, tok)
   else:
@@ -221,7 +221,7 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
 
 proc getTokens(buffer: string, skipPounds: bool, tokens: var TokenSeq): int =
   var L: Lexer
-  var length = len(tokens)
+  var length = tokens.len
   L.buf = cstring(buffer)
   L.line = 0                  # skip UTF-8 BOM
   if L.buf[0] == '\xEF' and L.buf[1] == '\xBB' and L.buf[2] == '\xBF':
@@ -246,7 +246,7 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TokenSeq): int =
     if tokens[length - 1].kind == tkEof: break
   if tokens[0].kind == tkWhite:
     # BUGFIX
-    tokens[0].ival = len(tokens[0].symbol)
+    tokens[0].ival = tokens[0].symbol.len
     tokens[0].kind = tkIndent
 
 type
@@ -342,7 +342,7 @@ proc pushInd(p: var RstParser, ind: int) =
   p.indentStack.add(ind)
 
 proc popInd(p: var RstParser) =
-  if len(p.indentStack) > 1: setLen(p.indentStack, len(p.indentStack) - 1)
+  if p.indentStack.len > 1: setLen(p.indentStack, p.indentStack.len - 1)
 
 proc initParser(p: var RstParser, sharedState: PSharedState) =
   p.indentStack = @[0]
@@ -372,13 +372,13 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
 
   if n == nil: return
   if n.kind == rnLeaf:
-    for i in 0 ..< len(n.text):
+    for i in 0 ..< n.text.len:
       case n.text[i]
       of '0'..'9':
         if b:
           r.add('-')
           b = false
-        if len(r) == 0: r.add('Z')
+        if r.len == 0: r.add('Z')
         r.add(n.text[i])
       of 'a'..'z', '\128'..'\255':
         if b:
@@ -410,9 +410,9 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
       of '@': special "at"
       of '|': special "bar"
       else:
-        if len(r) > 0: b = true
+        if r.len > 0: b = true
   else:
-    for i in 0 ..< len(n): rstnodeToRefnameAux(n.sons[i], r, b)
+    for i in 0 ..< n.len: rstnodeToRefnameAux(n.sons[i], r, b)
 
 proc rstnodeToRefname(n: PRstNode): string =
   var b = false
@@ -430,7 +430,7 @@ proc findSub(p: var RstParser, n: PRstNode): int =
   result = -1
 
 proc setSub(p: var RstParser, key: string, value: PRstNode) =
-  var length = len(p.s.subs)
+  var length = p.s.subs.len
   for i in 0 ..< length:
     if key == p.s.subs[i].key:
       p.s.subs[i].value = value
@@ -440,7 +440,7 @@ proc setSub(p: var RstParser, key: string, value: PRstNode) =
   p.s.subs[length].value = value
 
 proc setRef(p: var RstParser, key: string, value: PRstNode) =
-  var length = len(p.s.refs)
+  var length = p.s.refs.len
   for i in 0 ..< length:
     if key == p.s.refs[i].key:
       if p.s.refs[i].value.addNodes != value.addNodes:
@@ -546,7 +546,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
   # 'e'              tkWord or '#' (for enumeration lists)
   var i = 0
   var j = start
-  var last = len(expr) - 1
+  var last = expr.len - 1
   while i <= last:
     case expr[i]
     of 'w': result = p.tok[j].kind == tkWord
@@ -561,7 +561,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
       result = p.tok[j].kind == tkWord or p.tok[j].symbol == "#"
       if result:
         case p.tok[j].symbol[0]
-        of 'a'..'z', 'A'..'Z', '#': result = len(p.tok[j].symbol) == 1
+        of 'a'..'z', 'A'..'Z', '#': result = p.tok[j].symbol.len == 1
         of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
         else: result = false
     else:
@@ -572,7 +572,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
         inc length
       dec(i)
       result = p.tok[j].kind in {tkPunct, tkAdornment} and
-          len(p.tok[j].symbol) == length and p.tok[j].symbol[0] == c
+          p.tok[j].symbol.len == length and p.tok[j].symbol[0] == c
     if not result: return
     inc j
     inc i
@@ -580,13 +580,13 @@ proc match(p: RstParser, start: int, expr: string): bool =
 
 proc fixupEmbeddedRef(n, a, b: PRstNode) =
   var sep = - 1
-  for i in countdown(len(n) - 2, 0):
+  for i in countdown(n.len - 2, 0):
     if n.sons[i].text == "<":
       sep = i
       break
   var incr = if sep > 0 and n.sons[sep - 1].text[0] == ' ': 2 else: 1
   for i in countup(0, sep - incr): a.add(n.sons[i])
-  for i in countup(sep + 1, len(n) - 2): b.add(n.sons[i])
+  for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   result = n
@@ -596,7 +596,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       var a = newRstNode(rnInner)
       var b = newRstNode(rnInner)
       fixupEmbeddedRef(n, a, b)
-      if len(a) == 0:
+      if a.len == 0:
         result = newRstNode(rnStandaloneHyperlink)
         result.add(b)
       else:
@@ -990,7 +990,7 @@ proc getFieldValue(n: PRstNode, fieldname: string): string =
     #InternalError("getFieldValue (2): " & $n.sons[1].kind)
     # We don't like internal errors here anymore as that would break the forum!
     return
-  for i in 0 ..< len(n.sons[1]):
+  for i in 0 ..< n.sons[1].len:
     var f = n.sons[1].sons[i]
     if cmpIgnoreStyle(addNodes(f.sons[0]), fieldname) == 0:
       result = addNodes(f.sons[1])
@@ -1208,7 +1208,7 @@ type
   ColSeq = seq[ColumnLimits]
 
 proc tokEnd(p: RstParser): int =
-  result = currentTok(p).col + len(currentTok(p).symbol) - 1
+  result = currentTok(p).col + currentTok(p).symbol.len - 1
 
 proc getColumns(p: var RstParser, cols: var IntSeq) =
   var L = 0
@@ -1248,9 +1248,9 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
         p.idx = last
         break
       getColumns(p, cols)
-      setLen(row, len(cols))
+      setLen(row, cols.len)
       if a != nil:
-        for j in 0..len(a)-1: a.sons[j].kind = rnTableHeaderCell
+        for j in 0..a.len-1: a.sons[j].kind = rnTableHeaderCell
     if currentTok(p).kind == tkEof: break
     for j in countup(0, high(row)): row[j] = ""
     # the following while loop iterates over the lines a single cell may span:
@@ -1391,7 +1391,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       var c = newRstNode(rnOptionListItem)
       if match(p, p.idx, "//w"): inc p.idx
       while currentTok(p).kind notin {tkIndent, tkEof}:
-        if currentTok(p).kind == tkWhite and len(currentTok(p).symbol) > 1:
+        if currentTok(p).kind == tkWhite and currentTok(p).symbol.len > 1:
           inc p.idx
           break
         a.add(newLeaf(p))
@@ -1445,7 +1445,7 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
           discard
         else:
           break
-    if len(result) == 0: result = nil
+    if result.len == 0: result = nil
 
 proc parseEnumList(p: var RstParser): PRstNode =
   const
@@ -1479,7 +1479,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
 
 proc sonKind(father: PRstNode, i: int): RstNodeKind =
   result = rnLeaf
-  if i < len(father): result = father.sons[i].kind
+  if i < father.len: result = father.sons[i].kind
 
 proc parseSection(p: var RstParser, result: PRstNode) =
   while true:
@@ -1533,7 +1533,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
 proc parseSectionWrapper(p: var RstParser): PRstNode =
   result = newRstNode(rnInner)
   parseSection(p, result)
-  while result.kind == rnInner and len(result) == 1:
+  while result.kind == rnInner and result.len == 1:
     result = result.sons[0]
 
 proc `$`(t: Token): string =
@@ -1659,7 +1659,7 @@ proc dirInclude(p: var RstParser): PRstNode =
           let searchFor = n.getFieldValue("start-after").strip()
           if searchFor != "":
             let pos = inputString.find(searchFor)
-            if pos != -1: pos + searchFor.len()
+            if pos != -1: pos + searchFor.len
             else: 0
           else:
             0
@@ -1730,7 +1730,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
 proc dirContainer(p: var RstParser): PRstNode =
   result = parseDirective(p, {hasArg}, parseSectionWrapper)
   assert(result.kind == rnDirective)
-  assert(len(result) == 3)
+  assert(result.len == 3)
   result.kind = rnContainer
 
 proc dirImage(p: var RstParser): PRstNode =
@@ -1871,7 +1871,7 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
   of rnContents:
     p.hasToc = true
   else:
-    for i in 0 ..< len(n): n.sons[i] = resolveSubs(p, n.sons[i])
+    for i in 0 ..< n.len: n.sons[i] = resolveSubs(p, n.sons[i])
 
 proc rstParse*(text, filename: string,
                line, column: int, hasToc: var bool,
