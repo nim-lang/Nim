@@ -435,7 +435,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
   var b = a[0]
   if b.kind == nkPragmaExpr:
     if b[1].len != 1:
-      # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
+      # we could in future support pragmas w args e.g.: `var foo {.bar:"goo".} = expr`
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
