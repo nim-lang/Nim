@@ -71,15 +71,15 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc addMissing(c: var Context; p: PSym) =
   if not p.isNil:
-    if p.itemId.module == c.thisModule:
-      if p.itemId notin c.symMap:
-        c.pendingSyms.add p
+    #if p.itemId.module == c.thisModule:
+    if p.itemId notin c.symMap:
+      c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
   if not p.isNil:
-    if p.uniqueId.module == c.thisModule:
-      if p.uniqueId notin c.typeMap:
-        c.pendingTypes.add p
+    #if p.uniqueId.module == c.thisModule:
+    if p.uniqueId notin c.typeMap:
+      c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   if t.isNil: return TypeId(-1)
@@ -149,6 +149,7 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
     p.bitsize = s.bitsize
     p.alignment = s.alignment
   p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, ir, c)
+  c.addMissing s.typ
   p.typeId = s.typ.toPackedType(ir, c)
   c.addMissing s.owner
   p.owner = s.owner.safeItemId itemId
@@ -159,16 +160,30 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
     p.cname = toLitId(s.cname, ir, c)
   ir.flush c
 
-proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
+proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   assert n.kind == nkSym
+  template s: PSym = n.sym
   template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
-  if n.sym.itemId.module == c.thisModule:
+  var id = s.toPackedSym(ir, c)
+  assert id != SymId(-1)
+  if s.itemId.module == c.thisModule:
     # it is a symbol that belongs to the module we're currently
     # packing:
-    ir.addSym(n.sym.toPackedSym(ir, c), info)
+    ir.addSym(id, info)
   else:
     # store it as an external module reference:
-    ir.addItemId(n.sym.itemId, n.typ.toPackedType(ir, c), info)
+
+    # XXX: this will never work because an external reference cannot be
+    # mapped to a local reference, even in the remote module.
+
+    # at the time we serialize the local module, we don't know the index
+    # of the remote psym. since the remote module does not record the
+    # identity, we cannot resolve it there, either.
+
+    ir.addItemId(s.itemId, n.typ.toPackedType(ir, c), info)
+    #ir.addSym(id, info)
+  # we'll cache it in the local module in any event
+  c.symMap[s.itemId] = id
 
 proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
   if l.isNil: return
@@ -191,7 +206,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
                       operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
                       typeId: toPackedType(n.typ, ir, c), info: info)
   of nkSym:
-    toPackedSymNode(n, ir, c)
+    toSymNode(n, ir, c)
   of directIntLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(n.intVal),
                       typeId: toPackedType(n.typ, ir, c), info: info)
@@ -214,6 +229,31 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
       toPackedNode(n[i], ir, c)
     ir.patch patchPos
 
+  ir.flush c
+
+template countLocal(c: Context; tab: typed): int =
+  var local = 0
+  for item, sym in pairs tab:
+    if item.module == c.thisModule:
+      inc local
+  local
+
 proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
+  var local: int
   var c = Context(thisModule: module.itemId.module)
   toPackedNode(n, ir, c)
+  echo "     module id: ", c.thisModule
+  echo "       symbols: ", ir.sh.syms.len
+  local = c.countLocal c.symMap
+  echo "                local: ", local
+  echo "               remote: ", ir.sh.syms.len - local
+  echo "         types: ", ir.sh.types.len
+  local = c.countLocal c.typeMap
+  echo "                local: ", local
+  echo "               remote: ", ir.sh.types.len - local
+  echo "         nodes: ", ir.nodes.len
+  echo "float literals: ", ir.sh.floats.len
+  echo "  int literals: ", ir.sh.integers.len
+  echo "  str literals: ", ir.sh.strings.len
+  debug ir
+  echo ""

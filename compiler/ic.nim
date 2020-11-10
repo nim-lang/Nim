@@ -30,17 +30,17 @@ proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
                           name: s.name.s, s: s)
   ic.m = tryReadModuleNamed(graph.config, ic.name)
   if ic.m.isSome:
-    echo "🔵", ic.name
+    echo "🔵" & ic.name
   else:
-    echo "🟡", ic.name
+    echo "🟡" & ic.name
   result = ic
 
 proc processor(context: PPassContext, n: PNode): PNode =
   var ic = IncrementalRef(context)
   if ic.m.isSome:
-    echo "🟣", ic.name
+    discard "🟣" & ic.name
   else:
-    echo "🟠", ic.name
+    discard "🟠" & ic.name
     result = n
 
 proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
@@ -50,15 +50,16 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   moduleToIr(n, m.ast, ic.s)
   if ic.m.isSome:
     if hash(m) == hash(get ic.m):
-      echo "🟢", ic.name
+      echo "🟢" & ic.name
       m = get ic.m
     else:
-      echo "🔴", ic.name
+      echo "🔴" & ic.name
   else:
-    if not tryWriteModule(m):
-      echo "💣", ic.name
+    if tryWriteModule(m):
+      echo "⚪" & ic.name
+    else:
+      echo "💣" & ic.name
       internalError(graph.config, "failed to write " & ic.name & " rod file")
-    echo "⚪", ic.name
   result = irToModule(m.ast, graph, ic.s)
 
 const icPass* = makePass(open = opener, process = processor, close = closer)

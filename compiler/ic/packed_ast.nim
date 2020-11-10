@@ -485,12 +485,14 @@ proc hash*(config: ConfigRef): Hash =
   h = h !& hash(config.symbols)
   result = !$h
 
-proc hash*(sh: Shared): Hash
-
 # XXX: lazy hashes for now
 type
   LazyHashes = PackedSym or PackedType or PackedLib or
                PackedLineInfo or PackedTree or Node
+
+proc hash*(sh: Shared): Hash
+proc hash*(s: LazyHashes): Hash
+proc hash*(s: seq[LazyHashes]): Hash
 
 proc hash*(s: LazyHashes): Hash =
   var h: Hash = 0

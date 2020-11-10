@@ -60,13 +60,7 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
   # short-circuit if we already have the PSym
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return
-  # if it's our module, then the .item will be a SymId;
-  if id.module == c.thisModule:
-    result = fromSym(id.item, id, ir, c)
-  # else, it's a PIdent identity; an index into the symbol table
-  else:
-    # XXX: temporary hack
-    result = c.graph.modules[int id.module].tab.data[int id.item]
+  result = fromSym(id.item, id, ir, c)
   # cache the result
   c.symMap[id] = result
 
@@ -74,15 +68,15 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return
 
-  # XXX: move some decodes out of here for recursion reasons...
   result = PSym(itemId: id, kind: s.kind, magic: s.magic, flags: s.flags,
                 info: fromLineInfo(s.info, ir, c), options: s.options,
-                position: s.position, annex: fromLib(s.annex, ir, c),
-                typ: fromType(s.typeId, ir, c),
-                ast: fromTree(s.ast, c), name: fromIdent(s.name, ir, c),
-                constraint: fromTree(s.constraint, c))
+                position: s.position, name: fromIdent(s.name, ir, c))
   c.symMap[id] = result
 
+  result.typ = fromType(s.typeId, ir, c)
+  result.constraint = fromTree(s.constraint, c)
+  result.ast = fromTree(s.ast, c)
+  result.annex = fromLib(s.annex, ir, c)
   when hasFFI:
     result.cname = ir.sh.strings[int s.cname]
 
@@ -91,12 +85,12 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
     # setup tab?
     discard
   of skLet, skVar, skField, skForVar:
-    result.guard = fromSym(ir.sh.syms[int s.guard.item], s.guard, ir, c)
+    result.guard = loadSymbol(s.guard, c, ir)
     result.bitsize = s.bitsize
     result.alignment = s.alignment
   else:
     discard
-  result.owner = fromSym(ir.sh.syms[int s.owner.item], s.owner, ir, c)
+  result.owner = loadSymbol(s.owner, c, ir)
   let externalName = ir.sh.strings[s.externalName]
   if externalName != "":
     result.loc.r = rope externalName
@@ -145,7 +139,7 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
   of nkNone, nkEmpty, nkNilLit:
     discard
   of nkIdent:
-    result.ident = getIdent(c.graph.cache, ir.sh.strings[LitId n.operand])
+    result.ident = fromIdent(LitId n.operand, ir, c)  # XXX: is this right?
   of nkSym:
     result.sym = fromSymNode(ir, c, pos = pos)
   of directIntLit:

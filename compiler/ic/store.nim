@@ -46,6 +46,10 @@ proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
     echo "uncompressed module: ", getFileSize("/tmp/module.rod")
     writeFile("/tmp/config.rod", freeze m.ast.sh.config)
     echo "uncompressed config: ", getFileSize("/tmp/config.rod")
+    var x = thaw[ConfigRef] readFile"/tmp/config.rod"
+    assert hash(x) == hash(m.ast.sh.config)
+    var y = thaw[Module] readFile"/tmp/module.rod"
+    assert hash(y) == hash(m)
 
 proc queryRodMeta(stream: Stream): MetaReply {.raises: [].} =
   ## query a rod file stream to see if it is worth attempting to use
