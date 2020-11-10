@@ -11,9 +11,6 @@
 
 - `prelude` now works with the JavaScript target.
 
-- Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate
-  `FileHandle` using C function `dup` and `dup2`.
-
 - Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
 - The JSON module can now handle integer literals and floating point literals of
