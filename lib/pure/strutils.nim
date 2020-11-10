@@ -172,28 +172,18 @@ proc isNumeric*(s: string): bool =
     doAssert isNumeric("123abc") == false
     doAssert isNumeric("123.45.6") == false
     doAssert isNumeric("123.45e++5") == false
-  var leftPlusCount, rightPlusCount, leftLessCount, rightLessCount,
-      dotCount, eCount, numCount = 0
+  var eLeftCount, eRightCount, dotCount, eCount, numCount = 0
   for c in s:
     case c
-    of '+':
+    of '+', '-':
       if eCount == 0:
-        if leftPlusCount == 1:
+        if eLeftCount == 1:
           return false
-        inc(leftPlusCount)
+        inc(eLeftCount)
       else:
-        if rightPlusCount == 1:
+        if eRightCount == 1:
           return false
-        inc(rightPlusCount)
-    of '-':
-      if eCount == 0:
-        if leftLessCount == 1:
-          return false
-        inc(leftLessCount)
-      else:
-        if rightLessCount == 1:
-          return false
-        inc(rightLessCount)
+        inc(eRightCount)
     of '.':
       if dotCount == 1:
         return false
