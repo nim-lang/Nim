@@ -152,12 +152,9 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   p.typeId = s.typ.toPackedType(ir, c)
   c.addMissing s.owner
   p.owner = s.owner.safeItemId itemId
-  if not s.annex.isNil:
-    p.annex = toPackedLib(s.annex, ir, c)
-  if not s.constraint.isNil:
-    s.constraint.toPackedNode(p.constraint, c)
-  if not s.ast.isNil:
-    s.ast.toPackedNode(p.ast, c)
+  p.annex = toPackedLib(s.annex, ir, c)
+  s.constraint.toPackedNode(p.constraint, c)
+  s.ast.toPackedNode(p.ast, c)
   when hasFFI:
     p.cname = toLitId(s.cname, ir, c)
   ir.flush c
@@ -174,6 +171,7 @@ proc toPackedSymNode(n: PNode; ir: var PackedTree; c: var Context) =
     ir.addItemId(n.sym.itemId, n.typ.toPackedType(ir, c), info)
 
 proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
+  if l.isNil: return
   result.kind = l.kind
   result.generated = l.generated
   result.isOverriden = l.isOverriden
@@ -183,7 +181,7 @@ proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
-
+  if n.isNil: return
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
     ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: 0,
