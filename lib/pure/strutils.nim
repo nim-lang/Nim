@@ -160,6 +160,16 @@ proc isNumeric*(s: string): bool =
   ## otherwise it returns false.
   ## Note: The reason why `parseFloat()` is not used to achieve this is its
   ## poor performance.
+  runnableExamples:
+    doAssert isNumeric("123") == true
+    doAssert isNumeric("123.45") == true
+    doAssert isNumeric("+123.45") == true
+    doAssert isNumeric("123.45e-2") == true
+    doAssert isNumeric("+123.45E-2") == true
+    doAssert isNumeric("-123.45e2") == true
+    doAssert isNumeric("e123.45") == false
+    doAssert isNumeric("123abc") == false
+    doAssert isNumeric("123.45.6") == false
   var dotCount, plusCount, lessCount, eCount, numCount = 0
   for c in s:
     case c
