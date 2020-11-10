@@ -960,7 +960,7 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## * `degToRad proc <#degToRad,T>`_
   ##
   runnableExamples:
-    doAssert degToRad(2 * PI) == 360.0
+    doAssert radToDeg(2 * PI) == 360.0
   result = T(d) / RadPerDeg
 
 proc sgn*[T: SomeNumber](x: T): int {.inline.} =
