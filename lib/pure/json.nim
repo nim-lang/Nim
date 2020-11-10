@@ -520,6 +520,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## fly (sometimes called `autovivification`:idx:):
   ##
   runnableExamples:
+    var myjson = %* {"parent": {"child": {"grandchild": 1}}}
     doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
 
   result = node
