@@ -485,7 +485,7 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
-  ## ensures the result doesn't print like an integer, ie return 2.0, not 2
+  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
   asm """
     function nimOnlyDigitsOrMinus(n) {
       return n.toString().match(/^-?\d+$/);

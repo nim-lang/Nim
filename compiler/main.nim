@@ -260,7 +260,7 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
         # because currently generates lots of false positives due to conflation
-        # of labels links in doc comments, eg for random.rand:
+        # of labels links in doc comments, e.g. for random.rand:
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
       commandDoc2(graph, false)
