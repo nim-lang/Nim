@@ -331,7 +331,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
 
 proc processNote(c: PContext, n: PNode) =
   template handleNote(enumVals, notes) =
-    let x = findStr(enumVals, n[0][1].ident.s, errUnknown)
+    let x = findStr(enumVals.a, enumVals.b, n[0][1].ident.s, errUnknown)
     if x !=  errUnknown:
       nk = TNoteKind(x)
       let x = c.semConstBoolExpr(c, n[1])
@@ -896,7 +896,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
-        incl(sym.flags, sfCompileTime)
+        if comesFromPush:
+          if sym.kind in {skProc, skFunc}:
+            incl(sym.flags, sfCompileTime)
+        else:
+          incl(sym.flags, sfCompileTime)
         #incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
         noVal(c, it)

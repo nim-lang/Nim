@@ -303,3 +303,43 @@ block: # elementType
   var a: seq[int]
   doAssert elementType(a) is int
   doAssert elementType(seq[char].default) is char
+
+block: # enum.len
+  type
+    Direction = enum
+      north, east, south, west
+    
+    Direction2 = Direction
+    Direction3 = Direction2
+
+    TokenType = enum
+      a = 2, b = 4, c = 89
+    
+    MyEnum = enum
+      ##[This is test of enum with a doc comment.
+
+         Which is also a multi line one.]##
+      valueA = (0, "my value A"),
+        ## The items are also commented. This has both integer and string
+        ## values.
+      valueB = "value B",
+        ## This item has only a string value,
+      valueC = 2,
+        ## and this one only an integer.
+      valueD = (3, "abc")
+        ## Both, integer and string values again.
+
+    OtherEnum {.pure.} = enum
+      valueX, valueY, valueZ
+
+    MyFlag {.size: sizeof(cint).} = enum
+      A, B, C, D
+
+  static:
+    doAssert Direction.enumLen == 4
+    doAssert Direction2.enumLen == 4
+    doAssert Direction3.enumLen == 4
+    doAssert TokenType.enumLen == 3
+    doAssert MyEnum.enumLen == 4
+    doAssert OtherEnum.enumLen == 3
+    doAssert MyFlag.enumLen == 4

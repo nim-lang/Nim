@@ -110,14 +110,14 @@ proc iiTablePut*(t: var TIITable, key, val: int)
 
 # implementation
 
-proc skipConvAndClosure*(n: PNode): PNode =
+proc skipConvCastAndClosure*(n: PNode): PNode =
   result = n
   while true:
     case result.kind
     of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64,
        nkClosure:
       result = result[0]
-    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast:
       result = result[1]
     else: break
 

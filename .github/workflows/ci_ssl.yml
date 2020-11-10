@@ -49,11 +49,11 @@ jobs:
           curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
           7z x dist/mingw64.7z -odist
           7z x dist/dlls.zip -obin
-          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
-        run: echo "::add-path::${{ github.workspace }}/bin"
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
       - name: 'Build 1-stage compiler from csources'
         shell: bash

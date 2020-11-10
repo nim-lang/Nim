@@ -511,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
@@ -533,6 +533,19 @@ used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
+
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc foo[T](i: T) =
+    discard
+
+  var i: int
+
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
+
+  i.foo[:int]() # Success
 
 
 Templates

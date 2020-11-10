@@ -883,9 +883,7 @@ Ordinal types have the following characteristics:
   than the largest value produces a panic or a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
-types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
-in later versions of the language.)
+types) belong to ordinal types.
 
 A distinct type is an ordinal type if its base type is an ordinal type.
 
@@ -2697,6 +2695,36 @@ the variable has been initialized and does not rely on syntactic properties:
       x = a()
     # use x
 
+`requiresInit` pragma can also be applyied to `distinct` types.
+
+Given the following distinct type definitions:
+
+.. code-block:: nim
+  type
+    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    DistinctString {.requiresInit.} = distinct string
+
+The following code blocks will fail to compile:
+
+.. code-block:: nim
+  var foo: DistinctFoo
+  foo.x = "test"
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  var s: DistinctString
+  s = "test"
+  doAssert s == "test"
+
+But these ones will compile successfully:
+
+.. code-block:: nim
+  let foo = DistinctFoo(Foo(x: "test"))
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  let s = "test"
+  doAssert s == "test"
 
 Let statement
 -------------
@@ -4031,9 +4059,12 @@ Closure iterators and inline iterators have some restrictions:
 1. For now, a closure iterator cannot be executed at compile time.
 2. ``return`` is allowed in a closure iterator but not in an inline iterator
    (but rarely useful) and ends the iteration.
-3. Neither inline nor closure iterators can be recursive.
+3. Neither inline nor closure iterators can be (directly)* recursive.
 4. Neither inline nor closure iterators have the special ``result`` variable.
 5. Closure iterators are not supported by the js backend.
+
+(*) Closure iterators can be co-recursive with a factory proc which results
+in similar syntax to a recursive iterator.  More details follow.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but this may change in future versions of the
@@ -4129,7 +4160,41 @@ parameters of an outer factory proc:
   for f in foo():
     echo f
 
+The call can be made more like an inline iterator with a for loop macro:
 
+.. code-block:: nim
+  import macros
+  macro toItr(x: ForLoopStmt): untyped =
+    let expr = x[0]
+    let call = x[1][1] # Get foo out of toItr(foo)
+    let body = x[2]
+    result = quote do:
+      block:
+        let itr = `call`
+        for `expr` in itr():
+            `body`
+
+  for f in toItr(mycount(1, 4)): # using early `proc mycount`
+    echo f
+
+Because of full backend function call aparatus involvment, closure iterator
+invocation is typically higher cost than inline iterators.  Adornment by
+a macro wrapper at the call site like this is a possibly useful reminder.
+
+The factory ``proc``, as an ordinary procedure, can be recursive.  The
+above macro allows such recursion to look much like a recursive iterator
+would.  For example:
+
+.. code-block:: nim
+  proc recCountDown(n: int): iterator(): int =
+    result = iterator(): int =
+      if n > 0:
+        yield n
+        for e in toItr(recCountDown(n - 1)):
+            yield e
+
+  for i in toItr(recCountDown(6)): # Emits: 6 5 4 3 2 1
+    echo i
 
 Converters
 ==========
@@ -4619,8 +4684,8 @@ The following example shows a generic binary tree can be modeled:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
