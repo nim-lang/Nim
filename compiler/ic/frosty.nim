@@ -7,7 +7,7 @@ const
   frostyDebug* {.booldefine.} =
     when defined(nimcore): false
     elif defined(release): false
-    else: true
+    else: false
   frostySorted* {.booldefine.} = false
   frostyNet* {.booldefine.} = when defined(nimcore): false else: true
 
@@ -64,24 +64,157 @@ proc newSerializer[S](source: S): Serializer[S] {.raises: [].} =
 
 proc write[S, T](s: var Serializer[S]; o: ref T; parent = 0)
 proc read[S, T](s: var Serializer[S]; o: var ref T)
-proc write[S, T](s: var Serializer[S]; o: T; parent = 0)
-proc read[S, T](s: var Serializer[S]; o: var T)
-proc write[S, T](s: var Serializer[S]; o: seq[T])
-proc read[S, T](s: var Serializer[S]; o: var seq[T])
-proc write(s: var Serializer[Stream]; o: string)
-proc read(s: var Serializer[Stream]; o: var string)
+proc writeSequence[S, T](s: var Serializer[S]; o: seq[T])
+proc readSequence[S, T](s: var Serializer[S]; o: var seq[T])
+proc writeString[T](s: var Serializer[Stream]; o: T)
+proc readString[T](s: var Serializer[Stream]; o: var T)
 proc readPrimitive[T](s: var Serializer[Stream]; o: var T)
 proc writePrimitive[T](s: var Serializer[Stream]; o: T)
+proc readTuple[S, T](s: var Serializer[S]; o: var T; skip = "")
+proc writeTuple[S, T](s: var Serializer[S]; o: T; skip = ""; parent = 0)
+
+# (try to) ignore the string->string conversion warning
+{.push hint[ConvFromXtoItselfNotNeeded]: off.}
 
 when frostyNet:
   import std/net
 
-  proc write(s: var Serializer[Socket]; o: string)
-  proc read(s: var Serializer[Socket]; o: var string)
+  proc writeString[T](s: var Serializer[Socket]; o: T)
+  proc readString[T](s: var Serializer[Socket]; o: var T)
   proc readPrimitive[T](s: var Serializer[Socket]; o: var T)
 
   # convenience to make certain calls more legible
   template socket(s: Serializer): Socket = s.stream
+
+template parentEq(parent: NimNode): NimNode =
+  nnkExprEqExpr.newTree(ident"parent", parent)
+
+macro writeObject[S, T](s: var Serializer[S]; o: T; parent = 0) =
+  # do nothing by default
+  result = newEmptyNode()
+  let
+    writeTuple = bindSym"writeTuple"
+    writer = bindSym("writePrimitive", rule = brClosed)
+    typ = o.getTypeImpl
+  when defined(frostyDebug):
+    echo typ.treeRepr
+    echo typ.repr
+  let variant = findChild(typ[^1], it.kind == nnkRecCase)
+  if variant.isNil:
+    # it's a simple named tuple/object
+    result = newCall(writeTuple, s, o)
+  else:
+    let
+      name = variant[0][0]   # the symbol of the discriminator
+    result = newStmtList()
+    # write the value of the discriminator
+    result.add newCall(writer, s, newDotExpr(o, name))
+    # prepare a skip="field" argument to writeTuple()
+    let skipper = nnkExprEqExpr.newTree(ident"skip", newLit name.strVal)
+    # write the remaining fields as determined by the discriminator
+    result.add newCall(writeTuple, s, o, skipper, parentEq(parent))
+
+macro readObject[S, T](s: var Serializer[S]; o: var T) =
+  # do nothing by default
+  result = newEmptyNode()
+  let
+    readTuple = bindSym"readTuple"
+    reader = bindSym("readPrimitive", rule = brClosed)
+    typ = o.getTypeImpl
+    sym = o.getTypeInst
+  when defined(frostyDebug):
+    echo typ.treeRepr
+    echo typ.repr
+  let variant = findChild(typ[^1], it.kind == nnkRecCase)
+  if variant.isNil:
+    # it's a simple named tuple/object
+    result = newCall(readTuple, s, o)
+  else:
+    let
+      disc = variant[0]        # the first IdentDefs under RecCase
+      name = disc[0]           # the symbol of the discriminator
+      dtyp = disc[1]           # the type of the discriminator
+    when defined(frostyDebug):
+      echo dtyp.getTypeImpl.treeRepr
+    # it's an object variant; we need to unpack the discriminator first
+    result = newStmtList()
+    # create a variable into which we can read the discriminator
+    let kind = genSym(nskVar, "kind")
+    # declare our kind variable with its value type
+    result.add nnkVarSection.newTree(newIdentDefs(kind, dtyp,
+                                                  newEmptyNode()))
+    # read the value of the discriminator into our `kind` variable
+    result.add newCall(reader, s, kind)
+    # create an object constructor for the variant object
+    var ctor = nnkObjConstr.newNimNode
+    # the first child is the name of the object type
+    ctor.add ident(sym.strVal)
+    # add `name: kind` to the variant object constructor
+    ctor.add newColonExpr(name, kind)
+    # assign it to the input symbol
+    result.add newAssignment(o, ctor)
+    # prepare a skip="field" argument to readTuple()
+    let skipper = nnkExprEqExpr.newTree(ident"skip", newLit name.strVal)
+    # read the remaining fields as determined by the discriminator
+    result.add newCall(readTuple, s, o, skipper)
+
+macro write(s: var Serializer; o: typed; parent = 0) =
+  var typ = o.getTypeImpl
+  let parent = parentEq(parent)
+  case typ.kind
+  of nnkDistinctTy:
+    # naive unwrap of distinct types
+    result = newCall(bindSym"write", s, newCall(typ[0], o), parent)
+  of nnkObjectTy:
+    # here we need to consider variant objects
+    result = newCall(bindSym"writeObject", s, o, parent)
+  of nnkTupleTy, nnkTupleConstr:
+    # this is a naive write of ordered fields
+    result = newCall(bindSym"writeTuple", s, o, parent)
+  elif typ.kind == nnkSym and $typ == "string":
+    # we want to handle strings specially
+    result = newCall(bindSym"writeString", s, o)
+  elif typ.kind == nnkBracketExpr and $typ[0] == "seq":
+    result = newCall(bindSym"writeSequence", s, o)
+  else:
+    # a naive write of any other arbitrary type
+    result = newCall(bindSym"writePrimitive", s, o)
+
+macro read(s: var Serializer; o: var typed) =
+  var typ = o.getTypeImpl
+  case typ.kind
+  of nnkDistinctTy:
+    # naive unwrap of distinct types
+    result = newCall(bindSym"read", s, newCall(typ[0], o))
+  of nnkObjectTy:
+    # here we need to consider variant objects
+    result = newCall(bindSym"readObject", s, o)
+  of nnkTupleTy, nnkTupleConstr:
+    # this is a naive read of ordered fields
+    result = newCall(bindSym"readTuple", s, o)
+  elif typ.kind == nnkSym and $typ == "string":
+    # we want to handle strings specially
+    result = newCall(bindSym"readString", s, o)
+  elif typ.kind == nnkBracketExpr and $typ[0] == "seq":
+    result = newCall(bindSym"readSequence", s, o)
+  else:
+    # a naive read of any other arbitrary type
+    result = newCall(bindSym"readPrimitive", s, o)
+
+proc readTuple[S, T](s: var Serializer[S]; o: var T; skip = "") =
+  var skipped = skip == ""
+  s.debung $typeof(o)
+  s.greatenIndent:
+    for k, val in fieldPairs(o):
+      if not skipped and k == skip:
+        skipped = true
+      else:
+        when defined(frostyDebug):
+          s.debung k & ": " & $typeof(val)
+        # create a var that we can pass to the read()
+        var x: typeof(val)
+        s.read x
+        val = x
 
 template greatenIndent(s: var Serializer; body: untyped): untyped =
   ## Used for debugging.
@@ -122,14 +255,14 @@ template audit(o: typed; g: typed) =
         # else, save it
         g.h = h
 
-proc write(s: var Serializer[Stream]; o: string) =
+proc writeString[T](s: var Serializer[Stream]; o: T) =
   write(s.stream, len(o))   # put the str len
   write(s.stream, o)        # put the str data
 
-proc read(s: var Serializer[Stream]; o: var string) =
-  var l = len(o)                     # type inference
+proc readString[T](s: var Serializer[Stream]; o: var T) =
+  var l = len(string o)              # type inference
   read(s.stream, l)                  # get the str len
-  setLen(o, l)                       # set the length
+  setLen(string o, l)                # set the length
   if l > 0:
     if readData(s.stream, o.cstring, l) != l:
       raise newException(ThawError, "short read!")
@@ -151,139 +284,25 @@ proc write[S, T](s: var Serializer[S]; o: ref T; parent = 0) =
       else:
         raise newException(FreezeError, "unexpected cycle")
 
-proc readTuple[S, T](s: var Serializer[S]; o: var T; skip = "") =
-  var skipped = skip == ""
-  for k, val in fieldPairs(o):
-    if not skipped and k == skip:
-      skipped = true
-    else:
-      # create a var that we can pass to the read()
-      var x: typeof(val)
-      s.read x
-      val = x
-
 proc writeTuple[S, T](s: var Serializer[S]; o: T; skip = ""; parent = 0) =
   var skipped = skip == ""
+  s.debung $typeof(o)
   s.greatenIndent:
     for k, val in fieldPairs(o):
       if not skipped and k == skip:
         skipped = true
       else:
+        when defined(frostyDebug):
+          let q =
+            when val is ref or val is object:
+              "???"
+            else:
+              repr(val)
+          s.debung k & ": " & $typeof(val) & " = " & q[low(q)..min(20, high(q))]
         when val is ref:
           s.write val, parent = parent
         else:
           s.write val
-        when defined(frostyDebug):
-          let q = repr(val)
-          s.debung k & ": " & $typeof(val) & " = " & q[low(q)..min(20, high(q))]
-
-macro readObject[S, T](s: var Serializer[S]; o: var T) =
-  # do nothing by default
-  result = newEmptyNode()
-  let
-    readTuple = bindSym"readTuple"
-    reader = bindSym("readPrimitive", rule = brClosed)
-    typ = o.getTypeImpl
-    sym = o.getTypeInst
-  when defined(frostyDebug):
-    echo typ.treeRepr
-    echo typ.repr
-  case typ.kind
-  of nnkObjectTy:
-    let variant = findChild(typ[^1], it.kind == nnkRecCase)
-    if variant.isNil:
-      # it's a simple named tuple/object
-      result = newCall(readTuple, s, o)
-    else:
-      # it's an object variant; we need to unpack the discriminator first
-      result = newStmtList()
-      let disc = variant[0]        # the first IdentDefs under RecCase
-
-      let name = disc[0]           # the symbol of the discriminator
-      let dtyp = disc[1]           # the type of the discriminator
-
-      when defined(frostyDebug):
-        echo dtyp.getTypeImpl.treeRepr
-
-      # create a variable into which we can read the discriminator
-      let kind = genSym(nskVar, "kind")
-
-      # declare our kind variable with its value type
-      result.add nnkVarSection.newTree(newIdentDefs(kind, dtyp,
-                                                    newEmptyNode()))
-
-      # read the value of the discriminator into our `kind` variable
-      result.add newCall(reader, s, kind)
-
-      # create an object constructor for the variant object
-      var ctor = nnkObjConstr.newNimNode
-
-      # the first child is the name of the object type
-      ctor.add ident(sym.strVal)
-
-      # add `name: kind` to the variant object constructor
-      ctor.add newColonExpr(name, kind)
-
-      # assign it to the input symbol
-      result.add newAssignment(o, ctor)
-
-      # prepare a skip="field" argument to readTuple()
-      let skipper = nnkExprEqExpr.newTree(ident"skip", newLit name.strVal)
-
-      # read the remaining fields as determined by the discriminator
-      result.add newCall(readTuple, s, o, skipper)
-
-  of nnkTupleTy:
-    # (name: "jeff", age: 34)
-    result = newCall(readTuple, s, o)
-  of nnkTupleConstr:
-    # ("jeff", 34)
-    result = newCall(readTuple, s, o)
-  else:
-    error "attempt to read unrecognized type: " & $typ.kind
-
-macro writeObject[S, T](s: var Serializer[S]; o: T; parent = 0) =
-  # do nothing by default
-  result = newEmptyNode()
-  let
-    writeTuple = bindSym"writeTuple"
-    writer = bindSym("writePrimitive", rule = brClosed)
-    typ = o.getTypeImpl
-  when defined(frostyDebug):
-    echo typ.treeRepr
-    echo typ.repr
-  case typ.kind
-  of nnkObjectTy:
-    let variant = findChild(typ[^1], it.kind == nnkRecCase)
-    if variant.isNil:
-      # it's a simple named tuple/object
-      result = newCall(writeTuple, s, o)
-    else:
-      # it's an object variant; we need to pack the discriminator first
-      result = newStmtList()
-      let disc = variant[0]        # the first IdentDefs under RecCase
-
-      let name = disc[0]           # the symbol of the discriminator
-
-      # write the value of the discriminator
-      result.add newCall(writer, s, newDotExpr(o, name))
-
-      # prepare a skip="field" argument to writeTuple()
-      let skipper = nnkExprEqExpr.newTree(ident"skip", newLit name.strVal)
-      # prepare a parent=parent argument to writeTuple()
-      let parent = nnkExprEqExpr.newTree(ident"parent", parent)
-
-      # write the remaining fields as determined by the discriminator
-      result.add newCall(writeTuple, s, o, skipper, parent)
-
-  of nnkTupleTy:
-    # (name: "jeff", age: 34)
-    result = newCall(writeTuple, s, o)
-  of nnkTupleConstr:
-    # ("jeff", 34)
-    result = newCall(writeTuple, s, o)
-  else:
-    error "attempt to write unrecognized type: " & $typ.kind
 
 proc read[S, T](s: var Serializer[S]; o: var ref T) =
   const
@@ -305,51 +324,26 @@ proc read[S, T](s: var Serializer[S]; o: var ref T) =
     else:
       o = cast[ref T](p)
 
-proc write[S, T](s: var Serializer[S]; o: seq[T]) =
-  runnableExamples:
-    # start with some data
-    var q = @[1, 1, 2, 3, 5]
-    # prepare a string
-    var s: string
-    # write the data into the string
-    s.freeze q
-    # check that it matches our expectation
-    assert len(s) == sizeof(frostyMagic) + sizeof(5) + 5*sizeof(0)
-    # prepare a new seq to hold some data
-    var l: seq[int]
-    # populate the seq using the string as input
-    s.thaw l
-    # confirm that the two sequences of data match
-    assert l == q
+proc writeSequence[S, T](s: var Serializer[S]; o: seq[T]) =
+  s.greatenIndent:
+    s.write len(o)
+    for i, item in pairs o:
+      s.debung $i & " " & $typeof(item) & " items " & $len(o)
+      s.write item
 
-  s.write len(o)
-  for item in items(o):
-    s.write item
+proc readSequence[S, T](s: var Serializer[S]; o: var seq[T]) =
+  s.greatenIndent:
+    var l = len(o)          # type inference
+    s.read l                # get the len of the seq
+    o.setLen(l)             # pre-alloc the sequence
+    for item in mitems(o):  # iterate over mutable items
+      s.read item           # read into the item
 
-proc read[S, T](s: var Serializer[S]; o: var seq[T]) =
-  var l = len(o)          # type inference
-  s.read l                # get the len of the seq
-  o.setLen(l)             # pre-alloc the sequence
-  for item in mitems(o):  # iterate over mutable items
-    s.read item           # read into the item
-
-proc writePrimitive[T](s: var Serializer[Stream]; o: T) =
+proc writePrimitive[T](s: var Serializer[Stream]; o: T) {.used.} =
   write(s.stream, o)
-
-proc write[S, T](s: var Serializer[S]; o: T; parent = 0) =
-  when T is object or T is tuple:
-    writeObject(s, o, parent = parent)
-  else:
-    writePrimitive(s, o)
 
 proc readPrimitive[T](s: var Serializer[Stream]; o: var T) =
   streams.read(s.stream, o)
-
-proc read[S, T](s: var Serializer[S]; o: var T) =
-  when T is object or T is tuple:
-    readObject(s, o)
-  else:
-    readPrimitive(s, o)
 
 proc freeze*[T](o: T; stream: Stream) =
   ## Write `o` into `stream`.
@@ -418,6 +412,22 @@ proc thaw*[T](str: string; o: var T) =
   ## Read `o` from `str`.
   ##
   ## A "magic" value must prefix the input string.
+  runnableExamples:
+    # start with some data
+    var q = @[1, 1, 2, 3, 5]
+    # prepare a string
+    var s: string
+    # write the data into the string
+    s.freeze q
+    # check that it matches our expectation
+    assert len(s) == sizeof(frostyMagic) + sizeof(5) + 5*sizeof(0)
+    # prepare a new seq to hold some data
+    var l: seq[int]
+    # populate the seq using the string as input
+    s.thaw l
+    # confirm that the two sequences of data match
+    assert l == q
+
   var ss = newStringStream(str)
   thaw(ss, o)
   close ss
@@ -429,7 +439,7 @@ proc thaw*[T](str: string): T =
   thaw(str, result)
 
 when frostyNet:
-  proc write(s: var Serializer[Socket]; o: string) =
+  proc writeString[T](s: var Serializer[Socket]; o: T) =
     var l = len(o)            # type inference
     # send the length of the string
     if send(s.socket, data = addr l, size = sizeof(l)) != sizeof(l):
@@ -437,7 +447,7 @@ when frostyNet:
     # send the string itself; this can raise...
     send(s.socket, data = o)
 
-  proc read(s: var Serializer[Socket]; o: var string) =
+  proc readString[T](s: var Serializer[Socket]; o: var T) =
     var l = len(o)            # type inference
     # receive the string size
     if recv(s.socket, data = addr l, size = sizeof(l)) != sizeof(l):
@@ -449,7 +459,7 @@ when frostyNet:
       if recv(s.socket, data = o, size = l) != l:
         raise newException(ThawError, "short read; socket closed?")
 
-  proc writePrimitive[T](s: var Serializer[Socket]; o: T) =
+  proc writePrimitive[T](s: var Serializer[Socket]; o: T) {.used.} =
     if send(s.socket, data = addr o, size = sizeof(o)) != sizeof(o):
       raise newException(FreezeError, "short write; socket closed?")
 
@@ -479,3 +489,4 @@ when frostyNet:
       var s = newSerializer(socket)
       s.read o
 
+{.pop.}
