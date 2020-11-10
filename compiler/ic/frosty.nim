@@ -15,6 +15,14 @@ const
 when frostyDebug:
   import std/strutils
   import std/hashes
+  type
+    Ice = object
+      p: int
+      h: Hash
+else:
+  type
+    Ice = object
+      p: int
 
 when frostySorted:
   when frostyDebug:
@@ -47,11 +55,6 @@ type
   ## An error raised during `freeze`.
   ThawError* = ValueError    ##
   ## An error raised during `thaw`.
-
-  Ice = object
-    p: int
-    when frostyDebug:
-      h: Hash
 
 template refAddr(o: typed): int =
   when o is ref:
@@ -418,7 +421,7 @@ proc thaw*[T](str: string; o: var T) =
     # prepare a string
     var s: string
     # write the data into the string
-    s.freeze q
+    q.freeze s
     # check that it matches our expectation
     assert len(s) == sizeof(frostyMagic) + sizeof(5) + 5*sizeof(0)
     # prepare a new seq to hold some data
