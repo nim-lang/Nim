@@ -154,6 +154,49 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
+proc isNumeric*(s: string): bool =
+  ## Check whether the string is numeric.
+  ## When the string is an integer, float or exponential, it returns true,
+  ## otherwise it returns false.
+  ## Note: The reason why `parseFloat()` is not used to achieve this is its
+  ## poor performance.
+  var dotCount, plusCount, lessCount, eCount, numCount = 0
+  for c in s:
+    case c
+    of '+':
+      if eCount == 1:
+        if plusCount == 2:
+          return false
+      else:
+        if plusCount == 1:
+          return false
+      inc(plusCount)
+    of '-':
+      if eCount == 1:
+        if lessCount == 2:
+          return false
+      else:
+        if lessCount == 1:
+          return false
+      inc(lessCount)
+    of '.':
+      if dotCount == 1:
+        return false
+      inc(dotCount)
+    of 'e', 'E':
+      if numCount > 0 or dotCount > 0:
+        if eCount == 1:
+          return false
+      else:
+        return false
+      inc(eCount)
+    of '0'..'9':
+      inc(numCount)
+    else:
+      return false
+
+  return true
+  
 proc isSpaceAscii*(c: char): bool {.noSideEffect,
   rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
