@@ -158,7 +158,8 @@ proc isNumeric*(s: string): bool =
   ## Checks whether the string is numeric.
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
-  ## Note: The reason why `parseFloat()` is not used to achieve this is its
+  ##
+  ## **Note:** The reason why `parseFloat()` is not used to achieve this is its
   ## poor performance.
   runnableExamples:
     doAssert isNumeric("123") == true
