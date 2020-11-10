@@ -1282,13 +1282,13 @@ string from a cstring:
   var cstr: cstring = str
   var newstr: string = $cstr
 
-In C backend, cstring literals shouldn't be modified. Otherwise it will cause segmentation fault:
+In C backend, ``cstring`` literals shouldn't be modified. Otherwise it will cause segmentation fault:
 
 .. code-block:: nim
   var x = cstring"literals"
   x[1] = 'A' # This is wrong!!!
 
-If cstring originates from a regular memory(not read-only memory), it could be modified:
+If ``cstring`` originates from a regular memory(not read-only memory), it could be modified:
 
 .. code-block:: nim
   var x = "123456"
