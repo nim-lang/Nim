@@ -63,7 +63,7 @@ Possible Commands:
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
-                           ie. nimble)
+                           e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
   fusion                   clone fusion into the working tree
