@@ -127,6 +127,7 @@ template declareClosures =
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
     of meGridTableNotImplemented: k = errGridTableNotImplemented
+    of meMarkdownIllformedTable: k = errMarkdownIllformedTable
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
