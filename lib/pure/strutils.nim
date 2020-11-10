@@ -159,7 +159,7 @@ proc isNumeric*(s: string): bool =
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
   ##
-  ## **Note:** The reason why `parseFloat()` is not used to achieve this is its
+  ## **Note:** The reason that `parseFloat()` is not used to achieve this is its
   ## poor performance.
   runnableExamples:
     doAssert isNumeric("123") == true
@@ -171,25 +171,29 @@ proc isNumeric*(s: string): bool =
     doAssert isNumeric("e123.45") == false
     doAssert isNumeric("123abc") == false
     doAssert isNumeric("123.45.6") == false
-  var dotCount, plusCount, lessCount, eCount, numCount = 0
+    doAssert isNumeric("123.45e++5") == false
+  var leftPlusCount, rightPlusCount, leftLessCount, rightLessCount,
+      dotCount, eCount, numCount = 0
   for c in s:
     case c
     of '+':
-      if eCount == 1:
-        if plusCount == 2:
+      if eCount == 0:
+        if leftPlusCount == 1:
           return false
+        inc(leftPlusCount)
       else:
-        if plusCount == 1:
+        if rightPlusCount == 1:
           return false
-      inc(plusCount)
+        inc(rightPlusCount)
     of '-':
-      if eCount == 1:
-        if lessCount == 2:
+      if eCount == 0:
+        if leftLessCount == 1:
           return false
+        inc(leftLessCount)
       else:
-        if lessCount == 1:
+        if rightLessCount == 1:
           return false
-      inc(lessCount)
+        inc(rightLessCount)
     of '.':
       if dotCount == 1:
         return false
