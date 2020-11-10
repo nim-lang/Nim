@@ -155,7 +155,7 @@ proc isDigit*(c: char): bool {.noSideEffect,
   return c in Digits
 
 proc isNumeric*(s: string): bool =
-  ## Check whether the string is numeric.
+  ## Checks whether the string is numeric.
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
   ## Note: The reason why `parseFloat()` is not used to achieve this is its
