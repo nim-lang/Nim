@@ -46,28 +46,28 @@ proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo 
     c.filenames[p.file] = fileInfoIdx(ir.sh.config,
                                       AbsoluteFile ir.sh.strings[p.file],
                                       itIsKnown)
-  TLineInfo(line: p.line, col: p.col, fileIndex: c.filenames[p.file])
+  result = TLineInfo(line: p.line, col: p.col, fileIndex: c.filenames[p.file])
 
 proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
   # XXX: hack; assume a zero LitId means the PackedLib is all zero (empty)
-  if l.name.int == 0: return
+  if l.name.int == 0: return nil
 
   result = PLib(generated: l.generated, isOverriden: l.isOverriden,
                 kind: l.kind, name: rope ir.sh.strings[l.name],
                 path: fromTree(l.path, c))
 
 proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
-  if id == nilItemId: return
+  if id == nilItemId: return nil
   # short-circuit if we already have the PSym
   result = getOrDefault(c.symMap, id, nil)
-  if result != nil: return
-  result = fromSym(id.item, id, ir, c)
-  # cache the result
-  c.symMap[id] = result
+  if result == nil:
+    result = fromSym(id.item, id, ir, c)
+    # cache the result
+    c.symMap[id] = result
 
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   result = getOrDefault(c.symMap, id, nil)
-  if result != nil: return
+  if result != nil: return nil
 
   result = PSym(itemId: id, kind: s.kind, magic: s.magic, flags: s.flags,
                 info: fromLineInfo(s.info, ir, c), options: s.options,
@@ -104,17 +104,18 @@ proc asItemId(ir: PackedTree; pos = 0.NodePos): ItemId =
 
 proc fromSymNode(ir: PackedTree; c: var Context; pos = 0.NodePos): PSym =
   template n: Node = ir.nodes[int pos]
-  let id = case n.kind
-  of nkModuleRef:
-    asItemId(ir, pos)
-  else:
-    ItemId(module: c.thisModule, item: n.operand)
+  let id =
+    case n.kind
+    of nkModuleRef:
+      asItemId(ir, pos)
+    else:
+      ItemId(module: c.thisModule, item: n.operand)
   result = loadSymbol(id, c, ir)
 
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
   # short-circuit if we already have the PType
   result = getOrDefault(c.typeMap, t.nonUniqueId, nil)
-  if result != nil: return
+  if result != nil: return nil
 
   result = PType(kind: t.kind, flags: t.flags, size: t.size, align: t.align,
                  paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,

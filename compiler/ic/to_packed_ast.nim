@@ -71,9 +71,9 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 
 proc addMissing(c: var Context; p: PSym) =
   if not p.isNil:
-    #if p.itemId.module == c.thisModule:
-    if p.itemId notin c.symMap:
-      c.pendingSyms.add p
+    if p.itemId.module == c.thisModule:
+      if p.itemId notin c.symMap:
+        c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
   if not p.isNil:
@@ -103,27 +103,20 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
   for op, s in pairs t.attachedOps:
     c.addMissing s
     p.attachedOps[op] = s.safeItemId itemId
-
   p.typeInst = t.typeInst.toPackedType(ir, c)
-
   for kid in items t.sons:
     p.types.add kid.toPackedType(ir, c)
-
   for i, s in items t.methods:
     c.addMissing s
     p.methods.add (i, s.safeItemId itemId)
-
   c.addMissing t.sym
   p.sym = t.sym.safeItemId itemId
-
   c.addMissing t.owner
   p.owner = t.owner.safeItemId itemId
-
   if not t.n.isNil:
     p.nodekind = t.n.kind
     p.nodeflags = t.n.flags
     t.n.toPackedNode(p.node, c)
-
   ir.flush c
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
