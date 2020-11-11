@@ -410,7 +410,7 @@ ol ul {
   margin-bottom: 0;
   margin-left: 1.25em; }
 
-li {
+ul.simple > li {
     list-style-type: circle;
 }
 
