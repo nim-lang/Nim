@@ -1555,7 +1555,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         for i in 1..<f.len:
           let x = PType(idTableGet(c.bindings, genericBody[i-1]))
           if x == nil:
-            discard "maybe fine (for eg. a==tyNil)"
+            discard "maybe fine (for e.g. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError(c.c.graph.config, "wrong instantiated type!")
           else:
@@ -2489,7 +2489,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             container = nil
           else:
             # we end up here if the argument can be converted into the varargs
-            # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
+            # formal (e.g. seq[T] -> varargs[T]) but we have already instantiated
             # a container
             #assert arg.kind == nkHiddenStdConv # for 'nim check'
             # this assertion can be off

@@ -262,6 +262,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
   if fileExists("tools/nimgrep.nim"):
     var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
     t.spec.action = actionCompile
+    # force target to C because of MacOS 10.15 SDK headers bug
+    # https://github.com/nim-lang/Nim/pull/15612#issuecomment-712471879
+    t.spec.targets = { targetC }
     testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
@@ -410,7 +413,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
   proc isValid(file: string): bool =
     for dir in parentDirs(file, inclusive = false):
       if dir.lastPathPart in ["includes", "nimcache"]:
-        # eg: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
+        # e.g.: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
         return false
     let name = extractFilename(file)
     if name.splitFile.ext != ".nim": return false
@@ -430,7 +433,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     #[
     todo:
     this logic is fragile:
-    false positives (if appears in a comment), or false negatives, eg
+    false positives (if appears in a comment), or false negatives, e.g.
     `when defined(osx) and isMainModule`.
     Instead of fixing this, see https://github.com/nim-lang/Nim/issues/10045
     for a much better way.

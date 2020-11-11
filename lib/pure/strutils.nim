@@ -1443,7 +1443,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
-  ## * `dedent proc<#dedent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1464,7 +1464,7 @@ proc unindent*(s: string, count: Natural = int.high, padding: string = " "): str
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `dedent proc<#dedent,string,Natural,string>`
+  ## * `dedent proc<#dedent,string,Natural>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1506,14 +1506,15 @@ proc indentation*(s: string): Natural {.since: (1, 3).} =
 proc dedent*(s: string, count: Natural = indentation(s)): string
     {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
-  ## is that this by default only cuts off the amount of indentation that all
-  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ## The only difference between this and the
+  ## `unindent proc<#unindent,string,Natural,string>`_ is that this by default
+  ## only cuts off the amount of indentation that all lines of ``s`` share as
+  ## opposed to all indentation. It only supports spaces as padding.
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `unindent proc<#unindent,string,Natural,string>`
+  ## * `unindent proc<#unindent,string,Natural,string>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1905,7 +1906,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,Natural,int>`_
+  ## * `rfind proc<#rfind,string,char,Natural>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1933,7 +1934,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],Natural,int>`_
+  ## * `rfind proc<#rfind,string,set[char],Natural>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1950,7 +1951,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,Natural,int>`_
+  ## * `rfind proc<#rfind,string,string,Natural>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
