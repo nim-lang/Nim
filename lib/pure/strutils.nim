@@ -154,10 +154,12 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isNumeric*(s: string): bool =
+proc isNumeric*(s: string, enabledNaN = false): bool =
   ## Checks whether the string is numeric.
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
+  ## 'enabledNaN' variable value indicates whether 'NaN', 'Inf', '.9 ', '9.'
+  ## and other special forms of values are valid. 
   ##
   ## **Note:** The reason that `parseFloat()` is not used to achieve this is its
   ## poor performance.
@@ -174,12 +176,11 @@ proc isNumeric*(s: string): bool =
     doAssert not isNumeric("123.45.6") == true
     doAssert not isNumeric("123.45e++5") == true
     doAssert not isNumeric("5.2+e1") == true
-    doAssert isNumeric(".9") == true
-    doAssert isNumeric("Inf") == true
-    doAssert isNumeric("-Inf") == true
-    doAssert isNumeric("NaN") == true
-    doAssert isNumeric("nAn") == true
-    doAssert isNumeric("-.1") == true
+    doAssert isNumeric(".9", true) == true
+    doAssert isNumeric("Inf", true) == true
+    doAssert isNumeric("-Inf", true) == true
+    doAssert isNumeric("NaN", true) == true
+    doAssert isNumeric("nAn", true) == true
     doAssert isNumeric("0.000_005") == true
     doAssert isNumeric("1e1_00") == true
     doAssert isNumeric("0.00_0001") == true
@@ -201,11 +202,17 @@ proc isNumeric*(s: string): bool =
   if s.len == 3:
     if (s[0] in {'i', 'I'} and s[1] in {'n', 'N'} and s[2] in {'f', 'F'}) or
        (s[0] in {'n', 'N'} and s[1] in {'a', 'A'} and s[2] in {'n', 'N'}):
-      return true
+      if enabledNaN:
+        return true
+      else:
+        return false
   if s.len == 4:
     if (s[0] in {'+', '-'} and s[1] in {'i', 'I'} and s[2] in {'n', 'N'} and s[3] in {'f', 'F'}) or
        (s[0] in {'+', '-'} and s[1] in {'n', 'N'} and s[2] in {'a', 'A'} and s[3] in {'n', 'N'}):
-      return true
+      if enabledNaN:
+        return true
+      else:
+        return false
 
   var eLeftCount, eRightCount, dotCount, eCount, numCount = 0
   var i = 0
@@ -229,6 +236,14 @@ proc isNumeric*(s: string): bool =
     of '.':
       if dotCount == 1:
         return false
+      if not enabledNaN:
+        if numCount == 0:
+          return false
+        else:
+          if i == s.len - 1:
+            return false
+          if s[i+1] in {'e', 'E'}:
+            return false
       numCount = 0
       inc(dotCount)
     of 'e', 'E':
