@@ -566,6 +566,11 @@ proc delete*(obj: JsonNode, key: string) =
     raise newException(KeyError, "key not in object")
   obj.fields.del(key)
 
+proc delete*(obj: JsonNode, i: Natural) =
+  ## Deletes ``arr[i]``.
+  assert(obj.kind == JArray)
+  obj.elems.delete(i)
+
 proc copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
   case p.kind
