@@ -495,7 +495,8 @@ proc semOpAux(c: PContext, n: PNode) =
 proc overloadedCallOpr(c: PContext, n: PNode): PNode =
   # quick check if there is *any* () operator overloaded:
   var par = getIdent(c.cache, "()")
-  if searchInScopes(c, par) == nil:
+  var amb = false
+  if searchInScopes(c, par, amb) == nil:
     result = nil
   else:
     result = newNodeI(nkCall, n.info)
@@ -653,7 +654,8 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
     return isUnresolvedSym(n.sym)
   of nkIdent, nkAccQuoted:
     let ident = considerQuotedIdent(c, n)
-    let sym = searchInScopes(c, ident)
+    var amb = false
+    let sym = searchInScopes(c, ident, amb)
     if sym != nil:
       return isUnresolvedSym(sym)
     else:
@@ -1875,10 +1877,12 @@ proc semDefined(c: PContext, n: PNode): PNode =
 proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
+    var amb = false
+    let ident = considerQuotedIdent(c, n)
     result = if onlyCurrentScope:
-               localSearchInScope(c, considerQuotedIdent(c, n))
+               localSearchInScope(c, ident)
              else:
-               searchInScopes(c, considerQuotedIdent(c, n))
+               searchInScopes(c, ident, amb)
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
@@ -2726,6 +2730,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #when defined(nimsuggest):
     #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
+    c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
       #if c.config.cmd == cmdPretty and n[0].kind == nkDotExpr:
@@ -2735,7 +2740,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result = semDirectOp(c, n, flags)
       of skType:
         # XXX think about this more (``set`` procs)
-        let ambig = contains(c.ambiguousSymbols, s.id)
+        let ambig = c.isAmbiguous
         if not (n[0].kind in {nkClosedSymChoice, nkOpenSymChoice, nkIdent} and ambig) and n.len == 2:
           result = semConv(c, n)
         elif ambig and n.len == 1:

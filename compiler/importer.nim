@@ -20,13 +20,25 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
     let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
 
-proc importPureEnumField*(c: PContext; s: PSym) =
-  let check = someSymFromImportTable(c, s.name)
-  if check == nil:
+proc declarePureEnumField*(c: PContext; s: PSym) =
+  # XXX Remove the outer 'if' statement and see what breaks.
+  var amb = false
+  if someSymFromImportTable(c, s.name, amb) == nil:
     let checkB = strTableGet(c.pureEnumFields, s.name)
     if checkB == nil:
       strTableAdd(c.pureEnumFields, s)
-    else:
+    when false:
+      # mark as ambiguous:
+      incl(c.ambiguousSymbols, checkB.id)
+      incl(c.ambiguousSymbols, s.id)
+
+proc importPureEnumField*(c: PContext; s: PSym) =
+  var amb = false
+  if someSymFromImportTable(c, s.name, amb) == nil:
+    let checkB = strTableGet(c.pureEnumFields, s.name)
+    if checkB == nil:
+      strTableAdd(c.pureEnumFields, s)
+    when false:
       # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
@@ -35,12 +47,13 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
-  var check = someSymFromImportTable(c, s.name)
-  if check != nil and check.id != s.id:
-    if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
-      # s and check need to be qualified:
-      incl(c.ambiguousSymbols, s.id)
-      incl(c.ambiguousSymbols, check.id)
+  when false:
+    var check = someSymFromImportTable(c, s.name)
+    if check != nil and check.id != s.id:
+      if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
+        # s and check need to be qualified:
+        incl(c.ambiguousSymbols, s.id)
+        incl(c.ambiguousSymbols, check.id)
   # thanks to 'export' feature, it could be we import the same symbol from
   # multiple sources, so we need to call 'strTableAdd' here:
   when false:

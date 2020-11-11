@@ -146,7 +146,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
-      else: importPureEnumField(c, e)
+      else: declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
@@ -1593,7 +1593,9 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
       if strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"
       else:
-        let sym = searchInScopes(c, ident)
+        var amb = false
+        let sym = searchInScopes(c, ident, amb)
+        # XXX: What to do here if amb is true?
         if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
         else:

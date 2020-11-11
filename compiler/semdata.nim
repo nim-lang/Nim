@@ -96,9 +96,6 @@ type
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
     templInstCounter*: ref int # gives every template instantiation a unique id
-
-    ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
-                               # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
     inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
@@ -145,6 +142,7 @@ type
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
     typesWithOps*: seq[(PType, PType)] #\
@@ -249,7 +247,6 @@ proc popOptionEntry*(c: PContext) =
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.enforceVoidContext = PType(kind: tyTyped)
-  result.ambiguousSymbols = initIntSet()
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module

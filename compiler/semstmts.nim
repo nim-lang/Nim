@@ -450,7 +450,9 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       n.kind == nkConstSection and w in constPragmas:
       return nil
 
-    let sym = searchInScopes(c, ident)
+    var amb = false
+    let sym = searchInScopes(c, ident, amb)
+    # XXX what if amb is true?
     if sym == nil or sfCustomPragma in sym.flags: return nil
       # skip if not in scope; skip `template myAttr() {.pragma.}`
     let lhs = b[0]
@@ -1465,7 +1467,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       if strTableGet(c.userPragmas, ident) != nil:
         continue # User defined pragma
       else:
-        let sym = searchInScopes(c, ident)
+        var amb = false
+        let sym = searchInScopes(c, ident, amb)
         if sym != nil and sfCustomPragma in sym.flags:
           continue # User custom pragma
 
