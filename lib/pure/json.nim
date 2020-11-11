@@ -566,7 +566,7 @@ proc delete*(obj: JsonNode, key: string) =
     raise newException(KeyError, "key not in object")
   obj.fields.del(key)
 
-proc delete*(obj: JsonNode, i: Natural) =
+proc delete*(obj: JsonNode, i: Natural) {.since: (1, 5).} =
   ## Deletes ``arr[i]``.
   assert(obj.kind == JArray)
   obj.elems.delete(i)
