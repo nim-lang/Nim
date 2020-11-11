@@ -1074,8 +1074,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif currentTok(p).symbol == "::":
       result = rnLiteralBlock
     elif predNL(p) and
-        (currentTok(p).symbol == "+" or currentTok(p).symbol == "*" or
-        currentTok(p).symbol == "-") and nextTok(p).kind == tkWhite:
+        currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
@@ -1114,8 +1113,7 @@ proc parseLineBlock(p: var RstParser): PRstNode =
       parseSection(p, item)
       result.add(item)
       if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-          nextTok(p).symbol == "|" and
-          p.tok[p.idx + 2].kind == tkWhite:
+          nextTok(p).symbol == "|" and p.tok[p.idx + 2].kind == tkWhite:
         inc p.idx, 3
       else:
         break
