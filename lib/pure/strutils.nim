@@ -213,6 +213,7 @@ proc isNumeric*(s: string): bool =
     else:
       return false
     inc i
+    
   return true
   
 proc isSpaceAscii*(c: char): bool {.noSideEffect,
