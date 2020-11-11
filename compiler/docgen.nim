@@ -592,7 +592,10 @@ proc getRoutineBody(n: PNode): PNode =
   (0 or more) doc comments and runnableExamples.
   ]##
   result = n[bodyPos]
-  if result.kind == nkAsgn and result[0].kind == nkSym and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+
+  # This won't be transformed: result.id = 10. Namely result[0].kind != nkSym.
+  if result.kind == nkAsgn and result[0].kind == nkSym and
+                               n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
     doAssert result.len == 2
     result = result[1]
 
