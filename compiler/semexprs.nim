@@ -2553,6 +2553,15 @@ proc semExport(c: PContext, n: PNode): PNode =
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
           markUsed(c, n.info, s)
+          if s.kind == skType and sfPure notin s.flags:
+            var etyp = s.typ
+            if etyp.kind in {tyBool, tyEnum}:
+              for j in 0..<etyp.n.len:
+                var e = etyp.n[j].sym
+                if e.kind != skEnumField:
+                  internalError(c.config, s.info, "rawImportSymbol")
+                strTableAdd(c.module.tab, e)
+
         s = nextOverloadIter(o, c, a)
 
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
