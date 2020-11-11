@@ -962,8 +962,8 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
     result[k] = vs
 
 proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
-                httpMethod: string, body = "",
-                headers: HttpHeaders = nil): Future[Response | AsyncResponse]
+                httpMethod: string, body = "", headers: HttpHeaders = nil,
+                multipart: MultipartData = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
   if url.scheme == "":
@@ -1015,7 +1015,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
               httpMethod: HttpMethod | string = "GET", body = "",
-              headers: HttpHeaders = nil): Future[Response | AsyncResponse]
+              headers: HttpHeaders = nil,
+              multipart: MultipartData = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
@@ -1035,7 +1036,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   else:
     let parsedUrl = url
   let httpMethod = $httpMethod
-  result = await client.requestAux(parsedUrl, httpMethod, body, headers)
+  result = await client.requestAux(parsedUrl, httpMethod, body, headers, multipart)
 
   var lastURL = parsedUrl
   for i in 1..client.maxRedirects:
@@ -1083,7 +1084,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
         headers.del("Authorization")
 
     result = await client.requestAux(redirectTo, redirectMethod, redirectBody,
-                                     headers)
+                                     headers, multipart)
     lastURL = redirectTo
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
