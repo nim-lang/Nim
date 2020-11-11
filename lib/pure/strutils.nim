@@ -168,11 +168,12 @@ proc isNumeric*(s: string): bool =
     doAssert isNumeric("123.45e-2") == true
     doAssert isNumeric("+123.45E-2") == true
     doAssert isNumeric("-123.45e2") == true
-    doAssert isNumeric("e123.45") == false
-    doAssert isNumeric("abc") == false
-    doAssert isNumeric("123abc") == false
-    doAssert isNumeric("123.45.6") == false
-    doAssert isNumeric("123.45e++5") == false
+    doAssert not isNumeric("e123.45") == true
+    doAssert not isNumeric("abc") == true
+    doAssert not isNumeric("123abc") == true
+    doAssert not isNumeric("123.45.6") == true
+    doAssert not isNumeric("123.45e++5") == true
+    doAssert not isNumeric("5.2+e1") == true
     doAssert isNumeric(".9") == true
     doAssert isNumeric("Inf") == true
     doAssert isNumeric("-Inf") == true
@@ -182,12 +183,16 @@ proc isNumeric*(s: string): bool =
   var i = 0
   while i < s.len:
     case s[i]
-    of '+', '-':
+    of '+', '-':        
       if eCount == 0:
-        if eLeftCount == 1:
+        if numCount > 0:
+          return false
+        if eLeftCount > 0:
           return false
         inc(eLeftCount)
       else:
+        if numCount > 0:
+          return false
         if eRightCount == 1:
           return false
         inc(eRightCount)
@@ -199,6 +204,7 @@ proc isNumeric*(s: string): bool =
       if numCount > 0 or dotCount > 0:
         if eCount == 1:
           return false
+        numCount = 0
       else:
         return false
       inc(eCount)
