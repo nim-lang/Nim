@@ -1,6 +1,28 @@
-doAssert cast[int32](-1) is int32
-doAssert cast[int32](-1) < 0
-doAssert cast[int32](-1) + 1 == 0
-doAssert cast[int8](-1) + 1 == 0
-doAssert (cast[int32](-1) + 1) is int32
-doAssert (cast[int8](-1) + 1) is int8
+# bug #14127
+
+template int2uint(T) =
+    var a = -1
+    let b = cast[T](a)
+    doAssert b < 0
+    let c = b + 1
+    doAssert c is T
+    doAssert c == 0
+
+int2uint(int8)
+int2uint(int16)
+int2uint(int32)
+int2uint(int64)
+
+# maybe related
+template uint2int(T) =
+    var a = 3
+    let b = cast[T](a)
+    doAssert b > 0
+    let c = b - 1
+    doAssert c is T
+    doAssert c == 2
+
+uint2int(uint8)
+uint2int(uint16)
+uint2int(uint32)
+uint2int(uint64)
