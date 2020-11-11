@@ -1289,7 +1289,7 @@ Otherwise it will cause segmentation fault:
   var x = cstring"literals"
   x[1] = 'A' # This is wrong!!!
 
-If ``cstring`` originates from a regular memory(not read-only memory),
+If the ``cstring`` originates from a regular memory (not read-only memory),
 it could be modified:
 
 .. code-block:: nim
