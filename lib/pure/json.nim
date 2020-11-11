@@ -567,7 +567,7 @@ proc delete*(obj: JsonNode, key: string) =
   obj.fields.del(key)
 
 proc delete*(obj: JsonNode, i: Natural) {.since: (1, 5).} =
-  ## Deletes ``arr[i]``.
+  ## Deletes ``obj[i]``.
   assert(obj.kind == JArray)
   obj.elems.delete(i)
 
