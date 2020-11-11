@@ -178,7 +178,16 @@ proc isNumeric*(s: string): bool =
     doAssert isNumeric("Inf") == true
     doAssert isNumeric("-Inf") == true
     doAssert isNumeric("NaN") == true
-  if s == "Inf" or s == "inf" or s == "-Inf" or s == "-inf" or s == "NaN" or s == "nan": return true
+
+  if s.len == 3:
+    if (s[0] in {'i', 'I'} and s[1] in {'n', 'N'} and s[2] in {'f', 'F'}) or
+       (s[0] in {'n', 'N'} and s[1] in {'a', 'A'} and s[2] in {'n', 'N'}):
+      return true
+  if s.len == 4:
+    if (s[0] in {'+', '-'} and s[1] in {'i', 'I'} and s[2] in {'n', 'N'} and s[3] in {'f', 'F'}) or
+       (s[0] in {'+', '-'} and s[1] in {'n', 'N'} and s[2] in {'a', 'A'} and s[3] in {'n', 'N'}):
+      return true
+
   var eLeftCount, eRightCount, dotCount, eCount, numCount = 0
   var i = 0
   while i < s.len:
@@ -213,7 +222,6 @@ proc isNumeric*(s: string): bool =
     else:
       return false
     inc i
-    
   return true
   
 proc isSpaceAscii*(c: char): bool {.noSideEffect,
