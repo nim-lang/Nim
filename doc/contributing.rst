@@ -8,11 +8,8 @@ Contributing
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
 
-The PR has to be approved (and is often merged too) by one "code owner", either
-by the code owner who is responsible for the subsystem the PR belongs to or by
-two core developers or by Araq.
+The PR has to be approved by two core developers or by Araq.
 
-See `codeowners <codeowners.html>`_ for more details.
 
 
 Writing tests
