@@ -42,9 +42,10 @@ proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
 
 proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo =
   if p.file notin c.filenames:
-    `[]=` c.filenames, p.file:  # too bad add() was deprecated, huh?
-      var itIsKnown: bool
-      fileInfoIdx(ir.sh.config, AbsoluteFile ir.sh.strings[p.file], itIsKnown)
+    var itIsKnown: bool
+    c.filenames[p.file] = fileInfoIdx(ir.sh.config,
+                                      AbsoluteFile ir.sh.strings[p.file],
+                                      itIsKnown)
   TLineInfo(line: p.line, col: p.col, fileIndex: c.filenames[p.file])
 
 proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
