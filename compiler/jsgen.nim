@@ -2406,8 +2406,7 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "($1 $2)" % [r.res, trimmer]
   elif toInt:
     if fromInt:
-      let trimmer = unsignedTrimmer(dest.size)
-      r.res = "($1 $2)" % [r.res, trimmer]
+      return
     elif fromUint:
       if src.size == 4 and dest.size == 4:
         # XXX prevent multi evaluations
