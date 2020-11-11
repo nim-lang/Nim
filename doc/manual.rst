@@ -883,9 +883,7 @@ Ordinal types have the following characteristics:
   than the largest value produces a panic or a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
-types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
-in later versions of the language.)
+types) belong to ordinal types.
 
 A distinct type is an ordinal type if its base type is an ordinal type.
 
@@ -2697,6 +2695,36 @@ the variable has been initialized and does not rely on syntactic properties:
       x = a()
     # use x
 
+`requiresInit` pragma can also be applyied to `distinct` types.
+
+Given the following distinct type definitions:
+
+.. code-block:: nim
+  type
+    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    DistinctString {.requiresInit.} = distinct string
+
+The following code blocks will fail to compile:
+
+.. code-block:: nim
+  var foo: DistinctFoo
+  foo.x = "test"
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  var s: DistinctString
+  s = "test"
+  doAssert s == "test"
+
+But these ones will compile successfully:
+
+.. code-block:: nim
+  let foo = DistinctFoo(Foo(x: "test"))
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  let s = "test"
+  doAssert s == "test"
 
 Let statement
 -------------
