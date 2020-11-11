@@ -57,7 +57,7 @@ proc unidecode*(s: string): string =
   ##
   ## ..code-block:: nim
   ##
-  ##   unidecode("\x53\x17\x4E\xB0")
+  ##   unidecode("北京")
   ##
   ## Results in: "Bei Jing"
   ##

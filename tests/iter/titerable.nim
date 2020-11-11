@@ -14,7 +14,7 @@ discard """
 iterator map[T, U](s: iterator:T{.inline.}, f: proc(x: T): U): U =
   for e in s: yield f(e)
 
-template toSeq(s: expr): expr =
+template toSeq(s: untyped): untyped =
   var res = newSeq[type(s)](0)
   for e in s: res.add(e)
   res

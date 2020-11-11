@@ -1,6 +1,5 @@
 discard """
   output: "Exit 1\nExit 2"
-  disabled: "macosx"
   target: "c"
 """
 import coro

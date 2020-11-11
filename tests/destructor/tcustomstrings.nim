@@ -5,7 +5,7 @@ foo bar to appendmore here
 foo bar to appendmore here
 foo bar to appendmore here
 after 20 20'''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 {.this: self.}

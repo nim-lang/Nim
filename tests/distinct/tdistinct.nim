@@ -2,6 +2,11 @@ discard """
   output: '''
 tdistinct
 25
+false
+false
+false
+false
+Foo
 '''
 """
 
@@ -83,3 +88,53 @@ type
 const d: DistTup = DistTup((
   foo:"FOO", bar:"BAR"
 ))
+
+
+# bug #7167
+
+type Id = distinct range[0..3]
+
+proc `<=`(a, b: Id): bool {.borrow.}
+
+var xs: array[Id, bool]
+
+for x in xs: echo x # type mismatch: got (T) but expected 'bool'
+
+# bug #11715
+
+type FooD = distinct int
+proc `<=`(a, b: FooD): bool {.borrow.}
+
+for f in [FooD(0): "Foo"]: echo f
+
+block tRequiresInit:
+  template accept(x) =
+    static: doAssert compiles(x)
+
+  template reject(x) =
+    static: doAssert not compiles(x)
+
+  type
+    Foo = object
+      x: string
+
+    DistinctFoo {.requiresInit, borrow: `.`.} = distinct Foo
+    DistinctString {.requiresInit.} = distinct string
+
+  reject:
+    var foo: DistinctFoo
+    foo.x = "test"
+    doAssert foo.x == "test"
+
+  accept:
+    let foo = DistinctFoo(Foo(x: "test"))
+    doAssert foo.x == "test"
+
+  reject:
+    var s: DistinctString
+    s = "test"
+    doAssert s == "test"
+
+  accept:
+    let s = "test"
+    doAssert s == "test"

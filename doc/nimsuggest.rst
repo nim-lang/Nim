@@ -105,9 +105,9 @@ completion symbols at some point in the file.
 
 The typical usage scenario for this option is to call it after the
 user has typed the dot character for `the object oriented call
-syntax <tut2.html#method-call-syntax>`_. Nimsuggest will try to return
-the suggestions sorted first by scope (from innermost to outermost)
-and then by item name.
+syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+Nimsuggest will try to return the suggestions sorted first by scope
+(from innermost to outermost) and then by item name.
 
 
 Invocation context

@@ -1,6 +1,6 @@
 discard """
   output: "ok"
-  cmd: "nim $target -d:release $options $file"
+  cmd: "nim $target --overflowChecks:off $options $file"
 """
 # Tests nim's ability to detect overflows
 
@@ -13,7 +13,7 @@ var
 
 try:
   writeLine(stdout, b - a)
-except OverflowError:
+except OverflowDefect:
   overflowDetected = true
 
 {.pop.} # overflow check
@@ -33,7 +33,7 @@ block: # Overflow checks in a proc
 
   try:
     foo()
-  except OverflowError:
+  except OverflowDefect:
     overflowDetected = true
 
   doAssert(overflowDetected)
@@ -53,7 +53,7 @@ block: # Overflow checks in a forward declared proc
 
   try:
     foo()
-  except OverflowError:
+  except OverflowDefect:
     overflowDetected = true
 
   doAssert(overflowDetected)
@@ -73,7 +73,7 @@ block: # Overflow checks doesn't affect fwd declaration
 
   try:
     foo()
-  except OverflowError:
+  except OverflowDefect:
     overflowDetected = true
 
   doAssert(not overflowDetected)

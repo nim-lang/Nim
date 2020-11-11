@@ -1,6 +1,5 @@
 discard """
   output: "Key: 12 value: 12Key: 13 value: 13 Key: A value: 12 Key: B value: 13"
-  disabled: true
 """
 
 # test explicit type instantiation
@@ -14,12 +13,12 @@ proc newDict*[TKey, TValue](): PDict[TKey, TValue] =
   new(result)
   result.data = @[]
 
-proc add*(d: PDict, k: TKey, v: TValue) =
+proc add*(d: PDict, k: d.TKey, v: d.TValue) =
   d.data.add((k, v))
 
 
-#iterator items*(d: PDict): tuple[k: TKey, v: TValue] =
-#  for k, v in items(d.data): yield (k, v)
+iterator items*(d: PDict): tuple[k: d.TKey, v: d.TValue] =
+  for k, v in items(d.data): yield (k, v)
 
 var d = newDict[int, string]()
 d.add(12, "12")

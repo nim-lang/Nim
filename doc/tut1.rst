@@ -18,7 +18,7 @@ Introduction
 
 This document is a tutorial for the programming language *Nim*.
 This tutorial assumes that you are familiar with basic programming concepts
-like variables, types or statements but is kept very basic. The `manual
+like variables, types, or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
 All code examples in this tutorial, as well as the ones found in the rest of
 Nim's documentation, follow the `Nim style guide <nep1.html>`_.
@@ -41,9 +41,9 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the ``--run`` `switch <nimc.html#compiler-usage-command-line-switches>`_ Nim
+With the ``--run`` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
-command line arguments by appending them after the filename::
+command-line arguments by appending them after the filename::
 
   nim compile --run greetings.nim arg1 arg2
 
@@ -55,20 +55,20 @@ To compile a release version use::
 
   nim c -d:release greetings.nim
 
-By default the Nim compiler generates a large amount of runtime checks
-aiming for your debugging pleasure. With ``-d:release`` these checks are
+By default, the Nim compiler generates a large number of runtime checks
+aiming for your debugging pleasure. With ``-d:release`` some checks are
 `turned off and optimizations are turned on
-<nimc.html#compiler-usage-compile-time-symbols>`_.
+<nimc.html#compiler-usage-compileminustime-symbols>`_.
 
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
 starts. Indentation is Nim's way of grouping statements. Indentation is
 done with spaces only, tabulators are not allowed.
 
-String literals are enclosed in double quotes. The ``var`` statement declares
+String literals are enclosed in double-quotes. The ``var`` statement declares
 a new variable named ``name`` of type ``string`` with the value that is
-returned by the `readLine <system.html#readLine,File>`_ procedure. Since the
-compiler knows that `readLine <system.html#readLine,File>`_ returns a string,
+returned by the `readLine <io.html#readLine,File>`_ procedure. Since the
+compiler knows that `readLine <io.html#readLine,File>`_ returns a string,
 you can leave out the type in the declaration (this is called `local type
 inference`:idx:). So this will work too:
 
@@ -80,7 +80,7 @@ Note that this is basically the only form of type inference that exists in
 Nim: it is a good compromise between brevity and readability.
 
 The "hello world" program contains several identifiers that are already known
-to the compiler: ``echo``, `readLine <system.html#readLine,File>`_, etc.
+to the compiler: ``echo``, `readLine <io.html#readLine,File>`_, etc.
 These built-ins are declared in the system_ module which is implicitly
 imported by any other module.
 
@@ -96,16 +96,16 @@ keywords, comments, operators, and other punctuation marks.
 String and character literals
 -----------------------------
 
-String literals are enclosed in double quotes; character literals in single
+String literals are enclosed in double-quotes; character literals in single
 quotes. Special characters are escaped with ``\``: ``\n`` means newline, ``\t``
 means tabulator, etc. There are also *raw* string literals:
 
 .. code-block:: Nim
   r"C:\program files\nim"
 
-In raw literals the backslash is not an escape character.
+In raw literals, the backslash is not an escape character.
 
-The third and last way to write string literals are *long string literals*.
+The third and last way to write string literals is *long-string literals*.
 They are written with three quotes: ``""" ... """``; they can span over
 multiple lines and the ``\`` is not an escape character either. They are very
 useful for embedding HTML code templates for example.
@@ -142,22 +142,13 @@ comments can also be nested.
     ]#
   ]#
 
-You can also use the `discard statement <#procedures-discard-statement>`_ together with *long string
-literals* to create block comments:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  discard """ You can have any Nim code text commented
-  out inside this with no indentation restrictions.
-        yes("May I ask a pointless question?") """
-
 
 Numbers
 -------
 
 Numerical literals are written as in most other languages. As a special twist,
 underscores are allowed for better readability: ``1_000_000`` (one million).
-A number that contains a dot (or 'e' or 'E') is a floating point literal:
+A number that contains a dot (or 'e' or 'E') is a floating-point literal:
 ``1.0e9`` (one billion). Hexadecimal literals are prefixed with ``0x``,
 binary literals with ``0b`` and octal literals with ``0o``. A leading zero
 alone does not produce an octal.
@@ -204,11 +195,11 @@ statement and all the variables will have the same value:
   echo "x ", x  # outputs "x 42"
   echo "y ", y  # outputs "y 3"
 
-Note that declaring multiple variables with a single assignment which calls a
+Note that declaring multiple variables with a single assignment that calls a
 procedure can have unexpected results: the compiler will *unroll* the
 assignments and end up calling the procedure several times. If the result of
 the procedure depends on side effects, your variables may end up having
-different values! For safety use side-effect free procedures if making multiple
+different values! For safety use side-effect-free procedures if making multiple
 assignments.
 
 
@@ -305,10 +296,10 @@ a multi-branch:
   else:
     echo "Hi, ", name, "!"
 
-As it can be seen, for an ``of`` branch a comma separated list of values is also
+As it can be seen, for an ``of`` branch a comma-separated list of values is also
 allowed.
 
-The case statement can deal with integers, other ordinal types and strings.
+The case statement can deal with integers, other ordinal types, and strings.
 (What an ordinal type is will be explained soon.)
 For integers or other ordinal types value ranges are also possible:
 
@@ -335,12 +326,13 @@ the compiler that for every other value nothing should be done:
   of 3, 8: echo "The number is 3 or 8"
   else: discard
 
-The empty `discard statement`_ is a *do nothing* statement. The compiler knows
-that a case statement with an else part cannot fail and thus the error
-disappears. Note that it is impossible to cover all possible string values:
-that is why string cases always need an ``else`` branch.
+The empty `discard statement <#procedures-discard-statement>`_ is a *do
+nothing* statement. The compiler knows that a case statement with an else part
+cannot fail and thus the error disappears. Note that it is impossible to cover
+all possible string values: that is why string cases always need an ``else``
+branch.
 
-In general the case statement is used for subrange types or enumerations where
+In general, the case statement is used for subrange types or enumerations where
 it is of great help that the compiler checks that you covered any possible
 value.
 
@@ -368,8 +360,8 @@ For statement
 -------------
 
 The ``for`` statement is a construct to loop over any element an *iterator*
-provides. The example uses the built-in `countup <system.html#countup>`_
-iterator:
+provides. The example uses the built-in `countup
+<system.html#countup.i,T,T,Positive>`_ iterator:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -380,8 +372,8 @@ iterator:
 
 The variable ``i`` is implicitly declared by the
 ``for`` loop and has the type ``int``, because that is what `countup
-<system.html#countup>`_ returns. ``i`` runs through the values 1, 2, .., 10.
-Each value is ``echo``-ed. This code does the same:
+<system.html#countup.i,T,T,Positive>`_ returns. ``i`` runs through the values
+1, 2, .., 10. Each value is ``echo``-ed. This code does the same:
 
 .. code-block:: nim
   echo "Counting to 10: "
@@ -400,23 +392,32 @@ Counting down can be achieved as easily (but is less often needed):
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nim also has a `..
-<system.html#...i,S,T>`_ iterator that does the same:
+<system.html#...i,T,T>`_ iterator that does the same:
 
 .. code-block:: nim
-  for i in 1..10:
+  for i in 1 .. 10:
     ...
 
-Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less than the higher index:
+Zero-indexed counting has two shortcuts ``..<`` and ``.. ^1``
+(`backward index operator <system.html#^.t%2Cint>`_) to simplify
+counting to one less than the higher index:
 
 .. code-block:: nim
-  for i in 0..<10:
-    ...  # 0..9
+  for i in 0 ..< 10:
+    ...  # 0 .. 9
 
 or
 
 .. code-block:: nim
   var s = "some string"
-  for i in 0..<s.len:
+  for i in 0 ..< s.len:
+    ...
+
+or
+
+.. code-block:: nim
+  var s = "some string"
+  for idx, c in s[0 .. ^1]:
     ...
 
 Other useful iterators for collections (like arrays and sequences) are
@@ -519,7 +520,7 @@ differences:
 * The compiler checks the semantics and produces code *only* for the statements
   that belong to the first condition that evaluates to ``true``.
 
-The ``when`` statement is useful for writing platform specific code, similar to
+The ``when`` statement is useful for writing platform-specific code, similar to
 the ``#ifdef`` construct in the C programming language.
 
 
@@ -529,15 +530,15 @@ Statements and indentation
 Now that we covered the basic control flow statements, let's return to Nim
 indentation rules.
 
-In Nim there is a distinction between *simple statements* and *complex
+In Nim, there is a distinction between *simple statements* and *complex
 statements*. *Simple statements* cannot contain other statements:
-Assignment, procedure calls or the ``return`` statement belong to the simple
+Assignment, procedure calls, or the ``return`` statement are all simple
 statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can
 contain other statements. To avoid ambiguities, complex statements must always
 be indented, but single simple statements do not:
 
 .. code-block:: nim
-  # no indentation needed for single assignment statement:
+  # no indentation needed for single-assignment statement:
   if x: x = false
 
   # indentation needed for nested if statement:
@@ -553,8 +554,8 @@ be indented, but single simple statements do not:
     y = false
 
 
-*Expressions* are parts of a statement which usually result in a value. The
-condition in an if statement is an example for an expression. Expressions can
+*Expressions* are parts of a statement that usually result in a value. The
+condition in an if statement is an example of an expression. Expressions can
 contain indentation at certain places for better readability:
 
 .. code-block:: nim
@@ -579,10 +580,10 @@ an expression is allowed:
 Procedures
 ==========
 
-To define new commands like `echo <system.html#echo>`_ and `readLine
-<system.html#readLine,File>`_ in the examples, the concept of a `procedure`
-is needed. (Some languages call them *methods* or *functions*.) In Nim new
-procedures are defined with the ``proc`` keyword:
+To define new commands like `echo <system.html#echo,varargs[typed,]>`_
+and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
+`procedure` is needed. (Some languages call them *methods* or *functions*.)
+In Nim new procedures are defined with the ``proc`` keyword:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -616,7 +617,7 @@ Some terminology: in the example ``question`` is called a (formal) *parameter*,
 Result variable
 ---------------
 A procedure that returns a value has an implicit ``result`` variable declared
-that represents the return value. A ``return`` statement with no expression is a
+that represents the return value. A ``return`` statement with no expression is 
 shorthand for ``return result``. The ``result`` value is always returned
 automatically at the end of a procedure if there is no ``return`` statement at
 the exit.
@@ -636,10 +637,20 @@ the exit.
 The ``result`` variable is already implicitly declared at the start of the
 function, so declaring it again with 'var result', for example, would shadow it
 with a normal variable of the same name. The result variable is also already
-initialised with the type's default value. Note that referential data types will
+initialized with the type's default value. Note that referential data types will
 be ``nil`` at the start of the procedure, and thus may require manual
-initialisation.
+initialization.
 
+A procedure that does not have any ``return`` statement and does not use the
+special ``result`` variable returns the value of its last expression. For example,
+this procedure
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc helloWorld(): string =
+      "Hello, World!"
+
+returns the string "Hello, World!".
 
 Parameters
 ----------
@@ -653,7 +664,7 @@ is possible, and actually an idiom:
     :test: "nim c $1"
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
-    for i in 0 .. <nprinted:
+    for i in 0 ..< nprinted:
       echo s[i]
 
 If the procedure needs to modify the argument for the
@@ -696,9 +707,6 @@ been declared with the ``discardable`` pragma:
     return x + y
 
   p(3, 4) # now valid
-
-The ``discard`` statement can also be used to create block comments as
-described in the `Comments`_ section.
 
 
 Named arguments
@@ -754,15 +762,21 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
-  proc toString(x: int): string = ...
+  proc toString(x: int): string =
+    result =
+      if x < 0: "negative"
+      elif x > 0: "positive"
+      else: "zero"
+
   proc toString(x: bool): string =
-    if x: result = "true"
-    else: result = "false"
+    result =
+      if x: "yep"
+      else: "nope"
 
-  echo toString(13)   # calls the toString(x: int) proc
-  echo toString(true) # calls the toString(x: bool) proc
+  assert toString(13) == "positive" # calls the toString(x: int) proc
+  assert toString(true) == "yep"    # calls the toString(x: bool) proc
 
-(Note that ``toString`` is usually the `$ <system.html#$>`_ operator in
+(Note that ``toString`` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``
 calls. How this overloading resolution algorithm works exactly is not
 discussed here (it will be specified in the manual soon).  However, it does
@@ -784,7 +798,7 @@ Apart from a few built-in keyword operators such as ``and``, ``or``, ``not``,
 operators always consist of these characters:
 ``+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |``
 
-User defined operators are allowed. Nothing stops you from defining your own
+User-defined operators are allowed. Nothing stops you from defining your own
 ``@!?+~`` operator, but doing so may reduce readability.
 
 The operator's precedence is determined by its first character. The details
@@ -810,7 +824,7 @@ Forward declarations
 
 Every variable, procedure, etc. needs to be declared before it can be used.
 (The reason for this is that it is non-trivial to avoid this need in a
-language that supports meta programming as extensively as Nim does.)
+language that supports metaprogramming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
 .. code-block:: nim
@@ -854,8 +868,8 @@ Let's return to the simple counting example:
   for i in countup(1, 10):
     echo i
 
-Can a `countup <system.html#countup>`_ proc be written that supports this
-loop? Lets try:
+Can a `countup <system.html#countup.i,T,T,Positive>`_ proc be written that
+supports this loop? Lets try:
 
 .. code-block:: nim
   proc countup(a, b: int): int =
@@ -886,13 +900,12 @@ important differences:
   ``yield`` statement).
 * Iterators have no implicit ``result`` variable.
 * Iterators do not support recursion.
-* Iterators cannot be forward declared, because the compiler must be able
-  to inline an iterator. (This restriction will be gone in a
+* Iterators cannot be forward declared, because the compiler must be able to inline an iterator. (This restriction will be gone in a
   future version of the compiler.)
 
 However, you can also use a ``closure`` iterator to get a different set of
-restrictions. See `first class iterators <manual.html#iterators-and-the-for-statement-first-class-iterators>`_
-for details. Iterators can have the same name and parameters as a proc, since
+restrictions. See `first-class iterators <manual.html#iterators-and-the-for-statement-firstminusclass-iterators>`_
+for details. Iterators can have the same name and parameters as a proc since
 essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the
 iterator and return it as a sequence, like ``split`` from the `strutils module
@@ -926,10 +939,10 @@ evaluation. For example:
 Characters
 ----------
 The `character type` is called ``char``. Its size is always one byte, so
-it cannot represent most UTF-8 characters; but it *can* represent one of the bytes
+it cannot represent most UTF-8 characters, but it *can* represent one of the bytes
 that makes up a multi-byte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
-the resulting programs will still handle UTF-8 properly as UTF-8 was specially
+the resulting programs will still handle UTF-8 properly as UTF-8 was especially
 designed for this.
 Character literals are enclosed in single quotes.
 
@@ -981,7 +994,7 @@ Most often integers are used for counting objects that reside in memory, so
 ``int`` has the same size as a pointer.
 
 The common operators ``+ - * div mod  <  <=  ==  !=  >  >=`` are defined for
-integers. The ``and or xor not`` operators are also defined for integers, and
+integers. The ``and or xor not`` operators are also defined for integers and
 provide *bitwise* operations. Left bit shifting is done with the ``shl``, right
 shifting with the ``shr`` operator. Bit shifting operators always treat their
 arguments as *unsigned*. For `arithmetic bit shifts`:idx: ordinary
@@ -998,7 +1011,7 @@ cannot be detected at compile time).
 
 Floats
 ------
-Nim has these floating point types built-in: ``float float32 float64``.
+Nim has these floating-point types built-in: ``float float32 float64``.
 
 The default float type is ``float``. In the current implementation,
 ``float`` is always 64-bits.
@@ -1016,11 +1029,10 @@ type:
 The common operators ``+ - * /  <  <=  ==  !=  >  >=`` are defined for
 floats and follow the IEEE-754 standard.
 
-Automatic type conversion in expressions with different kinds of floating
-point types is performed: the smaller type is converted to the larger. Integer
-types are **not** converted to floating point types automatically, nor vice
-versa. Use the `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
-procs for these conversions.
+Automatic type conversion in expressions with different kinds of floating-point types is performed: the smaller type is converted to the larger. Integer
+types are **not** converted to floating-point types automatically, nor vice
+versa. Use the `toInt <system.html#toInt,float>`_ and
+`toFloat <system.html#toFloat,int>`_ procs for these conversions.
 
 
 Type Conversion
@@ -1040,13 +1052,13 @@ type as a function:
 Internal type representation
 ============================
 
-As mentioned earlier, the built-in `$ <system.html#$>`_ (stringify) operator
+As mentioned earlier, the built-in `$ <dollars.html>`_ (stringify) operator
 turns any basic type into a string, which you can then print to the console
 using the ``echo`` proc. However, advanced types, and your own custom types,
 won't work with the ``$`` operator until you define it for them.
 Sometimes you just want to debug the current value of a complex type without
 having to write its ``$`` operator.  You can use then the `repr
-<system.html#repr>`_ proc which works with any type and even complex data
+<system.html#repr,T>`_ proc which works with any type and even complex data
 graphs with cycles. The following example shows that even for basic types
 there is a difference between the ``$`` and ``repr`` outputs:
 
@@ -1090,7 +1102,7 @@ Enumerations
 A variable of an enumeration type can only be assigned one of the enumeration's specified values.
 These values are a set of ordered symbols. Each symbol is mapped
 to an integer value internally. The first symbol is represented
-at runtime by 0, the second by 1 and so on. For example:
+at runtime by 0, the second by 1, and so on. For example:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1121,6 +1133,7 @@ Enumerations, integer types, ``char`` and ``bool`` (and
 subranges) are called ordinal types. Ordinal types have quite
 a few special operations:
 
+
 -----------------     --------------------------------------------------------
 Operation             Comment
 -----------------     --------------------------------------------------------
@@ -1136,9 +1149,10 @@ Operation             Comment
 ``pred(x, n)``        returns the `n`'th predecessor of `x`
 -----------------     --------------------------------------------------------
 
-The `inc <system.html#inc>`_, `dec <system.html#dec>`_, `succ
-<system.html#succ>`_ and `pred <system.html#pred>`_ operations can fail by
-raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
+
+The `inc <system.html#inc,T,int>`_, `dec <system.html#dec,T,int>`_, `succ
+<system.html#succ,T,int>`_ and `pred <system.html#pred,T,int>`_ operations can
+fail by raising an `EOutOfRange` or `EOverflow` exception. (If the code has been
 compiled with the proper runtime checks turned on.)
 
 
@@ -1159,8 +1173,8 @@ compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
 The ``system`` module defines the important `Natural <system.html#Natural>`_
-type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
-maximal value). Other programming languages may suggest the use of unsigned
+type as ``range[0..high(int)]`` (`high <system.html#high,typedesc[T]>`_ returns
+the maximal value). Other programming languages may suggest the use of unsigned
 integers for natural numbers. This is often **unwise**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
 Nim's ``Natural`` type helps to avoid this common programming error.
@@ -1173,7 +1187,7 @@ Sets
 
 Arrays
 ------
-An array is a simple fixed length container. Each element in
+An array is a simple fixed-length container. Each element in
 an array has the same type. The array's index type can be any ordinal type.
 
 Arrays can be constructed using ``[]``:
@@ -1198,8 +1212,9 @@ Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
 
 The built-in `len <system.html#len,TOpenArray>`_ proc returns the array's
-length. `low(a) <system.html#low>`_ returns the lowest valid index for the
-array `a` and `high(a) <system.html#high>`_ the highest valid index.
+length. `low(a) <system.html#low,openArray[T]>`_ returns the lowest valid index
+for the array `a` and `high(a) <system.html#high,openArray[T]>`_ the highest
+valid index.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1225,7 +1240,7 @@ same index type as the others. In Nim you can have different dimensions with
 different index types, so the nesting syntax is slightly different. Building on
 the previous example where a level is defined as an array of enums indexed by
 yet another enum, we can add the following lines to add a light tower type
-subdivided in height levels accessed through their integer index:
+subdivided into height levels accessed through their integer index:
 
 .. code-block:: nim
   type
@@ -1274,9 +1289,9 @@ during runtime (like strings). Since sequences are resizable they are always
 allocated on the heap and garbage collected.
 
 Sequences are always indexed with an ``int`` starting at position 0.  The `len
-<system.html#len,seq[T]>`_, `low <system.html#low>`_ and `high
-<system.html#high>`_ operations are available for sequences too.  The notation
-``x[i]`` can be used to access the i-th element of ``x``.
+<system.html#len,seq[T]>`_, `low <system.html#low,openArray[T]>`_ and `high
+<system.html#high,openArray[T]>`_ operations are available for sequences too.
+The notation ``x[i]`` can be used to access the i-th element of ``x``.
 
 Sequences can be constructed by the array constructor ``[]`` in conjunction
 with the array to sequence operator ``@``. Another way to allocate space for
@@ -1299,7 +1314,7 @@ The ``for`` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
 provided by the sequence. The ``for`` statement is looping over the results
 from the `items() <system.html#items.i,seq[T]>`_ iterator from the `system
-<system.html>`_ module.  But if you use the two variable form, the first
+<system.html>`_ module.  But if you use the two-variable form, the first
 variable will hold the index position and the second variable will hold the
 value. Here the ``for`` statement is looping over the results from the
 `pairs() <system.html#pairs.i,seq[T]>`_ iterator from the `system
@@ -1324,13 +1339,13 @@ Open arrays
 -----------
 **Note**: Openarrays can only be used for parameters.
 
-Often fixed size arrays turn out to be too inflexible; procedures should be
+Often fixed-size arrays turn out to be too inflexible; procedures should be
 able to deal with arrays of different sizes. The `openarray`:idx: type allows
 this. Openarrays are always indexed with an ``int`` starting at position 0.
-The `len <system.html#len,TOpenArray>`_, `low <system.html#low>`_ and `high
-<system.html#high>`_ operations are available for open arrays too.  Any array
-with a compatible base type can be passed to an openarray parameter, the index
-type does not matter.
+The `len <system.html#len,TOpenArray>`_, `low <system.html#low,openArray[T]>`_
+and `high <system.html#high,openArray[T]>`_ operations are available for open
+arrays too.  Any array with a compatible base type can be passed to an
+openarray parameter, the index type does not matter.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1386,8 +1401,8 @@ type conversions in this context:
   # is transformed by the compiler to:
   myWriteln(stdout, [$123, $"abc", $4.0])
 
-In this example `$ <system.html#$>`_ is applied to any argument that is passed
-to the parameter ``a``. Note that `$ <system.html#$>`_ applied to strings is a
+In this example `$ <dollars.html>`_ is applied to any argument that is passed
+to the parameter ``a``. Note that `$ <dollars.html>`_ applied to strings is a
 nop.
 
 
@@ -1403,11 +1418,11 @@ define operators which accept Slice objects to define ranges.
     :test: "nim c $1"
 
   var
-    a = "Nim is a progamming language"
+    a = "Nim is a programming language"
     b = "Slices are useless."
 
-  echo a[7..12] # --> 'a prog'
-  b[11..^2] = "useful"
+  echo a[7 .. 12] # --> 'a prog'
+  b[11 .. ^2] = "useful"
   echo b # --> 'Slices are useful.'
 
 In the previous example slices are used to modify a part of a string. The
@@ -1429,43 +1444,128 @@ indices are
    0         11    17   using indices
   ^19        ^8    ^2   using ^ syntax
 
-where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it
-can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``.
+where ``b[0 .. ^1]`` is equivalent to ``b[0 .. b.len-1]`` and ``b[0 ..< b.len]``, and it
+can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``. See
+the `backwards index operator <system.html#^.t%2Cint>`_.
 
 In the above example, because the string ends in a period, to get the portion of the
 string that is "useless" and replace it with "useful".
 
-``b[11..^2]`` is the portion "useless", and ``b[11..^2] = "useful"`` replaces the
+``b[11 .. ^2]`` is the portion "useless", and ``b[11 .. ^2] = "useful"`` replaces the
 "useless" portion with "useful", giving the result "Slices are useful."
 
-Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or
-as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"``.
+Note 1: alternate ways of writing this are ``b[^8 .. ^2] = "useful"`` or
+as ``b[11 .. b.len-2] = "useful"`` or as ``b[11 ..< b.len-1] = "useful"``.
 
-Tuples
-------
+Note 2: As the ``^`` template returns a `distinct int <manual.html#types-distinct-type>`_
+of type ``BackwardsIndex``, we can have a ``lastIndex`` constant defined as ``const lastIndex = ^1``,
+and later used as ``b[0 .. lastIndex]``.
 
-A tuple type defines various named *fields* and an *order* of the fields.
-The constructor ``()`` can be used to construct tuples. The order of the
-fields in the constructor must match the order in the tuple's definition.
-Different tuple-types are *equivalent* if they specify fields of
-the same type and of the same name in the same order.
+Objects
+-------
 
-The assignment operator for tuples copies each component. The notation
-``t.field`` is used to access a tuple's field. Another notation is
-``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
-integer.
+The default type to pack different values together in a single
+structure with a name is the object type. An object is a value type,
+which means that when an object is assigned to a new variable all its
+components are copied as well.
+
+Each object type ``Foo`` has a constructor ``Foo(field: value, ...)``
+where all of its fields can be initialized. Unspecified fields will
+get their default value.
+
+.. code-block:: nim
+  type
+    Person = object
+      name: string
+      age: int
+
+  var person1 = Person(name: "Peter", age: 30)
+
+  echo person1.name # "Peter"
+  echo person1.age  # 30
+
+  var person2 = person1 # copy of person 1
+
+  person2.age += 14
+
+  echo person1.age # 30
+  echo person2.age # 44
+
+
+  # the order may be changed
+  let person3 = Person(age: 12, name: "Quentin")
+
+  # not every member needs to be specified
+  let person4 = Person(age: 3)
+  # unspecified members will be initialized with their default
+  # values. In this case it is the empty string.
+  doAssert person4.name == ""
+
+
+Object fields that should be visible from outside the defining module have to
+be marked with ``*``.
 
 .. code-block:: nim
     :test: "nim c $1"
 
   type
-    Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
+    Person* = object # the type is visible from other modules
+      name*: string  # the field of this type is visible from other modules
+      age*: int
+
+Tuples
+------
+
+Tuples are very much like what you have seen so far from objects. They
+are value types where the assignment operator copies each component.
+Unlike object types though, tuple types are structurally typed,
+meaning different tuple-types are *equivalent* if they specify fields of
+the same type and of the same name in the same order.
+
+The constructor ``()`` can be used to construct tuples. The order of the
+fields in the constructor must match the order in the tuple's
+definition. But unlike objects, a name for the tuple type may not be
+used here.
+
+
+Like the object type the notation ``t.field`` is used to access a
+tuple's field. Another notation that is not available for objects is
+``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
+integer.
+
+.. code-block:: nim
+    :test: "nim c $1"
+  type
+    # type representing a person:
+    # A person consists of a name and an age.
+    Person = tuple
+      name: string
+      age: int
+
+    # Alternative syntax for an equivalent type.
+    PersonX = tuple[name: string, age: int]
+
+    # anonymous field syntax
+    PersonY = (string, int)
+
   var
     person: Person
+    personX: PersonX
+    personY: PersonY
+
   person = (name: "Peter", age: 30)
-  # the same, but less readable:
+  # Person and PersonX are equivalent
+  personX = person
+
+  # Create a tuple with anonymous fields:
+  personY = ("Peter", 30)
+
+  # A tuple with anonymous fields is compatible with a tuple that has
+  # field names.
+  person = personY
+  personY = person
+
+  # Usually used for short tuple initialization syntax
   person = ("Peter", 30)
 
   echo person.name # "Peter"
@@ -1484,21 +1584,17 @@ integer.
   # --> Error: type mismatch: got (tuple[street: string, number: int])
   #     but expected 'Person'
 
-  # The following works because the field names and types are the same.
-  var teacher: tuple[name: string, age: int] = ("Mark", 42)
-  person = teacher
-
 Even though you don't need to declare a type for a tuple to use it, tuples
 created with different field names will be considered different objects despite
 having the same field types.
 
 Tuples can be *unpacked* during variable assignment (and only then!). This can
 be handy to assign directly the fields of the tuples to individually named
-variables. An example of this is the `splitFile <os.html#splitFile>`_ proc
-from the `os module <os.html>`_ which returns the directory, name and
+variables. An example of this is the `splitFile <os.html#splitFile,string>`_
+proc from the `os module <os.html>`_ which returns the directory, name, and
 extension of a path at the same time. For tuple unpacking to work you must
 use parentheses around the values you want to assign the unpacking to,
-otherwise you will be assigning the same value to all the individual
+otherwise, you will be assigning the same value to all the individual
 variables! For example:
 
 .. code-block:: nim
@@ -1519,6 +1615,8 @@ variables! For example:
   echo badname
   echo badext
 
+Fields of tuples are always public, they don't need to be explicity
+marked to be exported, unlike for example fields in an object type.
 
 Reference and pointer types
 ---------------------------
@@ -1528,15 +1626,15 @@ point to and modify the same location in memory.
 
 Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
-objects in a garbage collected heap, untraced references point to
-manually allocated objects or to objects elsewhere in memory. Thus
-untraced references are *unsafe*. However for certain low-level operations
+objects in a garbage-collected heap, untraced references point to
+manually allocated objects or objects elsewhere in memory. Thus
+untraced references are *unsafe*. However, for certain low-level operations
 (e.g., accessing the hardware), untraced references are necessary.
 
 Traced references are declared with the **ref** keyword; untraced references
 are declared with the **ptr** keyword.
 
-The empty ``[]`` subscript notation can be used to *derefer* a reference,
+The empty ``[]`` subscript notation can be used to *de-refer* a reference,
 meaning to retrieve the item the reference points to. The ``.`` (access a
 tuple/object field operator) and ``[]`` (array/string/sequence index operator)
 operators perform implicit dereferencing operations for reference types:
@@ -1590,9 +1688,9 @@ listed in the `manual <manual.html#types-procedural-type>`_.
 
 Distinct type
 -------------
-A Distinct type allows for the creation of new type that "does not imply a
+A Distinct type allows for the creation of a new type that "does not imply a
 subtype relationship between it and its base type".
-You must **explicitly** define all behaviour for the distinct type.
+You must **explicitly** define all behavior for the distinct type.
 To help with this, both the distinct type and its base type can cast from one
 type to the other.
 Examples are provided in the `manual <manual.html#types-distinct-type>`_.
@@ -1677,7 +1775,7 @@ Excluding symbols
 -----------------
 
 The normal ``import`` statement will bring in all exported symbols.
-These can be limited by naming symbols which should be excluded with
+These can be limited by naming symbols that should be excluded using
 the ``except`` qualifier.
 
 .. code-block:: nim
@@ -1696,7 +1794,7 @@ exported symbols. An alternative that only imports listed symbols is the
 
 The ``from`` statement can also force namespace qualification on
 symbols, thereby making symbols available, but needing to be qualified
-to be used.
+in order to be used.
 
 .. code-block:: nim
   from mymodule import x, y, z

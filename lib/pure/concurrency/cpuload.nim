@@ -9,6 +9,8 @@
 
 ## This module implements a helper for a thread pool to determine whether
 ## creating a thread is a good idea.
+##
+## Unstable API.
 
 when defined(windows):
   import winlean, os, strutils, math
@@ -86,7 +88,7 @@ when not defined(testing) and isMainModule and not defined(nimdoc):
 
   proc busyLoop() =
     while true:
-      discard random(80)
+      discard rand(80)
       os.sleep(100)
 
   spawn busyLoop()

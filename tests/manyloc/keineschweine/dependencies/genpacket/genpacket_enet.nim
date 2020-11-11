@@ -114,7 +114,7 @@ macro defPacket*(typeNameN: untyped, typeFields: untyped): untyped =
         packBody.add(newCall("pack", streamID, dotName))
         readBody.add(resName := newCall("read" & $typeFields[i][1].ident, streamID))
     else:
-      error("I dont know what to do with: " & treerepr(typeFields[i]))
+      error("I don't know what to do with: " & treerepr(typeFields[i]))
 
   var
     toStringFunc = newNimNode(nnkProcDef).und(

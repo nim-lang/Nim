@@ -163,7 +163,7 @@ block tcasestm:
     of "N": false
     else:
       echo "no good"
-      quit("quiting")
+      quit("quitting")
 
   proc toBool(s: string): bool =
     case s:
@@ -184,33 +184,33 @@ block tcasestm:
     doAssert(bstatic == false)
 
   var bb: bool
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "": raise newException(ValueError, "Invalid boolean")
       elif str.startsWith("Y"): true
       elif str.startsWith("N"): false
   ))
 
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "Y": true
       of "N": false
   ))
 
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "Y": true
       of "N": raise newException(ValueError, "N not allowed")
   ))
 
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "Y": raise newException(ValueError, "Invalid Y")
       else: raise newException(ValueError, "Invalid N")
   ))
 
 
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "Y":
         raise newException(ValueError, "Invalid Y")
@@ -219,10 +219,71 @@ block tcasestm:
   ))
 
 
-  doassert(not compiles(
+  doAssert(not compiles(
     bb = case str2:
       of "Y":
         "invalid Y".quit(3)
         true
       else: raise newException(ValueError, "Invalid")
   ))
+
+#issue #11552
+
+proc positiveOrNegative(num: int): string =
+  result = case num
+  of (low(int)+2) .. -1:
+    "negative"
+  of 0:
+    "zero"
+  else:
+    "impossible"
+
+#issue #11551
+
+proc negativeOrNot(num: int): string =
+    result = case num
+    of low(int) .. -1:
+      "negative"
+    else:
+      "zero or positive"
+
+doAssert negativeOrNot(-1) == "negative"
+doAssert negativeOrNot(10000000) == "zero or positive"
+doAssert negativeOrNot(0) == "zero or positive"
+
+########################################################
+# issue #13490
+import strutils
+func foo(input: string): int =
+  try:
+    parseInt(input)
+  except:
+    return
+
+func foo2(b, input: string): int =
+  case b:
+    of "Y":
+      for c in input:
+        result =  if c in '0'..'9': parseInt($c)
+                  else: break
+    of "N":
+      for c in input:
+        result =  if c in '0'..'9': parseInt($c)
+                  else: continue
+    else: return
+
+
+static:
+  doAssert(foo("3") == 3)
+  doAssert(foo("a") == 0)
+  doAssert(foo2("Y", "a2") == 0)
+  doAssert(foo2("Y", "2a") == 2)
+  doAssert(foo2("N", "a3") == 3)
+  doAssert(foo2("z", "2") == 0)
+
+doAssert(foo("3") == 3)
+doAssert(foo("a") == 0)
+doAssert(foo2("Y", "a2") == 0)
+doAssert(foo2("Y", "2a") == 2)
+doAssert(foo2("N", "a3") == 3)
+doAssert(foo2("z", "2") == 0)

@@ -18,15 +18,14 @@
 ## **See also:**
 ## * `sets module <sets.html>`_ for more general hash sets
 
-
-import
-  hashes, math
+import std/private/since
+import hashes
 
 type
-  BitScalar = int
+  BitScalar = uint
 
 const
-  InitIntSetSize = 8         # must be a power of two!
+  InitIntSetSize = 8              # must be a power of two!
   TrunkShift = 9
   BitsPerTrunk = 1 shl TrunkShift # needs to be a power of 2 and
                                   # divisible by 64
@@ -38,38 +37,44 @@ const
 type
   PTrunk = ref Trunk
   Trunk = object
-    next: PTrunk             # all nodes are connected with this pointer
-    key: int                 # start address at bit 0
+    next: PTrunk                                # all nodes are connected with this pointer
+    key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
   TrunkSeq = seq[PTrunk]
-  IntSet* = object ## An efficient set of `int` implemented as a sparse bit set.
-    elems: int # only valid for small numbers
+  IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
+    elems: int           # only valid for small numbers
     counter, max: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
+proc mustRehash[T](t: T): bool {.inline.} =
+  let length = t.max + 1
+  assert length > t.counter
+  result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  const PERTURB_SHIFT = 5
+  var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
+  perturb = cast[Hash](perturb2)
+  result = ((5*h) + 1 + perturb) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   result = nil
 
 proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
+  var perturb = desc.key
   while data[h] != nil:
     assert(data[h] != desc)
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   assert(data[h] == nil)
   data[h] = desc
 
@@ -84,14 +89,16 @@ proc intSetEnlarge(t: var IntSet) =
 
 proc intSetPut(t: var IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
-  if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
+    h = nextTry(h, t.max, perturb)
+  if mustRehash(t): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
+  perturb = key
+  while t.data[h] != nil: h = nextTry(h, t.max, perturb)
   assert(t.data[h] == nil)
   new(result)
   result.next = t.head
@@ -100,10 +107,11 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc bitincl(s: var IntSet, key: int) {.inline.} =
+  var ret: PTrunk
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
-  t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-      `shl`(1, u and IntMask)
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+      (BitScalar(1) shl (u and IntMask))
 
 proc exclImpl(s: var IntSet, key: int) =
   if s.elems <= s.a.len:
@@ -113,11 +121,11 @@ proc exclImpl(s: var IntSet, key: int) =
         dec s.elems
         return
   else:
-    var t = intSetGet(s, `shr`(key, TrunkShift))
+    var t = intSetGet(s, key shr TrunkShift)
     if t != nil:
       var u = key and TrunkMask
-      t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
-          not `shl`(1, u and IntMask)
+      t.bits[u shr IntShift] = t.bits[u shr IntShift] and
+          not(BitScalar(1) shl (u and IntMask))
 
 template dollarImpl(): untyped =
   result = "{"
@@ -137,12 +145,12 @@ iterator items*(s: IntSet): int {.inline.} =
     while r != nil:
       var i = 0
       while i <= high(r.bits):
-        var w = r.bits[i]
+        var w: uint = r.bits[i]
         # taking a copy of r.bits[i] here is correct, because
         # modifying operations are not allowed during traversation
         var j = 0
-        while w != 0:         # test all remaining bits for zero
-          if (w and 1) != 0:  # the bit is set!
+        while w != 0: # test all remaining bits for zero
+          if (w and 1) != 0: # the bit is set!
             yield (r.key shl TrunkShift) or (i shl IntShift +% j)
           inc(j)
           w = w shr 1
@@ -152,6 +160,9 @@ iterator items*(s: IntSet): int {.inline.} =
 
 proc initIntSet*: IntSet =
   ## Returns an empty IntSet.
+  ##
+  ## See also:
+  ## * `toIntSet proc <#toIntSet,openArray[int]>`_
   runnableExamples:
     var a = initIntSet()
     assert len(a) == 0
@@ -186,7 +197,8 @@ proc contains*(s: IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and
+                (BitScalar(1) shl (u and IntMask))) != 0
     else:
       result = false
 
@@ -241,6 +253,24 @@ proc incl*(s: var IntSet, other: IntSet) =
 
   for item in other: incl(s, item)
 
+proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3).} =
+  ## Creates a new IntSet that contains the elements of `x`.
+  ##
+  ## Duplicates are removed.
+  ##
+  ## See also:
+  ## * `initIntSet proc <#initIntSet>`_
+  runnableExamples:
+    var
+      a = toIntSet([5, 6, 7])
+      b = toIntSet(@[1, 8, 8, 8])
+    assert len(a) == 3
+    assert len(b) == 2
+
+  result = initIntSet()
+  for item in items(x):
+    result.incl(item)
+
 proc containsOrIncl*(s: var IntSet, key: int): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
   ##
@@ -268,10 +298,10 @@ proc containsOrIncl*(s: var IntSet, key: int): bool =
     var t = intSetGet(s, `shr`(key, TrunkShift))
     if t != nil:
       var u = key and TrunkMask
-      result = (t.bits[`shr`(u, IntShift)] and `shl`(1, u and IntMask)) != 0
+      result = (t.bits[u shr IntShift] and BitScalar(1) shl (u and IntMask)) != 0
       if not result:
-        t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] or
-            `shl`(1, u and IntMask)
+        t.bits[u shr IntShift] = t.bits[u shr IntShift] or
+            (BitScalar(1) shl (u and IntMask))
     else:
       incl(s, key)
       result = false
@@ -316,7 +346,16 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
-proc missingOrExcl*(s: var IntSet, key: int) : bool =
+proc len*(s: IntSet): int {.inline.} =
+  ## Returns the number of elements in `s`.
+  if s.elems < s.a.len:
+    result = s.elems
+  else:
+    result = 0
+    for _ in s:
+      inc(result)
+
+proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
   ## The difference with regards to the `excl proc <#excl,IntSet,int>`_ is
@@ -334,9 +373,9 @@ proc missingOrExcl*(s: var IntSet, key: int) : bool =
     assert a.missingOrExcl(5) == false
     assert a.missingOrExcl(5) == true
 
-  var count = s.elems
+  var count = s.len
   exclImpl(s, key)
-  result = count == s.elems
+  result = count == s.len
 
 proc clear*(result: var IntSet) =
   ## Clears the IntSet back to an empty state.
@@ -386,12 +425,14 @@ proc assign*(dest: var IntSet, src: IntSet) =
   else:
     dest.counter = src.counter
     dest.max = src.max
+    dest.elems = src.elems
     newSeq(dest.data, src.data.len)
 
     var it = src.head
     while it != nil:
       var h = it.key and dest.max
-      while dest.data[h] != nil: h = nextTry(h, dest.max)
+      var perturb = it.key
+      while dest.data[h] != nil: h = nextTry(h, dest.max, perturb)
       assert(dest.data[h] == nil)
       var n: PTrunk
       new(n)
@@ -498,15 +539,6 @@ proc disjoint*(s1, s2: IntSet): bool =
       return false
   return true
 
-proc len*(s: IntSet): int {.inline.} =
-  ## Returns the number of elements in `s`.
-  if s.elems < s.a.len:
-    result = s.elems
-  else:
-    result = 0
-    for _ in s:
-      inc(result)
-
 proc card*(s: IntSet): int {.inline.} =
   ## Alias for `len() <#len,IntSet>`_.
   result = s.len()
@@ -572,6 +604,8 @@ when isMainModule:
 
   x.incl(1044)
   x.excl(1044)
+
+  assert x == [1, 2, 7, 1056].toIntSet
 
   assert x.containsOrIncl(888) == false
   assert 888 in x
@@ -652,3 +686,19 @@ when isMainModule:
   xs = toSeq(items(x))
   xs.sort(cmp[int])
   assert xs == @[1, 4, 7, 1001, 1056]
+
+  proc bug12366 =
+    var
+      x = initIntSet()
+      y = initIntSet()
+      n = 3584
+
+    for i in 0..n:
+      x.incl(i)
+      y.incl(i)
+
+    let z = symmetricDifference(x, y)
+    doAssert z.len == 0
+    doAssert $z == "{}"
+
+  bug12366()

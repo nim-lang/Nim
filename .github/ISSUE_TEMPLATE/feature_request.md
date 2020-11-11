@@ -1,6 +1,9 @@
 ---
 name: Feature request
 about: Do you want to suggest a new feature? Use this template.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

@@ -8,6 +8,8 @@ ptr Foo
 (member: 123.456)
 (member: "hello world", x: ...)
 (member: 123.456, x: ...)
+0
+false
 '''
 joinable: false
 """
@@ -41,6 +43,13 @@ block t5648:
     var g = Foo()
     g.bar = 3
 
+  var
+    mainPtr1: pointer = main
+    mainPtr2 = pointer(main)
+    mainPtr3 = cast[pointer](main)
+
+  doAssert mainPtr1 == mainPtr2 and mainPtr2 == mainPtr3
+
   main()
 
 block t7581:
@@ -71,3 +80,31 @@ block t7905:
 
   foobarRec("hello world")
   foobarRec(123.456'f64)
+
+# bug #5170
+
+when true:
+  type Foo = object
+    bar: bool
+
+  type Bar = object
+    sameBody: string
+
+  var b0: Bar
+  b0.sameBody = "abc"
+
+block:
+  type Foo = object
+    baz: int
+
+  type Bar = object
+    sameBody: string
+
+  var b1: Bar
+  b1.sameBody = "def"
+
+  var f2: Foo
+  echo f2.baz
+
+var f1: Foo
+echo f1.bar

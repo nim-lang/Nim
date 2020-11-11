@@ -22,9 +22,13 @@
 ## other lower level methods to finally build complete documents. This requires
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
+##
+## **Note:** Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
+
+import ../../std/private/since
 
 const
   HtmlExt = "html"
@@ -53,7 +57,9 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    filename*: string
+    outDir*: string      ## output directory, initialized by docgen.nim
+    destFile*: string    ## output (HTML) file, initialized by docgen.nim
+    filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
@@ -75,6 +81,9 @@ type
     filename: string
     testCmd: string
     status: int
+
+proc prettyLink*(file: string): string =
+  changeFileExt(file, "").replace("_._", "..")
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -99,7 +108,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## index hyperlinks to the file, but you can pass an empty string here if you
   ## are parsing a stream in memory. If `filename` ends with the ``.nim``
   ## extension, the title for the document will be set by default to ``Module
-  ## filename``.  This default title can be overriden by the embedded rst, but
+  ## filename``.  This default title can be overridden by the embedded rst, but
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
@@ -152,7 +161,8 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## Writes the current index buffer to the specified output file.
   ##
   ## You previously need to add entries to the index with the `setIndexTerm()
-  ## <#setIndexTerm>`_ proc. If the index is empty the file won't be created.
+  ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_ proc.
+  ## If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
 proc addXmlChar(dest: var string, c: char) =
@@ -306,7 +316,7 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## The `id` will be appended with a hash character only if its length is not
   ## zero, otherwise no specific anchor will be generated. In general you
   ## should only pass an empty `id` value for the title of standalone rst
-  ## documents (they are special for the `mergeIndexes() <#mergeIndexes>`_
+  ## documents (they are special for the `mergeIndexes() <#mergeIndexes,string>`_
   ## proc, see `Index (idx) file format <docgen.html#index-idx-file-format>`_
   ## for more information). Unlike other index terms, title entries are
   ## inserted at the beginning of the accumulated buffer to maintain a logical
@@ -316,8 +326,9 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## columns with their contents will be added.
   ##
   ## The index won't be written to disk unless you call `writeIndexFile()
-  ## <#writeIndexFile>`_. The purpose of the index is documented in the `docgen
-  ## tools guide <docgen.html#index-switch>`_.
+  ## <#writeIndexFile,RstGenerator,string>`_. The purpose of the index is
+  ## documented in the `docgen tools guide
+  ## <docgen.html#related-options-index-switch>`_.
   var
     entry = term
     isTitle = false
@@ -348,7 +359,7 @@ proc hash(n: PRstNode): int =
 proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   ## Renders the string decorated within \`foobar\`\:idx\: markers.
   ##
-  ## Additionally adds the encosed text to the index as a term. Since we are
+  ## Additionally adds the enclosed text to the index as a term. Since we are
   ## interested in different instances of the same term to have different
   ## entries, a table is used to keep track of the amount of times a term has
   ## previously appeared to give a different identifier value for each.
@@ -397,11 +408,14 @@ proc hash(x: IndexEntry): Hash =
   result = result !& x.linkDesc.hash
   result = !$result
 
-proc `<-`(a: var IndexEntry, b: IndexEntry) =
-  shallowCopy a.keyword, b.keyword
-  shallowCopy a.link, b.link
-  shallowCopy a.linkTitle, b.linkTitle
-  shallowCopy a.linkDesc, b.linkDesc
+when defined(gcDestructors):
+  template `<-`(a, b: var IndexEntry) = a = move(b)
+else:
+  proc `<-`(a: var IndexEntry, b: IndexEntry) =
+    shallowCopy a.keyword, b.keyword
+    shallowCopy a.link, b.link
+    shallowCopy a.linkTitle, b.linkTitle
+    shallowCopy a.linkDesc, b.linkDesc
 
 proc sortIndex(a: var openArray[IndexEntry]) =
   # we use shellsort here; fast and simple
@@ -467,8 +481,8 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
 proc isDocumentationTitle(hyperlink: string): bool =
   ## Returns true if the hyperlink is actually a documentation title.
   ##
-  ## Documentation titles lack the hash. See `mergeIndexes() <#mergeIndexes>`_
-  ## for a more detailed explanation.
+  ## Documentation titles lack the hash. See `mergeIndexes()
+  ## <#mergeIndexes,string>`_ for a more detailed explanation.
   result = hyperlink.find('#') < 0
 
 proc stripTocLevel(s: string): tuple[level: int, text: string] =
@@ -567,7 +581,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   var chunks: seq[string] = @[]
   for name in modules:
-    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+    chunks.add("<a href=\"$1.html\">$2</a>" % [name, name.prettyLink])
 
   result.add(chunks.join(", ") & ".<br/>")
 
@@ -589,33 +603,33 @@ proc readIndexDir(dir: string):
       var
         fileEntries: seq[IndexEntry]
         title: IndexEntry
-        F = 0
+        f = 0
       newSeq(fileEntries, 500)
       setLen(fileEntries, 0)
       for line in lines(path):
         let s = line.find('\t')
         if s < 0: continue
-        setLen(fileEntries, F+1)
-        fileEntries[F].keyword = line.substr(0, s-1)
-        fileEntries[F].link = line.substr(s+1)
+        setLen(fileEntries, f+1)
+        fileEntries[f].keyword = line.substr(0, s-1)
+        fileEntries[f].link = line.substr(s+1)
         # See if we detect a title, a link without a `#foobar` trailing part.
-        if title.keyword.len == 0 and fileEntries[F].link.isDocumentationTitle:
-          title.keyword = fileEntries[F].keyword
-          title.link = fileEntries[F].link
+        if title.keyword.len == 0 and fileEntries[f].link.isDocumentationTitle:
+          title.keyword = fileEntries[f].keyword
+          title.link = fileEntries[f].link
 
-        if fileEntries[F].link.find('\t') > 0:
-          let extraCols = fileEntries[F].link.split('\t')
-          fileEntries[F].link = extraCols[0]
+        if fileEntries[f].link.find('\t') > 0:
+          let extraCols = fileEntries[f].link.split('\t')
+          fileEntries[f].link = extraCols[0]
           assert extraCols.len == 3
-          fileEntries[F].linkTitle = extraCols[1].unquoteIndexColumn
-          fileEntries[F].linkDesc = extraCols[2].unquoteIndexColumn
+          fileEntries[f].linkTitle = extraCols[1].unquoteIndexColumn
+          fileEntries[f].linkDesc = extraCols[2].unquoteIndexColumn
         else:
-          fileEntries[F].linkTitle = ""
-          fileEntries[F].linkDesc = ""
-        inc F
+          fileEntries[f].linkTitle = ""
+          fileEntries[f].linkDesc = ""
+        inc f
       # Depending on type add this to the list of symbols or table of APIs.
       if title.keyword.len == 0:
-        for i in 0 ..< F:
+        for i in 0 ..< f:
           # Don't add to symbols TOC entries (they start with a whitespace).
           let toc = fileEntries[i].linkTitle
           if toc.len > 0 and toc[0] == ' ':
@@ -645,13 +659,15 @@ proc mergeIndexes*(dir: string): string =
   ## This proc will first scan `dir` for index files with the ``.idx``
   ## extension previously created by commands like ``nim doc|rst2html``
   ## which use the ``--index:on`` switch. These index files are the result of
-  ## calls to `setIndexTerm() <#setIndexTerm>`_ and `writeIndexFile()
-  ## <#writeIndexFile>`_, so they are simple tab separated files.
+  ## calls to `setIndexTerm()
+  ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+  ## and `writeIndexFile() <#writeIndexFile,RstGenerator,string>`_, so they are
+  ## simple tab separated files.
   ##
   ## As convention this proc will split index files into two categories:
   ## documentation and API. API indices will be all joined together into a
   ## single big sorted index, making the bulk of the final index. This is good
-  ## for API documentation because many symbols are repated in different
+  ## for API documentation because many symbols are repeated in different
   ## modules. On the other hand, documentation indices are essentially table of
   ## contents plus a few special markers. These documents will be rendered in a
   ## separate section which tries to maintain the order and hierarchy of the
@@ -741,7 +757,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
+  let
+    htmlFileRelPath = if d.outDir.len == 0:
+                        # /foo/bar/zoo.nim -> zoo.html
+                        changeFileExt(extractFilename(d.filename), HtmlExt)
+                      else: # d is initialized in docgen.nim
+                        # outDir   = /foo              -\
+                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+                        d.destFile.relativePath(d.outDir, '/')
+  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
@@ -823,6 +847,18 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     """
   else:
     htmlOut = "<img src=\"$1\"$2/>"
+
+  # support for `:target:` links for images:
+  var target = esc(d.target, getFieldValue(n, "target").strip())
+  if target.len > 0:
+    # `htmlOut` needs to be of the following format for link to work for images:
+    # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
+    var htmlOutWithLink = ""
+    dispA(d.target, htmlOutWithLink,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [htmlOut, target])
+    htmlOut = htmlOutWithLink
+
   dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
         [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
@@ -856,7 +892,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "nim c -r $1"
+      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
     else:
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
@@ -1058,7 +1094,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable:
+  of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
@@ -1106,10 +1142,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
-    if d.target != outLatex:
+    if d.target != outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
   of rnRawLatex:
-    if d.target == outLatex:
+    if d.target == outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
 
   of rnImage, rnFigure: renderImage(d, n, result)
@@ -1318,6 +1354,16 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
+
+
+proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
+  ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
+  runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
+  if rstSource.len == 0: return
+  var option: bool
+  var rstGenera: RstGenerator
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
 
 
 when isMainModule:

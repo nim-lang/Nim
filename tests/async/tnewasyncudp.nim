@@ -28,7 +28,7 @@ proc saveReceivedPort(port: int) =
 
 proc prepareAddress(intaddr: uint32, intport: uint16): ptr Sockaddr_in =
   result = cast[ptr Sockaddr_in](alloc0(sizeof(Sockaddr_in)))
-  result.sin_family = toInt(nativesockets.AF_INET).uint16
+  result.sin_family = typeof(result.sin_family)(toInt(nativesockets.AF_INET))
   result.sin_port = nativesockets.htons(intport)
   result.sin_addr.s_addr = nativesockets.htonl(intaddr)
 
@@ -40,9 +40,9 @@ proc launchSwarm(name: ptr SockAddr) {.async.} =
   var saddr = Sockaddr_in()
   while i < swarmSize:
     var peeraddr = prepareAddress(INADDR_LOOPBACK, 0)
-    var sock = newAsyncNativeSocket(nativesockets.AF_INET,
-                                    nativesockets.SOCK_DGRAM,
-                                    Protocol.IPPROTO_UDP)
+    var sock = createAsyncNativeSocket(nativesockets.AF_INET,
+                                       nativesockets.SOCK_DGRAM,
+                                       Protocol.IPPROTO_UDP)
     if bindAddr(sock.SocketHandle, cast[ptr SockAddr](peeraddr),
               sizeof(Sockaddr_in).Socklen) < 0'i32:
       raiseOSError(osLastError())
@@ -91,9 +91,9 @@ proc readMessages(server: AsyncFD) {.async.} =
 
 proc createServer() {.async.} =
   var name = prepareAddress(INADDR_LOOPBACK, serverPort)
-  var server = newAsyncNativeSocket(nativesockets.AF_INET,
-                                    nativesockets.SOCK_DGRAM,
-                                    Protocol.IPPROTO_UDP)
+  var server = createAsyncNativeSocket(nativesockets.AF_INET,
+                                       nativesockets.SOCK_DGRAM,
+                                       Protocol.IPPROTO_UDP)
   if bindAddr(server.SocketHandle, cast[ptr SockAddr](name),
               sizeof(Sockaddr_in).Socklen) < 0'i32:
     raiseOSError(osLastError())

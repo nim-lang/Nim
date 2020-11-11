@@ -1,6 +1,3 @@
-discard """
-  disabled: true
-"""
 
 import macro_bug
 

@@ -50,6 +50,7 @@
 
     assert jobs[0].priority == 1
 ]##
+import std/private/since
 
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
@@ -57,6 +58,9 @@ type HeapQueue*[T] = object
 
 proc initHeapQueue*[T](): HeapQueue[T] =
   ## Create a new empty heap.
+  ##
+  ## See also:
+  ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
   discard
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
@@ -94,7 +98,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   let startpos = pos
   let newitem = heap[pos]
   # Bubble up the smaller child until hitting a leaf.
-  var childpos = 2*pos + 1    # leftmost child position
+  var childpos = 2*pos + 1 # leftmost child position
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
@@ -114,6 +118,20 @@ proc push*[T](heap: var HeapQueue[T], item: T) =
   heap.data.add(item)
   siftdown(heap, 0, len(heap)-1)
 
+proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
+  ## Creates a new HeapQueue that contains the elements of `x`.
+  ##
+  ## See also:
+  ## * `initHeapQueue proc <#initHeapQueue>`_
+  runnableExamples:
+    var heap = toHeapQueue([9, 5, 8])
+    assert heap.pop() == 5
+    assert heap[0] == 8
+
+  result = initHeapQueue[T]()
+  for item in items(x):
+    result.push(item)
+
 proc pop*[T](heap: var HeapQueue[T]): T =
   ## Pop and return the smallest item from `heap`,
   ## maintaining the heap invariant.
@@ -124,6 +142,12 @@ proc pop*[T](heap: var HeapQueue[T]): T =
     siftup(heap, 0)
   else:
     result = lastelt
+
+proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
+  ## Linear scan to find index of item ``x`` or -1 if not found.
+  result = -1
+  for i in 0 ..< heap.len:
+    if heap[i] == x: return i
 
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
@@ -149,10 +173,10 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
-  if heap.len > 0 and heapCmp(heap[0], item):
-    swap(item, heap[0])
+  result = item
+  if heap.len > 0 and heapCmp(heap.data[0], item):
+    swap(result, heap.data[0])
     siftup(heap, 0)
-  return item
 
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Remove all elements from `heap`, making it empty.
@@ -176,14 +200,6 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     result.addQuoted(x)
   result.add("]")
 
-proc newHeapQueue*[T](): HeapQueue[T] {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``initHeapQueue`` instead.
-  initHeapQueue[T]()
-
-proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``clear`` instead.
-  heap.clear()
-
 when isMainModule:
   proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
     var tmp = h
@@ -196,6 +212,7 @@ when isMainModule:
     let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
     for item in data:
       push(heap, item)
+    doAssert(heap == data.toHeapQueue)
     doAssert(heap[0] == 0)
     doAssert(heap.toSortedSeq == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 
@@ -207,17 +224,19 @@ when isMainModule:
     heap.del(0)
     doAssert(heap[0] == 1)
 
-    heap.del(heap.data.find(7))
+    heap.del(heap.find(7))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 5, 6, 8, 9])
 
-    heap.del(heap.data.find(5))
+    heap.del(heap.find(5))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 6, 8, 9])
 
-    heap.del(heap.data.find(6))
+    heap.del(heap.find(6))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 8, 9])
 
-    heap.del(heap.data.find(2))
+    heap.del(heap.find(2))
     doAssert(heap.toSortedSeq == @[1, 3, 4, 8, 9])
+
+    doAssert(heap.find(2) == -1)
 
   block: # Test del last
     var heap = initHeapQueue[int]()

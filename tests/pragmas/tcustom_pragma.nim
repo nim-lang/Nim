@@ -1,4 +1,6 @@
-import macros
+{.experimental: "notnil".}
+
+import macros, asyncmacro, asyncfutures
 
 block:
   template myAttr() {.pragma.}
@@ -11,8 +13,10 @@ block:
 block:
   template myAttr(a: string) {.pragma.}
 
-  type MyObj = object
-    myField1, myField2 {.myAttr: "hi".}: int
+  type
+    MyObj = object
+      myField1, myField2 {.myAttr: "hi".}: int
+
   var o: MyObj
   static:
     assert o.myField2.hasCustomPragma(myAttr)
@@ -206,11 +210,16 @@ block:
   template myAttr2(x: int) {.pragma.}
   template myAttr3(x: string) {.pragma.}
 
+  type
+    MyObj2 = ref object
+    MyObjNotNil = MyObj2 not nil
+
   let a {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
   let b {.myAttr,myAttr2(2),myAttr3:"test".} = 0
   var x {.myAttr,myAttr2(2),myAttr3:"test".}: int = 0
   var y {.myAttr,myAttr2(2),myAttr3:"test".}: int
   var z {.myAttr,myAttr2(2),myAttr3:"test".} = 0
+  var z2 {.myAttr.}: MyObjNotNil
 
   template check(s: untyped) =
     doAssert s.hasCustomPragma(myAttr)
@@ -233,3 +242,139 @@ block:
   doAssert ps.first == ps[0] and ps.first == "one"
   doAssert ps.second == ps[1] and ps.second == 2
   doAssert ps.third == ps[2] and ps.third == 3.0
+
+# pragma with implicit&explicit generic types
+block:
+  template fooBar[T](x: T; c: static[int] = 42; m: char) {.pragma.}
+  var e {.fooBar("foo", 123, 'u').}: int
+  doAssert(hasCustomPragma(e, fooBar))
+  doAssert(getCustomPragmaVal(e, fooBar).c == 123)
+
+block:
+  macro expectedAst(expectedRepr: static[string], input: untyped): untyped =
+    assert input.treeRepr & "\n" == expectedRepr
+    return input
+
+  const procTypeAst = """
+ProcTy
+  FormalParams
+    Empty
+    IdentDefs
+      Ident "x"
+      Ident "int"
+      Empty
+  Pragma
+    Ident "async"
+"""
+
+  type
+    Foo = proc (x: int) {.expectedAst(procTypeAst), async.}
+
+  static: assert Foo is proc(x: int): Future[void]
+
+  const asyncProcTypeAst = """
+ProcTy
+  FormalParams
+    BracketExpr
+      Ident "Future"
+      Ident "void"
+    IdentDefs
+      Ident "s"
+      Ident "string"
+      Empty
+  Pragma
+"""
+
+  type
+    Bar = proc (s: string) {.async, expectedAst(asyncProcTypeAst).}
+
+  static: assert Bar is proc(x: string): Future[void]
+
+  const typeAst = """
+TypeDef
+  PragmaExpr
+    Ident "Baz"
+    Pragma
+  Empty
+  ObjectTy
+    Empty
+    Empty
+    RecList
+      IdentDefs
+        Ident "x"
+        Ident "string"
+        Empty
+"""
+
+  type
+    Baz {.expectedAst(typeAst).} = object
+      x: string
+
+  static: assert Baz.x is string
+
+  const procAst = """
+ProcDef
+  Ident "bar"
+  Empty
+  Empty
+  FormalParams
+    Ident "string"
+    IdentDefs
+      Ident "s"
+      Ident "string"
+      Empty
+  Empty
+  Empty
+  StmtList
+    ReturnStmt
+      Ident "s"
+"""
+
+  proc bar(s: string): string {.expectedAst(procAst).} =
+    return s
+
+  static: assert bar("x") == "x"
+
+#------------------------------------------------------
+# bug #13909
+
+template dependency*(id: string, weight = 0.0) {.pragma.}
+
+type
+  MyObject* = object
+    provider*: proc(obj: string): pointer {.dependency("Data/" & obj, 16.1), noSideEffect.}
+
+proc myproc(obj: string): string {.dependency("Data/" & obj, 16.1).} =
+  result = obj
+
+# bug 12523
+template myCustomPragma {.pragma.}
+
+type
+  RefType = ref object
+    field {.myCustomPragma.}: int
+
+  ObjType = object
+    field {.myCustomPragma.}: int
+  RefType2 = ref ObjType
+
+block:
+  let x = RefType()
+  for fieldName, fieldSym in fieldPairs(x[]):
+    doAssert hasCustomPragma(fieldSym, myCustomPragma)
+
+block:
+  let x = RefType2()
+  for fieldName, fieldSym in fieldPairs(x[]):
+    doAssert hasCustomPragma(fieldSym, myCustomPragma)
+
+# bug 8457
+block:
+  template world {.pragma.}
+
+  type
+    Hello = ref object
+      a: float32
+      b {.world.}: int
+
+  discard Hello(a: 1.0, b: 12)

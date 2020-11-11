@@ -10,10 +10,10 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs, platform, strutils, idents
+  strtabs
 
 from options import Feature
-from lineinfos import HintsToStr, WarningsToStr
+from lineinfos import hintMin, hintMax, warnMin, warnMax
 
 proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
   symbols[symbol] = value
@@ -48,14 +48,11 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
-  defineSymbol("nimnomagic64")
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
   defineSymbol("nimHasalignOf")
-  defineSymbol("nimImmediateDeprecated")
-  defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
   defineSymbol("nimGenericInOutFlags")
@@ -82,11 +79,48 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasTypeof")
   defineSymbol("nimErrorProcCanHaveBody")
   defineSymbol("nimHasInstantiationOfInMacro")
+  defineSymbol("nimHasHotCodeReloading")
   defineSymbol("nimHasNilSeqs")
-  for f in low(Feature)..high(Feature):
+  defineSymbol("nimHasSignatureHashInMacro")
+  defineSymbol("nimHasDefault")
+  defineSymbol("nimMacrosSizealignof")
+  defineSymbol("nimNoZeroExtendMagic")
+  defineSymbol("nimMacrosGetNodeId")
+  for f in Feature:
     defineSymbol("nimHas" & $f)
 
-  for s in WarningsToStr:
-    defineSymbol("nimHasWarning" & s)
-  for s in HintsToStr:
-    defineSymbol("nimHasHint" & s)
+  for s in warnMin..warnMax:
+    defineSymbol("nimHasWarning" & $s)
+  for s in hintMin..hintMax:
+    defineSymbol("nimHasHint" & $s)
+
+  defineSymbol("nimFixedOwned")
+  defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimToOpenArrayCString")
+  defineSymbol("nimHasUsed")
+  defineSymbol("nimFixedForwardGeneric")
+  defineSymbol("nimnomagic64")
+  defineSymbol("nimNewShiftOps")
+  defineSymbol("nimHasCursor")
+  defineSymbol("nimAlignPragma")
+  defineSymbol("nimHasExceptionsQuery")
+  defineSymbol("nimHasIsNamedTuple")
+  defineSymbol("nimHashOrdinalFixed")
+
+  when defined(nimHasLibFFI):
+    # Renaming as we can't conflate input vs output define flags; e.g. this
+    # will report the right thing regardless of whether user adds
+    # `-d:nimHasLibFFI` in his user config.
+    defineSymbol("nimHasLibFFIEnabled")
+
+  defineSymbol("nimHasSinkInference")
+  defineSymbol("nimNewIntegerOps")
+  defineSymbol("nimHasInvariant")
+  defineSymbol("nimHasStacktraceMsgs")
+  defineSymbol("nimDoesntTrackDefects")
+  defineSymbol("nimHasLentIterators")
+  defineSymbol("nimHasDeclaredMagic")
+  defineSymbol("nimHasStacktracesModule")
+  defineSymbol("nimHasEffectTraitsModule")
+  defineSymbol("nimHasCastPragmaBlocks")
+  defineSymbol("nimHasDeclaredLocs")

@@ -5,27 +5,44 @@ Advanced commands:
   //js                      compile project to Javascript
   //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
-  //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
-                          module dependency graph
+                            module dependency graph
   //dump                    dump all defined conditionals and search paths
-                            see also: --dump.format:json (useful with: ` | jq`)
+                            see also: --dump.format:json (useful with: `| jq`)
   //check                   checks the project for syntax and semantic
+
+Runtime checks (see -x):
+  --objChecks:on|off        turn obj conversion checks on|off
+  --fieldChecks:on|off      turn case variant field checks on|off
+  --rangeChecks:on|off      turn range checks on|off
+  --boundChecks:on|off      turn bound checks on|off
+  --overflowChecks:on|off   turn int over-/underflow checks on|off
+  --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
+  --nanChecks:on|off        turn NaN checks on|off
+  --infChecks:on|off        turn Inf checks on|off
+  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
+  --outdir:DIR              set the path where the output file will be written
+  --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
+                            to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
+  --declaredLocs:on|off     show declaration locations in messages
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --warningAsError[X]:on|off
+                            turn specific warning X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -35,10 +52,10 @@ Advanced options:
                             resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
+                            see also `patchFile` in nimscript which offers more flexibility.
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
-  --header:FILE             the compiler should produce a .h file (FILE
-                            is optional)
+                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure
@@ -51,11 +68,23 @@ Advanced options:
   --debuginfo:on|off        enables debug information
   -t, --passC:OPTION        pass an option to the C compiler
   -l, --passL:OPTION        pass an option to the linker
+  --cc:SYMBOL               specify the C compiler
   --cincludes:DIR           modify the C compiler header search path
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
   --project                 document the whole project (doc2)
+  --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
+                            generates: docs/sub/main.html
+                            if path == @pkg, will use nimble file enclosing dir
+                            if path == @path, will use first matching dir in `--path`
+                            if path == @default (the default and most useful), will use
+                            best match among @pkg,@path.
+                            if these are nonexistent, will use project path
+  -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
+  --docCmd:cmd              if `cmd == skip`, skips runnableExamples
+                            else, runs runnableExamples with given options, e.g.:
+                            `--docCmd:"-d:foo --threads:on"`
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
   --docInternal             also generate documentation for non-exported symbols
@@ -66,32 +95,37 @@ Advanced options:
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
-  --patterns:on|off         turn pattern matching on|off
+  --trmacros:on|off         turn term rewriting macros on|off
+  --multimethods:on|off     turn multi-methods on|off
   --memTracker:on|off       turn memory tracker on|off
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
-  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
-  --laxStrings:on|off       when turned on, accessing the zero terminator in
-                            strings is allowed; only for backwards compatibility
+  --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
-  --oldast:on|off           use old AST for backwards compatibility
+  --seqsv2:on|off           use the new string/seq implementation based on
+                            destructors
   --skipCfg:on|off          do not read the nim installation's configuration file
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
-  --gc:refc|markAndSweep|boehm|go|none|regions
+  --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
+  --exceptions:setjmp|cpp|goto
+                            select the exception handling implementation
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
-  --noCppExceptions         use default exception handling with C++ backend
+  --clearNimblePath         empty the list of Nimble package search paths
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
+  --expandMacro:MACRO       dump every generated AST from MACRO
+  --expandArc:PROCNAME      show how PROCNAME looks like after diverse optimizations
+                            before the final backend phase (mostly ARC/ORC specific)
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
@@ -100,15 +134,25 @@ Advanced options:
                             dynlib: "liblua.so.3"
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
-  --listCmd                 list the commands used to execute external programs
+  --listCmd                 list the compilation commands; can be combined with
+                            `--hint:exec:on` and `--hint:link:on`
+  --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --incremental:on|off      only recompile the changed modules (experimental!)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --errorMax:N              stop compilation after N errors; 0 means unlimited
+  --maxLoopIterationsVM:N   set max iterations for all VM loops
   --experimental:$1
                             enable experimental language feature
-  -v, --version             show detailed version information
-  --profiler:on|off         Enable profiling; requires `import nimprof`, and
+  --legacy:$2
+                            enable obsolete/legacy language feature
+  --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
+  --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --profileVM:on|off        enable compile time VM profiler
+  --sinkInference:on|off    en-/disable sink parameter inference (default: on)
+  --panics:on|off           turn panics into process terminations (default: off)
+  --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``

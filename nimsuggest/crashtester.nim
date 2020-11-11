@@ -20,7 +20,7 @@ proc callNimsuggest() =
   let cl = parseCmdLine("nimsuggest --tester temp000.nim")
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
@@ -32,7 +32,7 @@ proc callNimsuggest() =
       if a == DummyEof: break
 
     var line = 0
-    for i in 0..< contents.len:
+    for i in 0 ..< contents.len:
       let slic = contents[0..i]
       writeFile("temp000.nim", slic)
       let (line, col) = getPosition(slic)

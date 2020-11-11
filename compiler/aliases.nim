@@ -10,7 +10,7 @@
 ## Simple alias analysis for the HLO and the code generators.
 
 import
-  ast, astalgo, types, trees, intsets, msgs
+  ast, astalgo, types, trees, intsets
 
 type
   TAnalysisResult* = enum
@@ -22,17 +22,17 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
-      result = isPartOfAux(n.sons[i], b, marker)
+    for i in 0..<n.len:
+      result = isPartOfAux(n[i], b, marker)
       if result == arYes: return
   of nkRecCase:
-    assert(n.sons[0].kind == nkSym)
-    result = isPartOfAux(n.sons[0], b, marker)
+    assert(n[0].kind == nkSym)
+    result = isPartOfAux(n[0], b, marker)
     if result == arYes: return
-    for i in countup(1, sonsLen(n) - 1):
-      case n.sons[i].kind
+    for i in 1..<n.len:
+      case n[i].kind
       of nkOfBranch, nkElse:
-        result = isPartOfAux(lastSon(n.sons[i]), b, marker)
+        result = isPartOfAux(lastSon(n[i]), b, marker)
         if result == arYes: return
       else: discard "isPartOfAux(record case branch)"
   of nkSym:
@@ -46,14 +46,14 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   if compareTypes(a, b, dcEqIgnoreDistinct): return arYes
   case a.kind
   of tyObject:
-    if a.sons[0] != nil:
-      result = isPartOfAux(a.sons[0].skipTypes(skipPtrs), b, marker)
+    if a[0] != nil:
+      result = isPartOfAux(a[0].skipTypes(skipPtrs), b, marker)
     if result == arNo: result = isPartOfAux(a.n, b, marker)
   of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = isPartOfAux(lastSon(a), b, marker)
   of tyArray, tySet, tyTuple:
-    for i in countup(0, sonsLen(a) - 1):
-      result = isPartOfAux(a.sons[i], b, marker)
+    for i in 0..<a.len:
+      result = isPartOfAux(a[i], b, marker)
       if result == arYes: return
   else: discard
 
@@ -108,7 +108,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           result = arMaybe
     of nkBracketExpr:
       result = isPartOf(a[0], b[0])
-      if len(a) >= 2 and len(b) >= 2:
+      if a.len >= 2 and b.len >= 2:
         # array accesses:
         if result == arYes and isDeepConstExpr(a[1]) and isDeepConstExpr(b[1]):
           # we know it's the same array and we have 2 constant indexes;
@@ -186,4 +186,14 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
         if res != arNo:
           result = res
           if res == arYes: break
+    of nkCallKinds:
+      result = arNo
+      for i in 1..<b.len:
+        let res = isPartOf(a, b[i])
+        if res != arNo:
+          result = res
+          if res == arYes: break
+    of nkBracket:
+      if b.len > 0:
+        result = isPartOf(a, b[0])
     else: discard

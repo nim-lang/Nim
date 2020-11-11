@@ -30,7 +30,7 @@ def getNimRti(type_name):
   m = type_hash_regex.match(type_name)
   if m:
     try:
-      return gdb.parse_and_eval("NTI_" + m.group(1) + "_")
+      return gdb.parse_and_eval("NTI__" + m.group(1) + "_")
     except:
       return None
 
@@ -125,48 +125,158 @@ class NimTypePrinter:
 class DollarPrintFunction (gdb.Function):
   "Nim's equivalent of $ operator as a gdb function, available in expressions `print $dollar(myvalue)"
 
-  _gdb_dollar_functions = gdb.execute("info functions dollar__", True, True)
-  dollar_functions = re.findall('NimStringDesc \*(dollar__[A-z0-9_]+?)\(([^,)]*)\);', _gdb_dollar_functions)
+  dollar_functions = re.findall(
+    'NimStringDesc \*(dollar__[A-z0-9_]+?)\(([^,)]*)\);',
+    gdb.execute("info functions dollar__", True, True)
+  )
 
   def __init__ (self):
     super (DollarPrintFunction, self).__init__("dollar")
 
+
   @staticmethod
   def invoke_static(arg):
 
-    for func, arg_typ in DollarPrintFunction.dollar_functions:
+    if arg.type.code == gdb.TYPE_CODE_PTR and arg.type.target().name == "NimStringDesc":
+      return arg
 
-      if arg.type.name == arg_typ:
+    argTypeName = str(arg.type)
+
+    for func, arg_typ in DollarPrintFunction.dollar_functions:
+      # this way of overload resolution cannot deal with type aliases,
+      # therefore it won't find all overloads.
+      if arg_typ == argTypeName:
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg)
 
-      if arg.type.name + " *" == arg_typ:
+      elif arg_typ == argTypeName + " *":
         func_value = gdb.lookup_global_symbol(func, gdb.SYMBOL_FUNCTIONS_DOMAIN).value()
         return func_value(arg.address)
 
-    typeName = arg.type.name
-    printErrorOnce(typeName, "No suitable Nim $ operator found for type: " + typeName + ".\n")
+    printErrorOnce(argTypeName, "No suitable Nim $ operator found for type: " + argTypeName + "\n")
+    return None
 
   def invoke(self, arg):
     return self.invoke_static(arg)
 
 DollarPrintFunction()
 
+
+################################################################################
+#####  GDB Function, Nim string comparison
+################################################################################
+
+class NimStringEqFunction (gdb.Function):
+  """Compare Nim strings for example in conditionals for breakpoints."""
+
+  def __init__ (self):
+    super (NimStringEqFunction, self).__init__("nimstreq")
+
+  @staticmethod
+  def invoke_static(arg1,arg2):
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+      str1 = NimStringPrinter(arg1).to_string()
+    else:
+      str1 = arg1.string()
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+      str2 = NimStringPrinter(arg1).to_string()
+    else:
+      str2 = arg2.string()
+
+    return str1 == str2
+
+  def invoke(self, arg1, arg2):
+    return self.invoke_static(arg1, arg2)
+
+NimStringEqFunction()
+
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
 ################################################################################
 
 class DollarPrintCmd (gdb.Command):
-  """Dollar print command for Nim, `$ expr` will invoke Nim's $ operator"""
+  """Dollar print command for Nim, `$ expr` will invoke Nim's $ operator and print the result."""
 
   def __init__ (self):
     super (DollarPrintCmd, self).__init__ ("$", gdb.COMMAND_DATA, gdb.COMPLETE_EXPRESSION)
 
-  def invoke (self, arg, from_tty):
+  def invoke(self, arg, from_tty):
     param = gdb.parse_and_eval(arg)
-    gdb.write(str(DollarPrintFunction.invoke_static(param)) + "\n", gdb.STDOUT)
+    strValue = DollarPrintFunction.invoke_static(param)
+    if strValue:
+      gdb.write(
+        NimStringPrinter(strValue).to_string() + "\n",
+        gdb.STDOUT
+      )
+
+    # could not find a suitable dollar overload. This here is the
+    # fallback to get sensible output of basic types anyway.
+
+    elif param.type.code == gdb.TYPE_CODE_ARRAY and param.type.target().name == "char":
+      gdb.write(param.string("utf-8", "ignore") + "\n", gdb.STDOUT)
+    elif param.type.code == gdb.TYPE_CODE_INT:
+      gdb.write(str(int(param)) + "\n", gdb.STDOUT)
+    elif param.type.name == "NIM_BOOL":
+      if int(param) != 0:
+        gdb.write("true\n", gdb.STDOUT)
+      else:
+        gdb.write("false\n", gdb.STDOUT)
 
 DollarPrintCmd()
+
+
+################################################################################
+#####  GDB Commands to invoke common nim tools.
+################################################################################
+
+
+import subprocess, os
+
+
+class KochCmd (gdb.Command):
+  """Command that invokes ``koch'', the build tool for the compiler."""
+
+  def __init__ (self):
+    super (KochCmd, self).__init__ ("koch",
+                                    gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "koch")
+
+  def invoke(self, argument, from_tty):
+    import os
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+KochCmd()
+
+
+class NimCmd (gdb.Command):
+  """Command that invokes ``nim'', the nim compiler."""
+
+  def __init__ (self):
+    super (NimCmd, self).__init__ ("nim",
+                                   gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nim")
+
+  def invoke(self, argument, from_tty):
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+NimCmd()
+
+
+class NimbleCmd (gdb.Command):
+  """Command that invokes ``nimble'', the nim package manager and build tool."""
+
+  def __init__ (self):
+    super (NimbleCmd, self).__init__ ("nimble",
+                                      gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+    self.binary = os.path.join(
+      os.path.dirname(os.path.dirname(__file__)), "bin/nimble")
+
+  def invoke(self, argument, from_tty):
+    subprocess.run([self.binary] + gdb.string_to_argv(argument))
+
+NimbleCmd()
 
 ################################################################################
 #####  Value pretty printers
@@ -204,7 +314,7 @@ class NimStringPrinter:
      return ""
 
 class NimRopePrinter:
-  pattern = re.compile(r'^tyObject_RopeObj_OFzf0kSiPTcNreUIeJgWVA \*$')
+  pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
 
   def __init__(self, val):
     self.val = val
@@ -259,13 +369,13 @@ def reprEnum(e, typ):
   return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyEnum_(\w*)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val      = val
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
@@ -292,7 +402,7 @@ class NimSetPrinter:
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
 
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
@@ -317,7 +427,7 @@ class NimSetPrinter:
 ################################################################################
 
 class NimHashSetPrinter:
-  pattern = re.compile(r'^tyObject_(HashSet)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(HashSet)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
@@ -394,7 +504,7 @@ class NimArrayPrinter:
 ################################################################################
 
 class NimStringTablePrinter:
-  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(StringTableObj)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -423,7 +533,7 @@ class NimStringTablePrinter:
 ################################################################
 
 class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(Table)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -509,6 +619,20 @@ class NimTablePrinter:
 
 ################################################################################
 
+class NimFrameFilter:
+  def __init__(self):
+    self.name = "nim-frame-filter"
+    self.enabled = True
+    self.priority = 100
+    self.hidden =  {"NimMainInner","NimMain", "main"}
+
+  def filter(self, iterator):
+    for framedecorator in iterator:
+      if framedecorator.function() not in self.hidden:
+        yield framedecorator
+
+################################################################################
+
 def makematcher(klass):
   def matcher(val):
     typeName = str(val.type)
@@ -539,3 +663,5 @@ def new_object_handler(event):
   register_nim_pretty_printers_for_object(event.new_objfile)
 
 gdb.events.new_objfile.connect(new_object_handler)
+
+gdb.frame_filters = {"nim-frame-filter": NimFrameFilter()}

@@ -2,10 +2,6 @@
 proc printf(frmt: cstring) {.varargs, importc, header: "<stdio.h>", cdecl.}
 proc exit(code: int) {.importc, header: "<stdlib.h>", cdecl.}
 
-proc nimToCStringConv(s: NimString): cstring {.compilerProc, inline.} =
-  if s == nil or s.len == 0: result = cstring""
-  else: result = cstring(addr s.data)
-
 {.push stack_trace: off, profiler:off.}
 
 proc rawoutput(s: string) =

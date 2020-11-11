@@ -40,18 +40,16 @@ and more efficient code. In particular, preferring composition over inheritance
 is often the better design.
 
 
-Objects
--------
+Inheritance
+-----------
 
-Like tuples, objects are a means to pack different values together in a
-structured way. However, objects provide many features that tuples do not:
-They provide inheritance and information hiding. Because objects encapsulate
-data, the ``T()`` object constructor should only be used internally and the
-programmer should provide a proc to initialize the object (this is called
-a *constructor*).
-
-Objects have access to their type at runtime. There is an
-``of`` operator that can be used to check the object's type:
+Inheritance in Nim is entirely optional. To enable inheritance with
+runtime type information the object needs to inherit from
+``RootObj``.  This can be done directly, or indirectly by
+inheriting from an object that inherits from ``RootObj``.  Usually
+types with inheritance are also marked as ``ref`` types even though
+this isn't strictly enforced. To check at runtime if an object is of a certain
+type, the ``of`` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -70,11 +68,6 @@ Objects have access to their type at runtime. There is an
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
-
-Object fields that should be visible from outside the defining module have to
-be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. New object types can only be defined within a type
-section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``RootObj``
@@ -133,7 +126,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
+The ``InvalidObjectConversionDefect`` exception is raised if ``x`` is not a
 ``Student``.
 
 
@@ -167,28 +160,13 @@ An example:
         condition, thenPart, elsePart: Node
 
   var n = Node(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
 
 As can been seen from the example, an advantage to an object hierarchy is that
 no conversion between different object types is needed. Yet, access to invalid
 object fields raises an exception.
-
-
-Methods
--------
-In ordinary object oriented languages, procedures (also called *methods*) are
-bound to a class. This has disadvantages:
-
-* Adding a method to a class the programmer has no control over is
-  impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: is
-  ``join`` a string method or an array method?
-
-Nim avoids these problems by not assigning methods to a class. All methods
-in Nim are multi-methods. As we will see later, multi-methods are
-distinguished from procs only for dynamic binding purposes.
 
 
 Method call syntax
@@ -299,7 +277,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
       a, b: Expression
 
   # watch out: 'eval' relies on dynamic binding
-  method eval(e: Expression): int =
+  method eval(e: Expression): int {.base.} =
     # override this base method
     quit "to override!"
 
@@ -315,11 +293,14 @@ Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because it makes more sense for them to use static binding, but ``eval`` is a
 method because it requires dynamic binding.
 
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --multiMethods:on $1"
 
   type
     Thing = ref object of RootObj
@@ -364,10 +345,8 @@ The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
 the ``msg`` field.
 
-A convention is that exceptions should be raised in *exceptional* cases:
-For example, if a file cannot be opened, this should not raise an
-exception since this is quite common (the file may not exist).
-
+A convention is that exceptions should be raised in *exceptional* cases,
+they should not be used as an alternative method of control flow.
 
 Raise statement
 ---------------
@@ -407,7 +386,7 @@ The ``try`` statement handles exceptions:
       let a = readLine(f)
       let b = readLine(f)
       echo "sum: ", parseInt(a) + parseInt(b)
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -462,7 +441,7 @@ instance, if you specify that a proc raises ``IOError``, and at some point it
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [IOError, ArithmeticError].} =
+  proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
   proc simpleProc() {.raises: [].} =
@@ -488,7 +467,8 @@ Generics
 ========
 
 Generics are Nim's means to parametrize procs, iterators or types
-with `type parameters`:idx:. They are most useful for efficient type safe
+with `type parameters`:idx:. Generic parameters are written within square
+brackets, for example ``Foo[T]``. They are most useful for efficient type safe
 containers:
 
 .. code-block:: nim
@@ -531,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
@@ -553,6 +533,19 @@ used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
+
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc foo[T](i: T) =
+    discard
+
+  var i: int
+
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
+
+  i.foo[:int]() # Success
 
 
 Templates
@@ -624,13 +617,13 @@ performed before the expression is passed to the template.
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
 
-To pass a block of statements to a template, use 'untyped' for the last parameter:
+To pass a block of statements to a template, use ``untyped`` for the last parameter:
 
 .. code-block:: nim
     :test: "nim c $1"
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: untyped): typed =
+                    body: untyped) =
     let fn = filename
     var f: File
     if open(f, fn, mode):
@@ -669,7 +662,7 @@ Example: Lifting Procs
     ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
     proc fname[T](x: openarray[T]): auto =
       var temp: T
-      type outType = type(fname(temp))
+      type outType = typeof(fname(temp))
       result = newSeq[outType](x.len)
       for i in 0..<x.len:
         result[i] = fname(x[i])
@@ -696,4 +689,4 @@ JavaScript-compatible code you should remember the following:
 Part 3
 ======
 
-Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_
+The next part is entirely about metaprogramming via macros: `Part III <tut3.html>`_

@@ -145,3 +145,21 @@ block toptions:
       optOverflowCheck, optAssert, optWarns, optHints, optLineDir, optStackTrace}
     compilerArgs: int
     gExitcode: int8
+
+
+
+block nonzero: # bug #6959
+  type SomeEnum = enum
+    A = 10
+    B
+    C
+  let slice = SomeEnum.low..SomeEnum.high
+
+block size_one_byte: #issue 15752
+  type
+    Flag = enum
+      Disabled = 0x00
+      Enabled = 0xFF
+
+  static:
+    assert 1 == sizeof(Flag)

@@ -11,8 +11,8 @@
 ## is needed for incremental compilation.
 
 import
-  ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream, tables, sighashes, pathutils
+  ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
+  intsets, llstream, tables, modulegraphs, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -21,17 +21,18 @@ const
   CFileSectionNames: array[TCFileSection, string] = [
     cfsMergeInfo: "",
     cfsHeaders: "NIM_merge_HEADERS",
+    cfsFrameDefines: "NIM_merge_FRAME_DEFINES",
     cfsForwardTypes: "NIM_merge_FORWARD_TYPES",
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",
     cfsFieldInfo: "NIM_merge_FIELD_INFO",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
-    cfsVars: "NIM_merge_VARS",
     cfsData: "NIM_merge_DATA",
+    cfsVars: "NIM_merge_VARS",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
-    cfsDatInitProc: "NIM_merge_DATINIT_PROC",    
+    cfsDatInitProc: "NIM_merge_DATINIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
     cfsTypeInit2: "NIM_merge_TYPE_INIT2",
     cfsTypeInit3: "NIM_merge_TYPE_INIT3",
@@ -47,11 +48,15 @@ const
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
+  # useful for debugging and only adds at most a few lines in each file
+  result.add("\n/* section: ")
+  result.add(CFileSectionNames[fs])
+  result.add(" */\n")
   if compilationCachePresent(conf):
     result = nil
-    add(result, "\n/*\t")
-    add(result, CFileSectionNames[fs])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CFileSectionNames[fs])
+    result.add(":*/\n")
 
 proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
@@ -60,9 +65,9 @@ proc genSectionEnd*(fs: TCFileSection; conf: ConfigRef): Rope =
 proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope("")
-    add(result, "\n/*\t")
-    add(result, CProcSectionNames[ps])
-    add(result, ":*/\n")
+    result.add("\n/*\t")
+    result.add(CProcSectionNames[ps])
+    result.add(":*/\n")
 
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
@@ -145,43 +150,35 @@ proc atEndMark(buf: cstring, pos: int): bool =
 
 proc readVerbatimSection(L: var TBaseLexer): Rope =
   var pos = L.bufpos
-  var buf = L.buf
   var r = newStringOfCap(30_000)
   while true:
-    case buf[pos]
+    case L.buf[pos]
     of CR:
       pos = nimlexbase.handleCR(L, pos)
-      buf = L.buf
       r.add('\L')
     of LF:
       pos = nimlexbase.handleLF(L, pos)
-      buf = L.buf
       r.add('\L')
     of '\0':
       doAssert(false, "ccgmerge: expected: " & NimMergeEndMark)
       break
     else:
-      if atEndMark(buf, pos):
+      if atEndMark(L.buf, pos):
         inc pos, NimMergeEndMark.len
         break
-      r.add(buf[pos])
+      r.add(L.buf[pos])
       inc pos
   L.bufpos = pos
   result = r.rope
 
 proc readKey(L: var TBaseLexer, result: var string) =
   var pos = L.bufpos
-  var buf = L.buf
   setLen(result, 0)
-  while buf[pos] in IdentChars:
-    result.add(buf[pos])
+  while L.buf[pos] in IdentChars:
+    result.add(L.buf[pos])
     inc pos
-  if buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
+  if L.buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
-
-proc newFakeType(id: int): PType =
-  new(result)
-  result.id = id
 
 proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
   if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
@@ -191,10 +188,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
     var key = decodeStr(L.buf, L.bufpos)
     if ^L.bufpos != ':': doAssert(false, "ccgmerge: ':' expected")
     inc L.bufpos
-    var value = decodeStr(L.buf, L.bufpos)
-    # XXX implement me
-    when false:
-      idTablePut(result, newFakeType(key), value.rope)
+    discard decodeStr(L.buf, L.bufpos)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -281,7 +275,7 @@ proc mergeRequired*(m: BModule): bool =
     if m.s[i] != nil:
       #echo "not empty: ", i, " ", m.s[i]
       return true
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     if m.initProc.s(i) != nil:
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
@@ -291,7 +285,7 @@ proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   var old: TMergeSections
   readMergeSections(cfilename, old)
   # do the merge; old section before new section:
-  for i in low(TCFileSection)..high(TCFileSection):
+  for i in TCFileSection:
     m.s[i] = old.f[i] & m.s[i]
-  for i in low(TCProcSection)..high(TCProcSection):
+  for i in TCProcSection:
     m.initProc.s(i) = old.p[i] & m.initProc.s(i)

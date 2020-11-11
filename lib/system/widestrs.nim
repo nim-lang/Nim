@@ -15,11 +15,60 @@
 
 type
   Utf16Char* = distinct int16
-  WideCString* = ref UncheckedArray[Utf16Char]
+
+when defined(nimv2):
+
+  type
+    WideCString* = ptr UncheckedArray[Utf16Char]
+
+    WideCStringObj* = object
+      bytes: int
+      data: WideCString
+
+  proc `=destroy`(a: var WideCStringObj) =
+    if a.data != nil:
+      when compileOption("threads"):
+        deallocShared(a.data)
+      else:
+        dealloc(a.data)
+
+  proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+
+  proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
+    a.bytes = b.bytes
+    a.data = b.data
+
+  proc createWide(a: var WideCStringObj; bytes: int) =
+    a.bytes = bytes
+    when compileOption("threads"):
+      a.data = cast[typeof(a.data)](allocShared0(bytes))
+    else:
+      a.data = cast[typeof(a.data)](alloc0(bytes))
+
+  template `[]`*(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
+  template `[]=`*(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
+
+  template nullWide(): untyped = WideCStringObj(bytes: 0, data: nil)
+
+  converter toWideCString*(x: WideCStringObj): WideCString {.inline.} =
+    result = x.data
+
+else:
+  template nullWide(): untyped = nil
+
+  type
+    WideCString* = ref UncheckedArray[Utf16Char]
+    WideCStringObj* = WideCString
+
+  template createWide(a; L) =
+    unsafeNew(a, L)
+
+proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
+  result = 0
   while int16(w[result]) != 0'i16: inc result
 
 const
@@ -46,7 +95,7 @@ template fastRuneAt(s: cstring, i, L: int, result: untyped, doInc = true) =
   ## `i` is incremented by the number of bytes that have been processed.
   bind ones
 
-  if ord(s[i]) <=% 127:
+  if ord(s[i]) <= 127:
     result = ord(s[i])
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
@@ -93,32 +142,32 @@ iterator runes(s: cstring, L: int): int =
     fastRuneAt(s, i, L, result, true)
     yield result
 
-proc newWideCString*(source: cstring, L: int): WideCString =
-  unsafeNew(result, L * 4 + 2)
-  #result = cast[wideCString](alloc(L * 4 + 2))
+proc newWideCString*(source: cstring, L: int): WideCStringObj =
+  createWide(result, L * 2 + 2)
   var d = 0
   for ch in runes(source, L):
-    if ch <=% UNI_MAX_BMP:
-      if ch >=% UNI_SUR_HIGH_START and ch <=% UNI_SUR_LOW_END:
+
+    if ch <= UNI_MAX_BMP:
+      if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_LOW_END:
         result[d] = UNI_REPLACEMENT_CHAR
       else:
-        result[d] = Utf16Char(toU16(ch))
-    elif ch >% UNI_MAX_UTF16:
+        result[d] = cast[Utf16Char](uint16(ch))
+    elif ch > UNI_MAX_UTF16:
       result[d] = UNI_REPLACEMENT_CHAR
     else:
-      let ch = ch -% halfBase
-      result[d] = Utf16Char(toU16((ch shr halfShift) +% UNI_SUR_HIGH_START))
+      let ch = ch - halfBase
+      result[d] = cast[Utf16Char](uint16((ch shr halfShift) + UNI_SUR_HIGH_START))
       inc d
-      result[d] = Utf16Char(toU16((ch and halfMask) +% UNI_SUR_LOW_START))
+      result[d] = cast[Utf16Char](uint16((ch and halfMask) + UNI_SUR_LOW_START))
     inc d
-  result[d] = Utf16Char(0'i16)
+  result[d] = Utf16Char(0)
 
-proc newWideCString*(s: cstring): WideCString =
-  if s.isNil: return nil
+proc newWideCString*(s: cstring): WideCStringObj =
+  if s.isNil: return nullWide
 
   result = newWideCString(s, s.len)
 
-proc newWideCString*(s: string): WideCString =
+proc newWideCString*(s: string): WideCStringObj =
   result = newWideCString(s, s.len)
 
 proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
@@ -126,11 +175,11 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
 
   var i = 0
   while w[i].int16 != 0'i16:
-    var ch = int(cast[uint16](w[i]))
+    var ch = ord(w[i])
     inc i
     if ch >= UNI_SUR_HIGH_START and ch <= UNI_SUR_HIGH_END:
       # If the 16 bits following the high surrogate are in the source buffer...
-      let ch2 = int(cast[uint16](w[i]))
+      let ch2 = ord(w[i])
 
       # If it's a low surrogate, convert to UTF32:
       if ch2 >= UNI_SUR_LOW_START and ch2 <= UNI_SUR_LOW_END:
@@ -165,3 +214,10 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
 
 proc `$`*(s: WideCString): string =
   result = s $ 80
+
+when defined(nimv2):
+  proc `$`*(s: WideCStringObj, estimate: int, replacement: int = 0xFFFD): string =
+    `$`(s.data, estimate, replacement)
+
+  proc `$`*(s: WideCStringObj): string =
+    $(s.data)

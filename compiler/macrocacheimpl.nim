@@ -9,7 +9,7 @@
 
 ## This module implements helpers for the macro cache.
 
-import lineinfos, ast, modulegraphs, vmdef, magicsys
+import lineinfos, ast, modulegraphs, vmdef
 
 proc recordInc*(c: PCtx; info: TLineInfo; key: string; by: BiggestInt) =
   var recorded = newNodeI(nkCommentStmt, info)

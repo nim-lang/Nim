@@ -19,7 +19,7 @@ proc showNumber(num: int | float) =
 showNumber(3.14)
 showNumber(42)
 
-for i in 0 .. <10:
+for i in 0 ..< 10:
   echo(i)
 
 block: # Block added due to clash.

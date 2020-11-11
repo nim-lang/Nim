@@ -3,10 +3,10 @@ discard """
   file: "ttempl2.nim"
   line: 18
 """
-template declareInScope(x: untyped, t: typeDesc): untyped {.immediate.} =
+template declareInScope(x: untyped, t: typeDesc): untyped =
   var x: t
 
-template declareInNewScope(x: untyped, t: typeDesc): untyped {.immediate.} =
+template declareInNewScope(x: untyped, t: typeDesc): untyped =
   # open a new scope:
   block:
     var x: t

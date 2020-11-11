@@ -48,7 +48,7 @@ proc `<`*(ver: Version, ver2: Version): bool =
   # Handling for normal versions such as "0.1.0" or "1.0".
   var sVer = string(ver).split('.')
   var sVer2 = string(ver2).split('.')
-  for i in 0..max(sVer.len, sVer2.len)-1:
+  for i in 0..<max(sVer.len, sVer2.len):
     var sVerI = 0
     if i < sVer.len:
       discard parseInt(sVer[i], sVerI)
@@ -69,9 +69,10 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
   result.version = ""
 
   const specialSeparator = "-#"
-  var sepIdx = p.find(specialSeparator)
+  let last = p.rfind(p.lastPathPart) # the index where the last path part begins
+  var sepIdx = p.find(specialSeparator, start = last)
   if sepIdx == -1:
-    sepIdx = p.rfind('-')
+    sepIdx = p.rfind('-', start = last)
 
   if sepIdx == -1:
     result.name = p
@@ -82,7 +83,7 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
       result.name = p
       return
 
-  result.name = p[0 .. sepIdx - 1]
+  result.name = p[0..sepIdx - 1]
   result.version = p.substr(sepIdx + 1)
 
 proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =
@@ -129,6 +130,10 @@ proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
 proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
   addPathRec(conf, path.string, info)
   addNimblePath(conf, path.string, info)
+  let i = conf.nimblePaths.find(path)
+  if i != -1:
+    conf.nimblePaths.delete(i)
+  conf.nimblePaths.insert(path, 0)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion
@@ -142,16 +147,16 @@ when isMainModule:
 
   let conf = newConfigRef()
   var rr = newStringTable()
-  addPackage conf, rr, "irc-#a111", unknownLineInfo()
-  addPackage conf, rr, "irc-#head", unknownLineInfo()
-  addPackage conf, rr, "irc-0.1.0", unknownLineInfo()
-  #addPackage conf, rr, "irc", unknownLineInfo()
-  #addPackage conf, rr, "another", unknownLineInfo()
-  addPackage conf, rr, "another-0.1", unknownLineInfo()
+  addPackage conf, rr, "irc-#a111", unknownLineInfo
+  addPackage conf, rr, "irc-#head", unknownLineInfo
+  addPackage conf, rr, "irc-0.1.0", unknownLineInfo
+  #addPackage conf, rr, "irc", unknownLineInfo
+  #addPackage conf, rr, "another", unknownLineInfo
+  addPackage conf, rr, "another-0.1", unknownLineInfo
 
-  addPackage conf, rr, "ab-0.1.3", unknownLineInfo()
-  addPackage conf, rr, "ab-0.1", unknownLineInfo()
-  addPackage conf, rr, "justone-1.0", unknownLineInfo()
+  addPackage conf, rr, "ab-0.1.3", unknownLineInfo
+  addPackage conf, rr, "ab-0.1", unknownLineInfo
+  addPackage conf, rr, "justone-1.0", unknownLineInfo
 
   doAssert toSeq(rr.chosen) ==
     @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]

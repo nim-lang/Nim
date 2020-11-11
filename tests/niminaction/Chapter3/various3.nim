@@ -22,7 +22,7 @@ block:
   assert obj.contents == "Hello"
 
   var obj2 = Box(empty: true)
-  doAssertRaises(FieldError):
+  doAssertRaises(FieldDefect):
     echo(obj2.contents)
 
 import json
@@ -46,7 +46,7 @@ assert obj["username"].str == "Dominik"
 
 block:
   proc count10(): int =
-    for i in 0 .. <10:
+    for i in 0 ..< 10:
       result.inc
   assert count10() == 10
 

@@ -140,7 +140,7 @@ proc runCmd(cmd, dest: string): bool =
   of "!del":
     del(x)
   else:
-    quit "unkown command: " & cmd
+    quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
   if pattern.contains('*'):
@@ -206,13 +206,13 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add '\t'
       result.add file
       result.add '\t'
-      result.add line
+      result.addInt line
       result.add '\t'
-      result.add col
+      result.addInt col
       result.add '\t'
       result.add doc
       result.add '\t'
-      result.add a[8].getNum
+      result.addInt a[8].getNum
       if a.len >= 10:
         result.add '\t'
         result.add a[9].getStr
@@ -251,7 +251,7 @@ proc runEpcTest(filename: string): int =
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
@@ -293,7 +293,7 @@ proc runTest(filename: string): int =
   let cl = parseCmdLine(s.cmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""

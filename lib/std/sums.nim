@@ -10,7 +10,7 @@
 
 
 func sumKbn*[T](x: openArray[T]): T =
-  ## Kahan (compensated) summation: O(1) error growth, at the expense
+  ## Kahan-Babuška-Neumaier summation: O(1) error growth, at the expense
   ## of a considerable increase in computational expense.
   if len(x) == 0: return
   var sum = x[0]
@@ -52,6 +52,14 @@ func sumPairs*[T](x: openArray[T]): T =
   ##
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
+
+
+runnableExamples:
+  static:
+    block:
+      const data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      doAssert sumKbn(data) == 45
+      doAssert sumPairs(data) == 45
 
 
 when isMainModule:

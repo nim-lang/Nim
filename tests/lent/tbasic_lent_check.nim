@@ -1,5 +1,4 @@
 discard """
-  cmd: "nim c --newRuntime $file"
   output: "1"
 """
 
