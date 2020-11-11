@@ -1,6 +1,6 @@
 type
-    A = object of RootObj
-    B = object of A
+  A = object of RootObj
+  B = object of A
 
 method identify(a:A) {.base.} = echo "A"
 method identify(b:B) = echo "B"
