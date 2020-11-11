@@ -114,7 +114,7 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   const P1  = 0xe7037ed1a0b428db'u64
   const P58 = 0xeb44accab455d165'u64 xor 8'u64
   when nimvm:
-    cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+    result = cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
   else:
     when defined(js):
       asm """
