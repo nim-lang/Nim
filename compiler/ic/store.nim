@@ -21,11 +21,12 @@ read/write modules to/from disk
 ]##
 
 type
-  HeaderReply = object     ## result of a metadata query of a rod file
+  Header = object     ## result of a metadata query of a rod file
     ok: bool
-    msg: string
-    version: string
-    hash: Hash
+    msg: string       # populated with any error message
+    version: string   # rodfile version
+    config: Hash      # hash of the writer's ConfigRef
+    hash: Hash        # hash of the writer's PackedTree
 
 const
   version =
@@ -34,38 +35,36 @@ const
 template config(m: Module): ConfigRef = m.ast.sh.config
 
 proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
+  let noSerializeSubstitute = m.ast.sh.config
   var stream = newFileStream($fn, fmWrite)
+  m.ast.sh.config = nil
   try:
+    # the following three values constitute the rodfile's "header"
     freeze(version, stream)
+    freeze(hash noSerializeSubstitute, stream)   # XXX: cache config hash?
     freeze(value, stream)
-    # try to reduce some buffer churn
+    # try to reduce some buffer churn on the read
     freeze(compress(freeze m), stream)
   finally:
+    m.ast.sh.config = noSerializeSubstitute
     close stream
-    writeFile("/tmp/module.rod", freeze m)
-    echo "uncompressed module: ", getFileSize("/tmp/module.rod")
-    writeFile("/tmp/config.rod", freeze m.ast.sh.config)
-    echo "uncompressed config: ", getFileSize("/tmp/config.rod")
-    var x = thaw[ConfigRef] readFile"/tmp/config.rod"
-    assert hash(x) == hash(m.ast.sh.config)
-    var y = thaw[Module] readFile"/tmp/module.rod"
-    assert hash(y) == hash(m)
 
-proc queryRodHeader(stream: Stream): HeaderReply {.raises: [].} =
+proc readHeader(stream: Stream): Header {.raises: [].} =
   ## query a rod file stream to see if it is worth attempting to use
   try:
     setPosition(stream, 0)
-    thaw[string](stream, result.version)
+    thaw(stream, result.version)
     if result.version != version:
       result.msg = "version `$1` doesn't match `$2`" % [ $result.version,
                                                          $version ]
     else:
-      thaw[Hash](stream, result.hash)
+      thaw(stream, result.config)
+      thaw(stream, result.hash)
       result.ok = true
   except CatchableError as e:
     result.msg = e.msg
 
-proc queryRodHeader(fn: AbsoluteFile): HeaderReply =
+proc readHeader(fn: AbsoluteFile): Header =
   ## query a rod file to see if it is worth attempting to use
   if not fileExists fn:
     result.msg = $fn & ": file not found"
@@ -73,7 +72,7 @@ proc queryRodHeader(fn: AbsoluteFile): HeaderReply =
     try:
       var stream = newFileStream($fn, fmRead)
       try:
-        result = queryRodHeader(stream)
+        result = readHeader stream
       finally:
         close stream
     except CatchableError as e:
@@ -92,44 +91,51 @@ template handleFileError(config: ConfigRef; fn: AbsoluteFile; e: typed) =
   else:
     internalError(config, $fn & ": " & e.msg)
 
-proc tryReadModuleNamed*(config: ConfigRef; name: string): Option[Module] =
+proc tryReadModule*(config: ConfigRef; fn: AbsoluteFile): Option[Module] =
   ## populated option if reading the module was successful
+  if not fileExists fn: return none(Module)
+  echo "📖", $fn
+  var stream = newFileStream($fn, fmRead)
+  try:
+    let reply = readHeader stream
+    if reply.ok:
+      if hash(config) != reply.config:
+        # NOTE: we just bail if the configs don't hash equivalently
+        return
+      # try to reduce some buffer churn
+      var snap = newStringOfCap(getFileSize $fn)
+      thaw(stream, snap)
+      var m = thaw[Module] uncompress(snap)
+      if hash(m.ast) != reply.hash:
+        internalError(config, $fn & ": hashes don't match")
+      # we omitted the config during write, so we must now reinstall it
+      m.ast.sh.config = config
+      result = some m
+    else:
+      when not defined(release):
+        echo reply.msg
+  except CatchableError as e:
+    handleFileError(config, fn, e)
+  finally:
+    close stream
+
+proc tryReadModule*(config: ConfigRef; name: string): Option[Module] =
+  ## let IC compose the filename
   let fn = composeFilename(config, name)
-  if fileExists fn:
-    echo "📖", $fn
-    var stream = newFileStream($fn, fmRead)
-    try:
-      let reply = queryRodHeader stream
-      if reply.ok:
-        # try to reduce some buffer churn
-        var snap = newStringOfCap(getFileSize $fn)
-        thaw[string](stream, snap)
+  result = tryReadModule(config, fn)
 
-        let m = thaw[Module] uncompress(snap)
-        if hash(config) != hash(m.config):
-          # NOTE: we just bail if the configs don't hash equivalently
-          return
-        if hash(m) != reply.hash:
-          internalError(config, $fn & ": hashes don't match")
-        result = some m
-      else:
-        when not defined(release):
-          echo reply.msg
-    except ThawError as e:
-      handleFileError(config, fn, e)
-    except SnappyError as e:
-      handleFileError(config, fn, e)
-    finally:
-      close stream
-
-proc tryWriteModule*(m: Module): bool =
+proc tryWriteModule*(m: Module; fn: AbsoluteFile): bool =
   ## true if we were able to write the module successfully
-  let fn = composeFilename(m.config, m.name)
-  let reply = queryRodHeader fn
-  let value = hash(m)
+  let reply = readHeader fn
+  let value = hash(m.ast)
   when not defined(release):
     if reply.ok:
       if reply.hash == value:
         internalError(m.config, "gratuitous module write")
   m.writeModuleInto(fn, value = value)  # pre-supply the hash
   result = true
+
+proc tryWriteModule*(m: Module): bool =
+  ## let IC compose the filename
+  let fn = composeFilename(m.config, m.name)
+  result = tryWriteModule(m, fn)

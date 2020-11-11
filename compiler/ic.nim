@@ -10,7 +10,7 @@
 ## incremental compilation as a compiler pass run inside sem
 
 import
-  ast, passes, idents, msgs, options, lineinfos,
+  ast, passes, idents, msgs, options, lineinfos, pathutils,
   std/options as stdoptions
 
 import ic/[ store, packed_ast, to_packed_ast, from_packed_ast ]
@@ -25,10 +25,14 @@ type
     s: PSym
     m: Option[Module]
 
+proc rodFile(ic: IncrementalRef): AbsoluteFile =
+  result = AbsoluteFile toFullPath(ic.config, ic.s.info.fileIndex)
+  result = result.changeFileExt "rod"
+
 proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   var ic = IncrementalRef(idgen: idgen, graph: graph, config: graph.config,
                           name: s.name.s, s: s)
-  ic.m = tryReadModuleNamed(graph.config, ic.name)
+  ic.m = tryReadModule(graph.config, ic.rodFile)
   if ic.m.isSome:
     echo "🔵" & ic.name
   else:
@@ -55,7 +59,7 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     else:
       echo "🔴" & ic.name
   else:
-    if tryWriteModule(m):
+    if tryWriteModule(m, ic.rodFile):
       echo "⚪" & ic.name
     else:
       echo "💣" & ic.name
