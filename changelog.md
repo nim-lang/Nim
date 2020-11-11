@@ -35,6 +35,8 @@
 
 ## Language changes
 
+- The `cstring` doesn't support `[]=` operator in JS backend.
+
 
 
 ## Compiler changes
