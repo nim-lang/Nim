@@ -21,7 +21,7 @@ read/write modules to/from disk
 ]##
 
 type
-  MetaReply = object     ## result of a metadata query of a rod file
+  HeaderReply = object     ## result of a metadata query of a rod file
     ok: bool
     msg: string
     version: string
@@ -51,7 +51,7 @@ proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
     var y = thaw[Module] readFile"/tmp/module.rod"
     assert hash(y) == hash(m)
 
-proc queryRodMeta(stream: Stream): MetaReply {.raises: [].} =
+proc queryRodHeader(stream: Stream): HeaderReply {.raises: [].} =
   ## query a rod file stream to see if it is worth attempting to use
   try:
     setPosition(stream, 0)
@@ -65,7 +65,7 @@ proc queryRodMeta(stream: Stream): MetaReply {.raises: [].} =
   except CatchableError as e:
     result.msg = e.msg
 
-proc queryRodMeta(fn: AbsoluteFile): MetaReply =
+proc queryRodHeader(fn: AbsoluteFile): HeaderReply =
   ## query a rod file to see if it is worth attempting to use
   if not fileExists fn:
     result.msg = $fn & ": file not found"
@@ -73,7 +73,7 @@ proc queryRodMeta(fn: AbsoluteFile): MetaReply =
     try:
       var stream = newFileStream($fn, fmRead)
       try:
-        result = queryRodMeta(stream)
+        result = queryRodHeader(stream)
       finally:
         close stream
     except CatchableError as e:
@@ -99,7 +99,7 @@ proc tryReadModuleNamed*(config: ConfigRef; name: string): Option[Module] =
     echo "📖", $fn
     var stream = newFileStream($fn, fmRead)
     try:
-      let reply = queryRodMeta stream
+      let reply = queryRodHeader stream
       if reply.ok:
         # try to reduce some buffer churn
         var snap = newStringOfCap(getFileSize $fn)
@@ -125,7 +125,7 @@ proc tryReadModuleNamed*(config: ConfigRef; name: string): Option[Module] =
 proc tryWriteModule*(m: Module): bool =
   ## true if we were able to write the module successfully
   let fn = composeFilename(m.config, m.name)
-  let reply = queryRodMeta fn
+  let reply = queryRodHeader fn
   let value = hash(m)
   when not defined(release):
     if reply.ok:
