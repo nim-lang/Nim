@@ -178,6 +178,25 @@ proc isNumeric*(s: string): bool =
     doAssert isNumeric("Inf") == true
     doAssert isNumeric("-Inf") == true
     doAssert isNumeric("NaN") == true
+    doAssert isNumeric("nAn") == true
+    doAssert isNumeric("-.1") == true
+    doAssert isNumeric("0.000_005") == true
+    doAssert isNumeric("1e1_00") == true
+    doAssert isNumeric("0.00_0001") == true
+    doAssert isNumeric("0.00__00_01") == true
+    doAssert isNumeric("0.0_01") == true
+    doAssert isNumeric("0.00_000_1") == true
+    doAssert isNumeric("0.00000_1") == true
+    doAssert isNumeric("1_0.00_0001") == true
+    doAssert isNumeric("1__00.00_0001") == true
+    doAssert not isNumeric("1_0._00_0001") == true
+    doAssert not isNumeric("_1_0_00.0001") == true
+    doAssert not isNumeric("10.00E_01") == true
+    doAssert not isNumeric("10.00E") == true
+    doAssert not isNumeric("10.00E+") == true
+    doAssert not isNumeric("10.00E-") == true
+    doAssert not isNumeric("10.00E_") == true
+    doAssert not isNumeric("10.00A") == true
 
   if s.len == 3:
     if (s[0] in {'i', 'I'} and s[1] in {'n', 'N'} and s[2] in {'f', 'F'}) or
@@ -192,7 +211,9 @@ proc isNumeric*(s: string): bool =
   var i = 0
   while i < s.len:
     case s[i]
-    of '+', '-':        
+    of '+', '-':
+      if i == s.len - 1:
+        return false
       if eCount == 0:
         if numCount > 0:
           return false
@@ -208,8 +229,11 @@ proc isNumeric*(s: string): bool =
     of '.':
       if dotCount == 1:
         return false
+      numCount = 0
       inc(dotCount)
     of 'e', 'E':
+      if i == s.len - 1:
+        return false
       if numCount > 0 or dotCount > 0:
         if eCount == 1:
           return false
@@ -219,6 +243,13 @@ proc isNumeric*(s: string): bool =
       inc(eCount)
     of '0'..'9':
       inc(numCount)
+    of '_':
+      if numCount == 0:
+        return false
+      if dotCount == 1 and numCount == 0:
+        return false
+      if eCount == 1 and numCount == 0:
+        return false
     else:
       return false
     inc i
