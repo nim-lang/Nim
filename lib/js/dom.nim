@@ -154,6 +154,7 @@ type
     performance*: Performance
     onpopstate*: proc (event: Event)
     localStorage*: LocalStorage
+    parent*: Window
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
