@@ -3300,3 +3300,57 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
+
+since (1, 5):
+  const osTrash*: string =
+    when defined(linux) or defined(bsd):
+      getEnv("XDG_DATA_HOME", getHomeDir()) / ".local/share/Trash"
+    elif defined(osx):
+      getEnv("HOME", getHomeDir()) / ".Trash"
+    else:
+      getTempDir() # Android has no Trash, some apps just use a temporary folder.
+
+  proc moveFileToTrash*(filename: string; trashPath = osTrash) =
+    ## Move file from `filename` to `trashPath`. `trashPath` defaults to `osTrash`.
+    ## * http://www.freedesktop.org/wiki/Specifications/trash-spec
+    ## * http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    ##
+    ## See also:
+    ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+    ## * `removeFile proc <#removeFile,string>`_
+    assert filename.len > 0, "filename must not be empty string"
+    discard existsOrCreateDir(trashPath)
+    when defined(linux) or defined(bsd):
+      let fullPath = expandFilename(filename)
+      let fname = extractFilename(fullPath)
+      discard existsOrCreateDir(trashPath / "files")
+      discard existsOrCreateDir(trashPath / "info")
+      moveFile(fullPath, trashPath / "files" / fname)
+      writeFile(trashPath / "info" / fname & ".trashinfo",
+        "[Trash Info]\nPath=" & fullPath & "\nDeletionDate=" &
+        now().format("yyyy-MM-dd'T'HH:MM:ss") & "\n")
+    else:
+      moveFile(expandFilename(filename), trashPath / extractFilename(filename))
+
+  proc moveFileFromTrash*(filename: string; trashPath = osTrash) =
+    ## Move file from `trashPath` to `filename`. `trashPath` defaults to `osTrash`.
+    ## * http://www.freedesktop.org/wiki/Specifications/trash-spec
+    ## * http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+    ##
+    ## See also:
+    ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+    ## * `removeFile proc <#removeFile,string>`_
+    runnableExamples:
+      writeFile("example.txt", "")
+      moveFileToTrash("example.txt")
+      moveFileFromTrash(getCurrentDir() / "example.txt")
+
+    assert filename.len > 0, "filename must not be empty string"
+    if dirExists(trashPath):
+      when defined(linux) or defined(bsd):
+        let fname = extractFilename(filename)
+        moveFile(trashPath / "files" / fname, filename)
+        discard tryRemoveFile(trashPath / "info" / fname & ".trashinfo")
+      else:
+        moveFile(trashPath / extractFilename(filename), filename)
