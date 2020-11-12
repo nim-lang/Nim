@@ -1280,6 +1280,20 @@ string from a cstring:
   var cstr: cstring = str
   var newstr: string = $cstr
 
+``cstring`` literals shouldn't be modified.
+
+.. code-block:: nim
+  var x = cstring"literals"
+  x[1] = 'A' # This is wrong!!!
+
+If the ``cstring`` originates from a regular memory (not read-only memory),
+it can be modified:
+
+.. code-block:: nim
+  var x = "123456"
+  var s: cstring = x
+  s[0] = 'u' # This is ok
+
 Structured types
 ----------------
 A variable of a structured type can hold multiple values at the same
