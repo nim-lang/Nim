@@ -87,6 +87,7 @@ type
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
+    moduleScope*: PScope       # scope for modules
     imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
@@ -449,7 +450,7 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
   if n.len < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
-  result = c.currentScope.depthLevel <= 1
+  result = c.currentScope.depthLevel <= 2
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))

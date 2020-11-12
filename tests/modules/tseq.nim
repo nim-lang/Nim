@@ -3,7 +3,6 @@ discard """
   output: '''@[]
 @[]
 '''
-  disabled: "true"
 """
 
 import seq

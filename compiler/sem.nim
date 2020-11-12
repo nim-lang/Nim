@@ -522,10 +522,13 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
+
+  c.moduleScope = openScope(c)
+  c.moduleScope.addSym(module) # a module knows itself
+
   if sfSystemModule in module.flags:
     graph.systemModule = module
   c.topLevelScope = openScope(c)
-  c.topLevelScope.addSym(module) # a module knows itself
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
@@ -556,7 +559,7 @@ proc isEmptyTree(n: PNode): bool =
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
-      c.topLevelScope.addSym c.graph.systemModule # import the "System" identifier
+      c.moduleScope.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts
   else:
@@ -625,8 +628,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
-  when false:
-    rawCloseScope(c)      # imported symbols; don't check for unused ones!
+  rawCloseScope(c)      # imported symbols; don't check for unused ones!
   reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
