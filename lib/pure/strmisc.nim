@@ -87,7 +87,7 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   return partition(s, sep, right = true)
 
 
-func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.since: (1, 3).} =
+func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.since: (1, 5).} =
   ## Convenience func for `parseFloat` which allows for thousand separators,
   ## this is designed to parse floats as found in the wild formatted for humans.
   ##
