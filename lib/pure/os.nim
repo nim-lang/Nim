@@ -1156,6 +1156,7 @@ when not defined(windows) and not weirdTarget:
     else: result = S_ISLNK(rawInfo.st_mode)
 
 const
+  maxSymlinkLen = 1024
   ExeExts* = ## Platform specific file extension for executables.
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
@@ -1197,11 +1198,11 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         when not defined(windows):
           while followSymlinks: # doubles as if here
             if x.checkSymlink:
-              var r = newString(256)
-              var len = readlink(x, r, 256)
+              var r = newString(maxSymlinkLen)
+              var len = readlink(x, r, maxSymlinkLen)
               if len < 0:
                 raiseOSError(osLastError(), exe)
-              if len > 256:
+              if len > maxSymlinkLen:
                 r = newString(len+1)
                 len = readlink(x, r, len)
               setLen(r, len)
@@ -2517,11 +2518,11 @@ proc expandSymlink*(symlinkPath: string): string {.noNimScript.} =
   when defined(windows):
     result = symlinkPath
   else:
-    result = newString(256)
-    var len = readlink(symlinkPath, result, 256)
+    result = newString(maxSymlinkLen)
+    var len = readlink(symlinkPath, result, maxSymlinkLen)
     if len < 0:
       raiseOSError(osLastError(), symlinkPath)
-    if len > 256:
+    if len > maxSymlinkLen:
       result = newString(len+1)
       len = readlink(symlinkPath, result, len)
     setLen(result, len)
@@ -2811,9 +2812,9 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
-    result = newString(256)
-    var len = readlink(procPath, result, 256)
-    if len > 256:
+    result = newString(maxSymlinkLen)
+    var len = readlink(procPath, result, maxSymlinkLen)
+    if len > maxSymlinkLen:
       result = newString(len+1)
       len = readlink(procPath, result, len)
     setLen(result, len)
