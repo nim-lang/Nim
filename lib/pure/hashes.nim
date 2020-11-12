@@ -114,7 +114,11 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   const P1  = 0xe7037ed1a0b428db'u64
   const P58 = 0xeb44accab455d165'u64 xor 8'u64
   when nimvm:
-    cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+    when defined(js): # NOTE: Nim int64<->Number => JS has limited 32-bit hash.
+      result = cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58)) and
+                 cast[Hash](0xFFFFFFFF)
+    else:
+      result = cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
   else:
     when defined(js):
       asm """
@@ -132,8 +136,9 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
           var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
           `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
         }"""
+      result = result and cast[Hash](0xFFFFFFFF)
     else:
-      cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+      result = cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
