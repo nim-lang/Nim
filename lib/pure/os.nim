@@ -3342,9 +3342,10 @@ since (1, 5):
     ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
     ## * `removeFile proc <#removeFile,string>`_
     runnableExamples:
-      writeFile("example.txt", "")
-      moveFileToTrash("example.txt")
-      moveFileFromTrash(getCurrentDir() / "example.txt")
+      when not defined(js) and not defined(nimscript):
+        writeFile("example.txt", "")
+        moveFileToTrash("example.txt")
+        moveFileFromTrash(getCurrentDir() / "example.txt")
 
     assert filename.len > 0, "filename must not be empty string"
     if dirExists(trashPath):
