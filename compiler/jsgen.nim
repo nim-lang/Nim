@@ -1051,7 +1051,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   # disable `[]=` for cstring
   if x.kind == nkBracketExpr and x.len >= 2 and x[0].typ.skipTypes(abstractInst).kind == tyCString:
-    localError(p.config, x.info, "cstring doesn't support `[]=` operator!")
+    localError(p.config, x.info, "cstring doesn't support `[]=` operator")
 
   gen(p, x, a)
   genLineDir(p, y)
