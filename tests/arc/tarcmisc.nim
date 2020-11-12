@@ -26,6 +26,7 @@ new line after - @['a']
 finalizer
 aaaaa
 hello
+ok
 closed
 destroying variable: 20
 destroying variable: 10
@@ -378,3 +379,14 @@ proc text_parser(xml: var XmlParser) =
 
 text_parser(xml)
 text_parser(xml2)
+
+# bug #15599
+type
+  PixelBuffer = ref object
+
+proc newPixelBuffer(): PixelBuffer =
+  new(result) do (buffer: PixelBuffer):
+    echo "ok"
+
+discard newPixelBuffer()
+

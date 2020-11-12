@@ -1266,10 +1266,10 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, owner)
-  result.rawAddSon(newType(tyPointer, owner))
-  var r = newType(tyRef, owner)
-  let obj = createObj(m.g.graph, owner, owner.info, final=false)
+  result = newType(tyTuple, nextId m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, nextId m.idgen, owner))
+  var r = newType(tyRef, nextId m.idgen, owner)
+  let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
 
@@ -1395,9 +1395,9 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, t.owner)
-  let p = newType(tyPtr, t.owner)
-  let a = newType(tyUncheckedArray, t.owner)
+  result = newType(tyTuple, nextId m.idgen, t.owner)
+  let p = newType(tyPtr, nextId m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, nextId m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p
@@ -1487,7 +1487,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   elif origType.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
 
-  if optTinyRtti in m.config.globalOptions and t.kind == tyObject:
+  if optTinyRtti in m.config.globalOptions and t.kind == tyObject and sfImportc notin t.sym.flags:
     let v2info = genTypeInfoV2(m, origType, info)
     addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2; $2.typeInfoV2 = (void*)$1;$n", [
       v2info, result])

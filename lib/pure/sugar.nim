@@ -57,13 +57,21 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
-  ##     f(2, 2)
-  ##
-  ##   passTwoAndTwo((x, y) => x + y) # 4
+  ## It also supports pragmas.
+  runnableExamples:
+    proc passTwoAndTwo(f: (int, int) -> int): int =
+      f(2, 2)
+  
+    doAssert passTwoAndTwo((x, y) => x + y) == 4
+
+    type
+      Bot = object
+        call: proc (): string {.nosideEffect.}
+
+    var myBot = Bot()
+
+    myBot.call = () {.nosideEffect.} => "I'm a bot."
+    doAssert myBot.call() == "I'm a bot."
 
   var
     params = @[ident"auto"]
@@ -207,6 +215,8 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
   for arg in locals:
+    if arg.strVal == "result":
+      error("The variable name cannot be `result`!", arg)
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
@@ -244,6 +254,11 @@ since (1, 1):
       var c = "xyz"
 
       # An underscore (_) can be used to denote the place of the argument you're passing:
+      doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
+      # but `_` is optional here since the substitution is in 1st position:
+      doAssert "".dup(addQuoted("foo")) == "\"foo\""
+
+      # chaining:
       # b = "xyz"
       var d = dup c:
         makePalindrome # xyzyx

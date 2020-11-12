@@ -92,7 +92,7 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
         optSeqDestructors in tracked.config.globalOptions:
       createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
 
-  createTypeBoundOps(tracked.graph, tracked.c, typ, info)
+  createTypeBoundOps(tracked.graph, tracked.c, typ, info, tracked.c.idgen)
   if (tfHasAsgn in typ.flags) or
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
@@ -219,7 +219,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name,
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextId a.c.idgen,
                                           a.owner, reason.info, {})
 
 when true:
@@ -510,29 +510,30 @@ proc procVarCheck(n: PNode; conf: ConfigRef) =
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType.isNil or paramType.kind != tyTypeDesc:
-    procVarCheck skipConvAndClosure(n), tracked.config
+    procVarCheck skipConvCastAndClosure(n), tracked.config
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
-  if paramType != nil and tfNotNil in paramType.flags and
-      n.typ != nil and tfNotNil notin n.typ.flags:
-    if isAddrNode(n):
-      # addr(x[]) can't be proven, but addr(x) can:
-      if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
-    elif (n.kind == nkSym and n.sym.kind in routineKinds) or
-         (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
-         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq) or
-         n.typ.kind == tyTypeDesc:
-      # 'p' is not nil obviously:
-      return
-    case impliesNotNil(tracked.guards, n)
-    of impUnknown:
-      message(tracked.config, n.info, errGenerated,
-              "cannot prove '$1' is not nil" % n.renderTree)
-    of impNo:
-      message(tracked.config, n.info, errGenerated,
-              "'$1' is provably nil" % n.renderTree)
-    of impYes: discard
+  if paramType != nil and tfNotNil in paramType.flags and n.typ != nil:
+    let ntyp = n.typ.skipTypesOrNil({tyVar, tyLent, tySink})
+    if ntyp != nil and tfNotNil notin ntyp.flags:
+      if isAddrNode(n):
+        # addr(x[]) can't be proven, but addr(x) can:
+        if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
+      elif (n.kind == nkSym and n.sym.kind in routineKinds) or
+          (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
+          (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq) or
+          n.typ.kind == tyTypeDesc:
+        # 'p' is not nil obviously:
+        return
+      case impliesNotNil(tracked.guards, n)
+      of impUnknown:
+        message(tracked.config, n.info, errGenerated,
+                "cannot prove '$1' is not nil" % n.renderTree)
+      of impNo:
+        message(tracked.config, n.info, errGenerated,
+                "'$1' is provably nil" % n.renderTree)
+      of impYes: discard
 
 proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   addRaiseEffect(tracked, createRaise(tracked.graph, n), nil)
@@ -555,7 +556,7 @@ proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
-  let a = skipConvAndClosure(n)
+  let a = skipConvCastAndClosure(n)
   let op = a.typ
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
@@ -754,7 +755,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
-  if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
+  if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) != nil:
     return
   if a.kind == nkCast and a[1].typ.kind == tyProc:
     a = a[1]
@@ -809,7 +810,8 @@ proc trackCall(tracked: PEffects; n: PNode) =
 
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
-    let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
+    var opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
+    if a.sym.name.s.normalize == "=": opKind = attachedAsgn.int
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
@@ -827,7 +829,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       case op[i].kind
       of tySink:
         createTypeBoundOps(tracked,  op[i][0], n.info)
-        checkForSink(tracked.config, tracked.owner, n[i])
+        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
       of tyVar:
         tracked.hasDangerousAssign = true
       #of tyOut:
@@ -945,7 +947,7 @@ proc track(tracked: PEffects, n: PNode) =
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n[0].typ, n.info)
     if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
-      checkForSink(tracked.config, tracked.owner, n[1])
+      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[1])
       if not tracked.hasDangerousAssign and n[0].kind != nkSym:
         tracked.hasDangerousAssign = true
   of nkVarSection, nkLetSection:
@@ -1052,9 +1054,9 @@ proc track(tracked: PEffects, n: PNode) =
       if x.kind == nkExprColonExpr:
         if x[0].kind == nkSym:
           notNilCheck(tracked, x[1], x[0].sym.typ)
-        checkForSink(tracked.config, tracked.owner, x[1])
+        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, x[1])
       else:
-        checkForSink(tracked.config, tracked.owner, x)
+        checkForSink(tracked.config, tracked.c.idgen, tracked.owner, x)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
       # XXX n.typ can be nil in runnableExamples, we need to do something about it.
@@ -1069,7 +1071,7 @@ proc track(tracked: PEffects, n: PNode) =
           createTypeBoundOps(tracked, n[i][0].typ, n.info)
         else:
           createTypeBoundOps(tracked, n[i].typ, n.info)
-      checkForSink(tracked.config, tracked.owner, n[i])
+      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
   of nkPragmaBlock:
     let pragmaList = n[0]
     var bc = createBlockContext(tracked)
@@ -1120,7 +1122,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkBracket:
     for i in 0..<n.safeLen:
       track(tracked, n[i])
-      checkForSink(tracked.config, tracked.owner, n[i])
+      checkForSink(tracked.config, tracked.c.idgen, tracked.owner, n[i])
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkBracketExpr:

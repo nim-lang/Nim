@@ -24,7 +24,7 @@ proc initRLock*(lock: var RLock) {.inline.} =
   when defined(posix):
     var a: SysLockAttr
     initSysLockAttr(a)
-    setSysLockType(a, SysLockType_Reentrant())
+    setSysLockType(a, SysLockType_Reentrant)
     initSysLock(lock, a.addr)
   else:
     initSysLock(lock)

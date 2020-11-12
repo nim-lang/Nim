@@ -129,6 +129,15 @@ proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
 
+template await*(f: typed): untyped {.used.} =
+  static:
+    error "await expects Future[T], got " & $typeof(f)
+
+template await*[T](f: Future[T]): auto {.used.} =
+  var internalTmpFuture: FutureBase = f
+  yield internalTmpFuture
+  (cast[typeof(f)](internalTmpFuture)).read()
+
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
@@ -262,20 +271,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       result.params[0] = parseExpr("owned(Future[void])")
 
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-  # however here the overloads are placed inside each expanded async
-  var awaitDefinition = quote:
-    template await(f: typed): untyped {.used.} =
-      static:
-        error "await expects Future[T], got " & $typeof(f)
-
-    template await[T](f: Future[T]): auto {.used.} =
-      var internalTmpFuture: FutureBase = f
-      yield internalTmpFuture
-      (cast[type(f)](internalTmpFuture)).read()
-
   if procBody.kind != nnkEmpty:
     body2.add quote do:
-      `awaitDefinition`
       `outerProcBody`
     result.body = body2
 

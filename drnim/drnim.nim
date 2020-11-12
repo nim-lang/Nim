@@ -1209,15 +1209,13 @@ proc mainCommand(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    var output = $conf.absOutFile
-    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
       "mem", mem,
       "build", build,
       "project", project,
-      "output", output,
+      "output", ""
       ])
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
@@ -1262,8 +1260,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   incl conf.options, optStaticBoundsCheck
   let self = NimProg(
     supportsStdinFile: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "drnim")
   if paramCount() == 0:
@@ -1271,7 +1268,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     return
 
   self.processCmdLineAndProjectPath(conf)
-  if not self.loadConfigsAndRunMainCommand(cache, conf): return
+  var graph = newModuleGraph(cache, conf)
+  if not self.loadConfigsAndRunMainCommand(cache, conf, graph): return
+  mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
 
 when compileOption("gc", "v2") or compileOption("gc", "refc"):

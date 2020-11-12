@@ -1,69 +1,35 @@
-# v1.4.0 - yyyy-mm-dd
+# v1.6.x - yyyy-mm-dd
 
 
 
 ## Standard library additions and changes
 
-- Added some enhancements to `std/jsonutils` module.
-  * Added a possibility to deserialize JSON arrays directly to `HashSet` and
-    `OrderedSet` types and respectively to serialize those types to JSON arrays
-    via `jsonutils.fromJson` and `jsonutils.toJson` procedures.
-  * Added a possibility to deserialize JSON `null` objects to Nim option objects
-    and respectively to serialize Nim option object to JSON object if `isSome`
-    or to JSON null object if `isNone` via `jsonutils.fromJson` and
-    `jsonutils.toJson` procedures.
-  * Added `Joptions` parameter to `jsonutils.fromJson` procedure currently
-    containing two boolean options `allowExtraKeys` and `allowMissingKeys`.
-    - If `allowExtraKeys` is `true` Nim's object to which the JSON is parsed is
-      not required to have a field for every JSON key.
-    - If `allowMissingKeys` is `true` Nim's object to which JSON is parsed is
-      allowed to have fields without corresponding JSON keys.
-- Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
-- Added `tryInsert`,`insert` procs to `db_*` libs accept primary key column name.
-- Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
-- `uri` adds Data URI Base64, implements RFC-2397.
-- Added [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
-  to the `dom` module for the JavaScript target.
-- The default hash for `Ordinal` has changed to something more bit-scrambling.
-  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
-  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
-- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
-- File handles created from high-level abstractions in the stdlib will no longer
-  be inherited by child processes. In particular, these modules are affected:
-  `asyncdispatch`, `asyncnet`, `system`, `nativesockets`, `net` and `selectors`.
+- Make `{.requiresInit.}` pragma to work for `distinct` types.
 
-  For `asyncdispatch`, `asyncnet`, `net` and `nativesockets`, an `inheritable`
-  flag has been added to all `proc`s that create sockets, allowing the user to
-  control whether the resulting socket is inheritable. This flag is provided to
-  ease the writing of multi-process servers, where sockets inheritance is
-  desired.
+- Added a macros `enumLen` for returning the number of items in an enum to the
+  `typetraits.nim` module.
 
-  For a transition period, define `nimInheritHandles` to enable file handle
-  inheritance by default. This flag does **not** affect the `selectors` module
-  due to the differing semantics between operating systems.
+- `prelude` now works with the JavaScript target.
 
-  `asyncdispatch.setInheritable`, `system.setInheritable` and
-  `nativesockets.setInheritable` is also introduced for setting file handle or
-  socket inheritance. Not all platform have these `proc`s defined.
+- Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
-- The file descriptors created for internal bookkeeping by `ioselector_kqueue`
-  and `ioselector_epoll` will no longer be leaked to child processes.
+- The JSON module can now handle integer literals and floating point literals of
+  arbitrary length and precision.
+  Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are
+  kept as string literals and one can use external BigNum libraries to handle these.
+  The `parseFloat` family of functions also has now optional `rawIntegers` and
+  `rawFloats` parameters that can be used to enforce that all integer or float
+  literals remain in the "raw" string form so that client code can easily treat
+  small and large numbers uniformly.
 
-- `strutils.formatFloat` with `precision = 0` has been restored to the version
-  1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
-  is now `3.`, not `3`.
-- `critbits` adds `commonPrefixLen`.
+- Added `randState` template that exposes the default random number generator.
+  Useful for library authors.
 
-- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
-  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
-  and this can now throw in edge cases where `getCurrentDir` throws.
-  `relativePath` also now works for js with `-d:nodejs`.
+- Added std/enumutils module containing `genEnumCaseStmt` macro that generates
+  case statement to parse string to enum.
 
-- JavaScript and NimScript standard library changes: `streams.StringStream` is
-  now supported in JavaScript, with the limitation that any buffer `pointer`s
-  used must be castable to `ptr string`, any incompatible pointer type will not
-  work. The `lexbase` and `streams` modules used to fail to compile on
-  NimScript due to a bug, but this has been fixed.
+- Removed deprecated `iup` module from stdlib, it has already moved to
+  [nimble](https://github.com/nim-lang/iup).
 
   The following modules now compile on both JS and NimScript: `parsecsv`,
   `parsecfg`, `parsesql`, `xmlparser`, `htmlparser` and `ropes`. Additionally
@@ -211,152 +177,32 @@
 
 - Added `progressInterval` argument to `asyncftpclient.newAsyncFtpClient` to control the interval
   at which progress callbacks are called.
+- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
 
+- `doAssertRaises` now correctly handles foreign exceptions.
 
 ## Language changes
 
-- The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
-  `wasMoved` calls where needed.
-- In the newruntime it is now allowed to assign to the discriminator field
-  without restrictions as long as case object doesn't have custom destructor.
-  The discriminator value doesn't have to be a constant either. If you have a
-  custom destructor for a case object and you do want to freely assign discriminator
-  fields, it is recommended to refactor object into 2 objects like this:
+- `nimscript` now handles `except Exception as e`
+- The `cstring` doesn't support `[]=` operator in JS backend.
 
-  ```nim
-  type
-    MyObj = object
-      case kind: bool
-        of true: y: ptr UncheckedArray[float]
-        of false: z: seq[int]
-
-  proc `=destroy`(x: MyObj) =
-    if x.kind and x.y != nil:
-      deallocShared(x.y)
-  ```
-  Refactor into:
-  ```nim
-  type
-    MySubObj = object
-      val: ptr UncheckedArray[float]
-    MyObj = object
-      case kind: bool
-      of true: y: MySubObj
-      of false: z: seq[int]
-
-  proc `=destroy`(x: MySubObj) =
-    if x.val != nil:
-      deallocShared(x.val)
-  ```
-- `getImpl` on enum type symbols now returns field syms instead of idents. This helps
-  with writing typed macros. Old behavior for backwards compatibility can be restored
-  with command line switch `--useVersion:1.0`.
-- ``let`` statements can now be used without a value if declared with
-  ``importc``/``importcpp``/``importjs``/``importobjc``.
-- The keyword `from` is now usable as an operator.
-- Exceptions inheriting from `system.Defect` are no longer tracked with
-  the `.raises: []` exception tracking mechanism. This is more consistent with the
-  built-in operations. The following always used to compile (and still does):
-
-```nim
-
-proc mydiv(a, b): int {.raises: [].} =
-  a div b # can raise an DivByZeroDefect
-
-```
-
-  Now also this compiles:
-
-```nim
-
-proc mydiv(a, b): int {.raises: [].} =
-  if b == 0: raise newException(DivByZeroDefect, "division by zero")
-  else: result = a div b
-
-```
-
-  The reason for this is that `DivByZeroDefect` inherits from `Defect` and
-  with `--panics:on` `Defects` become unrecoverable errors.
-
-- Added the `thiscall` calling convention as specified by Microsoft, mostly for hooking purposes.
-- Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
-- Removed `strutils.isNilOrWhitespace`, was deprecated.
-- Removed `sharedtables.initSharedTable`, was deprecated and produces undefined behavior.
-- Removed `asyncdispatch.newAsyncNativeSocket`, was deprecated since `0.18`.
-- Removed `dom.releaseEvents` and `dom.captureEvents`, was deprecated.
-
-- Removed `sharedlists.initSharedList`, was deprecated and produces undefined behaviour.
-
-- There is a new experimental feature called "strictFuncs" which makes the definition of
-  `.noSideEffect` stricter. [See](manual_experimental.html#stricts-funcs)
-  for more information.
-
-- "for-loop macros" (see [the manual](manual.html#macros-for-loop-macros)) are no longer
-  an experimental feature. In other words, you don't have to write pragma
-  `{.experimental: "forLoopMacros".}` if you want to use them.
-
-- Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
-  performance this keyword can enable.
-
-- `items` no longer compiles with enum with holes as its behavior was error prone, see #14004
-- `system.deepcopy` has to be enabled explicitly for `--gc:arc` and `--gc:orc` via
-  `--deepcopy:on`.
-
-- Added a `std/effecttraits` module for introspection of the inferred effects.
-  We hope this enables `async` macros that are precise about the possible exceptions that
-  can be raised.
-- The pragma blocks `{.gcsafe.}: ...` and `{.noSideEffect.}: ...` can now also be
-  written as `{.cast(gcsafe).}: ...` and `{.cast(noSideEffect).}: ...`. This is the new
-  preferred way of writing these, emphasizing their unsafe nature.
 
 
 ## Compiler changes
 
-- Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
-- The `define` and `undef` pragmas have been de-deprecated.
-- New command: `nim r main.nim [args...]` which compiles and runs main.nim, and implies `--usenimcache`
-  so that output is saved to $nimcache/main$exeExt, using the same logic as `nim c -r` to
-  avoid recompiling when sources don't change. This is now the preferred way to
-  run tests, avoiding the usual pain of clobbering your repo with binaries or
-  using tricky gitignore rules on posix. Example:
-  ```nim
-  nim r compiler/nim.nim --help # only compiled the first time
-  echo 'import os; echo getCurrentCompilerExe()' | nim r - # this works too
-  nim r compiler/nim.nim --fullhelp # no recompilation
-  nim r --nimcache:/tmp main # binary saved to /tmp/main
-  ```
-- `--hint:processing` is now supported and means `--hint:processing:on`
-  (likewise with other hints and warnings), which is consistent with all other bool flags.
-  (since 1.3.3).
-- `nim doc -r main` and `nim rst2html -r main` now call `openDefaultBrowser`.
-- new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error)
-  was generated; this helps in particular when it's non obvious where it came from
-  either because multiple locations generate the same message, or because the
-  message involves runtime formatting.
-- new flag `--backend:js|c|cpp|objc` (or -b:js etc), to change backend; can be
-  used with any command (eg nim r, doc, check etc); safe to re-assign.
-- new flag `--doccmd:cmd` to pass additional flags for runnableExamples,
-  e.g.: `--doccmd:-d:foo --threads`
-  use `--doccmd:skip` to skip runnableExamples and rst test snippets.
-- new flag `--usenimcache` to output to nimcache (whatever it resolves to after
-  all commands are processed)
-  and avoids polluting both $pwd and $projectdir. It can be used with any command.
-- `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override
-  how an example is compiled and run, for example to change backend or compile only.
-- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified
-  (with or without `--project`); passing `--project` now automatically generates
-  an index and enables search.
-  See [docgen](docgen.html#introduction-quick-start) for details.
-- Removed the `--oldNewlines` switch.
-- Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
-- Removed the `--oldast` switch.
-- Removed the `--oldgensym` switch
-- `$getType(untyped)` is now "untyped" instead of "expr", `$getType(typed)` is
-  now "typed" instead of "stmt".
-- Sink inference is now disabled per default and has to enabled explicitly via
-  `--sinkInference:on`. *Note*: For the standard library sink inference remains
-  enabled. This change is most relevant for the `--gc:arc`, `--gc:orc` memory
-  management modes.
+- Added `--declaredlocs` to show symbol declaration location in messages.
+
+- Source+Edit links now appear on top of every docgen'd page when
+  `nim doc --git.url:url ...` is given.
+
+- Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
+
 
 
 ## Tool changes
+
+- The rst parser now supports markdown table syntax.
+  Known limitations:
+  - cell alignment is not supported, i.e. alignment annotations in a delimiter
+    row (`:---`, `:--:`, `---:`) are ignored,
+  - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.

@@ -8,11 +8,8 @@ Contributing
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
 
-The PR has to be approved (and is often merged too) by one "code owner", either
-by the code owner who is responsible for the subsystem the PR belongs to or by
-two core developers or by Araq.
+The PR has to be approved by two core developers or by Araq.
 
-See `codeowners <codeowners.html>`_ for more details.
 
 
 Writing tests
@@ -43,13 +40,13 @@ Stdlib
 ------
 
 Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
-preferably have a corresponding separate test file, eg `tests/stdlib/tos.nim`.
+preferably have a corresponding separate test file, e.g. `tests/stdlib/tos.nim`.
 The old convention was to add a ``when isMainModule:`` block in the source file,
 which only gets executed when the tester is building the file.
 
 Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
-testing by itself, don't rely on echo statements or similar; in particular avoid
+testing by itself, don't rely on echo statements or similar; in particular, avoid
 things like `echo "done"`.
 
 Sample test:
@@ -69,9 +66,9 @@ Sample test:
     # doAssert with `not` can now be done as follows:
     doAssert not (1 == 2)
 
-Always refer to a github issue using the following exact syntax: `bug #1234` as shown
+Always refer to a GitHub issue using the following exact syntax: `bug #1234` as shown
 above, so that it's consistent and easier to search or for tooling. Some browser
-extensions (eg https://github.com/sindresorhus/refined-github) will even turn those
+extensions (e.g. https://github.com/sindresorhus/refined-github) will even turn those
 in clickable links when it works.
 
 Rationale for using a separate test file instead of `when isMainModule:` block:
@@ -100,7 +97,7 @@ Possible keys are:
 
 For a full spec, see here: ``testament/specs.nim``
 
-An example for a test:
+An example of a test:
 
 .. code-block:: nim
 
@@ -162,7 +159,7 @@ Comparing tests
 
 Test failures can be grepped using ``Failure:``.
 
-The tester can compare two test runs. First, you need to create the
+The tester can compare two test runs. First, you need to create a
 reference test. You'll also need to the commit id, because that's what
 the tester needs to know in order to compare the two.
 
@@ -344,7 +341,7 @@ which for which ``nim doc`` ignores ``-d:release``).
 
 .. _delegate_printing:
 Delegate printing to caller: return ``string`` instead of calling ``echo``
-rationale: it's more flexible (e.g. allows caller to call custom printing,
+rationale: it's more flexible (e.g. allows the caller to call custom printing,
 including prepending location info, writing to log files, etc).
 
 .. code-block:: nim
@@ -364,7 +361,7 @@ unless stack allocation is needed (e.g. for efficiency).
 .. _use_doAssert_not_echo:
 Tests (including in testament) should always prefer assertions over ``echo``,
 except when that's not possible. It's more precise, easier for readers and
-maintaners to where expected values refer to. See for example
+maintainers to where expected values refer to. See for example
 https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
 
 .. code-block:: nim
@@ -386,7 +383,7 @@ General commit rules
    stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
    given $VERSION.
 
-2. If you introduce changes which affect backwards compatibility,
+2. If you introduce changes which affect backward compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
    the changes should be mentioned in `the changelog
    <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
@@ -404,7 +401,7 @@ General commit rules
 4. Changes should not introduce any trailing whitespace.
 
    Always check your changes for whitespace errors using ``git diff --check``
-   or add following ``pre-commit`` hook:
+   or add the following ``pre-commit`` hook:
 
    .. code-block:: sh
 
@@ -416,7 +413,7 @@ General commit rules
 
    ``Fixes #123; refs #124``
 
-   indicates that issue ``#123`` is completely fixed (github may automatically
+   indicates that issue ``#123`` is completely fixed (GitHub may automatically
    close it when the PR is committed), wheres issue ``#124`` is referenced
    (e.g.: partially fixed) and won't close the issue when committed.
 
@@ -431,7 +428,7 @@ General commit rules
 
 7. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
    automated changes (e.g. nimfix) with other code changes: these should be in
-   separate commits (and the merge on github should not squash these into 1).
+   separate commits (and the merge on GitHub should not squash these into 1).
 
 
 Continuous Integration (CI)
@@ -444,21 +441,40 @@ Continuous Integration (CI)
    <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
-2. Consider enabling CI (travis and appveyor) in your own Nim fork, and
+2. Consider enabling CI (azure, GitHub actions and builds.sr.ht) in your own Nim fork, and
    waiting for CI to be green in that fork (fixing bugs as needed) before
-   opening your PR in original Nim repo, so as to reduce CI congestion. Same
+   opening your PR in the original Nim repo, so as to reduce CI congestion. Same
    applies for updates on a PR: you can test commits on a separate private
    branch before updating the main PR.
+
+Debugging CI failures, flaky tests, etc
+---------------------------------------
+
+1. First check the CI logs and search for `FAIL` to find why CI failed; if the
+   failure seems related to your PR, try to fix the code instead of restarting CI.
+
+2. If CI failure seems unrelated to your PR, it could be caused by a flaky test.
+   File a bug for it if it isn't already reported. A PR push (or opening/closing PR)
+   will re-trigger all CI jobs (even successful ones, which can be wasteful). Instead,
+   follow these instructions to only restart the jobs that failed:
+
+  * Azure: if on your own fork, it's possible from inside azure console
+    (e.g. `dev.azure.com/username/username/_build/results?buildId=1430&view=results`) via `rerun failed jobs` on top.
+    If either on you own fork or in Nim repo, it's possible from inside GitHub UI
+    under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
+  * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
+
 
 Code reviews
 ------------
 
-1. Whenever possible, use github's new 'Suggested change' in code reviews, which
+1. Whenever possible, use GitHub's new 'Suggested change' in code reviews, which
    saves time explaining the change or applying it; see also
    https://forum.nim-lang.org/t/4317
 
-2. When reviewing large diffs that may involve code moving around, github's interface
-   doesn't help much as it doesn't highlight moves. Instead you can use something
+2. When reviewing large diffs that may involve code moving around, GitHub's interface
+   doesn't help much as it doesn't highlight moves. Instead, you can use something
    like this, see visual results `here <https://github.com/nim-lang/Nim/pull/10431#issuecomment-456968196>`_:
 
    .. code-block:: sh
@@ -466,7 +482,7 @@ Code reviews
       git fetch origin pull/10431/head && git checkout FETCH_HEAD
       git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
 
-3. In addition, you can view github-like diffs locally to identify what was changed
+3. In addition, you can view GitHub-like diffs locally to identify what was changed
    within a code block using `diff-highlight` or `diff-so-fancy`, e.g.:
 
    .. code-block:: sh
@@ -555,3 +571,17 @@ to existing modules is acceptable. For two reasons:
    Newly introduced issues have to be balanced against motivating new people. We know where
    to find perfectly designed pieces of software that have no bugs -- these are the systems
    that nobody uses.
+
+Conventions
+-----------
+1. New stdlib modules should go under `Nim/lib/std/`. The rationale is to require
+users to import via `import std/foo` instead of `import foo`, which would cause
+potential conflicts with nimble packages. Note that this still applies for new modules
+in existing logical directories, e.g.:
+use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
+
+2. New module names should prefer plural form whenever possible, e.g.:
+`std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
+between module name and the symbols it defines. Furthermore, is should use `snake_case`
+and not use capital letters, which cause issues when going from an OS without case
+sensitivity to an OS without it.

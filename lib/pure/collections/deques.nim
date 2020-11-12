@@ -13,7 +13,7 @@
 ## None of the procs that get an individual value from the deque can be used
 ## on an empty deque.
 ## If compiled with `boundChecks` option, those procs will raise an `IndexDefect`
-## on such access. This should not be relied upon, as `-d:release` will
+## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
 ## disable those checks and may return garbage or crash the program.
 ##
 ## As such, a check to see if the deque is empty is needed before any
@@ -114,7 +114,7 @@ template emptyCheck(deq) =
 
 template xBoundsCheck(deq, i) =
   # Bounds check for the array like accesses.
-  when compileOption("boundChecks"): # d:release should disable this.
+  when compileOption("boundChecks"): # `-d:danger` or `--checks:off` should disable this.
     if unlikely(i >= deq.count): # x < deq.low is taken care by the Natural parameter
       raise newException(IndexDefect,
                          "Out of bounds: " & $i & " > " & $(deq.count - 1))

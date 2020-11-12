@@ -85,9 +85,9 @@ proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): in
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
 
-proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) =
+proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): PSym =
   let id = getModuleId(g, fileIdx, fullpath)
-  result = (g.incr.r.syms.getOrDefault(abs id), id)
+  result = g.incr.r.syms.getOrDefault(abs id)
 
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.uniqueId):

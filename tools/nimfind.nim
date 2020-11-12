@@ -208,8 +208,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nimfind")
 
@@ -228,6 +227,8 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if not dirExists(conf.prefixDir / RelativeDir"lib"):
     conf.prefixDir = AbsoluteDir""
 
-  discard self.loadConfigsAndRunMainCommand(cache, conf)
+  var graph = newModuleGraph(cache, conf)
+  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    mainCommand(graph)
 
 handleCmdLine(newIdentCache(), newConfigRef())

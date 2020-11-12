@@ -92,6 +92,14 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
+## 
+## Limitations/Bugs
+## ================
+## Since `check` will rewrite some expressions for supporting checkpoints
+## (namely assigns expressions to variables), some type conversions are not supported.
+## For example `check 4.0 == 2 + 2` won't work. But `doAssert 4.0 == 2 + 2` works.
+## Make sure both sides of the operator (such as `==`, `>=` and so on) have the same type.
+##
 
 import std/private/since
 import std/exitprocs
@@ -641,7 +649,7 @@ macro check*(conditions: untyped): untyped =
           let paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
-          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr}:
+          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar}:
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar

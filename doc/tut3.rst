@@ -14,7 +14,7 @@ Introduction
   "With Great Power Comes Great Responsibility." -- Spider Man's Uncle
 
 This document is a tutorial about Nim's macro system.
-A macro is a function that is executed at compile time and transforms
+A macro is a function that is executed at compile-time and transforms
 a Nim syntax tree into a different tree.
 
 Examples of things that can be implemented in macros:
@@ -35,7 +35,7 @@ Macro Arguments
 ---------------
 
 The types of macro arguments have two faces. One face is used for
-the overload resolution, and the other face is used within the macro
+the overload resolution and the other face is used within the macro
 body. For example, if ``macro foo(arg: int)`` is called in an
 expression ``foo(x)``, ``x`` has to be of a type compatible to int, but
 *within* the macro's body ``arg`` has the type ``NimNode``, not ``int``!
@@ -52,10 +52,10 @@ Untyped Arguments
 Untyped macro arguments are passed to the macro before they are
 semantically checked. This means the syntax tree that is passed down
 to the macro does not need to make sense for Nim yet, the only
-limitation is that it needs to be parsable. Usually the macro does
+limitation is that it needs to be parsable. Usually, the macro does
 not check the argument either but uses it in the transformation's
 result somehow. The result of a macro expansion is always checked
-by the compiler, so apart from weird error messages nothing bad
+by the compiler, so apart from weird error messages, nothing bad
 can happen.
 
 The downside for an ``untyped`` argument is that these do not play
@@ -73,7 +73,7 @@ For typed arguments, the semantic checker runs on the argument and
 does transformations on it, before it is passed to the macro. Here
 identifier nodes are resolved as symbols, implicit type
 conversions are visible in the tree as calls, templates are
-expanded and probably most importantly, nodes have type information.
+expanded, and probably most importantly, nodes have type information.
 Typed arguments can have the type ``typed`` in the arguments list.
 But all other types, such as ``int``, ``float`` or ``MyObjectType``
 are typed arguments as well, and they are passed to the macro as a
@@ -103,7 +103,7 @@ Code Blocks as Arguments
 ------------------------
 
 It is possible to pass the last argument of a call expression in a
-separate code block with indentation. For example the following code
+separate code block with indentation. For example, the following code
 example is a valid (but not a recommended) way to call ``echo``:
 
 .. code-block:: nim
@@ -126,10 +126,10 @@ look like so that the Nim compiler will understand it. The nodes of the
 Nim syntax tree are documented in the `macros <macros.html>`_ module.
 But a more interactive way to explore the Nim
 syntax tree is with ``macros.treeRepr``, it converts a syntax tree
-into a multi line string for printing on the console. It can be used
+into a multi-line string for printing on the console. It can be used
 to explore how the argument expressions are represented in tree form
 and for debug printing of generated syntax tree. ``dumpTree`` is a
-predefined macro that just prints its argument in tree representation,
+predefined macro that just prints its argument in a tree representation,
 but does nothing else. Here is an example of such a tree representation:
 
 .. code-block:: nim
@@ -176,7 +176,7 @@ Generating Code
 There are two ways to generate the code. Either by creating the syntax
 tree with expressions that contain a lot of calls to ``newTree`` and
 ``newLit``, or with ``quote do:`` expressions. The first option offers
-the best low level control for the syntax tree generation, but the
+the best low-level control for the syntax tree generation, but the
 second option is much less verbose. If you choose to create the syntax
 tree with calls to ``newTree`` and ``newLit`` the macro
 ``macros.dumpAstGen`` can help you with the verbosity. ``quote do:``
@@ -226,8 +226,8 @@ Building Your First Macro
 To give a starting point to writing macros we will show now how to
 implement the ``myDebug`` macro mentioned earlier. The first thing to
 do is to build a simple example of the macro usage, and then just
-print the argument. This way it is possible to get an idea of a
-correct argument should be look like.
+print the argument. This way it is possible to get an idea of what a
+correct argument should look like.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -250,9 +250,9 @@ correct argument should be look like.
     Ident "b"
 
 
-From the output it is possible to see that the argument is an infix
+From the output, it is possible to see that the argument is an infix
 operator (node kind is "Infix"), as well as that the two operands are
-at index 1 and 2. With this information the actual macro can be
+at index 1 and 2. With this information, the actual macro can be
 written.
 
 .. code-block:: nim
@@ -292,13 +292,13 @@ used to get this output.
 With Power Comes Responsibility
 -------------------------------
 
-Macros are very powerful. A good advice is to use them as little as
+Macros are very powerful. A piece of good advice is to use them as little as
 possible, but as much as necessary. Macros can change the semantics of
 expressions, making the code incomprehensible for anybody who does not
 know exactly what the macro does with it. So whenever a macro is not
 necessary and the same logic can be implemented using templates or
 generics, it is probably better not to use a macro. And when a macro
-is used for something, the macro should better have a well written
+is used for something, the macro should better have a well-written
 documentation. For all the people who claim to write only perfectly
 self-explanatory code: when it comes to macros, the implementation is
 not enough for documentation.
@@ -309,7 +309,7 @@ Limitations
 Since macros are evaluated in the compiler in the NimVM, macros share
 all the limitations of the NimVM. They have to be implemented in pure Nim
 code. Macros can start external processes on the shell, but they
-cannot call C functions except from those that are built in the
+cannot call C functions except those that are built in the
 compiler.
 
 
@@ -348,7 +348,7 @@ OpenGL Sandbox
 --------------
 
 This project has a working Nim to GLSL compiler written entirely in
-macros. It scans recursively though all used function symbols to
+macros. It scans recursively through all used function symbols to
 compile them so that cross library functions can be executed on the GPU.
 
 `OpenGL Sandbox <https://github.com/krux02/opengl-sandbox>`_

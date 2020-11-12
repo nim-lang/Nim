@@ -2,7 +2,7 @@ discard """
   cmd: "nim c --experimental:strictFuncs --experimental:views $file"
 """
 
-import tables, streams, nre, parsecsv, uri
+import tables, streams, nre, parsecsv, uri, httpcore
 
 type
   Contig2Reads = TableRef[string, seq[string]]
@@ -15,3 +15,15 @@ proc get_Contig2Reads(sin: Stream, fn: string, contig2len: TableRef[string, int]
     if contig2len.haskey(parser.row[1]):
       mgetOrPut(result, parser.row[1], @[]).add(parser.row[0])
 
+
+
+block:
+  # issue #15756
+  func `&&&`[T](x: var seq[T], y: sink T): seq[T] =
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    result[x.len] = move(y)
+
+  var x = @[0, 1]
+  let z = x &&& 2
