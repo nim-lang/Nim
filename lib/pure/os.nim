@@ -3311,12 +3311,15 @@ since (1, 5):
     else:
       getTempDir() # Android has no Trash, some apps just use a temporary folder.
 
-  proc moveFileToTrash*(filename: string; trashPath = osTrash): string =
+  proc moveFileToTrash*(filename: string; trashPath = osTrash; postfixStart = 1.Positive): string =
     ## Move file from `filename` to `trashPath`, `trashPath` defaults to `osTrash`.
     ##
     ## If a file with the same name already exists in the Trash folder,
     ## then appends a postfix like `" (1)"`, `" (2)"`, `" (3)"`, etc,
     ## returns the path of the file in the Trash, with the generated postfix if any.
+    ##
+    ## If you know the latest highest postfix used on the Trash folder,
+    ## then you can use `postfixStart` for better performance.
     ##
     ## * http://www.freedesktop.org/wiki/Specifications/trash-spec
     ## * http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
@@ -3333,7 +3336,7 @@ since (1, 5):
       else: trashPath / fname
     # If file exists on Trash, append " (1)", " (2)", " (3)", etc.
     if fileExists(trashed):
-      for i in 1 .. int.high:
+      for i in postfixStart .. int.high:
         var prefix = " ("
         prefix.add $i
         prefix.add ")"
@@ -3370,11 +3373,11 @@ since (1, 5):
     ## See also:
     ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
     ## * `removeFile proc <#removeFile,string>`_
-    runnableExamples "-r:off -b:c":
-      writeFile("example.txt", "")
-      let trashedFile = moveFileToTrash("example.txt")
-      moveFileFromTrash(getCurrentDir() / extractFilename(trashedFile))
-
+    ##
+    ## .. code-block:: nim
+    ##   writeFile("example.txt", "")
+    ##   let trashedFile = moveFileToTrash("example.txt")
+    ##   moveFileFromTrash(getCurrentDir() / extractFilename(trashedFile))
     assert filename.len > 0, "filename must not be empty string"
     if dirExists(trashPath):
       when defined(linux) or defined(bsd):
