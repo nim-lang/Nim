@@ -26,9 +26,10 @@ when defined(windows) and not defined(nimKochBootstrap):
 import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
-
-from browsers import openDefaultBrowser
+from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
+
+import system/exectrace_aux # PRTEMP
 
 when hasTinyCBackend:
   import tccgen
@@ -123,8 +124,14 @@ when compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 
+import std/exectraces
+traceControl(kstart)
+# enableRuntimeTracing(true)
+
 when not defined(selftest):
+  # enableRuntimeTracing(true)
   let conf = newConfigRef()
+  # enableRuntimeTracing(false)
   handleCmdLine(newIdentCache(), conf)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
