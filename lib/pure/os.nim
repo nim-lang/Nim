@@ -3324,12 +3324,15 @@ since (1, 5):
     when defined(linux) or defined(bsd):
       let fullPath = expandFilename(filename)
       let fname = extractFilename(fullPath)
+      var trashinfo = "[Trash Info]\nPath="
+      trashinfo.add fullPath
+      trashinfo.add "\nDeletionDate="
+      trashinfo.add now().format("yyyy-MM-dd'T'HH:MM:ss")
+      trashinfo.add "\n"
       discard existsOrCreateDir(trashPath / "files")
       discard existsOrCreateDir(trashPath / "info")
       moveFile(fullPath, trashPath / "files" / fname)
-      writeFile(trashPath / "info" / fname & ".trashinfo",
-        "[Trash Info]\nPath=" & fullPath & "\nDeletionDate=" &
-        now().format("yyyy-MM-dd'T'HH:MM:ss") & "\n")
+      writeFile(trashPath / "info" / fname & ".trashinfo", trashinfo)
     else:
       moveFile(expandFilename(filename), trashPath / extractFilename(filename))
 
