@@ -218,7 +218,7 @@ proc isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
 
   var eLeftCount, eRightCount, dotCount, eCount, numCount = 0
   var i = 0
-  while i < s.len:
+  while i < length:
     case s[i]
     of '+', '-':
       if i == length - 1:
