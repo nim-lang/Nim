@@ -14,5 +14,5 @@ block testSize: # issue 12726
       back: Atomic[ptr int]
       f: AtomicFlag
   static:
-    doAssert sizeof(Node) == 8
-    doAssert sizeof(MyChannel) == 16
+    doAssert sizeof(Node) == sizeof(pointer)
+    doAssert sizeof(MyChannel) == sizeof(pointer) * 2
