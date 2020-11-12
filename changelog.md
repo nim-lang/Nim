@@ -31,6 +31,8 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
+- Removed deprecated `iup` module from stdlib, it has already moved to [nimble](https://github.com/nim-lang/iup).
+- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
 - `doAssertRaises` now correctly handles foreign exceptions.
 
 ## Language changes
