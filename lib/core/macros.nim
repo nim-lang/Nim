@@ -160,7 +160,7 @@ proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## Compares two Nim nodes' types. Return true if the types are the same,
-  ## eg. true when comparing alias with original type.
+  ## e.g. true when comparing alias with original type.
   discard
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
@@ -280,7 +280,7 @@ else: # bootstrapping substitute
 when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
     ## For a typed proc returns the AST after transformation pass; this is useful
-    ## for debugging how the compiler transforms code (eg: `defer`, `for`) but
+    ## for debugging how the compiler transforms code (e.g.: `defer`, `for`) but
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
