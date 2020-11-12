@@ -1289,7 +1289,7 @@ string from a cstring:
   x[1] = 'A' # This is wrong!!!
 
 If the ``cstring`` originates from a regular memory (not read-only memory),
-it could be modified:
+it can be modified:
 
 .. code-block:: nim
   var x = "123456"
