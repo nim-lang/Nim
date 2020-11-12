@@ -129,10 +129,10 @@ when compileOption("gc", "refc"):
 
 when not defined(selftest):
   # when defined(nimHasExecTrace):
-  enableRuntimeTracing(true)
+  # enableRuntimeTracing(true)
   let conf = newConfigRef()
   handleCmdLine(newIdentCache(), conf)
-  enableRuntimeTracing(false)
+  # enableRuntimeTracing(false)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
   msgQuit(int8(conf.errorCounter > 0))

@@ -27,6 +27,8 @@ from modulegraphs import ModuleGraph, PPassContext
 import dynlib
 
 when true: # exectrace
+  proc execTracingEnabled*(conf: ConfigRef, prc: PSym | BProc): bool =
+    result = optExecTraceScope in prc.options
   const nimExecTraceDefine = "nimExecTraceDefine"
   const nimExecTraceEnter = "nimExecTraceEnter"
   const nimExecTraceExit = "nimExecTraceExit"

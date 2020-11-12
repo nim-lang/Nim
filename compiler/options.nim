@@ -389,9 +389,6 @@ type
     cppCustomNamespace*: string
     vmProfileData*: ProfileData
 
-template execTracingEnabled*(conf: ConfigRef, prc): bool =
-  optExecTraceScope in prc.options
-
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
   if result == def: result = val
