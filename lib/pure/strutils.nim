@@ -178,11 +178,11 @@ proc isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
     doAssert not isNumeric("123.45.6") == true
     doAssert not isNumeric("123.45e++5") == true
     doAssert not isNumeric("5.2+e1") == true
-    doAssert isNumeric(".9", true) == true
-    doAssert isNumeric("Inf", true) == true
-    doAssert isNumeric("-Inf", true) == true
-    doAssert isNumeric("NaN", true) == true
-    doAssert isNumeric("nAn", true) == true
+    doAssert not isNumeric(".9") == true
+    doAssert not isNumeric("Inf") == true
+    doAssert not isNumeric("-Inf") == true
+    doAssert not isNumeric("NaN") == true
+    doAssert not isNumeric("nAn") == true
     doAssert isNumeric("0.000_005") == true
     doAssert isNumeric("1e1_00") == true
     doAssert isNumeric("0.00_0001") == true
