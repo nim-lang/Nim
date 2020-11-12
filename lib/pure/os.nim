@@ -3311,8 +3311,13 @@ since (1, 5):
     else:
       getTempDir() # Android has no Trash, some apps just use a temporary folder.
 
-  proc moveFileToTrash*(filename: string; trashPath = osTrash) =
-    ## Move file from `filename` to `trashPath`. `trashPath` defaults to `osTrash`.
+  proc moveFileToTrash*(filename: string; trashPath = osTrash): string =
+    ## Move file from `filename` to `trashPath`, `trashPath` defaults to `osTrash`.
+    ##
+    ## If a file with the same name already exists in the Trash folder,
+    ## then appends a postfix like `" (1)"`, `" (2)"`, `" (3)"`, etc,
+    ## returns the path of the file in the Trash, with the generated postfix if any.
+    ##
     ## * http://www.freedesktop.org/wiki/Specifications/trash-spec
     ## * http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
     ##
@@ -3321,9 +3326,24 @@ since (1, 5):
     ## * `removeFile proc <#removeFile,string>`_
     assert filename.len > 0, "filename must not be empty string"
     discard existsOrCreateDir(trashPath)
+    let fullPath = expandFilename(filename)
+    var fname = extractFilename(fullPath)
+    var trashed =
+      when defined(linux) or defined(bsd): trashPath / "files" / fname
+      else: trashPath / fname
+    # If file exists on Trash, append " (1)", " (2)", " (3)", etc.
+    if fileExists(trashed):
+      for i in 1 .. int.high:
+        var prefix = " ("
+        prefix.add $i
+        prefix.add ")"
+        if not fileExists(trashed & prefix):
+          fname = fname & prefix
+          trashed =
+            when defined(linux) or defined(bsd): trashPath / "files" / fname
+            else: trashPath / fname
+          break
     when defined(linux) or defined(bsd):
-      let fullPath = expandFilename(filename)
-      let fname = extractFilename(fullPath)
       var trashinfo = "[Trash Info]\nPath="
       trashinfo.add fullPath
       trashinfo.add "\nDeletionDate="
@@ -3331,24 +3351,29 @@ since (1, 5):
       trashinfo.add "\n"
       discard existsOrCreateDir(trashPath / "files")
       discard existsOrCreateDir(trashPath / "info")
-      moveFile(fullPath, trashPath / "files" / fname)
+      moveFile(fullPath, trashed)
       writeFile(trashPath / "info" / fname & ".trashinfo", trashinfo)
     else:
-      moveFile(expandFilename(filename), trashPath / extractFilename(filename))
+      moveFile(expandFilename(filename), trashed)
+    result = trashed
 
   proc moveFileFromTrash*(filename: string; trashPath = osTrash) =
-    ## Move file from `trashPath` to `filename`. `trashPath` defaults to `osTrash`.
+    ## Move file from `trashPath` to `filename`, `trashPath` defaults to `osTrash`.
+    ##
+    ## If a file with the same name already exists in the Trash folder,
+    ## then the generated postfix like `" (1)"`, `" (2)"`, `" (3)"`, etc,
+    ## is required on `filename` to restore the correct file.
+    ##
     ## * http://www.freedesktop.org/wiki/Specifications/trash-spec
     ## * http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
     ##
     ## See also:
     ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
     ## * `removeFile proc <#removeFile,string>`_
-    runnableExamples:
-      when not defined(js) and not defined(nimscript):
-        writeFile("example.txt", "")
-        moveFileToTrash("example.txt")
-        moveFileFromTrash(getCurrentDir() / "example.txt")
+    runnableExamples "-r:off -b:c":
+      writeFile("example.txt", "")
+      let trashedFile = moveFileToTrash("example.txt")
+      moveFileFromTrash(getCurrentDir() / extractFilename(trashedFile))
 
     assert filename.len > 0, "filename must not be empty string"
     if dirExists(trashPath):
