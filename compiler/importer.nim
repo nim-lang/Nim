@@ -156,7 +156,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
                                c.config.options)
   if ifPrivateImport in importFlags:
     if result == realModule:
-      result = createModuleAlias(realModule, realModule.name, realModule.info,
+      result = createModuleAlias(realModule, nextId c.idgen, realModule.name, realModule.info,
                                c.config.options)
     result.options.incl optPrivateImport
     c.friendModulesPrivateImport.add realModule # `realModule` needed, not `result`
@@ -167,7 +167,7 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
     if n2.kind == nkPragmaExpr:
       if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wPrivateImport: discard
       else:
-        globalError(c.config, n.info, "invalid import pragma, expected: " & wPrivateImport.canonPragmaSpelling)
+        globalError(c.config, n.info, "invalid import pragma, expected: " & $wPrivateImport)
       if allowPrivateImport notin c.features:
         globalError(c.config, n.info, "requires --experimental:" & $allowPrivateImport)
       ret.importFlags.incl ifPrivateImport
