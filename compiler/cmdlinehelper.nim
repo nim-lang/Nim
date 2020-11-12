@@ -41,7 +41,9 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
-  if self.supportsStdinFile and conf.projectName == "-":
+  if conf.projectIsCmd and conf.projectName in ["-", ""]:
+    handleCmdInput(conf)
+  elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
     try:
@@ -59,6 +61,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.command = "nimsuggest"
+  if conf.command == "e":
+    incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
   if not self.suggestMode:

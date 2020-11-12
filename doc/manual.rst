@@ -883,9 +883,7 @@ Ordinal types have the following characteristics:
   than the largest value produces a panic or a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
-types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
-in later versions of the language.)
+types) belong to ordinal types.
 
 A distinct type is an ordinal type if its base type is an ordinal type.
 

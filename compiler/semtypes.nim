@@ -306,7 +306,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in (nkCallKinds + {nkBracketExpr}) and hasUnresolvedArgs(c, e):
-      if not isOrdinalType(e.typ):
+      if not isOrdinalType(e.typ.skipTypes({tyStatic, tyAlias, tyGenericInst, tySink})):
         localError(c.config, n[1].info, errOrdinalTypeExpected)
       # This is an int returning call, depending on an
       # yet unknown generic param (see tgenericshardcases).
@@ -1056,7 +1056,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
 
-  of tyAlias, tyOwned:
+  of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,

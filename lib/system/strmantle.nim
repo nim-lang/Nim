@@ -113,7 +113,7 @@ when defined(nimHasInvariant):
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
-  # ie whose integer part can fit inside a 53bits integer.
+  # i.e. whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow
   # these restrictions, transform the float into this form:
   #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
