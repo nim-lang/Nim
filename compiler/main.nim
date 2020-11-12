@@ -31,9 +31,9 @@ proc semanticPasses(g: ModuleGraph) =
 proc writeDepsFile(g: ModuleGraph) =
   let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
   let f = open(fname.string, fmWrite)
-  for m in g.modules:
-    if m != nil:
-      f.writeLine(toFullPath(g.config, m.position.FileIndex))
+  for m in g.ifaces:
+    if m.module != nil:
+      f.writeLine(toFullPath(g.config, m.module.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
       f.writeLine(toFullPath(g.config, k))

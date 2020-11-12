@@ -59,9 +59,7 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   result.owner = packSym
   result.position = int fileIdx
 
-  if int(fileIdx) >= graph.modules.len:
-    setLen(graph.modules, int(fileIdx) + 1)
-  graph.modules[result.position] = result
+  graph.registerModule(result)
 
   initStrTable(result.tab)
   strTableAdd(result.tab, result) # a module knows itself

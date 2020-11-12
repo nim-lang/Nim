@@ -33,8 +33,14 @@ import ic / packed_ast
 type
   SigHash* = distinct MD5Digest
 
+  Iface* = object       ## data we don't want to store directly in the
+                        ## ast.PSym type for s.kind == skModule
+    module*: PSym       ## module this "Iface" belongs to
+    converters*: seq[PSym]
+    patterns*: seq[PSym]
+
   ModuleGraph* = ref object
-    modules*: seq[PSym]  ## indexed by int32 fileIdx
+    ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
@@ -173,13 +179,21 @@ proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
   result.magic = m
   result.flags = {sfNeverRaises}
 
+proc registerModule*(g: ModuleGraph; m: PSym) =
+  assert m != nil
+  assert m.kind == skModule
+
+  if m.position >= g.ifaces.len:
+    setLen(g.ifaces, m.position + 1)
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
-  result.modules = @[]
+  result.ifaces = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.config = config
@@ -203,7 +217,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
   g.deps = initIntSet()
-  g.modules = @[]
+  g.ifaces = @[]
   g.importStack = @[]
   g.inclToMod = initTable[FileIndex, FileIndex]()
   g.usageSym = nil
@@ -213,8 +227,8 @@ proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len:
-    result = g.modules[fileIdx.int32]
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len:
+    result = g.ifaces[fileIdx.int32].module
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
@@ -235,7 +249,7 @@ proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   ## returns 'fileIdx' if the file belonging to this index is
   ## directly used as a module or else the module that first
   ## references this include file.
-  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len and g.modules[fileIdx.int32] != nil:
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len and g.ifaces[fileIdx.int32].module != nil:
     result = fileIdx
   else:
     result = g.inclToMod.getOrDefault(fileIdx)
@@ -259,11 +273,11 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # cleared but D still needs to be remembered as 'dirty'.
   if g.invalidTransitiveClosure:
     g.invalidTransitiveClosure = false
-    transitiveClosure(g.deps, g.modules.len)
+    transitiveClosure(g.deps, g.ifaces.len)
 
   # every module that *depends* on this file is also dirty:
-  for i in 0i32..<g.modules.len.int32:
-    let m = g.modules[i]
+  for i in 0i32..<g.ifaces.len.int32:
+    let m = g.ifaces[i].module
     if m != nil and g.deps.contains(i.dependsOn(fileIdx.int)):
       incl m.flags, sfDirty
 

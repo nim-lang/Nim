@@ -141,8 +141,18 @@ proc addImport(c: PContext; im: sink ImportedModule) =
       return
   c.imports.add im
 
+template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
+  for it in c.graph.ifaces[fromMod.position].converters:
+    if filter:
+      addConverter(c, it)
+  for it in c.graph.ifaces[fromMod.position].patterns:
+    if filter:
+      addConverter(c, it)
+
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
+  addUnnamedIt(c, fromMod, it.id notin exceptSet)
+
   when false:
     var i: TTabIter
     var s = initTabIter(i, fromMod.tab)
@@ -157,6 +167,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)
+  addUnnamedIt(c, fromMod, true)
   when false:
     var exceptSet: IntSet
     importAllSymbolsExcept(c, fromMod, exceptSet)
