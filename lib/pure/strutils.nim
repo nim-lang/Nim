@@ -154,12 +154,14 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isNumeric*(s: string, enabledNaN = false): bool =
+proc isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
   ## Checks whether the string is numeric.
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
-  ## 'enabledNaN' variable value indicates whether 'NaN', 'Inf', '.9 ', '9.'
-  ## and other special forms of values are valid. 
+  ## The `enableNaNInf` value indicates whether the `NaN` and `Inf` values
+  ## are valid.
+  ## The `enableLooseDot` value indicates whether loose point values such as
+  ## `.9` and `9.` are valid. 
   ##
   ## **Note:** The reason that `parseFloat()` is not used to achieve this is its
   ## poor performance.
@@ -198,18 +200,18 @@ proc isNumeric*(s: string, enabledNaN = false): bool =
     doAssert not isNumeric("10.00E-") == true
     doAssert not isNumeric("10.00E_") == true
     doAssert not isNumeric("10.00A") == true
-
-  if s.len == 3:
+  let length = s.len
+  if length == 3:
     if (s[0] in {'i', 'I'} and s[1] in {'n', 'N'} and s[2] in {'f', 'F'}) or
        (s[0] in {'n', 'N'} and s[1] in {'a', 'A'} and s[2] in {'n', 'N'}):
-      if enabledNaN:
+      if enableNaNInf:
         return true
       else:
         return false
-  if s.len == 4:
+  if length == 4:
     if (s[0] in {'+', '-'} and s[1] in {'i', 'I'} and s[2] in {'n', 'N'} and s[3] in {'f', 'F'}) or
        (s[0] in {'+', '-'} and s[1] in {'n', 'N'} and s[2] in {'a', 'A'} and s[3] in {'n', 'N'}):
-      if enabledNaN:
+      if enableNaNInf:
         return true
       else:
         return false
@@ -219,7 +221,7 @@ proc isNumeric*(s: string, enabledNaN = false): bool =
   while i < s.len:
     case s[i]
     of '+', '-':
-      if i == s.len - 1:
+      if i == length - 1:
         return false
       if eCount == 0:
         if numCount > 0:
@@ -236,18 +238,18 @@ proc isNumeric*(s: string, enabledNaN = false): bool =
     of '.':
       if dotCount == 1:
         return false
-      if not enabledNaN:
+      if not enableLooseDot:
         if numCount == 0:
           return false
         else:
-          if i == s.len - 1:
+          if i == length - 1:
             return false
           if s[i+1] in {'e', 'E'}:
             return false
       numCount = 0
       inc(dotCount)
     of 'e', 'E':
-      if i == s.len - 1:
+      if i == length - 1:
         return false
       if numCount > 0 or dotCount > 0:
         if eCount == 1:
