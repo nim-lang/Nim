@@ -3303,16 +3303,18 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
 
 
 since (1, 5):
-  let osTrash* {.noWeirdTarget.}: string =
-    when defined(linux) or defined(bsd):
-      getEnv("XDG_DATA_HOME", getHomeDir()) / ".local/share/Trash"
-    elif defined(osx):
-      getEnv("HOME", getHomeDir()) / ".Trash"
-    else:
-      getTempDir() # Android has no Trash, some apps just use a temporary folder.
+  proc getTrash*(): string {.noWeirdTarget.} =
+    ## Return the operating system Trash directory.
+    result =
+      when defined(linux) or defined(bsd):
+        getEnv("XDG_DATA_HOME", getHomeDir()) / ".local/share/Trash"
+      elif defined(osx):
+        getEnv("HOME", getHomeDir()) / ".Trash"
+      else:
+        getTempDir() # Android has no Trash, some apps just use a temporary folder.
 
-  proc moveFileToTrash*(filename: string; trashPath = osTrash; postfixStart = 1.Positive): string {.noWeirdTarget.} =
-    ## Move file from `filename` to `trashPath`, `trashPath` defaults to `osTrash`.
+  proc moveFileToTrash*(filename: string; trashPath = getTrash(); postfixStart = 1.Positive): string {.noWeirdTarget.} =
+    ## Move file from `filename` to `trashPath`, `trashPath` defaults to `getTrash()`.
     ##
     ## If a file with the same name already exists in the Trash folder,
     ## then appends a postfix like `" (1)"`, `" (2)"`, `" (3)"`, etc,
@@ -3360,8 +3362,8 @@ since (1, 5):
       moveFile(expandFilename(filename), trashed)
     result = trashed
 
-  proc moveFileFromTrash*(filename: string; trashPath = osTrash) {.noWeirdTarget.} =
-    ## Move file from `trashPath` to `filename`, `trashPath` defaults to `osTrash`.
+  proc moveFileFromTrash*(filename: string; trashPath = getTrash()) {.noWeirdTarget.} =
+    ## Move file from `trashPath` to `filename`, `trashPath` defaults to `getTrash()`.
     ##
     ## If a file with the same name already exists in the Trash folder,
     ## then the generated postfix like `" (1)"`, `" (2)"`, `" (3)"`, etc,
