@@ -1282,7 +1282,7 @@ string from a cstring:
   var cstr: cstring = str
   var newstr: string = $cstr
 
-For the C/C++ backend, ``cstring`` literals shouldn't be modified.
+``cstring`` literals shouldn't be modified.
 
 .. code-block:: nim
   var x = cstring"literals"
