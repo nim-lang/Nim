@@ -661,6 +661,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "exectrace":
     # TODO: optExecTrace should be processOnOffSwitchG ?
     processOnOffSwitch(conf, {optExecTrace, optExecTraceScope}, arg, pass, info)
+  of "exectraceskip":
+    expectArg(conf, switch, arg, pass, info)
+    conf.exectraceSkip.add arg
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)

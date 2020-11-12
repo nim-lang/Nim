@@ -388,6 +388,7 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
     vmProfileData*: ProfileData
+    exectraceSkip*: seq[string]
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
