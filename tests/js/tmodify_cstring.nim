@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cstring doesn't support `[]=` operator!"
+  errormsg: "cstring doesn't support `[]=` operator"
 """
 
 var x = cstring"abcd"
