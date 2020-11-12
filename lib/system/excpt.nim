@@ -26,13 +26,17 @@ when defined(windows):
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
+  proc writeToStdErr(msg: cstring, length: int) =
+    rawWriteString(cstderr, msg, length)
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
+  proc writeToStdErr(msg: cstring, length: int) =
+    discard MessageBoxA(nil, msg, nil, 0)
 
-proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
+proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
@@ -45,7 +49,7 @@ proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
       # stderr not available by default, use the LOG session
       echo data
     else:
-      writeToStdErr(data)
+      writeToStdErr(data, length)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -359,7 +363,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if onUnhandledException != nil:
       onUnhandledException(buf)
     else:
-      showErrorMessage(buf)
+      showErrorMessage(buf, buf.len)
     `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
@@ -388,7 +392,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if onUnhandledException != nil:
       onUnhandledException($tbuf())
     else:
-      showErrorMessage(tbuf())
+      showErrorMessage(tbuf(), L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   if unhandledExceptionHook != nil:
@@ -500,9 +504,9 @@ proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)(s)
+    cast[proc (s: cstring, length: int) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)(s, s.len)
   else:
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n")
+    cast[proc (s: cstring, length: int) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n", 32)
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
@@ -535,10 +539,11 @@ const nimCallDepthLimit {.intdefine.} = 2000
 
 proc callDepthLimitReached() {.noinline.} =
   writeStackTrace()
-  showErrorMessage("Error: call depth limit reached in a debug build (" &
+  let msg = "Error: call depth limit reached in a debug build (" &
       $nimCallDepthLimit & " function calls). You can change it with " &
       "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-      "recursions instead.\n")
+      "recursions instead.\n"
+  showErrorMessage(msg, msg.len)
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
@@ -621,14 +626,14 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
-      showErrorMessage(buf)
+      showErrorMessage(buf, buf.len)
       when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =
         msg = y
       processSignal(sign, asgn)
-      showErrorMessage(msg)
+      showErrorMessage(msg, msg.len)
     quit(1) # always quit when SIGABRT
 
   proc registerSignalHandler() =
