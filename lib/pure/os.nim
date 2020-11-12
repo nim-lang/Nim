@@ -3303,7 +3303,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
 
 
 since (1, 5):
-  const osTrash*: string =
+  let osTrash*: string =
     when defined(linux) or defined(bsd):
       getEnv("XDG_DATA_HOME", getHomeDir()) / ".local/share/Trash"
     elif defined(osx):
