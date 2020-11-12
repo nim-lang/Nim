@@ -25,18 +25,34 @@ when defined(windows):
   const ERROR_BAD_EXE_FORMAT = 193
 
 when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: string) = rawWriteString(cstderr, msg)
+  proc writeToStdErrString(msg: string) = rawWriteString(cstderr, msg)
+  proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
-proc showErrorMessage(data: string) {.gcsafe, raises: [].} =
+proc showErrorMessageString(data: string) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
       errorMessageWriter(data)
+      toWrite = false
+    except:
+      discard
+  if toWrite:
+    when defined(genode):
+      # stderr not available by default, use the LOG session
+      echo data
+    else:
+      writeToStdErrString(data)
+
+proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
+  var toWrite = true
+  if errorMessageWriter != nil:
+    try:
+      errorMessageWriter($data)
       toWrite = false
     except:
       discard
@@ -359,7 +375,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if onUnhandledException != nil:
       onUnhandledException(buf)
     else:
-      showErrorMessage(buf)
+      showErrorMessageString(buf)
     `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
@@ -621,7 +637,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
-      showErrorMessage(buf)
+      showErrorMessageString(buf)
       when not usesDestructors: GC_enable()
     else:
       var msg: cstring
