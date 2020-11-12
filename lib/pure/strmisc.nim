@@ -140,7 +140,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           inc successive
           inc idx
       if c == sep:  # Thousands separator, this is NOT the dot
-        if unlikely(isNegative and idx == 1 or idx == 0):
+        if isNegative and idx == 1 or idx == 0:
           raise newException(ValueError,
             "Invalid float containing thousand separators, string starts with thousand separator.")
         elif lastWasSep:
@@ -154,7 +154,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           hasAnySep = true
           successive = 0
       if c == decimalDot:  # This is the dot
-        if unlikely(isNegative and idx == 1 or idx == 0):  # Wont allow .1
+        if isNegative and idx == 1 or idx == 0:  # Wont allow .1
           raise newException(ValueError,
             "Invalid float containing thousand separators, string starts with decimal dot.")
         elif hasAnySep and successive != 3:
@@ -167,10 +167,10 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           afterDot = true
           inc idx
       if c == '-':  # Allow negative float
-        if unlikely(isNegative):  # Wont allow ---1.0
+        if isNegative:  # Wont allow ---1.0
           raise newException(ValueError,
             "Invalid float containing thousand separators, string must not contain more than 1 '-' character.")
-        elif unlikely(idx != 0):
+        elif idx != 0:
           raise newException(ValueError,
             "Invalid float containing thousand separators, the '-' character can only be at the start of the string.")
         else:
