@@ -100,15 +100,13 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
   if result == "" and x != "": result = "."
 
 proc normalizePath*(path: string; dirSep = DirSep): string =
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   assert normalizePath("./foo//bar/../baz") == "foo/baz"
-  ##
-  ##
+  runnableExamples:
+    when defined(posix):
+      doAssert normalizePath("./foo//bar/../baz") == "foo/baz"
+
   ## - Turns multiple slashes into single slashes.
-  ## - Resolves '/foo/../bar' to '/bar'.
-  ## - Removes './' from the path (but "foo/.." becomes ".")
+  ## - Resolves `'/foo/../bar'` to `'/bar'`.
+  ## - Removes `'./'` from the path, but `"foo/.."` becomes `"."`.
   result = newStringOfCap(path.len)
   var state = 0
   addNormalizePath(path, result, state, dirSep)
