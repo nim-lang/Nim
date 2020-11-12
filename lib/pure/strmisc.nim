@@ -132,7 +132,8 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
       if c in '0' .. '9':  # Digits
         if hasAnySep and successive > 2:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, more than 3 digits between thousand separators.")
+            "Invalid float containing thousand separators, more than 3 digits between thousand separators '" &
+            c & "' at index " & $idx)
         else:
           s.add c
           lastWasSep = false
@@ -142,13 +143,16 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
       if c == sep:  # Thousands separator, this is NOT the dot
         if isNegative and idx == 1 or idx == 0:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, string starts with thousand separator.")
+            "Invalid float containing thousand separators, string starts with thousand separator '" &
+            c & "' at index " & $idx)
         elif lastWasSep:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, two separators in a row.")
+            "Invalid float containing thousand separators, two separators in a row '" &
+            c & "' at index " & $idx)
         elif afterDot:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, separator found after decimal dot.")
+            "Invalid float containing thousand separators, separator found after decimal dot '" &
+            c & "' at index " & $idx)
         else:
           lastWasSep = true # Do NOT add the Thousands separator here.
           hasAnySep = true
@@ -156,10 +160,12 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
       if c == decimalDot:  # This is the dot
         if isNegative and idx == 1 or idx == 0:  # Wont allow .1
           raise newException(ValueError,
-            "Invalid float containing thousand separators, string starts with decimal dot.")
+            "Invalid float containing thousand separators, string starts with decimal dot '" &
+            c & "' at index " & $idx)
         elif hasAnySep and successive != 3:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, not 3 successive digits before decimal point, despite larger 1000.")
+            "Invalid float containing thousand separators, not 3 successive digits before decimal point, despite larger 1000 '" &
+            c & "' at index " & $idx)
         else:
           s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
           successive = 0
@@ -169,10 +175,12 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
       if c == '-':  # Allow negative float
         if isNegative:  # Wont allow ---1.0
           raise newException(ValueError,
-            "Invalid float containing thousand separators, string must not contain more than 1 '-' character.")
+            "Invalid float containing thousand separators, string must not contain more than 1 '-' character '" &
+            c & "' at index " & $idx)
         elif idx != 0:
           raise newException(ValueError,
-            "Invalid float containing thousand separators, the '-' character can only be at the start of the string.")
+            "Invalid float containing thousand separators, the '-' character can only be at the start of the string '" &
+            c & "' at index " & $idx)
         else:
           s.add '-'
           isNegative = true
