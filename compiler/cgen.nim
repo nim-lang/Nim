@@ -280,7 +280,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if isTrace(optStackTrace) and freshLineInfo(p, t.info):
     linefmt(p, cpsStmts, "nimln_($1, $2);$n", [line, quotedFilename(p.config, t.info)])
   # IMPROVE
-  if isTrace(optExecTraceLive) and execTracingEnabled(p.config, p) and freshLineInfo(p, t.info):
+  if isTrace(optExecTrace) and execTracingEnabled(p.config, p) and freshLineInfo(p, t.info):
     linefmt(p, cpsStmts, "$3($1, $2);$n", [line, quotedFilename(p.config, t.info), nimExecTraceLineDefine])
 
 proc postStmtActions(p: BProc) {.inline.} =

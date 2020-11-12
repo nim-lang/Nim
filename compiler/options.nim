@@ -36,7 +36,6 @@ type                          # please make sure we have under 32 options
     optLineTrace,             # line tracing support (includes stack tracing)
     optExecTrace,             # execution trace
     optExecTraceScope,        # execution trace in scope
-    optExecTraceLive,         # execution trace currently live in context
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on
@@ -389,10 +388,9 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
     vmProfileData*: ProfileData
-    # execTraceMode*: TraceAction
 
 template execTracingEnabled*(conf: ConfigRef, prc): bool =
-  optExecTraceLive in conf.options and optExecTraceScope in prc.options
+  optExecTraceScope in prc.options
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.

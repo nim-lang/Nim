@@ -696,7 +696,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mExecTraceControl, mPrivateAccess
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
 # things that we can evaluate safely at compile time, even if not asked for it:

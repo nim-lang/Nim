@@ -375,7 +375,6 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wHints: {optHints}
   of wLineDir: {optLineDir}
   of wStackTrace: {optStackTrace}
-  # of wExecTrace: {optExecTraceLive}
   of wExecTrace: {optExecTraceScope}
   of wLineTrace: {optLineTrace}
   of wDebugger: {optNone}

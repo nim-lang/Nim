@@ -29,7 +29,8 @@ import
 from std/browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
-import system/exectrace_aux # PRTEMP
+when defined(nimHasExecTrace):
+  import system/exectrace_aux # PRTEMP
 
 when hasTinyCBackend:
   import tccgen
@@ -124,15 +125,14 @@ when compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 
-import std/exectraces
-traceControl(kstart)
 # enableRuntimeTracing(true)
 
 when not defined(selftest):
-  # enableRuntimeTracing(true)
+  # when defined(nimHasExecTrace):
+  enableRuntimeTracing(true)
   let conf = newConfigRef()
-  # enableRuntimeTracing(false)
   handleCmdLine(newIdentCache(), conf)
+  enableRuntimeTracing(false)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
   msgQuit(int8(conf.errorCounter > 0))
