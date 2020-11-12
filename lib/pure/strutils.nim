@@ -1150,6 +1150,9 @@ proc parseFloat*(s: string): float {.noSideEffect,
   ##
   ## If `s` is not a valid floating point number, `ValueError` is raised.
   ##``NAN``, ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  ##
+  ## See also:
+  ## * `strmisc <strmisc.html>`_
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
