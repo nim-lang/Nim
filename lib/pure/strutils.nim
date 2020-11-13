@@ -1152,7 +1152,7 @@ proc parseFloat*(s: string): float {.noSideEffect,
   ##``NAN``, ``INF``, ``-INF`` are also supported (case insensitive comparison).
   ##
   ## See also:
-  ## * `strmisc <strmisc.html>`_
+  ## * `parseFloatThousandSep <strmisc.html#parseFloatThousandSep,string,char,char>`_
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
