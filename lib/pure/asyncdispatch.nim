@@ -1940,7 +1940,7 @@ proc activeDescriptors*(): int {.inline.} =
   ## event loop. This is a cheap operation that does not involve a system call.
   when defined(windows):
     result = getGlobalDispatcher().handles.len
-  else:
+  elif not defined(nimdoc):
     result = getGlobalDispatcher().selector.count
 
 when defined(posix):
