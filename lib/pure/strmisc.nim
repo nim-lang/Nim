@@ -118,9 +118,9 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
 
   if str.len > 1: # Allow "0" which is valid, equal to 0.0
     var s = newStringOfCap(str.len)
-    var idx, successive: int
+    var successive: int
     var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
-    for c in str:
+    for idx, c in str:
       if c in '0' .. '9':  # Digits
         if hasAnySep and successive > 2:
           raiseError(idx, c, str)
@@ -129,7 +129,6 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           lastWasSep = false
           lastWasDot = false
           inc successive
-          inc idx
       if c == sep:  # Thousands separator, this is NOT the dot
         if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
           raiseError(idx, c, str)
@@ -145,14 +144,12 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           successive = 0
           lastWasDot = true
           afterDot = true
-          inc idx
       if c == '-':  # Allow negative float
         if isNegative or idx != 0:  # Wont allow ---1.0
           raiseError(idx, c, str)
         else:
           s.add '-'
           isNegative = true
-          inc idx
     result = parseFloat(s)
   else:
     result = parseFloat(str)
