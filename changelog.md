@@ -181,6 +181,8 @@ provided by the operating system.
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
+- Added overload `ssytem.add(a: var string, b: openArray[char])`
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
