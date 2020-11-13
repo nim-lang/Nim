@@ -107,18 +107,6 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-proc initIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule; name: PIdent): PSym =
-  result = initIdentIter(ti, im.m.tab, name)
-  while result != nil:
-    let b =
-      case im.mode
-      of importAll: true
-      of importSet: result.id in im.imported
-      of importExcept: name.id notin im.exceptSet
-    if b and not containsOrIncl(marked, result.id):
-      return result
-    result = nextIdentIter(ti, im.m.tab)
-
 proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule): PSym =
   while true:
     result = nextIdentIter(ti, im.m.tab)
@@ -134,7 +122,23 @@ proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule): 
       if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):
         return result
 
-iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent): PSym =
+proc initIdentIter(ti: var TIdentIter; marked: var IntSet;
+                   im: ImportedModule; name: PIdent): PSym =
+  result = initIdentIter(ti, im.m.tab, name)
+  while result != nil:
+    let b =
+      case im.mode
+      of importAll: true
+      of importSet: result.id in im.imported
+      of importExcept: name.id notin im.exceptSet
+    if b and not containsOrIncl(marked, result.id):
+      return result
+    # XXX: bugfix; the subsequent read must also de-dupe
+    #result = nextIdentIter(ti, im.m.tab)
+    result = nextIdentIter(ti, marked, im)
+
+iterator symbols(c: PContext; im: ImportedModule; marked: var IntSet;
+                 name: PIdent): PSym =
   var ti: TIdentIter
   var candidate = initIdentIter(ti, marked, im, name)
   while candidate != nil:
@@ -509,7 +513,8 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         scope = scope.parent
         if scope == nil:
           for i in 0..c.imports.high:
-            result = initIdentIter(o.it, o.marked, c.imports[i], ident).skipAlias(n, c.config)
+            result = initIdentIter(o.it, o.marked, c.imports[i],
+                                   ident).skipAlias(n, c.config)
             if result != nil:
               o.currentScope = nil
               o.importIdx = i
@@ -568,7 +573,8 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
   var idx = o.importIdx+1
   o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
   while idx < c.imports.len:
-    result = initIdentIter(o.it, o.marked, c.imports[idx], o.it.name).skipAlias(n, c.config)
+    result = initIdentIter(o.it, o.marked, c.imports[idx],
+                           o.it.name).skipAlias(n, c.config)
     if result != nil:
       # oh, we were wrong, some other module had the symbol, so remember that:
       o.importIdx = idx
@@ -578,7 +584,8 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
 proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
   assert o.currentScope == nil
   while o.importIdx < c.imports.len:
-    result = initIdentIter(o.it, o.marked, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+    result = initIdentIter(o.it, o.marked, c.imports[o.importIdx],
+                           o.it.name).skipAlias(n, c.config)
     #while result != nil and result.id in o.marked:
     #  result = nextIdentIter(o.it, o.marked, c.imports[o.importIdx])
     if result != nil:
@@ -597,12 +604,14 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       while result == nil:
         o.currentScope = o.currentScope.parent
         if o.currentScope != nil:
-          result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
+          result = initIdentIter(o.it, o.currentScope.symbols,
+                                 o.it.name).skipAlias(n, c.config)
           # BUGFIX: o.it.name <-> n.ident
         else:
           o.importIdx = 0
           if c.imports.len > 0:
-            result = initIdentIter(o.it, o.marked, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+            result = initIdentIter(o.it, o.marked,
+              c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
             if result == nil:
               result = nextOverloadIterImports(o, c, n)
           break
