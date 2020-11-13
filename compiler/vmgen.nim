@@ -895,7 +895,8 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     var imm: BiggestInt = if src.kind in PtrLikeKinds: 1 else: 2
     c.gABI(n, opcCastPtrToInt, dest, tmp, imm)
     c.freeTemp(tmp)
-  elif src.kind in PtrLikeKinds + {tyInt} and dst.kind in PtrLikeKinds:
+  elif (src.kind in PtrLikeKinds and dst.kind in PtrLikeKinds) or
+    (src.kind == tyInt and dst.kind in PtrLikeKinds + {tyRef}):
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABx(n, opcSetType, dest, c.genType(dst))
