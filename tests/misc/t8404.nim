@@ -28,5 +28,6 @@ template main() =
     float2int(int16)
     float2int(int32)
     # float2int(int64)
+main()
 static:
   main()
