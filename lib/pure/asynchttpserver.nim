@@ -289,7 +289,7 @@ proc processRequest(
     request.client.close()
     return false
 
-proc processClient*(server: AsyncHttpServer, client: AsyncSocket, address: string,
+proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request = newFutureVar[Request]("asynchttpserver.processClient")
@@ -305,6 +305,7 @@ proc processClient*(server: AsyncHttpServer, client: AsyncSocket, address: strin
     if not retry: break
 
 proc listen*(server: AsyncHttpServer; port: Port; address = "") =
+  ## Listen to the given port and address.
   server.maxFDs = maxDescriptors()
   server.socket = newAsyncSocket()
   if server.reuseAddr:
@@ -324,7 +325,8 @@ proc shouldAcceptRequest*(server: AsyncHttpServer;
 
 proc acceptRequest*(server: AsyncHttpServer,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.}) {.async.} =
-  ## Accepts a single request.
+  ## Accepts a single request. Write an explicit loop around this proc so that
+  ## errors can be handled properly.
   var (address, client) = await server.socket.acceptAddr()
   asyncCheck processClient(server, client, address, callback)
 
@@ -337,8 +339,13 @@ proc serve*(server: AsyncHttpServer, port: Port,
   ##
   ## When a request is made by a client the specified callback will be called.
   ##
-  ## If `flowControl` is true the server cares about the process's maximum
-  ## file descriptor limit.
+  ## If `assumedDescriptorsPerRequest` is 0 or greater the server cares about
+  ## the process's maximum file descriptor limit. It then ensures that the
+  ## process still has the resources for `assumedDescriptorsPerRequest`
+  ## file descriptors before accepting a connection.
+  ##
+  ## You should prefer to call `acceptRequest` instead with a custom server
+  ## loop so that you're in control over the error handling and logging.
   listen server, port, address
   while true:
     if shouldAcceptRequest(server, assumedDescriptorsPerRequest):
