@@ -1085,8 +1085,8 @@ proc add*(x: var string, y: openArray[char]) =
   x.setLen n + y.len
     # pending https://github.com/nim-lang/Nim/issues/14655#issuecomment-643671397
     # use x.setLen(n + y.len, isInit = false)
-  var i=0
-  while i<y.len:
+  var i = 0
+  while i < y.len:
     x[n + i] = y[i]
     i.inc
   # xxx use `nimCopyMem(x[n].addr, y[0].addr, y.len)` after some refactoring
