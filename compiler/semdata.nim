@@ -77,9 +77,9 @@ type
     case mode*: ImportMode
     of importAll: discard
     of importSet:
-      imported*: IntSet
+      imported*: IntSet          # of PIdent.id
     of importExcept:
-      exceptSet*: IntSet
+      exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
