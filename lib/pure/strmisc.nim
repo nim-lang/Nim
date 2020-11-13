@@ -108,14 +108,6 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
   ## See also:
   ## * `strutils <strutils.html>`_
   runnableExamples:
-    doAssert parseFloatThousandSep("0") == 0.0
-    doAssert parseFloatThousandSep("-0") == -0.0
-    doAssert parseFloatThousandSep("0.0") == 0.0
-    doAssert parseFloatThousandSep("1.0") == 1.0
-    doAssert parseFloatThousandSep("-0.0") == -0.0
-    doAssert parseFloatThousandSep("-1.0") == -1.0
-    doAssert parseFloatThousandSep("1.000") == 1.0
-    doAssert parseFloatThousandSep("-1.000") == -1.0
     doAssert parseFloatThousandSep("1,000") == 1000.0
     doAssert parseFloatThousandSep("-1,000") == -1000.0
     doAssert parseFloatThousandSep("10,000.000") == 10000.0
