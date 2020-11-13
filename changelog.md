@@ -78,6 +78,8 @@
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
 
+- `cast` now works in VM in more contexts, behaving like in RT; eg: `int <=> ptr T | ref T`,
+  see `tcastint.testCastRefOrPtr`
 
 ## Tool changes
 
