@@ -618,6 +618,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             stackTrace(c, tos, pc, "opcCastPtrToInt: " & $regs[rb].node.kind)
         of rkNodeAddr:
           regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        of rkInt:
+          # could be tightened by checking type, eg `tyPointer`
+          regs[ra].intVal = regs[rb].intVal
         else:
           stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
       of 2: # tyRef
@@ -1033,6 +1036,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
       elif regs[rc].kind == rkNodeAddr:
         ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
+      elif regs[rc].kind == rkInt and regs[rb].kind == rkInt:
+        ret = regs[rb].intVal == regs[rc].intVal
       else:
         let nb = regs[rb].node
         let nc = regs[rc].node

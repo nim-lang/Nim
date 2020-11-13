@@ -889,14 +889,14 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastFloatToInt64, dest, tmp)
       # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
-  elif src.kind in PtrLikeKinds + {tyRef} and dst.kind == tyInt:
+  elif src.kind in PtrLikeKinds + {tyRef} and dst.kind in {tyInt, tyPointer}:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     var imm: BiggestInt = if src.kind in PtrLikeKinds: 1 else: 2
     c.gABI(n, opcCastPtrToInt, dest, tmp, imm)
     c.freeTemp(tmp)
   elif (src.kind in PtrLikeKinds and dst.kind in PtrLikeKinds) or
-    (src.kind == tyInt and dst.kind in PtrLikeKinds + {tyRef}):
+    (src.kind in {tyInt, tyPointer} and dst.kind in PtrLikeKinds + {tyRef}):
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABx(n, opcSetType, dest, c.genType(dst))

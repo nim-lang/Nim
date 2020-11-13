@@ -291,32 +291,36 @@ proc test_float32_castB() =
 proc testCastRefOrPtr() =
   type TFoo = object
     f0: string
+  template fnAux(Lhs) =
+    block:
+      template fn(Foo, a) =
+        let pa = cast[Lhs](a)
+        var a2 = cast[Foo](pa)
+        let pa2 = cast[Lhs](pa)
+        doAssert a2[] == a[]
+        doAssert a2.f0 == a.f0
+        doAssert pa2 == pa
 
-  template fn(Foo, a) =
-    let pa = cast[int](a)
-    var a2 = cast[Foo](pa)
-    let pa2 = cast[int](pa)
-    doAssert a2[] == a[]
-    doAssert a2.f0 == a.f0
-    doAssert pa2 == pa
+        a2.f0 = "abc2"
+        doAssert a.f0 == "abc2"
+        let b = TFoo(f0: "abc3")
+        a2[] = b
+        doAssert a2.f0 == "abc3"
+        doAssert a2[] == b
 
-    a2.f0 = "abc2"
-    doAssert a.f0 == "abc2"
-    let b = TFoo(f0: "abc3")
-    a2[] = b
-    doAssert a2.f0 == "abc3"
-    doAssert a2[] == b
+      block: # ref <=> Lhs
+        type Foo = ref TFoo
+        var a = Foo(f0: "abc")
+        fn(Foo, a)
 
-  block: # ref <=> int
-    type Foo = ref TFoo
-    var a = Foo(f0: "abc")
-    fn(Foo, a)
+      block: # ptr <=> Lhs
+        type Foo = ptr TFoo
+        var a0 = TFoo(f0: "abc")
+        let a = a0.addr
+        fn(Foo, a)
 
-  block: # ptr <=> int
-    type Foo = ptr TFoo
-    var a0 = TFoo(f0: "abc")
-    let a = a0.addr
-    fn(Foo, a)
+  fnAux(int)
+  fnAux(pointer)
 
 template main =
   test()
