@@ -7,28 +7,44 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a high performance asynchronous HTTP server.
-##
-## This HTTP server has not been designed to be used in production, but
-## for testing applications locally. Because of this, when deploying your
-## application in production you should use a reverse proxy (for example nginx) 
-## instead of allowing users to connect directly to this server.
-##
-## Basic usage
-## ===========
-##
-## This example will create an HTTP server on port 8080. The server will
-## respond to all requests with a ``200 OK`` response code and "Hello World"
-## as the response body.
-##
-## .. code-block::nim
-##    import asynchttpserver, asyncdispatch
-##
-##    var server = newAsyncHttpServer()
-##    proc cb(req: Request) {.async.} =
-##      await req.respond(Http200, "Hello World")
-##
-##    waitFor server.serve(Port(8080), cb)
+##[ This module implements a high performance asynchronous HTTP server.
+
+This HTTP server has not been designed to be used in production, but
+for testing applications locally. Because of this, when deploying your
+application in production you should use a reverse proxy (for example nginx)
+instead of allowing users to connect directly to this server.
+
+Basic usage
+===========
+
+This example will create an HTTP server on port 8080. The server will
+respond to all requests with a ``200 OK`` response code and "Hello World"
+as the response body.
+
+.. code-block::nim
+   import asynchttpserver, asyncdispatch
+
+  proc main {.async.} =
+    var server = newAsyncHttpServer()
+    proc cb(req: Request) {.async.} =
+      #echo(req.reqMethod, " ", req.url)
+      #echo(req.headers)
+      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+          "Content-type": "text/plain; charset=utf-8"}
+      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+
+    server.listen Port(5555)
+    while true:
+      if server.shouldAcceptRequest(5):
+        var (address, client) = await server.socket.acceptAddr()
+        asyncCheck processClient(server, client, address, cb)
+      else:
+        poll()
+
+  asyncCheck main()
+  runForever()
+
+]##
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -58,14 +74,12 @@ type
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
+    maxFDs: int
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
-  new result
-  result.reuseAddr = reuseAddr
-  result.reusePort = reusePort
-  result.maxBody = maxBody
+  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -279,7 +293,7 @@ proc processRequest(
     request.client.close()
     return false
 
-proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
+proc processClient*(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request = newFutureVar[Request]("asynchttpserver.processClient")
@@ -294,13 +308,8 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     )
     if not retry: break
 
-proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
-            address = "") {.async.} =
-  ## Starts the process of listening for incoming HTTP connections on the
-  ## specified address and port.
-  ##
-  ## When a request is made by a client the specified callback will be called.
+proc listen*(server: AsyncHttpServer; port: Port; address = "") =
+  server.maxFDs = maxDescriptors()
   server.socket = newAsyncSocket()
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
@@ -309,9 +318,38 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.bindAddr(port, address)
   server.socket.listen()
 
+proc shouldAcceptRequest*(server: AsyncHttpServer;
+                          assumedDescriptorsPerRequest = 5): bool {.inline.} =
+  ## Returns true if the process's current number of opened file
+  ## descriptors is still within the maximum limit and so it's reasonable to
+  ## accept yet another request.
+  result = assumedDescriptorsPerRequest < 0 or
+    (activeDescriptors() + assumedDescriptorsPerRequest < server.maxFDs)
+
+proc acceptRequest*(server: AsyncHttpServer, port: Port,
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.}) {.async.} =
+  ## Accepts a single request.
+  var (address, client) = await server.socket.acceptAddr()
+  asyncCheck processClient(server, client, address, callback)
+
+proc serve*(server: AsyncHttpServer, port: Port,
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
+            address = "";
+            assumedDescriptorsPerRequest = 5) {.async.} =
+  ## Starts the process of listening for incoming HTTP connections on the
+  ## specified address and port.
+  ##
+  ## When a request is made by a client the specified callback will be called.
+  ##
+  ## If `flowControl` is true the server cares about the process's maximum
+  ## file descriptor limit.
+  listen server, port, address
   while true:
-    var (address, client) = await server.socket.acceptAddr()
-    asyncCheck processClient(server, client, address, callback)
+    if shouldAcceptRequest(server, assumedDescriptorsPerRequest):
+      var (address, client) = await server.socket.acceptAddr()
+      asyncCheck processClient(server, client, address, callback)
+    else:
+      poll()
     #echo(f.isNil)
     #echo(f.repr)
 
@@ -320,7 +358,7 @@ proc close*(server: AsyncHttpServer) =
   server.socket.close()
 
 when not defined(testing) and isMainModule:
-  proc main =
+  proc main {.async.} =
     var server = newAsyncHttpServer()
     proc cb(req: Request) {.async.} =
       #echo(req.reqMethod, " ", req.url)
@@ -329,6 +367,13 @@ when not defined(testing) and isMainModule:
           "Content-type": "text/plain; charset=utf-8"}
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-    asyncCheck server.serve(Port(5555), cb)
-    runForever()
-  main()
+    server.listen Port(5555)
+    while true:
+      if server.shouldAcceptRequest(5):
+        var (address, client) = await server.socket.acceptAddr()
+        asyncCheck processClient(server, client, address, cb)
+      else:
+        poll()
+
+  asyncCheck main()
+  runForever()
