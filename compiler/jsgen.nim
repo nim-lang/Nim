@@ -2211,6 +2211,7 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   let toInt = (dest.kind in tyInt..tyInt64)
   let fromInt = (src.kind in tyInt..tyInt32)
   let toUint = (dest.kind in tyUInt..tyUInt32)
+  let fromUint = (src.kind in tyUInt..tyUInt32)
   if toUint and (fromInt or fromUint):
     let trimmer = unsignedTrimmer(dest.size)
     r.res = "($1 $2)" % [r.res, trimmer]
