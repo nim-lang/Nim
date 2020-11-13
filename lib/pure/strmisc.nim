@@ -92,8 +92,8 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
   ## this is designed to parse floats as found in the wild formatted for humans.
   ##
   ## The following assumptions and requirements must be met:
-  ## - String must not be empty.
-  ## - String must be stripped of trailing and leading whitespaces.
+  ## - `str` must not be empty.
+  ## - `str` must be stripped of trailing and leading whitespaces.
   ## - `sep` must not be `'-'`.
   ## - `decimalDot` must not be `'-'` nor `' '`.
   ## - `sep` and `decimalDot` must be different.
