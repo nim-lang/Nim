@@ -183,6 +183,7 @@ provided by the operating system.
 
 - Added overload `ssytem.add(a: var string, b: openArray[char])`
 - Added overload `sytem.add(a: var string, b: openArray[char])`
+- Added overload `system.add(a: var string, b: openArray[char])`.
 
 ## Language changes
 
