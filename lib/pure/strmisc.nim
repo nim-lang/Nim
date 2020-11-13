@@ -87,7 +87,51 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   return partition(s, sep, right = true)
 
 
-func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.since: (1, 5).} =
+template parseFloatThousandSepImpl(str; sep: char; decimalDot: char): float =
+  assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
+
+  proc raiseError(i: int; c: char; s: string) {.noinline, noreturn.} =
+    raise newException(ValueError,
+      "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
+      [c.repr, $i, s])
+
+  var s = newStringOfCap(str.len)
+  var successive: int
+  var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
+  for idx, c in str:
+    if c in '0' .. '9':  # Digits
+      if hasAnySep and successive > 2:
+        raiseError(idx, c, $str)
+      else:
+        s.add c
+        lastWasSep = false
+        lastWasDot = false
+        inc successive
+    if c == sep:  # Thousands separator, this is NOT the dot
+      if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
+        raiseError(idx, c, $str)
+      else:
+        lastWasSep = true # Do NOT add the Thousands separator here.
+        hasAnySep = true
+        successive = 0
+    if c == decimalDot:  # This is the dot
+      if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
+        raiseError(idx, c, $str)
+      else:
+        s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
+        successive = 0
+        lastWasDot = true
+        afterDot = true
+    if c == '-':  # Allow negative float
+      if isNegative or idx != 0:  # Wont allow ---1.0
+        raiseError(idx, c, $str)
+      else:
+        s.add '-'
+        isNegative = true
+  parseFloat(s)
+
+
+func parseFloatThousandSep*(s: string; sep = ','; decimalDot = '.'): float {.since: (1, 5).} =
   ## Convenience func for `parseFloat` which allows for thousand separators,
   ## this is designed to parse floats as found in the wild formatted for humans.
   ##
@@ -109,50 +153,16 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
     doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
     doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
     doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
-  assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
+  if s.len > 1: parseFloatThousandSepImpl(s, sep, decimalDot) else: parseFloat(s)
 
-  proc raiseError(i: int; c: char; s: string) {.noinline, noreturn.} =
-    raise newException(ValueError,
-      "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
-      [c.repr, $i, s])
 
-  if str.len > 1: # Allow "0" which is valid, equal to 0.0
-    var s = newStringOfCap(str.len)
-    var successive: int
-    var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
-    for idx, c in str:
-      if c in '0' .. '9':  # Digits
-        if hasAnySep and successive > 2:
-          raiseError(idx, c, str)
-        else:
-          s.add c
-          lastWasSep = false
-          lastWasDot = false
-          inc successive
-      if c == sep:  # Thousands separator, this is NOT the dot
-        if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
-          raiseError(idx, c, str)
-        else:
-          lastWasSep = true # Do NOT add the Thousands separator here.
-          hasAnySep = true
-          successive = 0
-      if c == decimalDot:  # This is the dot
-        if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
-          raiseError(idx, c, str)
-        else:
-          s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
-          successive = 0
-          lastWasDot = true
-          afterDot = true
-      if c == '-':  # Allow negative float
-        if isNegative or idx != 0:  # Wont allow ---1.0
-          raiseError(idx, c, str)
-        else:
-          s.add '-'
-          isNegative = true
-    result = parseFloat(s)
-  else:
-    result = parseFloat(str)
+func parseFloatThousandSep*(s: openArray[char]; sep = ','; decimalDot = '.'): float {.since: (1, 5).} =
+  runnableExamples:
+    doAssert parseFloatThousandSep(['1', ',', '0', '0', '0']) == 1000.0
+    doAssert parseFloatThousandSep(['-', '1', ',', '0', '0', '0']) == -1000.0
+    doAssert parseFloatThousandSep(['1', '0', ',', '0', '0', '0', '.', '0', '0', '0']) == 10000.0
+    doAssert parseFloatThousandSep(['1', '0', '.', '0', '0', '0', ',', '0'], '.', ',') == 10000.0
+  if s.len > 1: parseFloatThousandSepImpl(s, sep, decimalDot) else: parseFloat($s[0])
 
 
 when isMainModule:
