@@ -1,12 +1,6 @@
 
 discard """
 targets: '''c c++ js'''
-output: '''
-[Suite] hashes
-
-[Suite] hashing
-
-'''
 """
 
 import unittest, hashes
