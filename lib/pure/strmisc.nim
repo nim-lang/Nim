@@ -124,43 +124,40 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
       "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
       [c.repr, $i, s.repr])
 
-  if str.len > 1:
-    var s = newStringOfCap(str.len)
-    var successive: int
-    var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
-    for idx, c in str:
-      if c in '0' .. '9':  # Digits
-        if hasAnySep and successive > 2:
-          raiseError(idx, c, str)
-        else:
-          s.add c
-          lastWasSep = false
-          lastWasDot = false
-          inc successive
-      if c == sep:  # Thousands separator, this is NOT the dot
-        if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
-          raiseError(idx, c, str)
-        else:
-          lastWasSep = true # Do NOT add the Thousands separator here.
-          hasAnySep = true
-          successive = 0
-      if c == decimalDot:  # This is the dot
-        if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
-          raiseError(idx, c, str)
-        else:
-          s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
-          successive = 0
-          lastWasDot = true
-          afterDot = true
-      if c == '-':  # Allow negative float
-        if isNegative or idx != 0:  # Disallow ---1.0
-          raiseError(idx, c, str)
-        else:
-          s.add '-'
-          isNegative = true
-    result = parseFloat(s)
-  else:
-    result = parseFloat($str[0])
+  var s = newStringOfCap(str.len)
+  var successive: int
+  var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
+  for idx, c in str:
+    if c in '0' .. '9':  # Digits
+      if hasAnySep and successive > 2:
+        raiseError(idx, c, str)
+      else:
+        s.add c
+        lastWasSep = false
+        lastWasDot = false
+        inc successive
+    if c == sep:  # Thousands separator, this is NOT the dot
+      if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
+        raiseError(idx, c, str)
+      else:
+        lastWasSep = true # Do NOT add the Thousands separator here.
+        hasAnySep = true
+        successive = 0
+    if c == decimalDot:  # This is the dot
+      if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
+        raiseError(idx, c, str)
+      else:
+        s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
+        successive = 0
+        lastWasDot = true
+        afterDot = true
+    if c == '-':  # Allow negative float
+      if isNegative or idx != 0:  # Disallow ---1.0
+        raiseError(idx, c, str)
+      else:
+        s.add '-'
+        isNegative = true
+  result = parseFloat(s)
 
 
 when isMainModule:
