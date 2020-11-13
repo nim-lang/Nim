@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp js"
+"""
+
 import std/decls
 
 template fun() =
@@ -38,7 +42,8 @@ proc fun2() = fun()
 fun()
 fun2()
 static: fun2()
-# static: fun() # pending https://github.com/nim-lang/Nim/pull/13865
+when false: # pending bug #13887
+  static: fun()
 
 ## We can define custom pragmas in user code
 template byUnsafeAddr(lhs, typ, expr) =
@@ -75,7 +80,7 @@ block: # nkAccQuoted
     doAssert a == "foo"
     doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
 
-block: # https://github.com/timotheecour/Nim/issues/89
+block: # bug #15920
   template foo(lhs, typ, expr) =
     let lhs = expr
   proc fun1()=
