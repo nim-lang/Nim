@@ -35,6 +35,12 @@
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
+- Added `asyncdispatch.activeDescriptors` that returns the number of currently
+  active async event handles/file descriptors
+- Added `asyncdispatch.maxDescriptors` that returns the maximum number of
+  active async event handles/file descriptors.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
