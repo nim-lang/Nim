@@ -16,6 +16,12 @@
 
 - Added `randState` template that exposes the default random number generator. Useful for library authors.
 
+- Added `asyncdispatch.activeDescriptors` that returns the number of currently
+  active async event handles/file descriptors
+- Added `asyncdispatch.maxDescriptors` that returns the maximum number of
+  active async event handles/file descriptors.
+
+
 ## Language changes
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
