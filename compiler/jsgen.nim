@@ -2209,20 +2209,19 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     # no-op conversion
     return
   let toInt = (dest.kind in tyInt..tyInt64)
-  let toFloat =  (dest.kind in tyFloat..tyFloat128)
+  let fromInt = (src.kind in tyInt..tyInt32)
+  let toUint = (dest.kind in tyUInt..tyUInt32)
+  if toUint and (fromInt or fromUint):
+    let trimmer = unsignedTrimmer(dest.size)
+    r.res = "($1 $2)" % [r.res, trimmer]
   if dest.kind == tyBool:
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
   elif toInt:
     r.res = "(($1)|0)" % [r.res]
   else:
-    if toFloat:
-      discard
-    else:
-      # TODO: What types must we handle here?
-      localError(p.config, n.info,
-            "conversion from $1 to $2 is unimplemented" %
-              [$src.kind, $dest.kind])
+    # TODO: What types must we handle here?
+    discard
 
 proc upConv(p: PProc, n: PNode, r: var TCompRes) =
   gen(p, n[0], r)        # XXX
