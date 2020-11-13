@@ -182,6 +182,7 @@ provided by the operating system.
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
 - Added overload `ssytem.add(a: var string, b: openArray[char])`
+- Added overload `sytem.add(a: var string, b: openArray[char])`
 
 ## Language changes
 
