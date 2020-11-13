@@ -97,13 +97,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
   ## - `sep` must not be `'-'`.
   ## - `decimalDot` must not be `'-'` nor `' '`.
   ## - `sep` and `decimalDot` must be different.
-  ## - No separator before a digit.
-  ## - First separator can be anywhere after first digit, but no more than 3 characters.
-  ## - There has to be 3 digits between successive separators.
-  ## - There has to be 3 digits between the last separator and the decimal dot.
-  ## - No separator after decimal dot.
-  ## - No duplicate separators.
-  ## - Floats without separator allowed.
+  ## - Exactly 1 separator must appear after each 3 consecutive inner digits to the left of the dot and nowhere else.
   ##
   ## See also:
   ## * `parseFloat <strutils.html#parseFloat,string>`_
@@ -122,7 +116,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
       "Invalid float containing thousand separators, invalid char '" &
       c & "' at index " & $i & " for input " & str)
 
-  if str.len > 1: # Allow "0" thats valid, is 0.0
+  if str.len > 1: # Allow "0" which is valid, equal to 0.0
     var s = newStringOfCap(str.len)
     var idx, successive: int
     var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
@@ -144,7 +138,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
           hasAnySep = true
           successive = 0
       if c == decimalDot:  # This is the dot
-        if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Wont allow .1
+        if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
           raiseError(idx, c)
         else:
           s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
