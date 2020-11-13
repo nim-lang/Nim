@@ -204,6 +204,7 @@ type
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
     activeElement*: Element
+    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
