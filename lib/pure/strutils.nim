@@ -216,56 +216,56 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
       else:
         return false
 
-  var eLeftCount, eRightCount, dotCount, eCount, numCount = 0
   var i = 0
+  var eLeft, eRight, dot, e, num = false
   while i < length:
     case s[i]
     of '+', '-':
       if i == length - 1:
         return false
-      if eCount == 0:
-        if numCount > 0:
+      if e == false:
+        if num:
           return false
-        if eLeftCount > 0:
+        if eLeft:
           return false
-        inc(eLeftCount)
+        eLeft = true
       else:
-        if numCount > 0:
+        if num:
           return false
-        if eRightCount == 1:
+        if eRight:
           return false
-        inc(eRightCount)
+        eRight = true
     of '.':
-      if dotCount == 1:
+      if dot:
         return false
       if not enableLooseDot:
-        if numCount == 0:
+        if num == false:
           return false
         else:
           if i == length - 1:
             return false
           if s[i+1] in {'e', 'E'}:
             return false
-      numCount = 0
-      inc(dotCount)
+      num = false
+      dot = true
     of 'e', 'E':
       if i == length - 1:
         return false
-      if numCount > 0 or dotCount > 0:
-        if eCount == 1:
+      if num or dot:
+        if e:
           return false
-        numCount = 0
+        num = false
       else:
         return false
-      inc(eCount)
+      e = true
     of '0'..'9':
-      inc(numCount)
+      num = true
     of '_':
-      if numCount == 0:
+      if num == false:
         return false
-      if dotCount == 1 and numCount == 0:
+      if dot and num == false:
         return false
-      if eCount == 1 and numCount == 0:
+      if e and num == false:
         return false
     else:
       return false
