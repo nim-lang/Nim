@@ -25,7 +25,6 @@ func main() =
     doAssert parseFloatThousandSep(['-', '1', '.', '0']) == -1.0
     doAssert parseFloatThousandSep(['1', '.', '0', '0', '0']) == 1.0
     doAssert parseFloatThousandSep(['-', '1', '.', '0', '0', '0']) == -1.0
-    doAssertRaises(ValueError): discard parseFloatThousandSep("1,0000.000")
     doAssertRaises(ValueError): discard parseFloatThousandSep(['-', '-'])
     doAssertRaises(ValueError): discard parseFloatThousandSep(['.', '.'])
     doAssertRaises(ValueError): discard parseFloatThousandSep(['1', ',', ',', '0', '0', '0'])
