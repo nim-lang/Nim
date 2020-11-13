@@ -329,6 +329,8 @@ proc setPointer*(x: Any, y: pointer) =
   assert x.rawType.kind in pointerLike
   if y != nil:
     genericAssign(x.value, y, x.rawType)
+  else:
+    cast[ppointer](x.value)[] = nil
 
 proc fieldsAux(p: pointer, n: ptr TNimNode,
                ret: var seq[tuple[name: cstring, any: Any]]) =
