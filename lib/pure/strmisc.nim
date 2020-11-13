@@ -97,7 +97,13 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
   ## - `sep` must not be `'-'`.
   ## - `decimalDot` must not be `'-'` nor `' '`.
   ## - `sep` and `decimalDot` must be different.
-  ## - Exactly 1 separator must appear after each 3 consecutive inner digits to the left of the dot and nowhere else.
+  ## - No separator before a digit.
+  ## - First separator can be anywhere after first digit, but no more than 3 characters.
+  ## - There has to be 3 digits between successive separators.
+  ## - There has to be 3 digits between the last separator and the decimal dot.
+  ## - No separator after decimal dot.
+  ## - No duplicate separators.
+  ## - Floats without separator allowed.
   ##
   ## See also:
   ## * `parseFloat <strutils.html#parseFloat,string>`_
