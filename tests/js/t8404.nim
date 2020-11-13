@@ -26,4 +26,4 @@ block:
   float2int(int8)
   float2int(int16)
   float2int(int32)
-  float2int(int64)
+  # float2int(int64)
