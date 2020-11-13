@@ -2208,14 +2208,14 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   if dest.kind == src.kind:
     # no-op conversion
     return
-  let toInt = (dest.kind in tyInt..tyInt64)
+  let toInt = (dest.kind in tyInt..tyInt32)
   let fromInt = (src.kind in tyInt..tyInt32)
   let toUint = (dest.kind in tyUInt..tyUInt32)
   let fromUint = (src.kind in tyUInt..tyUInt32)
   if toUint and (fromInt or fromUint):
     let trimmer = unsignedTrimmer(dest.size)
     r.res = "($1 $2)" % [r.res, trimmer]
-  if dest.kind == tyBool:
+  elif dest.kind == tyBool:
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
   elif toInt:
