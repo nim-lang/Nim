@@ -1,7 +1,3 @@
-discard """
-  action: "run"
-"""
-
 import strmisc
 
 
