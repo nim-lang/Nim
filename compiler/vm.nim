@@ -994,6 +994,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif regs[rc].kind == rkNodeAddr:
         ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
       else:
+        dbg regs[rb].kind
         let nb = regs[rb].node
         let nc = regs[rc].node
         if nb.kind != nc.kind: discard
