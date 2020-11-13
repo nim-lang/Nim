@@ -106,7 +106,7 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
   ## - Floats without separator allowed.
   ##
   ## See also:
-  ## * `strutils <strutils.html>`_
+  ## * `parseFloat <strutils.html#parseFloat,string>`_
   runnableExamples:
     doAssert parseFloatThousandSep("1,000") == 1000.0
     doAssert parseFloatThousandSep("-1,000") == -1000.0
