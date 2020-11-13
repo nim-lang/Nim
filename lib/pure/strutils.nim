@@ -200,15 +200,15 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
     doAssert not isNumeric("10.00E-") == true
     doAssert not isNumeric("10.00E_") == true
     doAssert not isNumeric("10.00A") == true
-
-  if s.len == 3:
+  let length = s.len
+  if length == 3:
     if (s[0] in {'i', 'I'} and s[1] in {'n', 'N'} and s[2] in {'f', 'F'}) or
        (s[0] in {'n', 'N'} and s[1] in {'a', 'A'} and s[2] in {'n', 'N'}):
       if enableNaNInf:
         return true
       else:
         return false
-  if s.len == 4:
+  if length == 4:
     if (s[0] in {'+', '-'} and s[1] in {'i', 'I'} and s[2] in {'n', 'N'} and s[3] in {'f', 'F'}) or
        (s[0] in {'+', '-'} and s[1] in {'n', 'N'} and s[2] in {'a', 'A'} and s[3] in {'n', 'N'}):
       if enableNaNInf:
@@ -216,12 +216,12 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
       else:
         return false
 
-  var i = 0
   var eLeft, eRight, dot, e, num = false
-  while i < s.len:
+  let sHigh = s.len - 1
+  for i in countup(0, sHigh):
     case s[i]
     of '+', '-':
-      if i == s.len - 1:
+      if i == sHigh:
         return false
       if e == false:
         if num:
@@ -242,14 +242,14 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
         if num == false:
           return false
         else:
-          if i == s.len - 1:
+          if i == sHigh:
             return false
           if s[i+1] in {'e', 'E'}:
             return false
       num = false
       dot = true
     of 'e', 'E':
-      if i == s.len - 1:
+      if i == sHigh:
         return false
       if num or dot:
         if e:
@@ -269,7 +269,7 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
         return false
     else:
       return false
-    inc(i)
+
   return true
   
 proc isSpaceAscii*(c: char): bool {.noSideEffect,
