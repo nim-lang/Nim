@@ -114,8 +114,10 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
     doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
     doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
     doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
-    doAssert parseFloatThousandSep("1000,000") == 1000000.0
     doAssert parseFloatThousandSep("1000000") == 1000000.0
+    ## You can omit `sep`, but then all subsequent `sep` to the left must also be omitted:
+    doAssert parseFloatThousandSep("1000,000") == 1000000.0
+
   assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
 
   proc raiseError(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
