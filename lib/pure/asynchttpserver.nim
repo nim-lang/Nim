@@ -308,9 +308,18 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     )
     if not retry: break
 
+const
+  nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
+    ## when `maxDescriptors` is not available.
+    ## This can be set on the command line during compilation
+    ## via `-d:nimMaxDescriptorsFallback=N`
+
 proc listen*(server: AsyncHttpServer; port: Port; address = "") =
   ## Listen to the given port and address.
-  server.maxFDs = maxDescriptors()
+  when declared(maxDescriptors):
+    server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
+  else:
+    server.maxFDs = nimMaxDescriptorsFallback
   server.socket = newAsyncSocket()
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
