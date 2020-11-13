@@ -216,10 +216,9 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
       else:
         return false
 
-  var i = 0
   var eLeft, eRight, dot, e, num = false
-  while i < length:
-    case s[i]
+  for i, si in s:
+    case si
     of '+', '-':
       if i == length - 1:
         return false
@@ -269,7 +268,7 @@ func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
         return false
     else:
       return false
-    inc i
+
   return true
   
 proc isSpaceAscii*(c: char): bool {.noSideEffect,
