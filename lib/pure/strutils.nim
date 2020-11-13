@@ -154,7 +154,7 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
+func isNumeric*(s: string, enableNaNInf, enableLooseDot = false): bool =
   ## Checks whether the string is numeric.
   ## When the string is an integer, float or exponential, it returns true,
   ## otherwise it returns false.
