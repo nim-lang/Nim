@@ -13,8 +13,8 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("1,0000.000")
   doAssertRaises(ValueError): discard parseFloatThousandSep("--")
   doAssertRaises(ValueError): discard parseFloatThousandSep("..")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("000,1.000,,,,,,,,,,,,,,000,,,,,0000")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("000.1,000..............000.....0000")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,,000")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1..000")
 
 
 main()
