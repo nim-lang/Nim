@@ -117,9 +117,10 @@ func parseFloatThousandSep*(str: string; sep = ','; decimalDot = '.'): float {.s
     doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
   assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
 
-  proc raiseError(i: int, c: char) {.noinline, noreturn.} =
+  proc raiseError(i: int; c: char) {.noinline, noreturn.} =
     raise newException(ValueError,
-      "Invalid float containing thousand separators, invalid char at position " & $i & " for input " & c)
+      "Invalid float containing thousand separators, invalid char '" &
+      c & "' at index " & $i & " for input " & str)
 
   if str.len > 1: # Allow "0" thats valid, is 0.0
     var s = newStringOfCap(str.len)
