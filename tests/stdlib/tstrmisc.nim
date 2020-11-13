@@ -15,6 +15,7 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("..")
   doAssertRaises(ValueError): discard parseFloatThousandSep("1,,000")
   doAssertRaises(ValueError): discard parseFloatThousandSep("1..000")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,000000")
 
 
 main()
