@@ -123,7 +123,7 @@ template parseFloatThousandSepImpl(str; sep: char; decimalDot: char): float =
         lastWasDot = true
         afterDot = true
     if c == '-':  # Allow negative float
-      if isNegative or idx != 0:  # Wont allow ---1.0
+      if isNegative or idx != 0:  # Disallow ---1.0
         raiseError(idx, c, $str)
       else:
         s.add '-'
