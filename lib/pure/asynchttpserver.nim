@@ -34,7 +34,7 @@
 ##
 ##     server.listen Port(5555)
 ##     while true:
-##       if server.shouldAcceptRequest(5):
+##       if server.shouldAcceptRequest():
 ##         asyncCheck server.acceptRequest(cb)
 ##       else:
 ##         poll()
@@ -381,7 +381,7 @@ when not defined(testing) and isMainModule:
 
     server.listen Port(5555)
     while true:
-      if server.shouldAcceptRequest(5):
+      if server.shouldAcceptRequest():
         asyncCheck server.acceptRequest(cb)
       else:
         poll()
