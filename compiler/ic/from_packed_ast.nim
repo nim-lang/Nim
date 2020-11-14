@@ -159,3 +159,11 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
 proc irToModule*(n: PackedTree; graph: ModuleGraph; module: PSym): PNode =
   var c = Context(graph: graph, thisModule: module.itemId.module)
   result = fromTree(n, c)
+
+proc unpackAllSymbols*(n: PackedTree; g: ModuleGraph; m: PSym): seq[PSym] =
+  ## unpack all the symbols in the tree; this should be replaced by a
+  ## properly lazy operation once we cache the entire packed ast
+  var c = Context(graph: g, thisModule: m.itemId.module)
+  for symId, p in pairs n.sh.syms:
+    let id = ItemId(module: m.itemId.module, item: symId.int32)
+    result.add p.fromSym(id, n, c)
