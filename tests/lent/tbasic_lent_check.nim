@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   output: "1"
 """
 
@@ -14,3 +15,13 @@ proc main =
   doAssert(not compiles(passToVar(viewInto(x))))
 
 main()
+
+
+#------------------------------------------------------------------------------
+# issue #15958
+
+block:
+  proc byLent[T](a: T): lent T = a
+  let a = [11,12]
+  doAssert byLent(a) == [11,12]
+  doAssert byLent(a).unsafeAddr == a.unsafeAddr

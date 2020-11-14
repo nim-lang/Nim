@@ -282,7 +282,7 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = false
   # first parameter and return type is 'lent T'? --> use pass by pointer
   if s.position == 0 and retType != nil and retType.kind == tyLent:
-    result = pt.kind != tyVar
+    result = pt.kind notin {tyVar, tyArray}
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
