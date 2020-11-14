@@ -1070,11 +1070,13 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      if x[0].kind == nkCall:
-        lineF(p, "nimCopy($1, $2, $3);$n", [a.res, b.res, genTypeInfo(p, y.typ)])
+      # supports proc getF(): var T
+      if x.len > 0 and x[0].kind in nkCallKinds:
+          lineF(p, "nimCopy($1, $2, $3);$n", 
+                [a.res, b.res, genTypeInfo(p, y.typ)])
       else:
         lineF(p, "$1 = nimCopy($1, $2, $3);$n",
-               [a.res, b.res, genTypeInfo(p, y.typ)])
+              [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
