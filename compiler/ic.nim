@@ -11,8 +11,8 @@
 
 import
   ast, passes, idents, msgs, options, lineinfos, pathutils, intsets,
-  modulegraphs,
-  std/sequtils,
+  modulegraphs, astalgo,
+  std/[sequtils, hashes],
   std/options as stdoptions
 
 import ic/[ store, packed_ast, to_packed_ast, from_packed_ast ]
@@ -59,6 +59,7 @@ const icPass* {.deprecated.} =
   makePass(open = opener, process = processor, close = closer)
 
 proc initIface*(g: ModuleGraph; iface: var Iface; s: PSym) =
+  ## try to initialize the iface with an available rodfile
   if iface.state == ifaceUninitialized:
     let m = tryReadModule(g.config, rodFile(g, s))
     iface.state =
@@ -79,6 +80,7 @@ proc initIface*(g: ModuleGraph; iface: var Iface; s: PSym) =
         ifaceLoaded
 
 iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
+  ## yield all the symbols from the loaded iface for module `m`
   var iface = g.ifaces[m.position]
   assert iface.state == ifaceLoaded
   for s in items iface.patterns:
@@ -89,3 +91,25 @@ proc icReady*(g: ModuleGraph; s: PSym): bool =
   var iface = g.ifaces[s.position]
   initIface(g, iface, s)
   result = iface.state == ifaceLoaded
+
+proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
+  ## replicate the existing iterator semantics for the iface cache
+  var iface = g.ifaces[m.position]
+  for i, s in pairs iface.patterns[it.h.int .. ^1]:
+    if s.name.s == it.name.s:
+      it.name = s.name
+      it.h = i.Hash
+      return s
+
+proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
+                    name: PIdent): PSym =
+  ## replicate the existing iterator semantics for the iface cache
+  it.name = name
+  it.h = 0.Hash
+  result = nextIdentIter(it, g, m)
+
+proc firstSymbolNamed*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  ## return the first symbol matching the given name
+  for s in moduleSymbols(g, m):
+    if s.name.s == name.s:
+      return s

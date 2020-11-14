@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils, ic
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -137,8 +137,7 @@ proc initIdentIter(ti: var TIdentIter; marked: var IntSet;
     #result = nextIdentIter(ti, im.m.tab)
     result = nextIdentIter(ti, marked, im)
 
-iterator symbols(c: PContext; im: ImportedModule; marked: var IntSet;
-                 name: PIdent): PSym =
+iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent): PSym =
   var ti: TIdentIter
   var candidate = initIdentIter(ti, marked, im, name)
   while candidate != nil:
@@ -148,7 +147,7 @@ iterator symbols(c: PContext; im: ImportedModule; marked: var IntSet;
 iterator importedItems*(c: PContext; name: PIdent): PSym =
   var marked = initIntSet()
   for im in c.imports.mitems:
-    for s in symbols(c, im, marked, name):
+    for s in symbols(im, marked, name):
       yield s
 
 proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
@@ -173,15 +172,19 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   dec scopeN
   isLocal = false
   for im in c.imports.mitems:
-    for s in im.m.tab.data:
-      if s != nil:
+    if icReady(c.graph, im.m):
+      for s in moduleSymbols(c.graph, im.m):
         yield (s, scopeN, isLocal)
+    else:
+      for s in im.m.tab.data:
+        if s != nil:
+          yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
   result = nil
   for im in c.imports.mitems:
-    for s in symbols(c, im, marked, name):
+    for s in symbols(im, marked, name):
       if result == nil:
         result = s
       else:
@@ -218,7 +221,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
   if result.len == 0:
     var marked = initIntSet()
     for im in c.imports.mitems:
-      for s in symbols(c, im, marked, s):
+      for s in symbols(im, marked, s):
         if s.kind in filter:
           result.add s
 
@@ -310,6 +313,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
     # add to interface:
+    # XXX: need to handle this for IC?
     if c.module != nil: strTableAdd(c.module.tab, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
 
@@ -479,6 +483,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       if ident != nil:
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident)
+        elif icReady(c.graph, m):
+          result = firstSymbolNamed(c.graph, m, ident)
         else:
           result = strTableGet(m.tab, ident)
         result = result.skipAlias(n, c.config)
@@ -541,6 +547,8 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           # a module may access its private members:
           result = initIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
+        elif icReady(c.graph, o.m):
+          result = initIdentIter(o.it, c.graph, o.m, ident)
         else:
           result = initIdentIter(o.it, o.m.tab, ident)
         result = result.skipAlias(n, c.config)
@@ -631,7 +639,10 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     result = nextIdentIter(o.it, c.topLevelScope.symbols)
     result = result.skipAlias(n, c.config)
   of oimOtherModule:
-    result = nextIdentIter(o.it, o.m.tab)
+    if icReady(c.graph, o.m):
+      result = nextIdentIter(o.it, c.graph, o.m)
+    else:
+      result = nextIdentIter(o.it, o.m.tab)
     result = result.skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
