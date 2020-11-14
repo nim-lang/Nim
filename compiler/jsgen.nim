@@ -1071,7 +1071,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
     else:
       useMagic(p, "nimCopy")
       # supports proc getF(): var T
-      if x.len > 0 and x[0].kind in nkCallKinds:
+      if x.kind == nkHiddenDeref and x[0].kind in nkCallKinds:
           lineF(p, "nimCopy($1, $2, $3);$n", 
                 [a.res, b.res, genTypeInfo(p, y.typ)])
       else:
