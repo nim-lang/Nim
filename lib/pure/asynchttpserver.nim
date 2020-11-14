@@ -14,8 +14,8 @@
 ## application in production you should use a reverse proxy (for example nginx)
 ## instead of allowing users to connect directly to this server.
 ##
-## Basic usage
-## ===========
+## Example
+## =======
 ##
 ## This example will create an HTTP server on port 8080. The server will
 ## respond to all requests with a ``200 OK`` response code and "Hello World"
@@ -35,8 +35,7 @@
 ##     server.listen Port(5555)
 ##     while true:
 ##       if server.shouldAcceptRequest(5):
-##         var (address, client) = await server.socket.acceptAddr()
-##         asyncCheck processClient(server, client, address, cb)
+##         asyncCheck server.acceptRequest(cb)
 ##       else:
 ##         poll()
 ##
@@ -333,7 +332,7 @@ proc shouldAcceptRequest*(server: AsyncHttpServer;
   result = assumedDescriptorsPerRequest < 0 or
     (activeDescriptors() + assumedDescriptorsPerRequest < server.maxFDs)
 
-proc acceptRequest*(server: AsyncHttpServer, port: Port,
+proc acceptRequest*(server: AsyncHttpServer,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.}) {.async.} =
   ## Accepts a single request. Write an explicit loop around this proc so that
   ## errors can be handled properly.
@@ -383,8 +382,7 @@ when not defined(testing) and isMainModule:
     server.listen Port(5555)
     while true:
       if server.shouldAcceptRequest(5):
-        var (address, client) = await server.socket.acceptAddr()
-        asyncCheck processClient(server, client, address, cb)
+        asyncCheck server.acceptRequest(cb)
       else:
         poll()
 
