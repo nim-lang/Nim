@@ -526,7 +526,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     dest[] = source
 
   However, 'decRef dest' might trigger a cycle collection and then the collector
-  traverses the graph. It is crucial that when it follows the pointes the assignment
+  traverses the graph. It is crucial that when it follows the pointers the assignment
   'dest[] = source' already happened so that we don't do trial deletion on a wrong
   graph -- this causes premature freeing of objects! The correct barrier looks like
   this::
