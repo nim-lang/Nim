@@ -317,8 +317,9 @@ Stropping
 ---------
 
 `Stropping <https://en.wikipedia.org/wiki/Stropping_(syntax)>`_
-allows the same letter sequence to be used both as a keyword and as an identifier,
-this simplifies parsing and FFI with languages where that identifier is not a reserved keyword.
+allows the same letter sequence to be used both as a keyword and as an identifier, this simplifies parsing and
+`FFI <https://en.wikipedia.org/wiki/Foreign_function_interface>`_
+with languages where that identifier is not a reserved keyword.
 For example, allowing a variable named `if` without clashing with the keyword `if`.
 In Nim, this is achieved via backticks, allowing any reserved word to be used as an identifier.
 
