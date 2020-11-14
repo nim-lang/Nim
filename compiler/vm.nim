@@ -630,7 +630,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       let typ = regs[ra].node.typ
       if typ.kind == tyRef:
-        regs[ra].node = cast[PNode](regs[rb].intVal)
+        template fn(val) = regs[ra].node = cast[PNode](val.intVal)
+        case regs[rb].kind
+        of rkInt: fn(regs[rb])
+        of rkNode: fn(regs[rb].node)
+        else: stackTrace(c, tos, pc, "regs[rb].kind: " & $regs[rb].kind)
       else:
         let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
         case regs[rb].kind
