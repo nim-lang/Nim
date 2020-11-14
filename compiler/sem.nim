@@ -519,7 +519,8 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
   c.hasUnresolvedArgs = hasUnresolvedArgs
   c.templInstCounter = new int
-  c.ic = icPass.open(graph, module, idgen)
+  when defined(nimIcSem):
+    c.ic = icPass.open(graph, module, idgen)
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
@@ -599,8 +600,9 @@ proc recoverContext(c: PContext) =
 
 proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
-  result = icPass.process(c.ic, n)
-  if result == nil: return
+  when defined(nimIcSem):
+    result = icPass.process(c.ic, n)
+    if result == nil: return
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
@@ -640,7 +642,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  result = icPass.close(graph, c.ic, result)
+  when defined(nimIcSem):
+    result = icPass.close(graph, c.ic, result)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)
