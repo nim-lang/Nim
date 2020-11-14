@@ -2,8 +2,6 @@ import std/macros
 import std/streams
 
 const
-  frostyMagic* {.intdefine.} = 0xBADCAB ##
-  ## A magic file value for our "format".
   frostyDebug* {.booldefine.} =
     when defined(nimcore): false
     elif defined(release): false
@@ -350,16 +348,11 @@ proc readPrimitive[T](s: var Serializer[Stream]; o: var T) =
 
 proc freeze*[T](o: T; stream: Stream) =
   ## Write `o` into `stream`.
-  ##
-  ## A "magic" value will be written, first.
   var s = newSerializer(stream)
-  s.write frostyMagic
   s.write o
 
 proc freeze*[T](o: T; str: var string) =
   ## Write `o` into `str`.
-  ##
-  ## A "magic" value will prefix the result.
   runnableExamples:
     import uri
     # start with some data
@@ -383,8 +376,6 @@ proc freeze*[T](o: T; str: var string) =
 
 proc freeze*[T](o: T): string =
   ## Turn `o` into a string.
-  ##
-  ## A "magic" value will prefix the result.
   runnableExamples:
     import uri
     # start with some data
@@ -400,21 +391,11 @@ proc freeze*[T](o: T): string =
 
 proc thaw*[T](stream: Stream; o: var T) =
   ## Read `o` from `stream`.
-  ##
-  ## First, a "magic" value will be read.  A `ThawError`
-  ## will be raised if the magic value is not as expected.
-  var version: int
-  stream.read version
-  if version != frostyMagic:
-    raise newException(ThawError, "expected magic " & $frostyMagic)
-  else:
-    var s = newSerializer(stream)
-    s.read o
+  var s = newSerializer(stream)
+  s.read o
 
 proc thaw*[T](str: string; o: var T) =
   ## Read `o` from `str`.
-  ##
-  ## A "magic" value must prefix the input string.
   runnableExamples:
     # start with some data
     var q = @[1, 1, 2, 3, 5]
@@ -423,7 +404,7 @@ proc thaw*[T](str: string; o: var T) =
     # write the data into the string
     q.freeze s
     # check that it matches our expectation
-    assert len(s) == sizeof(frostyMagic) + sizeof(5) + 5*sizeof(0)
+    assert len(s) == sizeof(int) + 5*sizeof(int)
     # prepare a new seq to hold some data
     var l: seq[int]
     # populate the seq using the string as input
@@ -437,8 +418,6 @@ proc thaw*[T](str: string; o: var T) =
 
 proc thaw*[T](str: string): T =
   ## Read value of `T` from `str`.
-  ##
-  ## A "magic" value must prefix the input string.
   thaw(str, result)
 
 when frostyNet:
@@ -472,24 +451,12 @@ when frostyNet:
 
   proc freeze*[T](o: T; socket: Socket) =
     ## Send `o` via `socket`.
-    ##
-    ## A "magic" value will be written, first.
     var s = newSerializer(socket)
-    s.write frostyMagic
     s.write o
 
   proc thaw*[T](socket: Socket; o: var T) =
     ## Receive `o` from `socket`.
-    ##
-    ## First, a "magic" value will be read.  A `ThawError`
-    ## will be raised if the magic value is not as expected.
-    var v: int
-    if recv(socket, data = addr v, size = sizeof(v)) != sizeof(v):
-      raise newException(ThawError, "short read; socket closed?")
-    if v != frostyMagic:
-      raise newException(ThawError, "expected magic " & $frostyMagic)
-    else:
-      var s = newSerializer(socket)
-      s.read o
+    var s = newSerializer(socket)
+    s.read o
 
 {.pop.}
