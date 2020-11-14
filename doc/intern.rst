@@ -160,7 +160,7 @@ are also lots of procs that aid in debugging:
     # why does it process temp.nim here?
     writeStackTrace()
 
-These procs may not be imported by module, you can import them for debuging:
+These procs may not be imported by a module. You can import them directly for debugging:
 
 .. code-block:: nim
   from astalgo import debug
