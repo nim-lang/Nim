@@ -320,6 +320,7 @@ Stropping
 allows the same letter sequence to be used both as a keyword and as an identifier, this simplifies parsing and
 `FFI <https://en.wikipedia.org/wiki/Foreign_function_interface>`_
 with languages where that identifier is not a reserved keyword.
+
 For example, allowing a variable named `if` without clashing with the keyword `if`.
 In Nim, this is achieved via backticks, allowing any reserved word to be used as an identifier.
 
@@ -330,7 +331,7 @@ Examples
 
 .. code-block:: nim
   type Type = object
-  `int`: int
+    `int`: int
 
   let `object` = Type(`int`: 9)
   assert `object` is Type
