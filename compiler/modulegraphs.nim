@@ -33,6 +33,7 @@ import ic / packed_ast
 type
   SigHash* = distinct MD5Digest
 
+  IfaceState* = enum ifaceUninitialized, ifaceLoaded, ifaceUnloaded
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
@@ -284,3 +285,9 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
+
+proc `state=`*(iface: var Iface; state: IfaceState) =
+  assert state > iface.state, "state can only advance"
+  system.`=`(iface.state, state)
+
+proc state*(iface: Iface): IfaceState = iface.state
