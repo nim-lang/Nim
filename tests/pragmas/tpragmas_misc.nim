@@ -53,3 +53,13 @@ block: # (partial fix) bug #15920
         body
     when false: # bug
       template fun3(): int {.since2: (1, 3).} = 12
+
+import macros # defines `proc genSym` symbol
+#[
+Error: undeclared identifier: 'ret`gensym0'
+]#
+block:
+  template fn() =
+    var ret {.gensym.}: int
+    discard ret
+  fn()
