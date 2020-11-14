@@ -95,7 +95,7 @@ proc icReady*(g: ModuleGraph; s: PSym): bool =
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   var iface = g.ifaces[m.position]
-  for i, s in pairs iface.patterns[it.h.int .. ^1]:
+  for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
     if s.name.s == it.name.s:
       it.name = s.name
       it.h = i.Hash
