@@ -32,7 +32,7 @@
 ##           "Content-type": "text/plain; charset=utf-8"}
 ##       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 ##
-##     server.listen Port(5555)
+##     server.listen Port(8080)
 ##     while true:
 ##       if server.shouldAcceptRequest():
 ##         asyncCheck server.acceptRequest(cb)
@@ -342,7 +342,7 @@ proc acceptRequest*(server: AsyncHttpServer,
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
-            assumedDescriptorsPerRequest = 5) {.async.} =
+            assumedDescriptorsPerRequest = -1) {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
   ##
