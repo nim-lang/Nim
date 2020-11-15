@@ -21,6 +21,7 @@ import
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 from magicsys import getSysType
+import std/private/miscdollars
 
 const
   traceCode = defined(nimVMDebug)
@@ -28,44 +29,53 @@ const
 when hasFFI:
   import evalffi
 
+const
+  recursionLimit = 100
+  stacktraceHeader = "stack trace: (most recent call last)"
+    # xxx change to `Traceback (most recent call last)` and refactor with excpt, jssys
 
-proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
-  if x != nil:
-    if recursionLimit == 0:
+proc getStackTraceVM(result: var string, c: PCtx, x: PStackFrame, info: TLineInfo, recursionLimit=recursionLimit) =
+  # xxx factor with `excpt.addFrameEntry` + friends
+  var x = x
+  var count = 0
+  var lines: seq[string]
+  var ret: string
+  var info = info
+  while true:
+    ret.setLen 0
+    if x == nil: break
+    count.inc
+    if count >= recursionLimit:
       var calls = 0
-      var x = x
       while x != nil:
         inc calls
         x = x.next
-      msgWriteln(c.config, $calls & " calls omitted\n")
-      return
-    stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
-    var info = c.debug[pc]
-    # we now use a format similar to the one in lib/system/excpt.nim
-    var s = ""
-    # todo: factor with quotedFilename
-    if optExcessiveStackTrace in c.config.globalOptions:
-      s = toFullPath(c.config, info)
-    else:
-      s = toFilename(c.config, info)
-    var line = toLinenumber(info)
-    var col = toColumn(info)
-    if line > 0:
-      s.add('(')
-      s.add($line)
-      s.add(", ")
-      s.add($(col + ColOffset))
-      s.add(')')
+      ret.add $calls & " calls omitted\n"
+      break
+    let path = toFilenameOption(c.config, info.fileIndex, foStacktrace)
+    ret.toLocation(path, info.line.int, info.col.int + ColOffset)
     if x.prc != nil:
-      for k in 1..max(1, 25-s.len): s.add(' ')
-      s.add(x.prc.name.s)
-    msgWriteln(c.config, s)
+      for k in 1..max(1, 25-ret.len): ret.add(' ')
+      ret.add(x.prc.name.s)
+    lines.add ret
+    info = c.debug[x.comesFrom]
+    x = x.next
+
+  result.add stacktraceHeader & "\n"
+  for i in countdown(lines.len - 1, 0):
+    result.add lines[i]
+    if i > 0: result.add "\n"
+
+proc stackTraceAux(c: PCtx; x: PStackFrame; info: TLineInfo; recursionLimit=recursionLimit) =
+  var s: string
+  getStackTraceVM(s, c, x, info, recursionLimit)
+  msgWriteln(c.config, s)
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
   msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
   # noinline to avoid code bloat
-  msgWriteln(c.config, "stack trace: (most recent call last)")
-  stackTraceAux(c, tos, pc)
+  msgWriteln(c.config, stacktraceHeader)
+  stackTraceAux(c, tos, c.debug[pc])
   let action = if c.mode == emRepl: doRaise else: doNothing
     # XXX test if we want 'globalError' for every mode
   let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
@@ -471,8 +481,8 @@ template handleJmpBack() {.dirty.} =
     if allowInfiniteLoops in c.features:
       c.loopIterations = c.config.maxLoopIterationsVM
     else:
-      msgWriteln(c.config, "stack trace: (most recent call last)")
-      stackTraceAux(c, tos, pc)
+      msgWriteln(c.config, stacktraceHeader)
+      stackTraceAux(c, tos, c.debug[pc])
       globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
   dec(c.loopIterations)
 
@@ -544,6 +554,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "rc", regDescr("rc", instr.regC)]
 
     c.profiler.enter(c, tos)
+    c.tosSaved = tos
 
     case instr.opcode
     of opcEof: return regs[ra]

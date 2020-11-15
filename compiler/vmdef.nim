@@ -238,6 +238,17 @@ type
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}
 
+  PStackFrame* = ref TStackFrame
+  TStackFrame* = object
+    prc*: PSym                 # current prc; proc that is evaluated
+    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
+                              # parameters come first
+    next*: PStackFrame         # for stacking
+    comesFrom*: int
+    safePoints*: seq[int]      # used for exception handling
+                              # XXX 'break' should perform cleanup actions
+                              # What does the C backend do for it?
+
   PCtx* = ref TCtx
   TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
@@ -264,17 +275,8 @@ type
     oldErrorCount*: int
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+    tosSaved*: PStackFrame
 
-  PStackFrame* = ref TStackFrame
-  TStackFrame* = object
-    prc*: PSym                 # current prc; proc that is evaluated
-    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
-                              # parameters come first
-    next*: PStackFrame         # for stacking
-    comesFrom*: int
-    safePoints*: seq[int]      # used for exception handling
-                              # XXX 'break' should perform cleanup actions
-                              # What does the C backend do for it?
   Profiler* = object
     tEnter*: float
     tos*: PStackFrame

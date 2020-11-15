@@ -216,6 +216,11 @@ proc registerAdditionalOps*(c: PCtx) =
                   "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, sfExported in n.sym.flags)
 
+  registerCallback c, "stdlib.system.getStackTrace", proc(a: VmArgs) =
+    var ret: string
+    getStackTraceVM(ret, c, c.tosSaved, info = a.currentLineInfo)
+    setResult(a, ret)
+
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)
     if c.config.backend == backendJs:
