@@ -25,3 +25,15 @@ block:
   let a = [11,12]
   doAssert byLent(a) == [11,12]
   doAssert byLent(a).unsafeAddr == a.unsafeAddr
+
+  proc byLent2[T](a: openarray[T]): lent T = a[0]
+  doAssert byLent2(a) == 11
+  doAssert byLent2(a).unsafeAddr == a[0].unsafeAddr
+
+  proc byLent3[T](a: varargs[T]): lent T = a[1]
+  let 
+    x = 10
+    y = 20
+    z = 30
+  doAssert byLent3(x, y, z) == 20
+
