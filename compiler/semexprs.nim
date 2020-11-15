@@ -1513,6 +1513,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = n
     else:
       result = nil
+  of tyGenericParam:
+    result = n
+    result.typ = makeTypeFromExpr(c, n.copyTree)
   else:
     let s = if n[0].kind == nkSym: n[0].sym
             elif n[0].kind in nkSymChoices: n[0][0].sym

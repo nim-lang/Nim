@@ -538,14 +538,17 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     if n.kind != nkEmpty:
-      n = cl.c.semConstExpr(cl.c, n)
-    if n.typ.kind == tyTypeDesc:
+      n = cl.c.semExpr(cl.c, n)
+    case n.typ.kind
+    of ConcreteTypes: result = n.typ
+    of tyTypeDesc:
       # XXX: sometimes, chained typedescs enter here.
       # It may be worth investigating why this is happening,
       # because it may cause other bugs elsewhere.
       result = n.typ.skipTypes({tyTypeDesc})
       # result = n.typ.base
     else:
+      n = cl.c.semConstExpr(cl.c, n)
       if n.typ.kind != tyStatic:
         # XXX: In the future, semConstExpr should
         # return tyStatic values to let anyone make
