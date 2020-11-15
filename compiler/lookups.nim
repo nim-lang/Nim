@@ -110,17 +110,18 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
 proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule): PSym =
   while true:
     result = nextIdentIter(ti, im.m.tab)
-    if result == nil: return nil
-    case im.mode
-    of importAll:
-      if not containsOrIncl(marked, result.id):
-        return result
-    of importSet:
-      if result.id in im.imported and not containsOrIncl(marked, result.id):
-        return result
-    of importExcept:
-      if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):
-        return result
+    if result == nil:
+      break
+    if not containsOrIncl(marked, result.id):
+      case im.mode
+      of importAll:
+        break
+      of importSet:
+        if result.id in im.imported:
+          break
+      of importExcept:
+        if result.name.id notin im.exceptSet:
+          break
 
 proc initIdentIter(ti: var TIdentIter; marked: var IntSet;
                    im: ImportedModule; name: PIdent): PSym =
