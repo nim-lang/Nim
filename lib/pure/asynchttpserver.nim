@@ -7,44 +7,40 @@
 #    distribution, for details about the copyright.
 #
 
-##[ This module implements a high performance asynchronous HTTP server.
-
-This HTTP server has not been designed to be used in production, but
-for testing applications locally. Because of this, when deploying your
-application in production you should use a reverse proxy (for example nginx)
-instead of allowing users to connect directly to this server.
-
-Basic usage
-===========
-
-This example will create an HTTP server on port 8080. The server will
-respond to all requests with a ``200 OK`` response code and "Hello World"
-as the response body.
-
-.. code-block::nim
-   import asynchttpserver, asyncdispatch
-
-  proc main {.async.} =
-    var server = newAsyncHttpServer()
-    proc cb(req: Request) {.async.} =
-      #echo(req.reqMethod, " ", req.url)
-      #echo(req.headers)
-      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-          "Content-type": "text/plain; charset=utf-8"}
-      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
-
-    server.listen Port(5555)
-    while true:
-      if server.shouldAcceptRequest(5):
-        var (address, client) = await server.socket.acceptAddr()
-        asyncCheck processClient(server, client, address, cb)
-      else:
-        poll()
-
-  asyncCheck main()
-  runForever()
-
-]##
+## This module implements a high performance asynchronous HTTP server.
+##
+## This HTTP server has not been designed to be used in production, but
+## for testing applications locally. Because of this, when deploying your
+## application in production you should use a reverse proxy (for example nginx)
+## instead of allowing users to connect directly to this server.
+##
+## Example
+## =======
+##
+## This example will create an HTTP server on port 8080. The server will
+## respond to all requests with a ``200 OK`` response code and "Hello World"
+## as the response body.
+##
+## .. code-block:: Nim
+##
+##   import asynchttpserver, asyncdispatch
+##
+##   proc main {.async.} =
+##     var server = newAsyncHttpServer()
+##     proc cb(req: Request) {.async.} =
+##       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+##           "Content-type": "text/plain; charset=utf-8"}
+##       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+##
+##     server.listen Port(8080)
+##     while true:
+##       if server.shouldAcceptRequest():
+##         asyncCheck server.acceptRequest(cb)
+##       else:
+##         poll()
+##
+##   asyncCheck main()
+##   runForever()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -326,7 +322,7 @@ proc shouldAcceptRequest*(server: AsyncHttpServer;
   result = assumedDescriptorsPerRequest < 0 or
     (activeDescriptors() + assumedDescriptorsPerRequest < server.maxFDs)
 
-proc acceptRequest*(server: AsyncHttpServer, port: Port,
+proc acceptRequest*(server: AsyncHttpServer,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.}) {.async.} =
   ## Accepts a single request.
   var (address, client) = await server.socket.acceptAddr()
@@ -335,7 +331,7 @@ proc acceptRequest*(server: AsyncHttpServer, port: Port,
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
-            assumedDescriptorsPerRequest = 5) {.async.} =
+            assumedDescriptorsPerRequest = -1) {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
   ##
@@ -369,9 +365,8 @@ when not defined(testing) and isMainModule:
 
     server.listen Port(5555)
     while true:
-      if server.shouldAcceptRequest(5):
-        var (address, client) = await server.socket.acceptAddr()
-        asyncCheck processClient(server, client, address, cb)
+      if server.shouldAcceptRequest():
+        asyncCheck server.acceptRequest(cb)
       else:
         poll()
 
