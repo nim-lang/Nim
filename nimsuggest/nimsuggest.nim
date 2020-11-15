@@ -736,12 +736,8 @@ else:
     var retval: seq[Suggest] = @[]
     let conf = nimsuggest.graph.config
     conf.ideCmd = cmd
-    conf.writelnHook = proc (line: string) =
-      retval.add(Suggest(section: ideMsg, doc: line))
     conf.suggestionResultHook = proc (s: Suggest) =
       retval.add(s)
-    conf.writelnHook = proc (s: string) =
-      stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
     elif conf.ideCmd == ideProject:
