@@ -1,5 +1,7 @@
 discard """
-  output: ''''''
+  output: '''int
+array[0..7, byte]
+'''
 """
 
 import system
@@ -38,4 +40,18 @@ const val = 10
 type 
   t = object
     when val >= 10:
-      a: int
+
+
+#-------------------------------------------------------------------
+# issue #15959
+
+proc my[T](a: T): typeof(a[0]) =
+  echo typeof(result)
+
+proc my2[T](a: T): array[sizeof(a[0]), byte] =
+  echo typeof(result)
+
+
+discard my([1,2,3])
+
+discard my2([10.0, 20.0])
