@@ -196,6 +196,30 @@ template test14339() = # bug #14339
       when not defined(js): # pending bug #16003
         doAssert a.val == 5
 
+template testStatic15464() = # bug #15464
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  static:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  static:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
+proc test15464() = # alternative bug #15464
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  block:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  block:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
 proc test15939() = # bug #15939
   template fn(a) =
     let pa = a[0].addr
@@ -227,7 +251,9 @@ template main =
   # xxx wrap all other tests here like that so they're also tested in VM
   test14420()
   test14339()
+  test15464()
   test15939()
 
+testStatic15464()
 static: main()
 main()
