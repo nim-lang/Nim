@@ -128,7 +128,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-when not defined(gcOrc):
+when not defined(gcOrc) or defined(nimThinout):
   proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
     # This is only used by the old RTTI mechanism and we know
     # that 'dest[]' is nil and needs no destruction. Which is really handy
