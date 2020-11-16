@@ -469,7 +469,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
-  result.flags = {lfNoDeepCopy}
+  result.flags = {}
   constructLoc(p, result, not needsInit)
 
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
