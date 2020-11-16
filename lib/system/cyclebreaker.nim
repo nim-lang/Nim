@@ -70,7 +70,7 @@ template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
   c.rc = c.rc and not colorMask or col
 
-proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
 

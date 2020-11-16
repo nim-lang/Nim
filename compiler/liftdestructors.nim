@@ -245,6 +245,19 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   else:
     fillBodyObjTImpl(c, t, body, x, y)
 
+proc boolLit*(g: ModuleGraph; info: TLineInfo; value: bool): PNode =
+  result = newIntLit(g, info, ord value)
+  result.typ = getSysType(g, info, tyBool)
+
+proc getCycleParam(c: TLiftCtx): PNode =
+  assert c.kind == attachedAsgn
+  if c.fn.typ.len == 4:
+    result = c.fn.typ.n.lastSon
+    assert result.kind == nkSym
+    assert result.sym.name.s == "cyclic"
+  else:
+    result = boolLit(c.g, c.info, true)
+
 proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
   #if sfError in op.flags:
   #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
@@ -258,6 +271,13 @@ proc newHookCall(c: var TLiftCtx; op: PSym; x, y: PNode): PNode =
     result.add x
   if y != nil:
     result.add y
+  if op.typ.len == 4:
+    assert y != nil
+    if c.fn.typ.len == 4:
+      result.add getCycleParam(c)
+    else:
+      # assume the worst: A cycle is created:
+      result.add boolLit(c.g, y.info, true)
 
 proc newOpCall(c: var TLiftCtx; op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ[0])
@@ -517,6 +537,12 @@ proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedTrace:
     discard "strings are atomic and have no inner elements that are to trace"
 
+proc cyclicType*(t: PType): bool =
+  case t.kind
+  of tyRef: result = types.canFormAcycle(t.lastSon)
+  of tyProc: result = t.callConv == ccClosure
+  else: result = false
+
 proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   #[ bug #15753 is really subtle. Usually the classical write barrier for reference
   counting looks like this::
@@ -579,12 +605,13 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedAsgn:
-    body.add genIf(c, y, callCodegenProc(c.g,
-        if isCyclic: "nimIncRefCyclic" else: "nimIncRef", c.info, y))
     if isCyclic:
+      body.add genIf(c, y, callCodegenProc(c.g,
+          "nimIncRefCyclic", c.info, y, getCycleParam(c)))
       body.add newAsgnStmt(x, y)
       body.add genIf(c, cond, actions)
     else:
+      body.add genIf(c, y, callCodegenProc(c.g, "nimIncRef", c.info, y))
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -640,14 +667,13 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn:
     let yenv = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
-    let incRefProc =
-      if c.g.config.selectedGC == gcOrc: "nimIncRefCyclic"
-      else: "nimIncRef"
-    body.add genIf(c, yenv, callCodegenProc(c.g, incRefProc, c.info, yenv))
     if isCyclic:
+      body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRefCyclic", c.info, yenv, getCycleParam(c)))
       body.add newAsgnStmt(x, y)
       body.add genIf(c, cond, actions)
     else:
+      body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRef", c.info, yenv))
+
       body.add genIf(c, cond, actions)
       body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -879,6 +905,13 @@ proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp
   if kind notin {attachedDestructor, attachedDispose}:
     result.typ.addParam src
 
+  if kind == attachedAsgn and g.config.selectedGC == gcOrc and
+      cyclicType(typ.skipTypes(abstractInst)):
+    let cycleParam = newSym(skParam, getIdent(g.cache, "cyclic"),
+                            nextId(idgen), result, info)
+    cycleParam.typ = getSysType(g, info, tyBool)
+    result.typ.addParam cycleParam
+
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
   n[namePos] = newSymNode(result)
@@ -898,8 +931,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if result == nil:
     result = symPrototype(g, typ, typ.owner, kind, info, idgen)
 
-  var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ, idgen: idgen)
-  a.fn = result
+  var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType: typ, idgen: idgen,
+                   fn: result)
 
   let dest = result.typ.n[1].sym
   let d = newDeref(newSymNode(dest))
@@ -935,8 +968,8 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
                                         info: TLineInfo; idgen: IdGenerator): PSym =
   assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
   result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info, idgen)
-  var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen)
-  a.fn = result
+  var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ, idgen: idgen,
+                   fn: result)
   a.asgnForType = typ
   a.filterDiscriminator = field
   a.addMemReset = true

@@ -311,6 +311,16 @@ proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
       # and copyMem(dest, source). This is efficient.
       result = newTree(nkStmtList, c.genDestroy(dest), newTree(nkFastAsgn, dest, ri))
 
+proc isCriticalLink(dest, ri: PNode): bool =
+  # XXX Implement me.
+  result = true
+
+proc finishCopy(c: var Con; result, dest, ri: PNode) =
+  if c.graph.config.selectedGC == gcOrc:
+    let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct})
+    if cyclicType(t):
+      result.add boolLit(c.graph, ri.info, isCriticalLink(dest, ri))
+
 proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedAsgn, dest, ri)
@@ -405,6 +415,7 @@ proc passCopyToSink(n: PNode; c: var Con; s: var Scope): PNode =
     result.add c.genWasMoved(tmp)
     var m = c.genCopy(tmp, n)
     m.add p(n, c, s, normal)
+    c.finishCopy(m, tmp, n)
     result.add m
     if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
@@ -667,6 +678,7 @@ proc pRaiseStmt(n: PNode, c: var Con; s: var Scope): PNode =
       let tmp = c.getTemp(s, n[0].typ, n.info)
       var m = c.genCopyNoCheck(tmp, n[0])
       m.add p(n[0], c, s, normal)
+      c.finishCopy(m, tmp, n[0])
       result = newTree(nkStmtList, c.genWasMoved(tmp), m)
       var toDisarm = n[0]
       if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
@@ -941,16 +953,18 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     else:
       result = c.genCopy(dest, ri)
       result.add p(ri, c, s, consumed)
+      c.finishCopy(result, dest, ri)
   of nkBracket:
     # array constructor
     if ri.len > 0 and isDangerousSeq(ri.typ):
       result = c.genCopy(dest, ri)
       result.add p(ri, c, s, consumed)
+      c.finishCopy(result, dest, ri)
     else:
       result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkSym:            
+  of nkSym:
     if dest.kind == nkSym and dest.sym == ri.sym:
       # rule (self-assignment-removal):
       result = newNodeI(nkEmpty, dest.info)
@@ -966,6 +980,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     else:
       result = c.genCopy(dest, ri)
       result.add p(ri, c, s, consumed)
+      c.finishCopy(result, dest, ri)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
     result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
@@ -983,6 +998,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     else:
       result = c.genCopy(dest, ri)
       result.add p(ri, c, s, consumed)
+      c.finishCopy(result, dest, ri)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:

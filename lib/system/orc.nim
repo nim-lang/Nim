@@ -39,10 +39,11 @@ template setColor(c, col) =
   else:
     c.rc = c.rc and not colorMask or col
 
-proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  h.setColor colMaybeCyclic # mark as potential cycle!
+  if cyclic:
+    h.setColor colMaybeCyclic # mark as potential cycle!
 
 proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   # This is only used by the old RTTI mechanism and we know
@@ -50,7 +51,7 @@ proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   # as we cannot destroy the object reliably if it's an object of unknown
   # compile-time type.
   dest[] = src
-  if src != nil: nimIncRefCyclic src
+  if src != nil: nimIncRefCyclic(src, true)
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
