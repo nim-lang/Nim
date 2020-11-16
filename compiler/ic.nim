@@ -79,13 +79,6 @@ proc initIface*(g: ModuleGraph; iface: var Iface; s: PSym) =
         iface.converters = iface.patterns.filterIt: it.kind == skConverter
         ifaceLoaded
 
-iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
-  ## yield all the symbols from the loaded iface for module `m`
-  var iface = g.ifaces[m.position]
-  assert iface.state == ifaceLoaded
-  for s in items iface.patterns:
-    yield s
-
 proc icReady*(g: ModuleGraph; s: PSym): bool =
   ## true if we are prepared to yield symbols from cache, for module `s`
   var iface = g.ifaces[s.position]
@@ -95,18 +88,26 @@ proc icReady*(g: ModuleGraph; s: PSym): bool =
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   var iface = g.ifaces[m.position]
-  for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
-    if s.name.s == it.name.s:
-      it.name = s.name
-      it.h = i.Hash
-      return s
+  if iface.state == ifaceLoaded:
+    for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
+      if s.name.s == it.name.s:
+        it.name = s.name
+        it.h = i.Hash
+        return s
+  else:
+    result = nextIdentIter(it, iface)
 
 proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
                     name: PIdent): PSym =
   ## replicate the existing iterator semantics for the iface cache
-  it.name = name
-  it.h = 0.Hash
-  result = nextIdentIter(it, g, m)
+  var iface = g.ifaces[m.position]
+  initIface(g, iface, m)
+  if iface.state == ifaceLoaded:
+    it.name = name
+    it.h = 0.Hash
+    result = nextIdentIter(it, g, m)
+  else:
+    result = initIdentIter(it, iface, name)
 
 proc firstSymbolNamed*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## return the first symbol matching the given name

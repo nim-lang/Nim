@@ -10,8 +10,8 @@
 # This module implements lookup helpers.
 
 import
-  intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils, ic
+  intsets, ast, astalgo, idents, semdata, types, msgs, options, ic,
+  renderer, nimfix/prettybase, lineinfos, strutils, modulegraphs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -173,13 +173,8 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   dec scopeN
   isLocal = false
   for im in c.imports.mitems:
-    if icReady(c.graph, im.m):
-      for s in moduleSymbols(c.graph, im.m):
-        yield (s, scopeN, isLocal)
-    else:
-      for s in im.m.tab.data:
-        if s != nil:
-          yield (s, scopeN, isLocal)
+    for s in moduleSymbols(c.graph, im.m):
+      yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
@@ -313,9 +308,8 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
-    # add to interface:
-    # XXX: need to handle this for IC?
-    if c.module != nil: strTableAdd(c.module.tab, sym)
+    if c.module != nil:
+      addExport(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
@@ -484,10 +478,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       if ident != nil:
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident)
-        elif icReady(c.graph, m):
-          result = firstSymbolNamed(c.graph, m, ident)
         else:
-          result = strTableGet(m.tab, ident)
+          result = getExport(c.graph, m, ident)
         result = result.skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n[1], ident, searchInScopes)
@@ -548,10 +540,8 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           # a module may access its private members:
           result = initIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
-        elif icReady(c.graph, o.m):
-          result = initIdentIter(o.it, c.graph, o.m, ident)
         else:
-          result = initIdentIter(o.it, o.m.tab, ident)
+          result = initIdentIter(o.it, c.graph, o.m, ident)
         result = result.skipAlias(n, c.config)
       else:
         noidentError(c.config, n[1], n)
@@ -640,11 +630,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     result = nextIdentIter(o.it, c.topLevelScope.symbols)
     result = result.skipAlias(n, c.config)
   of oimOtherModule:
-    if icReady(c.graph, o.m):
-      result = nextIdentIter(o.it, c.graph, o.m)
-    else:
-      result = nextIdentIter(o.it, o.m.tab)
-    result = result.skipAlias(n, c.config)
+    result = nextIdentIter(o.it, c.graph, o.m).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym

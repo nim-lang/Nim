@@ -465,3 +465,7 @@ proc popCaseContext*(c: PContext) =
 
 proc setCaseContextIdx*(c: PContext, idx: int) =
   c.p.caseContext[^1].idx = idx
+
+template addExport*(c: PContext; s: PSym) =
+  ## convenience to export a symbol from the current module
+  addExport(c.graph, c.module, s)

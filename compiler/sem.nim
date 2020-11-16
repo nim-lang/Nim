@@ -19,7 +19,8 @@ import
   lowerings, plugins/active, ic, lineinfos, strtabs, int128,
   isolation_check, typeallowed
 
-from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
+from modulegraphs import ModuleGraph, PPassContext, onUse, onDef,
+  onDefResolveForward, addExport, getExport, moduleSymbols
 
 when defined(nimfix):
   import nimfix/prettybase

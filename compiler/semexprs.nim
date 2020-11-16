@@ -1015,7 +1015,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:
   result = newNodeI(nkCall, n.info)
-  var e = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "echo"))
+  var e = getExport(c.graph, c.graph.systemModule, getIdent(c.cache, "echo"))
   if e != nil:
     result.add(newSymNode(e))
   else:
@@ -1898,7 +1898,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
-        result = strTableGet(m.tab, ident)
+        result = getExport(c.graph, m, ident)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -2523,15 +2523,12 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   let exceptSet = readExceptSet(c, n)
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
-  strTableAdd(c.module.tab, exported)
-  var i: TTabIter
-  var s = initTabIter(i, exported.tab)
-  while s != nil:
+  addExport(c, exported)
+  for s in moduleSymbols(c.graph, exported):
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet and sfError notin s.flags:
-      strTableAdd(c.module.tab, s)
+      addExport(c, s)
       result.add newSymNode(s, n.info)
-    s = nextIter(i, exported.tab)
   markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
@@ -2544,14 +2541,11 @@ proc semExport(c: PContext, n: PNode): PNode =
       localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a))
     elif s.kind == skModule:
       # forward everything from that module:
-      strTableAdd(c.module.tab, s)
-      var ti: TTabIter
-      var it = initTabIter(ti, s.tab)
-      while it != nil:
+      addExport(c, s)
+      for it in moduleSymbols(c.graph, s):
         if it.kind in ExportableSymKinds+{skModule}:
-          strTableAdd(c.module.tab, it)
+          addExport(c, it)
           result.add newSymNode(it, a.info)
-        it = nextIter(ti, s.tab)
       markUsed(c, n.info, s)
     else:
       while s != nil:
@@ -2560,7 +2554,7 @@ proc semExport(c: PContext, n: PNode): PNode =
             "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule} and sfError notin s.flags:
           result.add(newSymNode(s, a.info))
-          strTableAdd(c.module.tab, s)
+          addExport(c, s)
           markUsed(c, n.info, s)
           if s.kind == skType and sfPure notin s.flags:
             var etyp = s.typ
@@ -2569,7 +2563,7 @@ proc semExport(c: PContext, n: PNode): PNode =
                 var e = etyp.n[j].sym
                 if e.kind != skEnumField:
                   internalError(c.config, s.info, "rawImportSymbol")
-                strTableAdd(c.module.tab, e)
+                addExport(c, e)
 
         s = nextOverloadIter(o, c, a)
 

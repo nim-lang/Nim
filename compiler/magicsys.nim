@@ -10,8 +10,7 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, msgs, platform, idents,
-  modulegraphs, lineinfos
+  ast, astalgo, msgs, platform, idents, ic, modulegraphs, lineinfos
 
 export createMagic
 
@@ -26,23 +25,24 @@ proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
+  result = getExport(g, g.systemModule, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result = newSym(skError, getIdent(g.cache, name), nextId(g.idgen),
+                    g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, nextId(g.idgen), g.systemModule)
   if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   var ti: TIdentIter
   let id = getIdent(g.cache, name)
-  var r = initIdentIter(ti, g.systemModule.tab, id)
+  var r = initIdentIter(ti, g, g.systemModule, id)
   while r != nil:
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
       result = r
-    r = nextIdentIter(ti, g.systemModule.tab)
+    r = nextIdentIter(ti, g, g.systemModule)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
   result = newSym(skError, id, nextId(g.idgen), g.systemModule, g.systemModule.info, {})

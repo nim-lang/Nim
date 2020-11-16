@@ -844,7 +844,7 @@ type
       # No need, just leave it as skModule but set the owner accordingly and
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
-      tab*: TStrTable         # interface table for modules
+      pkgTab*: TStrTable         # interface table for packages
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1050,6 +1050,12 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+proc tab*(s: PSym): TStrTable =
+  ## read-only accessor for now
+  if s.kind == skPackage:
+    result = s.pkgTab
+  else:
+    assert false, "use getExport"
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
@@ -1437,8 +1443,8 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.typ = s.typ
   result.flags = s.flags
   result.magic = s.magic
-  if s.kind == skModule:
-    copyStrTable(result.tab, s.tab)
+  if s.kind == skPackage:
+    copyStrTable(result.pkgTab, s.pkgTab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1456,7 +1462,8 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
-  system.shallowCopy(result.tab, s.tab)
+  if s.kind == skPackage:
+    system.shallowCopy(result.pkgTab, s.pkgTab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc

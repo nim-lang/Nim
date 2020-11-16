@@ -10,8 +10,8 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets
+  intsets, ast, astalgo, msgs, options, idents, lookups, semdata,
+  modulepaths, sigmatch, lineinfos, sets, modulegraphs, ic
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -108,7 +108,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
-  let s = strTableGet(fromMod.tab, ident)
+  let s = getExport(c.graph, fromMod, ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -119,12 +119,12 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     if multiImport:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
-      var e = initIdentIter(it, fromMod.tab, s.name)
+      var e = initIdentIter(it, c.graph, fromMod, s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
           rawImportSymbol(c, e, fromMod, importSet)
-        e = nextIdentIter(it, fromMod.tab)
+        e = nextIdentIter(it, c.graph, fromMod)
     else:
       rawImportSymbol(c, s, fromMod, importSet)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)

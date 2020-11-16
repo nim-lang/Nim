@@ -179,14 +179,6 @@ proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
   result.magic = m
   result.flags = {sfNeverRaises}
 
-proc registerModule*(g: ModuleGraph; m: PSym) =
-  assert m != nil
-  assert m.kind == skModule
-
-  if m.position >= g.ifaces.len:
-    setLen(g.ifaces, m.position + 1)
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
-
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
@@ -285,7 +277,78 @@ proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
 
 proc `state=`*(iface: var Iface; state: IfaceState) =
+  ## guard crazy state changes
   assert state > iface.state, "state can only advance"
   system.`=`(iface.state, state)
 
 proc state*(iface: Iface): IfaceState = iface.state
+
+proc initExports*(g: ModuleGraph; m: PSym) =
+  ## prepare module to addExport
+  case m.kind
+  of skModule:
+    initStrTable g.ifaces[m.position].tab
+  of skPackage:
+    initStrTable m.pkgTab
+  else:
+    internalError(g.config, "attempt to init exports for " & $m.kind)
+
+template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
+
+proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
+  ## add a symbol to a module's exported interface
+  if sfExported notin s.flags:
+    if s.kind in {skModule, skPackage}:
+      s.flags.incl sfExported
+      addExport(g, m, s)
+    else:
+      debug s
+      internalError(g.config, "cannot add export for unexported symbol")
+  else:
+    case m.kind
+    of skModule:
+      var iface = g.ifaces[m.position]
+      strTableAdd(iface.tab, s)
+    of skPackage:
+      strTableAdd(m.pkgTab, s)
+    else:
+      internalError(g.config, "cannot add export to " & $m.kind)
+
+proc getExport*(g: ModuleGraph; m: PSym; p: PIdent): PSym =
+  ## fetch an exported symbol for the module by ident
+  assert m.kind == skModule
+  var iface = g.ifaces[m.position]
+  #assert iface.state > ifaceLoaded
+  result = strTableGet(iface.tab, p)
+
+proc registerModule*(g: ModuleGraph; m: PSym) =
+  ## setup the module's interface
+  assert m != nil
+  assert m.kind == skModule
+
+  if m.position >= g.ifaces.len:
+    setLen(g.ifaces, m.position + 1)
+  g.ifaces[m.position] = Iface(module: m)
+  initExports(g, m)
+  addExport(g, m, m)       # a module always knows itself
+
+proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
+  ## hide the .tab from ic
+  result = initIdentIter(it, iface.tab, name)
+
+proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
+  ## hide the .tab from ic
+  result = nextIdentIter(it, iface.tab)
+
+iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
+  ## yield all the symbols from the loaded iface for module `m`
+  assert m.kind == skModule
+  var iface = g.ifaces[m.position]
+  #assert iface.state >= ifaceLoaded
+  if iface.state == ifaceLoaded:
+    for s in items iface.patterns:
+      yield s
+  else:
+    for s in items iface.tab.data:
+      if s != nil:
+        yield s
