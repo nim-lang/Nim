@@ -1654,10 +1654,8 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   let a = c.genx(n[0], flags)
   let b = c.genIndex(n[1], n[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
-  if opc == opcLdArr and gfNodeAddr in flags:
-    c.gABC(n, opcLdArrAddr, dest, a, b)
-  elif opc == opcLdStrIdxAddr and gfNodeAddr in flags:
-    c.gABC(n, opcLdStrIdxAddr, dest, a, b)
+  if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
+    c.gABC(n, opc, dest, a, b)
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1751,14 +1749,13 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   if arrayType in {tyString, tyCString}:
-    if gfNodeAddr in flags:
-      genArrAccessOpcode(c, n, dest, opcLdStrIdxAddr, flags)
-    else:
-      genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
+    let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
+    genArrAccessOpcode(c, n, dest, opc, flags)
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
-    genArrAccessOpcode(c, n, dest, opcLdArr, flags)
+    let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr
+    genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t[0] != nil:
