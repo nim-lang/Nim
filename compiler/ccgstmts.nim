@@ -432,6 +432,7 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
     # Only one situation needing temp for ifExpr:
     # as function parameters
+    # see #4132
     d.flags.incl lfNoDeepCopy
 
   genLineDir(p, n)
@@ -944,6 +945,7 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
     # Only one situation needing temp for caseExpr:
     # as function parameters
+    # see #4132
     d.flags.incl lfNoDeepCopy
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
