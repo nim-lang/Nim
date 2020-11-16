@@ -1315,7 +1315,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
-        # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
+        # 'p(): auto' and 'p(): untyped' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
         r = newTypeS(tyUntyped, c)
       elif r.kind == tyStatic:
