@@ -429,7 +429,11 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     a: TLoc
     lelse: TLabel
   if not isEmptyType(n.typ) and d.k == locNone:
+    # Only one situation needing temp for ifExpr:
+    # as function parameters
     getTemp(p, n.typ, d)
+    d.flags.incl lfNoDeepCopy
+
   genLineDir(p, n)
   let lend = getLabel(p)
   for it in n.sons:
@@ -448,6 +452,8 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
         expr(p, it[1], d)
         p.s(cpsStmts).add "}"
       else:
+        # if ($n.renderTree)[^6 .. ^1] == "green1":
+        #   doAssert false
         expr(p, it[1], d)
       endBlock(p)
       if n.len > 1:
