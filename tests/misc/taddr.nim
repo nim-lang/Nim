@@ -196,10 +196,27 @@ template test14339() = # bug #14339
       when not defined(js): # pending bug #16003
         doAssert a.val == 5
 
+proc test15939() = # bug #15939
+  template fn(a) =
+    let pa = a[0].addr
+    doAssert pa != nil
+    doAssert pa[] == 'a'
+    pa[] = 'x'
+    doAssert pa[] == 'x'
+    doAssert a == "xbc"
+  # mystring[ind].addr
+  var a = "abc"
+  fn(a)
+  # mycstring[ind].addr
+  var a2 = "abc"
+  var b2 = a2.cstring
+  fn(b2)
+
 template main =
   # xxx wrap all other tests here like that so they're also tested in VM
   test14420()
   test14339()
+  test15939()
 
 static: main()
 main()
