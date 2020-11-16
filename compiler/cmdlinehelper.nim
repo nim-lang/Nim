@@ -39,23 +39,35 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
   condsyms.initDefines(conf.symbols)
   defineSymbol conf.symbols, name
 
-proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
+proc processProjectName(conf: ConfigRef) =
+  try:
+    conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
+  except OSError:
+    conf.projectFull = AbsoluteFile conf.projectName
+  let p = splitFile(conf.projectFull)
+  let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
+  conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
+  conf.projectName = p.name
+
+proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef, projectPath = "") =
   self.processCmdLine(passCmd1, "", conf)
   if conf.projectIsCmd and conf.projectName in ["-", ""]:
     handleCmdInput(conf)
   elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
+  elif projectPath != "":
+    if dirExists(projectPath):
+      conf.projectName = findProjectNimFile(conf, projectPath)
+      doAssert conf.projectName != ""
+      processProjectName(conf)
+    elif fileExists(projectPath):
+      conf.projectName = projectPath
+      processProjectName(conf)
   elif conf.projectName != "":
-    try:
-      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
-    except OSError:
-      conf.projectFull = AbsoluteFile conf.projectName
-    let p = splitFile(conf.projectFull)
-    let dir = if p.dir.isEmpty: AbsoluteDir getCurrentDir() else: p.dir
-    conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile dir)
-    conf.projectName = p.name
+    processProjectName(conf)
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
+
 
 proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =

@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils, nimpaths, tables
+  prefixmatches, pathutils, nimpaths, tables, strscans, streams
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -791,31 +791,46 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       result = findFile(conf, m)
   patchModule(conf)
 
+proc skipQuote(input: string; start: int; seps: set[char] = {'"'}): int =
+  result = 0
+  while start+result < input.len and input[start+result] in seps: inc result
+
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var
-    candidates: seq[string] = @[]
+    candidates: HashSet[string]
     dir = pkg
     prev = dir
     nimblepkg = ""
+    srcDir = ""
+    finalSrcDir = ""
   let pkgname = pkg.lastPathPart()
   while true:
-    for k, f in os.walkDir(dir, relative = true):
+    for k, f in os.walkDir(dir, relative = false):
       if k == pcFile and f != "config.nims":
-        let (_, name, ext) = splitFile(f)
+        let (currentDir, name, ext) = splitFile(f)
         if ext in extensions:
           let x = changeFileExt(dir / name, ".nim")
           if fileExists(x):
-            candidates.add x
+            candidates.incl x
           if ext == ".nimble":
             if nimblepkg.len == 0:
               nimblepkg = name
-              # Since nimble packages can have their source in a subfolder,
-              # check the last folder we were in for a possible match.
-              if dir != prev:
-                let x = prev / x.extractFilename()
-                if fileExists(x):
-                  candidates.add x
+              const p1 = """$ssrcDir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
+              const p2 = """$ssrcdir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
+              var fs = newFileStream(f, fmRead)
+              var line = ""
+              if not isNil(fs):
+                while fs.readLine(line):
+                  if scanf(line, p1, srcDir) or scanf(line, p2, srcDir):
+                    if srcDir.len > 0 and fileExists(currentDir / srcDir / name.addFileExt(".nim")):
+                      finalSrcDir = currentDir / srcDir
+                      fs.close()
+                      break
+              if srcDir.len == 0 and fileExists(currentDir / "src" / name.addFileExt(".nim")):
+                finalSrcDir = currentDir / "src"
+              if finalSrcDir.len > 0:
+                candidates.incl finalSrcDir / name.addFileExt(".nim")
             else:
               # If we found more than one nimble file, chances are that we
               # missed the real project file, or this is an invalid nimble
@@ -823,9 +838,10 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
               return ""
     let pkgname = if nimblepkg.len > 0: nimblepkg else: pkgname
     for c in candidates:
-      if pkgname in c.extractFilename(): return c
+      if c.extractFilename().contains pkgname: return c
     if candidates.len > 0:
-      return candidates[0]
+      for value in candidates.items:
+        return value
     prev = dir
     dir = parentDir(dir)
     if dir == "": break

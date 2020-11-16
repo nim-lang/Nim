@@ -686,14 +686,7 @@ else:
 
     proc mockCmdLine(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       conf.suggestVersion = 0
-      let a = unixToNativePath(project)
-      if dirExists(a) and not fileExists(a.addFileExt("nim")):
-        conf.projectName = findProjectNimFile(conf, a)
-        # don't make it worse, report the error the old way:
-        if conf.projectName.len == 0: conf.projectName = a
-      else:
-        conf.projectName = a
-          # if processArgument(pass, p, argsCount): break
+
     let
       cache = newIdentCache()
       conf = newConfigRef()
@@ -703,7 +696,7 @@ else:
       )
     self.initDefinesProg(conf, "nimsuggest")
 
-    self.processCmdLineAndProjectPath(conf)
+    self.processCmdLineAndProjectPath(conf, unixToNativePath(project))
 
     if gMode != mstdin:
       conf.writelnHook = proc (msg: string) = discard
