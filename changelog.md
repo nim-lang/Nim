@@ -34,7 +34,20 @@
 - various functions in `httpclient` now accept `url` of type `Uri`. Moreover `request` function's
   `httpMethod` argument of type `string` was deprecated in favor of `HttpMethod` enum type.
 
+- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
+
+- `doAssertRaises` now correctly handles foreign exceptions.
+
+- Added `asyncdispatch.activeDescriptors` that returns the number of currently
+  active async event handles/file descriptors
+- Added `asyncdispatch.maxDescriptors` that returns the maximum number of
+  active async event handles/file descriptors.
+
+
 ## Language changes
+
+- `nimscript` now handles `except Exception as e`
+- The `cstring` doesn't support `[]=` operator in JS backend.
 
 
 

@@ -263,11 +263,8 @@ func contains*(methods: set[HttpMethod], x: string): bool =
 
 func `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
-  ##
-  ## For example:
-  ##
-  ##   .. code-block:: nim
-  ##       doAssert($Http404 == "404 Not Found")
+  runnableExamples:
+    doAssert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"

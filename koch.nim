@@ -554,6 +554,7 @@ proc runCI(cmd: string) =
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
+    execFold("Run rst2html tests", "nim c -r nimdoc/rsttester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")

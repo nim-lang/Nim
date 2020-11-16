@@ -998,7 +998,8 @@ proc hasRightDirectory(path: string, walkOptC: WalkOptComp[Pattern]): bool =
     if dirname.contains(pat): return false
   result = true
 
-iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string =
+iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string
+         {.closure.} =
   var dirStack = @[dir]  # stack of directories
   var timeFiles = newSeq[(times.Time, string)]()
   while dirStack.len > 0:
@@ -1040,7 +1041,8 @@ iterator walkDirBasic(dir: string, walkOptC: WalkOptComp[Pattern]): string =
     for (_, file) in timeFiles:
       yield file
 
-iterator walkRec(paths: seq[string]): (string, string) =
+iterator walkRec(paths: seq[string]): tuple[error: string, filename: string]
+         {.closure.} =
   declareCompiledPatterns(walkOptC, WalkOptComp):
     walkOptC.excludeFile.add walkOpt.excludeFile.compileArray()
     walkOptC.includeFile.add walkOpt.includeFile.compileArray()
@@ -1130,13 +1132,13 @@ proc run1Thread() =
       processFileResult(searchOptC.pattern, "-",
                         processFile(searchOptC, "-",
                                     yieldContents=optReplace in options))
-    for (err, filename) in walkRec(paths):
-      if err != "":
+    for entry in walkRec(paths):
+      if entry.error != "":
         inc(gVar.errors)
-        printError (err & filename)
+        printError (entry.error & entry.filename)
         continue
-      processFileResult(searchOptC.pattern, filename,
-                        processFile(searchOptC, filename,
+      processFileResult(searchOptC.pattern, entry.filename,
+                        processFile(searchOptC, entry.filename,
                                     yieldContents=optReplace in options))
 
 # Multi-threaded version: all printing is being done in the Main thread.
@@ -1182,12 +1184,12 @@ proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
   walkOpt = arg[1]  # init thread-local copy of opt
   var
     nextFileN = 0
-  for (err, filename) in walkRec(paths):
-    if err == "":
-      searchRequestsChan.send((nextFileN,filename))
+  for entry in walkRec(paths):
+    if entry.error == "":
+      searchRequestsChan.send((nextFileN, entry.filename))
     else:
-      resultsChan.send((false, nextFileN,
-                        filename, @[Output(kind: openError, msg: err)]))
+      resultsChan.send((false, nextFileN, entry.filename,
+                        @[Output(kind: openError, msg: entry.error)]))
     nextFileN += 1
   resultsChan.send((true, nextFileN, "", @[]))  # pass total number of files
 
