@@ -207,3 +207,5 @@ SELECT `SELECT`, `FROM` as `GROUP` FROM `WHERE`;
 doAssert $parseSQL("""
 SELECT "SELECT", "FROM" as "GROUP" FROM "WHERE";
 """) == """select "SELECT", "FROM" as "GROUP" from "WHERE";"""
+
+doAssert $parseSQL("""CREATE TABLE Persons (Personid int NOT NULL AUTO_INCREMENT);""") == """create table Persons(Personid  int  not null  auto_increment );;"""

@@ -501,6 +501,7 @@ type
     nkColumnReference,
     nkReferences,
     nkDefault,
+    nkAutoIncrement,
     nkCheck,
     nkConstraint,
     nkUnique,
@@ -828,6 +829,9 @@ proc parseColumnConstraints(p: var SqlParser, result: SqlNode) =
       var n = newNode(nkDefault)
       n.add(parseExpr(p))
       result.add(n)
+    elif isKeyw(p, "auto_increment"):
+      getTok(p)
+      result.add(newNode(nkAutoIncrement))
     elif isKeyw(p, "references"):
       getTok(p)
       var n = newNode(nkReferences)
@@ -1299,6 +1303,8 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkDefault:
     s.addKeyw("default")
     ra(n.sons[0], s)
+  of nkAutoIncrement:
+    s.addKeyw("auto_increment")
   of nkCheck:
     s.addKeyw("check")
     ra(n.sons[0], s)
