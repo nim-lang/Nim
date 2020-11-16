@@ -1656,6 +1656,11 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   if dest < 0: dest = c.getTemp(n.typ)
   if opc == opcLdArr and {gfNodeAddr} * flags != {}:
     c.gABC(n, opcLdArrAddr, dest, a, b)
+  elif opc == opcLdStrIdxAddr and {gfNodeAddr} * flags != {}:
+    # dbg n.renderTree
+    # dbg n.typ
+    # genTypeLit(c, n.typ, dest)
+    c.gABC(n, opcLdStrIdxAddr, dest, a, b)
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1749,7 +1754,11 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   if arrayType in {tyString, tyCString}:
-    genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
+    if gfNodeAddr in flags:
+      # improve
+      genArrAccessOpcode(c, n, dest, opcLdStrIdxAddr, flags)
+    else:
+      genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
