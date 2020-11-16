@@ -20,7 +20,8 @@ import
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
-import magicsys
+from magicsys import getSysType
+
 const
   traceCode = defined(nimVMDebug)
 
@@ -678,34 +679,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = s[idx].ord
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
-    of opcLdStrIdxAddr: # like opcLdArrAddr
-      # a = addr(b[c])
-      # xxx factor
-      # decodeBC(rkNodeAddr)
-      # decodeBC(rkInt) # xxx rkPtrInt ?
+    of opcLdStrIdxAddr:
+      # a = addr(b[c]); similar to opcLdArrAddr
       decodeBC(rkNode)
-      # dbg regs[ra].typ
       if regs[rc].intVal > high(int):
         stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let s = regs[rb].node.strVal.addr # or `byaddr`
       if idx <% s[].len:
-        # regs[ra].intVal = cast[int](s[][idx].addr)
+         # `makePtrType` not accessible from vm.nim
         let typ = newType(tyPtr, nextId c.idgen, c.module.owner)
-        # let typ = newType(tyPtr, nextId c.idgen, getCurrOwner(c))
         typ.add getSysType(c.graph, c.debug[pc], tyChar)
-        # let typ = makePtrType(c, getSysType(c.graph, c.debug[pc], tyChar))
         let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
-        # let node = newNode(nkIntLit) # xxx nkPtrLit
-        # xxx info
-        # node.intVal = cast[ptr int](node.intVal)[]
         node.intVal = cast[int](s[][idx].addr)
         node.flags.incl nfIsPtr
-        # node.intVal = cast[int](s[][idx].addr)
         regs[ra].node = node
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s[].len-1))
-
     of opcWrArr:
       # a[b] = c
       decodeBC(rkNode)

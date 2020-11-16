@@ -66,6 +66,7 @@
 
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
+- VM now supports `addr(mystring[ind])` (index + index assignment)
 
 
 ## Tool changes
