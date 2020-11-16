@@ -900,7 +900,11 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
   result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
   if comm.len > 0:
-    result["description"] = %comm
+    try:
+      result["description"] = sanitize(comm)
+    except:
+      echo "Unable to parse: ", getCurrentExceptionMsg()
+      result["description"] = %comm
   if r.buf.len > 0:
     result["code"] = %r.buf
   if k in routineKinds:

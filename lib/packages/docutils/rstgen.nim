@@ -208,11 +208,26 @@ proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   of outLatex: addTexChar(dest, c)
   of outJson: addJsonChar(dest, c)
 
+proc makeJsonWFields(kind: string, fields: varargs[tuple[name, data: string]]): string =
+  result &= "{\"kind\":\"" & kind & "\""
+  for field in fields:
+    result &= ", \"" & field.name & "\": " & field.data
+  result &= "}, "
+
+proc makeJsonNoFields(str: string): string =
+  result = "{\"kind\": \"" & str & "\"}, "
+
+template makeJson(kind: string, fields: varargs[tuple[name, data: string]]): string =
+  when fields.len != 0:
+    makeJsonWFields(kind, fields)
+  else:
+    makeJsonNoFields(kind)
+
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
   case target
   of outHtml: add(dest, "<wbr />")
   of outLatex: add(dest, "\\-")
-  of outJson: add(dest, "\", {\"kind\": \"splitter\"}, \"")
+  of outJson: add(dest, makeJson("splitter"))
 
 proc nextSplitPoint*(s: string, start: int): int =
   result = start
@@ -290,14 +305,7 @@ proc renderAux(d: PDoc, n: PRstNode, xml, tex, json: string, result: var string)
   case d.target:
   of outHtml: result.addf(xml, [tmp])
   of outLatex: result.addf(tex, [tmp])
-  of outJson:
-    try:
-      echo "Trying to parse: ", tmp
-      discard parseJson("[" & tmp & "]")
-      result.addf(json, [tmp])
-    except:
-      echo "Failed: ", getCurrentExceptionMsg()
-      result.addf(json, ["\"" & tmp & "\""])
+  of outJson: result.addf(json, [tmp])
 
 # ---------------- index handling --------------------------------------------
 
@@ -394,7 +402,7 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
   dispA(d.target, result, "<span id=\"$1\">$2</span>",
                           "$2\\label{$1}",
-                          "{\"kind\":\"indexterm\", \"id\":\"$1\", \"content\":$2},",
+                          makeJson("indexterm", ("id", "\"$1\""), ("content", "[$2]")),
                           [id, term])
 
 type
@@ -770,13 +778,13 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "\n<h$1><a class=\"toc-backref\" id=\"$2\" href=\"#$2\">$3</a></h$1>",
       "\\rsth$4{$3}\\label{$2}\n",
-      "{\"kind\":\"headline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
+      makeJson("headline", ("id", "\"$2\""), ("level", "$1"), ("content", "[$3]")),
       [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
   else:
     dispA(d.target, result,
     "\n<h$1 id=\"$2\">$3</h$1>",
         "\\rsth$4{$3}\\label{$2}\n",
-        "{\"kind\":\"headline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
+        makeJson("headline", ("id", "\"$2\""), ("level", "$1"), ("content", "[$3]")),
         [$n.level, refname, tmp,
         $chr(n.level - 1 + ord('A'))])
 
@@ -809,16 +817,15 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
         "<h$1 id=\"$2\"><center>$3</center></h$1>",
         "\\rstov$4{$3}\\label{$2}\n",
-        "{\"kind\":\"overline\", \"id\":\"$2\", \"level\":$1, \"content\":\"$3\"},",
+        makeJson("overline", ("id", "\"$2\""), ("level", "$1"), ("content", "[$3]")),
         [$n.level,
         rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
-
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
   dispA(d.target, result,
     "<li><a class=\"reference\" id=\"$1_toc\" href=\"#$1\">$2</a></li>\n",
     "\\item\\label{$1_toc} $2\\ref{$1}\n",
-    "{\"kind\":\"tocentry\", \"id\":\"$1_toc\", \"content\":\"$2\"},",
+    makeJson("tocentry", ("id", "\"$1_toc\""), ("content", "[$2]")),
     [e.refname, e.header])
 
 proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
@@ -837,7 +844,7 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
     dispA(d.target, result,
       "<ul class=\"simple\">$1</ul>",
       "\\begin{enumerate}$1\\end{enumerate}",
-      "{\"kind\":\"toc\", \"content\":[$1]},",
+      makeJson("toc", ("content", "[$1]")),
       [tmp])
   else:
     result.add(tmp)
@@ -868,7 +875,11 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if s.len > 0:
     dispA(d.target, options, " align=\"$1\"", "", "\"align\":\"$1\",", [s])
 
-  if options.len > 0: options = dispF(d.target, "$1", "[$1]", "$1", [options])
+  if options.len > 0:
+    options = case d.target:
+    of outHtml: options
+    of outLatex: "[" & options & "]"
+    of outJson: options[0..^2] # remove trailing comma
 
   var htmlOut = ""
   if arg.endsWith(".mp4") or arg.endsWith(".ogg") or
@@ -897,7 +908,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
     htmlOut,
     "\\includegraphics$2{$1}",
-    "{\"kind\":\"image\", \"content\":[$1], \"options\": {$2}},",
+    makeJson("image", ("content", "[$1]"), ("options", "{$2}")),
     [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
@@ -906,7 +917,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
     """<img src="$1" width="15"
         height="17" hspace="2" vspace="2" class="smiley" />""",
     "\\includegraphics{$1}",
-    "{\"kind\":\"smiley\", \"content\": \"$1\"},",
+    makeJson("smiley", ("content", "\"$1\"")),
     [d.config.getOrDefault"doc.smiley_format" % n.text])
 
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
@@ -1034,11 +1045,11 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
         dispA(d.target, result,
           "<span class=\"$2\">$1</span>",
           "\\span$2{$1}",
-          "{\"kind\":\"codeentry\", \"tokenClass\":\"$2\", \"content\":\"$1\"},", [
+          makeJson("codeentry", ("tokenClass", "\"$2\""), ("content", "\"$1\"")), [
           esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n", "]},")
+  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n", "]}, ")
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
@@ -1048,7 +1059,7 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result, "<div>$1</div>", "$1", "$1", [tmp])
   else:
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2",
-      "{\"kind\": \"class\", \"class\": \"$1\", \"content\": \"$2\"}", [arg, tmp])
+      makeJson("class", ("class", "\"$1\""), ("content", "[$2]")), [arg, tmp])
 
 proc texColumns(n: PRstNode): string =
   result = ""
@@ -1074,32 +1085,31 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
-  echo n.kind
   case n.kind
   of rnInner: renderAux(d, n, "$1", "$1", "$1", result)
   of rnHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", "{\"kind\": \"hrule\"},", result)
-  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", "{\"kind\": \"paragraph\", \"content\": \"$1\"},", result)
+  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", makeJson("hrule"), result)
+  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", makeJson("paragraph", ("content", "[$1]")), result)
   of rnBulletList:
     renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}$1\\end{itemize}\n",
-                    "{\"kind\": \"bulletlist\", \"content\": [$1]},", result)
+                    makeJson("bulletlist", ("content", "[$1]")), result)
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li>$1</li>\n", "\\item $1\n",
-                    "{\"kind\": \"listitem\", \"content\": \"$1\"},", result)
+                    makeJson("listitem", ("content", "[$1]")), result)
   of rnEnumList:
     renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",
                     "\\begin{enumerate}$1\\end{enumerate}\n",
-                    "{\"kind\": \"enumlist\", \"content\": [$1]},", result)
+                    makeJson("enumlist", ("content", "[$1]")), result)
   of rnDefList:
     renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
                     "\\begin{description}$1\\end{description}\n",
-                    "{\"kind\": \"deflist\", \"content\": [$1]},", result)
+                    makeJson("deflist", ("content", "[$1]")), result)
   of rnDefItem: renderAux(d, n, result)
   of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ",
-                    "{\"kind\": \"defitem\", \"description\": \"$1\", ", result)
-  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", "\"content\": \"$1\"},", result)
+                    makeJson("defitem", ("description", "[$1]")), result)
+  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", makeJson("defbody", ("content", "[$1]")), result)
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
@@ -1112,66 +1122,66 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "<tbody valign=\"top\">$1" &
           "</tbody></table>",
           "\\begin{description}$1\\end{description}\n",
-          "{\"kind\": \"fieldlist\", \"content\": \"$1\"},",
+          makeJson("fieldlist", ("content", "[$1]")),
           [tmp])
   of rnField: renderField(d, n, result)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
                     "\\item[$1:]",
-                    "{\"kind\": \"fieldname\", \"content\": \"$1\"},",
+                    makeJson("fieldname", ("content", "[$1]")),
                     result)
   of rnFieldBody:
     renderAux(d, n, "<td>$1</td>",
                     " $1\n",
-                    "{\"kind\": \"fieldbody\", \"content\": \"$1\"},",
+                    makeJson("fieldbody", ("content", "[$1]")),
                     result)
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
     renderAux(d, n, "<table frame=\"void\">$1</table>",
       "\\begin{description}\n$1\\end{description}\n",
-      "{\"kind\": \"optionlist\", \"content\": \"$1\"},",
+      makeJson("optionlist", ("content", "[$1]")),
       result)
   of rnOptionListItem:
     renderAux(d, n, "<tr>$1</tr>\n",
                     "$1",
-                    "{\"kind\": \"optionlistitem\", \"content\": \"$1\"},",
+                    makeJson("optionlistitem", ("content", "[$1]")),
                     result)
   of rnOptionGroup:
     renderAux(d, n, "<th align=\"left\">$1</th>",
                     "\\item[$1]",
-                    "{\"kind\": \"optiongroup\", \"content\": \"$1\"},",
+                    makeJson("optiongroup", ("content", "[$1]")),
                     result)
   of rnDescription:
     renderAux(d, n, "<td align=\"left\">$1</td>\n",
                     " $1\n",
-                    "{\"kind\": \"description\", \"content\": \"$1\"},",
+                    makeJson("description", ("content", "[$1]")),
                     result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre>$1</pre>\n",
                     "\\begin{rstpre}\n$1\n\\end{rstpre}\n",
-                    "{\"kind\":\"literalblock\", \"content\":$1},",
+                    makeJson("literalblock", ("content", "[$1]")),
                     result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
     renderAux(d, n, "<p>$1</p>", "$1\n\n",
-      "{\"kind\":\"lineblock\", \"content\":[$1]},", result)
+      makeJson("lineblock", ("content", "[$1]")), result)
   of rnLineBlockItem:
     renderAux(d, n, "$1<br />", "$1\\\\\n",
-      "{\"kind\":\"lineblockitem\", \"content\":\"$1\"},", result)
+      makeJson("lineblockitem", ("content", "[$1]")), result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n",
-                    "{\"kind\":\"blockquote\", \"content\":\"$1\"},", result)
+                    makeJson("blockquote", ("content", "[$1]")), result)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
         texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}",
-      "{\"kind\":\"table\", \"content\":[$1]},", result)
+      makeJson("table", ("content", "[$1]")), result)
   of rnTableRow:
     if len(n) >= 1:
       case d.target:
@@ -1188,13 +1198,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       of outJson:
         result.add("{\"kind\":\"tablerow\", \"content\":[")
         renderAux(d, n, result)
-        result.add("]},")
+        result.add("]}, ")
   of rnTableDataCell:
     renderAux(d, n, "<td>$1</td>", "$1",
-      "{\"kind\":\"tabledatacell\", \"content\":\"$1\"},", result)
+      makeJson("tabledatacell", ("content", "[$1]")), result)
   of rnTableHeaderCell:
     renderAux(d, n, "<th>$1</th>", "\\textbf{$1}",
-      "{\"kind\":\"tableheadercell\", \"content\":\"$1\"},", result)
+      makeJson("tableheadercell", ("content", "[$1]")), result)
   of rnLabel:
     doAssert false, "renderRstToOut" # used for footnotes and other
   of rnFootnote:
@@ -1207,13 +1217,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"#$2\">$1</a>",
       "$1\\ref{$2}",
-      "{\"kind\":\"reference\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      makeJson("reference", ("content", "[$1]"), ("reference", "\"$2\"")),
       [tmp, rstnodeToRefname(n)])
   of rnStandaloneHyperlink:
     renderAux(d, n,
       "<a class=\"reference external\" href=\"$1\">$1</a>",
       "\\href{$1}{$1}",
-      "{\"kind\":\"standalonelink\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      makeJson("standalonelink", ("content", "\"$1\"")),
       result)
   of rnHyperlink:
     var tmp0 = ""
@@ -1223,7 +1233,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"$2\">$1</a>",
       "\\href{$2}{$1}",
-      "{\"kind\":\"hyperlink\", \"content\":\"$1\", \"reference\":\"$2\"},",
+      makeJson("hyperlink", ("content", "[$1]"), ("reference", "\"$2\"")),
       [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
@@ -1237,7 +1247,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnCodeBlock: renderCodeBlock(d, n, result)
   of rnContainer: renderContainer(d, n, result)
   of rnSubstitutionReferences, rnSubstitutionDef:
-    renderAux(d, n, "|$1|", "|$1|", "{\"kind\":\"substitution\", \"content\":\"$1\"},", result)
+    renderAux(d, n, "|$1|", "|$1|",
+      makeJson("substitution", ("content", "[$1]")), result)
   of rnDirective:
     renderAux(d, n, "", "", "", result)
   of rnGeneralRole:
@@ -1248,34 +1259,34 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "<span class=\"$2\">$1</span>",
       "\\span$2{$1}",
-      "{\"kind\":\"generalrole\", \"content\":\"$1\", \"role\":\"$2\"},",
+      makeJson("generalrole", ("content", "[$1]"), ("role", "\"$2\"")),
           [tmp0, tmp1])
   of rnSub: renderAux(d, n,
     "<sub>$1</sub>",
     "\\rstsub{$1}",
-    "{\"kind\":\"subscript\", \"content\":\"$1\"},",
+    makeJson("subscript", ("content", "[$1]")),
     result)
   of rnSup: renderAux(d, n,
     "<sup>$1</sup>",
     "\\rstsup{$1}",
-    "{\"kind\":\"superscript\", \"content\":\"$1\"},",
+    makeJson("superscript", ("content", "[$1]")),
     result)
   of rnEmphasis: renderAux(d, n,
     "<em>$1</em>",
     "\\emph{$1}",
-    "{\"kind\":\"emphasis\", \"content\":\"$1\"},",
+    makeJson("emphasis", ("content", "[$1]")),
     result)
   of rnStrongEmphasis:
     renderAux(d, n,
       "<strong>$1</strong>",
       "\\textbf{$1}",
-      "{\"kind\":\"strongemphasis\", \"content\":\"$1\"},",
+      makeJson("strongemphasis", ("content", "[$1]")),
       result)
   of rnTripleEmphasis:
     renderAux(d, n,
       "<strong><em>$1</em></strong>",
       "\\textbf{emph{$1}}",
-      "{\"kind\":\"tripleemphasis\", \"content\":\"$1\"},",
+      makeJson("tripleemphasis", ("content", "[$1]")),
       result)
   of rnIdx:
     renderIndexTerm(d, n, result)
@@ -1283,16 +1294,45 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
       "\\texttt{$1}",
-      "{\"kind\":\"literal\", \"content\":$1},",
+      makeJson("literal", ("content", "[$1]")),
       result)
   of rnSmiley: renderSmiley(d, n, result)
   of rnLeaf:
-    echo "rnLeaf: ", n.text
-    result.add(esc(d.target, n.text))
+    if d.target == outJson:
+      result.add(makeJson("text", ("content", "\"" & esc(d.target, n.text) & "\"")))
+    else:
+      result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
   of rnTitle:
     d.meta[metaTitle] = ""
     renderRstToOut(d, n.sons[0], d.meta[metaTitle])
+
+proc sanitizeJson(json: var JsonNode) =
+  if json.kind notin {JArray, JObject}:
+    return
+  if json.kind == JObject:
+    for node in json.fields.mvalues:
+      sanitizeJson(node)
+  if json.kind == JArray:
+    var node = json.elems.high
+    while node >= 1:
+      if json.elems[node]["kind"].str == "text" and
+         json.elems[node - 1]["kind"].str == "text":
+        json.elems[node - 1]["content"].str &= json.elems[node]["content"].str
+        json.elems.del(node)
+      else:
+        sanitizeJson(json.elems[node])
+      dec node
+
+proc sanitize*(generated: string): JsonNode =
+  ## This sanitizes the generated JSON output, turning it into actual JSON and
+  ## combines nodes.
+  var sane = generated.replace(", ]", "]")
+  if sane.endsWith(", "): sane = sane[0..^3]
+  sane = "[" & sane & "]"
+  var parsed = parseJson(sane)
+  #sanitizeJson(parsed)
+  return parsed
 
 # -----------------------------------------------------------------------------
 
