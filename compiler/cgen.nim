@@ -479,7 +479,7 @@ proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
-  result.flags = {}
+  result.flags = {lfNoDeepCopy}
 
 proc getIntTemp(p: BProc, result: var TLoc) =
   inc(p.labels)
