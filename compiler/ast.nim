@@ -1384,7 +1384,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  uniqueId: id)
   when false:
     if result.id == 76426:
-      echo "KNID ", kind
+      echo "KIND ", kind
       writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
