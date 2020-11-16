@@ -144,7 +144,11 @@ template test14339() = # bug #14339
       n.val
     var a = Node(val: 3)
     a.bar() = 5
-    doAssert a.val == 5
+    when nimvm:
+      doAssert a.val == 5
+    else:
+      when not defined(js): # pending bug #16003
+        doAssert a.val == 5
 
 test14339()
 static: test14339()
