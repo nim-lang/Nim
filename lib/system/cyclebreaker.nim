@@ -74,6 +74,8 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
 
+proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} = discard
+
 type
   GcEnv = object
     traceStack: CellSeq

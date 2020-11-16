@@ -62,7 +62,7 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
-proc genBuiltin(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
+proc genBuiltin*(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
   result = newNodeI(nkCall, i.info)
   result.add createMagic(g, name, magic).newSymNode
   result.add i

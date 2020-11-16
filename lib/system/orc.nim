@@ -45,6 +45,10 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   if cyclic:
     h.setColor colMaybeCyclic # mark as potential cycle!
 
+proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
+  let h = head(p)
+  h.setColor colMaybeCyclic
+
 proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   # This is only used by the old RTTI mechanism and we know
   # that 'dest[]' is nil and needs no destruction. Which is really handy
