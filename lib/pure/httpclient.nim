@@ -1033,14 +1033,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ##
   ## You need to make sure that the ``url`` doesn't contain any newline
   ## characters. Failing to do so will raise ``AssertionDefect``.
+  ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
   when url is string:
     doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
     let url = parseUri(url)
 
   when httpMethod is string:
-    {.deprecated:
-       "Deprecated since v1.5; use `HttpMethod` enum instead of string".}
-    let httpMethod = parseEnum[HttpMethod](httpMethod)
+    {.warning:
+       "Deprecated since v1.5; use HttpMethod enum instead; string parameter httpMethod is deprecated".}
+    let httpMethod = parseEnum[HttpMethod]("Http" & httpMethod)
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
