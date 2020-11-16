@@ -18,11 +18,11 @@
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors
-- Added `asyncdispatch.maxDescriptors` that returns the maximum number of
-  active async event handles/file descriptors.
 
 
 ## Language changes
+
+- `nimscript` now handles `except Exception as e`
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
