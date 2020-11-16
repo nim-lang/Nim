@@ -535,7 +535,8 @@ type
     nkCreateTypeIfNotExists,
     nkCreateIndex,
     nkCreateIndexIfNotExists,
-    nkEnumDef
+    nkEnumDef,
+    nkNumericDef
 
 const
   LiteralNodes = {
@@ -610,23 +611,23 @@ proc optKeyw(p: var SqlParser, keyw: string) =
 
 proc expectIdent(p: SqlParser) =
   if p.tok.kind != tkIdentifier and p.tok.kind != tkQuotedIdentifier:
-    sqlError(p, "identifier expected")
+    sqlError(p, "identifier expected got " & $p.tok.kind & " \"" & p.tok.literal & '"')
 
 proc expect(p: SqlParser, kind: TokKind) =
   if p.tok.kind != kind:
-    sqlError(p, tokKindToStr[kind] & " expected")
+    sqlError(p, '"' & tokKindToStr[kind] & "\" expected got " & $p.tok.kind & " \"" & p.tok.literal & '"')
 
 proc eat(p: var SqlParser, kind: TokKind) =
   if p.tok.kind == kind:
     getTok(p)
   else:
-    sqlError(p, tokKindToStr[kind] & " expected")
+    sqlError(p, '"' & tokKindToStr[kind] & "\" expected got " & $p.tok.kind & " \"" & p.tok.literal & '"')
 
 proc eat(p: var SqlParser, keyw: string) =
   if isKeyw(p, keyw):
     getTok(p)
   else:
-    sqlError(p, keyw.toUpperAscii() & " expected")
+    sqlError(p, '"' & keyw.toUpperAscii() & "\" expected got " & $p.tok.kind & " \"" & p.tok.literal & '"')
 
 proc opt(p: var SqlParser, kind: TokKind) =
   if p.tok.kind == kind: getTok(p)
@@ -646,8 +647,27 @@ proc parseDataType(p: var SqlParser): SqlNode =
       eat(p, tkParRi)
   else:
     expectIdent(p)
-    result = newNode(nkIdent, p.tok.literal)
+    let isNumericDataType = isKeyw(p, "fixed") or 
+      isKeyw(p,"bigint") or 
+      isKeyw(p, "dec") or 
+      isKeyw(p, "integer") or 
+      isKeyw(p, "smallint") or 
+      isKeyw(p, "tinyint") or 
+      isKeyw(p, "mediumint") or 
+      isKeyw(p, "decimal") or 
+      isKeyw(p, "numeric") or 
+      isKeyw(p, "float") or 
+      isKeyw(p, "real") or 
+      isKeyw(p,"int") or isKeyw(p, "double")
+    if isNumericDataType:
+      result = newNode(nkNumericDef)
+      result.add newNode(nkIdent, p.tok.literal)
+    else:
+      result = newNode(nkIdent, p.tok.literal)
     getTok(p)
+    if isKeyw(p, "precision"):
+      result.add(newNode(nkIdent, p.tok.literal))
+      getTok(p)
     # ignore (12, 13) part:
     if p.tok.kind == tkParLe:
       getTok(p)
@@ -658,6 +678,15 @@ proc parseDataType(p: var SqlParser): SqlNode =
         expect(p, tkInteger)
         getTok(p)
       eat(p, tkParRi)
+    elif p.tok.kind == tkIdentifier and isNumericDataType:
+      let isUsigned = isKeyw(p, "unsigned")
+      let isZerofill = isKeyw(p, "zerofill")
+      if isUsigned or isZerofill:
+        result.add(newNode(nkIdent, p.tok.literal))
+        getTok(p)
+        if isUsigned and isKeyw(p, "zerofill"):
+          result.add(newNode(nkIdent, p.tok.literal))
+          getTok(p)
 
 proc getPrecedence(p: SqlParser): int =
   if isOpr(p, "*") or isOpr(p, "/") or isOpr(p, "%"):
@@ -1453,6 +1482,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkEnumDef:
     s.addKeyw("enum")
     rs(n, s)
+  of nkNumericDef:
+    for i in 0..n.len-1:
+      ra(n.sons[i], s)
 
 proc renderSQL*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
