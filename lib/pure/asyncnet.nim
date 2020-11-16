@@ -656,6 +656,12 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     raiseOSError(osLastError())
   freeaddrinfo(aiList)
 
+proc hasDataBuffered*(s: AsyncSocket): bool =
+  ## Determines whether an AsyncSocket has data buffered.
+  result = false
+  if s.isBuffered:
+    result = s.bufLen > 0 and s.currPos != s.bufLen
+
 when defined(posix):
 
   proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
