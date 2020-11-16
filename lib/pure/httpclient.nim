@@ -1041,7 +1041,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   when httpMethod is string:
     {.warning:
        "Deprecated since v1.5; use HttpMethod enum instead; string parameter httpMethod is deprecated".}
-    let httpMethod = parseEnum[HttpMethod]("Http" & httpMethod)
+    let httpMethod = parseEnum[HttpMethod](httpMethod)
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
