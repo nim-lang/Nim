@@ -122,21 +122,16 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
       cast[ptr T](address)[] = T(r.field)
     else:
       r.ensureKind(rkind)
-      dbg address
       let val = cast[ptr T](address)[]
-      dbg val, $T, T is SomeInteger
-      when T is SomeInteger:
-        r.field = BiggestInt(val)
-      elif T is char:
+      when T is SomeInteger | char:
         r.field = BiggestInt(val)
       else:
         r.field = val
     return true
 
   ## see also typeinfo.getBiggestInt
-  dbg typ.kind
   case typ.kind
-  of tyChar: fun(intVal, char, rkInt) # xxx char?
+  of tyChar: fun(intVal, char, rkInt)
   of tyInt: fun(intVal, int, rkInt)
   of tyInt8: fun(intVal, int8, rkInt)
   of tyInt16: fun(intVal, int16, rkInt)
@@ -1027,19 +1022,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
       elif regs[rc].kind == rkNodeAddr:
         ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
-      elif regs[rc].kind == rkNode and regs[rb].kind == rkInt: # PRTEMP
-        let nc = regs[rc].node
-        let nb = regs[rb].intVal
-        dbg nb
-        dbg nc
-        dbg nc.kind
-        # factor out
-        let intVal2 = if nc.kind == nkNilLit: 0 else: nc.intVal.int
-        ret = intVal2 == nb
-        # dbg regs[rb].kind
-        # if regs[rb].kind == rkInt:
-        #   dbg regs[rc].kind
-        #   dbg regs[rb].intVal
       else:
         let nb = regs[rb].node
         let nc = regs[rc].node
