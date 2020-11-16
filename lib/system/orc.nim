@@ -46,8 +46,9 @@ proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
     h.setColor colMaybeCyclic # mark as potential cycle!
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
-  let h = head(p)
-  h.setColor colMaybeCyclic
+  if p != nil:
+    let h = head(p)
+    h.setColor colMaybeCyclic
 
 proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   # This is only used by the old RTTI mechanism and we know
