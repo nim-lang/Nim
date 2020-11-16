@@ -452,8 +452,6 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
         expr(p, it[1], d)
         p.s(cpsStmts).add "}"
       else:
-        # if ($n.renderTree)[^6 .. ^1] == "green1":
-        #   doAssert false
         expr(p, it[1], d)
       endBlock(p)
       if n.len > 1:
