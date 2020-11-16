@@ -10,7 +10,7 @@
 ## incremental compilation interface
 
 import
-  ast, passes, idents, msgs, options, lineinfos, pathutils, intsets,
+  ast, passes, idents, msgs, options, lineinfos, pathutils,
   modulegraphs, astalgo,
   std/[sequtils, hashes],
   std/options as stdoptions
