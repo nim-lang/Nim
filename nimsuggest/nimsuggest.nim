@@ -658,6 +658,9 @@ else:
     idle: int
     cachedMsgs: CachedMsgs
 
+  proc projectPath*(nimsuggest: NimSuggest): string =
+    nimsuggest.graph.conf.projectPath
+
   proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
     var retval: ModuleGraph
     proc mockCommand(graph: ModuleGraph) =
