@@ -8,7 +8,7 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the 
+  "Complexity" seems to be a lot like "energy": you can transfer it from the
   end-user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
@@ -311,6 +311,32 @@ is the preferred way of writing keywords).
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
+
+
+Stropping
+---------
+
+If a keyword is enclosed in backticks it loses its keyword property and becomes an ordinary identifier.
+
+Examples
+
+.. code-block:: nim
+  var `var` = "Hello Stropping"
+
+.. code-block:: nim
+  type Type = object
+    `int`: int
+
+  let `object` = Type(`int`: 9)
+  assert `object` is Type
+  assert `object`.`int` == 9
+
+  var `var` = 42
+  let `let` = 8
+  assert `var` + `let` == 50
+
+  const `assert` = true
+  assert `assert`
 
 
 String literals
