@@ -659,7 +659,7 @@ else:
     cachedMsgs: CachedMsgs
 
   proc projectPath*(nimsuggest: NimSuggest): string =
-    nimsuggest.graph.config.projectPath
+    nimsuggest.graph.config.projectPath.string
 
   proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
     var retval: ModuleGraph
