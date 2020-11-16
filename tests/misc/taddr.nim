@@ -208,7 +208,7 @@ template testStatic15464() = # bug #15464
     access(s, 2) = 'C'
     doAssert access(s, 2) == 'C'
 
-proc test15464() = # alternative bug #15464
+proc test15464() = # bug #15464 (v2)
   proc access(s: var seq[char], i: int): var char = s[i]
   proc access(s: var string, i: int): var char = s[i]
   block:
@@ -220,7 +220,19 @@ proc test15464() = # alternative bug #15464
     access(s, 2) = 'C'
     doAssert access(s, 2) == 'C'
 
-proc test15939() = # bug #15939
+block: # bug #15939
+  block:
+    const foo = "foo"
+    proc proc1(s: var string) =
+      if s[^1] notin {'a'..'z'}:
+        s = ""
+    proc proc2(f: string): string =
+      result = f
+      proc1(result)
+    const bar = proc2(foo)
+    doAssert bar == "foo"
+
+proc test15939() = # bug #15939 (v2)
   template fn(a) =
     let pa = a[0].addr
     doAssert pa != nil
