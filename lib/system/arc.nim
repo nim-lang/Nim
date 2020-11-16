@@ -75,6 +75,8 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
+  const traceId = -1
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
   let s = size + hdrSize
@@ -126,13 +128,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
-  # This is only used by the old RTTI mechanism and we know
-  # that 'dest[]' is nil and needs no destruction. Which is really handy
-  # as we cannot destroy the object reliably if it's an object of unknown
-  # compile-time type.
-  dest[] = src
-  if src != nil: nimIncRef src
+when not defined(gcOrc):
+  proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+    # This is only used by the old RTTI mechanism and we know
+    # that 'dest[]' is nil and needs no destruction. Which is really handy
+    # as we cannot destroy the object reliably if it's an object of unknown
+    # compile-time type.
+    dest[] = src
+    if src != nil: nimIncRef src
 
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =

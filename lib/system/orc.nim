@@ -19,9 +19,9 @@ include cellseqs_v2
 
 const
   colBlack = 0b000
-  colGray = 0b001
+  colMaybeCyclic = 0b001 # this is also 'ord(true)', the codegen exploits this
   colWhite = 0b010
-  colPurple = 0b011
+  colGray = 0b011
   isCycleCandidate = 0b100 # cell is marked as a cycle candidate
   jumpStackFlag = 0b1000
   colorMask = 0b011
@@ -42,8 +42,15 @@ template setColor(c, col) =
 proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  #h.setColor colPurple # mark as potential cycle!
-  h.setColor colBlack
+  h.setColor colMaybeCyclic # mark as potential cycle!
+
+proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+  # This is only used by the old RTTI mechanism and we know
+  # that 'dest[]' is nil and needs no destruction. Which is really handy
+  # as we cannot destroy the object reliably if it's an object of unknown
+  # compile-time type.
+  dest[] = src
+  if src != nil: nimIncRefCyclic src
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
@@ -347,7 +354,8 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
 
   if roots.len >= rootsThreshold:
     collectCycles()
-  #writeCell("[added root]", s)
+  when logOrc:
+    writeCell("[added root]", s, desc)
 
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
@@ -388,7 +396,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
     #s.setColor colGreen  # XXX This is wrong!
-    if (s.rc and isCycleCandidate) == 0:
+    if (s.rc and isCycleCandidate) == 0 and s.color == colMaybeCyclic:
       s.rc = s.rc or isCycleCandidate
       s.setColor colBlack
       registerCycle(s, desc)
