@@ -56,6 +56,7 @@
 
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
+- `defer` now works at top-level
 
 
 ## Tool changes

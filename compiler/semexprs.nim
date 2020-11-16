@@ -2889,8 +2889,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkStaticStmt:
     result = semStaticStmt(c, n)
   of nkDefer:
-    if c.currentScope == c.topLevelScope:
-      localError(c.config, n.info, "defer statement not supported at top level")
     n[0] = semExpr(c, n[0])
     if not n[0].typ.isEmptyType and not implicitlyDiscardable(n[0]):
       localError(c.config, n.info, "'defer' takes a 'void' expression")

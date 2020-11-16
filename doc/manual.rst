@@ -4441,9 +4441,6 @@ Is rewritten to:
     finally:
       close(f)
 
-Top-level ``defer`` statements are not supported
-since it's unclear what such a statement should refer to.
-
 
 Raise statement
 ---------------
