@@ -40,6 +40,9 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result[1] = i
   result.typ = elemType
 
+proc destructorOverriden(t: PType): bool =
+  t.attachedOps[attachedDestructor] != nil and sfOverriden in t.attachedOps[attachedDestructor].flags
+
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   for i in 0..<t.len:
     let lit = lowerings.newIntLit(c.g, x.info, i)
@@ -290,13 +293,19 @@ proc instantiateGeneric(c: var TLiftCtx; op: PSym; t, typeInst: PType): PSym =
 proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
   if optSeqDestructors in c.g.config.globalOptions:
-    let op = field
-    if field != nil and sfOverriden in field.flags:
+    var op = field
+    let destructorOverriden = destructorOverriden(t)
+    if op != nil and op != c.fn and 
+        (sfOverriden in op.flags or destructorOverriden):
       if sfError in op.flags:
         incl c.fn.flags, sfError
       #else:
       #  markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
+      body.add newHookCall(c, op, x, y)
+      result = true
+    elif op == nil and destructorOverriden:
+      op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
       body.add newHookCall(c, op, x, y)
       result = true
   elif tfHasAsgn in t.flags:
@@ -905,8 +914,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   # register this operation already:
   typ.attachedOps[kind] = result
 
-  if kind == attachedSink and typ.attachedOps[attachedDestructor] != nil and
-       sfOverriden in typ.attachedOps[attachedDestructor].flags:
+  if kind == attachedSink and destructorOverriden(typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
     result.ast[bodyPos].add newOpCall(a, typ.attachedOps[attachedDestructor], d[0])
