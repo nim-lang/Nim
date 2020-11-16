@@ -204,13 +204,24 @@ proc test15939() = # bug #15939
     pa[] = 'x'
     doAssert pa[] == 'x'
     doAssert a == "xbc"
+    when not defined js: # otherwise overflows
+      let pa2 = cast[ptr char](cast[int](pa) + 1)
+      doAssert pa2[] == 'b'
+      pa2[] = 'B'
+      doAssert a == "xBc"
+
   # mystring[ind].addr
   var a = "abc"
   fn(a)
+
   # mycstring[ind].addr
-  var a2 = "abc"
-  var b2 = a2.cstring
-  fn(b2)
+  template cstringTest =
+    var a2 = "abc"
+    var b2 = a2.cstring
+    fn(b2)
+  when nimvm: cstringTest()
+  else: # can't take address of cstring element in js
+    when not defined(js): cstringTest()
 
 template main =
   # xxx wrap all other tests here like that so they're also tested in VM
