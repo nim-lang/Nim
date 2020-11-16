@@ -738,7 +738,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter[i]
           n[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags: addDecl(c, v)
+          if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n[0])
