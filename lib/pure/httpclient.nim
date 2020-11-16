@@ -1041,7 +1041,27 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   when httpMethod is string:
     {.warning:
        "Deprecated since v1.5; use HttpMethod enum instead; string parameter httpMethod is deprecated".}
-    let httpMethod = parseEnum[HttpMethod](httpMethod)
+    let httpMethod = case httpMethod
+      of "HEAD":
+        HttpHead
+      of "GET":
+        HttpGet
+      of "POST":
+        HttpPost
+      of "PUT":
+        HttpPut
+      of "DELETE":
+        HttpDelete
+      of "TRACE":
+        HttpTrace
+      of "OPTIONS":
+        HttpOptions
+      of "CONNECT":
+        HttpConnect
+      of "PATCH":
+        HttpPatch
+      else:
+        raise newException(ValueError, "Invalid HTTP method name: " & httpMethod)
 
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
