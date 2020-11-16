@@ -648,7 +648,7 @@ proc parseDataType(p: var SqlParser): SqlNode =
   else:
     expectIdent(p)
     let isNumericDataType = isKeyw(p, "fixed") or 
-      isKeyw(p,"bigint") or 
+      isKeyw(p, "bigint") or 
       isKeyw(p, "dec") or 
       isKeyw(p, "integer") or 
       isKeyw(p, "smallint") or 
@@ -658,7 +658,7 @@ proc parseDataType(p: var SqlParser): SqlNode =
       isKeyw(p, "numeric") or 
       isKeyw(p, "float") or 
       isKeyw(p, "real") or 
-      isKeyw(p,"int") or isKeyw(p, "double")
+      isKeyw(p, "int") or isKeyw(p, "double")
     if isNumericDataType:
       result = newNode(nkNumericDef)
       result.add newNode(nkIdent, p.tok.literal)
