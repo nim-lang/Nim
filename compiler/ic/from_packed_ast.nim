@@ -61,7 +61,11 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
   # short-circuit if we already have the PSym
   result = getOrDefault(c.symMap, id, nil)
   if result == nil:
-    result = fromSym(id.item, id, ir, c)
+    if id.module == c.thisModule:
+      result = fromSym(id.item, id, ir, c)
+    else:
+      let m = getModule(c.graph, FileIndex id.module)
+      result = getExport(c.graph, m, fromIdent(LitId id.item, ir, c))
     # cache the result
     c.symMap[id] = result
 
@@ -81,16 +85,10 @@ proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
   when hasFFI:
     result.cname = ir.sh.strings[int s.cname]
 
-  case s.kind
-  of skModule, skPackage:
-    # setup tab?
-    discard
-  of skLet, skVar, skField, skForVar:
+  if s.kind in {skLet, skVar, skField, skForVar}:
     result.guard = loadSymbol(s.guard, c, ir)
     result.bitsize = s.bitsize
     result.alignment = s.alignment
-  else:
-    discard
   result.owner = loadSymbol(s.owner, c, ir)
   let externalName = ir.sh.strings[s.externalName]
   if externalName != "":

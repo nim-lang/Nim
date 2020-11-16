@@ -39,13 +39,6 @@ proc flush(ir: var PackedTree; c: var Context) =
     else:
       break
 
-proc addItemId(tree: var PackedTree; id: ItemId; typ: TypeId; info: PackedLineInfo) =
-  ## add an itemid to the tree
-  tree.nodes.add Node(kind: nkModuleRef, operand: 2.int32,
-                      typeId: typ, info: info)
-  tree.nodes.add Node(kind: nkInt32Lit, operand: id.module, info: info)
-  tree.nodes.add Node(kind: nkInt32Lit, operand: id.item, info: info)
-
 proc toLitId(x: string; ir: var PackedTree; c: var Context): LitId =
   result = getOrIncl(ir.sh.strings, x)
 
@@ -68,6 +61,16 @@ proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
 
 proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
+
+proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
+  ## add a symbol reference to the tree
+  let info = n.info.toPackedInfo(ir, c)
+  ir.nodes.add Node(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
+                    typeId: toPackedType(n.typ, ir, c), info: info)
+  ir.nodes.add Node(kind: nkInt32Lit, info: info,
+                    operand: n.sym.itemId.module)
+  ir.nodes.add Node(kind: nkInt32Lit, info: info,
+                    operand: int32 toLitId(n.sym.name.s, ir, c))
 
 proc addMissing(c: var Context; p: PSym) =
   if not p.isNil:
@@ -165,16 +168,7 @@ proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
     ir.addSym(id, info)
   else:
     # store it as an external module reference:
-
-    # XXX: this will never work because an external reference cannot be
-    # mapped to a local reference, even in the remote module.
-
-    # at the time we serialize the local module, we don't know the index
-    # of the remote psym. since the remote module does not record the
-    # identity, we cannot resolve it there, either.
-
-    ir.addItemId(s.itemId, n.typ.toPackedType(ir, c), info)
-    #ir.addSym(id, info)
+    addModuleRef(n, ir, c)
   # we'll cache it in the local module in any event
   c.symMap[s.itemId] = id
 
@@ -188,7 +182,7 @@ proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
   l.path.toPackedNode(result.path, c)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
-  template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
+  let info = toPackedInfo(n.info, ir, c)
   if n.isNil: return
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
