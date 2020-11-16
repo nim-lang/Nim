@@ -942,6 +942,7 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
+    d.flags.incl lfNoDeepCopy
   case skipTypes(t[0].typ, abstractVarRange).kind
   of tyString:
     genStringCase(p, t, d)
