@@ -53,6 +53,136 @@ func sumPairs*[T](x: openArray[T]): T =
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
 
+func fastTwoSum*[T : SomeFloat](a, b: T): (T, T) =
+  ## Deker's algorithm
+  ## pre-condition: |a| >= |b|
+  ## you must swap a and b if pre-condition is not satisfied
+  ## s + r = a + b exactly (s is result[0] and r is result[1])
+  ## s is the nearest FP number of a + B
+  result[0] = a + b
+  result[1] = b - (result[0] - a)
+
+func twoSum*[T](a, b: T): (T, T) =
+  ## Møller-Knuth's algorithm.
+  ## Improve Deker's algorithm, no branch needed
+  ## More operations, but still cheap.
+  result[0] = a + b
+  let z = result[0] - a
+  result[1] = (a - (result[0] - z)) + (b - z)
+
+func sum2*[T : SomeFloat](v: openArray[T]): T =
+  ## sum an array v using twoSum function
+  if len(v) == 0:
+    return 0.0
+
+  var s = v[0]
+  var e: float
+  for x in v[1..^1]:
+    let sum = twoSum(s, x)
+    s = sum[0]
+    e += sum[1]
+  return s + e
+
+func shewchuckSum_add*[T: SomeFloat](v: openArray[T]): seq[T] =
+  ## Full precision sum of values in iterable. Returns the value of the
+  ## sum, rounded to the nearest representable floating-point number
+  ## using the round-half-to-even rule
+  ##
+  ## Original PR: https://github.com/nim-lang/Nim/pull/9284
+  ## Return partials result.
+  ## Result must be summed
+  for x in v:
+    var x = x
+    var i = 0
+    for y in result:
+       let sum = twoSum(x, y)
+       let hi = sum[0]
+       let lo = sum[1]
+       if lo != 0.0:
+          result[i] = lo
+          i.inc
+       x = hi
+    setLen(result, i + 1)
+    result[i] = x
+
+func shewchuckSum_total*[T: SomeFloat](partials: openArray[T]): T =
+  var hi = 0.0
+  if len(partials) > 0:
+     var n = len(partials)
+     dec(n)
+     hi = partials[n]
+     var lo = 0.0
+     while n > 0:
+       var x = hi
+       dec(n)
+       var y = partials[n]
+       let sum = twoSum(x, y)
+       hi = sum[0]
+       lo = sum[1]
+       if lo != 0.0:
+         break
+       if (n > 0 and
+           (
+             (lo < 0.0 and partials[n - 1] < 0.0) or
+             (lo > 0.0 and partials[n - 1] > 0.0)
+           )
+         ):
+           y = lo * 2.0
+           x = hi + y
+           var yr = x - hi
+           if y == yr:
+             hi = x
+  result = hi
+  return result
+
+func shewchuckSum*[T: SomeFloat](x: openArray[T]): T =
+  ## https://docs.python.org/3/library/math.html#math.fsum
+  ## https://code.activestate.com/recipes/393090/
+  ## www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
+  shewchuckSum_total(shewchuckSum_add(x))
+
+func fsum*[T: SomeFloat](x: openArray[T]): T =
+  ## Alias of shewchuckSum function as python fsum
+  shewchuckSum(x)
+
+func neumaierSum*[T: SomeFloat](x: openArray[T]): T =
+  ## improved Kahan–Babuška algorithm
+  ## https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
+  var sum = 0.0
+  var c = 0.0 # A running compensation for lost low-order bits.
+  for v in x:
+    var t = sum + v
+    # If sum is bigger, low-order digits of input[i] are lost.
+    if abs(sum) >= abs(v):
+      c += (sum - t) + v
+    else:
+      c += (v - t) + sum # Else low-order digits of sum are lost.
+      sum = t
+  return sum + c # Correction only applied once in the very end.
+
+func kleinSum*[T: SomeFloat](x: openArray[T]): T =
+  ## Klein variant
+  ## https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
+  var sum = 0.0
+  var cs = 0.0
+  var ccs = 0.0
+  for v in x:
+    var t = sum + v
+    var c = 0.0
+    var cc = 0.0
+    if abs(sum) >= abs(v):
+      c = (sum - t) + v
+    else:
+      c = (v - t) + sum
+    sum = t
+    t = cs + c
+    if abs(cs) >= abs(c):
+      cc = (cs - t) + c
+    else:
+      cc = (c - t) + cs
+    cs = t
+    ccs = ccs + cc
+  return sum + cs + ccs
 
 runnableExamples:
   static:
