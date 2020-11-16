@@ -430,8 +430,8 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     lelse: TLabel
   if not isEmptyType(n.typ) and d.k == locNone:
     getTemp(p, n.typ, d)
-    # Only one situation needing temp for ifExpr:
-    # as function parameters
+    # Only one situation needing no deep copy:
+    # ifExpr as function parameters
     # see #4132
     d.flags.incl lfNoDeepCopy
 
@@ -943,8 +943,8 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-    # Only one situation needing temp for caseExpr:
-    # as function parameters
+    # Only one situation needing no deep copy:
+    # caseExpr as function parameters
     # see #4132
     d.flags.incl lfNoDeepCopy
   case skipTypes(t[0].typ, abstractVarRange).kind
