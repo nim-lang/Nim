@@ -123,3 +123,16 @@ block:
   block: # pending bug #15959
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]
+
+block: # bug #14339
+  type
+    Node = ref object
+      val: int
+  proc bar(c: Node): var int =
+    var n = c # was: Error: limited VM support for 'addr'
+    c.val
+  proc main =
+    var a = Node()
+    discard a.bar()
+  static: main()
+  main()
