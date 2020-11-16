@@ -1237,8 +1237,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result < isGeneric: result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
-    # varargs[expr] is special too but handled earlier. So we only need to
-    # handle varargs[stmt] which is the same as varargs[typed]:
+    # varargs[untyped] is special too but handled earlier. So we only need to
+    # handle varargs[typed]:
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon, flags)
