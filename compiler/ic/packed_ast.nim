@@ -14,7 +14,7 @@
 
 import std / [hashes, tables, strtabs]
 import bitabs
-import ".." / [ast, lineinfos, options, pathutils]
+import ".." / [ast, lineinfos, options]
 
 const
   localNamePos* = 0
