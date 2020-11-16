@@ -124,15 +124,27 @@ block:
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]
 
-block: # bug #14339
-  type
-    Node = ref object
-      val: int
-  proc bar(c: Node): var int =
-    var n = c # was: Error: limited VM support for 'addr'
-    c.val
-  proc main =
+template test14339() = # bug #14339
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c # was: Error: limited VM support for 'addr'
+      c.val
     var a = Node()
     discard a.bar()
-  static: main()
-  main()
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c
+      doAssert n.val == n[].val
+      n.val
+    var a = Node(val: 3)
+    a.bar() = 5
+    doAssert a.val == 5
+
+test14339()
+static: test14339()
