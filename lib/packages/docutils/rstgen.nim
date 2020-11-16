@@ -200,7 +200,7 @@ proc addTexChar(dest: var string, c: char) =
   else: add(dest, c)
 
 proc addJsonChar(dest: var string, c: char) =
-  add(dest, escapeJsonUnquoted($c))
+  escapeJsonUnquoted(c, dest)
 
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   case target
@@ -1031,7 +1031,11 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
+    if d.target == outJson:
+      add(result, "{\"kind\":\"text\", \"content\":\"")
     for letter in m.text: escChar(d.target, result, letter)
+    if d.target == outJson:
+      add(result, "\"}, ")
   else:
     var g: GeneralTokenizer
     initGeneralTokenizer(g, m.text)
@@ -1040,7 +1044,13 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
       case g.kind
       of gtEof: break
       of gtNone, gtWhitespace:
-        add(result, substr(m.text, g.start, g.length + g.start - 1))
+        if d.target != outJson:
+          add(result, substr(m.text, g.start, g.length + g.start - 1))
+        else:
+          add(result, "{\"kind\": \"text\", \"content\": \"")
+          for c in substr(m.text, g.start, g.length + g.start - 1):
+            addJsonChar(result, c)
+          add(result, "\"}, ")
       else:
         dispA(d.target, result,
           "<span class=\"$2\">$1</span>",
@@ -1233,7 +1243,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "<a class=\"reference external\" href=\"$2\">$1</a>",
       "\\href{$2}{$1}",
-      makeJson("hyperlink", ("content", "[$1]"), ("reference", "\"$2\"")),
+      makeJson("hyperlink", ("content", "[$1]"), ("reference", "[$2]")),
       [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
@@ -1319,10 +1329,12 @@ proc sanitizeJson(json: var JsonNode) =
       if json.elems[node]["kind"].str == "text" and
          json.elems[node - 1]["kind"].str == "text":
         json.elems[node - 1]["content"].str &= json.elems[node]["content"].str
-        json.elems.del(node)
+        json.elems.delete(node)
       else:
         sanitizeJson(json.elems[node])
       dec node
+    if json.elems.len != 0:
+      sanitizeJson(json.elems[0])
 
 proc sanitize*(generated: string): JsonNode =
   ## This sanitizes the generated JSON output, turning it into actual JSON and
@@ -1331,7 +1343,7 @@ proc sanitize*(generated: string): JsonNode =
   if sane.endsWith(", "): sane = sane[0..^3]
   sane = "[" & sane & "]"
   var parsed = parseJson(sane)
-  #sanitizeJson(parsed)
+  sanitizeJson(parsed)
   return parsed
 
 # -----------------------------------------------------------------------------

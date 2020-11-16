@@ -602,22 +602,27 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
+proc escapeJsonUnquoted*(c: char; result: var string) =
+  ## Converts a character `c` to its JSON representation without quotes.
+  ## Appends to ``result``.
+  case c
+  of '\L': result.add("\\n")
+  of '\b': result.add("\\b")
+  of '\f': result.add("\\f")
+  of '\t': result.add("\\t")
+  of '\v': result.add("\\u000b")
+  of '\r': result.add("\\r")
+  of '"': result.add("\\\"")
+  of '\0'..'\7': result.add("\\u000" & $ord(c))
+  of '\14'..'\31': result.add("\\u00" & toHex(ord(c), 2))
+  of '\\': result.add("\\\\")
+  else: result.add(c)
+
 proc escapeJsonUnquoted*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to ``result``.
   for c in s:
-    case c
-    of '\L': result.add("\\n")
-    of '\b': result.add("\\b")
-    of '\f': result.add("\\f")
-    of '\t': result.add("\\t")
-    of '\v': result.add("\\u000b")
-    of '\r': result.add("\\r")
-    of '"': result.add("\\\"")
-    of '\0'..'\7': result.add("\\u000" & $ord(c))
-    of '\14'..'\31': result.add("\\u00" & toHex(ord(c), 2))
-    of '\\': result.add("\\\\")
-    else: result.add(c)
+    escapeJsonUnquoted(c, result)
 
 proc escapeJsonUnquoted*(s: string): string =
   ## Converts a string `s` to its JSON representation without quotes.
