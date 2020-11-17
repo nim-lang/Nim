@@ -39,7 +39,7 @@
   active async event handles/file descriptors
 
 - Changed `os.sameFileContent` buffer size from hardcoded to `bufferSize` argument.
-- Added `checkSize` argument to `os.sameFileContent`,
+  Added `checkSize` argument to `os.sameFileContent`,
   if `checkSize` is `true` then checks the file sizes *before reading the files*.
 
 
