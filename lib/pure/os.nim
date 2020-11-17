@@ -3192,14 +3192,12 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   ## If `checkSize` is `true` then checks the file sizes *before reading the files*,
   ## if the files have different file sizes they can not have the same contents,
   ## `checkSize = true` may be faster, specially for very big files.
-  ## `bufferSize` must be a power of two.
   ##
   ## .. code-block:: nim
   ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 4096)
   ##
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
-  assert (bufferSize and (bufferSize - 1)) == 0
   var a, b: File
   var mustRead = true
   var bufA = alloc(bufferSize)
