@@ -1768,6 +1768,8 @@ proc skipGenericOwner*(s: PSym): PSym =
 
 proc originatingModule*(s: PSym): PSym =
   result = s.owner
+  if result.owner == nil:
+    raiseRecoverableError("cannot find owner of call routine `" & $s.name.s & "` from invalid AST node")
   while result.kind != skModule: result = result.owner
 
 proc isRoutine*(s: PSym): bool {.inline.} =
