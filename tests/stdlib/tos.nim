@@ -542,12 +542,14 @@ block: # normalizeExe
 
 
 block: # sameFileContent
-  writeFile("test_sameFileContent0.txt", "nim")
-  copyFile("test_sameFileContent0.txt", "test_sameFileContent1.txt")
-  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt")
-  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", checkSize = true)
-  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", bufferSize = 1024)
+  const f0 = "test_sameFileContent0.txt"
+  const f1 = "test_sameFileContent1.txt"
+  writeFile(f0, "nim")
+  copyFile(f0, f1)
+  doAssert sameFileContent(f0, f1)
+  doAssert sameFileContent(f0, f1, checkSize = true)
+  doAssert sameFileContent(f0, f1, bufferSize = 1024)
   writeFile("test_sameFileContent0.txt", "?")
-  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt"))
-  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", checkSize = true))
-  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", bufferSize = 1024))
+  doAssert not(sameFileContent(f0, f1))
+  doAssert not(sameFileContent(f0, f1, checkSize = true))
+  doAssert not(sameFileContent(f0, f1, bufferSize = 1024))
