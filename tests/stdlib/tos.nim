@@ -408,7 +408,7 @@ block ospaths:
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
   doAssert joinPath(".","abc") == unixToNativePath"./abc"
-  
+
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
   doAssert joinPath("foo", "") == "foo"
@@ -539,3 +539,15 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+
+block: # sameFileContent
+  writeFile("test_sameFileContent0.txt", "nim")
+  copyFile("test_sameFileContent0.txt", "test_sameFileContent1.txt")
+  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt")
+  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", checkSize = true)
+  doAssert sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", bufferSize = 1024)
+  writeFile("test_sameFileContent0.txt", "?")
+  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt"))
+  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", checkSize = true))
+  doAssert not(sameFileContent("test_sameFileContent0.txt", "test_sameFileContent1.txt", bufferSize = 1024))
