@@ -328,7 +328,7 @@ proc boot(args: string) =
 
     if not fileExists(output):
       echo "[Warning] Executable file not found " & output
-    if not fileExists(output):
+    if not fileExists(i.thVersion):
       echo "[Warning] Executable file not found " & i.thVersion
     if sameFileContent(output, i.thVersion):
       echo "Executables are equal: SUCCESS!"
