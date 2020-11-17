@@ -11,17 +11,7 @@ type
 proc main(x: int) =
   var n = Node(kids: @[], data: "3" & $x)
   let m = n
-  n.kids.add m # MOVES can create cycles! :-(
-
-swap root.left, someChild
-
-proc add(s: var seq; x: sink T) =
-  s[i] =sink x
-
-proc `=sink`(dest: var T; source: T) =
-  if dest != nil: destroy(dest)
-  bitcopy dest, source
-  markCyclic dest
+  n.kids.add m
 
 type
   NodeA = ref object
