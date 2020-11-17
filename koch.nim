@@ -326,12 +326,6 @@ proc boot(args: string) =
     exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
       [nimi, smartNimcache, args]
 
-    # https://github.com/nim-lang/Nim/pull/16008#discussion_r524961618
-    if not fileExists(output):
-      echo "[Warning] Executable file not found " & output
-    if not fileExists(i.thVersion):
-      echo "[Warning] Executable file not found " & i.thVersion
-
     if sameFileContent(output, i.thVersion):
       echo "Executables are equal: SUCCESS!"
       copyExe(output, finalDest)
