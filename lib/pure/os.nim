@@ -3193,7 +3193,7 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   ## `checkSize = true` may be faster, specially for very big files.
   ##
   ## .. code-block:: nim
-  ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 4096)
+  ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 999)
   ##
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
