@@ -3207,7 +3207,7 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
     return false
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
-  try:
+  try:  # readBuffer may or may not raise IOError.
     while true:
       var readA = readBuffer(a, bufA, bufferSize)
       var readB = readBuffer(b, bufB, bufferSize)
