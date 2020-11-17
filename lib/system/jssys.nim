@@ -105,6 +105,11 @@ proc rawWriteStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
+proc writeStackTrace() =
+  var trace = rawWriteStackTrace()
+  trace.setLen(trace.len - 1)
+  echo trace
+
 proc getStackTrace*(): string = rawWriteStackTrace()
 proc getStackTrace*(e: ref Exception): string = e.trace
 
