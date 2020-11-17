@@ -3186,8 +3186,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
 
 proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192.Positive): bool {.
     rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
-  ## Returns true if both pathname arguments refer to files with identical
-  ## binary content.
+  ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
   ## If `checkSize` is `true` then checks the file sizes *before reading the files*,
   ## if the files have different file sizes they can not have the same contents,
