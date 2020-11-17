@@ -542,8 +542,8 @@ block: # normalizeExe
 
 
 block: # sameFileContent
-  const f0 = "test_sameFileContent0.txt"
-  const f1 = "test_sameFileContent1.txt"
+  const f0 = getTempDir() / "test_sameFileContent0.txt"
+  const f1 = getTempDir() / "test_sameFileContent1.txt"
   writeFile(f0, "nim")
   copyFile(f0, f1)
   doAssert sameFileContent(f0, f1)
