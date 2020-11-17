@@ -40,6 +40,12 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
+
+proc isDiscardUnderscoreV(v: PSym): bool =
+  if v.name.s == "_":
+    v.flags.incl(sfGenSym)
+    result = true
+
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil:
     result = newTypeS(kind, c)
@@ -978,7 +984,9 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       # bug #XXX, fix the gensym'ed parameters owner:
       if param.owner == nil:
         param.owner = getCurrOwner(c)
-    else: addDecl(c, param)
+    else:
+      if not isDiscardUnderscoreV(param):
+        addDecl(c, param)
 
 template shouldHaveMeta(t) =
   internalAssert c.config, tfHasMeta in t.flags
@@ -1280,8 +1288,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if containsOrIncl(check, arg.name.id):
-        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
+      # addDecl
+      if not isDiscardUnderscoreV(arg):
+        if containsOrIncl(check, arg.name.id):
+          localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
