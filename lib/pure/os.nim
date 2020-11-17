@@ -3212,7 +3212,7 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
           break
         result = equalMem(bufA, bufB, readA)
         if not result: break
-        if readA != bufferSize: break # end of file
+        if endOfFile(a) or endOfFile(b): break # End of file
   finally:
     dealloc(bufA)
     dealloc(bufB)
