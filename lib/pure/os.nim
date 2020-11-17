@@ -3203,8 +3203,9 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
   try:  # readBuffer or open may or may not raise IOError.
-    if not(open(a, path1)) or not(open(b, path2)): mustRead = false
-    if mustRead and checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
+    if not open(a, path1): raise newException(IOError, "Can not open file: $1" % [path1])
+    if not open(b, path2): raise newException(IOError, "Can not open file: $1" % [path2])
+    if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
         var readA = readBuffer(a, bufA, bufferSize)
