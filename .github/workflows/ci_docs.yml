@@ -4,7 +4,6 @@ on:
     paths:
       - 'compiler/docgen.nim'
       - 'compiler/renderverbatim.nim'
-      - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
@@ -12,13 +11,11 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
-      - 'koch.nim'
   pull_request:
     # Run only on changes on these files.
     paths:
       - 'compiler/docgen.nim'
       - 'compiler/renderverbatim.nim'
-      - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
       - 'lib/**.nim'
@@ -30,8 +27,6 @@ on:
 
 jobs:
   build:
-    if: |
-      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -64,11 +59,11 @@ jobs:
           curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
           7z x dist/mingw64.7z -odist
           7z x dist/dlls.zip -obin
-          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
 
       - name: 'Add build binaries to PATH'
         shell: bash
-        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+        run: echo "::add-path::${{ github.workspace }}/bin"
 
       - name: 'Get current csources version'
         id: csources-version
@@ -125,10 +120,6 @@ jobs:
       - name: 'Build the real compiler'
         shell: bash
         run: ./koch boot -d:release
-
-      - name: 'Clone fusion'
-        shell: bash
-        run: ./koch fusion
 
       - name: 'Build documentation'
         shell: bash

@@ -262,7 +262,6 @@ type
     graph*: ModuleGraph
     oldErrorCount*: int
     profiler*: Profiler
-    templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
 
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
@@ -282,18 +281,17 @@ type
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g, idgen: idgen)
+    cache: cache, config: g.config, graph: g)
 
-proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
+proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
-  c.idgen = idgen
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len

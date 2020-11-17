@@ -91,15 +91,8 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
 
-proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
-
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
-  var scope = c.currentScope
-  result = strTableGet(scope.symbols, s)
-  while result == nil and scope.isShadowScope:
-    # We are in a shadow scope, check in the parent too
-    scope = scope.parent
-    result = strTableGet(scope.symbols, s)
+  result = strTableGet(c.currentScope.symbols, s)
 
 proc searchInScopes*(c: PContext, s: PIdent): PSym =
   for scope in walkScopes(c.currentScope):
@@ -135,7 +128,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, nextId(c.idgen), getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
@@ -154,14 +147,12 @@ type
     scope*: PScope
     inSymChoice: IntSet
 
-proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
+proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
   of routineKinds, skType:
-    result = getProcHeader(conf, s, getDeclarationPath = getDeclarationPath)
+    result = getProcHeader(conf, s)
   else:
-    result = "'$1'" % s.name.s
-    if getDeclarationPath:
-      result.addDeclaredLoc(conf, s)
+    result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   # check if all symbols have been used and defined:
@@ -174,7 +165,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
       # and slow 'suggest' down:
       if missingImpls == 0:
         localError(c.config, s.info, "implementation of '$1' expected" %
-            getSymRepr(c.config, s, getDeclarationPath=false))
+            getSymRepr(c.config, s))
       inc missingImpls
     elif {sfUsed, sfExported} * s.flags == {}:
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
@@ -239,23 +230,6 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   # it adds the symbol to the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
   addInterfaceDeclAux(c, sym)
-
-proc openShadowScope*(c: PContext) =
-  c.currentScope = PScope(parent: c.currentScope,
-                          symbols: newStrTable(),
-                          depthLevel: c.scopeDepth)
-
-proc closeShadowScope*(c: PContext) =
-  c.closeScope
-
-proc mergeShadowScope*(c: PContext) =
-  let shadowScope = c.currentScope
-  c.rawCloseScope
-  for sym in shadowScope.symbols:
-    if sym.kind in OverloadableSyms:
-      c.addInterfaceOverloadableSymAt(c.currentScope, sym)
-    else:
-      c.addInterfaceDecl(sym)
 
 when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifier:
@@ -342,7 +316,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
-    elif checkAmbiguity in flags and result != nil and result.id in c.ambiguousSymbols:
+    elif checkAmbiguity in flags and result != nil and
+        contains(c.ambiguousSymbols, result.id):
       errorUseQualifier(c, n.info, result)
   of nkSym:
     result = n.sym

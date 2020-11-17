@@ -47,9 +47,6 @@ when defined(nimdoc):
     Selector*[T] = ref object
       ## An object which holds descriptors to be checked for read/write status
 
-    IOSelectorsException* = object of CatchableError
-      ## Exception that is raised if an IOSelectors error occurs.
-
     Event* {.pure.} = enum
       ## An enum which hold event types
       Read,        ## Descriptor is available for read
@@ -258,7 +255,7 @@ else:
     IOSelectorsException* = object of CatchableError
 
     ReadyKey* = object
-      fd*: int
+      fd* : int
       events*: set[Event]
       errorCode*: OSErrorCode
 
@@ -293,7 +290,7 @@ else:
       skey.ident = pident
       skey.events = pevents
       skey.param = pparam
-      skey.data = pdata
+      skey.data = data
 
   when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
@@ -334,8 +331,6 @@ else:
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
   elif defined(nintendoswitch):
-    include ioselects/ioselectors_select
-  elif defined(freertos) or defined(lwip):
     include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll

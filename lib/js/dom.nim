@@ -154,7 +154,6 @@ type
     performance*: Performance
     onpopstate*: proc (event: Event)
     localStorage*: LocalStorage
-    parent*: Window
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -204,7 +203,6 @@ type
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
     activeElement*: Element
-    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -1247,19 +1245,10 @@ type
     appCodeName*: cstring
     appName*: cstring
     appVersion*: cstring
-    buildID*: cstring        ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/buildID
     cookieEnabled*: bool
-    deviceMemory*: float     ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory
-    doNotTrack*: cstring     ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/doNotTrack
     language*: cstring
-    languages*: seq[cstring] ## https://developer.mozilla.org/en-US/docs/Web/API/NavigatorLanguage/languages
-    maxTouchPoints*: cint    ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/maxTouchPoints
-    onLine*: bool            ## https://developer.mozilla.org/en-US/docs/Web/API/NavigatorOnLine/onLine
-    oscpu*: cstring          ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/oscpu
     platform*: cstring
     userAgent*: cstring
-    vendor*: cstring         ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vendor
-    webdriver*: bool         ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/webdriver
     mimeTypes*: seq[ref MimeType]
 
   Plugin* {.importc.} = object of RootObj
@@ -1339,7 +1328,7 @@ since (1, 3):
       composed*: bool
     DocumentOrShadowRoot* {.importc.} = object of RootObj
       activeElement*: Element
-      # styleSheets*: StyleSheetList
+      # styleSheets*: StyleSheetList 
     ShadowRoot* = ref ShadowRootObj
     ShadowRootObj {.importc.} = object of DocumentOrShadowRoot
       delegatesFocus*: bool
@@ -1592,12 +1581,6 @@ proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
-since (1, 3):
-  proc canShare*(self: Navigator; data: cstring): bool           ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/canShare
-  proc sendBeacon*(self: Navigator; url, data: cstring): bool    ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/sendBeacon
-  proc vibrate*(self: Navigator; pattern: cint): bool            ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
-  proc vibrate*(self: Navigator; pattern: openArray[cint]): bool ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate
-  proc registerProtocolHandler*(self: Navigator; scheme, url, title: cstring) ## https://developer.mozilla.org/en-US/docs/Web/API/Navigator/registerProtocolHandler
 
 # ClassList "methods"
 proc add*(c: ClassList, class: cstring)

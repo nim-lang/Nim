@@ -27,13 +27,13 @@ proc semLocals*(c: PContext, n: PNode): PNode =
             {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyUntyped, tyTyped, tyEmpty}:
 
         if it.owner == owner:
-          var field = newSym(skField, it.name, nextId c.idgen, owner, n.info)
+          var field = newSym(skField, it.name, owner, n.info)
           field.typ = it.typ.skipTypes({tyVar})
           field.position = counter
           inc(counter)
 
           tupleType.n.add newSymNode(field)
-          addSonSkipIntLit(tupleType, field.typ, c.idgen)
+          addSonSkipIntLit(tupleType, field.typ)
 
           var a = newSymNode(it, result.info)
           if it.typ.skipTypes({tyGenericInst}).kind == tyVar: a = newDeref(a)

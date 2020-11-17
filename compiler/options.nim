@@ -41,7 +41,6 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optNilSeqs,
     optSinkInference          # 'sink T' inference
-    optCursorInference
 
 
   TOptions* = set[TOption]
@@ -81,7 +80,6 @@ type                          # please make sure we have under 32 options
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
-    optDeclaredLocs           # show declaration locations in messages
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
@@ -91,14 +89,13 @@ type                          # please make sure we have under 32 options
                               # implementation
     optOwnedRefs              # active if the Nim compiler knows about 'owned'.
     optMultiMethods
+    optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
-    optNimV12Emulation        # emulate Nim v1.2
     optSourcemap
     optProfileVM              # enable VM profiler
-    optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -140,8 +137,9 @@ type
     cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
-    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
+    gcHooks,
+    gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
@@ -157,7 +155,7 @@ type
     destructor,
     notnil,
     dynamicBindSym,
-    forLoopMacros, # not experimental anymore; remains here for backwards compatibility
+    forLoopMacros,
     caseStmtMacros,
     codeReordering,
     compiletimeFFI,
@@ -165,8 +163,7 @@ type
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
-    strictFuncs,
-    views
+    strictFuncs
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -200,7 +197,6 @@ type
     nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CfileFlag]
-    customArgs*: string
   CfileList* = seq[Cfile]
 
   Suggest* = ref object
@@ -246,13 +242,11 @@ type
     evalMacroCounter*: int
     exitcode*: int8
     cmd*: TCommands  # the command
-    cmdInput*: string  # input command
-    projectIsCmd*: bool # whether we're compiling from a command input
-    implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
+    evalExpr*: string          # expression for idetools --eval
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
 
@@ -379,7 +373,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck, optCursorInference}
+    optTrMacros, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -420,6 +414,7 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
+    evalExpr: "",
     cppDefines: initHashSet[string](),
     headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
@@ -500,7 +495,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
                             osFreebsd, osOpenbsd, osDragonfly, osMacosx, osIos,
-                            osAndroid, osNintendoSwitch, osFreeRTOS}
+                            osAndroid, osNintendoSwitch}
     of "linux":
       result = conf.target.targetOS in {osLinux, osAndroid}
     of "bsd":
@@ -516,10 +511,6 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
-    of "freertos":
-      result = conf.target.targetOS == osFreeRTOS
-    of "lwip":
-      result = conf.target.targetOS in {osFreeRTOS}
     of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
@@ -633,6 +624,17 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
 
+proc shortenDir*(conf: ConfigRef; dir: string): string {.
+    deprecated: "use 'relativeTo' instead".} =
+  ## returns the interesting part of a dir
+  var prefix = conf.projectPath.string & DirSep
+  if startsWith(dir, prefix):
+    return substr(dir, prefix.len)
+  prefix = getPrefixDir(conf).string & DirSep
+  if startsWith(dir, prefix):
+    return substr(dir, prefix.len)
+  result = dir
+
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):
     result = substr(path, 0, path.len - 2)
@@ -690,10 +692,12 @@ iterator nimbleSubs*(conf: ConfigRef; p: string): string =
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
-  result = getNimcacheDir(conf) / RelativeFile path.string.splitPath.tail.changeFileExt(ext)
+  let (head, tail) = splitPath(path.string)
+  result = getNimcacheDir(conf) / RelativeFile changeFileExt(tail, ext)
 
 proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
                                 createSubDir: bool = true): AbsoluteFile =
+  let (head, tail) = splitPath(f.string)
   let subdir = getNimcacheDir(conf)
   if createSubDir:
     try:
@@ -701,7 +705,7 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     except OSError:
       writeLine(stdout, "cannot create directory: " & subdir.string)
       quit(1)
-  result = subdir / RelativeFile f.string.splitPath.tail
+  result = subdir / RelativeFile tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
@@ -887,18 +891,3 @@ proc floatInt64Align*(conf: ConfigRef): int16 =
       # to 4bytes (except with -malign-double)
       return 4
   return 8
-
-proc setOutFile*(conf: ConfigRef) =
-  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
-    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
-  if conf.outFile.isEmpty:
-    let base = conf.projectName
-    let targetName =
-      if optGenDynLib in conf.globalOptions:
-        platform.OS[conf.target.targetOS].dllFrmt % base
-      elif optGenStaticLib in conf.globalOptions:
-        libNameTmpl(conf) % base
-      else:
-        base & platform.OS[conf.target.targetOS].exeExt
-    conf.outFile = RelativeFile targetName

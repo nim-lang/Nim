@@ -17,7 +17,7 @@
 ## ``http://google.com``:
 ##
 ## .. code-block:: Nim
-##   import httpclient
+##   import httpClient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
 ##
@@ -232,7 +232,7 @@ proc code*(response: Response | AsyncResponse): HttpCode
   ## corresponding ``HttpCode``.
   return response.status[0 .. 2].parseInt.HttpCode
 
-proc contentType*(response: Response | AsyncResponse): string {.inline.} =
+proc contentType*(response: Response | AsyncResponse): string =
   ## Retrieves the specified response's content type.
   ##
   ## This is effectively the value of the "Content-Type" header.
@@ -329,7 +329,7 @@ proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
   result = Proxy(url: parseUri(url), auth: auth)
 
-proc newMultipartData*: MultipartData {.inline.} =
+proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData()
 
@@ -415,7 +415,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
-proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
+proc `[]=`*(p: MultipartData, name, content: string) =
   ## Add a multipart entry to the multipart data ``p``. The value is added
   ## without a filename and without a content type.
   ##
@@ -424,7 +424,7 @@ proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   p.add(name, content)
 
 proc `[]=`*(p: MultipartData, name: string,
-            file: tuple[name, contentType, content: string]) {.inline.} =
+            file: tuple[name, contentType, content: string]) =
   ## Add a file to the multipart data ``p``, specifying filename, contentType
   ## and content manually.
   ##
@@ -635,7 +635,7 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc getSocket*(client: HttpClient): Socket {.inline.} =
+proc getSocket*(client: HttpClient): Socket =
   ## Get network socket, useful if you want to find out more details about the connection
   ##
   ## this example shows info about local and remote endpoints
@@ -647,7 +647,7 @@ proc getSocket*(client: HttpClient): Socket {.inline.} =
   ##
   return client.socket
 
-proc getSocket*(client: AsyncHttpClient): AsyncSocket {.inline.} =
+proc getSocket*(client: AsyncHttpClient): AsyncSocket =
   return client.socket
 
 proc reportProgress(client: HttpClient | AsyncHttpClient,

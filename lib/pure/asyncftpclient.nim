@@ -59,19 +59,16 @@
 ## by specifying a ``onProgressChanged`` procedure to the ``store`` or
 ## ``retrFile`` procedures.
 ##
-## Procs that take an ``onProgressChanged`` callback will call this every
-## ``progressInterval`` milliseconds.
-##
 ## .. code-block::nim
 ##    import asyncdispatch, asyncftpclient
 ##
 ##    proc onProgressChanged(total, progress: BiggestInt,
-##                            speed: float) {.async.} =
+##                            speed: float): Future[void] =
 ##      echo("Uploaded ", progress, " of ", total, " bytes")
 ##      echo("Current speed: ", speed, " kb/s")
 ##
 ##    proc main() {.async.} =
-##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test", progressInterval = 500)
+##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
 ##      await ftp.connect()
 ##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
 ##      echo("File finished uploading")
@@ -88,7 +85,6 @@ type
     user*, pass*: string
     address*: string
     port*: Port
-    progressInterval: int
     jobInProgress*: bool
     job*: FtpJob
     dsockConnected*: bool
@@ -307,7 +303,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assert ftp.dsockConnected
   var progress = 0
   var progressInSecond = 0
-  var countdownFut = sleepAsync(ftp.progressInterval)
+  var countdownFut = sleepAsync(1000)
   var dataFut = ftp.dsock.recv(BufferSize)
   while ftp.dsockConnected:
     await dataFut or countdownFut
@@ -315,7 +311,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
       asyncCheck onProgressChanged(total, progress,
           progressInSecond.float)
       progressInSecond = 0
-      countdownFut = sleepAsync(ftp.progressInterval)
+      countdownFut = sleepAsync(1000)
 
     if dataFut.finished:
       let data = dataFut.read
@@ -363,7 +359,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   var data = newString(4000)
   var progress = 0
   var progressInSecond = 0
-  var countdownFut = sleepAsync(ftp.progressInterval)
+  var countdownFut = sleepAsync(1000)
   var sendFut: Future[void] = nil
   while ftp.dsockConnected:
     if sendFut == nil or sendFut.finished:
@@ -384,7 +380,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
     if countdownFut.finished:
       asyncCheck onProgressChanged(total, progress, progressInSecond.float)
       progressInSecond = 0
-      countdownFut = sleepAsync(ftp.progressInterval)
+      countdownFut = sleepAsync(1000)
 
     await countdownFut or sendFut
 
@@ -419,14 +415,13 @@ proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
   assertReply(await ftp.send("RMD " & dir), "250")
 
 proc newAsyncFtpClient*(address: string, port = Port(21),
-    user, pass = "", progressInterval: int = 1000): AsyncFtpClient =
+    user, pass = ""): AsyncFtpClient =
   ## Creates a new ``AsyncFtpClient`` object.
   new result
   result.user = user
   result.pass = pass
   result.address = address
   result.port = port
-  result.progressInterval = progressInterval
   result.dsockConnected = false
   result.csock = newAsyncSocket()
 

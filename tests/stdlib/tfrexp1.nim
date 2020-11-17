@@ -1,5 +1,5 @@
 discard """
-  targets: "js c cpp"
+  targets: "js c c++"
   output: '''ok'''
 """
 

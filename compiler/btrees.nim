@@ -135,7 +135,8 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
-proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool = index < b.entries
+proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool =
+  result = index < b.entries
 
 proc countSubTree[Key, Val](it: Node[Key, Val]): int =
   if it.isInternal:

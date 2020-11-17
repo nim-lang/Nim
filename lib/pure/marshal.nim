@@ -51,15 +51,16 @@
 ## * `json module <json.html>`_
 
 const unsupportedPlatform =
-  when defined(js): "javascript"
+  when defined(nimV2): "new runtime"
+  elif defined(js): "javascript"
   elif defined(nimscript): "nimscript"
   else: ""
 
 when unsupportedPlatform != "":
   {.error: "marshal module is not supported in " & unsupportedPlatform & """.
-Please use alternative packages for serialization.
-It is possible to reimplement this module using generics and type traits.
-Please contribute a new implementation.""".}
+Please use alternative packages for serialization. 
+It is possible to reimplement this module using generics and type traits. 
+Please contribute new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
@@ -344,7 +345,7 @@ proc to*[T](data: string): T =
 
 
 when not defined(testing) and isMainModule:
-  template testit(x: untyped) = echo($$to[typeof(x)]($$x))
+  template testit(x: untyped) = echo($$to[type(x)]($$x))
 
   var x: array[0..4, array[0..4, string]] = [
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],

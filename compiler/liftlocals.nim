@@ -21,14 +21,13 @@ type
     partialParam: PSym
     objType: PType
     cache: IdentCache
-    idgen: IdGenerator
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skResult} and
     sfGlobal notin s.flags
 
 proc lookupOrAdd(c: var Ctx; s: PSym; info: TLineInfo): PNode =
-  let field = addUniqueField(c.objType, s, c.cache, c.idgen)
+  let field = addUniqueField(c.objType, s, c.cache)
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = c.objType
   deref.add(newSymNode(c.partialParam, info))
@@ -54,8 +53,7 @@ proc lookupParam(params, dest: PNode): PSym =
     if params[i].kind == nkSym and params[i].sym.name.id == dest.ident.id:
       return params[i].sym
 
-proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: ConfigRef;
-                            idgen: IdGenerator): PNode =
+proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: ConfigRef): PNode =
   let liftDest = getPragmaVal(prc.ast, wLiftLocals)
   if liftDest == nil: return n
   let partialParam = lookupParam(prc.typ.n, liftDest)
@@ -67,7 +65,7 @@ proc liftLocalsIfRequested*(prc: PSym; n: PNode; cache: IdentCache; conf: Config
   if objType.kind != tyObject or tfPartial notin objType.flags:
     localError(conf, liftDest.info, "parameter '$1' is not a pointer to a partial object" % $liftDest)
     return n
-  var c = Ctx(partialParam: partialParam, objType: objType, cache: cache, idgen: idgen)
+  var c = Ctx(partialParam: partialParam, objType: objType, cache: cache)
   let w = newTree(nkStmtList, n)
   liftLocals(w, 0, c)
   result = w[0]

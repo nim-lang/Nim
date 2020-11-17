@@ -363,14 +363,15 @@ proc `$`*[T](self: Option[T]): string =
   else:
     result = "None[" & name(T) & "]"
 
-proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
+proc unsafeGet*[T](self: Option[T]): T {.inline.}=
   ## Returns the value of a `some`. Behavior is undefined for `none`.
   ##
   ## **Note:** Use it only when you are **absolutely sure** the value is present
   ## (e.g. after checking `isSome <#isSome,Option[T]>`_).
   ## Generally, using `get proc <#get,Option[T]>`_ is preferred.
   assert self.isSome
-  result = self.val
+  self.val
+
 
 when isMainModule:
   import unittest, sequtils

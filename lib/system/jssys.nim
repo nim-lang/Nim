@@ -485,7 +485,7 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
-  ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  ## ensures the result doesn't print like an integer, ie return 2.0, not 2
   asm """
     function nimOnlyDigitsOrMinus(n) {
       return n.toString().match(/^-?\d+$/);
@@ -772,6 +772,12 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
   number = number * sign
   result = i - start
 
+when defined(nodejs):
+  # Deprecated. Use `alert` defined in dom.nim
+  proc alert*(s: cstring) {.importc: "console.log", nodecl, deprecated.}
+else:
+  # Deprecated. Use `alert` defined in dom.nim
+  proc alert*(s: cstring) {.importc, nodecl, deprecated.}
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:

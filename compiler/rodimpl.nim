@@ -85,9 +85,9 @@ proc getModuleId(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): in
     db.exec(sql"delete from toplevelstmts where module = ?", module[0])
     db.exec(sql"delete from statics where module = ?", module[0])
 
-proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): PSym =
+proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) =
   let id = getModuleId(g, fileIdx, fullpath)
-  result = g.incr.r.syms.getOrDefault(abs id)
+  result = (g.incr.r.syms.getOrDefault(abs id), id)
 
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.uniqueId):
@@ -838,12 +838,11 @@ proc replay(g: ModuleGraph; module: PSym; n: PNode) =
       of "warning": message(g.config, n.info, warnUser, n[1].strVal)
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
       of "compile":
-        internalAssert g.config, n.len == 4 and n[2].kind == nkStrLit
+        internalAssert g.config, n.len == 3 and n[2].kind == nkStrLit
         let cname = AbsoluteFile n[1].strVal
         var cf = Cfile(nimname: splitFile(cname).name, cname: cname,
                        obj: AbsoluteFile n[2].strVal,
-                       flags: {CfileFlag.External},
-                       customArgs: n[3].strVal)
+                       flags: {CfileFlag.External})
         extccomp.addExternalFileToCompile(g.config, cf)
       of "link":
         extccomp.addExternalFileToLink(g.config, AbsoluteFile n[1].strVal)

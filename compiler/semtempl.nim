@@ -145,6 +145,9 @@ proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
     illFormedAst(n, c.c.config)
     result = n
 
+template oldCheck(cx: TemplCtx; cond: bool): bool =
+  (optNimV019 notin cx.c.config.globalOptions or cond)
+
 proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
   result = n.kind == nkSym and n.sym.kind == skParam and
            n.sym.owner == c.owner and sfTemplateParam in n.sym.flags
@@ -176,7 +179,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), nextId c.c.idgen, c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -212,7 +215,21 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
         closeScope(c)
     let ident = getIdentNode(c, n)
     if not isTemplParam(c, ident):
-      if n.kind != nkSym:
+      # fix #2670, consider:
+      #
+      # when b:
+      #    var a = "hi"
+      # else:
+      #    var a = 5
+      # echo a
+      #
+      # We need to ensure that both 'a' produce the same gensym'ed symbol.
+      # So we need only check the *current* scope.
+      let s = localSearchInScope(c.c, considerQuotedIdent(c.c, ident))
+      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
+        onUse(n.info, s)
+        replaceIdentBySym(c.c, n, newSymNode(s, n.info))
+      elif n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
@@ -239,12 +256,12 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else: result = newSymNodeTypeDesc(s, n.info)
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
+    else: result = newSymNodeTypeDesc(s, n.info)
   else:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
@@ -336,6 +353,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
+        # oldCheck(c, sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
@@ -542,16 +560,16 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     if n.kind == nkDotExpr:
       result = n
       result[0] = semTemplBody(c, n[0])
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result[1] = semTemplBody(c, n[1])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
     else:
       result = semTemplBodySons(c, n)
   of nkExprColonExpr, nkExprEqExpr:
     if n.len == 2:
-      inc c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: inc c.noGenSym
       result[0] = semTemplBody(c, n[0])
-      dec c.noGenSym
+      if optNimV019 notin c.c.config.globalOptions: dec c.noGenSym
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)
@@ -662,10 +680,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
   elif n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, "implementation of '$1' expected" % s.name.s)
-  var (proto, comesFromShadowscope) = searchForProc(c, c.currentScope, s)
+  var proto = searchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
-  elif not comesFromShadowscope:
+  else:
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
@@ -706,6 +724,11 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     else:
       localError(c.c.config, n.info, "invalid expression")
       result = n
+
+  proc stupidStmtListExpr(n: PNode): bool =
+    for i in 0..<n.len-1:
+      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+    result = true
 
   result = n
   case n.kind

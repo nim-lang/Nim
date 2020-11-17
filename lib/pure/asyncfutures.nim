@@ -9,8 +9,6 @@
 
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
-import "system/stacktraces"
-
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
   CallbackFunc = proc () {.closure, gcsafe.}
@@ -159,15 +157,33 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
+
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
+
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
   callbacks.function = nil
@@ -295,12 +311,7 @@ proc getHint(entry: StackTraceEntry): string =
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
-proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
-  when defined(nimStackTraceOverride):
-    let entries = addDebuggingInfo(stackTraceEntries)
-  else:
-    let entries = stackTraceEntries
-
+proc `$`*(entries: seq[StackTraceEntry]): string =
   result = ""
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
@@ -315,10 +326,10 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
   # Format the entries.
   for entry in entries:
     if entry.procname.isNil:
-      if entry.line == reraisedFromBegin:
+      if entry.line == -10:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
-      elif entry.line == reraisedFromEnd:
+      else:
         indent.dec(2)
         result.add(spaces(indent) & "]#\n")
       continue

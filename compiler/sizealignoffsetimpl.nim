@@ -138,13 +138,12 @@ proc computeObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode, packed: bool, a
       accum.offset  = szUnknownSize
       accum.maxAlign = szUnknownSize
     else:
-      # the union needs to be aligned first, before the offsets can be assigned
+      # the union neds to be aligned first, before the offsets can be assigned
       accum.align(maxChildAlign)
       let accumRoot = accum # copy, because each branch should start af the same offset
       for i in 1..<n.len:
-        var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
+        var branchAccum = accumRoot
         computeObjectOffsetsFoldFunction(conf, n[i].lastSon, packed, branchAccum)
-        discard finish(branchAccum)
         accum.mergeBranch(branchAccum)
   of nkRecList:
     for i, child in n.sons:
@@ -174,10 +173,9 @@ proc computeUnionObjectOffsetsFoldFunction(conf: ConfigRef; n: PNode; packed: bo
     localError(conf, n.info, "Illegal use of ``case`` in union type.")
   of nkRecList:
     let accumRoot = accum # copy, because each branch should start af the same offset
-    for child in n.sons:
-      var branchAccum = OffsetAccum(offset: accumRoot.offset, maxAlign: 1)
+    for i, child in n.sons:
+      var branchAccum = accumRoot
       computeUnionObjectOffsetsFoldFunction(conf, child, packed, branchAccum)
-      discard finish(branchAccum)
       accum.mergeBranch(branchAccum)
   of nkSym:
     var size = szUnknownSize
@@ -242,7 +240,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent:
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``
@@ -258,16 +256,12 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
 
   of tyArray:
     computeSizeAlign(conf, typ[1])
-    let elemSize = typ[1].size 
-    let len = lengthOrd(conf, typ[0])
+    let elemSize = typ[1].size
     if elemSize < 0:
       typ.size = elemSize
       typ.align = int16(elemSize)
-    elif len < 0:
-      typ.size = szUnknownSize
-      typ.align = szUnknownSize    
     else:
-      typ.size = toInt64Checked(len * int32(elemSize), szTooBigSize)
+      typ.size = toInt64Checked(lengthOrd(conf, typ[0]) * int32(elemSize), szTooBigSize)
       typ.align = typ[1].align
 
   of tyUncheckedArray:
@@ -281,14 +275,14 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = 4              # use signed int32
       typ.align = 4
     else:
-      let lastOrd = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
-      if lastOrd < `shl`(1, 8):
+      let length = toInt64(lastOrd(conf, typ))   # BUGFIX: use lastOrd!
+      if length + 1 < `shl`(1, 8):
         typ.size = 1
         typ.align = 1
-      elif lastOrd < `shl`(1, 16):
+      elif length + 1 < `shl`(1, 16):
         typ.size = 2
         typ.align = 2
-      elif lastOrd < `shl`(BiggestInt(1), 32):
+      elif length + 1 < `shl`(BiggestInt(1), 32):
         typ.size = 4
         typ.align = 4
       else:

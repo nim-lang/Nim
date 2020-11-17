@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, msgs, options,
-  idents, lexer, passes, syntaxes, llstream, modulegraphs, rod,
+  idents, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
@@ -19,8 +19,6 @@ proc resetSystemArtifacts*(g: ModuleGraph) =
 
 template getModuleIdent(graph: ModuleGraph, filename: AbsoluteFile): PIdent =
   getIdent(graph.cache, splitFile(filename).name)
-
-template packageId(): untyped {.dirty.} = ItemId(module: PackageModuleId, item: int32(fileIdx))
 
 proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   ## returns package symbol (skPackage) for yet to be defined module for fileIdx
@@ -33,7 +31,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     pack = getIdent(graph.cache, pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
   if packSym == nil:
-    packSym = newSym(skPackage, getIdent(graph.cache, pck2), packageId(), nil, info)
+    packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
   else:
@@ -49,7 +47,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
         # to resolve the conflicts:
         let pck3 = fakePackageName(graph.config, filename)
         # this makes the new `packSym`'s owner be the original `packSym`
-        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), packSym, info)
+        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packSym, info)
         initStrTable(packSym.tab)
         graph.packageSyms.strTableAdd(packSym)
   result = packSym
@@ -71,7 +69,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+  result = PSym(kind: skModule, id: -1, # for better error checking
                 name: getModuleIdent(graph, filename),
                 info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
@@ -82,29 +80,28 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
-
-  template processModuleAux =
-    var s: PLLStream
-    if sfMainModule in flags:
-      if graph.config.projectIsStdin: s = stdin.llStreamOpen
-      elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
-    discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-    result = loadModuleSym(graph, fileIdx, filename)
+    let (r, id) = loadModuleSym(graph, fileIdx, filename)
+    result = r
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags.incl flags
+      result.flags = result.flags + flags
+      result.id = id
       registerModule(graph, result)
     else:
       partialInitModule(result, graph, fileIdx, filename)
-    processModuleAux()
+      result.id = id
+      assert result.id < 0
+    discard processModule(graph, result,
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
-    processModuleAux()
+    discard processModule(graph, result,
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
     graph.markClientsDirty(fileIdx)
 
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
@@ -164,6 +161,7 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
+  result.id = getID()
   registerModule(graph, result)
 
 proc makeModule*(graph: ModuleGraph; filename: string): PSym =

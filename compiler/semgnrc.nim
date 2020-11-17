@@ -95,7 +95,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       else:
         result = n
     else:
-      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      result = newSymNodeTypeDesc(s, n.info)
     onUse(n.info, s)
   of skParam:
     result = n
@@ -103,7 +103,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skType:
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
-      result = newSymNodeTypeDesc(s, c.idgen, n.info)
+      result = newSymNodeTypeDesc(s, n.info)
     else:
       result = n
     onUse(n.info, s)
@@ -228,7 +228,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
+      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles, mAstToStr}
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen
                         else: scOpen
@@ -267,13 +267,13 @@ proc semGenericStmt(c: PContext, n: PNode,
         if s.magic == mRunnableExamples:
           first = result.safeLen # see trunnableexamples.fun3
       of skGenericParam:
-        result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
+        result[0] = newSymNodeTypeDesc(s, fn.info)
         onUse(fn.info, s)
         first = 1
       of skType:
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam):
-          result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
+          result[0] = newSymNodeTypeDesc(s, fn.info)
           onUse(fn.info, s)
           first = 1
       else:
@@ -470,7 +470,7 @@ proc semGenericStmt(c: PContext, n: PNode,
                                               flags, ctx)
     if n[paramsPos].kind != nkEmpty:
       if n[paramsPos][0].kind != nkEmpty:
-        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextId c.idgen, nil, n.info))
+        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
       n[paramsPos] = semGenericStmt(c, n[paramsPos], flags, ctx)
     n[pragmasPos] = semGenericStmt(c, n[pragmasPos], flags, ctx)
     var body: PNode

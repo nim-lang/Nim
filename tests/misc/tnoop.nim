@@ -1,6 +1,6 @@
 discard """
   nimout: '''
-  found 'a' [var declared in tnoop.nim(11, 3)]
+  found 'a' of kind 'var'
   '''
   file: "tnoop.nim"
   line: 13

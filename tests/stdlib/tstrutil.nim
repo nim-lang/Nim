@@ -3,6 +3,8 @@
 import
   strutils
 
+import macros
+
 template rejectParse(e) =
   try:
     discard e
@@ -294,10 +296,6 @@ assert "/1/2/3".rfind('0') == -1
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
 assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
 
-assert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
-assert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
-assert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
-
 assert "".parseHexStr == ""
 assert "00Ff80".parseHexStr == "\0\xFF\x80"
 try:
@@ -435,25 +433,3 @@ block:
   doAssert a == f1
   doAssert b == f2
   doAssert c == f3
-
-block:
-  assert 0 == indentation """
-hey
-  low
-    there
-"""
-  assert 2 == indentation """
-  hey
-    low
-      there
-"""
-  assert 2 == indentation """  hey
-    low
-      there
-"""
-  assert 2 == indentation """  hey
-    low
-      there"""
-  assert 0 == indentation ""
-  assert 0 == indentation "  \n  \n"
-  assert 0 == indentation "    "

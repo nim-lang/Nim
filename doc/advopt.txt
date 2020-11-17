@@ -11,9 +11,9 @@ Advanced commands:
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //genDepend               generate a DOT file containing the
-                            module dependency graph
+                          module dependency graph
   //dump                    dump all defined conditionals and search paths
-                            see also: --dump.format:json (useful with: `| jq`)
+                          see also: --dump.format:json (useful with: ` | jq`)
   //check                   checks the project for syntax and semantic
 
 Runtime checks (see -x):
@@ -35,7 +35,6 @@ Advanced options:
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
-  --declaredLocs:on|off     show declaration locations in messages
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
@@ -52,7 +51,6 @@ Advanced options:
                             resolution
   --lib:PATH                set the system library path
   --import:PATH             add an automatically imported module
-                            see also `patchFile` in nimscript which offers more flexibility.
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
                             see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
@@ -83,7 +81,7 @@ Advanced options:
                             if these are nonexistent, will use project path
   -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
-                            else, runs runnableExamples with given options, e.g.:
+                            else, runs runnableExamples with given options, eg:
                             `--docCmd:"-d:foo --threads:on"`
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
@@ -148,6 +146,8 @@ Advanced options:
   --legacy:$2
                             enable obsolete/legacy language feature
   --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --newruntime              use an alternative runtime that uses destructors
+                            and that uses a shared heap via -d:useMalloc
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
@@ -155,4 +155,3 @@ Advanced options:
   --profileVM:on|off        enable compile time VM profiler
   --sinkInference:on|off    en-/disable sink parameter inference (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
-  --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``

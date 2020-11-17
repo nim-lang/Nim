@@ -57,21 +57,13 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
-  ## It also supports pragmas.
-  runnableExamples:
-    proc passTwoAndTwo(f: (int, int) -> int): int =
-      f(2, 2)
-  
-    doAssert passTwoAndTwo((x, y) => x + y) == 4
-
-    type
-      Bot = object
-        call: proc (): string {.nosideEffect.}
-
-    var myBot = Bot()
-
-    myBot.call = () {.nosideEffect.} => "I'm a bot."
-    doAssert myBot.call() == "I'm a bot."
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
+  ##     f(2, 2)
+  ##
+  ##   passTwoAndTwo((x, y) => x + y) # 4
 
   var
     params = @[ident"auto"]
@@ -194,6 +186,10 @@ proc freshIdentNodes(ast: NimNode): NimNode =
         result.add inspect(child)
   result = inspect(ast)
 
+template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase from typetraits instead".} =
+  ## reverses ``type T = distinct A``; works recursively.
+  typetraits.distinctBase(T)
+
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
@@ -215,8 +211,6 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
   for arg in locals:
-    if arg.strVal == "result":
-      error("The variable name cannot be `result`!", arg)
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
@@ -227,10 +221,7 @@ since (1, 1):
 
   macro dup*[T](arg: T, calls: varargs[untyped]): T =
     ## Turns an `in-place`:idx: algorithm into one that works on
-    ## a copy and returns this copy, without modifying its input.
-    ##
-    ## This macro also allows for (otherwise in-place) function chaining.
-    ##
+    ## a copy and returns this copy.
     ## **Since**: Version 1.2.
     runnableExamples:
       import algorithm
@@ -246,26 +237,6 @@ since (1, 1):
       var s1 = "abc"
       var s2 = "xyz"
       doAssert s1 & s2 == s1.dup(&= s2)
-
-      proc makePalindrome(s: var string) =
-        for i in countdown(s.len-2, 0):
-          s.add(s[i])
-
-      var c = "xyz"
-
-      # An underscore (_) can be used to denote the place of the argument you're passing:
-      doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
-      # but `_` is optional here since the substitution is in 1st position:
-      doAssert "".dup(addQuoted("foo")) == "\"foo\""
-
-      # chaining:
-      # b = "xyz"
-      var d = dup c:
-        makePalindrome # xyzyx
-        sort(_, SortOrder.Descending) # zyyxx
-        makePalindrome # zyyxxxyyz
-
-      doAssert d == "zyyxxxyyz"
 
     result = newNimNode(nnkStmtListExpr, arg)
     let tmp = genSym(nskVar, "dupResult")
@@ -364,35 +335,8 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
-
 when isMainModule:
   since (1, 1):
-    block dup_with_field:
-      type
-        Foo = object
-          col, pos: int
-          name: string
-
-      proc inc_col(foo: var Foo) = inc(foo.col)
-      proc inc_pos(foo: var Foo) = inc(foo.pos)
-      proc name_append(foo: var Foo, s: string) = foo.name &= s
-
-      let a = Foo(col: 1, pos: 2, name: "foo")
-      block:
-        let b = a.dup(inc_col, inc_pos):
-          _.pos = 3
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
-
-      block:
-        let b = a.dup(inc_col, pos = 3, name = "bar"):
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "barbar"))
-
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -450,13 +394,3 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
-
-
-    proc tforum =
-      let ans = collect(newSeq):
-        for y in 0..10:
-          if y mod 5 == 2:
-            for x in 0..y:
-              x
-
-    tforum()

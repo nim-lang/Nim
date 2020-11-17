@@ -102,47 +102,45 @@ const
 const httpNewLine* = "\c\L"
 const headerLimit* = 10_000
 
-func toTitleCase(s: string): string =
+proc toTitleCase(s: string): string =
   result = newString(len(s))
   var upper = true
   for i in 0..len(s) - 1:
     result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
     upper = s[i] == '-'
 
-func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
+proc toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
-func newHttpHeaders*(titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true,
+proc newHttpHeaders*(titleCase=false): HttpHeaders =
+  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true, 
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
 
-func newHttpHeaders*(keyValuePairs:
+proc newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
+  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true, 
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
-
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
-    {.cast(noSideEffect).}:
-      if key in result.table:
-        result.table[key].add(pair.val)
-      else:
-        result.table[key] = @[pair.val]
+    if key in result.table:
+      result.table[key].add(pair.val)
+    else:
+      result.table[key] = @[pair.val]
 
 
-func `$`*(headers: HttpHeaders): string {.inline.} =
-  $headers.table
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
 
-proc clear*(headers: HttpHeaders) {.inline.} =
+proc clear*(headers: HttpHeaders) =
   headers.table.clear()
 
-func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
+proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If the returned
   ## values are passed to a procedure expecting a ``string``, the first
   ## value is automatically picked. If there are
@@ -150,18 +148,16 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+  return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
-func `[]`*(headers: HttpHeaders, key: string, i: int): string =
+proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  {.cast(noSideEffect).}:
-    return headers.table[headers.toCaseInsensitive(key)][i]
+  return headers.table[headers.toCaseInsensitive(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
@@ -170,12 +166,9 @@ proc `[]=`*(headers: HttpHeaders, key, value: string) =
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
-  ## values. Replaces any existing values. If ``value`` is empty,
-  ## deletes the header entries associated with ``key``.
-  if value.len > 0:
-    headers.table[headers.toCaseInsensitive(key)] = value
-  else:
-    headers.table.del(headers.toCaseInsensitive(key))
+  ## values.
+  ## Replaces any existing values.
+  headers.table[headers.toCaseInsensitive(key)] = value
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
@@ -186,7 +179,7 @@ proc add*(headers: HttpHeaders, key, value: string) =
     headers.table[headers.toCaseInsensitive(key)].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
-  ## Deletes the header entries associated with ``key``
+  ## Delete the header entries associated with ``key``
   headers.table.del(headers.toCaseInsensitive(key))
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
@@ -195,16 +188,16 @@ iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
     for value in v:
       yield (k, value)
 
-func contains*(values: HttpHeaderValues, value: string): bool =
+proc contains*(values: HttpHeaderValues, value: string): bool =
   ## Determines if ``value`` is one of the values inside ``values``. Comparison
   ## is performed without case sensitivity.
   for val in seq[string](values):
     if val.toLowerAscii == value.toLowerAscii: return true
 
-func hasKey*(headers: HttpHeaders, key: string): bool =
+proc hasKey*(headers: HttpHeaders, key: string): bool =
   return headers.table.hasKey(headers.toCaseInsensitive(key))
 
-func getOrDefault*(headers: HttpHeaders, key: string,
+proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
   ## Returns the values associated with the given ``key``. If there are no
   ## values associated with the key, then ``default`` is returned.
@@ -213,9 +206,9 @@ func getOrDefault*(headers: HttpHeaders, key: string,
   else:
     return default
 
-func len*(headers: HttpHeaders): int {.inline.} = headers.table.len
+proc len*(headers: HttpHeaders): int = return headers.table.len
 
-func parseList(line: string, list: var seq[string], start: int): int =
+proc parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
   var current = ""
   while start+i < line.len and line[start + i] notin {'\c', '\l'}:
@@ -226,7 +219,7 @@ func parseList(line: string, list: var seq[string], start: int): int =
       i.inc # Skip ,
     current.setLen(0)
 
-func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
+proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
   ##
   ## Used by ``asynchttpserver`` and ``httpclient`` internally and should not
@@ -236,17 +229,13 @@ func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   i = line.parseUntil(result.key, ':')
   inc(i) # skip :
   if i < len(line):
-    if cmpIgnoreCase(result.key, "cookie") == 0:
-      i += line.skipWhitespace(i)
-      result.value.add line.substr(i)
-    else:
-      i += parseList(line, result.value, i)
+    i += parseList(line, result.value, i)
   elif result.key.len > 0:
     result.value = @[""]
   else:
     result.value = @[]
 
-func `==`*(protocol: tuple[orig: string, major, minor: int],
+proc `==`*(protocol: tuple[orig: string, major, minor: int],
            ver: HttpVersion): bool =
   let major =
     case ver
@@ -257,13 +246,16 @@ func `==`*(protocol: tuple[orig: string, major, minor: int],
     of HttpVer10: 0
   result = protocol.major == major and protocol.minor == minor
 
-func contains*(methods: set[HttpMethod], x: string): bool =
+proc contains*(methods: set[HttpMethod], x: string): bool =
   return parseEnum[HttpMethod](x) in methods
 
-func `$`*(code: HttpCode): string =
+proc `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
-  runnableExamples:
-    doAssert($Http404 == "404 Not Found")
+  ##
+  ## For example:
+  ##
+  ##   .. code-block:: nim
+  ##       doAssert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
@@ -315,7 +307,7 @@ func `$`*(code: HttpCode): string =
   of 505: "505 HTTP Version Not Supported"
   else: $(int(code))
 
-func `==`*(a, b: HttpCode): bool {.borrow.}
+proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool
           {.deprecated: "Deprecated since v1.2; use rawCode == $code instead".} =
@@ -327,23 +319,23 @@ proc `==`*(rawCode: string, code: HttpCode): bool
   ##           string form of itself.
   return cmpIgnoreCase(rawCode, $code) == 0
 
-func is2xx*(code: HttpCode): bool {.inline.} =
+proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.
-  code.int in {200 .. 299}
+  return code.int in {200 .. 299}
 
-func is3xx*(code: HttpCode): bool {.inline.} =
+proc is3xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 3xx HTTP status code.
-  code.int in {300 .. 399}
+  return code.int in {300 .. 399}
 
-func is4xx*(code: HttpCode): bool {.inline.} =
+proc is4xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 4xx HTTP status code.
-  code.int in {400 .. 499}
+  return code.int in {400 .. 499}
 
-func is5xx*(code: HttpCode): bool {.inline.} =
+proc is5xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 5xx HTTP status code.
-  code.int in {500 .. 599}
+  return code.int in {500 .. 599}
 
-func `$`*(httpMethod: HttpMethod): string =
+proc `$`*(httpMethod: HttpMethod): string =
   return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
@@ -370,3 +362,5 @@ when isMainModule:
     doAssert testTitleCase.hasKey("Content-Length")
     for key, val in testTitleCase:
         doAssert key == "Content-Length"
+
+

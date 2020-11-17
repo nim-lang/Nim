@@ -33,7 +33,6 @@ py
 py
 px
 6
-proc (){.closure, gcsafe, locks: 0.}
 '''
 """
 
@@ -178,19 +177,3 @@ block tclosure2:
 
 
     outer2()
-
-# bug #5688
-
-import typetraits
-
-proc myDiscard[T](a: T) = discard
-
-proc foo() =
-  let a = 5
-  let f = (proc() =
-             myDiscard (proc() = echo a)
-          )
-  echo name(type(f))
-
-foo()
-

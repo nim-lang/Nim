@@ -331,7 +331,7 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
-  for c in CC: undefSymbol(conf.symbols, c.name)
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
@@ -353,7 +353,7 @@ proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for c in CC: undefSymbol(conf.symbols, c.name)
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
@@ -554,10 +554,6 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
-  if cfile.customArgs != "":
-    options.add ' '
-    options.add cfile.customArgs
-
   var compilePattern: string
   # compute include paths:
   var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
@@ -627,7 +623,10 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
+  case conf.backend
+  of backendInvalid: doAssert false
+  of backendJs: return false # pre-existing behavior, but not sure it's good
+  else: discard
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)
@@ -1019,10 +1018,6 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
-    lit ",\L\"projectIsCmd\": "
-    lit $(%* conf.projectIsCmd)
-    lit ",\L\"cmdInput\": "
-    lit $(%* conf.cmdInput)
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
@@ -1052,17 +1047,10 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       return true
     if not data.hasKey("stdinInput"): return true
     let stdinInput = data["stdinInput"].getBool
-    let projectIsCmd = data["projectIsCmd"].getBool
     if conf.projectIsStdin or stdinInput:
       # could optimize by returning false if stdin input was the same,
       # but I'm not sure how to get full stding input
       return true
-
-    if conf.projectIsCmd or projectIsCmd:
-      if not (conf.projectIsCmd and projectIsCmd): return true
-      if not data.hasKey("cmdInput"): return true
-      let cmdInput = data["cmdInput"].getStr
-      if cmdInput != conf.cmdInput: return true
 
     let depfilesPairs = data["depfiles"]
     doAssert depfilesPairs.kind == JArray

@@ -27,9 +27,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph; idgen: IdGenerator): PEvalContext =
+              graph: ModuleGraph): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph, idgen)
+  result = newCtx(module, cache, graph)
   result.mode = emRepl
   registerAdditionalOps(result)
   let conf = graph.config
@@ -198,8 +198,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
-                   idgen: IdGenerator;
-                   freshDefines=true; conf: ConfigRef, stream: PLLStream) =
+                   freshDefines=true; conf: ConfigRef) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -222,22 +221,18 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  var vm = setupVM(m, cache, scriptName.string, graph, idgen)
-  graph.vm = vm
+  graph.vm = setupVM(m, cache, scriptName.string, graph)
 
   graph.compileSystemModule()
-  discard graph.processModule(m, vm.idgen, stream)
+  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
-  if conf.selectedGC == gcUnselected:
-    conf.selectedGC = oldSelectedGC
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC in {gcArc, gcOrc}:
-    conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
-    defineSymbol(conf.symbols, "nimv2")
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

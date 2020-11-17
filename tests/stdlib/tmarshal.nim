@@ -4,9 +4,6 @@ true
 true
 alpha 100
 omega 200
-Some(null)
-None[JsonNode]
-(numeric: "")
 '''
 joinable: false
 """
@@ -17,7 +14,7 @@ joinable: false pending https://github.com/nim-lang/Nim/issues/9754
 
 import marshal
 
-template testit(x) = discard $$to[typeof(x)]($$x)
+template testit(x) = discard $$to[type(x)]($$x)
 
 var x: array[0..4, array[0..4, string]] = [
   ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
@@ -92,8 +89,8 @@ var instance1 = Person(name: "Cletus", age: 12,
                        bio: "Я Cletus",
                        blob: "ABC\x80")
 echo($$instance1)
-echo(to[Person]($$instance1).bio == instance1.bio) # true
-echo(to[Person]($$instance1).blob == instance1.blob) # true
+echo(to[Person]($$instance1).bio == instance1.bio)
+echo(to[Person]($$instance1).blob == instance1.blob)
 
 # bug 5757
 
@@ -126,25 +123,3 @@ var foo = Foo(a2: "", a4: @[], a6: @[1])
 foo.a6.setLen 0
 doAssert $$foo == """{"a1": "", "a2": "", "a3": [], "a4": [], "a5": [], "a6": []}"""
 testit(foo)
-
-import options, json
-
-# bug #15934
-block:
-  let
-    a1 = some(newJNull())
-    a2 = none(JsonNode)
-  echo ($$a1).to[:Option[JsonNode]]
-  echo ($$a2).to[:Option[JsonNode]]
-
-
-#  bug #15620
-block:
-  let str = """{"numeric": null}"""
-
-  type
-    LegacyEntry = object
-      numeric: string
-
-  let test = to[LegacyEntry](str)
-  echo test

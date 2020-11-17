@@ -80,8 +80,6 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
-  SomeSet*[A] = HashSet[A] | OrderedSet[A]
-    ## Type union representing `HashSet` or `OrderedSet`.
 
 const
   defaultInitialSize* = 64
@@ -422,15 +420,8 @@ proc intersection*[A](s1, s2: HashSet[A]): HashSet[A] =
     assert c == toHashSet(["b"])
 
   result = initHashSet[A](max(min(s1.data.len, s2.data.len), 2))
-  
-  # iterate over the elements of the smaller set
-  if s1.data.len < s2.data.len:
-    for item in s1:
-      if item in s2: incl(result, item)
-  else:
-    for item in s2:
-      if item in s1: incl(result, item)
-  
+  for item in s1:
+    if item in s2: incl(result, item)
 
 proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
@@ -915,6 +906,8 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
+
+
 
 # -----------------------------------------------------------------------
 

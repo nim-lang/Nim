@@ -54,10 +54,16 @@ type
     when defined(gcOrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
-    when defined(nimArcDebug) or defined(nimArcIds):
+    when defined(nimArcDebug):
       refId: int
 
   Cell = ptr RefHeader
+
+template `+!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) +% s)
+
+template `-!`(p: pointer, s: int): pointer =
+  cast[pointer](cast[int](p) -% s)
 
 template head(p: pointer): Cell =
   cast[Cell](cast[int](p) -% sizeof(RefHeader))
@@ -68,48 +74,48 @@ const
 when defined(nimArcDebug):
   include cellsets
 
-  const traceId = 20 # 1037
+  const traceId = 7739 # 1037
 
   var gRefId: int
   var freedCells: CellSet
-elif defined(nimArcIds):
-  var gRefId: int
 
-proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
-  let hdrSize = align(sizeof(RefHeader), alignment)
-  let s = size + hdrSize
+proc nimNewObj(size: int): pointer {.compilerRtl.} =
+  let s = size + sizeof(RefHeader)
   when defined(nimscript):
     discard
+  elif defined(useMalloc):
+    var orig = c_malloc(cuint s)
+    nimZeroMem(orig, s)
+    result = orig +! sizeof(RefHeader)
+  elif compileOption("threads"):
+    result = allocShared0(s) +! sizeof(RefHeader)
   else:
-    result = alignedAlloc0(s, alignment) +! hdrSize
-  when defined(nimArcDebug) or defined(nimArcIds):
-    head(result).refId = gRefId
-    atomicInc gRefId
-    if head(result).refId == traceId:
-      writeStackTrace()
-      cfprintf(cstderr, "[nimNewObj] %p %ld\n", result, head(result).rc shr rcShift)
-  when traceCollector:
-    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
-
-proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
-  # Same as 'newNewObj' but do not initialize the memory to zero.
-  # The codegen proved for us that this is not necessary.
-  let hdrSize = align(sizeof(RefHeader), alignment)
-  let s = size + hdrSize
-  when defined(nimscript):
-    discard
-  else:
-    result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
-  head(result).rc = 0
-  when defined(gcOrc):
-    head(result).rootIdx = 0
+    result = alloc0(s) +! sizeof(RefHeader)
   when defined(nimArcDebug):
     head(result).refId = gRefId
     atomicInc gRefId
-    if head(result).refId == traceId:
-      writeStackTrace()
-      cfprintf(cstderr, "[nimNewObjUninit] %p %ld\n", result, head(result).rc shr rcShift)
+  when traceCollector:
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+  # Same as 'newNewObj' but do not initialize the memory to zero.
+  # The codegen proved for us that this is not necessary.
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    var orig = cast[ptr RefHeader](c_malloc(cuint s))
+  elif compileOption("threads"):
+    var orig = cast[ptr RefHeader](allocShared(s))
+  else:
+    var orig = cast[ptr RefHeader](alloc(s))
+  orig.rc = 0
+  when defined(gcOrc):
+    orig.rootIdx = 0
+  result = orig +! sizeof(RefHeader)
+  when defined(nimArcDebug):
+    head(result).refId = gRefId
+    atomicInc gRefId
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
@@ -126,14 +132,6 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
-  # This is only used by the old RTTI mechanism and we know
-  # that 'dest[]' is nil and needs no destruction. Which is really handy
-  # as we cannot destroy the object reliably if it's an object of unknown
-  # compile-time type.
-  dest[] = src
-  if src != nil: nimIncRef src
-
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =
     ## Returns the ref's ID if the ref was already deallocated. This
@@ -144,7 +142,7 @@ when not defined(nimscript) and defined(nimArcDebug):
     else:
       result = 0
 
-proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
+proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
     when traceCollector:
       cprintf("[Freed] %p\n", p -! sizeof(RefHeader))
@@ -156,25 +154,27 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       # we do NOT really free the memory here in order to reliably detect use-after-frees
       if freedCells.data == nil: init(freedCells)
       freedCells.incl head(p)
+    elif defined(useMalloc):
+      c_free(p -! sizeof(RefHeader))
+    elif compileOption("threads"):
+      deallocShared(p -! sizeof(RefHeader))
     else:
-      let hdrSize = align(sizeof(RefHeader), alignment)
-      alignedDealloc(p -! hdrSize, alignment)
+      dealloc(p -! sizeof(RefHeader))
 
-template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
+template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
-  let rti = cast[ptr PNimTypeV2](p)
-  if rti.destructor != nil:
-    cast[DestructorProc](rti.destructor)(p)
+  let d = cast[ptr PNimType](p)[].destructor
+  if d != nil: cast[DestructorProc](d)(p)
   when false:
-    cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
+    cstderr.rawWrite cast[ptr PNimType](p)[].name
     cstderr.rawWrite "\n"
     if d == nil:
       cstderr.rawWrite "bah, nil\n"
     else:
       cstderr.rawWrite "has destructor!\n"
-  nimRawDispose(p, rti.align)
+  nimRawDispose(p)
 
 when defined(gcOrc):
   when defined(nimThinout):
@@ -207,7 +207,7 @@ proc GC_unref*[T](x: ref T) =
   if nimDecRefIsLast(cast[pointer](x)):
     # XXX this does NOT work for virtual destructors!
     `=destroy`(x[])
-    nimRawDispose(cast[pointer](x), T.alignOf)
+    nimRawDispose(cast[pointer](x))
 
 proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
@@ -226,11 +226,11 @@ template tearDownForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
   discard
 
-proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
+proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
   proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
 
   result = strstr(obj.name, subclass) != nil
 
-proc chckObj(obj: PNimTypeV2, subclass: cstring) {.compilerRtl.} =
+proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
   if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

@@ -22,7 +22,6 @@ a[1]: 45
 x: some string
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
-0
 '''
 """
 
@@ -223,25 +222,3 @@ block getImplTransformed:
   doAssert "toExpand" notin code
     # template is expanded (but that would already be the case with
     # `a.getImpl.repr`, unlike the other transformations mentioned above
-
-
-# test macro resemming
-macro makeVar(): untyped =
-  quote:
-    var tensorY {.inject.}: int
-
-macro noop(a: typed): untyped =
-  a
-
-noop:
-  makeVar
-echo tensorY
-
-macro xbenchmark(body: typed): untyped =
-  result = body
-
-xbenchmark:
-  proc fastSHA(inputtest: string) =
-    discard inputtest
-  fastSHA("hey")
-

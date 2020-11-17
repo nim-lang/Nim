@@ -718,19 +718,19 @@ proc SQLNumResultCols*(StatementHandle: SqlHStmt, ColumnCount: var TSqlSmallInt)
 proc SQLDescribeCol*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                      ColumnName: PSQLCHAR, BufferLength: TSqlSmallInt,
                      NameLength: var TSqlSmallInt, DataType: var TSqlSmallInt,
-                     ColumnSize: var TSqlULen,
+                     ColumnSize: var TSQLULEN,
                      DecimalDigits: var TSqlSmallInt, Nullable: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLFetchScroll*(StatementHandle: SqlHStmt, FetchOrientation: TSqlSmallInt,
-                     FetchOffset: TSqlLen): TSqlSmallInt{.dynlib: odbclib,
+                     FetchOffset: TSqlInteger): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLExtendedFetch*(hstmt: SqlHStmt, fFetchType: SqlUSmallInt,
-                       irow: TSqlLen, pcrow: var TSqlULen,
+                       irow: TSqlInteger, pcrow: var TSQLULEN,
                        rgfRowStatus: PSQLUSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLGetData*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                  TargetType: TSqlSmallInt, TargetValue: SqlPointer,
-                 BufferLength: TSqlLen, StrLen_or_Ind: ptr TSqlLen): TSqlSmallInt{.
+                 BufferLength: TSqlInteger, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetStmtAttr*(StatementHandle: SqlHStmt, Attribute: TSqlInteger,
                      Value: SqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.

@@ -232,6 +232,3 @@ doAssert isRefSkipDistinct(MyRef)
 doAssert not isRefSkipDistinct(MyObject)
 doAssert isRefSkipDistinct(MyDistinct)
 doAssert isRefSkipDistinct(MyOtherDistinct)
-
-let x = parseJson("9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
-doAssert x.kind == JString

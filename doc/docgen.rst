@@ -14,7 +14,7 @@ Introduction
 This document describes the `documentation generation tools`:idx: built into
 the `Nim compiler <nimc.html>`_, which can generate HTML and JSON output
 from input .nim files and projects, as well as HTML and LaTeX from input RST
-(reStructuredText) files. The output documentation will include the module
+(reStructuredText) files. The output documentation will include module
 dependencies (``import``), any top-level documentation comments (##), and
 exported symbols (*), including procedures, types, and variables.
 
@@ -107,7 +107,7 @@ Document Types
 HTML
 ----
 
-The generation of HTML documents is done via the ``doc`` command. This command
+Generation of HTML documents is done via the ``doc`` command. This command
 takes either a single .nim file, outputting a single .html file with the same
 base filename, or multiple .nim files, outputting multiple .html files and,
 optionally, an index file.
@@ -121,15 +121,15 @@ Partial Output::
   ...
 
 The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
-It runs after semantic checking and includes pragmas attached implicitly by the
+It runs after semantic checking, and includes pragmas attached implicitly by the
 compiler.
 
 
 JSON
 ----
 
-The generation of JSON documents is done via the ``jsondoc`` command. This command
-takes in a .nim file and outputs a .json file with the same base filename. Note
+Generation of JSON documents is done via the ``jsondoc`` command. This command
+takes in a .nim file, and outputs a .json file with the same base filename. Note
 that this tool is built off of the ``doc`` command (previously ``doc2``), and
 contains the same information.
 
@@ -153,8 +153,8 @@ Output::
     ]
   }
 
-Similarly to the old ``doc`` command, the old ``jsondoc`` command has been
-renamed to ``jsondoc0``.
+Similarly to the old ``doc`` command the old ``jsondoc`` command has been
+renamed ``jsondoc0``.
 
 The ``jsondoc0`` command::
   nim jsondoc0 sample
@@ -197,8 +197,8 @@ Index switch
 
 This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
-index file is line-oriented (newlines have to be escaped). Each line
-represents a tab-separated record of several columns, the first two mandatory,
+index file is line oriented (newlines have to be escaped). Each line
+represents a tab separated record of several columns, the first two mandatory,
 the rest optional. See the `Index (idx) file format`_ section for details.
 
 Once index files have been generated for one or more modules, the Nim
@@ -208,6 +208,8 @@ file.
 
 See source switch
 -----------------
+
+The ``docSeeSrcUrl`` switch is deprecated. Use:
 
 ::
   nim doc2 --git.url:<url> filename.nim
@@ -231,7 +233,7 @@ You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with
 
 In the case of Nim's own documentation, the ``commit`` value is just a commit
 hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
-``tools/nimweb.nim`` helper queries the current git commit hash during the doc
+``tools/nimweb.nim`` helper queries the current git commit hash during doc
 generation, but since you might be working on an unpublished repository, it
 also allows specifying a ``githash`` value in ``web/website.ini`` to force a
 specific commit in the output.
@@ -260,8 +262,8 @@ HTML anchor generation
 ======================
 
 When you run the ``rst2html`` command, all sections in the RST document will
-get an anchor you can hyperlink to. Usually, you can guess the anchor lower
-casing the section title and replacing spaces with dashes, and in any case, you
+get an anchor you can hyperlink to. Usually you can guess the anchor lower
+casing the section title and replacing spaces with dashes, and in any case you
 can get it from the table of contents. But when you run the ``doc`` or ``doc2``
 commands to generate API documentation, some symbol get one or two anchors at
 the same time: a numerical identifier, or a plain name plus a complex name.
@@ -274,20 +276,20 @@ numbers may shuffle around.
 The plain name of a symbol is a simplified version of its fully exported
 signature. Variables or constants have the same plain name symbol as their
 complex name. The plain name for procs, templates, and other callable types
-will be their unquoted value after removing parameters, return types, and
-pragmas. The plain name allows short and nice linking of symbols that works
+will be their unquoted value after removing parameters, return types and
+pragmas. The plain name allows short and nice linking of symbols which works
 unless you have a module with collisions due to overloading.
 
 If you hyperlink a plain name symbol and there are other matches on the same
 HTML file, most browsers will go to the first one. To differentiate the rest,
 you will need to use the complex name. A complex name for a callable type is
-made up of several parts:
+made up from several parts:
 
     (**plain symbol**)(**.type**),(**first param**)?(**,param type**)\*
 
 The first thing to note is that all callable types have at least a comma, even
 if they don't have any parameters. If there are parameters, they are
-represented by their types and will be comma-separated. To the plain symbol a
+represented by their types and will be comma separated. To the plain symbol a
 suffix may be added depending on the type of the callable:
 
 -------------   --------------
@@ -337,15 +339,16 @@ references so they can be later concatenated into a big index file with
 `mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
 the file format in detail.
 
-Index files are line-oriented and tab-separated (newline and tab characters
-have to be escaped). Each line represents a record with at least two fields
+Index files are line oriented and tab separated (newline and tab characters
+have to be escaped). Each line represents a record with at least two fields,
 but can have up to four (additional columns are ignored). The content of these
 columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
-   Nim's rules (e.g. \`^\`).
-2. Base filename plus anchor hyperlink (e.g. ``algorithm.html#*,int,SortOrder``).
-3. Optional human-readable string to display as a hyperlink. If the value is not
+   Nim's rules (eg. \`^\`).
+2. Base filename plus anchor hyperlink (eg.
+   ``algorithm.html#*,int,SortOrder``).
+3. Optional human readable string to display as hyperlink. If the value is not
    present or is the empty string, the hyperlink will be rendered
    using the term. Prefix whitespace indicates that this entry is
    not for an API symbol but for a TOC entry.
@@ -361,14 +364,14 @@ human reading.
 To differentiate both types (documents and APIs), the index generator will add
 to the index of documents an entry with the title of the document. Since the
 title is the topmost element, it will be added with a second field containing
-just the filename without any HTML anchor.  By convention, this entry without
+just the filename without any HTML anchor.  By convention this entry without
 anchor is the *title entry*, and since entries in the index file are added as
 they are scanned, the title entry will be the first line. The title for APIs
 is not present because it can be generated concatenating the name of the file
 to the word **Module**.
 
 Normal symbols are added to the index with surrounding whitespaces removed. An
-exception to this are the table of content (TOC) entries. TOC entries are added to
+exception to this are table of content (TOC) entries. TOC entries are added to
 the index file with their third column having as much prefix spaces as their
 level is in the TOC (at least 1 character). The prefix whitespace helps to
 filter TOC entries from API or text symbols. This is important because the
@@ -379,14 +382,14 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-`Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
+`Nim Compiler User Guide <nimc.html#compiler-usage-command-line-switches>`_
 
 `RST Quick Reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
-files to your project to change the look of the docgen output.
+files to your project to change the look of docgen output.
 
 You can import the `packages/docutils/rstgen module <rstgen.html>`_ in your
 programs if you want to reuse the compiler's documentation generation procs.

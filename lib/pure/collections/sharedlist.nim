@@ -65,14 +65,11 @@ iterator items*[A](x: var SharedList[A]): A =
 proc add*[A](x: var SharedList[A]; y: A) =
   withLock(x):
     var node: SharedListNode[A]
-    if x.tail == nil:
-      node = cast[typeof node](allocShared0(sizeof(node[])))
+    if x.tail == nil or x.tail.dataLen == ElemsPerNode:
+      node = cast[type node](allocShared0(sizeof(node[])))
+      node.next = x.tail
       x.tail = node
-      x.head = node
-    elif x.tail.dataLen == ElemsPerNode:
-      node = cast[typeof node](allocShared0(sizeof(node[])))
-      x.tail.next = node
-      x.tail = node
+      if x.head == nil: x.head = node
     else:
       node = x.tail
     node.d[node.dataLen] = y

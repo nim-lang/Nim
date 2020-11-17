@@ -149,7 +149,7 @@ mmain.html
       doAssert exitCode == 0, output
     block:
       let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
-      # on platforms that support _StaticAssert natively, errors will show full context, e.g.:
+      # on platforms that support _StaticAssert natively, errors will show full context, eg:
       # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
       # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
       check2 "sizeof(unsigned char) == 8"

@@ -66,7 +66,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   # if we have a something that's been captured, use the lowering instead:
   for i in 0..<n.len-2:
     if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.module.idgen, p.prc))
+      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
       return
 
   # check only the first son
@@ -272,7 +272,7 @@ proc genGotoVar(p: BProc; value: PNode) =
   else:
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
-proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
+proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
 
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
@@ -280,7 +280,7 @@ proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
       p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
-    result = genBracedInit(p, value, isConst = false, v.typ)
+    result = genBracedInit(p, value, isConst = false)
   else:
     result = nil
 
@@ -382,13 +382,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
 
 proc genSingleVar(p: BProc, a: PNode) =
   let v = a[0].sym
-  if sfCompileTime in v.flags:
-    # fix issue #12640
-    # {.global, compileTime.} pragma in proc
-    if sfGlobal in v.flags and p.prc != nil and p.prc.kind == skProc:
-      discard
-    else:
-      return
+  if sfCompileTime in v.flags: return
   genSingleVar(p, v, a[0], a[2])
 
 proc genClosureVar(p: BProc, a: PNode) =
@@ -1046,7 +1040,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
           else:
-            genTypeInfoV1(p.module, typeNode.typ, typeNode.info)
+            genTypeInfo(p.module, typeNode.typ, typeNode.info)
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1261,7 +1255,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1389,7 +1383,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         let checkFor = if optTinyRtti in p.config.globalOptions:
           genTypeInfo2Name(p.module, t[i][j].typ)
         else:
-          genTypeInfoV1(p.module, t[i][j].typ, t[i][j].info)
+          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
         appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
@@ -1504,7 +1498,7 @@ proc genPragma(p: BProc, n: PNode) =
     of wEmit: genEmit(p, it)
     of wInjectStmt:
       var p = newProc(nil, p.module)
-      p.options.excl {optLineTrace, optStackTrace}
+      p.options = p.options - {optLineTrace, optStackTrace}
       genStmts(p, it[1])
       p.module.injectStmt = p.s(cpsStmts)
     else: discard
@@ -1514,7 +1508,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfoV1(p.module, t, a.lode.info)
+  discard genTypeInfo(p.module, t, a.lode.info)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
           [discriminatorTableDecl(p.module, t, field)])
@@ -1531,7 +1525,7 @@ proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLo
       theProc = p
       break
   if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
+    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph)
     t.methods.add((ObjDiscMappingProcSlot, theProc))
   var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
   call.add newSymNode(theProc)
@@ -1562,7 +1556,7 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     let le = e[0]
     let ri = e[1]
     var a: TLoc
-    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs), skVar)
+    discard getTypeDesc(p.module, le.typ.skipTypes(skipPtrs))
     initLoc(a, locNone, le, OnUnknown)
     a.flags.incl(lfEnforceDeref)
     a.flags.incl(lfPrepareForMutation)

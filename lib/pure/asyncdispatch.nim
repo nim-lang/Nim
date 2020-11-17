@@ -253,7 +253,7 @@ when defined(windows) or defined(nimdoc):
 
     PDispatcher* = ref object of PDispatcherBase
       ioPort: Handle
-      handles*: HashSet[AsyncFD] # Export handles so that an external library can register them.
+      handles: HashSet[AsyncFD]
 
     CustomObj = object of OVERLAPPED
       data*: CompletionData
@@ -290,7 +290,7 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc setGlobalDispatcher*(disp: sink PDispatcher) =
+  proc setGlobalDispatcher*(disp: owned PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
@@ -1198,11 +1198,6 @@ else:
     let p = getGlobalDispatcher()
     not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc prependSeq(dest: var seq[Callback]; src: sink seq[Callback]) =
-    let old = move dest
-    dest = src
-    dest.add old
-
   proc processBasicCallbacks(
     fd: AsyncFD, event: Event
   ): tuple[readCbListCount, writeCbListCount: int] =
@@ -1222,12 +1217,10 @@ else:
     withData(selector, fd.int, fdData):
       case event
       of Event.Read:
-        #shallowCopy(curList, fdData.readList)
-        curList = move fdData.readList
+        shallowCopy(curList, fdData.readList)
         fdData.readList = newSeqOfCap[Callback](InitCallbackListSize)
       of Event.Write:
-        #shallowCopy(curList, fdData.writeList)
-        curList = move fdData.writeList
+        shallowCopy(curList, fdData.writeList)
         fdData.writeList = newSeqOfCap[Callback](InitCallbackListSize)
       else:
         assert false, "Cannot process callbacks for " & $event
@@ -1239,7 +1232,8 @@ else:
     for cb in curList:
       if eventsExtinguished:
         newList.add(cb)
-      elif not cb(fd):
+        continue
+      if not cb(fd):
         # Callback wants to be called again.
         newList.add(cb)
         # This callback has returned with EAGAIN, so we don't need to
@@ -1251,8 +1245,10 @@ else:
     withData(selector, fd.int, fdData) do:
       # Descriptor is still present in the queue.
       case event
-      of Event.Read: prependSeq(fdData.readList, newList)
-      of Event.Write: prependSeq(fdData.writeList, newList)
+      of Event.Read:
+        fdData.readList = newList & fdData.readList
+      of Event.Write:
+        fdData.writeList = newList & fdData.writeList
       else:
         assert false, "Cannot process callbacks for " & $event
 
@@ -1263,15 +1259,15 @@ else:
       result.readCbListCount = -1
       result.writeCbListCount = -1
 
-  proc processCustomCallbacks(p: PDispatcher; fd: AsyncFD) =
+  template processCustomCallbacks(ident: untyped) =
     # Process pending custom event callbacks. Custom events are
     # {Event.Timer, Event.Signal, Event.Process, Event.Vnode}.
     # There can be only one callback registered with one descriptor,
     # so there is no need to iterate over list.
     var curList: seq[Callback]
 
-    withData(p.selector, fd.int, adata) do:
-      curList = move adata.readList
+    withData(p.selector, ident.int, adata) do:
+      shallowCopy(curList, adata.readList)
       adata.readList = newSeqOfCap[Callback](InitCallbackListSize)
 
     let newLength = len(curList)
@@ -1281,7 +1277,7 @@ else:
     if not cb(fd.AsyncFD):
       newList.add(cb)
 
-    withData(p.selector, fd.int, adata) do:
+    withData(p.selector, ident.int, adata) do:
       # descriptor still present in queue.
       adata.readList = newList & adata.readList
       if len(adata.readList) == 0:
@@ -1312,6 +1308,10 @@ else:
 
   proc runOnce(timeout = 500): bool =
     let p = getGlobalDispatcher()
+    when ioselSupportedPlatform:
+      let customSet = {Event.Timer, Event.Signal, Event.Process,
+                       Event.Vnode}
+
     if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
@@ -1346,11 +1346,9 @@ else:
         result = true
 
       when ioselSupportedPlatform:
-        const customSet = {Event.Timer, Event.Signal, Event.Process,
-                           Event.Vnode}
         if (customSet * events) != {}:
           isCustomEvent = true
-          processCustomCallbacks(p, fd)
+          processCustomCallbacks(fd)
           result = true
 
       # because state `data` can be modified in callback we need to update
@@ -1614,7 +1612,7 @@ proc drain*(timeout = 500) =
   var curTimeout = timeout
   let start = now()
   while hasPendingOperations():
-    discard runOnce(curTimeout)
+    discard runOnce(curTimeout) 
     curTimeout -= (now() - start).inMilliseconds.int
     if curTimeout < 0:
       break
@@ -1934,27 +1932,3 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
-
-proc activeDescriptors*(): int {.inline.} =
-  ## Returns the current number of active file descriptors for the current
-  ## event loop. This is a cheap operation that does not involve a system call.
-  when defined(windows):
-    result = getGlobalDispatcher().handles.len
-  elif not defined(nimdoc):
-    result = getGlobalDispatcher().selector.count
-
-when defined(posix):
-  import posix
-
-when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
-  proc maxDescriptors*(): int {.raises: OSError.} =
-    ## Returns the maximum number of active file descriptors for the current
-    ## process. This involves a system call. For now `maxDescriptors` is
-    ## supported on the following OSes: Windows, Linux, OSX, BSD.
-    when defined(windows):
-      result = 16_700_000
-    else:
-      var fdLim: RLimit
-      if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
-        raiseOSError(osLastError())
-      result = int(fdLim.rlim_cur) - 1

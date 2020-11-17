@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-import sequtils, parseutils, strutils, os, streams, parsecfg,
-  tables, hashes
+import sequtils, parseutils, strutils, os, streams, parsecfg
+from hashes import hash
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -43,7 +43,7 @@ type
     reFilesDiffer,      # expected and given filenames differ
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,  # exit codes of program or of valgrind differ
+    reExitcodesDiffer,
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
@@ -62,14 +62,6 @@ type
     targetObjC = "ObjC"
     targetJS = "JS"
 
-  InlineError* = object
-    kind*: string
-    msg*: string
-    line*, col*: int
-
-  ValgrindSpec* = enum
-    disabled, enabled, leaking
-  
   TSpec* = object
     action*: TTestAction
     file*, cmd*: string
@@ -95,10 +87,9 @@ type
       # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
       # few tests are not batchable; the ones that are not could be turned batchable
       # by making the dependencies explicit
-    useValgrind*: ValgrindSpec
+    useValgrind*: bool
     timeout*: float # in seconds, fractions possible,
                     # but don't rely on much precision
-    inlineErrors*: seq[InlineError] # line information to error message
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -125,85 +116,14 @@ when not declared(parseCfgBool):
     of "n", "no", "false", "0", "off": result = false
     else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-const
-  inlineErrorMarker = "#[tt."
-
-proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var TSpec): int =
-  result = i + len(inlineErrorMarker)
-  inc col, len(inlineErrorMarker)
-  var kind = ""
-  while result < s.len and s[result] in IdentChars:
-    kind.add s[result]
-    inc result
-    inc col
-
-  var caret = (line, -1)
-
-  template skipWhitespace =
-    while result < s.len and s[result] in Whitespace:
-      if s[result] == '\n':
-        col = 1
-        inc line
-      else:
-        inc col
-      inc result
-
-  skipWhitespace()
-  if result < s.len and s[result] == '^':
-    caret = (line-1, col)
-    inc result
-    inc col
-    skipWhitespace()
-
-  var msg = ""
-  while result < s.len-1:
-    if s[result] == '\n':
-      inc result
-      inc line
-      col = 1
-    elif s[result] == ']' and s[result+1] == '#':
-      while msg.len > 0 and msg[^1] in Whitespace:
-        setLen msg, msg.len - 1
-
-      inc result
-      inc col, 2
-      if kind == "Error": spec.action = actionReject
-      spec.unjoinable = true
-      spec.inlineErrors.add InlineError(kind: kind, msg: msg, line: caret[0], col: caret[1])
-      break
-    else:
-      msg.add s[result]
-      inc result
-      inc col
-
-proc extractSpec(filename: string; spec: var TSpec): string =
-  const
-    tripleQuote = "\"\"\""
-  var s = readFile(filename).string
-
-  var i = 0
-  var a = -1
-  var b = -1
-  var line = 1
-  var col = 1
-  while i < s.len:
-    if s.continuesWith(tripleQuote, i):
-      if a < 0: a = i
-      elif b < 0: b = i
-      inc i, 2
-      inc col
-    elif s[i] == '\n':
-      inc line
-      col = 1
-    elif s.continuesWith(inlineErrorMarker, i):
-      i = extractErrorMsg(s, i, line, col, spec)
-    else:
-      inc col
-    inc i
-
+proc extractSpec(filename: string): string =
+  const tripleQuote = "\"\"\""
+  var x = readFile(filename).string
+  var a = x.find(tripleQuote)
+  var b = x.find(tripleQuote, a+3)
   # look for """ only in the first section
   if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
+    result = x.substr(a+3, b-1).replace("'''", tripleQuote)
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
@@ -240,7 +160,7 @@ proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
-  let specStr = extractSpec(filename, result)
+  let specStr = extractSpec(filename)
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)
@@ -309,15 +229,14 @@ proc parseSpec*(filename: string): TSpec =
         result.unjoinable = not parseCfgBool(e.value)
       of "valgrind":
         when defined(linux) and sizeof(int) == 8:
-          result.useValgrind = if e.value.normalize == "leaks": leaking
-                               else: ValgrindSpec(parseCfgBool(e.value))
+          result.useValgrind = parseCfgBool(e.value)
           result.unjoinable = true
-          if result.useValgrind != disabled:
+          if result.useValgrind:
             result.outputCheck = ocSubstr
         else:
           # Windows lacks valgrind. Silly OS.
           # Valgrind only supports OSX <= 17.x
-          result.useValgrind = disabled
+          result.useValgrind = false
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled

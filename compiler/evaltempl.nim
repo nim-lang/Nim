@@ -21,8 +21,6 @@ type
                       # new symbol
     config: ConfigRef
     ic: IdentCache
-    instID: int
-    idgen: IdGenerator
 
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
@@ -49,14 +47,14 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, nextId(c.idgen))
+          x = copySym(s)
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
-        if sfGenSym in s.flags:
-          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
+        if sfGenSym in s.flags and optNimV019 notin c.config.globalOptions:
+          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
             if c.instLines: actual.info else: templ.info)
         else:
           result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
@@ -168,8 +166,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
                    conf: ConfigRef;
-                   ic: IdentCache; instID: ref int;
-                   idgen: IdGenerator;
+                   ic: IdentCache;
                    fromHlo=false): PNode =
   inc(conf.evalTemplateCounter)
   if conf.evalTemplateCounter > evalTemplateLimit:
@@ -184,8 +181,6 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.config = conf
   ctx.ic = ic
   initIdTable(ctx.mapping)
-  ctx.instID = instID[]
-  ctx.idgen = idgen
 
   let body = tmpl.getBody
   #echo "instantion of ", renderTree(body, {renderIds})
@@ -208,5 +203,3 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   #if ctx.debugActive:
   #  echo "instantion of ", renderTree(result, {renderIds})
   dec(conf.evalTemplateCounter)
-  # The instID must be unique for every template instantiation, so we increment it here
-  inc instID[]

@@ -96,16 +96,14 @@ proc info =
   allocCount = 0
   deallocCount = 0
 
-proc copy(a: Matrix): Matrix = a
-
 proc test1 =
   var a = matrix(5, 5, 1.0)
-  var b = copy a
+  var b = a
   var c = a + b
 
 proc test2 =
   var a = matrix(5, 5, 1.0)
-  var b = copy a
+  var b = a
   var c = -a
 
 proc test3 =

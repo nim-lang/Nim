@@ -49,7 +49,6 @@ import std/private/since
 import strutils, parseutils, base64
 include includes/decode_helpers
 
-
 type
   Url* = distinct string
 
@@ -57,9 +56,8 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
-    isIpv6: bool # not expose it for compatibility.
 
-func encodeUrl*(s: string, usePlus = true): string =
+proc encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
@@ -72,7 +70,7 @@ func encodeUrl*(s: string, usePlus = true): string =
   ## spaces are encoded as ``+`` instead of ``%20``.
   ##
   ## **See also:**
-  ## * `decodeUrl func<#decodeUrl,string>`_
+  ## * `decodeUrl proc<#decodeUrl,string>`_
   runnableExamples:
     assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
     assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
@@ -88,7 +86,7 @@ func encodeUrl*(s: string, usePlus = true): string =
       add(result, '%')
       add(result, toHex(ord(c), 2))
 
-func decodeUrl*(s: string, decodePlus = true): string =
+proc decodeUrl*(s: string, decodePlus = true): string =
   ## Decodes a URL according to RFC3986.
   ##
   ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
@@ -100,7 +98,7 @@ func decodeUrl*(s: string, decodePlus = true): string =
   ## characters are converted to a space.
   ##
   ## **See also:**
-  ## * `encodeUrl func<#encodeUrl,string>`_
+  ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
@@ -125,7 +123,7 @@ func decodeUrl*(s: string, decodePlus = true): string =
     inc(j)
   setLen(result, j)
 
-func encodeQuery*(query: openArray[(string, string)], usePlus = true,
+proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
     omitEq = true): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
@@ -138,7 +136,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
   ## is used for the URL encoding of the string values.
   ##
   ## **See also:**
-  ## * `encodeUrl func<#encodeUrl,string>`_
+  ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
     assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
@@ -153,7 +151,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-func parseAuthority(authority: string, result: var Uri) =
+proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
   var inIPv6 = false
@@ -172,7 +170,6 @@ func parseAuthority(authority: string, result: var Uri) =
         inPort = true
     of '[':
       inIPv6 = true
-      result.isIpv6 = true
     of ']':
       inIPv6 = false
     else:
@@ -182,7 +179,7 @@ func parseAuthority(authority: string, result: var Uri) =
         result.hostname.add(authority[i])
     i.inc
 
-func parsePath(uri: string, i: var int, result: var Uri) =
+proc parsePath(uri: string, i: var int, result: var Uri) =
 
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
@@ -199,7 +196,7 @@ func parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-func initUri*(): Uri =
+proc initUri*(): Uri =
   ## Initializes a URI with ``scheme``, ``username``, ``password``,
   ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
   ##
@@ -211,34 +208,19 @@ func initUri*(): Uri =
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
                 path: "", query: "", anchor: "")
 
-func initUri*(isIpv6: bool): Uri {.since: (1, 3, 5).} =
-  ## Initializes a URI with ``scheme``, ``username``, ``password``,
-  ## ``hostname``, ``port``, ``path``, ``query``, ``anchor`` and ``isIpv6``.
-  ##
-  ## **See also:**
-  ## * `Uri type <#Uri>`_ for available fields in the URI type
-  runnableExamples:
-    var uri2 = initUri(isIpv6 = true)
-    uri2.scheme = "tcp"
-    uri2.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
-    uri2.port = "8080"
-    assert $uri2 == "tcp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
-  result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
-                path: "", query: "", anchor: "", isIpv6: isIpv6)
-
-func resetUri(uri: var Uri) =
+proc resetUri(uri: var Uri) =
   for f in uri.fields:
     when f is string:
       f.setLen(0)
     else:
       f = false
 
-func parseUri*(uri: string, result: var Uri) =
+proc parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
-  ## * `initUri func <#initUri>`_ for initializing a URI
+  ## * `initUri proc <#initUri>`_ for initializing a URI
   runnableExamples:
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
@@ -281,7 +263,7 @@ func parseUri*(uri: string, result: var Uri) =
   # Path
   parsePath(uri, i, result)
 
-func parseUri*(uri: string): Uri =
+proc parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
   ##
   ## **See also:**
@@ -294,7 +276,7 @@ func parseUri*(uri: string): Uri =
   result = initUri()
   parseUri(uri, result)
 
-func removeDotSegments(path: string): string =
+proc removeDotSegments(path: string): string =
   if path.len == 0: return ""
   var collection: seq[string] = @[]
   let endsWithSlash = path[path.len-1] == '/'
@@ -324,7 +306,7 @@ func removeDotSegments(path: string): string =
   result = collection.join("/")
   if endsWithSlash: result.add '/'
 
-func merge(base, reference: Uri): string =
+proc merge(base, reference: Uri): string =
   # http://tools.ietf.org/html/rfc3986#section-5.2.3
   if base.hostname != "" and base.path == "":
     '/' & reference.path
@@ -335,7 +317,7 @@ func merge(base, reference: Uri): string =
     else:
       base.path[0 .. lastSegment] & reference.path
 
-func combine*(base: Uri, reference: Uri): Uri =
+proc combine*(base: Uri, reference: Uri): Uri =
   ## Combines a base URI with a reference URI.
   ##
   ## This uses the algorithm specified in
@@ -345,7 +327,7 @@ func combine*(base: Uri, reference: Uri): Uri =
   ## URIs path affect the resulting URI.
   ##
   ## **See also:**
-  ## * `/ func <#/,Uri,string>`_ for building URIs
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
@@ -386,11 +368,11 @@ func combine*(base: Uri, reference: Uri): Uri =
     result.scheme = base.scheme
   result.anchor = reference.anchor
 
-func combine*(uris: varargs[Uri]): Uri =
+proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
   ##
   ## **See also:**
-  ## * `/ func <#/,Uri,string>`_ for building URIs
+  ## * `/ proc <#/,Uri,string>`_ for building URIs
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"),
         parseUri("manual.html"))
@@ -400,7 +382,7 @@ func combine*(uris: varargs[Uri]): Uri =
   for i in 1 ..< uris.len:
     result = combine(result, uris[i])
 
-func isAbsolute*(uri: Uri): bool =
+proc isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
   runnableExamples:
     let foo = parseUri("https://nim-lang.org")
@@ -409,15 +391,15 @@ func isAbsolute*(uri: Uri): bool =
     assert isAbsolute(bar) == false
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
-func `/`*(x: Uri, path: string): Uri =
+proc `/`*(x: Uri, path: string): Uri =
   ## Concatenates the path specified to the specified URIs path.
   ##
-  ## Contrary to the `combine func <#combine,Uri,Uri>`_ you do not have to worry about
+  ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
   ## the slashes at the beginning and end of the path and URIs path
   ## respectively.
   ##
   ## **See also:**
-  ## * `combine func <#combine,Uri,Uri>`_
+  ## * `combine proc <#combine,Uri,Uri>`_
   runnableExamples:
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
     assert foo.path == "/foo/bar/baz"
@@ -443,7 +425,7 @@ func `/`*(x: Uri, path: string): Uri =
       result.path.add '/'
     result.path.add(path)
 
-func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
+proc `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   ## Concatenates the query parameters to the specified URI object.
   runnableExamples:
     let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
@@ -451,7 +433,7 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
   result = u
   result.query = encodeQuery(query)
 
-func `$`*(u: Uri): string =
+proc `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
     let foo = parseUri("https://nim-lang.org")
@@ -470,15 +452,9 @@ func `$`*(u: Uri): string =
       result.add(u.password)
     result.add("@")
   if u.hostname.endsWith('/'):
-    if u.isIpv6:
-      result.add("[" & u.hostname[0 .. ^2] & "]")
-    else:
-      result.add(u.hostname[0 .. ^2])
+    result.add(u.hostname[0..^2])
   else:
-    if u.isIpv6:
-      result.add("[" & u.hostname & "]")
-    else:
-      result.add(u.hostname)
+    result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)

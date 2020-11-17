@@ -1,7 +1,7 @@
 discard """
   output: '''230000'''
   cmd: '''nim c --gc:orc -d:useMalloc $file'''
-  valgrind: "leaks"
+  valgrind: "true"
 """
 
 # bug #14402

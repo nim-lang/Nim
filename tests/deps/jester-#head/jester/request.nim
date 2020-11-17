@@ -56,7 +56,7 @@ proc path*(req: Request): string =
     return u.path
 
 proc reqMethod*(req: Request): HttpMethod =
-  ## Request method, e.g. HttpGet, HttpPost
+  ## Request method, eg. HttpGet, HttpPost
   when useHttpBeast:
     req.req.httpMethod.get()
   else:

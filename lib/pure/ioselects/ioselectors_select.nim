@@ -58,7 +58,7 @@ when hasThreadSupport:
       eSet: FdSet
       maxFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count*: int
+      count: int
       lock: Lock
     Selector*[T] = ptr SelectorImpl[T]
 else:
@@ -69,7 +69,7 @@ else:
       eSet: FdSet
       maxFD: int
       fds: seq[SelectorKey[T]]
-      count*: int
+      count: int
     Selector*[T] = ref SelectorImpl[T]
 
 type
@@ -110,7 +110,6 @@ proc close*[T](s: Selector[T]) =
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
-    deinitLock(s.lock)
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =
@@ -313,7 +312,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   verifySelectParams(timeout)
 
   if timeout != -1:
-    when defined(genode) or defined(freertos):
+    when defined(genode):
       tv.tv_sec = Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000

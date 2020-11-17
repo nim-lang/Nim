@@ -12,7 +12,8 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos
 
-const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
+const
+  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
@@ -207,7 +208,7 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     result.sym = replaceTypeVarsS(cl, n.sym)
     if result.sym.typ.kind == tyVoid:
       # don't add the 'void' field
-      result = newNodeI(nkRecList, n.info)
+      result = newNode(nkRecList, n.info)
   of nkRecWhen:
     var branch: PNode = nil              # the branch to take
     for i in 0..<n.len:
@@ -279,7 +280,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextId cl.c.idgen)
+  result = copySym(s)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -302,12 +303,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
 
 proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
-  if cl.allowMetaTypes:
-    result = t.exactReplica
-  else:
-    result = copyType(t, nextId(cl.c.idgen), t.owner)
-    #cl.typeMap.topLayer.idTablePut(result, t)
-
+  result = copyType(t, t.owner, cl.allowMetaTypes)
   if cl.allowMetaTypes: return
   result.flags.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
@@ -360,7 +356,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextId(cl.c.idgen), t[0].owner)
+  result = newType(tyGenericInst, t[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header[0]]
@@ -464,11 +460,11 @@ proc eraseVoidParams*(t: PType) =
       setLen t.n.sons, pos
       break
 
-proc skipIntLiteralParams*(t: PType; idgen: IdGenerator) =
+proc skipIntLiteralParams*(t: PType) =
   for i in 0..<t.len:
     let p = t[i]
     if p == nil: continue
-    let skipped = p.skipIntLit(idgen)
+    let skipped = p.skipIntLit
     if skipped != p:
       t[i] = skipped
       if i > 0: t.n[i].sym.typ = skipped
@@ -558,7 +554,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         result = n.typ
 
   of tyInt, tyFloat:
-    result = skipIntLit(t, cl.c.idgen)
+    result = skipIntLit(t)
 
   of tyTypeDesc:
     let lookup = cl.typeMap.lookup(t)
@@ -622,7 +618,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyProc:
         eraseVoidParams(result)
-        skipIntLiteralParams(result, cl.c.idgen)
+        skipIntLiteralParams(result)
 
       of tyRange:
         result[0] = result[0].skipTypes({tyStatic, tyDistinct})
@@ -634,10 +630,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result = t
 
       # Slow path, we have some work to do
-      if t.kind == tyRef and t.len > 0 and t[0].kind == tyObject and t[0].n != nil:
-        discard replaceObjBranches(cl, t[0].n)
-
-      elif result.n != nil and t.kind == tyObject:
+      if result.n != nil and t.kind == tyObject:
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)

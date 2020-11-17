@@ -1,6 +1,5 @@
 discard """
   disabled: "openbsd"
-  disabled: "netbsd"
   disabled: "macosx"
   output: '''
 main: HELLO!

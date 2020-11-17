@@ -7,6 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
+const
+  haveZipLib = false # zip not in stdlib anymore
+
+when haveZipLib:
+  import zipfiles
+
 import
   os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
@@ -30,7 +36,7 @@ type
     actionInno,   # action: create Inno Setup installer
     actionNsis,   # action: create NSIS installer
     actionScripts # action: create install and deinstall scripts
-    actionZip     # action: create zip file
+    actionZip,    # action: create zip file
     actionXz,     # action: create xz file
     actionDeb     # action: prepare deb package
 
@@ -69,7 +75,7 @@ const
     "$configdir", "$datadir", "$docdir", "$libdir"
   ]
 
-func iniConfigData(c: var ConfigData) =
+proc iniConfigData(c: var ConfigData) =
   c.actions = {}
   for i in low(FileCategory)..high(FileCategory): c.cat[i] = @[]
   c.binPaths = @[]
@@ -101,17 +107,17 @@ func iniConfigData(c: var ConfigData) =
   c.debOpts.shortDesc = ""
   c.debOpts.licenses = @[]
 
-func firstBinPath(c: ConfigData): string =
+proc firstBinPath(c: ConfigData): string =
   if c.binPaths.len > 0: result = c.binPaths[0]
   else: result = ""
 
-func `\`(a, b: string): string =
+proc `\`(a, b: string): string =
   result = if a.len == 0: b else: a & '\\' & b
 
 template toUnix(s: string): string = s.replace('\\', '/')
 template toWin(s: string): string = s.replace('/', '\\')
 
-func skipRoot(f: string): string =
+proc skipRoot(f: string): string =
   # "abc/def/xyz" --> "def/xyz"
   var i = 0
   result = ""
@@ -215,11 +221,11 @@ proc eqT(a, b: string; t: proc (a: char): char{.nimcall.}): bool =
       inc j
   result = i >= a.len and j >= b.len
 
-func tPath(c: char): char =
+proc tPath(c: char): char =
   if c == '\\': '/'
   else: c
 
-func ignoreFile(f, explicit: string, allowHtml: bool): bool =
+proc ignoreFile(f, explicit: string, allowHtml: bool): bool =
   let (_, name, ext) = splitFile(f)
   let html = if not allowHtml: ".html" else: ""
   result = (ext in ["", ".exe", ".idx", ".o", ".obj", ".dylib"] or
@@ -277,13 +283,13 @@ proc yesno(p: var CfgParser, v: string): bool =
     result = false
   else: quit(errorStr(p, "unknown value; use: yes|no"))
 
-func incl(s: var seq[string], x: string): int =
+proc incl(s: var seq[string], x: string): int =
   for i in 0 ..< s.len:
     if cmpIgnoreStyle(s[i], x) == 0: return i
   s.add(x)
   result = s.len-1
 
-func platforms(c: var ConfigData, v: string) =
+proc platforms(c: var ConfigData, v: string) =
   for line in splitLines(v):
     let p = line.find(": ")
     if p <= 1: continue
@@ -456,10 +462,10 @@ proc readCFiles(c: var ConfigData, osA, cpuA: int) =
   else:
     quit("Cannot open: " & f)
 
-func buildDir(os, cpu: int): string =
-  "c_code" / ($os & "_" & $cpu)
+proc buildDir(os, cpu: int): string =
+  return "c_code" / ($os & "_" & $cpu)
 
-func getOutputDir(c: var ConfigData): string =
+proc getOutputDir(c: var ConfigData): string =
   if c.outdir.len > 0: c.outdir else: "build"
 
 proc writeFile(filename, content, newline: string) =
@@ -590,6 +596,42 @@ proc setupDist2(c: var ConfigData) =
     else:
       quit("External program failed")
 
+# ------------------ generate ZIP file ---------------------------------------
+when haveZipLib:
+  proc zipDist(c: var ConfigData) =
+    var proj = toLowerAscii(c.name) & "-" & c.version
+    var n = "$#.zip" % proj
+    if c.outdir.len == 0: n = "build" / n
+    else: n = c.outdir / n
+    var z: ZipArchive
+    if open(z, n, fmWrite):
+      addFile(z, proj / buildBatFile, "build" / buildBatFile)
+      addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
+      addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
+      addFile(z, proj / buildShFile, "build" / buildShFile)
+      addFile(z, proj / makeFile, "build" / makeFile)
+      addFile(z, proj / installShFile, installShFile)
+      addFile(z, proj / deinstallShFile, deinstallShFile)
+
+      template addFileAux(src, dst) = addFile(z, dst, src)
+      gatherFiles(addFileAux, c.libpath, proj / "c_code")
+      for osA in 1..c.oses.len:
+        for cpuA in 1..c.cpus.len:
+          var dir = buildDir(osA, cpuA)
+          for k, f in walkDir("build" / dir):
+            if k == pcFile: addFile(z, proj / dir / extractFilename(f), f)
+
+      for cat in items({fcConfig..fcOther, fcUnix, fcNimble}):
+        for f in items(c.cat[cat]): addFile(z, proj / f, f)
+
+      # Copy the .nimble file over
+      let nimbleFile = c.nimblePkgName & ".nimble"
+      processFile(z, proj / nimbleFile, nimbleFile)
+
+      close(z)
+    else:
+      quit("Cannot open for writing: " & n)
+
 proc xzDist(c: var ConfigData; windowsZip=false) =
   let proj = toLowerAscii(c.name) & "-" & c.version
   let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
@@ -605,7 +647,7 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
 
   if not windowsZip and not fileExists("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
-         "./koch csource -d:danger.")
+         "./koch csource -d:release.")
 
   if not windowsZip:
     processFile(proj / buildBatFile, "build" / buildBatFile)
@@ -711,25 +753,21 @@ proc debDist(c: var ConfigData) =
 
 # ------------------- main ----------------------------------------------------
 
-proc main() =
-  var c: ConfigData
-  iniConfigData(c)
-  parseCmdLine(c)
-  parseIniFile(c)
-  if actionInno in c.actions:
-    setupDist(c)
-  if actionNsis in c.actions:
-    setupDist2(c)
-  if actionCSource in c.actions:
-    srcdist(c)
-  if actionScripts in c.actions:
-    writeInstallScripts(c)
-  if actionZip in c.actions:
-    xzDist(c, true)
-  if actionXz in c.actions:
-    xzDist(c)
-  if actionDeb in c.actions:
-    debDist(c)
-
-when isMainModule:
-  main()
+var c: ConfigData
+iniConfigData(c)
+parseCmdLine(c)
+parseIniFile(c)
+if actionInno in c.actions:
+  setupDist(c)
+if actionNsis in c.actions:
+  setupDist2(c)
+if actionCSource in c.actions:
+  srcdist(c)
+if actionScripts in c.actions:
+  writeInstallScripts(c)
+if actionZip in c.actions:
+  xzDist(c, true)
+if actionXz in c.actions:
+  xzDist(c)
+if actionDeb in c.actions:
+  debDist(c)

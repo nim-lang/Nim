@@ -99,7 +99,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
       inc i
     else:
       result.addf("\t$#\tr$#, $#", opc.toStr, x.regA, x.regBx-wordExcess)
-    result.add("\t# ")
+    result.add("\t#")
     result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
@@ -247,8 +247,6 @@ proc freeTemp(c: PCtx; r: TRegister) =
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
   let c = cc.prc
-  # we could also customize via the following (with proper caching in ConfigRef):
-  # let highRegisterPressure = cc.config.getConfigVar("vm.highRegisterPressure", "40").parseInt
   if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
     for i in 0..c.maxSlots-n:
       if not c.slots[i].inUse:
@@ -588,6 +586,9 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n[0].typ, abstractInst)
   for i in 0..<n.len:
+    #if i > 0 and i < fntyp.len:
+    #  let paramType = fntyp.n[i]
+    #  if paramType.typ.isCompileTimeOnly: continue
     var r: TRegister = x+i
     c.gen(n[i], r, {gfIsParam})
     if i >= fntyp.len:
@@ -610,7 +611,7 @@ proc genField(c: PCtx; n: PNode): TRegister =
   if n.kind != nkSym or n.sym.kind != skField:
     globalError(c.config, n.info, "no field symbol")
   let s = n.sym
-  if s.position > high(typeof(result)):
+  if s.position > high(result):
     globalError(c.config, n.info,
         "too large offset! cannot generate code for: " & s.name.s)
   result = s.position
@@ -683,8 +684,6 @@ proc genNewSeq(c: PCtx; n: PNode) =
 
 proc genNewSeqOfCap(c: PCtx; n: PNode; dest: var TDest) =
   let t = n.typ
-  if dest < 0:
-    dest = c.getTemp(n.typ)
   let tmp = c.getTemp(n[1].typ)
   c.gABx(n, opcLdNull, dest, c.genType(t))
   c.gABx(n, opcLdImmInt, tmp, 0)
@@ -1122,7 +1121,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(d)
   of mSwap:
     unused(c, n, dest)
-    c.gen(lowerSwap(c.graph, n, c.idgen, if c.prc == nil or c.prc.sym == nil: c.module else: c.prc.sym))
+    c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1361,6 +1360,19 @@ proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
   c.gABx(n, opcMarshalStore, 0, c.genType(n[1].typ))
   c.freeTemp(tmp)
 
+const
+  atomicTypes = {tyBool, tyChar,
+    tyUntyped, tyTyped, tyTypeDesc, tyStatic,
+    tyEnum,
+    tyOrdinal,
+    tyRange,
+    tyProc,
+    tyPointer, tyOpenArray,
+    tyString, tyCString,
+    tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
+    tyFloat, tyFloat32, tyFloat64, tyFloat128,
+    tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
+
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 
@@ -1512,14 +1524,14 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let tmp = c.genx(ri)
     c.preventFalseAlias(le[0], opcWrObj, objR, idx, tmp)
     c.freeTemp(tmp)
-    # c.freeTemp(idx) # BUGFIX, see nkDotExpr
+    c.freeTemp(idx)
     c.freeTemp(objR)
   of nkDotExpr:
     let dest = c.genx(le[0], {gfNode})
     let idx = genField(c, le[1])
     let tmp = c.genx(ri)
     c.preventFalseAlias(le, opcWrObj, dest, idx, tmp)
-    # c.freeTemp(idx) # BUGFIX: idx is an immediate (field position), not a register
+    c.freeTemp(idx)
     c.freeTemp(tmp)
     c.freeTemp(dest)
   of nkDerefExpr, nkHiddenDeref:
@@ -1808,7 +1820,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  of tySequence, tyOpenArray:
+  of tySequence:
     result = newNodeIT(nkBracket, info, t)
   else:
     globalError(conf, info, "cannot create null element for: " & $t.kind)
@@ -1823,7 +1835,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a[i].kind == nkSym:
           if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
           checkCanEval(c, a[i])
-      c.gen(lowerTupleUnpacking(c.graph, a, c.idgen, c.getOwner))
+      c.gen(lowerTupleUnpacking(c.graph, a, c.getOwner))
     elif a[0].kind == nkSym:
       let s = a[0].sym
       checkCanEval(c, a[0])
@@ -1927,21 +1939,20 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
 
 proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
-  if n.typ.kind != tyTypeDesc:
-    c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-    # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-    for i in 0..<n.len:
-      let it = n[i]
-      if it.kind == nkExprColonExpr:
-        let idx = genField(c, it[0])
-        let tmp = c.genx(it[1])
-        c.preventFalseAlias(it[1], opcWrObj,
-                            dest, idx, tmp)
-        c.freeTemp(tmp)
-      else:
-        let tmp = c.genx(it)
-        c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
-        c.freeTemp(tmp)
+  c.gABx(n, opcLdNull, dest, c.genType(n.typ))
+  # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
+  for i in 0..<n.len:
+    let it = n[i]
+    if it.kind == nkExprColonExpr:
+      let idx = genField(c, it[0])
+      let tmp = c.genx(it[1])
+      c.preventFalseAlias(it[1], opcWrObj,
+                          dest, idx, tmp)
+      c.freeTemp(tmp)
+    else:
+      let tmp = c.genx(it)
+      c.preventFalseAlias(it, opcWrObj, dest, i.TRegister, tmp)
+      c.freeTemp(tmp)
 
 proc genProc*(c: PCtx; s: PSym): int
 
@@ -1982,8 +1993,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
-      if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
-        globalError(c.config, n.info, "Closure iterators are not supported by VM!")
       if procIsCallback(c, s): discard
       elif importcCond(s): c.importcSym(n.info, s)
       genLit(c, n, dest)
@@ -2191,7 +2200,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       for iters in countdown(maxIterations, 0):
         case c.code[d].opcode
         of opcJmp:
-          d += c.code[d].jmpDiff
+          d = d + c.code[d].jmpDiff
         of opcTJmp, opcFJmp:
           if c.code[d].regA != reg: break
           # tjmp x, 23
@@ -2199,12 +2208,12 @@ proc optimizeJumps(c: PCtx; start: int) =
           # tjmp x, 12
           # -- we know 'x' is true, and so can jump to 12+13:
           if c.code[d].opcode == opc:
-            d += c.code[d].jmpDiff
+            d = d + c.code[d].jmpDiff
           else:
             # tjmp x, 23
             # fjmp x, 22
             # We know 'x' is true so skip to the next instruction:
-            d += 1
+            d = d + 1
         else: break
       if d != i + c.code[i].jmpDiff:
         c.finalJumpTarget(i, d - i)
@@ -2212,7 +2221,7 @@ proc optimizeJumps(c: PCtx; start: int) =
       var d = i + c.code[i].jmpDiff
       var iters = maxIterations
       while c.code[d].opcode == opcJmp and iters > 0:
-        d += c.code[d].jmpDiff
+        d = d + c.code[d].jmpDiff
         dec iters
       if c.code[d].opcode == opcRet:
         # optimize 'jmp to ret' to 'ret' here
@@ -2241,7 +2250,7 @@ proc genProc(c: PCtx; s: PSym): int =
     s.ast[miscPos] = x
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
+    let body = transformBody(c.graph, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc

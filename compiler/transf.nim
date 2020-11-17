@@ -24,7 +24,7 @@ import
   lowerings, liftlocals,
   modulegraphs, lineinfos
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool): PNode
+proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool): PNode
 
 import closureiters, lambdalifting
 
@@ -40,7 +40,7 @@ type
                               # if we encounter the 2nd yield statement
     next: PTransCon           # for stacking
 
-  TTransfContext = object
+  TTransfContext = object of TPassContext
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
@@ -48,7 +48,6 @@ type
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
     graph: ModuleGraph
-    idgen: IdGenerator
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PNode {.inline.} =
@@ -87,12 +86,12 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextId(c.idgen), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, r, c.idgen, owner)
+    result = freshVarForClosureIter(c.graph, r, owner)
   else:
     result = newSymNode(r)
 
@@ -112,13 +111,13 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
     if s.kind in routineKinds:
-      discard transformBody(c.graph, c.idgen, s, true)
+      discard transformBody(c.graph, s, true)
     if s.kind == skIterator:
       if c.tooEarly: return n
-      else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
+      else: return liftIterSym(c.graph, n, getCurrOwner(c))
     elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
-      return makeClosure(c.graph, c.idgen, s, nil, n.info)
+      return makeClosure(c.graph, s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
   #  echo n.info, " come heer for ", c.tooEarly
   #  if not c.tooEarly:
@@ -161,9 +160,9 @@ proc transformSym(c: PTransf, n: PNode): PNode =
 proc freshVar(c: PTransf; v: PSym): PNode =
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
-    result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
+    result = freshVarForClosureIter(c.graph, v, owner)
   else:
-    var newVar = copySym(v, nextId(c.idgen))
+    var newVar = copySym(v)
     incl(newVar.flags, sfFromGeneric)
     newVar.owner = owner
     result = newSymNode(newVar)
@@ -233,7 +232,7 @@ proc hasContinue(n: PNode): bool =
       if hasContinue(n[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, nextId(c.idgen), getCurrOwner(c), n.info)
+  result = newSym(skLabel, nil, getCurrOwner(c), n.info)
   result.name = getIdent(c.graph.cache, genPrefix)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =
@@ -424,7 +423,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind == a or m.kind == b:
@@ -434,7 +433,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind, c.idgen)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   else:
     if n[0].kind == a or n[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -495,8 +494,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result = transformSons(c, n)
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
-    #result = transformSons(c, n)
-    result.typ = takeType(n.typ, n[1].typ, c.idgen)
+    result.typ = takeType(n.typ, n[1].typ)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
   of tyCString:
@@ -541,7 +539,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     # happens sometimes for generated assignments, etc.
   of tyProc:
     result = transformSons(c, n)
-    if dest.callConv == ccClosure and source.callConv == ccNimCall:
+    if dest.callConv == ccClosure and source.callConv == ccDefault:
       result = generateThunk(c, result[1], dest)
   else:
     result = transformSons(c, n)
@@ -630,7 +628,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     result[1] = n
     result[1][^1] = transformLoopBody(c, n[^1])
     result[1][^2] = transform(c, n[^2])
-    result[1] = lambdalifting.liftForLoop(c.graph, result[1], c.idgen, getCurrOwner(c))
+    result[1] = lambdalifting.liftForLoop(c.graph, result[1], getCurrOwner(c))
     discard c.breakSyms.pop
     return result
 
@@ -699,7 +697,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, c.idgen, iter, true)
+  let body = transformBody(c.graph, iter, true)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
@@ -831,7 +829,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
     let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
     convNode[0] = newNodeI(nkEmpty, n.info)
     convNode[1] = excCall
-    convNode.typ = excTypeNode.typ.toRef(c.idgen)
+    convNode.typ = excTypeNode.typ.toRef()
     # -> let exc = ...
     let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
     identDefs[0] = n[0][2]
@@ -851,10 +849,17 @@ proc transformExceptBranch(c: PTransf, n: PNode): PNode =
   else:
     result = transformSons(c, n)
 
-proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode): PNode =
+proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
+  # symbols that expand to a complex constant (array, etc.) should not be
+  # inlined, unless it's the empty array:
+  result = orig.kind == nkSym and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
+           cnst.len != 0
+
+proc commonOptimizations*(g: ModuleGraph; c: PSym, n: PNode): PNode =
   result = n
   for i in 0..<n.safeLen:
-    result[i] = commonOptimizations(g, idgen, c, n[i])
+    result[i] = commonOptimizations(g, c, n[i])
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (n.len >= 3):
     result = newNodeIT(nkCall, n.info, n.typ)
@@ -874,12 +879,49 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
       result.add(a)
     if result.len == 2: result = result[1]
   else:
-    var cnst = getConstExpr(c, n, idgen, g)
+    var cnst = getConstExpr(c, n, g)
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):
       result = cnst
     else:
       result = n
+
+proc hoistParamsUsedInDefault(c: PTransf, call, letSection, defExpr: PNode): PNode =
+  # This takes care of complicated signatures such as:
+  # proc foo(a: int, b = a)
+  # proc bar(a: int, b: int, c = a + b)
+  #
+  # The recursion may confuse you. It performs two duties:
+  #
+  # 1) extracting all referenced params from default expressions
+  #    into a let section preceding the call
+  #
+  # 2) replacing the "references" within the default expression
+  #    with these extracted skLet symbols.
+  #
+  # The first duty is carried out directly in the code here, while the second
+  # duty is activated by returning a non-nil value. The caller is responsible
+  # for replacing the input to the function with the returned non-nil value.
+  # (which is the hoisted symbol)
+  if defExpr.kind == nkSym:
+    if defExpr.sym.kind == skParam and defExpr.sym.owner == call[0].sym:
+      let paramPos = defExpr.sym.position + 1
+
+      if call[paramPos].kind == nkSym and sfHoisted in call[paramPos].sym.flags:
+        # Already hoisted, we still need to return it in order to replace the
+        # placeholder expression in the default value.
+        return call[paramPos]
+
+      let hoistedVarSym = hoistExpr(letSection,
+                                    call[paramPos],
+                                    getIdent(c.graph.cache, genPrefix),
+                                    c.transCon.owner).newSymNode
+      call[paramPos] = hoistedVarSym
+      return hoistedVarSym
+  else:
+    for i in 0..<defExpr.safeLen:
+      let hoisted = hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
+      if hoisted != nil: defExpr[i] = hoisted
 
 proc transform(c: PTransf, n: PNode): PNode =
   when false:
@@ -947,6 +989,16 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkBreakStmt: result = transformBreak(c, n)
   of nkCallKinds:
     result = transformCall(c, n)
+    var call = result
+    if nfDefaultRefsParam in call.flags:
+      # We've found a default value that references another param.
+      # See the notes in `hoistParamsUsedInDefault` for more details.
+      var hoistedParams = newNodeI(nkLetSection, call.info, 0)
+      for i in 1..<call.len:
+        let hoisted = hoistParamsUsedInDefault(c, call, hoistedParams, call[i])
+        if hoisted != nil: call[i] = hoisted
+      result = newTree(nkStmtListExpr, hoistedParams, call)
+      result.typ = call.typ
   of nkAddr, nkHiddenAddr:
     result = transformAddrDeref(c, n, nkDerefExpr, nkHiddenDeref)
   of nkDerefExpr, nkHiddenDeref:
@@ -1010,10 +1062,9 @@ proc transform(c: PTransf, n: PNode): PNode =
   # Constants can be inlined here, but only if they cannot result in a cast
   # in the back-end (e.g. var p: pointer = someProc)
   let exprIsPointerCast = n.kind in {nkCast, nkConv, nkHiddenStdConv} and
-                          n.typ != nil and
                           n.typ.kind == tyPointer
   if not exprIsPointerCast:
-    var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
+    var cnst = getConstExpr(c.module, result, c.graph)
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):
       result = cnst # do not miss an optimization
@@ -1028,13 +1079,12 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   popTransCon(c)
   incl(result.flags, nfTransf)
 
-proc openTransf(g: ModuleGraph; module: PSym, filename: string; idgen: IdGenerator): PTransf =
+proc openTransf(g: ModuleGraph; module: PSym, filename: string): PTransf =
   new(result)
   result.contSyms = @[]
   result.breakSyms = @[]
   result.module = module
   result.graph = g
-  result.idgen = idgen
 
 proc flattenStmts(n: PNode) =
   var goOn = true
@@ -1059,15 +1109,15 @@ proc liftDeferAux(n: PNode) =
         if n[i].kind == nkDefer:
           let deferPart = newNodeI(nkFinally, n[i].info)
           deferPart.add n[i][0]
-          var tryStmt = newNodeIT(nkTryStmt, n[i].info, n.typ)
-          var body = newNodeIT(n.kind, n[i].info, n.typ)
+          var tryStmt = newNodeI(nkTryStmt, n[i].info)
+          var body = newNodeI(n.kind, n[i].info)
           if i < last:
             body.sons = n.sons[(i+1)..last]
           tryStmt.add body
           tryStmt.add deferPart
           n[i] = tryStmt
           n.sons.setLen(i+1)
-          n.typ = tryStmt.typ
+          n.typ = n[i].typ
           goOn = true
           break
   for i in 0..n.safeLen-1:
@@ -1077,7 +1127,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool): PNode =
+proc transformBody*(g: ModuleGraph, prc: PSym, cache: bool): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1086,14 +1136,14 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
     result = prc.ast[bodyPos]
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
-    var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, c.idgen)
+    var c = openTransf(g, prc.getModule, "")
+    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
-    result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
+    result = liftLocalsIfRequested(prc, result, g.cache, g.config)
 
     if prc.isIterator:
-      result = g.transformClosureIterator(c.idgen, prc, result)
+      result = g.transformClosureIterator(prc, result)
 
     incl(result.flags, nfTransf)
 
@@ -1104,24 +1154,21 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
     else:
       prc.transformedBody = nil
 
-  #if prc.name.s == "main":
-  #  echo "transformed into ", renderTree(result, {renderIds})
-
-proc transformStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode): PNode =
+proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
     result = n
   else:
-    var c = openTransf(g, module, "", idgen)
+    var c = openTransf(g, module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
     incl(result.flags, nfTransf)
 
-proc transformExpr*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode): PNode =
+proc transformExpr*(g: ModuleGraph; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
     result = n
   else:
-    var c = openTransf(g, module, "", idgen)
+    var c = openTransf(g, module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
     # expressions are not to be injected with destructor calls as that

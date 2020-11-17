@@ -179,7 +179,7 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
     error: "nimGetProcAddr not implemented".}
 
-elif defined(nintendoswitch) or defined(freertos):
+elif defined(nintendoswitch):
   proc nimUnloadLibrary(lib: LibHandle) =
     cstderr.rawWrite("nimUnLoadLibrary not implemented")
     cstderr.rawWrite("\n")

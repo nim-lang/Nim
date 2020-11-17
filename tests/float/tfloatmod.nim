@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp js"
+  targets: "c c++ js"
   output: "ok"
   exitcode: "0"
 """

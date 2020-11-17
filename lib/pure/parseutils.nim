@@ -310,10 +310,6 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   result = 0
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
-proc fastSubstr(s: string; token: var string; start, length: int) =
-  token.setLen length
-  for i in 0 ..< length: token[i] = s[i+start]
-
 proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
   ## Parses a token and stores it in ``token``. Returns
@@ -330,8 +326,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   var i = start
   while i < s.len and s[i] notin until: inc(i)
   result = i-start
-  fastSubstr(s, token, start, result)
-  #token = substr(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc parseUntil*(s: string, token: var string, until: char,
                  start = 0): int {.inline.} =
@@ -349,8 +344,7 @@ proc parseUntil*(s: string, token: var string, until: char,
   var i = start
   while i < s.len and s[i] != until: inc(i)
   result = i-start
-  fastSubstr(s, token, start, result)
-  #token = substr(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc parseUntil*(s: string, token: var string, until: string,
                  start = 0): int {.inline.} =
@@ -376,8 +370,7 @@ proc parseUntil*(s: string, token: var string, until: string,
       if u >= until.len: break
     inc(i)
   result = i-start
-  fastSubstr(s, token, start, result)
-  #token = substr(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
@@ -393,8 +386,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   var i = start
   while i < s.len and s[i] in validChars: inc(i)
   result = i-start
-  fastSubstr(s, token, start, result)
-  #token = substr(s, start, i-1)
+  token = substr(s, start, i-1)
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there

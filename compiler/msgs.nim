@@ -233,11 +233,11 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
 type FilenameOption* = enum
-  foAbs # absolute path, e.g.: /pathto/bar/foo.nim
-  foRelProject # relative to project path, e.g.: ../foo.nim
+  foAbs # absolute path, eg: /pathto/bar/foo.nim
+  foRelProject # relative to project path, eg: ../foo.nim
   foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
-  foName # lastPathPart, e.g.: foo.nim
-  foShort # foName without extension, e.g.: foo
+  foName # lastPathPart, eg: foo.nim
+  foShort # foName without extension, eg: foo
   foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
@@ -377,12 +377,15 @@ template styledMsgWriteln*(args: varargs[typed]) =
     when defined(windows):
       flushFile(stderr)
 
-proc msgKindToString*(kind: TMsgKind): string = MsgKindToStr[kind]
+proc msgKindToString*(kind: TMsgKind): string =
   # later versions may provide translated error messages
+  result = MsgKindToStr[kind]
 
-proc getMessageStr(msg: TMsgKind, arg: string): string = msgKindToString(msg) % [arg]
+proc getMessageStr(msg: TMsgKind, arg: string): string =
+  result = msgKindToString(msg) % [arg]
 
-type TErrorHandling* = enum doNothing, doAbort, doRaise
+type
+  TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
   var f: File
@@ -489,7 +492,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
+  let kind = if msg != hintUserRaw: msg.msgToStr else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
@@ -523,7 +526,6 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   let s = if isRaw: arg else: getMessageStr(msg, arg)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
-    # we could also show `conf.cmdInput` here for `projectIsCmd`
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)
@@ -537,7 +539,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
-            KindFormat % $hintMsgOrigin,
+            KindFormat % hintMsgOrigin.msgToStr,
             resetStyle)
   handleError(conf, msg, eh, s)
 
@@ -613,7 +615,7 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
 
 template listMsg(title, r) =
   msgWriteln(conf, title)
-  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", $a])
+  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)

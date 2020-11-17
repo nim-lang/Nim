@@ -1172,7 +1172,6 @@ when not defined(windows) and not weirdTarget:
     else: result = S_ISLNK(rawInfo.st_mode)
 
 const
-  maxSymlinkLen = 1024
   ExeExts* = ## Platform specific file extension for executables.
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
@@ -1214,11 +1213,11 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         when not defined(windows):
           while followSymlinks: # doubles as if here
             if x.checkSymlink:
-              var r = newString(maxSymlinkLen)
-              var len = readlink(x, r, maxSymlinkLen)
+              var r = newString(256)
+              var len = readlink(x, r, 256)
               if len < 0:
                 raiseOSError(osLastError(), exe)
-              if len > maxSymlinkLen:
+              if len > 256:
                 r = newString(len+1)
                 len = readlink(x, r, len)
               setLen(r, len)
@@ -1683,7 +1682,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
-  ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
+  ## Copies a file from `source` to `dest`.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -1738,12 +1737,6 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     close(s)
     flushFile(d)
     close(d)
-
-proc copyFileToDir*(source, dir: string) {.noWeirdTarget, since: (1,3,7).} =
-  ## Copies a file `source` into directory `dir`, which must exist.
-  if dir.len == 0: # treating "" as "." is error prone
-    raise newException(ValueError, "dest is empty")
-  copyFile(source, dir / source.lastPathPart)
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -2562,11 +2555,11 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   when defined(windows):
     result = symlinkPath
   else:
-    result = newString(maxSymlinkLen)
-    var len = readlink(symlinkPath, result, maxSymlinkLen)
+    result = newString(256)
+    var len = readlink(symlinkPath, result, 256)
     if len < 0:
       raiseOSError(osLastError(), symlinkPath)
-    if len > maxSymlinkLen:
+    if len > 256:
       result = newString(len+1)
       len = readlink(symlinkPath, result, len)
     setLen(result, len)
@@ -2821,7 +2814,7 @@ else:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
-when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
+when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -2833,19 +2826,12 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 
   when defined(freebsd):
     const KERN_PROC_PATHNAME = 12
-  elif defined(netbsd):
-    const KERN_PROC_ARGS = 48
-    const KERN_PROC_PATHNAME = 5
   else:
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize_t(0)
-
-    when defined(netbsd):
-      var req = [CTL_KERN.cint, KERN_PROC_ARGS.cint, -1.cint, KERN_PROC_PATHNAME.cint]
-    else:
-      var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
+    var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
 
     # first call to get the required length
     var res = sysctl(addr req[0], 4, nil, addr pathLength, nil, 0)
@@ -2864,9 +2850,9 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =
-    result = newString(maxSymlinkLen)
-    var len = readlink(procPath, result, maxSymlinkLen)
-    if len > maxSymlinkLen:
+    result = newString(256)
+    var len = readlink(procPath, result, 256)
+    if len > 256:
       result = newString(len+1)
       len = readlink(procPath, result, len)
     setLen(result, len)
@@ -2998,13 +2984,13 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
     if result.len > 0:
       result = result.expandFilename
   else:
-    when defined(linux) or defined(aix):
+    when defined(linux) or defined(aix) or defined(netbsd):
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode) or defined(nintendoswitch):
       raiseOSError(OSErrorCode(-1), "POSIX command line not supported")
-    elif defined(freebsd) or defined(dragonfly) or defined(netbsd):
+    elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     elif defined(haiku):
       result = getApplHaiku()
@@ -3094,15 +3080,14 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
                                 fpGroupRead, fpOthersExec, fpOthersRead}
     else:
-      formalInfo.permissions = {fpUserExec..fpOthersRead}
+      result.permissions = {fpUserExec..fpOthersRead}
 
     # Retrieve basic file kind
+    result.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
       formalInfo.kind = pcDir
-    else:
-      formalInfo.kind = pcFile
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-      formalInfo.kind = succ(formalInfo.kind)
+      formalInfo.kind = succ(result.kind)
 
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
@@ -3115,7 +3100,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
     formalInfo.creationTime = rawInfo.st_ctim.toTime
 
-    formalInfo.permissions = {}
+    result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
     checkAndIncludeMode(S_IWUSR, fpUserWrite)
     checkAndIncludeMode(S_IXUSR, fpUserExec)
@@ -3128,14 +3113,12 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
 
-    formalInfo.kind =
-      if S_ISDIR(rawInfo.st_mode):
-        pcDir
-      elif S_ISLNK(rawInfo.st_mode):
-        assert(path != "") # symlinks can't occur for file handles
-        getSymlinkFileKind(path)
-      else:
-        pcFile
+    formalInfo.kind = pcFile
+    if S_ISDIR(rawInfo.st_mode):
+      formalInfo.kind = pcDir
+    elif S_ISLNK(rawInfo.st_mode):
+      assert(path != "") # symlinks can't occur for file handles
+      formalInfo.kind = getSymlinkFileKind(path)
 
 when defined(js):
   when not declared(FileHandle):

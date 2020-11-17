@@ -17,7 +17,7 @@ import
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, passaux, depends, vm,
+  platform, nimconf, passaux, depends, vm, idgen,
   modules,
   modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
 
@@ -65,6 +65,20 @@ when not defined(leanCompiler):
     else: registerPass(graph, docgen2Pass)
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
+
+proc setOutFile(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
+  if conf.outFile.isEmpty:
+    let base = conf.projectName
+    let targetName = if optGenDynLib in conf.globalOptions:
+      platform.OS[conf.target.targetOS].dllFrmt % base
+    elif optGenStaticLib in conf.globalOptions:
+      libNameTmpl(conf) % base
+    else:
+      base & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
@@ -137,16 +151,20 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    var idgen = IdGenerator(module: m.itemId.module, item: m.itemId.item)
-    processModule(graph, m, idgen, llStreamOpenStdIn())
+    processModule(graph, m, llStreamOpenStdIn())
+
+const evalPasses = [verbosePass, semPass, evalPass]
+
+proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
+  carryPasses(graph, nodes, module, evalPasses)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
-      L: Lexer
-      tok: Token
+      L: TLexer
+      tok: TToken
     initToken(tok)
     openLexer(L, f, stream, cache, config)
     while true:
@@ -169,6 +187,7 @@ proc mainCommand*(graph: ModuleGraph) =
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
+  setId(100)
 
   proc customizeForBackend(backend: TBackend) =
     ## Sets backend specific options but don't compile to backend yet in
@@ -214,7 +233,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       wantMainModule(conf)
       conf.cmd = cmdDoc
-      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      loadConfigs(DocConfig, cache, conf)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
@@ -230,7 +249,7 @@ proc mainCommand*(graph: ModuleGraph) =
       # so by default should not end up in $PWD nor in $projectPath.
       conf.outDir = block:
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-                  else: conf.projectPath
+        else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
         if docLikeCmd2: ret = ret / htmldocsDir
         ret
@@ -260,7 +279,7 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
         # because currently generates lots of false positives due to conflation
-        # of labels links in doc comments, e.g. for random.rand:
+        # of labels links in doc comments, eg for random.rand:
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
       commandDoc2(graph, false)
@@ -272,14 +291,14 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2html
-      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      loadConfigs(DocConfig, cache, conf)
       commandRst2Html(cache, conf)
   of "rst2tex":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2tex
-      loadConfigs(DocTexConfig, cache, conf, graph.idgen)
+      loadConfigs(DocTexConfig, cache, conf)
       commandRst2TeX(cache, conf)
   of "jsondoc0": docLikeCmd commandJson(cache, conf)
   of "jsondoc2", "jsondoc": docLikeCmd commandDoc2(graph, true)
@@ -303,10 +322,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
-        hints[$a] = %(a in conf.notes)
+        hints[a.msgToStr] = %(a in conf.notes)
       var warnings = newJObject()
       for a in warnMin..warnMax:
-        warnings[$a] = %(a in conf.notes)
+        warnings[a.msgToStr] = %(a in conf.notes)
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
@@ -348,12 +367,11 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
-    if conf.projectIsCmd or conf.projectIsStdin: discard
-    elif not fileExists(conf.projectFull):
+    if not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
-    # main NimScript logic handled in `loadConfigs`.
+    # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump

@@ -130,19 +130,7 @@ proc isRange*(n: PNode): bool {.inline.} =
 
 proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
-  case key.kind
-  of nkIdent: result = whichKeyword(key.ident)
-  of nkSym: result = whichKeyword(key.sym.name)
-  of nkCast: result = wCast
-  of nkClosedSymChoice, nkOpenSymChoice:
-    result = whichPragma(key[0])
-  else: result = wInvalid
-
-proc isNoSideEffectPragma*(n: PNode): bool =
-  var k = whichPragma(n)
-  if k == wCast:
-    k = whichPragma(n[1])
-  result = k == wNoSideEffect
+  if key.kind == nkIdent: result = whichKeyword(key.ident)
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
   if n.kind == nkPragma:
@@ -195,22 +183,10 @@ proc getRoot*(n: PNode): PSym =
     if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
+      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = getRoot(n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = getRoot(n[1])
   of nkCallKinds:
     if getMagic(n) == mSlice: result = getRoot(n[1])
   else: discard
-
-proc stupidStmtListExpr*(n: PNode): bool =
-  for i in 0..<n.len-1:
-    if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
-  result = true
-
-proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
-  # symbols that expand to a complex constant (array, etc.) should not be
-  # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and
-           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
-           cnst.len > ord(cnst.kind == nkObjConstr)

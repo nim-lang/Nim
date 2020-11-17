@@ -35,7 +35,7 @@ type
   Emitter* = object
     config: ConfigRef
     fid: FileIndex
-    lastTok: TokType
+    lastTok: TTokType
     inquote, lastTokWasTerse: bool
     semicolons: SemicolonKind
     col, lastLineNumber, lineSpan, indentLevel, indWidth*, inSection: int
@@ -402,7 +402,7 @@ proc endsInAlpha(em: Emitter): bool =
   while i >= 0 and em.kinds[i] in {ltBeginSection, ltEndSection}: dec(i)
   result = if i >= 0: em.tokens[i].lastChar in SymChars+{'_'} else: false
 
-proc emitComment(em: var Emitter; tok: Token; dontIndent: bool) =
+proc emitComment(em: var Emitter; tok: TToken; dontIndent: bool) =
   var col = em.col
   let lit = strip fileSection(em.config, em.fid, tok.commentOffsetA, tok.commentOffsetB)
   em.lineSpan = countNewlines(lit)
@@ -417,7 +417,7 @@ proc emitComment(em: var Emitter; tok: Token; dontIndent: bool) =
       inc col
     emitMultilineComment(em, lit, col, dontIndent)
 
-proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
+proc emitTok*(em: var Emitter; L: TLexer; tok: TToken) =
   template wasExportMarker(em): bool =
     em.kinds.len > 0 and em.kinds[^1] == ltExportMarker
 
@@ -494,7 +494,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       wrSpace em
 
     if not em.inquote:
-      wr(em, $tok.tokType, ltKeyword)
+      wr(em, TokTypeToStr[tok.tokType], ltKeyword)
       if tok.tokType in {tkAnd, tkOr, tkIn, tkNotin}:
         rememberSplit(splitIn)
         wrSpace em
@@ -503,28 +503,28 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       wr(em, tok.ident.s, ltIdent)
 
   of tkColon:
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     wrSpace em
   of tkSemiColon, tkComma:
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
     if tok.strongSpaceA > 0 and not em.endsInWhite and
         (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
-    wr(em, $tok.tokType, ltSomeParLe)
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
     rememberSplit(splitParLe)
   of closedPars:
-    wr(em, $tok.tokType, ltSomeParRi)
+    wr(em, TokTypeToStr[tok.tokType], ltSomeParRi)
   of tkColonColon:
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkDot:
     lastTokWasTerse = true
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
   of tkEquals:
     if not em.inquote and not em.endsInWhite: wrSpace(em)
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
     if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
@@ -544,7 +544,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
         wrSpace(em)
   of tkAccent:
     if not em.inquote and endsInAlpha(em): wrSpace(em)
-    wr(em, $tok.tokType, ltOther)
+    wr(em, TokTypeToStr[tok.tokType], ltOther)
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:

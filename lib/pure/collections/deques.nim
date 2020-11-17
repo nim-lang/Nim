@@ -13,7 +13,7 @@
 ## None of the procs that get an individual value from the deque can be used
 ## on an empty deque.
 ## If compiled with `boundChecks` option, those procs will raise an `IndexDefect`
-## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
+## on such access. This should not be relied upon, as `-d:release` will
 ## disable those checks and may return garbage or crash the program.
 ##
 ## As such, a check to see if the deque is empty is needed before any
@@ -82,25 +82,7 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## Optionally, the initial capacity can be reserved via `initialSize`
   ## as a performance optimization.
   ## The length of a newly created deque will still be 0.
-  ##
-  ## See also:
-  ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
-
-proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
-  ## Creates a new deque that contains the elements of `x` (in the same order).
-  ##
-  ## See also:
-  ## * `initDeque proc <#initDeque,int>`_
-  runnableExamples:
-    var a = toDeque([7, 8, 9])
-    assert len(a) == 3
-    assert a.popFirst == 7
-    assert len(a) == 2
-
-  result.initImpl(x.len)
-  for item in items(x):
-    result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
@@ -114,7 +96,7 @@ template emptyCheck(deq) =
 
 template xBoundsCheck(deq, i) =
   # Bounds check for the array like accesses.
-  when compileOption("boundChecks"): # `-d:danger` or `--checks:off` should disable this.
+  when compileOption("boundChecks"): # d:release should disable this.
     if unlikely(i >= deq.count): # x < deq.low is taken care by the Natural parameter
       raise newException(IndexDefect,
                          "Out of bounds: " & $i & " > " & $(deq.count - 1))
@@ -546,7 +528,6 @@ when isMainModule:
   assert first == 123
   assert second == 9
   assert($deq == "[4, 56, 6, 789]")
-  assert deq == [4, 56, 6, 789].toDeque
 
   assert deq[0] == deq.peekFirst and deq.peekFirst == 4
   #assert deq[^1] == deq.peekLast and deq.peekLast == 789

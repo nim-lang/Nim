@@ -127,6 +127,7 @@ lib/system/channels.nim
 
   withoutIndex = """
 lib/wrappers/mysql.nim
+lib/wrappers/iup.nim
 lib/wrappers/sqlite3.nim
 lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim
@@ -157,9 +158,9 @@ lib/posix/posix_nintendoswitch_consts.nim
 lib/posix/posix_linux_amd64.nim
 lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
-lib/posix/posix_freertos_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 lib/posix/posix_haiku.nim
+lib/js/jsre.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):

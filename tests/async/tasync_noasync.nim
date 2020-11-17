@@ -1,7 +1,7 @@
 discard """
-  errormsg: "'yield' only allowed in an iterator"
+  errormsg: "undeclared identifier: 'await'"
   cmd: "nim c $file"
-  file: "asyncmacro.nim"
+  file: "tasync_noasync.nim"
 """
 import async
 

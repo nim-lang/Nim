@@ -59,13 +59,12 @@
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
 ## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
-## * `parsecsv module<parsecsv.html>`_ for a high-performance CSV parser
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
 ## * `parseopt module<parseopt.html>`_ for command-line parsing
-## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   (dictionaries, in some programming languages) mapping from strings to strings
+## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
@@ -76,14 +75,13 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
-import std/enumutils
+import macros # for `parseEnum`
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
   export toLower, toUpper
 
 include "system/inclrtl"
-import std/private/since
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -940,39 +938,35 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
-proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.noSideEffect.} =
-  const
-    HexChars = "0123456789ABCDEF"
-  var n = x
-  result = newString(len)
-  for j in countdown(len-1, 0):
-    result[j] = HexChars[int(n and 0xF)]
-    n = n shr 4
-    # handle negative overflow
-    if n == 0 and handleNegative: n = not(BiggestUInt 0)
-
-proc toHex*[T: SomeInteger](x: T, len: Positive): string {.noSideEffect.} =
+proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
+  rtl, extern: "nsuToHex".} =
   ## Converts `x` to its hexadecimal representation.
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
   ## ``0x`` is generated. `x` is treated as an unsigned value.
   runnableExamples:
     let
-      a = 62'u64
-      b = 4097'u64
+      a = 62
+      b = 4097
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-    doAssert toHex(62, 3) == "03E"
-    doAssert toHex(-8, 6) == "FFFFF8"
-  toHexImpl(cast[BiggestUInt](x), len, x < 0)
+  const
+    HexChars = "0123456789ABCDEF"
+  var
+    n = x
+  result = newString(len)
+  for j in countdown(len-1, 0):
+    result[j] = HexChars[int(n and 0xF)]
+    n = n shr 4
+    # handle negative overflow
+    if n == 0 and x < 0: n = -1
 
-proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
+proc toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeof * 2)``
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
-    doAssert toHex(1984'i16) == "07C0"
-  toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
+  toHex(BiggestInt(x), T.sizeof * 2)
 
 proc toHex*(s: string): string {.noSideEffect, rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
@@ -1264,6 +1258,62 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
+  result = nnkOfBranch.newTree(
+    newLit s,
+    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
+  )
+
+macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
+  # generates a case stmt, which assigns the correct enum field given
+  # a normalized string comparison to the `argSym` input.
+  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
+  # `of "Foo".nimIdentNormalize: Foo`.
+  # This will fail, if the enum is not defined at top level (e.g. in a block).
+  # Thus we check for the field value of the (possible holed enum) and convert
+  # the integer value to the generic argument `typ`.
+  let typ = typ.getTypeInst[1]
+  let impl = typ.getImpl[2]
+  expectKind impl, nnkEnumTy
+  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
+                                                  bindSym"nimIdentNormalize"))
+  # stores all processed field strings to give error msg for ambiguous enums
+  var foundFields: seq[string] = @[]
+  var fStr = "" # string of current field
+  var fNum = BiggestInt(0) # int value of current field
+  for f in impl:
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkEnumFieldDef:
+      case f[1].kind
+      of nnkStrLit: fStr = f[1].strVal
+      of nnkTupleConstr:
+        fStr = f[1][1].strVal
+        fNum = f[1][0].intVal
+      of nnkIntLit:
+        fStr = f[0].strVal
+        fNum = f[1].intVal
+      else: error("Invalid tuple syntax!", f[1])
+    else: error("Invalid node for enum type!", f)
+    # add field if string not already added
+    fStr = nimIdentNormalize(fStr)
+    if fStr notin foundFields:
+      result.add addOfBranch(fStr, newLit fNum, typ)
+      foundFields.add fStr
+    else:
+      error("Ambiguous enums cannot be parsed, field " & $fStr &
+        " appears multiple times!", f)
+    inc fNum
+  # finally add else branch to raise or use default
+  if default == nil:
+    let raiseStmt = quote do:
+      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
+    result.add nnkElse.newTree(raiseStmt)
+  else:
+    expectKind(default, nnkSym)
+    result.add nnkElse.newTree(default)
+
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
@@ -1282,7 +1332,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
+  genEnumStmt(T, s, default = nil)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
@@ -1301,7 +1351,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
+  genEnumStmt(T, s, default)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
@@ -1443,7 +1493,6 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
-  ## * `dedent proc<#dedent,string,Natural>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1457,25 +1506,21 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
+proc unindent*(s: string, count: Natural, padding: string = " "): string
     {.noSideEffect, rtl, extern: "nsuUnindent".} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## Sometimes called `dedent`:idx:
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `dedent proc<#dedent,string,Natural>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `indent proc<#indent,string,Natural,string>`_
   runnableExamples:
-    let x = """
-      Hello
-        There
-    """.unindent()
-
-    doAssert x == "Hello\nThere\n"
+    doAssert unindent("  First line\l   and second line", 3) ==
+             "First line\land second line"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1490,31 +1535,11 @@ proc unindent*(s: string, count: Natural = int.high, padding: string = " "): str
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc indentation*(s: string): Natural {.since: (1, 3).} =
-  ## Returns the amount of indentation all lines of ``s`` have in common,
-  ## ignoring lines that consist only of whitespace.
-  result = int.high
-  for line in s.splitLines:
-    for i, c in line:
-      if i >= result: break
-      elif c != ' ':
-        result = i
-        break
-  if result == int.high:
-    result = 0
-
-proc dedent*(s: string, count: Natural = indentation(s)): string
-    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
-  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## The only difference between this and the
-  ## `unindent proc<#unindent,string,Natural,string>`_ is that this by default
-  ## only cuts off the amount of indentation that all lines of ``s`` share as
-  ## opposed to all indentation. It only supports spaces as padding.
-  ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+proc unindent*(s: string): string
+    {.noSideEffect, rtl, extern: "nsuUnindentAll".} =
+  ## Removes all indentation composed of whitespace from each line in ``s``.
   ##
   ## See also:
-  ## * `unindent proc<#unindent,string,Natural,string>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1522,11 +1547,11 @@ proc dedent*(s: string, count: Natural = indentation(s)): string
   runnableExamples:
     let x = """
       Hello
-        There
-    """.dedent()
+      There
+    """.unindent()
 
-    doAssert x == "Hello\n  There\n"
-  unindent(s, count, " ")
+    doAssert x == "Hello\nThere\n"
+  unindent(s, 1000) # TODO: Passing a 1000 is a bit hackish.
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
@@ -1862,7 +1887,7 @@ proc initSkipTable*(a: var SkipTable, sub: string)
 
 proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   {.noSideEffect, rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
+  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
   ##
@@ -1906,7 +1931,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,Natural>`_
+  ## * `rfind proc<#rfind,string,char,Natural,int>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1934,7 +1959,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],Natural>`_
+  ## * `rfind proc<#rfind,string,set[char],Natural,int>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1951,7 +1976,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,Natural>`_
+  ## * `rfind proc<#rfind,string,string,Natural,int>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -2239,28 +2264,17 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ## if `s` contains a number.
   runnableExamples:
     doAssert insertSep("1000000") == "1_000_000"
-  result = newStringOfCap(s.len)
-  let hasPrefix = isDigit(s[s.low]) == false
-  var idx:int
-  if hasPrefix:
-    result.add s[s.low]
-    for i in (s.low + 1)..s.high:
-      idx = i
-      if not isDigit(s[i]):
-        result.add s[i]
-      else:
-        break
-  let partsLen = s.len - idx
-  var L = (partsLen-1) div digits + partsLen
-  result.setLen(L + idx)
+
+  var L = (s.len-1) div digits + s.len
+  result = newString(L)
   var j = 0
   dec(L)
-  for i in countdown(partsLen-1,0):
+  for i in countdown(len(s)-1, 0):
     if j == digits:
-      result[L + idx] = sep
+      result[L] = sep
       dec(L)
       j = 0
-    result[L + idx] = s[i + idx]
+    result[L] = s[i]
     inc(j)
     dec(L)
 

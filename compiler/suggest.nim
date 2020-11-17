@@ -33,7 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, sets, prefixmatches, lineinfos, parseutils, linter
-from wordrecg import wDeprecated, wError, wAddr, wYield
+from wordrecg import wDeprecated, wError, wAddr, wYield, specialWords
 
 when defined(nimsuggest):
   import passes, tables, pathutils # importer
@@ -119,8 +119,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
 
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
                   quality: range[0..100]; prefix: PrefixMatch;
-                  inTypeContext: bool; scope: int;
-                  useSuppliedInfo = false): Suggest =
+                  inTypeContext: bool; scope: int): Suggest =
   new(result)
   result.section = section
   result.quality = quality
@@ -157,11 +156,7 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
       result.forth = ""
     when defined(nimsuggest) and not defined(noDocgen) and not defined(leanCompiler):
       result.doc = s.extractDocComment
-  let infox =
-    if useSuppliedInfo or section in {ideUse, ideHighlight, ideOutline}:
-      info
-    else:
-      s.info
+  let infox = if section in {ideUse, ideHighlight, ideOutline}: info else: s.info
   result.filePath = toFullPath(conf, infox)
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
@@ -468,14 +463,11 @@ when defined(nimsuggest):
       let x = if info == s.info and info.col == s.info.col: ideDef else: ideUse
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
 
-proc findDefinition(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc findDefinition(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if s.isNil: return
-  if isTracked(info, conf.m.trackPos, s.name.s.len) or (s == usageSym and sfForward notin s.flags):
-    suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0, useSuppliedInfo = s == usageSym))
-    if sfForward notin s.flags:
-      suggestQuit()
-    else:
-      usageSym = s
+  if isTracked(info, conf.m.trackPos, s.name.s.len):
+    suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+    suggestQuit()
 
 proc ensureIdx[T](x: var T, y: int) =
   if x.len <= y: x.setLen(y+1)
@@ -495,7 +487,7 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
     if conf.ideCmd == ideUse:
       findUsages(conf, info, s, usageSym)
     elif conf.ideCmd == ideDef:
-      findDefinition(conf, info, s, usageSym)
+      findDefinition(conf, info, s)
     elif conf.ideCmd == ideDus and s != nil:
       if isTracked(info, conf.m.trackPos, s.name.s.len):
         suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))

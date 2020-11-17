@@ -44,22 +44,22 @@ proc writeVersion() =
   quit(0)
 
 type
-  PrettyOptions* = object
-    indWidth*: Natural
-    maxLineLen*: Positive
+  PrettyOptions = object
+    indWidth: Natural
+    maxLineLen: Positive
 
-proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
+proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
   conf.outFile = RelativeFile f.name & f.ext
   conf.outDir = toAbsoluteDir f.dir
-  var parser: Parser
-  parser.em.indWidth = opt.indWidth
-  if setupParser(parser, fileIdx, newIdentCache(), conf):
-    parser.em.maxLineLen = opt.maxLineLen
-    discard parseAll(parser)
-    closeParser(parser)
+  var p: TParsers
+  p.parser.em.indWidth = opt.indWidth
+  if setupParsers(p, fileIdx, newIdentCache(), conf):
+    p.parser.em.maxLineLen = opt.maxLineLen
+    discard parseAll(p)
+    closeParsers(p)
 
 proc main =
   var outfile, outdir: string
@@ -119,5 +119,4 @@ proc main =
       os.copyFile(source = infile, dest = infileBackup)
     prettyPrint(infile, outfile, opt)
 
-when isMainModule:
-  main()
+main()

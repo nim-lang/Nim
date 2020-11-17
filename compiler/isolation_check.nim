@@ -11,7 +11,7 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer, intsets
+  ast, types, renderer, idents, intsets
 
 proc canAlias(arg, ret: PType; marker: var IntSet): bool
 
@@ -64,18 +64,9 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   else:
     result = false
 
-proc isValueOnlyType(t: PType): bool = 
-  # t doesn't contain pointers and references
-  proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
-  result = not types.searchTypeFor(t, wrap)
-
 proc canAlias*(arg, ret: PType): bool =
-  if isValueOnlyType(arg):
-    # can alias only with unsafeAddr(arg.x) and we don't care if it is not safe
-    result = false
-  else:
-    var marker = initIntSet()
-    result = canAlias(arg, ret, marker)
+  var marker = initIntSet()
+  result = canAlias(arg, ret, marker)
 
 proc checkIsolate*(n: PNode): bool =
   if types.containsTyRef(n.typ):

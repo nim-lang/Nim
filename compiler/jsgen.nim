@@ -602,16 +602,8 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mMulF64: applyFormat("($1 * $2)", "($1 * $2)")
   of mDivF64: applyFormat("($1 / $2)", "($1 / $2)")
   of mShrI: applyFormat("", "")
-  of mShlI:
-    if n[1].typ.size <= 4:
-      applyFormat("($1 << $2)", "($1 << $2)")
-    else:
-      applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
-  of mAshrI:
-    if n[1].typ.size <= 4:
-      applyFormat("($1 >> $2)", "($1 >> $2)")
-    else:
-      applyFormat("Math.floor($1 / Math.pow(2,$2))", "Math.floor($1 / Math.pow(2,$2))")
+  of mShlI: applyFormat("($1 << $2)", "($1 << $2)")
+  of mAshrI: applyFormat("($1 >> $2)", "($1 >> $2)")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
@@ -865,7 +857,6 @@ proc genRaiseStmt(p: PProc, n: PNode) =
 proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   var
     cond, stmt: TCompRes
-    totalRange = 0
   genLineDir(p, n)
   gen(p, n[0], cond)
   let stringSwitch = skipTypes(n[0].typ, abstractVar).kind == tyString
@@ -885,10 +876,6 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
         let e = it[j]
         if e.kind == nkRange:
           var v = copyNode(e[0])
-          inc(totalRange, int(e[1].intVal - v.intVal))
-          if totalRange > 65535:
-            localError(p.config, n.info, 
-                       "Your case statement contains too many branches, consider using if/else instead!")
           while v.intVal <= e[1].intVal:
             gen(p, v, cond)
             lineF(p, "case $1:$n", [cond.rdLoc])
@@ -1049,10 +1036,6 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
   var xtyp = mapType(p, x.typ)
 
-  # disable `[]=` for cstring
-  if x.kind == nkBracketExpr and x.len >= 2 and x[0].typ.skipTypes(abstractInst).kind == tyCString:
-    localError(p.config, x.info, "cstring doesn't support `[]=` operator")
-
   gen(p, x, a)
   genLineDir(p, y)
   gen(p, y, b)
@@ -1074,13 +1057,8 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      # supports proc getF(): var T
-      if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
-          lineF(p, "nimCopy($1, $2, $3);$n", 
-                [a.res, b.res, genTypeInfo(p, y.typ)])
-      else:
-        lineF(p, "$1 = nimCopy($1, $2, $3);$n",
-              [a.res, b.res, genTypeInfo(p, y.typ)])
+      lineF(p, "nimCopy($1, $2, $3);$n",
+               [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
@@ -1091,10 +1069,6 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       elif b.typ == etyNone:
         internalAssert p.config, b.address == nil
         lineF(p, "$# = [$#, 0];$n", [a.address, b.res])
-      elif x.typ.kind == tyVar and y.typ.kind == tyPtr:
-        lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
-        lineF(p, "$1 = $2;$n", [a.address, b.res])
-        lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
       else:
         internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     else:
@@ -1344,12 +1318,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkObjDownConv:
     gen(p, n[0], r)
   of nkHiddenDeref:
-    gen(p, n[0], r)
-  of nkHiddenAddr:
-    gen(p, n[0], r)
-  of nkStmtListExpr:
-    if n.len == 1: gen(p, n[0], r)
-    else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
+    gen(p, n[0][0], r)
   else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
@@ -1750,16 +1719,11 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode: string
     varName = mangleName(p.module, v)
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
-    useGlobalPragmas = sfGlobal in v.flags and ({sfPure, sfThread} * v.flags != {})
 
   if v.constraint.isNil:
     if useReloadingGuard:
       lineF(p, "var $1;$n", varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
-      varCode = $varName
-      inc p.extraIndent
-    elif useGlobalPragmas:
-      lineF(p, "if (globalThis.$1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     else:
@@ -1814,7 +1778,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
 
-  if useReloadingGuard or useGlobalPragmas:
+  if useReloadingGuard:
     dec p.extraIndent
     lineF(p, "}$n")
 
@@ -1823,7 +1787,7 @@ proc genVarStmt(p: PProc, n: PNode) =
     var a = n[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
-        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.module.idgen, p.prc)
+        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.prc)
         genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
@@ -1941,7 +1905,6 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     genReprAux(p, n, r, "reprJSONStringify")
   else:
     genReprAux(p, n, r, "reprAny", genTypeInfo(p, t))
-  r.kind = resExpr
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
@@ -2213,17 +2176,11 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   if dest.kind == src.kind:
     # no-op conversion
     return
-  let toInt = (dest.kind in tyInt..tyInt32)
-  let fromInt = (src.kind in tyInt..tyInt32)
-  let toUint = (dest.kind in tyUInt..tyUInt32)
-  let fromUint = (src.kind in tyUInt..tyUInt32)
-  if toUint and (fromInt or fromUint):
-    let trimmer = unsignedTrimmer(dest.size)
-    r.res = "($1 $2)" % [r.res, trimmer]
-  elif dest.kind == tyBool:
+  case dest.kind:
+  of tyBool:
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
-  elif toInt:
+  of tyInt:
     r.res = "(($1)|0)" % [r.res]
   else:
     # TODO: What types must we handle here?
@@ -2342,9 +2299,9 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     else:
       returnStmt = "return $#;$n" % [a.res]
 
-  var transformedBody = transformBody(p.module.graph, p.module.idgen, prc, cache = false)
+  var transformedBody = transformBody(oldProc.module.graph, prc, cache = false)
   if sfInjectDestructors in prc.flags:
-    transformedBody = injectDestructorCalls(p.module.graph, p.module.idgen, prc, transformedBody)
+    transformedBody = injectDestructorCalls(oldProc.module.graph, prc, transformedBody)
 
   p.nested: genStmt(p, transformedBody)
 
@@ -2421,7 +2378,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "($1 $2)" % [r.res, trimmer]
   elif toInt:
     if fromInt:
-      return
+      let trimmer = unsignedTrimmer(dest.size)
+      r.res = "($1 $2)" % [r.res, trimmer]
     elif fromUint:
       if src.size == 4 and dest.size == 4:
         # XXX prevent multi evaluations
@@ -2559,16 +2517,12 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
-      r.res = "var _ = " & r.res
   of nkAsmStmt: genAsmOrEmitStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
-  of nkTypeSection, nkCommentStmt, nkIncludeStmt,
+  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
-  of nkIteratorDef:
-    if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
@@ -2576,7 +2530,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genSym(p, n[namePos], r)
       r.res = nil
   of nkGotoState, nkState:
-    globalError(p.config, n.info, "First class iterators not implemented")
+    internalError(p.config, n.info, "first class iterators not implemented")
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
@@ -2636,9 +2590,9 @@ proc genModule(p: PProc, n: PNode) =
     p.body.add(frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
         makeJSString(toFilenameOption(p.config, p.module.module.info.fileIndex, foStacktrace))))
-  var transformedN = transformStmt(p.module.graph, p.module.idgen, p.module.module, n)
+  var transformedN = transformStmt(p.module.graph, p.module.module, n)
   if sfInjectDestructors in p.module.module.flags:
-    transformedN = injectDestructorCalls(p.module.graph, p.module.idgen, p.module.module, transformedN)
+    transformedN = injectDestructorCalls(p.module.graph, p.module.module, transformedN)
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
@@ -2715,9 +2669,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       writeFile(outFile.string & ".map", $(%map))
     discard writeRopeIfNotEqual(code, outFile)
 
-
-proc myOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
+proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
-  result.idgen = idgen
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)

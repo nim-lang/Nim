@@ -180,6 +180,10 @@ proc readKey(L: var TBaseLexer, result: var string) =
   if L.buf[pos] != ':': doAssert(false, "ccgmerge: ':' expected")
   L.bufpos = pos + 1 # skip ':'
 
+proc newFakeType(id: int): PType =
+  new(result)
+  result.id = id
+
 proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
   if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
   inc L.bufpos
@@ -188,7 +192,10 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
     var key = decodeStr(L.buf, L.bufpos)
     if ^L.bufpos != ':': doAssert(false, "ccgmerge: ':' expected")
     inc L.bufpos
-    discard decodeStr(L.buf, L.bufpos)
+    var value = decodeStr(L.buf, L.bufpos)
+    # XXX implement me
+    when false:
+      idTablePut(result, newFakeType(key), value.rope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -275,7 +282,7 @@ proc mergeRequired*(m: BModule): bool =
     if m.s[i] != nil:
       #echo "not empty: ", i, " ", m.s[i]
       return true
-  for i in TCProcSection:
+  for i in low(TCProcSection)..high(TCProcSection):
     if m.initProc.s(i) != nil:
       #echo "not empty: ", i, " ", m.initProc.s[i]
       return true
@@ -285,7 +292,7 @@ proc mergeFiles*(cfilename: AbsoluteFile, m: BModule) =
   var old: TMergeSections
   readMergeSections(cfilename, old)
   # do the merge; old section before new section:
-  for i in TCFileSection:
+  for i in low(TCFileSection)..high(TCFileSection):
     m.s[i] = old.f[i] & m.s[i]
-  for i in TCProcSection:
+  for i in low(TCProcSection)..high(TCProcSection):
     m.initProc.s(i) = old.p[i] & m.initProc.s(i)

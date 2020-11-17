@@ -27,7 +27,8 @@
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
-
+import "$lib/../compiler/nimpaths"
+import "$lib/../compiler/pathutils"
 import ../../std/private/since
 
 const
@@ -57,8 +58,8 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    outDir*: string      ## output directory, initialized by docgen.nim
-    destFile*: string    ## output (HTML) file, initialized by docgen.nim
+    outDir*: AbsoluteDir      ## output directory, initialized by docgen.nim
+    destFile*: AbsoluteFile   ## output (HTML) file, initialized by docgen.nim
     filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
@@ -83,7 +84,7 @@ type
     status: int
 
 proc prettyLink*(file: string): string =
-  changeFileExt(file, "").replace("_._", "..")
+  changeFileExt(file, "").replace(dotdotMangle, "..")
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -758,13 +759,13 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
   let
-    htmlFileRelPath = if d.outDir.len == 0:
+    htmlFileRelPath = if d.outDir.isEmpty():
                         # /foo/bar/zoo.nim -> zoo.html
                         changeFileExt(extractFilename(d.filename), HtmlExt)
                       else: # d is initialized in docgen.nim
                         # outDir   = /foo              -\
                         # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
-                        d.destFile.relativePath(d.outDir, '/')
+                        d.destFile.relativeTo(d.outDir, '/').string
   setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
@@ -847,18 +848,6 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     """
   else:
     htmlOut = "<img src=\"$1\"$2/>"
-
-  # support for `:target:` links for images:
-  var target = esc(d.target, getFieldValue(n, "target").strip())
-  if target.len > 0:
-    # `htmlOut` needs to be of the following format for link to work for images:
-    # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
-    var htmlOutWithLink = ""
-    dispA(d.target, htmlOutWithLink,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [htmlOut, target])
-    htmlOut = htmlOutWithLink
-
   dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
         [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
@@ -1094,7 +1083,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable, rnMarkdownTable:
+  of rnTable, rnGridTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &

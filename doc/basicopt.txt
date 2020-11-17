@@ -3,11 +3,11 @@
     nim command [options] [projectfile] [arguments]
 
 Command:
-  //compile, c              compile project with default code generator (C)
-  //r                       compile to $nimcache/projname, run with [arguments]
-                            using backend specified by `--backend` (default: c)
-  //doc                     generate the documentation for inputfile for
-                            backend specified by `--backend` (default: c)
+  //compile, c                compile project with default code generator (C)
+  //r                         compile to $nimcache/projname, run with [arguments]
+                              using backend specified by `--backend` (default: c)
+  //doc                       generate the documentation for inputfile for
+                              backend specified by `--backend` (default: c)
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)
@@ -31,9 +31,6 @@ Options:
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  --eval:cmd                evaluates nim code directly; e.g.: `nim --eval:"echo 1"`
-                            defaults to `e` (nimscript) but customizable:
-                            `nim r --eval:'for a in stdin.lines: echo a'`
   --fullhelp                show all command line switches
   -h, --help                show this help
   -v, --version             show detailed version information

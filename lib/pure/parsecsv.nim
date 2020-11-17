@@ -322,29 +322,24 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.
-  ## 
-  ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
     import streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-    ## Requires calling `readHeaderRow`.
+    ## Need calling `readHeaderRow`.
     parser.readHeaderRow()
     doAssert parser.readRow()
     doAssert parser.rowEntry("One") == "1"
     doAssert parser.rowEntry("Two") == "2"
     doAssert parser.rowEntry("Three") == "3"
-    doAssertRaises(KeyError):
-      discard parser.rowEntry("NonexistentEntry")
+    ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
     parser.close()
     strm.close()
 
   let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
-  else:
-    raise newException(KeyError, "Entry `" & entry & "` doesn't exist")
 
 when not defined(testing) and isMainModule:
   import os

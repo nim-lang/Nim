@@ -30,15 +30,14 @@ type
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
     rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
-    docCmd: string ## from user config, e.g. --doccmd:-d:foo
+    docCmd: string ## from user config, eg --doccmd:-d:foo
     code: string ## contains imports; each import contains `body`
     index: int ## group index
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
     module: PSym
     modDeprecationMsg: Rope
-    toc, toc2, section: TSections
-    tocTable: array[TSymKind, Table[string, Rope]]
+    toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
@@ -127,7 +126,6 @@ template declareClosures =
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
     of meGridTableNotImplemented: k = errGridTableNotImplemented
-    of meMarkdownIllformedTable: k = errMarkdownIllformedTable
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
@@ -169,7 +167,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.module = module
   result.conf = conf
   result.cache = cache
-  result.outDir = conf.outDir.string
+  result.outDir = conf.outDir
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
@@ -231,8 +229,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if gotten != status:
         rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
-  result.thisDir = result.destFile.AbsoluteFile.splitFile.dir
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
+  result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if conf.cmd != cmdRst2tex: dest.addf(xml, args)
@@ -304,13 +302,15 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
 
 proc genComment(d: PDoc, n: PNode): string =
   result = ""
+  var dummyHasToc: bool
   if n.comment.len > 0:
-    let comment = n.comment
+    var comment2 = n.comment
     when false:
       # RFC: to preseve newlines in comments, this would work:
-      comment = comment.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
-                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
+      comment2 = comment2.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
+                               toLinenumber(n.info), toColumn(n.info),
+                               dummyHasToc, d.options, d.conf), result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -342,10 +342,11 @@ proc getPlainDocstring(n: PNode): string =
   ## You need to call this before genRecComment, whose side effects are removal
   ## of comments from the tree. The proc will recursively scan and return all
   ## the concatenated ``##`` comments of the node.
-  if n == nil: result = ""
-  elif startsWith(n.comment, "##"):
+  result = ""
+  if n == nil: return
+  if startsWith(n.comment, "##"):
     result = n.comment
-  else:
+  if result.len < 1:
     for i in 0..<n.safeLen:
       result = getPlainDocstring(n[i])
       if result.len > 0: return
@@ -457,8 +458,9 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
 
 proc runAllExamples(d: PDoc) =
+  let backend = d.conf.backend
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
-  # using `-d:js` (etc) cannot work properly, e.g. would fail with `importjs`
+  # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
   let outputDir = d.exampleOutputDir
   for _, group in d.exampleGroups:
@@ -520,6 +522,20 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
+proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
+  ## this is a rather hacky way to get rid of the initial indentation
+  ## that the renderer currently produces:
+  # deadcode
+  var i = 0
+  var body = n.lastSon
+  if body.len == 1 and body.kind == nkStmtList and
+      body.lastSon.kind == nkStmtList:
+    body = body.lastSon
+  for b in body:
+    if i > 0: dest.add "\n"
+    inc i
+    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+
 type RunnableState = enum
   rsStart
   rsComment
@@ -559,9 +575,12 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      var dest2 = ""
-      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
-      dest.add dest2
+      when true:
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+      else:
+        renderNimCodeOld(d, n, dest)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
       return rsRunnable
   else: discard
@@ -592,10 +611,8 @@ proc getRoutineBody(n: PNode): PNode =
   (0 or more) doc comments and runnableExamples.
   ]##
   result = n[bodyPos]
-
-  # This won't be transformed: result.id = 10. Namely result[0].kind != nkSym.
-  if result.kind == nkAsgn and result[0].kind == nkSym and
-                               n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
     doAssert result.len == 2
     result = result[1]
 
@@ -780,26 +797,6 @@ type DocFlags = enum
   kDefault
   kForceExport
 
-proc genSeeSrcRope(d: PDoc, path: string, line: int): Rope =
-  let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
-  if docItemSeeSrc.len > 0:
-    let path = relativeTo(AbsoluteFile path, AbsoluteDir getCurrentDir(), '/')
-    when false:
-      let cwd = canonicalizePath(d.conf, getCurrentDir())
-      var path = path
-      if path.startsWith(cwd):
-        path = path[cwd.len+1..^1].replace('\\', '/')
-    let gitUrl = getConfigVar(d.conf, "git.url")
-    if gitUrl.len > 0:
-      let defaultBranch =
-        if NimPatch mod 2 == 1: "devel"
-        else: "version-$1-$2" % [$NimMajor, $NimMinor]
-      let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
-      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
-      dispA(d.conf, result, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
-          ["path", "line", "url", "commit", "devel"], [rope path.string,
-          rope($line), rope gitUrl, rope commit, rope develBranch])])
-
 proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
@@ -845,7 +842,26 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments,
     renderDocComments, renderSyms}, symbolOrIdEncRope)
 
-  let seeSrcRope = genSeeSrcRope(d, toFullPath(d.conf, n.info), n.info.line.int)
+  var seeSrcRope: Rope = nil
+  let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
+  if docItemSeeSrc.len > 0:
+    let path = relativeTo(AbsoluteFile toFullPath(d.conf, n.info), AbsoluteDir getCurrentDir(), '/')
+    when false:
+      let cwd = canonicalizePath(d.conf, getCurrentDir())
+      var path = toFullPath(d.conf, n.info)
+      if path.startsWith(cwd):
+        path = path[cwd.len+1..^1].replace('\\', '/')
+    let gitUrl = getConfigVar(d.conf, "git.url")
+    if gitUrl.len > 0:
+      let defaultBranch =
+        if NimPatch mod 2 == 1: "devel"
+        else: "version-$1-$2" % [$NimMajor, $NimMinor]
+      let commit = getConfigVar(d.conf, "git.commit", defaultBranch)
+      let develBranch = getConfigVar(d.conf, "git.devel", "devel")
+      dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
+          ["path", "line", "url", "commit", "devel"], [rope path.string,
+          rope($n.info.line), rope gitUrl, rope commit, rope develBranch])])
+
   d.section[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item"),
     ["name", "header", "desc", "itemID", "header_plain", "itemSym",
       "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "seeSrc", "deprecationMsg"],
@@ -853,7 +869,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
       symbolOrIdRope, plainSymbolEncRope, symbolOrIdEncRope, seeSrcRope,
       deprecationMsgRope]))
 
-  let external = d.destFile.AbsoluteFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
+  let external = d.destFile.relativeTo(d.conf.outDir, '/').changeFileExt(HtmlExt).string
 
   var attype: Rope
   if k in routineKinds and nameNode.kind == nkSym:
@@ -870,13 +886,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
         xmltree.escape(getPlainDocstring(e).docstringSummary))
 
   d.toc[k].add(ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.item.toc"),
-    ["name", "header_plain", "itemSymOrIDEnc"],
-    [nameRope, plainNameRope, symbolOrIdEncRope]))
-
-  d.tocTable[k].mgetOrPut(cleanPlainSymbol, nil).add(ropeFormatNamedVars(
-    d.conf, getConfigVar(d.conf, "doc.item.tocTable"),
-    ["name", "header_plain", "itemSymOrID", "itemSymOrIDEnc"],
-    [nameRope, plainNameRope, rope(symbolOrId.replace(",", ",<wbr>")), symbolOrIdEncRope]))
+    ["name", "header", "desc", "itemID", "header_plain", "itemSym",
+      "itemSymOrID", "itemSymEnc", "itemSymOrIDEnc", "attype"],
+    [rope(getName(d, nameNode, d.splitAfter)), result, comm,
+      itemIDRope, plainNameRope, plainSymbolRope, symbolOrIdRope,
+      plainSymbolEncRope, symbolOrIdEncRope, attype]))
 
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
@@ -999,8 +1013,8 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       # set the type so that the following analysis doesn't screw up:
       effects[i].typ = real[i].typ
 
-    result = newTreeI(nkExprColonExpr, n.info,
-      newIdentNode(getIdent(cache, $effectType), n.info), effects)
+    result = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects])
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym
@@ -1012,8 +1026,8 @@ proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName
       effects.add params[i]
 
   if effects.len > 0:
-    result = newTreeI(nkExprColonExpr, n.info,
-      newIdentNode(getIdent(cache, pragmaName), n.info), effects)
+    result = newNode(nkExprColonExpr, n.info, @[
+      newIdentNode(getIdent(cache, pragmaName), n.info), effects])
 
 proc documentRaises*(cache: IdentCache; n: PNode) =
   if n[namePos].kind != nkSym: return
@@ -1174,7 +1188,7 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
       generateTags(d, lastSon(n[0]), r)
   else: discard
 
-proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
+proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skField, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
@@ -1184,23 +1198,14 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
   d.section[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.section[kind]])
-
-  var tocSource = d.toc
-  if groupedToc:
-    for p in d.tocTable[kind].keys:
-      d.toc2[kind].add ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc2"), [
-          "sectionid", "sectionTitle", "sectionTitleID", "content", "plainName"], [
-          ord(kind).rope, title, rope(ord(kind) + 50), d.tocTable[kind][p], p.rope])
-    tocSource = d.toc2
-
   d.toc[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section.toc"), [
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
-      ord(kind).rope, title, rope(ord(kind) + 50), tocSource[kind]])
+      ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
   rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
-proc genOutFile(d: PDoc, groupedToc = false): Rope =
+proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
     title = ""
@@ -1208,13 +1213,12 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in TSymKind:
-    var shouldSort = i in {skProc, skFunc} and groupedToc
-    genSection(d, i, shouldSort)
+  for i in low(TSymKind)..high(TSymKind):
+    genSection(d, i)
     toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in TSymKind: code.add(d.section[i])
+  for i in low(TSymKind)..high(TSymKind): code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
@@ -1232,18 +1236,17 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
                    "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
-  let seeSrcRope = genSeeSrcRope(d, d.filename, 1)
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
         "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [relLink(d.conf.outDir, d.destFile.AbsoluteFile, nimdocOutCss.RelativeFile),
-        relLink(d.conf.outDir, d.destFile.AbsoluteFile, docHackJsFname.RelativeFile),
+        [relLink(d.conf.outDir, d.destFile, nimdocOutCss.RelativeFile),
+        relLink(d.conf.outDir, d.destFile, docHackJsFname.RelativeFile),
         title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
@@ -1258,19 +1261,19 @@ proc generateIndex*(d: PDoc) =
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
-  if d.module == nil or sfMainModule in d.module.flags: # nil for e.g. for commandRst2Html
+  if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
     if d.conf.outFile.isEmpty:
       d.conf.outFile = outfile.relativeTo(d.conf.outDir)
       if isAbsolute(d.conf.outFile.string):
         d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
-proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
+proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
-  var content = genOutFile(d, groupedToc)
+  var content = genOutFile(d)
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    template outfile: untyped = d.destFile.AbsoluteFile
+    template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
@@ -1299,13 +1302,13 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     write(stdout, $content)
   else:
     var f: File
-    if open(f, d.destFile, fmWrite):
+    if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
-      updateOutfile(d, d.destFile.AbsoluteFile)
+      updateOutfile(d, d.destFile)
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
-                 warnUser, "unable to open file \"" & d.destFile &
+                 warnUser, "unable to open file \"" & d.destFile.string &
                  "\" for writing")
 
 proc handleDocOutputOptions*(conf: ConfigRef) =

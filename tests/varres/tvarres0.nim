@@ -4,7 +4,6 @@ discard """
 123
 1234
 12345
-123456
 '''
 """
 
@@ -28,8 +27,6 @@ echo getF().a
 getF().a = 1234
 echo getF().a
 getF() = Foo(a: 12345)
-echo getF().a
-(addr getF())[] = Foo(a: 123456)
 echo getF().a
 
 

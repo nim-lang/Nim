@@ -2,9 +2,8 @@ discard """
   output: '''(repo: "", package: "meo", ext: "")
 doing shady stuff...
 3
-6
-(@[1], @[2])'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off $file'''
+6'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --hint:Performance:off $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -30,54 +29,11 @@ result = (
 -- end of expandArc ------------------------
 --expandArc: delete
 
-var
-  sibling
-  saved
-`=copy`(sibling, target.parent.left)
-`=copy`(saved, sibling.right)
-`=copy`(sibling.right, saved.left)
-`=sink`(sibling.parent, saved)
-`=destroy`(sibling)
--- end of expandArc ------------------------
---expandArc: p1
-
-var
-  lresult
-  lvalue
-  lnext
-  _
-`=copy`(lresult, [123])
-_ = (
-  let blitTmp = lresult
-  blitTmp, ";")
-lvalue = _[0]
-lnext = _[1]
-`=sink`(result.value, move lvalue)
-`=destroy`(lnext)
-`=destroy_1`(lvalue)
--- end of expandArc ------------------------
---expandArc: tt
-
-var
-  a
-  :tmpD
-  :tmpD_1
-  :tmpD_2
-try:
-  var it_cursor = x
-  a = (
-    wasMoved(:tmpD)
-    `=copy`(:tmpD, it_cursor.key)
-    :tmpD,
-    wasMoved(:tmpD_1)
-    `=copy`(:tmpD_1, it_cursor.val)
-    :tmpD_1)
-  echo [
-    :tmpD_2 = `$`(a)
-    :tmpD_2]
-finally:
-  `=destroy`(:tmpD_2)
-  `=destroy_1`(a)
+var saved
+var sibling_cursor = target.parent.left
+`=`(saved, sibling_cursor.right)
+`=`(sibling_cursor.right, saved.left)
+`=sink`(sibling_cursor.parent, saved)
 -- end of expandArc ------------------------'''
 """
 
@@ -139,58 +95,3 @@ proc main =
   echo five.right.value
 
 main()
-
-type
-  Maybe = object
-    value: seq[int]
-
-proc p1(): Maybe =
-  let lresult = @[123]
-  var lvalue: seq[int]
-  var lnext: string
-  (lvalue, lnext) = (lresult, ";")
-
-  result.value = move lvalue
-
-proc tissue15130 =
-  doAssert p1().value == @[123]
-
-tissue15130()
-
-type
-  KeyValue = tuple[key, val: seq[int]]
-
-proc tt(x: KeyValue) =
-  var it = x
-  let a = (it.key, it.val)
-  echo a
-
-proc encodedQuery =
-  var query: seq[KeyValue]
-  query.add (key: @[1], val: @[2])
-
-  for elem in query:
-    elem.tt()
-
-encodedQuery()
-
-# bug #15147
-
-proc s(input: string): (string, string) =
-  result = (";", "")
-
-proc charmatch(input: string): (string, string) =
-  result = ("123", input[0 .. input.high])
-
-proc plus(input: string) =
-  var
-    lvalue, rvalue: string # cursors
-    lnext: string # must be cursor!!!
-    rnext: string # cursor
-  let lresult = charmatch(input)
-  (lvalue, lnext) = lresult
-
-  let rresult = s(lnext)
-  (rvalue, rnext) = rresult
-
-plus("123;")

@@ -13,7 +13,7 @@
 import
   options, ast, llstream, msgs,
   idents,
-  syntaxes, modulegraphs, reorder, rod,
+  syntaxes, idgen, modulegraphs, reorder, rod,
   lineinfos, pathutils
 
 type
@@ -51,18 +51,31 @@ proc registerPass*(g: ModuleGraph; p: TPass) =
   internalAssert g.config, g.passes.len < maxPasses
   g.passes.add(p)
 
+proc carryPass*(g: ModuleGraph; p: TPass, module: PSym;
+                m: TPassData): TPassData =
+  var c = p.open(g, module)
+  result.input = p.process(c, m.input)
+  result.closeOutput = if p.close != nil: p.close(g, c, m.closeOutput)
+                       else: m.closeOutput
+
+proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
+                  passes: openArray[TPass]) =
+  var passdata: TPassData
+  passdata.input = nodes
+  for pass in passes:
+    passdata = carryPass(g, pass, module, passdata)
+
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
-                module: PSym; idgen: IdGenerator) =
+                module: PSym) =
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
-      a[i] = g.passes[i].open(g, module, idgen)
+      a[i] = g.passes[i].open(g, module)
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in 0..<graph.passes.len:
-    if not isNil(graph.passes[i].close):
-      m = graph.passes[i].close(graph, a[i], m)
+    if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
@@ -110,11 +123,10 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
-proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
-                    stream: PLLStream): bool {.discardable.} =
+proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
-    p: Parser
+    p: TParsers
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
@@ -123,7 +135,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     # new module caching mechanism:
     for i in 0..<graph.passes.len:
       if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:
-        a[i] = graph.passes[i].open(graph, module, idgen)
+        a[i] = graph.passes[i].open(graph, module)
       else:
         a[i] = nil
 
@@ -142,7 +154,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         m = graph.passes[i].close(graph, a[i], m)
       a[i] = nil
   else:
-    openPasses(graph, a, module, idgen)
+    openPasses(graph, a, module)
     if stream == nil:
       let filename = toFullPathConsiderDirty(graph.config, fileIdx)
       s = llStreamOpen(filename, fmRead)
@@ -152,7 +164,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     else:
       s = stream
     while true:
-      openParser(p, fileIdx, s, graph.cache, graph.config)
+      openParsers(p, fileIdx, s, graph.cache, graph.config)
 
       if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
         # XXX what about caching? no processing then? what if I change the
@@ -200,7 +212,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         else:
           #echo "----- single\n", n
           if not processTopLevelStmt(graph, n, a): break
-      closeParser(p)
+      closeParsers(p)
       if s.kind != llsStdIn: break
     closePasses(graph, a)
+    # id synchronization point for more consistent code generation:
+    idSynchronizationPoint(1000)
   result = true

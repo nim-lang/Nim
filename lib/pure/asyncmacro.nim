@@ -14,20 +14,21 @@ import macros, strutils, asyncfutures
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
+  let retFutUnown = unown retFutureSym
 
   var nameIterVar = iteratorNameSym
   proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
-        var next = nameIterVar()
+        var next = unown nameIterVar()
         # Continue while the yielded future is already finished.
         while (not next.isNil) and next.finished:
-          next = nameIterVar()
+          next = unown nameIterVar()
           if nameIterVar.finished:
             break
 
         if next == nil:
-          if not retFutureSym.finished:
+          if not retFutUnown.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
             raise newException(AssertionDefect, msg % strName)
@@ -38,12 +39,12 @@ template createCb(retFutureSym, iteratorNameSym,
             {.pop.}
     except:
       futureVarCompletions
-      if retFutureSym.finished:
+      if retFutUnown.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
         # That test explains it better than I can here.
         raise
       else:
-        retFutureSym.fail(getCurrentException())
+        retFutUnown.fail(getCurrentException())
   identName()
 
 proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
@@ -128,15 +129,6 @@ proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
-
-template await*(f: typed): untyped {.used.} =
-  static:
-    error "await expects Future[T], got " & $typeof(f)
-
-template await*[T](f: Future[T]): auto {.used.} =
-  var internalTmpFuture: FutureBase = f
-  yield internalTmpFuture
-  (cast[typeof(f)](internalTmpFuture)).read()
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
@@ -271,8 +263,20 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       result.params[0] = parseExpr("owned(Future[void])")
 
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
+  # however here the overloads are placed inside each expanded async
+  var awaitDefinition = quote:
+    template await(f: typed): untyped {.used.} =
+      static:
+        error "await expects Future[T], got " & $typeof(f)
+
+    template await[T](f: Future[T]): auto {.used.} =
+      var internalTmpFuture: FutureBase = f
+      yield internalTmpFuture
+      (cast[type(f)](internalTmpFuture)).read()
+
   if procBody.kind != nnkEmpty:
     body2.add quote do:
+      `awaitDefinition`
       `outerProcBody`
     result.body = body2
 

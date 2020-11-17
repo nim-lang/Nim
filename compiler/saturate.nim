@@ -15,33 +15,33 @@ proc `|+|`*(a, b: BiggestInt): BiggestInt =
   if (result xor a) >= 0'i64 or (result xor b) >= 0'i64:
     return result
   if a < 0 or b < 0:
-    result = low(typeof(result))
+    result = low(result)
   else:
-    result = high(typeof(result))
+    result = high(result)
 
 proc `|-|`*(a, b: BiggestInt): BiggestInt =
   result = a -% b
   if (result xor a) >= 0'i64 or (result xor not b) >= 0'i64:
     return result
   if b > 0:
-    result = low(typeof(result))
+    result = low(result)
   else:
-    result = high(typeof(result))
+    result = high(result)
 
 proc `|abs|`*(a: BiggestInt): BiggestInt =
-  if a != low(typeof(a)):
+  if a != low(a):
     if a >= 0: result = a
     else: result = -a
   else:
-    result = low(typeof(a))
+    result = low(a)
 
 proc `|div|`*(a, b: BiggestInt): BiggestInt =
   # (0..5) div (0..4) == (0..5) div (1..4) == (0 div 4)..(5 div 1)
   if b == 0'i64:
     # make the same as ``div 1``:
     result = a
-  elif a == low(typeof(a)) and b == -1'i64:
-    result = high(typeof(result))
+  elif a == low(a) and b == -1'i64:
+    result = high(result)
   else:
     result = a div b
 
@@ -74,6 +74,6 @@ proc `|*|`*(a, b: BiggestInt): BiggestInt =
     return result
 
   if floatProd >= 0.0:
-    result = high(typeof(result))
+    result = high(result)
   else:
-    result = low(typeof(result))
+    result = low(result)
