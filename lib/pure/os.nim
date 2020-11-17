@@ -3201,7 +3201,10 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   if not open(b, path2):
     close(a)
     return false
-  if checkSize and getFileInfo(a).size != getFileInfo(b).size: return false
+  if checkSize and getFileInfo(a).size != getFileInfo(b).size:
+    close(a)
+    close(b)
+    return false
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
   while true:
