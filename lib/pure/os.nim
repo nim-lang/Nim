@@ -1550,39 +1550,6 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
-proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect], noWeirdTarget.} =
-  ## Returns true if both pathname arguments refer to files with identical
-  ## binary content.
-  ##
-  ## See also:
-  ## * `sameFile proc <#sameFile,string,string>`_
-  const
-    bufSize = 8192 # 8K buffer
-  var
-    a, b: File
-  if not open(a, path1): return false
-  if not open(b, path2):
-    close(a)
-    return false
-  var bufA = alloc(bufSize)
-  var bufB = alloc(bufSize)
-  while true:
-    var readA = readBuffer(a, bufA, bufSize)
-    var readB = readBuffer(b, bufB, bufSize)
-    if readA != readB:
-      result = false
-      break
-    if readA == 0:
-      result = true
-      break
-    result = equalMem(bufA, bufB, readA)
-    if not result: break
-    if readA != bufSize: break # end of file
-  dealloc(bufA)
-  dealloc(bufB)
-  close(a)
-  close(b)
 
 type
   FilePermission* = enum   ## File access permission, modelled after UNIX.
@@ -3216,6 +3183,43 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
       if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
+
+proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192.Positive): bool {.
+    rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+  ## Returns true if both pathname arguments refer to files with identical
+  ## binary content.
+  ##
+  ## If `checkSize` is `true` then checks the file sizes *before reading the files*,
+  ## if the files have different file sizes they can not have the same contents,
+  ## `checkSize = true` may be faster, specially for very big files.
+  ##
+  ## See also:
+  ## * `sameFile proc <#sameFile,string,string>`_
+  var
+    a, b: File
+  if not open(a, path1): return false
+  if not open(b, path2):
+    close(a)
+    return false
+  if checkSize and getFileInfo(a).size != getFileInfo(b).size: return false
+  var bufA = alloc(bufferSize)
+  var bufB = alloc(bufferSize)
+  while true:
+    var readA = readBuffer(a, bufA, bufferSize)
+    var readB = readBuffer(b, bufB, bufferSize)
+    if readA != readB:
+      result = false
+      break
+    if readA == 0:
+      result = true
+      break
+    result = equalMem(bufA, bufB, readA)
+    if not result: break
+    if readA != bufferSize: break # end of file
+  dealloc(bufA)
+  dealloc(bufB)
+  close(a)
+  close(b)
 
 proc isHidden*(path: string): bool {.noWeirdTarget.} =
   ## Determines whether ``path`` is hidden or not, using `this
