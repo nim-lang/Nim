@@ -489,6 +489,8 @@ proc newPartialConfigRef*(): ConfigRef =
     foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+  # doAssert false
+  dbg result.notes
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
