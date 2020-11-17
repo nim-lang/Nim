@@ -2,6 +2,7 @@ discard """
   action: "compile"
 """
 
+# bug #15623
 block:
   echo cast[ptr int](nil)[]
 
