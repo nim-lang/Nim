@@ -365,7 +365,7 @@ const SCHED_RR* = cint(2)
 const SCHED_OTHER* = cint(0)
 
 # <semaphore.h>
-const SEM_FAILED* = nil
+const SEM_FAILED* = cast[pointer]((nil))
 
 # <signal.h>
 const SIGEV_NONE* = cint(1)
