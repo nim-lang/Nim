@@ -41,6 +41,8 @@
 - Changed `os.sameFileContent` buffer size from hardcoded to `bufferSize` argument.
   Added `checkSize` argument to `os.sameFileContent`,
   if `checkSize` is `true` then checks the file sizes *before reading the files*.
+  Added `checkFiles` argument to `os.sameFileContent` to `raise` if a file does not exist,
+  because `sameFileContent("nonexistant", "nonexistant")` would silently return `false`.
 
 
 ## Language changes
