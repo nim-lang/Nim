@@ -19,6 +19,8 @@
 
 - Added std/enumutils module containing `genEnumCaseStmt` macro that generates case statement to parse string to enum.
 
+- `writeStackTrace` is available in JS backend now.
+
 ## Language changes
 
 
