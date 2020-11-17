@@ -3301,3 +3301,23 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
+func parseFileUri*(uri: string): string =
+  ## Parse an RFC 8089 file URI string into a platform-specific path.
+  ##
+  ## .. code-block:: nim
+  ##   let
+  ##     winUri = "file:///C:/foo/bar.nim"
+  ##     unixUri = "file:///etc/foo/bar.nim"
+  ##
+  ##   when defined(windows):
+  ##     assert parseFileUri(winUri) == "C:\\foo\\bar.nim"
+  ##     assert parseFileUri(unixUri) == "etc\\foo\\bar.nim"
+  ##   when defined(posix):
+  ##     assert parseFileUri(unixUri) == "/etc/foo/bar.nim"
+  ##     assert parseFileUri(winUri) == "/C:/foo/bar.nim"
+  # https://tools.ietf.org/html/rfc8089
+
+  let startIdx = when defined(windows): 8 else: 7
+
+  result = normalizedPath(uri[startIdx..^1])
