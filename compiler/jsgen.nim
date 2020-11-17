@@ -1074,8 +1074,13 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      lineF(p, "nimCopy($1, $2, $3);$n",
-               [a.res, b.res, genTypeInfo(p, y.typ)])
+      # supports proc getF(): var T
+      if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
+          lineF(p, "nimCopy($1, $2, $3);$n", 
+                [a.res, b.res, genTypeInfo(p, y.typ)])
+      else:
+        lineF(p, "$1 = nimCopy($1, $2, $3);$n",
+              [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
@@ -2208,11 +2213,17 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
   if dest.kind == src.kind:
     # no-op conversion
     return
-  case dest.kind:
-  of tyBool:
+  let toInt = (dest.kind in tyInt..tyInt32)
+  let fromInt = (src.kind in tyInt..tyInt32)
+  let toUint = (dest.kind in tyUInt..tyUInt32)
+  let fromUint = (src.kind in tyUInt..tyUInt32)
+  if toUint and (fromInt or fromUint):
+    let trimmer = unsignedTrimmer(dest.size)
+    r.res = "($1 $2)" % [r.res, trimmer]
+  elif dest.kind == tyBool:
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
-  of tyInt:
+  elif toInt:
     r.res = "(($1)|0)" % [r.res]
   else:
     # TODO: What types must we handle here?

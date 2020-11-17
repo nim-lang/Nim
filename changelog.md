@@ -36,11 +36,14 @@
 - `doAssertRaises` now correctly handles foreign exceptions.
 
 - Add `strmisc.parseFloatThousandSep` designed to parse floats as found in the wild formatted for humans.
+- Added `asyncdispatch.activeDescriptors` that returns the number of currently
+  active async event handles/file descriptors
 
 
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
+
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 

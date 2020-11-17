@@ -8,7 +8,7 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the 
+  "Complexity" seems to be a lot like "energy": you can transfer it from the
   end-user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
@@ -311,6 +311,32 @@ is the preferred way of writing keywords).
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
+
+
+Stropping
+---------
+
+If a keyword is enclosed in backticks it loses its keyword property and becomes an ordinary identifier.
+
+Examples
+
+.. code-block:: nim
+  var `var` = "Hello Stropping"
+
+.. code-block:: nim
+  type Type = object
+    `int`: int
+
+  let `object` = Type(`int`: 9)
+  assert `object` is Type
+  assert `object`.`int` == 9
+
+  var `var` = 42
+  let `let` = 8
+  assert `var` + `let` == 50
+
+  const `assert` = true
+  assert `assert`
 
 
 String literals
@@ -4388,7 +4414,9 @@ Custom exceptions can be raised like any others, e.g.:
 Defer statement
 ---------------
 
-Instead of a ``try finally`` statement a ``defer`` statement can be used.
+Instead of a ``try finally`` statement a ``defer`` statement can be used, which
+avoids lexical nesting and offers more flexibility in terms of scoping as shown
+below.
 
 Any statements following the ``defer`` in the current block will be considered
 to be in an implicit try block:
@@ -4397,7 +4425,7 @@ to be in an implicit try block:
     :test: "nim c $1"
 
   proc main =
-    var f = open("numbers.txt")
+    var f = open("numbers.txt", fmWrite)
     defer: close(f)
     f.write "abc"
     f.write "def"
@@ -4414,6 +4442,33 @@ Is rewritten to:
       f.write "def"
     finally:
       close(f)
+
+When `defer` is at the outermost scope of a template/macro, its scope extends
+to the block where the template is called from:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  template safeOpenDefer(f, path) =
+    var f = open(path, fmWrite)
+    defer: close(f)
+
+  template safeOpenFinally(f, path, body) =
+    var f = open(path, fmWrite)
+    try: body # without `defer`, `body` must be specified as parameter
+    finally: close(f)
+
+  block:
+    safeOpenDefer(f, "/tmp/z01.txt")
+    f.write "abc"
+  block:
+    safeOpenFinally(f, "/tmp/z01.txt"):
+      f.write "abc" # adds a lexical scope
+  block:
+    var f = open("/tmp/z01.txt", fmWrite)
+    try:
+      f.write "abc" # adds a lexical scope
+    finally: close(f)
 
 Top-level ``defer`` statements are not supported
 since it's unclear what such a statement should refer to.
