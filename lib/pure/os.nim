@@ -3207,22 +3207,24 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
     return false
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
-  while true:
-    var readA = readBuffer(a, bufA, bufferSize)
-    var readB = readBuffer(b, bufB, bufferSize)
-    if readA != readB:
-      result = false
-      break
-    if readA == 0:
-      result = true
-      break
-    result = equalMem(bufA, bufB, readA)
-    if not result: break
-    if readA != bufferSize: break # end of file
-  dealloc(bufA)
-  dealloc(bufB)
-  close(a)
-  close(b)
+  try:
+    while true:
+      var readA = readBuffer(a, bufA, bufferSize)
+      var readB = readBuffer(b, bufB, bufferSize)
+      if readA != readB:
+        result = false
+        break
+      if readA == 0:
+        result = true
+        break
+      result = equalMem(bufA, bufB, readA)
+      if not result: break
+      if readA != bufferSize: break # end of file
+  finally:
+    dealloc(bufA)
+    dealloc(bufB)
+    close(a)
+    close(b)
 
 proc isHidden*(path: string): bool {.noWeirdTarget.} =
   ## Determines whether ``path`` is hidden or not, using `this
