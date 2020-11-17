@@ -3211,12 +3211,16 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
         var readA = readBuffer(a, bufA, bufferSize)
         var readB = readBuffer(b, bufB, bufferSize)
         if readA != readB: break
-        if readA == 0:
-          result = true
-          break
-        result = equalMem(bufA, bufB, readA)
-        if not result: break
-        if endOfFile(a) or endOfFile(b): break # End of file
+        if readA > 0:
+          result = equalMem(bufA, bufB, readA)
+          if not result: break
+        if readA != bufferSize:
+          let enda = endOfFile(a)
+          let endb = endOfFile(b)
+          if enda != endb: break
+          if enda:
+            result = true
+            break
   finally:
     dealloc(bufA)
     dealloc(bufB)
