@@ -103,6 +103,7 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
   ## - No separator after decimal dot.
   ## - No duplicate separators.
   ## - Floats without separator allowed.
+  ## - No trailing or leading thousand separators.
   ##
   ## See also:
   ## * `parseFloat <strutils.html#parseFloat,string>`_
@@ -123,6 +124,11 @@ func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): 
     raise newException(ValueError,
       "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
       [c.repr, $i, s.repr])
+
+  if str[0] in {sep, decimalDot}: raiseError(0, sep, str) # Fail fast for ",9"
+  if str[^1] in {sep, decimalDot}: raiseError(str.len, sep, str) # Fail for "9,"
+  # Must be len > 4 to have thousands sep. Fail fast for "9,9", "9,99", etc.
+  if not(str.len > 4) and sep in str: raiseError(0, sep, str) # "1,1" "1,11"
 
   var s = newStringOfCap(str.len)
   var successive: int
