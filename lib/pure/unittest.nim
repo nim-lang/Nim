@@ -567,7 +567,8 @@ template fail* =
   ##
   ## outputs "Checkpoint A" before quitting.
   bind ensureInitialized, setProgramResult
-  checkResults[^1] = false
+  if checkResults.len > 0:
+    checkResults[^1] = false
   when declared(testStatusIMPL):
     testStatusIMPL = TestStatus.FAILED
   else:
