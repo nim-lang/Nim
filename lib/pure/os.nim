@@ -3196,27 +3196,23 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
   var a, b: File
+  var mustRead = true
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
   try:  # readBuffer or open may or may not raise IOError.
-    if not open(a, path1): return false
-    if not open(b, path2):
-      close(a)
-      return false
-    if checkSize and getFileInfo(a).size != getFileInfo(b).size:
-      close(a)
-      close(b)
-      return false
-    while true:
-      var readA = readBuffer(a, bufA, bufferSize)
-      var readB = readBuffer(b, bufB, bufferSize)
-      if readA != readB: break
-      if readA == 0:
-        result = true
-        break
-      result = equalMem(bufA, bufB, readA)
-      if not result: break
-      if readA != bufferSize: break # end of file
+    if not(open(a, path1)) or not(open(b, path2)): mustRead = false
+    if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
+    if mustRead:
+      while true:
+        var readA = readBuffer(a, bufA, bufferSize)
+        var readB = readBuffer(b, bufB, bufferSize)
+        if readA != readB: break
+        if readA == 0:
+          result = true
+          break
+        result = equalMem(bufA, bufB, readA)
+        if not result: break
+        if readA != bufferSize: break # end of file
   finally:
     dealloc(bufA)
     dealloc(bufB)
