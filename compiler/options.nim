@@ -800,6 +800,15 @@ proc matchSrcDir(s: string, d: var string): bool {.inline.} =
   const p2 = """$ssrcdir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
   result = scanf(s, p1, d) or scanf(s, p2, d)
 
+proc scanSrcDir(f: string, srcDir: var string) = 
+  var fs = newFileStream(f, fmRead)
+  var line = ""
+  if not isNil(fs):
+    while fs.readLine(line):
+      if matchSrcDir(line, srcDir):
+        break
+    fs.close()
+
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var
@@ -821,16 +830,11 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
           if ext == ".nimble":
             if nimblepkg.len == 0:
               nimblepkg = name
-              var fs = newFileStream(f, fmRead)
-              var line = ""
-              if not isNil(fs):
-                while fs.readLine(line):
-                  if matchSrcDir(line, srcDir):
-                    if srcDir.len > 0 and fileExists(currentDir / srcDir / name.addFileExt(".nim")):
-                      finalSrcDir = currentDir / srcDir
-                      break
-                fs.close()
-              if srcDir.len == 0 and fileExists(currentDir / "src" / name.addFileExt(".nim")):
+              scanSrcDir(f, srcDir)
+              if srcDir.len > 0:
+                if fileExists(currentDir / srcDir / name.addFileExt(".nim")):
+                  finalSrcDir = currentDir / srcDir
+              elif srcDir.len == 0 and fileExists(currentDir / "src" / name.addFileExt(".nim")):
                 finalSrcDir = currentDir / "src"
               if finalSrcDir.len > 0:
                 candidates.incl finalSrcDir / name.addFileExt(".nim")
