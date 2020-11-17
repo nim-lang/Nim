@@ -3184,13 +3184,14 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
 
-proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192.Positive): bool {.
+proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = 8192.Positive): bool {.
     rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
   ## If `checkSize` is `true` then checks the file sizes *before reading the files*,
   ## if the files have different file sizes they can not have the same contents,
   ## `checkSize = true` may be faster, specially for very big files.
+  ## This does not fail if the file never existed in the first place, unless `checkFiles = true`.
   ##
   ## .. code-block:: nim
   ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 999)
@@ -3203,11 +3204,15 @@ proc sameFileContent*(path1, path2: string; checkSize = false; bufferSize = 8192
   var bufB = alloc(bufferSize)
   try:  # readBuffer or open may or may not raise IOError.
     if not open(a, path1):
-      raise newException(IOError, "Can not open file: $1" % [path1])
-      #mustRead = false
+      if checkFiles:
+        raise newException(IOError, "Can not open file: $1" % [path1])
+      else:
+        mustRead = false
     if not open(b, path2):
-      raise newException(IOError, "Can not open file: $1" % [path2])
-      #mustRead = false
+      if checkFiles:
+        raise newException(IOError, "Can not open file: $1" % [path2])
+      else:
+        mustRead = false
     if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
