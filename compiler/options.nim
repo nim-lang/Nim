@@ -795,6 +795,11 @@ proc skipQuote(input: string; start: int; seps: set[char] = {'"'}): int =
   result = 0
   while start+result < input.len and input[start+result] in seps: inc result
 
+proc matchSrcDir(s: string, d: var string): bool {.inline.} =
+  const p1 = """$ssrcDir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
+  const p2 = """$ssrcdir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
+  result = scanf(s, p1, d) or scanf(s, p2, d)
+
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var
@@ -806,8 +811,8 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
     finalSrcDir = ""
   let pkgname = pkg.lastPathPart()
   while true:
-    for k, f in os.walkDir(dir, relative = false):
-      if k == pcFile and f != "config.nims":
+    for f in os.walkFiles("*.nim*"):
+      if f != "config.nims":
         let (currentDir, name, ext) = splitFile(f)
         if ext in extensions:
           let x = changeFileExt(dir / name, ".nim")
@@ -816,17 +821,15 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
           if ext == ".nimble":
             if nimblepkg.len == 0:
               nimblepkg = name
-              const p1 = """$ssrcDir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
-              const p2 = """$ssrcdir$s=$s"$[skipQuote]$w"$s$[skipQuote]$s"""
               var fs = newFileStream(f, fmRead)
               var line = ""
               if not isNil(fs):
                 while fs.readLine(line):
-                  if scanf(line, p1, srcDir) or scanf(line, p2, srcDir):
+                  if matchSrcDir(line, srcDir):
                     if srcDir.len > 0 and fileExists(currentDir / srcDir / name.addFileExt(".nim")):
                       finalSrcDir = currentDir / srcDir
-                      fs.close()
                       break
+                fs.close()
               if srcDir.len == 0 and fileExists(currentDir / "src" / name.addFileExt(".nim")):
                 finalSrcDir = currentDir / "src"
               if finalSrcDir.len > 0:
@@ -838,9 +841,9 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
               return ""
     let pkgname = if nimblepkg.len > 0: nimblepkg else: pkgname
     for c in candidates:
-      if c.extractFilename().contains pkgname: return c
+      if pkgname in c.extractFilename(): return c
     if candidates.len > 0:
-      for value in candidates.items:
+      for value in candidates:
         return value
     prev = dir
     dir = parentDir(dir)
