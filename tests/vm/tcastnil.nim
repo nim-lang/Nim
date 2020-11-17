@@ -3,6 +3,7 @@ discard """
 nil
 nil
 nil
+nil
 '''
 """
 
@@ -23,3 +24,7 @@ block:
 block:
   static:
     echo cast[ptr int](nil).repr
+
+block:
+  static:
+    echo cast[RootRef](nil).repr
