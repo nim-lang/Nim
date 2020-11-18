@@ -75,7 +75,6 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
       result = rope("NIM_NIL")
     else:
       result = "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
-
   of nkStrLit..nkTripleStrLit:
     let k = if ty == nil: tyString
             else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
