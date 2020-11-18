@@ -204,7 +204,7 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
      '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
      '|', '~':
     getAdornment(L, tok)
-    if tok.symbol.len <= 3: tok.kind = tkPunct
+    if tok.symbol.len <= 3 and c != '=': tok.kind = tkPunct
   of '(', ')', '[', ']', '{', '}':
     getBracket(L, tok)
   else:

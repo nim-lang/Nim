@@ -6,7 +6,8 @@ outputsub: ""
 
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
-import unittest, strtabs
+import unittest
+import strutils
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -178,6 +179,39 @@ not in table"""
     assert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
 
+  test "RST tables":
+    let input1 = """
+Test 2 column/4 rows table:
+====   ===
+H0     H1 
+====   ===
+A0     A1 
+====   ===
+A2     A3 
+====   ===
+A4     A5 
+====   === """
+    let output1 = rstToLatex(input1, {})
+    assert "{|X|X|}" in output1  # 2 columns
+    assert count(output1, "\\\\") == 4  # 4 rows
+    for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
+      assert cell in output1
+
+    let input2 = """
+Now test 3 columns / 2 rows, and also borders containing 4 =, 3 =, 1 = signs:
+
+====   ===  =
+H0     H1   H
+====   ===  =
+A0     A1   X
+       Ax   Y
+====   ===  =
+"""
+    let output2 = rstToLatex(input2, {})
+    assert "{|X|X|X|}" in output2  # 3 columns
+    assert count(output2, "\\\\") == 2  # 2 rows
+    for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
+      assert cell in output2
 
 assert rstToHtml("*Hello* **world**!", {},
   newStringTable(modeStyleInsensitive)) ==
