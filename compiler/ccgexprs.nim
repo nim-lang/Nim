@@ -71,7 +71,7 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
         p.module.s[cfsData].addf(
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, ty), result])
-    elif k in {tyPointer, tyNil}:
+    elif k in {tyPointer, tyNil, tyProc}:
       result = rope("NIM_NIL")
     else:
       result = "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
