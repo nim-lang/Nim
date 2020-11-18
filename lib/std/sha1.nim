@@ -221,7 +221,7 @@ proc secureHashFile*(filename: string): SecureHash =
   while true:
     let length = readChars(f, buffer, 0, BufferLength)
     if length == 0:
-        break
+      break
     buffer.setLen(length)
     state.update(buffer)
     if length != BufferLength:
