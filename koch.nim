@@ -327,8 +327,8 @@ proc boot(args: string) =
       [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
-      echo "Executables are equal: SUCCESS!"
       copyExe(output, finalDest)
+      echo "Executables are equal: SUCCESS!"
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
