@@ -2492,7 +2492,11 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if n[0].kind != nkEmpty:
     var labl = newSymG(skLabel, n[0], c)
     if sfGenSym notin labl.flags:
-      addDecl(c, labl)
+      # inline isDiscardUnderscore
+      if labl.name.s != "_":
+        addDecl(c, labl)
+      else:
+        labl.flags.incl(sfGenSym)
     elif labl.owner == nil:
       labl.owner = c.p.owner
     n[0] = newSymNode(labl, n[0].info)
