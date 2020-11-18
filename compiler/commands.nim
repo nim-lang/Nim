@@ -485,7 +485,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
-    if conf.backend == backendJs:
+    if conf.backend == backendJs or conf.command == "js":
+      # for: bug #16033
+      # This might still be imperfect, in rarse corner cases
+      # (where command is reset in nimscript, maybe).
       return
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
