@@ -53,7 +53,7 @@ func sumPairs*[T](x: openArray[T]): T =
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
 
-func fastTwoSum*[T : SomeFloat](a, b: T): (T, T) =
+func fastTwoSum*[T: SomeFloat](a, b: T): (T, T) =
   ## Deker's algorithm
   ## pre-condition: |a| >= |b|
   ## you must swap a and b if pre-condition is not satisfied
