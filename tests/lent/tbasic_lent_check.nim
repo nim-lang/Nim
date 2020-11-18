@@ -23,11 +23,14 @@ main()
 block:
   proc byLent[T](a: T): lent T = a
   let a = [11,12]
-  let b = @[21,23]
+  let b = @[21,23]  
+  let ss = {1, 2, 3, 5}
   doAssert byLent(a) == [11,12]
   doAssert byLent(a).unsafeAddr == a.unsafeAddr
   doAssert byLent(b) == @[21,23]
   doAssert byLent(b).unsafeAddr == b.unsafeAddr
+  doAssert byLent(ss) == {1, 2, 3, 5}
+  doAssert byLent(ss).unsafeAddr == ss.unsafeAddr
 
   let r = new(float)
   r[] = 10.0
