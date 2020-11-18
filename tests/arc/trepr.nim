@@ -11,6 +11,9 @@ Obj(member: ref @["hello"])
 ref (member: ref @["hello"])
 '''
 """
+
+# xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
+
 import tables
 
 type
