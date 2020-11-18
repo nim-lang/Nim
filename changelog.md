@@ -44,6 +44,8 @@
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
+  see #16034
 
 ## Language changes
 

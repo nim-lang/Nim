@@ -325,5 +325,4 @@ when not defined(useNimRtl):
     else:
       var p = p
       reprAux(result, addr(p), typ, cl)
-    add result, "\n"
     deinitReprClosure(cl)
