@@ -71,8 +71,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
         p.module.s[cfsData].addf(
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, ty), result])
-    else:
+    elif k in {tyPointer, tyNil, tyProc}:
       result = rope("NIM_NIL")
+    else:
+      result = "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
   of nkStrLit..nkTripleStrLit:
     let k = if ty == nil: tyString
             else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
