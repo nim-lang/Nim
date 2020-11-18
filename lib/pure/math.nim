@@ -189,7 +189,7 @@ proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4, equalNan
     doAssert almostEqual(NaN, NaN, equalNan = true)
 
   if (equalNan == true) and (classify(x) == fcNan) and (classify(y) == fcNan):
-      return true
+    return true
 
   if x == y: # short circuit exact equality and allow Inf comparison
     return true
