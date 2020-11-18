@@ -31,7 +31,6 @@ func main() =
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
   doAssert parseFloatThousandSep("-0", {pfDotOptional}) == -0.0
   doAssert parseFloatThousandSep("1,111", {pfDotOptional}) == 1111.0
-  doAssert parseFloatThousandSep(",1.0,", {pfLeadingSep, pfTrailingSep}) == 1.0
   doAssert parseFloatThousandSep(".1,", {pfLeadingDot, pfTrailingSep}) == 0.1
   doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
   doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
