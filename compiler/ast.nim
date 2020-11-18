@@ -1412,6 +1412,7 @@ proc copySym*(s: PSym): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  result.constraint = s.constraint
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
     result.bitsize = s.bitsize
