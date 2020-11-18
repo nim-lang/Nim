@@ -305,7 +305,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
       body.add newHookCall(c, op, x, y)
       result = true
     elif op == nil and destructorOverriden:
-      op = produceSym(c.g, c.c, t, c.kind, c.info, c.idgen)
+      op = produceSym(c.g, c.c, t, c.kind, c.info)
       body.add newHookCall(c, op, x, y)
       result = true
   elif tfHasAsgn in t.flags:
