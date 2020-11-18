@@ -133,7 +133,6 @@ func shewchuckSum_total*[T: SomeFloat](partials: openArray[T]): T =
            if y == yr:
              hi = x
   result = hi
-  return result
 
 func shewchuckSum*[T: SomeFloat](x: openArray[T]): T =
   ## https://docs.python.org/3/library/math.html#math.fsum
