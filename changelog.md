@@ -38,6 +38,8 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors
 
+- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
+  determining preferred I/O block size for this file object.
 
 ## Language changes
 
