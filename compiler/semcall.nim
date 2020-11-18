@@ -326,7 +326,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var typeHint = ""
     if sym == nil:
       # Perhaps we're in a `compiles(foo.bar)` expression, or
-      # in a concept, eg:
+      # in a concept, e.g.:
       #   ExplainedConcept {.explain.} = concept x
       #     x.foo is int
       # We could use: `(c.config $ n[1].info)` to get more context.

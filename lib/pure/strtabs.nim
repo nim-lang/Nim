@@ -53,7 +53,7 @@ import std/private/since
 import
   hashes, strutils
 
-when defined(js) or defined(nimscript):
+when defined(js) or defined(nimscript) or defined(Standalone):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
@@ -301,7 +301,7 @@ proc raiseFormatException(s: string) =
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
-  when defined(js) or defined(nimscript):
+  when defined(js) or defined(nimscript) or defined(Standalone):
     result = ""
   else:
     if useEnvironment in flags: result = getEnv(key).string
