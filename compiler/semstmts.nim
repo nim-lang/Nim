@@ -435,7 +435,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
   var b = a[0]
   if b.kind == nkPragmaExpr:
     if b[1].len != 1:
-      # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
+      # we could in future support pragmas w args e.g.: `var foo {.bar:"goo".} = expr`
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
@@ -739,7 +739,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter[i]
           n[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags: addDecl(c, v)
+          if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n[0])
@@ -749,7 +749,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # for an example:
         v.typ = iterBase
         n[0] = newSymNode(v)
-        if sfGenSym notin v.flags: addDecl(c, v)
+        if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)

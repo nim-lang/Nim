@@ -1934,3 +1934,27 @@ proc waitFor*[T](fut: Future[T]): T =
     poll()
 
   fut.read
+
+proc activeDescriptors*(): int {.inline.} =
+  ## Returns the current number of active file descriptors for the current
+  ## event loop. This is a cheap operation that does not involve a system call.
+  when defined(windows):
+    result = getGlobalDispatcher().handles.len
+  elif not defined(nimdoc):
+    result = getGlobalDispatcher().selector.count
+
+when defined(posix):
+  import posix
+
+when defined(linux) or defined(windows) or defined(macosx) or defined(bsd):
+  proc maxDescriptors*(): int {.raises: OSError.} =
+    ## Returns the maximum number of active file descriptors for the current
+    ## process. This involves a system call. For now `maxDescriptors` is
+    ## supported on the following OSes: Windows, Linux, OSX, BSD.
+    when defined(windows):
+      result = 16_700_000
+    else:
+      var fdLim: RLimit
+      if getrlimit(RLIMIT_NOFILE, fdLim) < 0:
+        raiseOSError(osLastError())
+      result = int(fdLim.rlim_cur) - 1

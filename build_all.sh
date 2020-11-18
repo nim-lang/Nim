@@ -1,7 +1,7 @@
 #! /bin/sh
 
 # build development version of the compiler; can be rerun safely.
-# arguments can be passed, eg `--os freebsd`
+# arguments can be passed, e.g. `--os freebsd`
 
 set -u # error on undefined variables
 set -e # exit on first error
@@ -24,7 +24,7 @@ build_nim_csources(){
   # avoid changing dir in case of failure
   (
     if [ $# -ne 0 ]; then
-      # some args were passed (eg: `--cpu i386`), need to call build.sh
+      # some args were passed (e.g.: `--cpu i386`), need to call build.sh
       build_nim_csources_via_script "$@"
     else
       # no args, use multiple Make jobs (5X faster on 16 cores: 10s instead of 50s)

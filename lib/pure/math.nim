@@ -862,10 +862,10 @@ when not defined(js):
     ## float value) equals ``m * 2**n``. frexp stores n in `exponent` and returns
     ## m.
     ##
-    ## .. code-block:: nim
-    ##  var x: int
-    ##  echo frexp(5.0, x) # 0.625
-    ##  echo x # 3
+    runnableExamples:
+      var x: int
+      doAssert frexp(5.0, x) == 0.625
+      doAssert x == 3
     var exp: int32
     result = c_frexp(x, exp)
     exponent = exp
@@ -929,9 +929,9 @@ proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Both parts have the same sign as ``x``.  Analogous to the ``modf``
   ## function in C.
   ##
-  ## .. code-block:: nim
-  ##  echo splitDecimal(5.25)  # (intpart: 5.0, floatpart: 0.25)
-  ##  echo splitDecimal(-2.73) # (intpart: -2.0, floatpart: -0.73)
+  runnableExamples:
+    doAssert splitDecimal(5.25) == (intpart: 5.0, floatpart: 0.25)
+    doAssert splitDecimal(-2.73) == (intpart: -2.0, floatpart: -0.73)
   var
     absolute: T
   absolute = abs(x)
@@ -949,8 +949,8 @@ proc degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## See also:
   ## * `radToDeg proc <#radToDeg,T>`_
   ##
-  ## .. code-block:: nim
-  ##  echo degToRad(180.0) # 3.141592653589793
+  runnableExamples:
+    doAssert degToRad(180.0) == 3.141592653589793
   result = T(d) * RadPerDeg
 
 proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
@@ -959,8 +959,8 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## See also:
   ## * `degToRad proc <#degToRad,T>`_
   ##
-  ## .. code-block:: nim
-  ##  echo degToRad(2 * PI) # 360.0
+  runnableExamples:
+    doAssert radToDeg(2 * PI) == 360.0
   result = T(d) / RadPerDeg
 
 proc sgn*[T: SomeNumber](x: T): int {.inline.} =
@@ -971,10 +971,10 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## * `1` for positive numbers and ``Inf``,
   ## * `0` for positive zero, negative zero and ``NaN``
   ##
-  ## .. code-block:: nim
-  ##  echo sgn(5)    # 1
-  ##  echo sgn(0)    # 0
-  ##  echo sgn(-4.1) # -1
+  runnableExamples:
+    doAssert sgn(5) == 1
+    doAssert sgn(0) == 0
+    doAssert sgn(-4.1) == -1
   ord(T(0) < x) - ord(x < T(0))
 
 {.pop.}
