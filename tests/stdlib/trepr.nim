@@ -1,7 +1,9 @@
 discard """
   targets: "c cpp js"
+  matrix: ";--gc:arc"
 """
-# pending #16033, do: matrix: ";--gc:arc"
+
+# if excessive, could remove 'cpp' from targets
 
 from strutils import endsWith, contains
 
