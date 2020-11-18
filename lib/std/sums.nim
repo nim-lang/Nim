@@ -77,8 +77,8 @@ func sum2*[T: SomeFloat](v: openArray[T]): T =
 
   var s = v[0]
   var e: float
-  for x in v[1..^1]:
-    let sum = twoSum(s, x)
+  for i in 1..<v.len-1:
+    let sum = twoSum(s, v[i])
     s = sum[0]
     e += sum[1]
   return s + e
