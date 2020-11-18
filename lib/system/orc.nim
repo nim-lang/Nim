@@ -21,8 +21,7 @@ const
   colBlack = 0b000
   colGray = 0b001
   colWhite = 0b010
-  colPurple = 0b011
-  isCycleCandidate = 0b100 # cell is marked as a cycle candidate
+  maybeCycle = 0b100 # possibly part of a cycle; this has to be a "sticky" bit
   jumpStackFlag = 0b1000
   colorMask = 0b011
 
@@ -39,11 +38,29 @@ template setColor(c, col) =
   else:
     c.rc = c.rc and not colorMask or col
 
-proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+const
+  optimizedOrc = not defined(nimOldOrc)
+
+proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  #h.setColor colPurple # mark as potential cycle!
-  h.setColor colBlack
+  when optimizedOrc:
+    if cyclic:
+      h.rc = h.rc or maybeCycle
+
+proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
+  when optimizedOrc:
+    if p != nil:
+      let h = head(p)
+      h.rc = h.rc or maybeCycle
+
+proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+  # This is only used by the old RTTI mechanism and we know
+  # that 'dest[]' is nil and needs no destruction. Which is really handy
+  # as we cannot destroy the object reliably if it's an object of unknown
+  # compile-time type.
+  dest[] = src
+  if src != nil: nimIncRefCyclic(src, true)
 
 const
   useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
@@ -113,14 +130,15 @@ var
 
 proc unregisterCycle(s: Cell) =
   # swap with the last element. O(1)
-  let idx = s.rootIdx
+  let idx = s.rootIdx-1
   when false:
     if idx >= roots.len or idx < 0:
       cprintf("[Bug!] %ld\n", idx)
       quit 1
   roots.d[idx] = roots.d[roots.len-1]
-  roots.d[idx][0].rootIdx = idx
+  roots.d[idx][0].rootIdx = idx+1
   dec roots.len
+  s.rootIdx = 0
 
 proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
@@ -245,7 +263,7 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         collectWhite(t)
       free(s) # watch out, a bug here!
   ]#
-  if s.color == colWhite and (s.rc and isCycleCandidate) == 0:
+  if s.color == colWhite and s.rootIdx == 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
 
     s.setColor(colBlack)
@@ -253,7 +271,7 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
-      if t.color == colWhite and (t.rc and isCycleCandidate) == 0:
+      if t.color == colWhite and t.rootIdx == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -284,7 +302,7 @@ proc collectCyclesBacon(j: var GcEnv) =
   init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
-    s.rc = s.rc and not isCycleCandidate
+    s.rootIdx = 0
     collectWhite(s, roots.d[i][1], j)
 
   for i in 0 ..< j.toFree.len:
@@ -341,13 +359,14 @@ proc collectCycles() =
       getOccupiedMem())
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
-  s.rootIdx = roots.len
+  s.rootIdx = roots.len+1
   if roots.d == nil: init(roots)
   add(roots, s, desc)
 
   if roots.len >= rootsThreshold:
     collectCycles()
-  #writeCell("[added root]", s)
+  when logOrc:
+    writeCell("[added root]", s, desc)
 
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
@@ -379,17 +398,19 @@ proc GC_disableMarkAndSweep*() =
   ## For ``--gc:orc`` an alias for ``GC_disableOrc``.
   GC_disableOrc()
 
+when optimizedOrc:
+  template markedAsCyclic(s: Cell): bool = (s.rc and maybeCycle) != 0
+else:
+  template markedAsCyclic(s: Cell): bool = true
+
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
-    if (s.rc and isCycleCandidate) != 0:
-      s.rc = s.rc and not isCycleCandidate
+    if s.rootIdx > 0:
       unregisterCycle(s)
   else:
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
-    #s.setColor colGreen  # XXX This is wrong!
-    if (s.rc and isCycleCandidate) == 0:
-      s.rc = s.rc or isCycleCandidate
+    if s.rootIdx == 0 and markedAsCyclic(s):
       s.setColor colBlack
       registerCycle(s, desc)
 
