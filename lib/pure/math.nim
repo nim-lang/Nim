@@ -158,7 +158,7 @@ proc classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
-proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4, equalNan:  bool = false): bool {.
+proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4, equalNan = false): bool {.
       since: (1, 5), inline, noSideEffect.} =
   ## Checks if two float values are almost equal, using
   ## `machine epsilon <https://en.wikipedia.org/wiki/Machine_epsilon>`_.
