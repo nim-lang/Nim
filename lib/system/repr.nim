@@ -325,4 +325,6 @@ when not defined(useNimRtl):
     else:
       var p = p
       reprAux(result, addr(p), typ, cl)
+    when defined(nimTransition16034): # see PR #16034
+      add result, "\n"
     deinitReprClosure(cl)

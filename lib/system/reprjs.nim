@@ -237,3 +237,5 @@ proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.} =
   var cl: ReprClosure
   initReprClosure(cl)
   reprAux(result, p, typ, cl)
+  when defined(nimTransition16034): # see PR #16034
+    add result, "\n"
