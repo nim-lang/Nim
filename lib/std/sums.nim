@@ -70,7 +70,7 @@ func twoSum*[T](a, b: T): (T, T) =
   let z = result[0] - a
   result[1] = (a - (result[0] - z)) + (b - z)
 
-func sum2*[T : SomeFloat](v: openArray[T]): T =
+func sum2*[T: SomeFloat](v: openArray[T]): T =
   ## sum an array v using twoSum function
   if len(v) == 0:
     return 0.0
