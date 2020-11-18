@@ -38,16 +38,21 @@ template setColor(c, col) =
   else:
     c.rc = c.rc and not colorMask or col
 
+const
+  optimizedOrc = not defined(nimOldOrc)
+
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
-  if cyclic:
-    h.rc = h.rc or maybeCycle
+  when optimizedOrc:
+    if cyclic:
+      h.rc = h.rc or maybeCycle
 
 proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} =
-  if p != nil:
-    let h = head(p)
-    h.rc = h.rc or maybeCycle
+  when optimizedOrc:
+    if p != nil:
+      let h = head(p)
+      h.rc = h.rc or maybeCycle
 
 proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
   # This is only used by the old RTTI mechanism and we know
@@ -393,6 +398,11 @@ proc GC_disableMarkAndSweep*() =
   ## For ``--gc:orc`` an alias for ``GC_disableOrc``.
   GC_disableOrc()
 
+when optimizedOrc:
+  template markedAsCyclic(s: Cell): bool = (s.rc and maybeCycle) != 0
+else:
+  template markedAsCyclic(s: Cell): bool = true
+
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
     if s.rootIdx > 0:
@@ -400,8 +410,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
   else:
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
-    #s.setColor colGreen  # XXX This is wrong!
-    if s.rootIdx == 0 and (s.rc and maybeCycle) != 0:
+    if s.rootIdx == 0 and markedAsCyclic(s):
       s.setColor colBlack
       registerCycle(s, desc)
 

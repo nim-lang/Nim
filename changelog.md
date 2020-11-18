@@ -40,6 +40,10 @@
 - Added `asyncdispatch.maxDescriptors` that returns the maximum number of
   active async event handles/file descriptors.
 
+- ``--gc:orc`` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+
+
 
 ## Language changes
 
