@@ -38,7 +38,7 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors
 
-- Changed `os.sameFileContent` buffer size from hardcoded to `bufferSize` argument.
+- Changed `os.sameFileContent` buffer size from hardcoded to `os.FileInfo.blockSize`.
   Added `checkSize` argument to `os.sameFileContent`,
   if `checkSize` is `true` then checks the file sizes *before reading the files*.
   Added `checkFiles` argument to `os.sameFileContent` to `raise` if a file does not exist,
