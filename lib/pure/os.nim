@@ -1550,10 +1550,6 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 33d79b9e64f8f67adcf8415de61d1568630e36cb
 type
   FilePermission* = enum   ## File access permission, modelled after UNIX.
     ##
