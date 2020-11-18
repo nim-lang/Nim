@@ -4,6 +4,7 @@ nil
 nil
 nil
 nil
+nil
 '''
 """
 
@@ -28,3 +29,7 @@ block:
 block:
   static:
     echo cast[RootRef](nil).repr
+
+block:
+  static:
+    echo cast[cstring](nil).repr

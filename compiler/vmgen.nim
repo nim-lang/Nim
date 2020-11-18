@@ -901,9 +901,9 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.gABx(n, opcSetType, dest, c.genType(dst))
     c.gABC(n, opcCastIntToPtr, dest, tmp)
     c.freeTemp(tmp)
-  elif src.kind == tyNil and dst.kind in PtrLikeKinds:
-    # supports casting nil literals to ptr in VM
-    # see #16012
+  elif src.kind == tyNil and dst.kind in NilableTypes:
+    # supports casting nil literals to NilableTypes in VM
+    # see #16024
     if dest < 0: dest = c.getTemp(n[0].typ)
     genLit(c, n[1], dest)
   else:
