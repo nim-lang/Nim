@@ -3316,7 +3316,9 @@ func parseFileUri*(uri: string): string =
   ##   when defined(posix):
   ##     assert parseFileUri(unixUri) == "/etc/foo/bar.nim"
   ##     assert parseFileUri(winUri) == "/C:/foo/bar.nim"
-  # https://tools.ietf.org/html/rfc8089
+  ##
+  ## See also:
+  ## * https://tools.ietf.org/html/rfc8089
 
   let startIdx = when defined(windows): 8 else: 7
 
