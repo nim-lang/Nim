@@ -47,7 +47,7 @@
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
-
+- nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
 ## Compiler changes
 
