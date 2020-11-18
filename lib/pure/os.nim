@@ -1550,6 +1550,10 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
     else:
       result = a.st_dev == b.st_dev and a.st_ino == b.st_ino
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 33d79b9e64f8f67adcf8415de61d1568630e36cb
 type
   FilePermission* = enum   ## File access permission, modelled after UNIX.
     ##
@@ -3187,7 +3191,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
 
-proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false): bool {.
+proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = 8192.Positive): bool {.
     rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
@@ -3197,12 +3201,14 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
   ## This does not fail if the file never existed in the first place, unless `checkFiles = true`.
   ##
   ## .. code-block:: nim
-  ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true)
+  ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 999)
   ##
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
   var a, b: File
   var mustRead = true
+  var bufA = alloc(bufferSize)
+  var bufB = alloc(bufferSize)
   try:  # readBuffer or open may or may not raise IOError.
     if not open(a, path1):
       if checkFiles:
@@ -3214,32 +3220,25 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
         raise newException(IOError, "Can not open file: $1" % [path2])
       else:
         mustRead = false
-    let aInfo = getFileInfo(a)
-    let bInfo = getFileInfo(b)
-    let bufferSize = max(aInfo.blockSize, bInfo.blockSize)
-    if checkSize and aInfo.size != bInfo.size: mustRead = false
-    var bufA = alloc(bufferSize)
-    var bufB = alloc(bufferSize)
-    try:
-      if mustRead:
-        while true:
-          var readA = readBuffer(a, bufA, bufferSize)
-          var readB = readBuffer(b, bufB, bufferSize)
-          if readA != readB: break
-          if readA > 0:
-            result = equalMem(bufA, bufB, readA)
-            if not result: break
-          if readA != bufferSize:
-            let enda = endOfFile(a)
-            let endb = endOfFile(b)
-            if enda != endb: break
-            if enda:
-              result = true
-              break
-    finally:
-      dealloc(bufA)
-      dealloc(bufB)
+    if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
+    if mustRead:
+      while true:
+        var readA = readBuffer(a, bufA, bufferSize)
+        var readB = readBuffer(b, bufB, bufferSize)
+        if readA != readB: break
+        if readA > 0:
+          result = equalMem(bufA, bufB, readA)
+          if not result: break
+        if readA != bufferSize:
+          let enda = endOfFile(a)
+          let endb = endOfFile(b)
+          if enda != endb: break
+          if enda:
+            result = true
+            break
   finally:
+    dealloc(bufA)
+    dealloc(bufB)
     close(a)
     close(b)
 
