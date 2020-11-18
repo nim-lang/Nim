@@ -1,13 +1,7 @@
-discard """
-  output: '''0
-0
-'''
-"""
-
 # bug #15623
 block:
-  echo cast[int](cast[ptr int](nil))
+  doAssert cast[int](cast[ptr int](nil)) == 0
 
 block:
   var x: ref int = nil
-  echo cast[int](cast[ptr int](x))
+  doAssert cast[int](cast[ptr int](x)) == 0

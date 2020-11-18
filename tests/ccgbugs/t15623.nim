@@ -1,6 +1,6 @@
 block:
   if false:
-    discard cast[ptr int](nil)[]
+    echo cast[ptr int](nil)[]
 
 block:
   if false:
