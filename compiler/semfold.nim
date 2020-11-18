@@ -674,7 +674,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
-    if n.typ != nil and n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes and a.kind != nkNilLit:
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ

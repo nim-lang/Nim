@@ -1094,7 +1094,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable:
+  of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &

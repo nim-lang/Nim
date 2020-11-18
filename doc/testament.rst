@@ -26,7 +26,7 @@ Options
 * ``--print``                   Also print results to the console
 * ``--simulate``                See what tests would be run but don't run them (for debugging)
 * ``--failing``                 Only show failing/ignored tests
-* ``--targets:"c c++ js objc"`` Run tests for specified targets (default: all)
+* ``--targets:"c cpp js objc"`` Run tests for specified targets (default: all)
 * ``--nim:path``                Use a particular nim executable (default: ``$PATH/nim``)
 * ``--directory:dir``           Change to directory dir before reading the tests or doing anything else.
 * ``--colors:on|off``           Turn messages coloring on|off.
@@ -58,12 +58,12 @@ Running all tests from a directory
 
   $ testament pattern "tests/*.nim"
 
-To recursively search for all tests in a directory, use
+To search for tests deeper in a directory, use
 
 .. code::
 
-  $ testament pattern "tests/**/*.nim"
-
+  $ testament pattern "tests/**/*.nim"    # one level deeper
+  $ testament pattern "tests/**/**/*.nim" # two levels deeper
 
 HTML Reports
 ============
@@ -89,7 +89,9 @@ Example "template" **to edit** and write a Testament unittest:
     # Options:
     #   "compile": expect successful compilation
     #   "run": expect successful compilation and execution
-    #   "reject": expect failed compilation
+    #   "reject": expect failed compilation. The "reject" action can catch
+    #             {.error.} pragmas but not {.fatal.} pragmas because
+    #             {.fatal.} pragmas guarantee that compilation will be aborted.
     action: "run"
 
     # The exit code that the test is expected to return. Typically, the default

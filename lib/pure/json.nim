@@ -519,9 +519,10 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## This proc can be used to create tree structures on the
   ## fly (sometimes called `autovivification`:idx:):
   ##
-  ## .. code-block:: nim
-  ##   myjson{"parent", "child", "grandchild"} = newJInt(1)
-  ##
+  runnableExamples:
+    var myjson = %* {"parent": {"child": {"grandchild": 1}}}
+    doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
+
   result = node
   for key in keys:
     if isNil(result) or result.kind != JObject:
@@ -1052,6 +1053,8 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.bval
 
   proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
+    if jsonNode == nil:
+      raise newException(KeyError, "key not found: " & jsonPath)
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
@@ -1256,32 +1259,30 @@ when defined(nimFixedForwardGeneric):
     ##   * Sets in object variants are not supported.
     ##   * Not nil annotations are not supported.
     ##
-    ## Example:
-    ##
-    ## .. code-block:: Nim
-    ##     let jsonNode = parseJson("""
-    ##        {
-    ##          "person": {
-    ##            "name": "Nimmer",
-    ##            "age": 21
-    ##          },
-    ##          "list": [1, 2, 3, 4]
-    ##        }
-    ##     """)
-    ##
-    ##     type
-    ##       Person = object
-    ##         name: string
-    ##         age: int
-    ##
-    ##       Data = object
-    ##         person: Person
-    ##         list: seq[int]
-    ##
-    ##     var data = to(jsonNode, Data)
-    ##     doAssert data.person.name == "Nimmer"
-    ##     doAssert data.person.age == 21
-    ##     doAssert data.list == @[1, 2, 3, 4]
+    runnableExamples:
+      let jsonNode = parseJson("""
+        {
+          "person": {
+            "name": "Nimmer",
+            "age": 21
+          },
+          "list": [1, 2, 3, 4]
+        }
+      """)
+
+      type
+        Person = object
+          name: string
+          age: int
+
+        Data = object
+          person: Person
+          list: seq[int]
+
+      var data = to(jsonNode, Data)
+      doAssert data.person.name == "Nimmer"
+      doAssert data.person.age == 21
+      doAssert data.list == @[1, 2, 3, 4]
 
     var jsonPath = ""
     initFromJson(result, node, jsonPath)

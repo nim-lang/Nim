@@ -233,11 +233,10 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
 type FilenameOption* = enum
-  foAbs # absolute path, eg: /pathto/bar/foo.nim
-  foRelProject # relative to project path, eg: ../foo.nim
+  foAbs # absolute path, e.g.: /pathto/bar/foo.nim
+  foRelProject # relative to project path, e.g.: ../foo.nim
   foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
-  foName # lastPathPart, eg: foo.nim
-  foShort # foName without extension, eg: foo
+  foName # lastPathPart, e.g.: foo.nim
   foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
@@ -255,7 +254,6 @@ proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption)
              else:
                relPath
   of foName: result = toProjPath(conf, fileIdx).lastPathPart
-  of foShort: result = toFilename(conf, fileIdx)
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
       result = toFilenameOption(conf, fileIdx, foAbs)
@@ -523,6 +521,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   let s = if isRaw: arg else: getMessageStr(msg, arg)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
+    # we could also show `conf.cmdInput` here for `projectIsCmd`
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)

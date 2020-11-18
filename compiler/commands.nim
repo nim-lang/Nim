@@ -383,19 +383,33 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
     expectArg(conf, switch, arg, pass, info)
     options.inclDynlibOverride(conf, arg)
 
-proc handleStdinInput*(conf: ConfigRef) =
-  conf.projectName = "stdinfile"
+template handleStdinOrCmdInput =
   conf.projectFull = conf.projectName.AbsoluteFile
   conf.projectPath = AbsoluteDir getCurrentDir()
-  conf.projectIsStdin = true
   if conf.outDir.isEmpty:
     conf.outDir = getNimcacheDir(conf)
+
+proc handleStdinInput*(conf: ConfigRef) =
+  conf.projectName = "stdinfile"
+  conf.projectIsStdin = true
+  handleStdinOrCmdInput()
+
+proc handleCmdInput*(conf: ConfigRef) =
+  conf.projectName = "cmdfile"
+  handleStdinOrCmdInput()
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
     key, val: string
   case switch.normalize
+  of "eval":
+    expectArg(conf, switch, arg, pass, info)
+    conf.projectIsCmd = true
+    conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
+    if conf.command == "":
+      conf.command = "e" # better than "r" as a default
+      conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
     for path in nimbleSubs(conf, arg):
@@ -781,9 +795,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "def":
     expectNoArg(conf, switch, arg, pass, info)
     conf.ideCmd = ideDef
-  of "eval":
-    expectArg(conf, switch, arg, pass, info)
-    conf.evalExpr = arg
   of "context":
     expectNoArg(conf, switch, arg, pass, info)
     conf.ideCmd = ideCon
@@ -936,6 +947,8 @@ proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
 
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int; config: ConfigRef): bool =
+  if argsCount == 0 and config.implicitCmd:
+    argsCount.inc
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):

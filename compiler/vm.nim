@@ -765,7 +765,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
         elif not maybeHandlePtr(regs[rb].node, regs[ra], false):
-          ## eg: typ.kind = tyObject
+          ## e.g.: typ.kind = tyObject
           ensureKind(rkNode)
           regs[ra].node = regs[rb].node
       else:
@@ -996,7 +996,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
         elif sameConstant(nb, nc): ret = true
-          # this also takes care of procvar's, represented as nkTupleConstr, eg (nil, nil)
+          # this also takes care of procvar's, represented as nkTupleConstr, e.g. (nil, nil)
         elif nb.kind == nkIntLit and nc.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
           let tb = nb.getTyp
           let tc = nc.getTyp
@@ -2114,6 +2114,9 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
+  # deadcode
+  # `nim --eval:"expr"` might've used it at some point for idetools; could
+  # be revived for nimsuggest
   let n = transformExpr(c.graph, c.idgen, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof

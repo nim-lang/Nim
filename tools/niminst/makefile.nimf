@@ -124,6 +124,9 @@ ifeq ($(ucpu),powerpc)
     mycpu = $(shell sh -c 'uname -p | tr "[:upper:]" "[:lower:]"')
     CFLAGS += -m64
     LDFLAGS += -m64
+    ifeq ($(mycpu),powerpc64le)
+      mycpu = powerpc64el
+    endif
   endif
 endif
 ifeq ($(ucpu),ppc)
