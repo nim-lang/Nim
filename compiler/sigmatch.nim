@@ -342,7 +342,12 @@ proc typeRel*(c: var TCandidate, f, aOrig: PType,
 proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   case t.kind
   of tyTypeDesc:
-    if c.isNoCall: result = t
+    if c.isNoCall:
+      if c.inferredTypes.len == 0 and c.baseTypeMatch == false:
+        localError(c.c.config, c.call.info, errGenerated, "cannot infer the type of array")
+        result = nil
+        return result
+      result = t
     else: result = nil
   of tySequence, tySet:
     if t[0].kind == tyEmpty: result = nil
