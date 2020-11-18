@@ -225,7 +225,7 @@ proc secureHashFile*(filename: string): SecureHash =
     buffer.setLen(length)
     state.update(buffer)
     if length != BufferLength:
-      buffer.setLen(BufferLength)
+      break
   close(f)
 
   SecureHash(state.finalize())
