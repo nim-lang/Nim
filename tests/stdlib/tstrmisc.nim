@@ -2,30 +2,49 @@ import strmisc
 
 
 func main() =
-  doAssert parseFloatThousandSep("0") == 0.0
-  doAssert parseFloatThousandSep("-0") == -0.0
-  doAssert parseFloatThousandSep("0.0") == 0.0
-  doAssert parseFloatThousandSep("1.0") == 1.0
-  doAssert parseFloatThousandSep("-0.0") == -0.0
-  doAssert parseFloatThousandSep("-1.0") == -1.0
-  doAssert parseFloatThousandSep("1.000") == 1.0
-  doAssert parseFloatThousandSep("-1.000") == -1.0
+  doAssert parseFloatThousandSep("0.0", {}) == 0.0
+  doAssert parseFloatThousandSep("1.0", {}) == 1.0
+  doAssert parseFloatThousandSep("-0.0", {}) == -0.0
+  doAssert parseFloatThousandSep("-1.0", {}) == -1.0
+  doAssert parseFloatThousandSep("1.000", {}) == 1.0
+  doAssert parseFloatThousandSep("1.000", {}) == 1.0
+  doAssert parseFloatThousandSep("-1.000", {}) == -1.0
+  doAssert parseFloatThousandSep("-1,222.0001", {}) == -1222.0001
+  doAssert parseFloatThousandSep("3.141592653589793", {}) == 3.141592653589793
+  doAssert parseFloatThousandSep("6.283185307179586", {}) == 6.283185307179586
+  doAssert parseFloatThousandSep("2.718281828459045", {}) == 2.718281828459045
 
-  doAssert parseFloatThousandSep("1,111") == 1111.0
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,11")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,1")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,11", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,1", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,0000.000", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("--", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("..", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,,000", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1..000", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,000000", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep(",1", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1.", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep(".1", {})
+  doAssertRaises(ValueError): discard parseFloatThousandSep(" ", {pfDotOptional, pfEmptyString})
 
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,0000.000")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("--")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("..")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,,000")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1..000")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,000000")
-
-  doAssertRaises(ValueError): discard parseFloatThousandSep(",1")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1.")
-  doAssertRaises(ValueError): discard parseFloatThousandSep(".1")
+  doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
+  doAssert parseFloatThousandSep("-0", {pfDotOptional}) == -0.0
+  doAssert parseFloatThousandSep("1,111", {pfDotOptional}) == 1111.0
+  doAssert parseFloatThousandSep(",1.0,", {pfLeadingSep, pfTrailingSep}) == 1.0
+  doAssert parseFloatThousandSep(".1,", {pfLeadingDot, pfTrailingSep}) == 0.1
+  doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
+  doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
+  doAssert parseFloatThousandSep("--1.0", {pfMultipleMinus}) == -1.0
+  doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
+  doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
+  doAssert parseFloatThousandSep(".10,", {pfLeadingDot, pfTrailingSep}) == 0.1
+  doAssert parseFloatThousandSep(",1.000,", {pfLeadingSep, pfTrailingSep}) == 1.000
+  doAssert parseFloatThousandSep(",10.", {pfLeadingSep, pfTrailingDot}) == 10.0
+  doAssert parseFloatThousandSep("---1.000,", {pfMultipleMinus, pfTrailingSep}) == -1.0
+  doAssert parseFloatThousandSep("10", {pfEmptyString, pfDotOptional, pfSepAnywhere, pfMultipleMinus}) == 10.0
+  doAssert parseFloatThousandSep("1.0,0,0,0,0,0,0,0", {pfSepAnywhere}) == 1.0
+  doAssert parseFloatThousandSep("0,0,0,0,0,0,0,0.1", {pfSepAnywhere}) == 0.1
 
 
 main()

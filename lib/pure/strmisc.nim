@@ -87,83 +87,127 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   return partition(s, sep, right = true)
 
 
-func parseFloatThousandSep*(str: openArray[char]; sep = ','; decimalDot = '.'): float {.since: (1, 5).} =
-  ## Convenience func for `parseFloat` which allows for thousand separators,
-  ## this is designed to parse floats as found in the wild formatted for humans.
-  ##
-  ## The following assumptions and requirements must be met:
-  ## - `str` must not be empty.
-  ## - `str` must be stripped of trailing and leading whitespaces.
-  ## - `sep` must not be `'-'`.
-  ## - `decimalDot` must not be `'-'` nor `' '`.
-  ## - `sep` and `decimalDot` must be different.
-  ## - No separator before a digit.
-  ## - There has to be 3 digits between successive separators.
-  ## - There has to be 3 digits between the last separator and the decimal dot.
-  ## - No separator after decimal dot.
-  ## - No duplicate separators.
-  ## - Floats without separator allowed.
-  ## - No trailing or leading thousand separators.
-  ##
-  ## See also:
-  ## * `parseFloat <strutils.html#parseFloat,string>`_
-  runnableExamples:
-    doAssert parseFloatThousandSep("-1,000") == -1000.0
-    doAssert parseFloatThousandSep("10,000.000") == 10000.0
-    doAssert parseFloatThousandSep("1,000,000.000") == 1000000.0
-    doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
-    doAssert parseFloatThousandSep("10.000,0", '.', ',') == 10000.0
-    doAssert parseFloatThousandSep("1'000'000,000", '\'', ',') == 1000000.0
-    doAssert parseFloatThousandSep("1000000") == 1000000.0
-    ## You can omit `sep`, but then all subsequent `sep` to the left must also be omitted:
-    doAssert parseFloatThousandSep("1000,000") == 1000000.0
+since (1, 5):
+  type ParseFloatOptions* = enum  ## Options for `parseFloatThousandSep`.
+    pfLeadingSep,    ## Allow leading separator, like ",9" and similar.
+    pfLeadingDot,    ## Allow leading dot, like ".9" and similar.
+    pfTrailingSep,   ## Allow trailing separator, like "9," and similar.
+    pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
+    pfMultipleMinus, ## Allow multiple minus, like "---9" and similar.
+    pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
+    pfDotOptional,   ## Allow "9", "-0", integers literals, etc.
+    pfEmptyString    ## Allow "" to return 0.0, so you do not need to do
+                     ## try: parseFloatThousandSep(str) except: 0.0
 
-  assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
+  func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions];
+      sep = ','; decimalDot = '.'): float =
+    ## Convenience func for `parseFloat` which allows for thousand separators,
+    ## this is designed to parse floats as found in the wild formatted for humans.
+    ##
+    ## Fine grained flexibility and strictness is up to the user,
+    ## you can set the `options` using `ParseFloatOptions` enum.
+    ##
+    ## `parseFloatThousandSep` "prepares" `str` and then calls `parseFloat`,
+    ## consequently `parseFloatThousandSep` by design is slower than `parseFloat`.
+    ##
+    ## The following assumptions and requirements must be met:
+    ## - `sep` must not be `'-'`.
+    ## - `decimalDot` must not be `'-'` nor `' '`.
+    ## - `sep` and `decimalDot` must be different.
+    ## - `str` must be stripped of trailing and leading whitespaces.
+    ## - `pfTrailingDot` and `pfLeadingDot` must not be used together.
+    ##
+    ## See also:
+    ## * `parseFloat <strutils.html#parseFloat,string>`_
+    runnableExamples:
+      doAssert parseFloatThousandSep("10,000.000", {}) == 10000.0
+      doAssert parseFloatThousandSep("1,000,000.000", {}) == 1000000.0
+      doAssert parseFloatThousandSep("10,000,000.000", {}) == 10000000.0
+      doAssert parseFloatThousandSep("1,222.0001", {}) == 1222.0001
+      doAssert parseFloatThousandSep("10.000,0", {}, '.', ',') == 10000.0
+      doAssert parseFloatThousandSep("1'000'000,000", {}, '\'', ',') == 1000000.0
+      doAssert parseFloatThousandSep("1000000", {pfDotOptional}) == 1000000.0
+      doAssert parseFloatThousandSep("-1,000", {pfDotOptional}) == -1000.0
+      ## You can omit `sep`, but then all subsequent `sep` to the left must also be omitted:
+      doAssert parseFloatThousandSep("1000,000", {pfDotOptional}) == 1000000.0
+      ## Examples using different ParseFloatOptions:
+      doAssert parseFloatThousandSep(",1.0", {pfLeadingSep}) == 1.0
+      doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
+      doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
+      doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
+      doAssert parseFloatThousandSep("--1.0", {pfMultipleMinus}) == -1.0
+      doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
+      doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
 
-  proc raiseError(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
-    raise newException(ValueError,
-      "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
-      [c.repr, $i, s.repr])
+    assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
+    assert not(pfTrailingDot in options and pfLeadingDot in options)
 
-  if str[0] in {sep, decimalDot}: raiseError(0, sep, str) # Fail fast for ",9"
-  if str[^1] in {sep, decimalDot}: raiseError(str.len, sep, str) # Fail for "9,"
-  # Must be len > 4 to have thousands sep. Fail fast for "9,9", "9,99", etc.
-  if not(str.len > 4) and sep in str: raiseError(0, sep, str) # "1,1" "1,11"
+    proc parseFloatThousandSepRaise(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
+      raise newException(ValueError,
+        "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
+        [c.repr, $i, s.repr])
 
-  var s = newStringOfCap(str.len)
-  var successive: int
-  var afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative: bool
-  for idx, c in str:
-    if c in '0' .. '9':  # Digits
-      if hasAnySep and successive > 2:
-        raiseError(idx, c, str)
+    # Fail fast, before looping.
+    let strLen = str.len
+    if strLen == 0: # Empty string.
+      if pfEmptyString notin options:
+        parseFloatThousandSepRaise(0, ' ', "empty string")
       else:
-        s.add c
-        lastWasSep = false
-        lastWasDot = false
-        inc successive
-    if c == sep:  # Thousands separator, this is NOT the dot
-      if lastWasSep or afterDot or (isNegative and idx == 1 or idx == 0):
-        raiseError(idx, c, str)
-      else:
-        lastWasSep = true # Do NOT add the Thousands separator here.
-        hasAnySep = true
-        successive = 0
-    if c == decimalDot:  # This is the dot
-      if (isNegative and idx == 1 or idx == 0) or (hasAnySep and successive != 3):  # Disallow .1
-        raiseError(idx, c, str)
-      else:
-        s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
-        successive = 0
-        lastWasDot = true
-        afterDot = true
-    if c == '-':  # Allow negative float
-      if isNegative or idx != 0:  # Disallow ---1.0
-        raiseError(idx, c, str)
-      else:
-        s.add '-'
-        isNegative = true
-  result = parseFloat(s)
+        return 0.0 # So user dont need to do `(try: parseFloat(str) except: 0.0)` etc
+    if pfLeadingSep notin options and str[0] == sep:          # ",1"
+      parseFloatThousandSepRaise(0, sep, str)
+    if pfLeadingDot notin options and str[0] == decimalDot:   # ".1"
+      parseFloatThousandSepRaise(0, decimalDot, str)
+    if pfTrailingSep notin options and str[^1] == sep:        # "1,"
+      parseFloatThousandSepRaise(strLen, sep, str)
+    if pfTrailingDot notin options and str[^1] == decimalDot: # "1."
+      parseFloatThousandSepRaise(strLen, decimalDot, str)
+    if pfSepAnywhere notin options and (not(str.len > 4) and sep in str) and
+      pfLeadingSep notin options and pfTrailingSep notin options:
+      parseFloatThousandSepRaise(0, sep, str)                 # "1,1"
+
+    var
+      s = newStringOfCap(strLen)
+      successive: int
+      afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative, hasAnyDot: bool
+
+    for idx, c in str:
+      if c in '0' .. '9':  # Digits
+        if pfSepAnywhere notin options and hasAnySep and not afterDot and successive > 2:
+          parseFloatThousandSepRaise(idx, c, str)
+        else:
+          s.add c
+          lastWasSep = false
+          lastWasDot = false
+          inc successive
+      if c == sep:  # Thousands separator, this is NOT the dot
+        if pfSepAnywhere notin options and (lastWasSep or afterDot) or
+          pfLeadingSep notin options and (isNegative and idx == 1 or idx == 0):
+          parseFloatThousandSepRaise(idx, c, str)
+        else:
+          lastWasSep = true # Do NOT add the Thousands separator here.
+          hasAnySep = true
+          successive = 0
+      if c == decimalDot:  # This is the dot
+        if pfLeadingDot notin options and (isNegative and idx == 1 or idx == 0) or
+          pfLeadingDot in options and hasAnySep and successive != 3: # Disallow .1
+          parseFloatThousandSepRaise(idx, c, str)
+        else:
+          s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
+          successive = 0
+          lastWasDot = true
+          afterDot = true
+          hasAnyDot = true
+      if c == '-':  # Allow negative float
+        if pfMultipleMinus notin options and (isNegative or idx != 0):  # Disallow ---1.0
+          parseFloatThousandSepRaise(idx, c, str)
+        else:
+          if idx == 0: s.add '-'
+          isNegative = true
+
+    if pfDotOptional notin options and not hasAnyDot:
+      parseFloatThousandSepRaise(0, sep, str)
+    result = parseFloat(s)
 
 
 when isMainModule:
