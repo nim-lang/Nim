@@ -37,17 +37,18 @@
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors
-- Added `asyncdispatch.maxDescriptors` that returns the maximum number of
-  active async event handles/file descriptors.
 
 - ``--gc:orc`` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
 
 
+- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
+  determining preferred I/O block size for this file object.
 
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
+
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 
