@@ -328,7 +328,7 @@ proc boot(args: string) =
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
-      echo "Executables are equal: SUCCESS!"
+      echo "executables are equal: SUCCESS!"
       return
     copyExe(output, (i+1).thVersion)
   copyExe(output, finalDest)
