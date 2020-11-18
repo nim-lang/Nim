@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp js"
-  matrix: ";--gc:arc"
 """
+# pending #16033, do: matrix: ";--gc:arc"
 
 from strutils import endsWith, contains
 
