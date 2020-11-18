@@ -3203,7 +3203,6 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
   ## * `sameFile proc <#sameFile,string,string>`_
   var a, b: File
   var mustRead = true
-  var bufA, bufB: pointer
   try:  # readBuffer or open may or may not raise IOError.
     if not open(a, path1):
       if checkFiles:
@@ -3218,27 +3217,29 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
     let aInfo = getFileInfo(a)
     let bInfo = getFileInfo(b)
     let bufferSize = max(aInfo.blockSize, bInfo.blockSize)
-    bufA = alloc(bufferSize)
-    bufB = alloc(bufferSize)
     if checkSize and aInfo.size != bInfo.size: mustRead = false
-    if mustRead:
-      while true:
-        var readA = readBuffer(a, bufA, bufferSize)
-        var readB = readBuffer(b, bufB, bufferSize)
-        if readA != readB: break
-        if readA > 0:
-          result = equalMem(bufA, bufB, readA)
-          if not result: break
-        if readA != bufferSize:
-          let enda = endOfFile(a)
-          let endb = endOfFile(b)
-          if enda != endb: break
-          if enda:
-            result = true
-            break
+    var bufA = alloc(bufferSize)
+    var bufB = alloc(bufferSize)
+    try:
+      if mustRead:
+        while true:
+          var readA = readBuffer(a, bufA, bufferSize)
+          var readB = readBuffer(b, bufB, bufferSize)
+          if readA != readB: break
+          if readA > 0:
+            result = equalMem(bufA, bufB, readA)
+            if not result: break
+          if readA != bufferSize:
+            let enda = endOfFile(a)
+            let endb = endOfFile(b)
+            if enda != endb: break
+            if enda:
+              result = true
+              break
+    finally:
+      dealloc(bufA)
+      dealloc(bufB)
   finally:
-    dealloc(bufA)
-    dealloc(bufB)
     close(a)
     close(b)
 
