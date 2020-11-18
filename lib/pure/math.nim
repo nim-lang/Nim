@@ -158,7 +158,7 @@ proc classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
-proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
+proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4, equalNan:  bool = false): bool {.
       since: (1, 5), inline, noSideEffect.} =
   ## Checks if two float values are almost equal, using
   ## `machine epsilon <https://en.wikipedia.org/wiki/Machine_epsilon>`_.
@@ -173,10 +173,27 @@ proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
   ## and multiplied by the desired precision in ULPs unless the difference is
   ## subnormal.
   ##
+  ## `equalNan` Whether to compare NaN’s as equal. If True, NaN’s in a will be
+  ## considered equal to NaN’s in b. Same as `Numpy
+  ## <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html>`_
   # taken from: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
   runnableExamples:
     doAssert almostEqual(3.141592653589793, 3.1415926535897936)
     doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert not almostEqual(Inf, -Inf)
+    doAssert not almostEqual(-Inf, Inf)
+    doAssert not (NaN == NaN)
+    doAssert not almostEqual(NaN, NaN)
+    doAssert almostEqual(NaN, NaN, equalNan = true)
+
+  if (equalNan == true) and (classify(x) == fcNan) and (classify(y) == fcNan):
+      return true
+
+  if x == y: # short circuit exact equality and allow Inf comparison
+    return true
+
   let diff = abs(x - y)
   result = diff <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
       diff < minimumPositiveValue(T)
