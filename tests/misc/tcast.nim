@@ -47,3 +47,29 @@ block:
   var x: ref int = nil
   doAssert cast[int](cast[ptr int](x)) == 0
 
+block:
+  block:
+    static:
+      let a = cast[pointer](nil)
+      doAssert a.repr == "nil"
+
+  block:
+    static:
+      doAssert cast[ptr int](nil).repr == "nil"
+
+  block:
+    const str = cast[ptr int](nil)
+    static:
+      doAssert str.repr == "nil"
+
+  block:
+    static:
+      doAssert cast[ptr int](nil).repr == "nil"
+
+  block:
+    static:
+      doAssert cast[RootRef](nil).repr == "nil"
+
+  block:
+    static:
+      doAssert cast[cstring](nil).repr == "nil"
