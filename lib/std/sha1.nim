@@ -213,7 +213,22 @@ proc secureHashFile*(filename: string): SecureHash =
   ## **See also:**
   ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a ``SecureHash`` from a string
   ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
-  secureHash(readFile(filename))
+  const BufferLength = 8192
+
+  let f = open(filename)
+  var state = newSha1State()
+  var buffer = newString(BufferLength)
+  while true:
+    let length = readChars(f, buffer, 0, BufferLength)
+    if length == 0:
+      break
+    buffer.setLen(length)
+    state.update(buffer)
+    if length != BufferLength:
+      break
+  close(f)
+
+  SecureHash(state.finalize())
 
 proc `$`*(self: SecureHash): string =
   ## Returns the string representation of a ``SecureHash``.
