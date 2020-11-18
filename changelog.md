@@ -44,6 +44,8 @@
   Added `checkFiles` argument to `os.sameFileContent` to `raise` if a file does not exist,
   because `sameFileContent("nonexistant", "nonexistant")` would silently return `false`.
 
+- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
+  determining preferred I/O block size for this file object.
 
 ## Language changes
 

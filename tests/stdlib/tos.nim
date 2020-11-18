@@ -548,11 +548,11 @@ block: # sameFileContent
   copyFile(f0, f1)
   doAssert sameFileContent(f0, f1)
   doAssert sameFileContent(f0, f1, checkSize = true)
-  doAssert sameFileContent(f0, f1, bufferSize = 1024)
+  doAssert sameFileContent(f0, f1)
   writeFile(f0, "?")
   doAssert not(sameFileContent(f0, f1))
   doAssert not(sameFileContent(f0, f1, checkSize = true))
-  doAssert not(sameFileContent(f0, f1, bufferSize = 1024))
+  doAssert not(sameFileContent(f0, f1))
   doAssert not sameFileContent("nonexistant", "nonexistant") # false
   doAssertRaises(IOError):
     discard sameFileContent("nonexistant", "nonexistant", checkFiles = true)
