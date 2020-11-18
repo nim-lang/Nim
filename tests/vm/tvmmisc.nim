@@ -529,5 +529,7 @@ block: # bug #15730
     var a5: cstring = "ab"
     doAssert a5 == a3
     doAssert a5 != a4
+    var a6 = a4
+    # doAssert a6 == ""
   static:main()
   main()
