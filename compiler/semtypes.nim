@@ -1979,6 +1979,10 @@ proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   incl m.typ.flags, tfCheckedForDestructor
 
 proc processMagicType(c: PContext, m: PSym) =
+  # ensure magic types are exported, early and often
+  m.flags.incl sfExported
+  addExport(c, m)
+
   case m.magic
   of mInt: setMagicIntegral(c.config, m, tyInt, c.config.target.intSize)
   of mInt8: setMagicIntegral(c.config, m, tyInt8, 1)

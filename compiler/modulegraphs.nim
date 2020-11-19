@@ -295,31 +295,29 @@ proc initExports*(g: ModuleGraph; m: PSym) =
 
 template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
 
-proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
-  ## add a symbol to a module's exported interface
-  if sfExported notin s.flags:
-    if s.kind in {skModule, skPackage}:
-      s.flags.incl sfExported
-      addExport(g, m, s)
-    else:
-      debug s
-      internalError(g.config, "cannot add export for unexported symbol")
-  else:
-    case m.kind
-    of skModule:
-      var iface = g.ifaces[m.position]
-      strTableAdd(iface.tab, s)
-    of skPackage:
-      strTableAdd(m.pkgTab, s)
-    else:
-      internalError(g.config, "cannot add export to " & $m.kind)
-
 proc getExport*(g: ModuleGraph; m: PSym; p: PIdent): PSym =
   ## fetch an exported symbol for the module by ident
-  assert m.kind == skModule
-  var iface = g.ifaces[m.position]
-  #assert iface.state > ifaceLoaded
-  result = strTableGet(iface.tab, p)
+  template iface: Iface = g.ifaces[m.position]
+  if m.kind == skModule:
+    #assert iface.state > ifaceLoaded
+    result = strTableGet(iface.tab, p)
+  else:
+    # implicit assertion that `m` is skPackage
+    result = strTableGet(m.pkgTab, p)
+
+proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
+  ## add a symbol to a module's exported interface
+  template iface: Iface = g.ifaces[m.position]
+  assert s != nil
+  assert m != nil
+  if sfExported in s.flags:
+    if m.kind == skModule:
+      strTableAdd(iface.tab, s)
+    else:
+      # implicit assertion that `m` is skPackage
+      strTableAdd(m.pkgTab, s)
+  else:
+    internalError(g.config, "cannot add export for unexported symbol")
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   ## setup the module's interface
@@ -342,8 +340,8 @@ proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
 
 iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
   ## yield all the symbols from the loaded iface for module `m`
+  template iface: Iface = g.ifaces[m.position]
   assert m.kind == skModule
-  var iface = g.ifaces[m.position]
   #assert iface.state >= ifaceLoaded
   if iface.state == ifaceLoaded:
     for s in items iface.patterns:
