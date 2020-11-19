@@ -760,7 +760,7 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
     ctx: MD5_CTX
 
   discard md5_Init(ctx)
-  while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
+  while(let bytes = f.readChars(buf); bytes > 0):
     discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
   discard md5_Final(buf[0].addr, ctx)

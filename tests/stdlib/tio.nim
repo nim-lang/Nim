@@ -1,10 +1,10 @@
 # xxx move to here other tests that belong here; io is a proper module
 
 import std/os
+from stdtest/specialpaths import buildDir
 
 block: # readChars
-  let dir = getTempDir()
-  let file = dir / "D20201118T205105.txt"
+  let file = buildDir / "D20201118T205105.txt"
   let s = "he\0l\0lo"
   writeFile(file, s)
   defer: removeFile(file)
