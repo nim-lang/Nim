@@ -13,6 +13,10 @@
 import std/private/since
 import macros, typetraits
 
+since (1,5,1):
+  import std/defers
+  export defers
+
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:

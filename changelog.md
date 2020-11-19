@@ -45,6 +45,8 @@
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
 
+- Added `defers.deferSCoped` as a library-defined, scoped alternative to `defer`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
