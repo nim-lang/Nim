@@ -65,12 +65,12 @@ proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineI
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
   ## add a symbol reference to the tree
   let info = n.info.toPackedInfo(ir, c)
-  ir.nodes.add Node(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
-                    typeId: toPackedType(n.typ, ir, c), info: info)
-  ir.nodes.add Node(kind: nkInt32Lit, info: info,
-                    operand: n.sym.itemId.module)
-  ir.nodes.add Node(kind: nkInt32Lit, info: info,
-                    operand: int32 toLitId(n.sym.name.s, ir, c))
+  ir.nodes.add PackedNode(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
+                          typeId: toPackedType(n.typ, ir, c), info: info)
+  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
+                          operand: n.sym.itemId.module)
+  ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
+                          operand: int32 toLitId(n.sym.name.s, ir, c))
 
 proc addMissing(c: var Context; p: PSym) =
   if not p.isNil:
@@ -186,29 +186,30 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   if n.isNil: return
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: 0,
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags, operand: 0,
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   of nkIdent:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags,
-                      operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
+                            operand: int32 getOrIncl(ir.sh.strings, n.ident.s),
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   of nkSym:
     toSymNode(n, ir, c)
   of directIntLit:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags, operand: int32(n.intVal),
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
+                            operand: int32(n.intVal),
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   of externIntLit:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags,
-                      operand: int32 getOrIncl(ir.sh.integers, n.intVal),
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
+                            operand: int32 getOrIncl(ir.sh.integers, n.intVal),
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   of nkStrLit..nkTripleStrLit:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags,
-                      operand: int32 getOrIncl(ir.sh.strings, n.strVal),
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
+                            operand: int32 getOrIncl(ir.sh.strings, n.strVal),
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   of nkFloatLit..nkFloat128Lit:
-    ir.nodes.add Node(kind: n.kind, flags: n.flags,
-                      operand: int32 getOrIncl(ir.sh.floats, n.floatVal),
-                      typeId: toPackedType(n.typ, ir, c), info: info)
+    ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
+                            operand: int32 getOrIncl(ir.sh.floats, n.floatVal),
+                            typeId: toPackedType(n.typ, ir, c), info: info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
                               toPackedType(n.typ, ir, c), info)

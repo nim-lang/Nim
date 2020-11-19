@@ -101,7 +101,7 @@ proc asItemId(ir: PackedTree; pos = 0.NodePos): ItemId =
   result.item = ir.nodes[pos.int + 2].operand
 
 proc fromSymNode(ir: PackedTree; c: var Context; pos = 0.NodePos): PSym =
-  template n: Node = ir.nodes[int pos]
+  template n: PackedNode = ir.nodes[int pos]
   let id =
     case n.kind
     of nkModuleRef:
@@ -131,7 +131,7 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
     result.methods.add (generic, loadSymbol(id, c, ir))
 
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
-  template n: Node = ir.nodes[int pos]
+  template n: PackedNode = ir.nodes[int pos]
   result = PNode(typ: fromType(n.typeId, ir, c), flags: n.flags,
                  kind: n.kind, info: fromLineInfo(n.info, ir, c))
 
