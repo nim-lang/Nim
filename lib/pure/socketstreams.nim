@@ -136,8 +136,9 @@ proc wsFlush(s: Stream) =
   s.lastFlush = s.buf.len
 
 proc rsClose(s: Stream) =
-  var s = ReadSocketStream(s)
-  s.data.close()
+  {.cast(tags: []).}:
+    var s = ReadSocketStream(s)
+    s.data.close()
 
 proc newReadSocketStream*(s: Socket): owned ReadSocketStream =
   result = ReadSocketStream(data: s, pos: 0,
