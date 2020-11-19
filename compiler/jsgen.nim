@@ -2598,6 +2598,13 @@ proc genHeader(): Rope =
     var framePtr = null;
     var excHandler = 0;
     var lastJSError = null;
+    var globalThis;
+    if(typeof globalThis == 'undefined') globalThis = (function () { 
+      if (typeof self !== 'undefined') { return self; } 
+      if (typeof window !== 'undefined') { return window; } 
+      if (typeof global !== 'undefined') { return global; } 
+      throw new Error('unable to locate global object'); 
+    })();
     if (typeof Int8Array === 'undefined') Int8Array = Array;
     if (typeof Int16Array === 'undefined') Int16Array = Array;
     if (typeof Int32Array === 'undefined') Int32Array = Array;
