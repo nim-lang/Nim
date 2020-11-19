@@ -91,43 +91,43 @@ func sumShewchuck_add[T: SomeFloat](v: openArray[T]): seq[T] =
     var x = x
     var i = 0
     for y in result:
-       let sum = twoSum(x, y)
-       let hi = sum[0]
-       let lo = sum[1]
-       if lo != 0.0:
-          result[i] = lo
-          i.inc
-       x = hi
+      let sum = twoSum(x, y)
+      let hi = sum[0]
+      let lo = sum[1]
+      if lo != 0.0:
+        result[i] = lo
+        i.inc
+      x = hi
     setLen(result, i + 1)
     result[i] = x
 
 func sumShewchuck_total[T: SomeFloat](partials: openArray[T]): T =
   var hi = 0.0
   if len(partials) > 0:
-     var n = len(partials)
-     dec(n)
-     hi = partials[n]
-     var lo = 0.0
-     while n > 0:
-       var x = hi
-       dec(n)
-       var y = partials[n]
-       let sum = twoSum(x, y)
-       hi = sum[0]
-       lo = sum[1]
-       if lo != 0.0:
-         break
-       if (n > 0 and
-           (
-             (lo < 0.0 and partials[n - 1] < 0.0) or
-             (lo > 0.0 and partials[n - 1] > 0.0)
-           )
-         ):
-           y = lo * 2.0
-           x = hi + y
-           var yr = x - hi
-           if y == yr:
-             hi = x
+    var n = len(partials)
+    dec(n)
+    hi = partials[n]
+    var lo = 0.0
+    while n > 0:
+      var x = hi
+      dec(n)
+      var y = partials[n]
+      let sum = twoSum(x, y)
+      hi = sum[0]
+      lo = sum[1]
+      if lo != 0.0:
+        break
+      if (n > 0 and
+          (
+            (lo < 0.0 and partials[n - 1] < 0.0) or
+            (lo > 0.0 and partials[n - 1] > 0.0)
+          )
+        ):
+        y = lo * 2.0
+        x = hi + y
+        var yr = x - hi
+        if y == yr:
+          hi = x
   result = hi
 
 func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
