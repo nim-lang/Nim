@@ -1335,7 +1335,7 @@ when not defined(nimV2):
   proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
     ## Takes any Nim variable and returns its string representation.
     ## No trailing newline is inserted (so `echo` won't add an empty newline).
-    ## Use `-d:nimTransition16034` to revert to old behavior where newlines
+    ## Use `-d:nimReprWithNewline` to revert to old behavior where newlines
     ## were added in some cases.
     ##
     ## It works even for complex data graphs with cycles. This is a great
