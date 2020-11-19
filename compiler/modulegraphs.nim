@@ -310,6 +310,8 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
   template iface: Iface = g.ifaces[m.position]
   assert s != nil
   assert m != nil
+  if s.kind in {skModule, skPackage}:
+    s.flags.incl sfExported
   if sfExported in s.flags:
     if m.kind == skModule:
       strTableAdd(iface.tab, s)
