@@ -128,7 +128,6 @@ since (1, 5):
       ## You can omit `sep`, but then all subsequent `sep` to the left must also be omitted:
       doAssert parseFloatThousandSep("1000,000", {pfDotOptional}) == 1000000.0
       ## Examples using different ParseFloatOptions:
-      doAssert parseFloatThousandSep(",1.0", {pfLeadingSep}) == 1.0
       doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
       doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
