@@ -93,7 +93,6 @@ since (1, 5):
     pfLeadingDot,    ## Allow leading dot, like ".9" and similar.
     pfTrailingSep,   ## Allow trailing separator, like "9," and similar.
     pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
-    pfMultipleMinus, ## Allow multiple minus, like "---9" and similar.
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
     pfDotOptional,   ## Allow "9", "-0", integers literals, etc.
     pfEmptyString    ## Allow "" to return 0.0, so you do not need to do
@@ -135,7 +134,6 @@ since (1, 5):
       doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
       doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
-      doAssert parseFloatThousandSep("--1.0", {pfMultipleMinus}) == -1.0
       doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
       doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
 
@@ -199,7 +197,7 @@ since (1, 5):
           afterDot = true
           hasAnyDot = true
       if c == '-':  # Allow negative float
-        if pfMultipleMinus notin options and (isNegative or idx != 0):  # Disallow ---1.0
+        if isNegative or idx != 0:  # Disallow ---1.0
           parseFloatThousandSepRaise(idx, c, str)
         else:
           if idx == 0: s.add '-'
