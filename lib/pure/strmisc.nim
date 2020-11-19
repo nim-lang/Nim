@@ -134,7 +134,7 @@ since (1, 5):
     proc parseFloatThousandSepRaise(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
       raise newException(ValueError,
         "Invalid float containing thousand separators, invalid char $1 at index $2 for input $3" %
-        [c.repr, $i, s.repr])
+        [$c, $i, $s])
 
     # Fail fast, before looping.
     let strLen = str.len
