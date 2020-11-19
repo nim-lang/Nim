@@ -96,7 +96,7 @@ since (1, 5):
     pfEmptyString    ## Allow "" to return 0.0, so you do not need to do
                      ## try: parseFloatThousandSep(str) except: 0.0
 
-  func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions];
+  func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions] = {};
       sep = ','; decimalDot = '.'): float =
     ## Convenience func for `parseFloat` which allows for thousand separators,
     ## this is designed to parse floats as found in the wild formatted for humans.
@@ -112,15 +112,12 @@ since (1, 5):
     ## - `decimalDot` must not be `'-'` nor `' '`.
     ## - `sep` and `decimalDot` must be different.
     ## - `str` must be stripped of trailing and leading whitespaces.
-    ## - `pfTrailingDot` and `pfLeadingDot` must not be used together.
     ##
     ## See also:
     ## * `parseFloat <strutils.html#parseFloat,string>`_
     runnableExamples:
-      doAssert parseFloatThousandSep("10,000.000", {}) == 10000.0
-      doAssert parseFloatThousandSep("1,000,000.000", {}) == 1000000.0
-      doAssert parseFloatThousandSep("10,000,000.000", {}) == 10000000.0
-      doAssert parseFloatThousandSep("1,222.0001", {}) == 1222.0001
+      doAssert parseFloatThousandSep("10,000,000.000") == 10000000.0
+      doAssert parseFloatThousandSep("1,222.0001") == 1222.0001
       doAssert parseFloatThousandSep("10.000,0", {}, '.', ',') == 10000.0
       doAssert parseFloatThousandSep("1'000'000,000", {}, '\'', ',') == 1000000.0
       doAssert parseFloatThousandSep("1000000", {pfDotOptional}) == 1000000.0
@@ -131,11 +128,11 @@ since (1, 5):
       doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
       doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
-      doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
+      doAssert parseFloatThousandSep("10,0.0,0,0", {pfSepAnywhere}) == 100.0
       doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
+      doAssert parseFloatThousandSep("01.00") == 1.0
 
     assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
-    assert not(pfTrailingDot in options and pfLeadingDot in options)
 
     proc parseFloatThousandSepRaise(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
       raise newException(ValueError,
@@ -149,15 +146,15 @@ since (1, 5):
         parseFloatThousandSepRaise(0, ' ', "empty string")
       else:
         return 0.0 # So user dont need to do `(try: parseFloat(str) except: 0.0)` etc
-    if str[0] == sep:          # ",1"
+    if str[0] == sep:                                         # ",1"
       parseFloatThousandSepRaise(0, sep, str)
     if pfLeadingDot notin options and str[0] == decimalDot:   # ".1"
       parseFloatThousandSepRaise(0, decimalDot, str)
-    if str[^1] == sep:        # "1,"
+    if str[^1] == sep:                                        # "1,"
       parseFloatThousandSepRaise(strLen, sep, str)
     if pfTrailingDot notin options and str[^1] == decimalDot: # "1."
       parseFloatThousandSepRaise(strLen, decimalDot, str)
-    if pfSepAnywhere notin options and (not(str.len > 4) and sep in str):
+    if pfSepAnywhere notin options and (str.len <= 4 and sep in str):
       parseFloatThousandSepRaise(0, sep, str)                 # "1,1"
 
     var
