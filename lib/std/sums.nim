@@ -154,6 +154,10 @@ runnableExamples:
       const data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
       doAssert sumKbn(data) == 45
       doAssert sumPairs(data) == 45
+      const dataFloat = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+      doAssert sumPairs(dataFloat) != 1.0 # 0.9999...
+      doAssert sumKbn(dataFloat) == 1.0
+      doAssert sumShewchuck(dataFloat) == 1.0
 
 
 when isMainModule:
@@ -164,6 +168,7 @@ when isMainModule:
     epsilon /= 2.0
   let data = @[1.0, epsilon, -epsilon]
   assert sumKbn(data) == 1.0
+  assert sumShewchuck(data) == 1.0
   assert sumPairs(data) != 1.0 # known to fail
   assert (1.0 + epsilon) - epsilon != 1.0
 
@@ -171,10 +176,12 @@ when isMainModule:
   for n in 1 .. 1000:
     tc1.add 1.0 / n.float
   assert sumKbn(tc1) == 7.485470860550345
+  assert sumShewchuck(tc1) == 7.485470860550345
   assert sumPairs(tc1) == 7.485470860550345
 
   var tc2: seq[float]
   for n in 1 .. 1000:
     tc2.add pow(-1.0, n.float) / n.float
   assert sumKbn(tc2) == -0.6926474305598203
+  assert sumShewchuck(tc2) == -0.6926474305598203
   assert sumPairs(tc2) == -0.6926474305598204
