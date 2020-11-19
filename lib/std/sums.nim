@@ -83,11 +83,7 @@ func sum2*[T: SomeFloat](v: openArray[T]): T =
     e += sum[1]
   return s + e
 
-func shewchuckSum_add*[T: SomeFloat](v: openArray[T]): seq[T] =
-  ## Full precision sum of values in iterable. Returns the value of the
-  ## sum, rounded to the nearest representable floating-point number
-  ## using the round-half-to-even rule
-  ##
+func sumShewchuck_add[T: SomeFloat](v: openArray[T]): seq[T] =
   ## Original PR: https://github.com/nim-lang/Nim/pull/9284
   ## Return partials result.
   ## Result must be summed
@@ -105,7 +101,7 @@ func shewchuckSum_add*[T: SomeFloat](v: openArray[T]): seq[T] =
     setLen(result, i + 1)
     result[i] = x
 
-func shewchuckSum_total*[T: SomeFloat](partials: openArray[T]): T =
+func sumShewchuck_total[T: SomeFloat](partials: openArray[T]): T =
   var hi = 0.0
   if len(partials) > 0:
      var n = len(partials)
@@ -134,15 +130,19 @@ func shewchuckSum_total*[T: SomeFloat](partials: openArray[T]): T =
              hi = x
   result = hi
 
-func shewchuckSum*[T: SomeFloat](x: openArray[T]): T =
+func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
+  ## Full precision sum of values in iterable. Returns the value of the
+  ## sum, rounded to the nearest representable floating-point number
+  ## using the round-half-to-even rule
+  ##
   ## https://docs.python.org/3/library/math.html#math.fsum
   ## https://code.activestate.com/recipes/393090/
   ## www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
-  shewchuckSum_total(shewchuckSum_add(x))
+  sumShewchuck_total(sumShewchuck_add(x))
 
 func fsum*[T: SomeFloat](x: openArray[T]): T =
   ## Alias of shewchuckSum function as python fsum
-  shewchuckSum(x)
+  sumShewchuck(x)
 
 func neumaierSum*[T: SomeFloat](x: openArray[T]): T =
   ## improved Kahan–Babuška algorithm
