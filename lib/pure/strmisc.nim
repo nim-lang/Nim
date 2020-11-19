@@ -92,9 +92,7 @@ since (1, 5):
     pfLeadingDot,    ## Allow leading dot, like ".9" and similar.
     pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
-    pfDotOptional,   ## Allow "9", "-0", integers literals, etc.
-    pfEmptyString    ## Allow "" to return 0.0, so you do not need to do
-                     ## try: parseFloatThousandSep(str) except: 0.0
+    pfDotOptional    ## Allow "9", "-0", integers literals, etc.
 
   func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions] = {};
       sep = ','; decimalDot = '.'): float =
@@ -129,7 +127,6 @@ since (1, 5):
       doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
       doAssert parseFloatThousandSep("10,0.0,0,0", {pfSepAnywhere}) == 100.0
-      doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
       doAssert parseFloatThousandSep("01.00") == 1.0
 
     assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
@@ -142,10 +139,7 @@ since (1, 5):
     # Fail fast, before looping.
     let strLen = str.len
     if strLen == 0: # Empty string.
-      if pfEmptyString notin options:
-        parseFloatThousandSepRaise(0, ' ', "empty string")
-      else:
-        return 0.0 # So user dont need to do `(try: parseFloat(str) except: 0.0)` etc
+      parseFloatThousandSepRaise(0, ' ', "empty string")
     if str[0] == sep:                                         # ",1"
       parseFloatThousandSepRaise(0, sep, str)
     if pfLeadingDot notin options and str[0] == decimalDot:   # ".1"

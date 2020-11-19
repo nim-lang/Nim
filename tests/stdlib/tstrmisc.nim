@@ -26,7 +26,7 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("1,")
   doAssertRaises(ValueError): discard parseFloatThousandSep("1.")
   doAssertRaises(ValueError): discard parseFloatThousandSep(".1")
-  doAssertRaises(ValueError): discard parseFloatThousandSep(" ", {pfDotOptional, pfEmptyString})
+  doAssertRaises(ValueError): discard parseFloatThousandSep(" ", {pfDotOptional})
 
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
   doAssert parseFloatThousandSep("-0", {pfDotOptional}) == -0.0
@@ -35,10 +35,9 @@ func main() =
   doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
   doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
   doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
-  doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
   doAssert parseFloatThousandSep(".10", {pfLeadingDot}) == 0.1
   doAssert parseFloatThousandSep("10.", {pfTrailingDot}) == 10.0
-  doAssert parseFloatThousandSep("10", {pfEmptyString, pfDotOptional, pfSepAnywhere}) == 10.0
+  doAssert parseFloatThousandSep("10", {pfDotOptional, pfSepAnywhere}) == 10.0
   doAssert parseFloatThousandSep("1.0,0,0,0,0,0,0,0", {pfSepAnywhere}) == 1.0
   doAssert parseFloatThousandSep("0,0,0,0,0,0,0,0.1", {pfSepAnywhere}) == 0.1
 
