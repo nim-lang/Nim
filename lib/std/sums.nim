@@ -59,6 +59,7 @@ func fastTwoSum*[T: SomeFloat](a, b: T): (T, T) =
   ## you must swap a and b if pre-condition is not satisfied
   ## s + r = a + b exactly (s is result[0] and r is result[1])
   ## s is the nearest FP number of a + B
+  assert(abs(a) >= abs(b))
   result[0] = a + b
   result[1] = b - (result[0] - a)
 
