@@ -85,9 +85,6 @@ func sum2*[T: SomeFloat](v: openArray[T]): T =
   return s + e
 
 func sumShewchuck_add[T: SomeFloat](v: openArray[T]): seq[T] =
-  ## Original PR: https://github.com/nim-lang/Nim/pull/9284
-  ## Return partials result.
-  ## Result must be summed
   for x in v:
     var x = x
     var i = 0
@@ -132,13 +129,19 @@ func sumShewchuck_total[T: SomeFloat](partials: openArray[T]): T =
   result = hi
 
 func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
+  ## Shewchuk's summation
   ## Full precision sum of values in iterable. Returns the value of the
   ## sum, rounded to the nearest representable floating-point number
   ## using the round-half-to-even rule
   ##
-  ## https://docs.python.org/3/library/math.html#math.fsum
-  ## https://code.activestate.com/recipes/393090/
-  ## www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
+  ## See also:
+  ## - https://docs.python.org/3/library/math.html#math.fsum
+  ## - https://code.activestate.com/recipes/393090/
+  ##
+  ## Reference:
+  ## Shewchuk, JR. (1996) Adaptive Precision Floating-Point Arithmetic and \
+  ## Fast Robust GeometricPredicates.
+  ## http://www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
   sumShewchuck_total(sumShewchuck_add(x))
 
 func fsum*[T: SomeFloat](x: openArray[T]): T =
