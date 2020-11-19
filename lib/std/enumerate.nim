@@ -39,7 +39,7 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
     newVarStmt(x, infix(countStart, "-", newLit(1)))
 
   template genInc(x): untyped =
-    newCall(bindSym"inc", x))
+    newCall(bindSym"inc", x)
 
   expectKind x, nnkForStmt
   # check if the starting count is specified:
@@ -68,3 +68,22 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   result.add newFor
   # now wrap the whole macro in a block to create a new scope
   result = newBlockStmt(result)
+
+when isMainModule:
+  let a = @[1, 3, 5, 7]
+
+  block:
+    var res: seq[(int, int)]
+    for i, x in enumerate(a):
+      res.add (i, x)
+    assert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
+  block:
+    var res: seq[(int, int)]
+    for (i, x) in enumerate(a.items):
+      res.add (i, x)
+    assert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
+  block:
+    var res: seq[(int, int)]
+    for i, x in enumerate(3, a):
+      res.add (i, x)
+    assert res == @[(3, 1), (4, 3), (5, 5), (6, 7)]
