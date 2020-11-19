@@ -174,14 +174,18 @@ proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int
   ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
 
+proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], benign.} =
+  ## reads up to `a.len` bytes into the buffer `a`. Returns
+  ## the actual number of bytes that have been read which may be less than
+  ## `a.len` (if not as many bytes are remaining), but not greater.
+  result = readBuffer(f, addr(a[0]), a.len)
+
 proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
-  tags: [ReadIOEffect], benign.} =
+  tags: [ReadIOEffect], benign, deprecated:
+    "use other `readChars` overload, possibly via: readChars(toOpenArray(buf, start, len-1))".} =
   ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  ##
-  ## **Warning:** The buffer `a` must be pre-allocated. This can be done
-  ## using, for example, ``newString``.
   if (start + len) > len(a):
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)

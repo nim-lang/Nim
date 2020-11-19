@@ -45,6 +45,8 @@
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
 
+- Added a simpler to use `io.readChars` overload.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
