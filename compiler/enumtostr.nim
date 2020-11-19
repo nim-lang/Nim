@@ -1,16 +1,16 @@
 
 import ast, idents, lineinfos, modulegraphs, magicsys
 
-proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
-  result = newSym(skProc, getIdent(g.cache, "$"), t.owner, info)
+proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
+  result = newSym(skProc, getIdent(g.cache, "$"), nextId idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)
   dest.typ = t
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), nextId idgen, result, info)
   res.typ = getSysType(g, info, tyString)
 
-  result.typ = newType(tyProc, t.owner)
+  result.typ = newType(tyProc, nextId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)
@@ -62,16 +62,16 @@ proc searchObjCase(t: PType; field: PSym): PNode =
     result = searchObjCase(t[0].skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
   doAssert result != nil
 
-proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph): PSym =
-  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), t.owner, info)
+proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
+  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextId idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)
   dest.typ = field.typ
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), nextId idgen, result, info)
   res.typ = getSysType(g, info, tyUInt8)
 
-  result.typ = newType(tyProc, t.owner)
+  result.typ = newType(tyProc, nextId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)

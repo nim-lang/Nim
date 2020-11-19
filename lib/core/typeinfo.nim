@@ -108,7 +108,7 @@ when not defined(gcDestructors):
   proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
   proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
 else:
-  proc nimNewObj(size: int): pointer {.importCompilerProc.}
+  proc nimNewObj(size, align: int): pointer {.importCompilerProc.}
   proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.importCompilerProc.}
   proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     importCompilerProc.}
@@ -178,7 +178,7 @@ proc invokeNew*(x: Any) =
   ## performs ``new(x)``. `x` needs to represent a ``ref``.
   assert x.rawType.kind == tyRef
   when defined(gcDestructors):
-    cast[ppointer](x.value)[] = nimNewObj(x.rawType.base.size)
+    cast[ppointer](x.value)[] = nimNewObj(x.rawType.base.size, x.rawType.base.align)
   else:
     var z = newObj(x.rawType, x.rawType.base.size)
     genericAssign(x.value, addr(z), x.rawType)
@@ -327,7 +327,10 @@ proc setPointer*(x: Any, y: pointer) =
   ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
   assert x.rawType.kind in pointerLike
-  genericAssign(x.value, y, x.rawType)
+  if y != nil:
+    genericAssign(x.value, y, x.rawType)
+  else:
+    cast[ppointer](x.value)[] = nil
 
 proc fieldsAux(p: pointer, n: ptr TNimNode,
                ret: var seq[tuple[name: cstring, any: Any]]) =

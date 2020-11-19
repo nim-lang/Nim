@@ -142,8 +142,10 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
-  let x = trees.getRoot(n)
-  if x != nil and x.kind == skParam:
+  var x = n
+  while x.kind in {nkAddr, nkHiddenAddr, nkHiddenStdConv, nkHiddenDeref}:
+    x = x[0]
+  if x.kind == nkSym and x.sym.kind == skParam:
     result = false
   else:
     result = true
@@ -247,7 +249,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
-  if needsTmp:
+  if needsTmp and a.lode.typ != nil:
     var tmp: TLoc
     getTemp(p, a.lode.typ, tmp, needsInit=false)
     genAssignment(p, tmp, a, {})

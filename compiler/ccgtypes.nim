@@ -564,19 +564,21 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
+      let noAlias = if sfNoalias in field.flags: ~" NIM_NOALIAS" else: nil
+
       let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyUncheckedArray:
         result.addf("$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check, skField), sname])
       elif fieldType.kind == tySequence:
         # we need to use a weak dependency here for trecursive_table.
-        result.addf("$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescWeak(m, field.loc.t, check, skField), sname, noAlias])
       elif field.bitsize != 0:
-        result.addf("$1 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize)])
+        result.addf("$1$4 $2:$3;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, rope($field.bitsize), noAlias])
       else:
         # don't use fieldType here because we need the
         # tyGenericInst for C++ template support
-        result.addf("$1 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname])
+        result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
 proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
@@ -1264,10 +1266,10 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, owner)
-  result.rawAddSon(newType(tyPointer, owner))
-  var r = newType(tyRef, owner)
-  let obj = createObj(m.g.graph, owner, owner.info, final=false)
+  result = newType(tyTuple, nextId m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, nextId m.idgen, owner))
+  var r = newType(tyRef, nextId m.idgen, owner)
+  let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
 
@@ -1353,6 +1355,9 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 
+  if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
+    discard genTypeInfoV1(m, t, info)
+
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
@@ -1390,9 +1395,9 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, t.owner)
-  let p = newType(tyPtr, t.owner)
-  let a = newType(tyUncheckedArray, t.owner)
+  result = newType(tyTuple, nextId m.idgen, t.owner)
+  let p = newType(tyPtr, nextId m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, nextId m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p
@@ -1452,12 +1457,12 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyRef:
     genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC in {gcMarkAndSweep, gcRefc, gcV2, gcGo}:
       let markerProc = genTraverseProc(m, origType, sig)
       m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
   of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
@@ -1482,7 +1487,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   elif origType.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
 
-  if optTinyRtti in m.config.globalOptions and t.kind == tyObject:
+  if optTinyRtti in m.config.globalOptions and t.kind == tyObject and sfImportc notin t.sym.flags:
     let v2info = genTypeInfoV2(m, origType, info)
     addf(m.s[cfsTypeInit3], "$1->typeInfoV1 = (void*)&$2; $2.typeInfoV2 = (void*)$1;$n", [
       v2info, result])

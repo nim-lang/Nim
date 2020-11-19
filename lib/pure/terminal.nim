@@ -37,7 +37,10 @@ type
 
 var gTerm {.threadvar.}: owned(PTerminal)
 
-proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
+when defined(windows) and defined(consoleapp):
+  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [OSError].}
+else:
+  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
@@ -689,10 +692,9 @@ template styledEchoProcessArg(f: File, color: Color) =
 template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == resetStyle:
     resetAttributes(f)
-  when cmd == fgColor:
-    fgSetColor = true
-  when cmd == bgColor:
-    fgSetColor = false
+  elif cmd in {fgColor, bgColor}:
+    let term = getTerminal()
+    term.fgSetColor = cmd == fgColor
 
 macro styledWrite*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``write``, but treating terminal style arguments specially.

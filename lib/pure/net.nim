@@ -1827,6 +1827,10 @@ proc `$`*(address: IpAddress): string =
                 result.add(chr(uint16(ord('a'))+val-0xA))
               afterLeadingZeros = true
             mask = mask shr 4
+
+          if not afterLeadingZeros:
+            result.add '0'
+
           printedLastGroup = true
 
 proc dial*(address: string, port: Port,
@@ -2005,5 +2009,8 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
       newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
     else:
       newSocket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)
-  socket.connect($dest, 80.Port)
-  socket.getLocalAddr()[0].parseIpAddress()
+  try:
+    socket.connect($dest, 80.Port)
+    result = socket.getLocalAddr()[0].parseIpAddress()
+  finally:
+    socket.close()

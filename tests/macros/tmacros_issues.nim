@@ -29,6 +29,7 @@ array[0 .. 100, int]
 10
 test
 0o377'i8
+0o000000000755'i32
 1
 2
 3
@@ -257,6 +258,7 @@ macro toRendererBug(n): untyped =
   result = newLit repr(n)
 
 echo toRendererBug(0o377'i8)
+echo toRendererBug(0o755'i32)
 
 # bug #12129
 macro foobar() =

@@ -73,8 +73,17 @@ echo "Nimscript imports are successful."
 
 block:
   doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
+block:
+  doAssert $3'u == "3"
+  doAssert $3'u64 == "3"
 
 block: # #14142
   discard dirExists("/usr")
   discard fileExists("/usr/foo")
   discard findExe("nim")
+
+block:
+  doAssertRaises(AssertionDefect): doAssert false
+  try: doAssert false
+  except Exception as e:
+    discard

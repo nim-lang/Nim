@@ -219,7 +219,7 @@ proc eat(p: var Parser, tokType: TokType) =
     getTok(p)
   else:
     lexMessage(p.lex, errGenerated,
-      "expected: '" & TokTypeToStr[tokType] & "', but got: '" & prettyTok(p.tok) & "'")
+      "expected: '" & $tokType & "', but got: '" & prettyTok(p.tok) & "'")
 
 proc parLineInfo(p: Parser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -485,17 +485,24 @@ proc setOrTableConstr(p: var Parser): PNode =
   eat(p, tkCurlyRi) # skip '}'
 
 proc parseCast(p: var Parser): PNode =
-  #| castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
+  #| castExpr = 'cast' ('[' optInd typeDesc optPar ']' '(' optInd expr optPar ')') /
+  #                    ('(' optInd exprColonEqExpr optPar ')')
   result = newNodeP(nkCast, p)
   getTok(p)
-  eat(p, tkBracketLe)
-  optInd(p, result)
-  result.add(parseTypeDesc(p))
-  optPar(p)
-  eat(p, tkBracketRi)
-  eat(p, tkParLe)
-  optInd(p, result)
-  result.add(parseExpr(p))
+  if p.tok.tokType == tkBracketLe:
+    getTok(p)
+    optInd(p, result)
+    result.add(parseTypeDesc(p))
+    optPar(p)
+    eat(p, tkBracketRi)
+    eat(p, tkParLe)
+    optInd(p, result)
+    result.add(parseExpr(p))
+  else:
+    result.add p.emptyNode
+    eat(p, tkParLe)
+    optInd(p, result)
+    result.add(exprColonEqExpr(p))
   optPar(p)
   eat(p, tkParRi)
 
@@ -529,15 +536,21 @@ proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    result.add if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
-    while true:
+    let a = if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
+    result.add a
+
+    while p.tok.tokType != tkEof:
       if p.tok.tokType == tkSemiColon:
         getTok(p)
       if p.tok.tokType == tkParRi:
         break
       elif not (sameInd(p) or realInd(p)):
         parMessage(p, errInvalidIndentation)
-      result.add complexOrSimpleStmt(p)
+      let a = complexOrSimpleStmt(p)
+      if a.kind == nkEmpty:
+        parMessage(p, errExprExpected, p.tok)
+      else:
+        result.add a
   dec p.inSemiStmtList
   result.transitionSonsKind(nkStmtListExpr)
 
@@ -2244,7 +2257,13 @@ proc parseStmt(p: var Parser): PNode =
         if p.tok.tokType in {tkElse, tkElif}:
           break # Allow this too, see tests/parser/tifexprs
 
-        result.add complexOrSimpleStmt(p)
+        let a = complexOrSimpleStmt(p)
+        if a.kind == nkEmpty and not p.hasProgress:
+          parMessage(p, errExprExpected, p.tok)
+          break
+        else:
+          result.add a
+
         if not p.hasProgress and p.tok.tokType == tkEof: break
   else:
     # the case statement is only needed for better error messages:
