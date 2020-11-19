@@ -1440,6 +1440,11 @@ proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n[0] = semExprWithType(c, n[0])
+  let a = getConstExpr(c.module, n[0], c.idgen, c.graph)
+  if a != nil:
+    if a.kind == nkNilLit:
+      localError(c.config, n.info, "nil dereference is not allowed")
+    n[0] = a
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind

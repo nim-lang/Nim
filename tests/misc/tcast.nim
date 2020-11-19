@@ -33,7 +33,8 @@ reject: discard cast[ptr](a)
 # bug #15623
 block:
   if false:
-    echo cast[ptr int](nil)[]
+    let x = cast[ptr int](nil)
+    echo x[]
 
 block:
   if false:
