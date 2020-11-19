@@ -244,7 +244,7 @@ proc safeLineNm(info: TLineInfo): int =
 
 proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
   assert line >= 0
-  if optLineDir in conf.options:
+  if optLineDir in conf.options and line > 0:
     r.addf("$N#line $2 $1$N",
         [rope(makeSingleLineCString(filename)), rope(line)])
 
