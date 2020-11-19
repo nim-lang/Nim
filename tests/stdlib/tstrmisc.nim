@@ -27,6 +27,7 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("1.")
   doAssertRaises(ValueError): discard parseFloatThousandSep(".1")
   doAssertRaises(ValueError): discard parseFloatThousandSep(" ", {pfDotOptional})
+  doAssertRaises(ValueError): discard parseFloatThousandSep(".1.", {pfLeadingDot,pfTrailingDot})
 
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
   doAssert parseFloatThousandSep("-0", {pfDotOptional}) == -0.0
