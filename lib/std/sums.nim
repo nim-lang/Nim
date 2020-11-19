@@ -145,45 +145,6 @@ func fsum*[T: SomeFloat](x: openArray[T]): T =
   ## Alias of shewchuckSum function as python fsum
   sumShewchuck(x)
 
-func neumaierSum*[T: SomeFloat](x: openArray[T]): T =
-  ## improved Kahan–Babuška algorithm
-  ## https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
-  var sum = 0.0
-  var c = 0.0 # A running compensation for lost low-order bits.
-  for v in x:
-    var t = sum + v
-    # If sum is bigger, low-order digits of input[i] are lost.
-    if abs(sum) >= abs(v):
-      c += (sum - t) + v
-    else:
-      c += (v - t) + sum # Else low-order digits of sum are lost.
-      sum = t
-  return sum + c # Correction only applied once in the very end.
-
-func kleinSum*[T: SomeFloat](x: openArray[T]): T =
-  ## Klein variant
-  ## https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
-  var sum = 0.0
-  var cs = 0.0
-  var ccs = 0.0
-  for v in x:
-    var t = sum + v
-    var c = 0.0
-    var cc = 0.0
-    if abs(sum) >= abs(v):
-      c = (sum - t) + v
-    else:
-      c = (v - t) + sum
-    sum = t
-    t = cs + c
-    if abs(cs) >= abs(c):
-      cc = (cs - t) + c
-    else:
-      cc = (c - t) + cs
-    cs = t
-    ccs = ccs + cc
-  return sum + cs + ccs
-
 runnableExamples:
   static:
     block:
