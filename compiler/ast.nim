@@ -584,7 +584,7 @@ type
     skEnumField,          # an identifier in an enum
     skForVar,             # a for loop variable
     skLabel,              # a label (for block statement)
-    skStub,               # symbol is a stub and not yet loaded from the ROD
+    skStubIsUnused,       # -- unused symbol kind preserved just in case --
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
@@ -1008,7 +1008,7 @@ const
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
