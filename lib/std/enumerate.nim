@@ -28,9 +28,18 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
 
     let c = "abcd"
     var d: seq[(int, char)]
-    for i, x in enumerate(97, c):
+    for (i, x) in enumerate(97, c):
       d.add((i, x))
     assert d == @[(97, 'a'), (98, 'b'), (99, 'c'), (100, 'd')]
+
+  template genCounter(x): untyped =
+    # We strip off the first for loop variable and use it as an integer counter.
+    # We must immediately decrement it by one, because it gets incremented before
+    # the loop body - to be able to use the final expression in other macros.
+    newVarStmt(x, infix(countStart, "-", newLit(1)))
+
+  template genInc(x): untyped =
+    newCall(bindSym"inc", x))
 
   expectKind x, nnkForStmt
   # check if the starting count is specified:
@@ -42,18 +51,15 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   var newFor = newTree(nnkForStmt)
   if x.len == 3: # single iteration variable
     if x[0].kind == nnkVarTuple: # for (x, y, ...) in iter
-      result.add newVarStmt(x[0][0], infix(countStart, "-", newLit(1)))
-      body.insert(0, newCall(bindSym"inc", x[0][0]))
+      result.add genCounter(x[0][0])
+      body.insert(0, genInc(x[0][0]))
       for i in 1 .. x[0].len-2:
         newFor.add x[0][i]
     else:
-      error("enumerate iterator doesn't support tuples") # for x in iter
+      error("Missing second for loop variable") # for x in iter
   else: # for x, y, ... in iter
-    # We strip off the first for loop variable and use it as an integer counter.
-    # We must immediately decrement it by one, because it gets incremented before
-    # the loop body - to be able to use the final expression in other macros.
-    result.add newVarStmt(x[0], infix(countStart, "-", newLit(1)))
-    body.insert(0, newCall(bindSym"inc", x[0]))
+    result.add genCounter(x[0])
+    body.insert(0, genInc(x[0]))
     for i in 1 .. x.len-3:
       newFor.add x[i]
   # transform enumerate(X) to 'X'
