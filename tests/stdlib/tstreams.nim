@@ -4,7 +4,6 @@ discard """
 Hello! What is your name?
 Nice name: Arne
 fs is: nil
-
 threw exception
 _heh_
 '''

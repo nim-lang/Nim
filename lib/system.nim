@@ -1334,6 +1334,9 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
 when not defined(nimV2):
   proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
     ## Takes any Nim variable and returns its string representation.
+    ## No trailing newline is inserted (so `echo` won't add an empty newline).
+    ## Use `-d:nimLegacyReprWithNewline` to revert to old behavior where newlines
+    ## were added in some cases.
     ##
     ## It works even for complex data graphs with cycles. This is a great
     ## debugging tool.
