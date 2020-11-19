@@ -63,13 +63,15 @@ type
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
   JsonParser* = object of BaseLexer ## the parser object.
-    a*: string
-    tok*: TokKind
+    a*: string      ## last valid string
+    i*: int64       ## last valid integer
+    f*: float       ## last valid float
+    tok*: TokKind   ## current token kind
     kind: JsonEventKind
     err: JsonError
     state: seq[ParserState]
     filename: string
-    rawStringLiterals: bool
+    rawStringLiterals, strIntegers, strFloats: bool
 
   JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
                                         ## JSON kind is incorrect.
@@ -102,17 +104,25 @@ const
   ]
 
 proc open*(my: var JsonParser, input: Stream, filename: string;
-           rawStringLiterals = false) =
+           rawStringLiterals = false, strIntegers = true, strFloats = true) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. If `rawStringLiterals` is true, string literals
   ## are kept with their surrounding quotes and escape sequences in them are
-  ## left untouched too.
+  ## left untouched too.  If `strIntegers` is true, the `a` field is set to the
+  ## substring used to build the integer `i`.  If `strFloats` is true, the `a`
+  ## field is set to the substring used to build the float `f`.  These are
+  ## distinct from `rawFloats` & `rawIntegers` in `json` module, but must be
+  ## true for those raw* forms to work correctly.  Parsing is about 1.5x faster
+  ## with all 3 flags false vs. all true, but false `str` defaults are needed
+  ## for backward compatibility.
   lexbase.open(my, input)
   my.filename = filename
   my.state = @[stateStart]
   my.kind = jsonError
   my.a = ""
   my.rawStringLiterals = rawStringLiterals
+  my.strIntegers = strIntegers
+  my.strFloats = strFloats
 
 proc close*(my: var JsonParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
@@ -317,35 +327,79 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
-proc parseNumber(my: var JsonParser) =
-  var pos = my.bufpos
-  if my.buf[pos] == '-':
-    add(my.a, '-')
-    inc(pos)
-  if my.buf[pos] == '.':
-    add(my.a, "0.")
-    inc(pos)
-  else:
-    while my.buf[pos] in Digits:
-      add(my.a, my.buf[pos])
-      inc(pos)
-    if my.buf[pos] == '.':
-      add(my.a, '.')
-      inc(pos)
-  # digits after the dot:
-  while my.buf[pos] in Digits:
-    add(my.a, my.buf[pos])
-    inc(pos)
-  if my.buf[pos] in {'E', 'e'}:
-    add(my.a, my.buf[pos])
-    inc(pos)
-    if my.buf[pos] in {'+', '-'}:
-      add(my.a, my.buf[pos])
-      inc(pos)
-    while my.buf[pos] in Digits:
-      add(my.a, my.buf[pos])
-      inc(pos)
-  my.bufpos = pos
+proc i64(c: char): int64 {.inline.} = int64(ord(c) - ord('0'))
+
+proc pow10(e: int64): float {.inline.} =
+  const p10 = [1e-22, 1e-21, 1e-20, 1e-19, 1e-18, 1e-17, 1e-16, 1e-15, 1e-14,
+               1e-13, 1e-12, 1e-11, 1e-10, 1e-09, 1e-08, 1e-07, 1e-06, 1e-05,
+               1e-4, 1e-3, 1e-2, 1e-1, 1.0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7,
+               1e8, 1e9]                        # 4*64B cache lines = 32 slots
+  if -22 <= e and e <= 9:
+    return p10[e + 22]                          # common case=small table lookup
+  result = 1.0
+  var base = 10.0
+  var e = e
+  if e < 0:
+    e = -e
+    base = 0.1
+  while e != 0:
+    if (e and 1) != 0:
+      result *= base
+    e = e shr 1
+    base *= base
+
+proc parseNumber(my: var JsonParser): TokKind {.inline.} =
+  # Parse/validate/classify all at once, both setting & returning token kind
+  # and, if not `tkError`, leaving the binary numeric answer in `my.[if]`.
+  const Sign = {'+', '-'} # NOTE: `parseFloat` can generalize this to INF/NAN.
+  var i = my.bufpos                             # NUL ('\0') terminated
+  var noDot = false
+  var exp = 0'i64
+  var p10 = 0
+  var pnt = -1                                  # find '.' (point); do digits
+  var nD = 0
+  my.i = 0'i64                                  # build my.i up from zero..
+  if my.buf[i] in Sign:
+    i.inc                                       # skip optional sign
+  while my.buf[i] != '\0':                      # ..and track scale/pow10.
+    if my.buf[i] notin Digits:
+      if my.buf[i] != '.' or pnt >= 0:
+        break                                   # a second '.' is forbidden
+      pnt = nD                                  # save location of '.' (point)
+      nD.dec                                    # undo loop's nD.inc
+    elif nD < 20:                               # 2**63==9.2e18 => 19 digits ok
+      my.i = 10 * my.i + my.buf[i].i64          # core ASCII->binary transform
+    else:                                       # 20+ digits before decimal
+      p10.inc                                   # any digit moves implicit '.'
+    i.inc
+    nD.inc
+  if my.buf[my.bufpos] == '-':
+    my.i = -my.i                                # adjust sign
+  if pnt < 0:                                   # never saw '.'
+    pnt = nD; noDot = true                      # so set to number of digits
+  elif nD == 1:
+    return tkError                              # ONLY "[+-]*\.*"
+  if my.buf[i] in {'E', 'e'}:                   # optional exponent
+    i.inc
+    let i0 = i
+    if my.buf[i] in Sign:
+      i.inc                                     # skip optional sign
+    while my.buf[i] in Digits:                  # build exponent
+      exp = 10 * exp + my.buf[i].i64
+      i.inc
+    if my.buf[i0] == '-':
+      exp = -exp                                # adjust sign
+  elif noDot: # and my.i < (1'i64 shl 53'i64) ? # No '.' & No [Ee]xponent
+    my.bufpos = i
+    if my.strIntegers:
+      my.a = my.buf[my.bufpos..<i]
+    return tkInt                                # mark as integer
+  exp += pnt - nD + p10                         # combine explicit&implicit exp
+  my.f = my.i.float * pow10(exp)                # has round-off vs. 80-bit
+  if my.strFloats:
+    my.a = my.buf[my.bufpos..<i]
+  my.bufpos = i
+  return tkFloat                                # mark as float
 
 proc parseName(my: var JsonParser) =
   var pos = my.bufpos
@@ -355,17 +409,13 @@ proc parseName(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc getTok*(my: var JsonParser): TokKind =
-  setLen(my.a, 0)
+proc getTok*(my: var JsonParser): TokKind {.inline.} =
   skip(my) # skip whitespace, comments
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9':
-    parseNumber(my)
-    if {'.', 'e', 'E'} in my.a:
-      result = tkFloat
-    else:
-      result = tkInt
+    result = parseNumber(my)
   of '"':
+    setLen(my.a, 0)
     result = parseString(my)
   of '[':
     inc(my.bufpos)
@@ -388,6 +438,7 @@ proc getTok*(my: var JsonParser): TokKind =
   of '\0':
     result = tkEof
   of 'a'..'z', 'A'..'Z', '_':
+    setLen(my.a, 0)
     parseName(my)
     case my.a
     of "null": result = tkNull
@@ -524,3 +575,31 @@ proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
 proc eat*(p: var JsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
+
+iterator jsonTokens*(input: Stream, path: string, rawStringLiterals = false,
+                     strIntegers = true, strFloats = true): ptr JsonParser =
+  ## Yield each successive `ptr JsonParser` while parsing `input` with error
+  ## label `path`.
+  var p: JsonParser
+  p.open(input, path, rawStringLiterals = rawStringLiterals,
+         strIntegers = strIntegers, strFloats = strFloats)
+  try:
+    var tok = p.getTok
+    while tok notin {tkEof,tkError}:
+      yield p.addr                      # `JsonParser` is a pretty big struct
+      tok = p.getTok
+  finally:
+    p.close()
+
+iterator jsonTokens*(path: string, rawStringLiterals = false,
+                     strIntegers = true, strFloats = true): ptr JsonParser =
+  ## Yield each successive `ptr JsonParser` while parsing file data at `path`.
+  ## Example usage:
+  ##
+  ## .. code-block:: nim
+  ##   var sum = 0.0 # total all json floats named "myKey" in JSON file `path`.
+  ##   for tok in jsonTokens(path, false, false, false):
+  ##     if t.tok == tkFloat and t.a == "myKey": sum += t.f
+  for tok in jsonTokens(newFileStream(path), path,
+                        rawStringLiterals, strIntegers, strFloats):
+    yield tok

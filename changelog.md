@@ -22,6 +22,11 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- The parsejson module now combines number validation & parsing to net a speed
+  up of over 2x on number heavy inputs.  It also allows *not* retaining origin
+  strings for integers & floats for another 1.5x speed up (over 3X overall).
+  A couple convenience iterators were also added.
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
