@@ -38,6 +38,7 @@ type
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
+    exports: TStrTable
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -287,7 +288,7 @@ proc initExports*(g: ModuleGraph; m: PSym) =
   ## prepare module to addExport
   case m.kind
   of skModule:
-    initStrTable g.ifaces[m.position].tab
+    initStrTable g.ifaces[m.position].exports
   of skPackage:
     initStrTable m.pkgTab
   else:
@@ -300,7 +301,7 @@ proc getExport*(g: ModuleGraph; m: PSym; p: PIdent): PSym =
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
     #assert iface.state > ifaceLoaded
-    result = strTableGet(iface.tab, p)
+    result = strTableGet(iface.exports, p)
   else:
     # implicit assertion that `m` is skPackage
     result = strTableGet(m.pkgTab, p)
@@ -314,7 +315,7 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
     s.flags.incl sfExported
   if sfExported in s.flags:
     if m.kind == skModule:
-      strTableAdd(iface.tab, s)
+      strTableAdd(iface.exports, s)
     else:
       # implicit assertion that `m` is skPackage
       strTableAdd(m.pkgTab, s)
@@ -333,12 +334,12 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   addExport(g, m, m)       # a module always knows itself
 
 proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
-  ## hide the .tab from ic
-  result = initIdentIter(it, iface.tab, name)
+  ## hide the .exports from ic
+  result = initIdentIter(it, iface.exports, name)
 
 proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
-  ## hide the .tab from ic
-  result = nextIdentIter(it, iface.tab)
+  ## hide the .exports from ic
+  result = nextIdentIter(it, iface.exports)
 
 iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
   ## yield all the symbols from the loaded iface for module `m`
@@ -346,9 +347,9 @@ iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
   assert m.kind == skModule
   #assert iface.state >= ifaceLoaded
   if iface.state == ifaceLoaded:
-    for s in items iface.patterns:
+    for s in iface.patterns.items:
       yield s
   else:
-    for s in items iface.tab.data:
+    for s in iface.exports.data.items:
       if s != nil:
         yield s
