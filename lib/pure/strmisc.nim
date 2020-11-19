@@ -89,9 +89,7 @@ proc rpartition*(s: string, sep: string): (string, string, string)
 
 since (1, 5):
   type ParseFloatOptions* = enum  ## Options for `parseFloatThousandSep`.
-    pfLeadingSep,    ## Allow leading separator, like ",9" and similar.
     pfLeadingDot,    ## Allow leading dot, like ".9" and similar.
-    pfTrailingSep,   ## Allow trailing separator, like "9," and similar.
     pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
     pfDotOptional,   ## Allow "9", "-0", integers literals, etc.
@@ -132,7 +130,7 @@ since (1, 5):
       ## Examples using different ParseFloatOptions:
       doAssert parseFloatThousandSep(",1.0", {pfLeadingSep}) == 1.0
       doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
-      doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
+      doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
       doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
       doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
@@ -152,16 +150,15 @@ since (1, 5):
         parseFloatThousandSepRaise(0, ' ', "empty string")
       else:
         return 0.0 # So user dont need to do `(try: parseFloat(str) except: 0.0)` etc
-    if pfLeadingSep notin options and str[0] == sep:          # ",1"
+    if str[0] == sep:          # ",1"
       parseFloatThousandSepRaise(0, sep, str)
     if pfLeadingDot notin options and str[0] == decimalDot:   # ".1"
       parseFloatThousandSepRaise(0, decimalDot, str)
-    if pfTrailingSep notin options and str[^1] == sep:        # "1,"
+    if str[^1] == sep:        # "1,"
       parseFloatThousandSepRaise(strLen, sep, str)
     if pfTrailingDot notin options and str[^1] == decimalDot: # "1."
       parseFloatThousandSepRaise(strLen, decimalDot, str)
-    if pfSepAnywhere notin options and (not(str.len > 4) and sep in str) and
-      pfLeadingSep notin options and pfTrailingSep notin options:
+    if pfSepAnywhere notin options and (not(str.len > 4) and sep in str):
       parseFloatThousandSepRaise(0, sep, str)                 # "1,1"
 
     var
@@ -180,7 +177,7 @@ since (1, 5):
           inc successive
       if c == sep:  # Thousands separator, this is NOT the dot
         if pfSepAnywhere notin options and (lastWasSep or afterDot) or
-          pfLeadingSep notin options and (isNegative and idx == 1 or idx == 0):
+          (isNegative and idx == 1 or idx == 0):
           parseFloatThousandSepRaise(idx, c, str)
         else:
           lastWasSep = true # Do NOT add the Thousands separator here.

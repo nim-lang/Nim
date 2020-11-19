@@ -31,14 +31,13 @@ func main() =
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
   doAssert parseFloatThousandSep("-0", {pfDotOptional}) == -0.0
   doAssert parseFloatThousandSep("1,111", {pfDotOptional}) == 1111.0
-  doAssert parseFloatThousandSep(".1,", {pfLeadingDot, pfTrailingSep}) == 0.1
-  doAssert parseFloatThousandSep("1,", {pfTrailingSep, pfDotOptional}) == 1.0
+  doAssert parseFloatThousandSep(".1", {pfLeadingDot}) == 0.1
+  doAssert parseFloatThousandSep("1", {pfDotOptional}) == 1.0
   doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
   doAssert parseFloatThousandSep("1.0,0,0", {pfSepAnywhere}) == 1.0
   doAssert parseFloatThousandSep("", {pfEmptyString}) == 0.0
-  doAssert parseFloatThousandSep(".10,", {pfLeadingDot, pfTrailingSep}) == 0.1
-  doAssert parseFloatThousandSep(",1.000,", {pfLeadingSep, pfTrailingSep}) == 1.000
-  doAssert parseFloatThousandSep(",10.", {pfLeadingSep, pfTrailingDot}) == 10.0
+  doAssert parseFloatThousandSep(".10", {pfLeadingDot}) == 0.1
+  doAssert parseFloatThousandSep("10.", {pfTrailingDot}) == 10.0
   doAssert parseFloatThousandSep("10", {pfEmptyString, pfDotOptional, pfSepAnywhere}) == 10.0
   doAssert parseFloatThousandSep("1.0,0,0,0,0,0,0,0", {pfSepAnywhere}) == 1.0
   doAssert parseFloatThousandSep("0,0,0,0,0,0,0,0.1", {pfSepAnywhere}) == 0.1
