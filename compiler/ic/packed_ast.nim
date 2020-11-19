@@ -120,10 +120,7 @@ type
 
   Module* = object
     name*: string
-    #file* {.deprecated.}: AbsoluteFile
     ast*: PackedTree
-    #phase* {.deprecated.}: ModulePhase
-    iface*: Table[string, seq[SymId]] # 'seq' because of overloading
 
   Program* = ref object
     modules*: seq[Module]
@@ -473,10 +470,6 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
-
-  proc byteSize*(m: Module): int =
-    ## roughly how large is the module in bytes?
-    Module.sizeof + len(m.ast) * PackedTree.sizeof
 
 proc hash*(table: StringTableRef): Hash =
   ## XXX: really should be introduced into strtabs...
