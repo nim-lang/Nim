@@ -197,10 +197,9 @@ proc mainCommand*(graph: ModuleGraph) =
 
   var commandAlreadyProcessed = false
 
-  proc compileToBackend(backend: TBackend, cmd = cmdCompileToBackend) =
+  proc compileToBackend() =
     commandAlreadyProcessed = true
-    conf.cmd = cmd
-    customizeForBackend(backend)
+    customizeForBackend(conf.backend)
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)
@@ -236,18 +235,14 @@ proc mainCommand*(graph: ModuleGraph) =
         ret
 
   ## process all backend commands
-  case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc": compileToBackend(backendC) # compile means compileToC currently
-  of "cpp", "compiletocpp": compileToBackend(backendCpp)
-  of "objc", "compiletooc": compileToBackend(backendObjc)
-  of "js", "compiletojs": compileToBackend(backendJs)
-  of "r": compileToBackend(backendC) # different from `"run"`!
-  of "run":
+  case conf.cmd
+  of cmdCompileToBackend: compileToBackend()
+  of cmdRun:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
-      if conf.backend notin {backendC, backendInvalid}:
+      if conf.backend != backendC:
         rawMessage(conf, errGenerated, "'run' requires c backend, got: '$1'" % $conf.backend)
-      compileToBackend(backendC, cmd = cmdRun)
+      compileToBackend()
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   else: customizeForBackend(backendC) # fallback for other commands

@@ -398,6 +398,24 @@ proc handleCmdInput*(conf: ConfigRef) =
   conf.projectName = "cmdfile"
   handleStdinOrCmdInput()
 
+proc setCommandEarly*(conf: ConfigRef, command: string) =
+  ## sets conf.command, conf.cmd, conf.backend
+  ## this can be called also from nimscript via setCommand.
+  # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
+  # xxx make sure each command string appears only once in code, use helper enum as needed.
+  # Note that `--backend` can override the backend, so the logic here must remain reversible.
+  conf.command = command
+  var cmd = cmdCompileToBackend
+  case conf.command.normalize
+  of "c", "cc", "compile", "compiletoc": conf.backend = backendC # compile means compileToC currently
+  of "cpp", "compiletocpp": conf.backend = backendCpp
+  of "objc", "compiletooc": conf.backend = backendObjc
+  of "js", "compiletojs": conf.backend = backendJs
+  of "r": conf.backend = backendC # different from `"run"`!
+  of "run": (conf.backend = backendC; cmd = cmdRun)
+  else: cmd = conf.cmd
+  conf.cmd = cmd
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -499,11 +517,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
-    if conf.backend == backendJs or conf.command == "js":
-      # for: bug #16033
-      # This might still be imperfect, in rarse corner cases
-      # (where command is reset in nimscript, maybe).
-      return
+    if conf.backend == backendJs: return # for: bug #16033
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       case arg.normalize
@@ -955,13 +969,12 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      config.command = "e"
+      setCommandEarly(config, "e")
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
-    elif pass != passCmd2:
-      config.command = p.key
+    elif pass != passCmd2: setCommandEarly(config, p.key)
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
