@@ -1978,7 +1978,7 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cf)
     if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
-        if m.config.cmdRaw == cmdTcc:
+        if m.config.cmd == cmdTcc:
           tccgen.compileCCode($code, m.config)
           onExit()
           return

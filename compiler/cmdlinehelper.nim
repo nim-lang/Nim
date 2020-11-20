@@ -59,7 +59,7 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.setCommandRaw cmdIdeTools
-  if conf.cmdRaw == cmdNimscript:
+  if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
@@ -67,7 +67,7 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
     let scriptFile = conf.projectFull.changeFileExt("nims")
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
-      case conf.cmdRaw
+      case conf.cmd
       of cmdNone: (conf.setCommandRaw cmdNimscript; return false)
       of cmdNimscript: return false
       else: discard
@@ -75,7 +75,7 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
-  if conf.cmdRaw == cmdNone:
+  if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")
 
   graph.suggestMode = self.suggestMode
