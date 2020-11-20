@@ -57,7 +57,7 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
-proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef;
+proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.command = "nimsuggest"

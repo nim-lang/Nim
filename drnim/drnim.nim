@@ -1269,7 +1269,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   var graph = newModuleGraph(cache, conf)
-  if not self.loadConfigsAndRunMainCommand(cache, conf, graph): return
+  if not self.loadConfigsAndProcessCmdLine(cache, conf, graph): return
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
 
