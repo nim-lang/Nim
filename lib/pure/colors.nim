@@ -475,7 +475,7 @@ proc isColor*(name: string): bool =
   if name.len == 0: return false
   if name[0] == '#':
     for i in 1 .. name.len-1:
-      if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
+      if name[i] notin HexDigits: return false
     result = true
   else:
     result = binarySearch(colorNames, name, colorNameCmp) >= 0
