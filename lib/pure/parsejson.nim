@@ -388,7 +388,7 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
         break                                   # a second '.' is forbidden
       pnt = nD                                  # save location of '.' (point)
       nD.dec                                    # undo loop's nD.inc
-    elif nD < 20:                               # 2**63==9.2e18 => 19 digits ok
+    elif nD < 18:                               # 2**63==9.2e18 => 19 digits ok
       my.i = 10 * my.i + my.buf[i].i64          # core ASCII->binary transform
     else:                                       # 20+ digits before decimal
       p10.inc                                   # any digit moves implicit '.'
