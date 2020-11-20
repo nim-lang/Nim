@@ -392,7 +392,7 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
   elif noDot: # and my.i < (1'i64 shl 53'i64) ? # No '.' & No [Ee]xponent
     my.bufpos = i
     if my.strIntegers:
-      when nimvm:
+      when defined(nimscript):
         my.a = my.buf[my.bufpos..<i]
       else:
         my.a.setLen i - my.bufpos
@@ -401,7 +401,7 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
   exp += pnt - nD + p10                         # combine explicit&implicit exp
   my.f = my.i.float * pow10(exp)                # has round-off vs. 80-bit
   if my.strFloats:
-    when nimvm:
+    when defined(nimscript):
       my.a = my.buf[my.bufpos..<i]
     else:
       my.a.setLen i - my.bufpos
