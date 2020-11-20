@@ -367,7 +367,7 @@ proc len*[A](s: PackedSet[A]): int {.inline.} =
     result = s.elems
   else:
     result = 0
-    for _ in s:
+    for _ in items(s):
       inc(result)
 
 proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
