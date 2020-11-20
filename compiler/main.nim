@@ -318,15 +318,13 @@ proc mainCommand*(graph: ModuleGraph) =
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
   of cmd0parse:
-    conf.cmd = cmdParse
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
   of cmd0scan:
-    conf.cmd = cmdScan
     wantMainModule(conf)
     commandScan(cache, conf)
     msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of cmd0secret:
+  of cmd0interactive:
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of cmd0help:

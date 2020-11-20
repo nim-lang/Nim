@@ -420,7 +420,7 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "dump": cmd0dump
   of "parse": cmd0parse
   of "scan": cmd0scan
-  of "secret": cmd0secret
+  of "secret": cmd0interactive
   of "nop", "help": cmd0help
   of "jsonscript": cmd0jsonscript
   of "nimsuggest": cmd0nimsuggest # xxx checkme

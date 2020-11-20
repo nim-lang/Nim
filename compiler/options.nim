@@ -139,14 +139,12 @@ type
     cmd0dump
     cmd0parse # parse a single file (for debugging)
     cmd0scan # scan a single file (for debugging)
-    cmd0secret
+    cmd0Interactive # start interactive session
     cmd0help
     cmd0jsonscript # compile a .json build file
     cmd0nimsuggest # xxx remove?
     # cmd0pretty
     # cmd0IdeTools,              # ide tools
-    # cmd0Def,                   # def feature (find definition for IDEs)
-    # cmd0Interactive,           # start interactive session
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**; xxx: why?
     cmdNone                   # deadcode
@@ -158,10 +156,10 @@ type
     cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
-    cmdParse,                 # parse a single file (for debugging)
-    cmdScan,                  # scan a single file (for debugging)
+    # cmdParse,                 # parse a single file (for debugging)
+    # cmdScan,                  # scan a single file (for debugging)
     cmdIdeTools,              # ide tools
-    cmdDef,                   # def feature (find definition for IDEs)
+    # cmdDef,                   # def feature (find definition for IDEs)
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
