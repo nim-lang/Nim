@@ -139,6 +139,7 @@ type
     cmdJsonScript             # compile a .json build file
     cmdCompileToBackend,      # compile to backend in TBackend
     cmdNimscript = "e"        # evaluate nimscript (makes optWasNimscript redundant)
+    cmdNotYetCategorized      # we got some "command" but wasn't yet categorized
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,

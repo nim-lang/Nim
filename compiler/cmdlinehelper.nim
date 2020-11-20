@@ -13,8 +13,6 @@ import
   options, idents, nimconf, extccomp, commands, msgs,
   lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
 
-from strutils import normalize
-
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
     if os.isAbsolute(f.string): result = f

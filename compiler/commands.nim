@@ -413,8 +413,9 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
   of "js", "compiletojs": conf.backend = backendJs
   of "r": conf.backend = backendC # different from `"run"`!
   of "run": (conf.backend = backendC; cmd = cmdRun)
-  of "check": cmd = cmdCheck
+  of $cmdCheck: cmd = cmdCheck
   of $cmdNimscript: cmd = cmdNimscript
+  elif conf.cmd == cmdNone: cmd = cmdNotYetCategorized
   else: cmd = conf.cmd
   conf.cmd = cmd
 

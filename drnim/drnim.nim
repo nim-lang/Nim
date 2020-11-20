@@ -1223,7 +1223,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var argsCount = 1
 
   config.commandLine.setLen 0
-  config.setCommandEarly "check"
+  config.setCommandEarly $cmdCheck
   while true:
     parseopt.next(p)
     case p.kind
