@@ -1686,7 +1686,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let rd = c.code[pc].regA
       createStr regs[ra]
-      if defined(nimsuggest) or c.config.cmdRaw == cmdCheck:
+      if defined(nimsuggest) or c.config.cmd == cmdCheck:
         discard "don't run staticExec for 'nim suggest'"
         regs[ra].node.strVal = ""
       else:

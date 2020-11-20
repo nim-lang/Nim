@@ -425,12 +425,12 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "jsonscript": cmdJsonscript
   else: cmdUnknown
 
-proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
-  ## sets cmdRaw, backend
+proc setCommandRaw*(conf: ConfigRef, cmd: CommandRaw) =
+  ## sets cmd, backend
   # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
-  conf.cmdRaw = cmdRaw
-  case cmdRaw
+  conf.cmd = cmd
+  case cmd
   of cmdCompileToC: conf.backend = backendC
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
@@ -452,7 +452,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
-    if conf.cmdRaw == cmdNone:
+    if conf.cmd == cmdNone:
       conf.setCommandRaw cmdNimscript # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":

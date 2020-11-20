@@ -87,7 +87,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if graph.config.errorCounter > 0:
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
-  if conf.cmdRaw != cmdTcc:
+  if conf.cmd != cmdTcc:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
@@ -214,8 +214,8 @@ proc mainCommand*(graph: ModuleGraph) =
       body
 
   block: ## command prepass
-    if conf.cmdRaw == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
-    if conf.cmdRaw notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
+    if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+    if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
     if conf.outDir.isEmpty:
       # doc like commands can generate a lot of files (especially with --project)
       # so by default should not end up in $PWD nor in $projectPath.
@@ -223,11 +223,11 @@ proc mainCommand*(graph: ModuleGraph) =
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
                   else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if conf.cmdRaw in {cmdDoc0, cmdDoc2, cmdRst2html, cmdRst2tex, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}: ret = ret / htmldocsDir
+        if conf.cmd in {cmdDoc0, cmdDoc2, cmdRst2html, cmdRst2tex, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}: ret = ret / htmldocsDir
         ret
 
   ## process all commands
-  case conf.cmdRaw
+  case conf.cmd
   of cmdBackends: compileToBackend()
   of cmdTcc:
     when hasTinyCBackend:
@@ -330,10 +330,10 @@ proc mainCommand*(graph: ModuleGraph) =
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
-  of cmdUnknown, cmdNone, cmdIdeTools:
+  of cmdUnknown, cmdNone, cmdIdeTools, cmdPretty:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and conf.cmdRaw notin {cmdTcc, cmdDump, cmdNop}:
+  if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -345,9 +345,9 @@ proc mainCommand*(graph: ModuleGraph) =
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
 
     var output: string
-    if optCompileOnly in conf.globalOptions and conf.cmdRaw != cmdJsonscript:
+    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
       output = $conf.jsonBuildFile
-    elif conf.outFile.isEmpty and conf.cmdRaw notin {cmdJsonscript} + cmdDocLike + cmdBackends:
+    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
       # for some cmd we expect a valid absOutFile
       output = "unknownOutput"
     else:

@@ -64,7 +64,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.cmdRaw notin {cmdTcc, cmdNimscript, cmdCrun}:
+        config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
@@ -86,11 +86,11 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
-    if conf.cmdRaw == cmdTcc:
+    if conf.cmd == cmdTcc:
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
-    case conf.cmdRaw
+    case conf.cmd
     of cmdBackends, cmdTcc:
       var cmdPrefix = ""
       case conf.backend

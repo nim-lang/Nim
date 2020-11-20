@@ -544,7 +544,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmdRaw notin cmdDocLike + {cmdIdeTools}
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd notin cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =

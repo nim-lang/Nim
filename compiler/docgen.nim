@@ -170,7 +170,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  initRstGenerator(result[], (if conf.cmdRaw != cmdRst2tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
 
@@ -235,7 +235,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.thisDir = result.destFile.AbsoluteFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
-  if conf.cmdRaw != cmdRst2tex: dest.addf(xml, args)
+  if conf.cmd != cmdRst2tex: dest.addf(xml, args)
   else: dest.addf(tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
@@ -560,7 +560,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
       var dest2 = ""
-      renderNimCode(dest2, code, isLatex = d.conf.cmdRaw == cmdRst2tex)
+      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
       dest.add dest2
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
       return rsRunnable
