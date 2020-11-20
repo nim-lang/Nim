@@ -327,6 +327,25 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
+template jsOrVmBlock(caseJsOrVm, caseElse: untyped): untyped =
+  when nimvm:
+    block:
+      caseJsOrVm
+  else:
+    block:
+      when defined(js) or defined(nimscript):
+        # nimscript has to be here to avoid semantic checking of caseElse
+        caseJsOrVm
+      else:
+        caseElse
+
+template doCopy(a, b, start, endp1: untyped): untyped =
+  jsOrVmBlock:
+    a = b[start ..< endp1]
+  do:
+    a.setLen endp1 - start
+    copyMem a[0].addr, b[start].addr, endp1 - start
+
 proc i64(c: char): int64 {.inline.} = int64(ord(c) - ord('0'))
 
 proc pow10(e: int64): float {.inline.} =
@@ -391,21 +410,11 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
       exp = -exp                                # adjust sign
   elif noDot: # and my.i < (1'i64 shl 53'i64) ? # No '.' & No [Ee]xponent
     my.bufpos = i
-    if my.strIntegers:
-      when defined(nimscript):
-        my.a = my.buf[my.bufpos..<i]
-      else:
-        my.a.setLen i - my.bufpos
-        copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
+    if my.strIntegers: doCopy(my.a, my.buf, my.bufpos, i)
     return tkInt                                # mark as integer
   exp += pnt - nD + p10                         # combine explicit&implicit exp
   my.f = my.i.float * pow10(exp)                # has round-off vs. 80-bit
-  if my.strFloats:
-    when defined(nimscript):
-      my.a = my.buf[my.bufpos..<i]
-    else:
-      my.a.setLen i - my.bufpos
-      copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
+  if my.strFloats: doCopy(my.a, my.buf, my.bufpos, i)
   my.bufpos = i
   return tkFloat                                # mark as float
 
