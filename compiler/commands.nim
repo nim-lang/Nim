@@ -398,26 +398,55 @@ proc handleCmdInput*(conf: ConfigRef) =
   conf.projectName = "cmdfile"
   handleStdinOrCmdInput()
 
-proc setCommandEarly*(conf: ConfigRef, command: string) =
+proc parseCommandRaw*(command: string): CommandRaw =
+  case command.normalize
+  of "c", "cc", "compile", "compiletoc": cmd0c # compile means compileToC currently
+  of "cpp", "compiletocpp": cmd0cpp
+  of "objc", "compiletooc": cmd0oc
+  of "js", "compiletojs": cmd0js
+  of "r": cmd0r
+  of "run": cmd0run
+  of "check": cmd0check
+  of "e": cmd0nimscript
+  of "doc0": cmd0doc0
+  of "doc2", "doc": cmd0doc
+  of "rst2html": cmd0rst2html
+  of "rst2tex": cmd0rst2tex
+  of "jsondoc0": cmd0jsondoc0
+  of "jsondoc2", "jsondoc": cmd0jsondoc
+  of "ctags": cmd0ctags
+  of "buildindex": cmd0buildindex
+  of "gendepend": cmd0gendepend
+  of "dump": cmd0dump
+  of "parse": cmd0parse
+  of "scan": cmd0scan
+  of "secret": cmd0secret
+  of "nop", "help": cmd0help
+  of "jsonscript": cmd0jsonscript
+  of "nimsuggest": cmd0nimsuggest # xxx checkme
+  else: cmd0unknown
+
+proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
   ## sets conf.command, conf.cmd, conf.backend
   ## this can be called also from nimscript via setCommand.
   # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
   # xxx make sure each command string appears only once in code, use helper enum as needed.
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
-  conf.command = command
+  conf.cmdRaw = cmdRaw
   var cmd = cmdCompileToBackend
-  case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc": conf.backend = backendC # compile means compileToC currently
-  of "cpp", "compiletocpp": conf.backend = backendCpp
-  of "objc", "compiletooc": conf.backend = backendObjc
-  of "js", "compiletojs": conf.backend = backendJs
-  of "r": conf.backend = backendC # different from `"run"`!
-  of "run": (conf.backend = backendC; cmd = cmdRun)
-  of $cmdCheck: cmd = cmdCheck
-  of $cmdNimscript: cmd = cmdNimscript
-  elif conf.cmd == cmdNone: cmd = cmdNotYetCategorized
+  case cmdRaw
+  of cmd0c: conf.backend = backendC # compile means compileToC currently
+  of cmd0cpp: conf.backend = backendCpp
+  of cmd0oc: conf.backend = backendObjc
+  of cmd0js: conf.backend = backendJs
+  of cmd0r: conf.backend = backendC # different from `"run"`!
+  of cmd0run: (conf.backend = backendC; cmd = cmdRun)
   else: cmd = conf.cmd
   conf.cmd = cmd
+
+proc setCommandEarly*(conf: ConfigRef, command: string) =
+  conf.command = command
+  setCommandRaw(conf, command.parseCommandRaw)
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -428,8 +457,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
-    if conf.cmd == cmdNone:
-      conf.setCommandEarly $cmdNimscript # better than "r" as a default
+    if conf.cmdRaw == cmd0none:
+      conf.setCommandRaw cmd0nimscript # better than `cmd0r` as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -972,7 +1001,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      setCommandEarly(config, $cmdNimscript)
+      config.setCommandRaw cmd0nimscript
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)

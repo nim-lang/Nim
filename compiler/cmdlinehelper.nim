@@ -58,8 +58,8 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.setCommandEarly "nimsuggest" # xxx is that every used?
-  if conf.cmd == cmdNimscript:
+    conf.setCommandRaw cmd0nimsuggest
+  if conf.cmdRaw == cmd0nimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
@@ -67,9 +67,9 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
     let scriptFile = conf.projectFull.changeFileExt("nims")
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
-      case conf.cmd
-      of cmdNone: (conf.setCommandEarly $cmdNimscript; return false)
-      of cmdNimscript: return false
+      case conf.cmdRaw
+      of cmd0none: (conf.setCommandRaw cmd0nimscript; return false)
+      of cmd0nimscript: return false
       else: discard
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings

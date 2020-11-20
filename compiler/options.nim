@@ -47,7 +47,7 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optWasNimscript,          # redundant with `cmdNimscript`, could be removed
+    optWasNimscript,          # redundant with `cmd0nimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -116,7 +116,37 @@ type
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
-type
+  CommandRaw* = enum  ## unlike `TCommands`, these represent each unique possible command (after command aliasing)
+    cmd0none # not yet processed command
+    cmd0unknown # command unmapped
+    cmd0c
+    cmd0cpp
+    cmd0oc
+    cmd0js
+    cmd0r # compile and run in nimache
+    cmd0run # run the project via TCC backend
+    cmd0check # semantic checking for whole project
+    cmd0nimscript # evaluate nimscript (makes optWasNimscript redundant)
+    cmd0doc0
+    cmd0doc
+    cmd0rst2html # convert a reStructuredText file to HTML
+    cmd0rst2tex # convert a reStructuredText file to TeX
+    cmd0jsondoc0
+    cmd0jsondoc
+    cmd0ctags
+    cmd0buildindex
+    cmd0gendepend
+    cmd0dump
+    cmd0parse # parse a single file (for debugging)
+    cmd0scan # scan a single file (for debugging)
+    cmd0secret
+    cmd0help
+    cmd0jsonscript # compile a .json build file
+    cmd0nimsuggest # xxx remove?
+    # cmd0pretty
+    # cmd0IdeTools,              # ide tools
+    # cmd0Def,                   # def feature (find definition for IDEs)
+    # cmd0Interactive,           # start interactive session
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone,
@@ -127,7 +157,7 @@ type
     cmdCompileToLLVM,         # deadcode
     cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
-    cmdCheck = "check",       # semantic checking for whole project
+    cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)
     cmdIdeTools,              # ide tools
@@ -138,8 +168,6 @@ type
     cmdRun,                   # run the project via TCC backend
     cmdJsonScript             # compile a .json build file
     cmdCompileToBackend,      # compile to backend in TBackend
-    cmdNimscript = "e"        # evaluate nimscript (makes optWasNimscript redundant)
-    cmdNotYetCategorized      # we got some "command" but wasn't yet categorized
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
@@ -247,7 +275,8 @@ type
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmd*: TCommands  # the command
+    cmdRaw*: CommandRaw  # raw command after aliasing
+    cmd*: TCommands  # the processed command, has some historical conflation between commands
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`

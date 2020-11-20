@@ -214,13 +214,10 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       body
 
+  const backends = {cmd0c, cmd0cpp, cmd0oc, cmd0js, cmd0r}
   block: ## command prepass
-    var docLikeCmd2 = false # includes what calls `docLikeCmd` + some more
-    case conf.command.normalize
-    of "r": conf.globalOptions.incl {optRun, optUseNimcache}
-    of "doc0",  "doc2", "doc", "rst2html", "rst2tex", "jsondoc0", "jsondoc2",
-      "jsondoc", "ctags", "buildindex": docLikeCmd2 = true
-    else: discard
+    if conf.cmdRaw == cmd0r: conf.globalOptions.incl {optRun, optUseNimcache}
+    if conf.cmdRaw notin backends + {cmd0run}: customizeForBackend(backendC)
     if conf.outDir.isEmpty:
       # doc like commands can generate a lot of files (especially with --project)
       # so by default should not end up in $PWD nor in $projectPath.
@@ -228,13 +225,13 @@ proc mainCommand*(graph: ModuleGraph) =
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
                   else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if docLikeCmd2: ret = ret / htmldocsDir
+        if conf.cmdRaw in {cmd0doc0, cmd0doc, cmd0rst2html, cmd0rst2tex, cmd0jsondoc0, cmd0jsondoc, cmd0ctags, cmd0buildindex}: ret = ret / htmldocsDir
         ret
 
-  # call compileToBackend or customizeForBackend
-  case conf.cmd
-  of cmdCompileToBackend: compileToBackend()
-  of cmdRun:
+  ## process all commands
+  case conf.cmdRaw
+  of backends: compileToBackend()
+  of cmd0run:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
       if conf.backend != backendC:
@@ -242,26 +239,8 @@ proc mainCommand*(graph: ModuleGraph) =
       compileToBackend()
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  else: customizeForBackend(backendC) # fallback for other commands
-  assert conf.backend != backendInvalid
-
-  var commandAlreadyProcessed = true
-  case conf.cmd
-  of cmdCompileToBackend, cmdRun: discard
-  of cmdCheck: commandCheck(graph)
-  of cmdNimscript:
-    if conf.projectIsCmd or conf.projectIsStdin: discard
-    elif not fileExists(conf.projectFull):
-      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
-    elif not conf.projectFull.string.endsWith(".nims"):
-      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
-    # main NimScript logic handled in `loadConfigs`.
-  else: commandAlreadyProcessed = false
-
-  ## process all other commands
-  case conf.command.normalize # synchronize with `cmdUsingHtmlDocs`
-  of "doc0": docLikeCmd commandDoc(cache, conf)
-  of "doc2", "doc":
+  of cmd0doc0: docLikeCmd commandDoc(cache, conf)
+  of cmd0doc:
     docLikeCmd():
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
@@ -272,7 +251,7 @@ proc mainCommand*(graph: ModuleGraph) =
       commandDoc2(graph, false)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
-  of "rst2html":
+  of cmd0rst2html:
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
@@ -280,21 +259,21 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.cmd = cmdRst2html
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
-  of "rst2tex":
+  of cmd0rst2tex:
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       conf.cmd = cmdRst2tex
       loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
-  of "jsondoc0": docLikeCmd commandJson(cache, conf)
-  of "jsondoc2", "jsondoc": docLikeCmd commandDoc2(graph, true)
-  of "ctags": docLikeCmd commandTags(cache, conf)
-  of "buildindex": docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
-  of "gendepend":
+  of cmd0jsondoc0: docLikeCmd commandJson(cache, conf)
+  of cmd0jsondoc: docLikeCmd commandDoc2(graph, true)
+  of cmd0ctags: docLikeCmd commandTags(cache, conf)
+  of cmd0buildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
+  of cmd0gendepend:
     conf.cmd = cmdGenDepend
     commandGenDepend(graph)
-  of "dump":
+  of cmd0dump:
     conf.cmd = cmdDump
     if getConfigVar(conf, "dump.format") == "json":
       wantMainModule(conf)
@@ -338,27 +317,36 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of "parse":
+  of cmd0parse:
     conf.cmd = cmdParse
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of "scan":
+  of cmd0scan:
     conf.cmd = cmdScan
     wantMainModule(conf)
     commandScan(cache, conf)
     msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of "secret":
+  of cmd0secret:
     conf.cmd = cmdInteractive
     commandInteractive(graph)
-  of "nop", "help":
+  of cmd0help:
     # prevent the "success" message:
     conf.cmd = cmdDump
-  of "jsonscript":
+  of cmd0jsonscript:
     conf.cmd = cmdJsonScript
     setOutFile(graph.config)
     commandJsonScript(graph)
-  elif commandAlreadyProcessed: discard # already handled
-  else:
+  of cmd0check:
+    conf.cmd = cmdCheck
+    commandCheck(graph)
+  of cmd0nimscript:
+    if conf.projectIsCmd or conf.projectIsStdin: discard
+    elif not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in `loadConfigs`.
+  of cmd0unknown, cmd0none, cmd0nimsuggest:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and
