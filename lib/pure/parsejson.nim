@@ -136,12 +136,12 @@ proc str*(my: JsonParser): string {.inline.} =
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: ``jsonInt``
-  assert(my.kind == jsonInt)
+  assert(my.tok == tkInt)
   return cast[BiggestInt](my.i) # A no-op unless BiggestInt changes
 
 proc getFloat*(my: JsonParser): float {.inline.} =
   ## returns the number for the event: ``jsonFloat``
-  assert(my.kind == jsonFloat)
+  assert(my.tok == tkFloat)
   return my.f
 
 proc kind*(my: JsonParser): JsonEventKind {.inline.} =
