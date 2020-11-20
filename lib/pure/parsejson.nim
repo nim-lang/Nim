@@ -392,14 +392,20 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
   elif noDot: # and my.i < (1'i64 shl 53'i64) ? # No '.' & No [Ee]xponent
     my.bufpos = i
     if my.strIntegers:
-      my.a.setLen i - my.bufpos
-      copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
+      when nimvm:
+        my.a = my.buf[my.bufpos..<i]
+      else:
+        my.a.setLen i - my.bufpos
+        copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
     return tkInt                                # mark as integer
   exp += pnt - nD + p10                         # combine explicit&implicit exp
   my.f = my.i.float * pow10(exp)                # has round-off vs. 80-bit
   if my.strFloats:
-    my.a.setLen i - my.bufpos
-    copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
+    when nimvm:
+      my.a = my.buf[my.bufpos..<i]
+    else:
+      my.a.setLen i - my.bufpos
+      copyMem my.a[0].addr, my.buf[my.bufpos].addr, i - my.bufpos
   my.bufpos = i
   return tkFloat                                # mark as float
 
