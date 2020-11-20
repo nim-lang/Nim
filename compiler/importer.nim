@@ -160,10 +160,10 @@ proc addImport(c: PContext; im: sink ImportedModule) =
   c.imports.add im
 
 template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
-  for it in c.graph.ifaces[fromMod.position].converters:
+  for it in c.graph.converters(fromMod):
     if filter:
       addConverter(c, it)
-  for it in c.graph.ifaces[fromMod.position].patterns:
+  for it in c.graph.patterns(fromMod):
     if filter:
       addPattern(c, it)
   for it in c.graph.ifaces[fromMod.position].pureEnums:

@@ -28,17 +28,25 @@
 import ast, intsets, tables, options, lineinfos, hashes, idents,
   incremental, btrees, md5, astalgo, msgs
 
+import ic/[packed_ast, from_packed_ast, store]
+
+import std/sequtils
+import std/options as stdoptions
+
 type
   SigHash* = distinct MD5Digest
 
-  IfaceState* = enum ifaceUninitialized, ifaceLoaded, ifaceUnloaded
+  IfaceState = enum Uninitialized, Loaded, Unpacked, Unloaded
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
+    decoder: PackedDecoder
     module*: PSym       ## module this "Iface" belongs to
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
     exports: TStrTable
+    patterns: seq[PSym]
+    tree: PackedTree
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -97,7 +105,6 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
-
 
 const
   cb64 = [
@@ -284,27 +291,99 @@ proc `state=`*(iface: var Iface; state: IfaceState) =
 
 proc state*(iface: Iface): IfaceState = iface.state
 
+proc initIface*(iface: var Iface; conf: ConfigRef; s: PSym) =
+  ## try to initialize the iface with an available rodfile
+  if iface.state == Uninitialized:
+    let m = tryReadModule(conf, rodFile(conf, s))
+    iface.state =
+      if m.isNone:
+        Unloaded
+      else:
+        iface.tree = (get m).ast
+        assert iface.tree[0].kind != nkNone, "unexpectedly none ast"
+        Loaded
+
 proc initExports*(g: ModuleGraph; m: PSym) =
   ## prepare module to addExport
-  case m.kind
-  of skModule:
-    initStrTable g.ifaces[m.position].exports
-  of skPackage:
-    initStrTable m.pkgTab
+  template iface: Iface = g.ifaces[m.position]
+  if m.kind == skModule:
+    initIface(iface, g.config, m)
   else:
-    internalError(g.config, "attempt to init exports for " & $m.kind)
+    # implicit assertion that `m` is skPackage
+    initStrTable m.pkgTab
 
 template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
 
-proc getExport*(g: ModuleGraph; m: PSym; p: PIdent): PSym =
+proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
+  ## replicate the existing iterator semantics for the iface cache
+  template iface: Iface = g.ifaces[m.position]
+  if iface.state == Loaded:
+    for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
+      if s.name.s == it.name.s:
+        it.name = s.name
+        it.h = i.Hash
+        result = s
+        break
+  else:
+    result = nextIdentIter(it, iface.exports)
+
+proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
+                    name: PIdent): PSym =
+  ## replicate the existing iterator semantics for the iface cache
+  template iface: Iface = g.ifaces[m.position]
+  initIface(iface, g.config, m)
+  if iface.state == Loaded:
+    it.name = name
+    it.h = 0.Hash
+    result = nextIdentIter(it, g, m)
+  else:
+    result = initIdentIter(it, iface.exports, name)
+
+iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent = nil): PSym =
+  ## lazy version of patterns
+  template iface: Iface = g.ifaces[m.position]
+  case iface.state
+  of Uninitialized:
+    assert false, "init iface first"
+  of Loaded:
+    for s in unpackSymbols(iface.tree, iface.decoder, iface.module,
+                           name = name):
+      yield s
+  of Unpacked, Unloaded:
+    for s in iface.patterns:
+      yield s
+
+proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
+  template iface: Iface = g.ifaces[m.position]
+  case iface.state
+  of Uninitialized:
+    assert false, "initialize iface first"
+  of Loaded:
+    iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
+    iface.state = Unpacked
+  of Unpacked, Unloaded:
+    discard
+  result = iface.patterns
+
+proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
+  template iface: Iface = g.ifaces[m.position]
+  filterIt patterns(g, m): it.kind == skConverter
+
+proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
+  echo "unimplemented"
+
+proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
+  echo "unimplemented"
+
+proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## fetch an exported symbol for the module by ident
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
-    #assert iface.state > ifaceLoaded
-    result = strTableGet(iface.exports, p)
+    for s in symbols(g, m, name = name):
+      return s
   else:
     # implicit assertion that `m` is skPackage
-    result = strTableGet(m.pkgTab, p)
+    result = strTableGet(m.pkgTab, name)
 
 proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
   ## add a symbol to a module's exported interface
@@ -333,23 +412,17 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   initExports(g, m)
   addExport(g, m, m)       # a module always knows itself
 
-proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
-  ## hide the .exports from ic
-  result = initIdentIter(it, iface.exports, name)
-
-proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
-  ## hide the .exports from ic
-  result = nextIdentIter(it, iface.exports)
-
-iterator moduleSymbols*(g: ModuleGraph; m: PSym): PSym =
-  ## yield all the symbols from the loaded iface for module `m`
-  template iface: Iface = g.ifaces[m.position]
-  assert m.kind == skModule
-  #assert iface.state >= ifaceLoaded
-  if iface.state == ifaceLoaded:
+when false:
+  proc exports*(iface: Iface): TStrTable {.deprecated.} =
+    initExports(iface.graph, iface.module)
+    initStrTable result
     for s in iface.patterns.items:
-      yield s
-  else:
-    for s in iface.exports.data.items:
-      if s != nil:
-        yield s
+      result.strTableAdd s
+
+  proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
+    ## hide the .exports from ic
+    result = initIdentIter(it, iface.exports, name)
+
+  proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
+    ## hide the .exports from ic
+    result = nextIdentIter(it, iface.exports)

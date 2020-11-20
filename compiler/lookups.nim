@@ -173,7 +173,7 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   dec scopeN
   isLocal = false
   for im in c.imports.mitems:
-    for s in moduleSymbols(c.graph, im.m):
+    for s in symbols(c.graph, im.m):
       yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =

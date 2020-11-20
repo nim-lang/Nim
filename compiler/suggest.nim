@@ -380,7 +380,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
           if filterSym(it, field, pm):
             outputs.add(symToSuggest(c.config, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
       else:
-        for it in moduleSymbols(c.graph, n.sym):
+        for it in symbols(c.graph, n.sym):
           if filterSym(it, field, pm):
             outputs.add(symToSuggest(c.config, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
     else:

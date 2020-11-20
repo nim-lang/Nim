@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 import
-  ".." / [ pathutils, options, msgs ],
+  ".." / [ ast, pathutils, options, msgs ],
   packed_ast, frosty, supersnappy,
   std / [ strutils, streams, hashes, os ]
 
@@ -33,6 +33,11 @@ const
     when defined(release): NimVersion else: CompileDate & CompileTime
 
 template config(m: Module): ConfigRef = m.ast.sh.config
+
+proc rodFile*(conf: ConfigRef; m: PSym): AbsoluteFile =
+  ## find the target rodfile of a given module
+  result = AbsoluteFile toFullPath(conf, m.info.fileIndex)
+  result = result.changeFileExt "rod"
 
 proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
   let noSerializeSubstitute = m.ast.sh.config

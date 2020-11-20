@@ -274,14 +274,14 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
-  inclSym(c.graph.ifaces[c.module.position].converters, conv)
+  addConverter(c.graph, c.module, conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
-  inclSym(c.graph.ifaces[c.module.position].patterns, p)
+  addPattern(c.graph, c.module, p)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)

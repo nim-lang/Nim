@@ -20,7 +20,7 @@ import
   isolation_check, typeallowed
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef,
-  onDefResolveForward, addExport, getExport, moduleSymbols
+  onDefResolveForward, addExport, getExport, symbols
 
 when defined(nimfix):
   import nimfix/prettybase

@@ -2524,7 +2524,7 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
   addExport(c, exported)
-  for s in moduleSymbols(c.graph, exported):
+  for s in symbols(c.graph, exported):
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet and sfError notin s.flags:
       addExport(c, s)
@@ -2542,7 +2542,7 @@ proc semExport(c: PContext, n: PNode): PNode =
     elif s.kind == skModule:
       # forward everything from that module:
       addExport(c, s)
-      for it in moduleSymbols(c.graph, s):
+      for it in symbols(c.graph, s):
         if it.kind in ExportableSymKinds+{skModule}:
           addExport(c, it)
           result.add newSymNode(it, a.info)

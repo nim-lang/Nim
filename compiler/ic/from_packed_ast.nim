@@ -9,11 +9,11 @@
 
 import std / [hashes, tables]
 import bitabs, packed_ast
-import ".." / [ast, lineinfos, options, pathutils, ropes, msgs, idents,
-  modulegraphs]
+import ".." / [ast, lineinfos, options, pathutils, ropes, msgs, idents]
 
 type
-  Context = object
+  Resolver = proc(module: int32; name: string): PSym
+  PackedDecoder* = object
     thisModule: int32
     lastFile: FileIndex # remember the last lookup entry.
     lastLit: LitId
@@ -22,7 +22,9 @@ type
     pendingSyms: seq[ItemId]
     typeMap: Table[ItemId, PType]  # ItemId.item -> PType
     symMap: Table[ItemId, PSym]    # ItemId.item -> PSym
-    graph: ModuleGraph
+    resolver: Resolver
+    idents: IdentCache
+  Context = PackedDecoder
 
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
@@ -38,7 +40,7 @@ proc fromType(t: TypeId or int32; ir: PackedTree; c: var Context): PType =
     result = fromType(ir.sh.types[int t], ir, c)
 
 proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
-  result = getIdent(c.graph.cache, ir.sh.strings[l])
+  result = getIdent(c.idents, ir.sh.strings[l])
 
 proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo =
   if p.file notin c.filenames:
@@ -56,6 +58,15 @@ proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
                 kind: l.kind, name: rope ir.sh.strings[l.name],
                 path: fromTree(l.path, c))
 
+iterator unpackSymbols*(n: PackedTree; c: var Context; m: PSym;
+                        name: PIdent = nil): PSym =
+  ## unpack the symbols from the tree
+  c.thisModule = m.itemId.module
+  for symId, p in n.sh.syms.pairs:
+    if name == nil or name.s == n.sh.strings[p.name]:
+      let id = ItemId(module: m.itemId.module, item: symId.int32)
+      yield p.fromSym(id, n, c)
+
 proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
   if id == nilItemId: return nil
   # short-circuit if we already have the PSym
@@ -64,8 +75,7 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
     if id.module == c.thisModule:
       result = fromSym(id.item, id, ir, c)
     else:
-      let m = getModule(c.graph, FileIndex id.module)
-      result = getExport(c.graph, m, fromIdent(LitId id.item, ir, c))
+      result = c.resolver(id.module, ir.sh.strings[LitId id.item])
     # cache the result
     c.symMap[id] = result
 
@@ -139,7 +149,7 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
   of nkNone, nkEmpty, nkNilLit:
     discard
   of nkIdent:
-    result.ident = fromIdent(LitId n.operand, ir, c)  # XXX: is this right?
+    result.ident = fromIdent(LitId n.operand, ir, c)
   of nkSym:
     result.sym = fromSymNode(ir, c, pos = pos)
   of directIntLit:
@@ -154,14 +164,17 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
     for son in sonsReadonly(ir, pos):
       result.sons.add fromTree(ir, c, son)
 
-proc irToModule*(n: PackedTree; graph: ModuleGraph; module: PSym): PNode =
-  var c = Context(graph: graph, thisModule: module.itemId.module)
+proc initDecoder*(c: var Context; cache: IdentCache; resolver: Resolver) =
+  c.idents = cache
+  c.resolver = resolver
+
+proc irToModule*(n: PackedTree; module: PSym; c: var Context): PNode =
+  c.thisModule = module.itemId.module
   result = fromTree(n, c)
 
-proc unpackAllSymbols*(n: PackedTree; g: ModuleGraph; m: PSym): seq[PSym] =
-  ## unpack all the symbols in the tree; this should be replaced by a
-  ## properly lazy operation once we cache the entire packed ast
-  var c = Context(graph: g, thisModule: m.itemId.module)
-  for symId, p in pairs n.sh.syms:
-    let id = ItemId(module: m.itemId.module, item: symId.int32)
-    result.add p.fromSym(id, n, c)
+proc unpackAllSymbols*(n: PackedTree; c: var Context; m: PSym): seq[PSym] =
+  setLen result, n.sh.syms.len
+  var i = 0
+  for s in unpackSymbols(n, c, m):
+    result[i] = s
+    inc i
