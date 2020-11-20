@@ -3201,6 +3201,8 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
   ##
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
+  runnableExamples:
+    doAssert sameFileContent(currentSourcePath, currentSourcePath, checkSize = true, bufferSize = 4096)
   var a, b: File
   var mustRead = true
   var bufA = alloc(bufferSize)
@@ -3209,18 +3211,16 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
     if not open(a, path1):
       if checkFiles:
         raise newException(IOError, "Can not open file: $1" % [path1])
-      else:
-        mustRead = false
+      mustRead = false
     if not open(b, path2):
       if checkFiles:
         raise newException(IOError, "Can not open file: $1" % [path2])
-      else:
-        mustRead = false
+      mustRead = false
     if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
-        var readA = readBuffer(a, bufA, bufferSize)
-        var readB = readBuffer(b, bufB, bufferSize)
+        let readA = readBuffer(a, bufA, bufferSize)
+        let readB = readBuffer(b, bufB, bufferSize)
         if readA != readB: break
         if readA > 0:
           result = equalMem(bufA, bufB, readA)
