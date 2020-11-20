@@ -4,6 +4,7 @@ discard """
 
 import std/jsonutils
 import std/json
+import std/math
 
 proc testRoundtrip[T](t: T, expected: string) =
   let j = t.toJson
@@ -238,7 +239,7 @@ template fn() =
       doAssert not foo.b
       doAssert foo.f == 0.0
       doAssert foo.c == 1
-      doAssert foo.c1 == 3.14159
+      doAssert almostEqual(foo.c1, 3.14159, 1)
 
     block testExceptionOnWrongDiscirminatBranchInJson:
       var foo = Foo(b: false, f: 3.14159, c: 0, c0: 42)
@@ -247,7 +248,7 @@ template fn() =
                      fromJson(foo, json, Joptions(allowMissingKeys: true))
       # Test that the original fields are not reset.
       doAssert not foo.b
-      doAssert foo.f == 3.14159
+      doAssert almostEqual(foo.f, 3.14159, 1)
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
@@ -258,7 +259,7 @@ template fn() =
       doAssert not foo.b
       doAssert foo.f == 2.71828
       doAssert foo.c == 1
-      doAssert foo.c1 == 3.14159
+      doAssert almostEqual(foo.c1, 3.14159, 1)
 
     block testAllowExtraKeysInJsonOnWrongDisciriminatBranch:
       var foo = Foo(b: false, f: 3.14159, c: 0, c0: 42)
@@ -267,7 +268,7 @@ template fn() =
                                    allowExtraKeys: true))
       # Test that the original fields are not reset.
       doAssert not foo.b
-      doAssert foo.f == 3.14159
+      doAssert almostEqual(foo.f, 3.14159, 1)
       doAssert foo.c == 0
       doAssert foo.c0 == 42
 
