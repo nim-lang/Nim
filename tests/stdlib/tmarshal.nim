@@ -7,6 +7,7 @@ omega 200
 Some(null)
 None[JsonNode]
 (numeric: "")
+hello world
 '''
 joinable: false
 """
@@ -138,7 +139,7 @@ block:
   echo ($$a2).to[:Option[JsonNode]]
 
 
-#  bug #15620
+# bug #15620
 block:
   let str = """{"numeric": null}"""
 
@@ -148,3 +149,9 @@ block:
 
   let test = to[LegacyEntry](str)
   echo test
+
+# bug #16022
+block:
+  let p: proc () = proc () = echo "hello world"
+  let poc = (to[typeof(p)]($$p))
+  poc()
