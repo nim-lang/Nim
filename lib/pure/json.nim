@@ -813,7 +813,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
       result = newJRawNumber(p.a)
     else:
       try:
-        result = newJInt(parseBiggestInt(p.a))
+        result = newJInt(p.getInt)
       except ValueError:
         result = newJRawNumber(p.a)
     discard getTok(p)
@@ -822,7 +822,7 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
       result = newJRawNumber(p.a)
     else:
       try:
-        result = newJFloat(parseFloat(p.a))
+        result = newJFloat(p.getFloat)
       except ValueError:
         result = newJRawNumber(p.a)
     discard getTok(p)
