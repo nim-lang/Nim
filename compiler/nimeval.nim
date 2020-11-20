@@ -10,7 +10,7 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, lineinfos, vm,
+  options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
   passaux, scriptconfig
 
@@ -153,7 +153,7 @@ proc runRepl*(r: TLLRepl;
     conf.searchPaths.add(AbsoluteDir p)
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
-  conf.setCmd cmdInteractive
+  conf.cmd = cmdInteractive # see also `setCmd`
   conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
