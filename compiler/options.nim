@@ -116,7 +116,7 @@ type
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
-  CommandRaw* = enum  ## Nim's commands
+  Command* = enum  ## Nim's commands
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
     cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
@@ -255,7 +255,7 @@ type
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmd*: CommandRaw  # raw command parsed as enum
+    cmd*: Command  # raw command parsed as enum
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`

@@ -398,7 +398,7 @@ proc handleCmdInput*(conf: ConfigRef) =
   conf.projectName = "cmdfile"
   handleStdinOrCmdInput()
 
-proc parseCommandRaw*(command: string): CommandRaw =
+proc parseCommand*(command: string): Command =
   case command.normalize
   of "c", "cc", "compile", "compiletoc": cmdCompileToC
   of "cpp", "compiletocpp": cmdCompileToCpp
@@ -425,7 +425,7 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "jsonscript": cmdJsonscript
   else: cmdUnknown
 
-proc setCmd*(conf: ConfigRef, cmd: CommandRaw) =
+proc setCmd*(conf: ConfigRef, cmd: Command) =
   ## sets cmd, backend so subsequent flags can query it (e.g. so --gc:arc can be ignored for backendJs)
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmd = cmd
@@ -438,7 +438,7 @@ proc setCmd*(conf: ConfigRef, cmd: CommandRaw) =
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
-  setCmd(conf, command.parseCommandRaw)
+  setCmd(conf, command.parseCommand)
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
