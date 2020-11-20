@@ -427,10 +427,8 @@ proc parseCommandRaw*(command: string): CommandRaw =
   else: cmd0unknown
 
 proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
-  ## sets conf.command, conf.cmd, conf.backend
-  ## this can be called also from nimscript via setCommand.
+  ## sets cmd, cmdRaw, backend
   # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
-  # xxx make sure each command string appears only once in code, use helper enum as needed.
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmdRaw = cmdRaw
   var cmd = cmdCompileToBackend

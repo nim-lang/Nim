@@ -148,8 +148,8 @@ type
     # cmd0Def,                   # def feature (find definition for IDEs)
     # cmd0Interactive,           # start interactive session
   TCommands* = enum           # Nim's commands
-                              # **keep binary compatible**
-    cmdNone,
+                              # **keep binary compatible**; xxx: why?
+    cmdNone                   # deadcode
     cmdCompileToC,            # deadcode
     cmdCompileToCpp,          # deadcode
     cmdCompileToOC,           # deadcode

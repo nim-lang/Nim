@@ -75,7 +75,7 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
-  if conf.cmd == cmdNone:
+  if conf.cmdRaw == cmd0none:
     rawMessage(conf, errGenerated, "command missing")
 
   graph.suggestMode = self.suggestMode
