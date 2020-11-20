@@ -58,8 +58,8 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.setCommandRaw cmd0ideTools
-  if conf.cmdRaw == cmd0nimscript:
+    conf.setCommandRaw cmdIdeTools
+  if conf.cmdRaw == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
@@ -68,14 +68,14 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
       case conf.cmdRaw
-      of cmd0none: (conf.setCommandRaw cmd0nimscript; return false)
-      of cmd0nimscript: return false
+      of cmdNone: (conf.setCommandRaw cmdNimscript; return false)
+      of cmdNimscript: return false
       else: discard
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
-  if conf.cmdRaw == cmd0none:
+  if conf.cmdRaw == cmdNone:
     rawMessage(conf, errGenerated, "command missing")
 
   graph.suggestMode = self.suggestMode

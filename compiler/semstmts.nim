@@ -138,7 +138,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
-    elif result.typ.kind != tyError and c.config.cmdRaw != cmd0interactive:
+    elif result.typ.kind != tyError and c.config.cmdRaw != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
       var s = "expression '" & $n & "' is of type '" &

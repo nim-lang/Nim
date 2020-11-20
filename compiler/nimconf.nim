@@ -301,7 +301,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   if scriptIsProj:
     showHintConf()
     configFiles.setLen 0
-  if conf.cmdRaw != cmd0ideTools:
+  if conf.cmdRaw != cmdIdeTools:
     runNimScriptIfExists(scriptFile, isMain = true)
   else:
     if not scriptIsProj:

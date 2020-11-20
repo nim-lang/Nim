@@ -134,7 +134,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e.position = int(counter)
     let symNode = newSymNode(e)
     if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil and
-        c.config.cmdRaw notin cmd0docLike: # A hack to produce documentation for enum fields.
+        c.config.cmdRaw notin cmdDocLike: # A hack to produce documentation for enum fields.
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:

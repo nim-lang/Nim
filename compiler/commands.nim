@@ -400,30 +400,30 @@ proc handleCmdInput*(conf: ConfigRef) =
 
 proc parseCommandRaw*(command: string): CommandRaw =
   case command.normalize
-  of "c", "cc", "compile", "compiletoc": cmd0c # compile means compileToC currently
-  of "cpp", "compiletocpp": cmd0cpp
-  of "objc", "compiletooc": cmd0oc
-  of "js", "compiletojs": cmd0js
-  of "r": cmd0r
-  of "run": cmd0tcc
-  of "check": cmd0check
-  of "e": cmd0nimscript
-  of "doc0": cmd0doc0
-  of "doc2", "doc": cmd0doc
-  of "rst2html": cmd0rst2html
-  of "rst2tex": cmd0rst2tex
-  of "jsondoc0": cmd0jsondoc0
-  of "jsondoc2", "jsondoc": cmd0jsondoc
-  of "ctags": cmd0ctags
-  of "buildindex": cmd0buildindex
-  of "gendepend": cmd0gendepend
-  of "dump": cmd0dump
-  of "parse": cmd0parse
-  of "scan": cmd0scan
-  of "secret": cmd0interactive
-  of "nop", "help": cmd0nop
-  of "jsonscript": cmd0jsonscript
-  else: cmd0unknown
+  of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "cpp", "compiletocpp": cmdCompileToCpp
+  of "objc", "compiletooc": cmdCompileToOC
+  of "js", "compiletojs": cmdCompileToJS
+  of "r": cmdCrun
+  of "run": cmdTcc
+  of "check": cmdCheck
+  of "e": cmdNimscript
+  of "doc0": cmdDoc0
+  of "doc2", "doc": cmdDoc2
+  of "rst2html": cmdRst2html
+  of "rst2tex": cmdRst2tex
+  of "jsondoc0": cmdJsondoc0
+  of "jsondoc2", "jsondoc": cmdJsondoc
+  of "ctags": cmdCtags
+  of "buildindex": cmdBuildindex
+  of "gendepend": cmdGendepend
+  of "dump": cmdDump
+  of "parse": cmdParse
+  of "scan": cmdScan
+  of "secret": cmdInteractive
+  of "nop", "help": cmdNop
+  of "jsonscript": cmdJsonscript
+  else: cmdUnknown
 
 proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
   ## sets cmdRaw, backend
@@ -431,12 +431,12 @@ proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmdRaw = cmdRaw
   case cmdRaw
-  of cmd0c: conf.backend = backendC # compile means compileToC currently
-  of cmd0cpp: conf.backend = backendCpp
-  of cmd0oc: conf.backend = backendObjc
-  of cmd0js: conf.backend = backendJs
-  of cmd0r: conf.backend = backendC
-  of cmd0tcc: conf.backend = backendC
+  of cmdCompileToC: conf.backend = backendC
+  of cmdCompileToCpp: conf.backend = backendCpp
+  of cmdCompileToOC: conf.backend = backendObjc
+  of cmdCompileToJS: conf.backend = backendJs
+  of cmdCrun: conf.backend = backendC
+  of cmdTcc: conf.backend = backendC
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
@@ -452,8 +452,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
-    if conf.cmdRaw == cmd0none:
-      conf.setCommandRaw cmd0nimscript # better than `cmd0r` as a default
+    if conf.cmdRaw == cmdNone:
+      conf.setCommandRaw cmdNimscript # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -996,7 +996,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      config.setCommandRaw cmd0nimscript
+      config.setCommandRaw cmdNimscript
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)

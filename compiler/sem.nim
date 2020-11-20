@@ -580,7 +580,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
         if result.kind != nkEmpty: a.add result
         result = a
   result = hloStmt(c, result)
-  if c.config.cmdRaw == cmd0interactive and not isEmptyType(result.typ):
+  if c.config.cmdRaw == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)

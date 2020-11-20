@@ -2280,7 +2280,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
     markUsed(c, n.info, s)
-    if c.config.cmdRaw in cmd0docLike and n.len >= 2 and n.lastSon.kind == nkStmtList:
+    if c.config.cmdRaw in cmdDocLike and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
         # some of this dead code was moved to `prepareExamples`
         if sfMainModule in c.module.flags:

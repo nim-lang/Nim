@@ -139,7 +139,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if c.config.cmdRaw != cmd0interactive and c.compilesContextId == 0:
+  if c.config.cmdRaw != cmdInteractive and c.compilesContextId == 0:
     c.importTable.addSym(result)
 
 type
@@ -187,7 +187,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo) =
-  if c.config.cmdRaw != cmd0interactive:
+  if c.config.cmdRaw != cmdInteractive:
     localError(c.config, info,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])

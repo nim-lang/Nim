@@ -62,12 +62,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos listDirsImpl:
     listDirs(a, {pcDir})
   cbos removeDir:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.removeFile getString(a, 0)
@@ -82,22 +82,22 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
   cbos moveFile:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.moveFile(getString(a, 0), getString(a, 1))
   cbos moveDir:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.copyFile(getString(a, 0), getString(a, 1))
   cbos copyDir:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       os.copyDir(getString(a, 0), getString(a, 1))
@@ -107,7 +107,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       setResult(a, osproc.execCmd getString(a, 0))
@@ -186,13 +186,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       setResult(a, "")
       setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
-    if defined(nimsuggest) or graph.config.cmdRaw == cmd0check:
+    if defined(nimsuggest) or graph.config.cmdRaw == cmdCheck:
       discard
     else:
       setResult(a, "")

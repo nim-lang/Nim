@@ -47,7 +47,7 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optWasNimscript,          # redundant with `cmd0nimscript`, could be removed
+    optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -116,53 +116,41 @@ type
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
-  CommandRaw* = enum  ## unlike `TCommands`, these represent each unique possible command (after command aliasing)
-    cmd0none # not yet processed command
-    cmd0unknown # command unmapped
-    cmd0c
-    cmd0cpp
-    cmd0oc
-    cmd0js
-    cmd0r # compile and run in nimache
-    cmd0tcc # run the project via TCC backend
-    cmd0check # semantic checking for whole project
-    cmd0parse # parse a single file (for debugging)
-    cmd0scan # scan a single file (for debugging)
-    cmd0ideTools
-    cmd0nimscript # evaluate nimscript (makes optWasNimscript redundant)
-    cmd0doc0
-    cmd0doc
-    cmd0rst2html # convert a reStructuredText file to HTML
-    cmd0rst2tex # convert a reStructuredText file to TeX
-    cmd0jsondoc0
-    cmd0jsondoc
-    cmd0ctags
-    cmd0buildindex
-    cmd0gendepend
-    cmd0dump
-    cmd0interactive # start interactive session
-    cmd0nop
-    cmd0jsonscript # compile a .json build file
+  CommandRaw* = enum  ## Nim's commands
+    cmdNone # not yet processed command
+    cmdUnknown # command unmapped
+    cmdCompileToC
+    cmdCompileToCpp
+    cmdCompileToOC
+    cmdCompileToJS
+    cmdCrun # compile and run in nimache
+    cmdTcc # run the project via TCC backend
+    cmdCheck # semantic checking for whole project
+    cmdParse # parse a single file (for debugging)
+    cmdScan # scan a single file (for debugging)
+    cmdIdeTools # ide tools (e.g. nimsuggest)
+    cmdNimscript # evaluate nimscript
+    cmdDoc0
+    cmdDoc2
+    cmdRst2html # convert a reStructuredText file to HTML
+    cmdRst2tex # convert a reStructuredText file to TeX
+    cmdJsondoc0
+    cmdJsondoc
+    cmdCtags
+    cmdBuildindex
+    cmdGendepend
+    cmdDump
+    cmdInteractive # start interactive session
+    cmdNop
+    cmdJsonscript # compile a .json build file
+    cmdPretty, # xxx rename cmdNimfix
+    # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const
-  cmd0backends* = {cmd0c, cmd0cpp, cmd0oc, cmd0js, cmd0r}
-  cmd0docLike* = {cmd0doc0, cmd0doc, cmd0jsondoc0, cmd0jsondoc, cmd0ctags, cmd0buildindex}
+  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
+  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
 
 type
-  TCommands* = enum           # Nim's commands
-                              # **keep binary compatible**; xxx: why?
-    cmdNone
-    cmdCompileToC,            # deadcode
-    cmdCompileToCpp,          # deadcode
-    cmdCompileToOC,           # deadcode
-    cmdCompileToJS,           # deadcode
-    cmdCompileToLLVM,         # deadcode
-    # cmdInterpret,
-    cmdPretty, # xxx rename cmdNimfix
-    # cmdDoc, cmdGenDepend, cmdDump, cmdCheck, cmdParse, cmdScan
-    cmdIdeTools,              # ide tools
-    # cmdDef,                   # def feature (find definition for IDEs)
-    # cmdRst2html, cmdRst2tex, cmdInteractive, cmdTcc, cmdJsonScript
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
@@ -270,8 +258,7 @@ type
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmdRaw*: CommandRaw  # raw command after aliasing
-    cmd*: TCommands  # the processed command, has some historical conflation between commands
+    cmd*: CommandRaw  # raw command parsed as enum
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
@@ -557,7 +544,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmdRaw notin cmd0docLike + {cmd0ideTools}
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmdRaw notin cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =

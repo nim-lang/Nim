@@ -87,7 +87,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if graph.config.errorCounter > 0:
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
-  if conf.cmdRaw != cmd0tcc:
+  if conf.cmdRaw != cmdTcc:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
@@ -214,8 +214,8 @@ proc mainCommand*(graph: ModuleGraph) =
       body
 
   block: ## command prepass
-    if conf.cmdRaw == cmd0r: conf.globalOptions.incl {optRun, optUseNimcache}
-    if conf.cmdRaw notin cmd0backends + {cmd0tcc}: customizeForBackend(backendC)
+    if conf.cmdRaw == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+    if conf.cmdRaw notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
     if conf.outDir.isEmpty:
       # doc like commands can generate a lot of files (especially with --project)
       # so by default should not end up in $PWD nor in $projectPath.
@@ -223,13 +223,13 @@ proc mainCommand*(graph: ModuleGraph) =
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
                   else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if conf.cmdRaw in {cmd0doc0, cmd0doc, cmd0rst2html, cmd0rst2tex, cmd0jsondoc0, cmd0jsondoc, cmd0ctags, cmd0buildindex}: ret = ret / htmldocsDir
+        if conf.cmdRaw in {cmdDoc0, cmdDoc2, cmdRst2html, cmdRst2tex, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}: ret = ret / htmldocsDir
         ret
 
   ## process all commands
   case conf.cmdRaw
-  of cmd0backends: compileToBackend()
-  of cmd0tcc:
+  of cmdBackends: compileToBackend()
+  of cmdTcc:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
       if conf.backend != backendC:
@@ -237,8 +237,8 @@ proc mainCommand*(graph: ModuleGraph) =
       compileToBackend()
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  of cmd0doc0: docLikeCmd commandDoc(cache, conf)
-  of cmd0doc:
+  of cmdDoc0: docLikeCmd commandDoc(cache, conf)
+  of cmdDoc2:
     docLikeCmd():
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
@@ -249,25 +249,25 @@ proc mainCommand*(graph: ModuleGraph) =
       commandDoc2(graph, false)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
-  of cmd0rst2html:
+  of cmdRst2html:
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
-  of cmd0rst2tex:
+  of cmdRst2tex:
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
-  of cmd0jsondoc0: docLikeCmd commandJson(cache, conf)
-  of cmd0jsondoc: docLikeCmd commandDoc2(graph, true)
-  of cmd0ctags: docLikeCmd commandTags(cache, conf)
-  of cmd0buildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
-  of cmd0gendepend: commandGenDepend(graph)
-  of cmd0dump:
+  of cmdJsondoc0: docLikeCmd commandJson(cache, conf)
+  of cmdJsondoc: docLikeCmd commandDoc2(graph, true)
+  of cmdCtags: docLikeCmd commandTags(cache, conf)
+  of cmdBuildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
+  of cmdGendepend: commandGenDepend(graph)
+  of cmdDump:
     if getConfigVar(conf, "dump.format") == "json":
       wantMainModule(conf)
 
@@ -310,30 +310,30 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of cmd0parse:
+  of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of cmd0scan:
+  of cmdScan:
     wantMainModule(conf)
     commandScan(cache, conf)
     msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of cmd0interactive: commandInteractive(graph)
-  of cmd0nop: discard
-  of cmd0check: commandCheck(graph)
-  of cmd0jsonscript:
+  of cmdInteractive: commandInteractive(graph)
+  of cmdNop: discard
+  of cmdCheck: commandCheck(graph)
+  of cmdJsonscript:
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmd0nimscript:
+  of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
-  of cmd0unknown, cmd0none, cmd0ideTools:
+  of cmdUnknown, cmdNone, cmdIdeTools:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and conf.cmdRaw notin {cmd0tcc, cmd0dump, cmd0nop}:
+  if conf.errorCounter == 0 and conf.cmdRaw notin {cmdTcc, cmdDump, cmdNop}:
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -345,9 +345,9 @@ proc mainCommand*(graph: ModuleGraph) =
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
 
     var output: string
-    if optCompileOnly in conf.globalOptions and conf.cmdRaw != cmd0jsonscript:
+    if optCompileOnly in conf.globalOptions and conf.cmdRaw != cmdJsonscript:
       output = $conf.jsonBuildFile
-    elif conf.outFile.isEmpty and conf.cmdRaw notin {cmd0jsonscript} + cmd0docLike + cmd0backends:
+    elif conf.outFile.isEmpty and conf.cmdRaw notin {cmdJsonscript} + cmdDocLike + cmdBackends:
       # for some cmd we expect a valid absOutFile
       output = "unknownOutput"
     else:
