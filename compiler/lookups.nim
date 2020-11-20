@@ -361,14 +361,13 @@ when false:
     of 'a'..'z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-import std/editdistance
-import std/heapqueue
-
+import std/[editdistance, heapqueue]
 proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
-  ## when we cannot find the identifier, retry with a changed identifier
-  # xxx nimfix used to call: prettybase.replaceDeprecated(n.info, ident, alt)
-  # if not (isDefined(c.config, "nimFixSpelling") or defined(nimfix)): return
+  ## when we cannot find the identifier, suggest nearby spellings
+  # note: defined(nimfix) used to try `altSpelling` and
+  # prettybase.replaceDeprecated(n.info, ident, alt)
   if optSpellSuggest notin c.config.globalOptions: return
+  if c.compilesContextId > 0: return # don't slowdown inside compiles()
   type E = tuple[dist: int, depth: int, sym: PSym]
   proc `<`(a, b: E): bool =
     # favors nearby scopes
@@ -380,22 +379,35 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         let identi = scope.symbols.data[h]
-        let si = identi.name.s
-        let dist = editDistance(name0, si.nimIdentNormalize)
+        let dist = editDistance(name0, identi.name.s.nimIdentNormalize)
         list.push (dist, depth, identi)
     depth.inc
-
-  # xxx: items(list) should work for HeapQueue
   if list.len == 0: return
   let e0 = list[0]
-  # let dist0 = list[0].dist
-  for i in 0..<list.len:
+  let maxNum = 100 # PRTEMP
+  for i in 0..<list.len: # xxx: items(list) should work for HeapQueue
+    if i >= maxNum: break
     let e = list[i]
-    if e0 < e: break
+    doAssert false
+    #[
+    BUG! this is wrong
+
+/Users/timothee/git_clone/nim/timn/tests/nim/all/t11346.nim(54, 3) Error: undeclared identifier: 'write2'
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(189, 6)]
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(500, 6)]
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(240, 6)]
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(508, 6)]
+  candidate misspelling (dist: 4, depth: 1): 'pointer' [type declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system.nim(36, 3)]
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(479, 6)]
+  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(491, 6)]
+  candidate misspelling (dist: 4, depth: 1): 'ref' [type declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system.nim(43, 3)]
+
+    ]#
+    # if e0 < e: break
     let (dist, depth, sym) = e
-    result.add "\n  candidate misspelling: '" & sym.name.s & "'"
-    # TODO: .skipAlias(n, c.config) >
-    addDeclaredLocMaybe(result, c.config, sym)
+    # result.add "\n  candidate misspelling (dist: $1): '$2'" % [$dist, sym.name.s]
+    result.add "\n  candidate misspelling (dist: $1, depth: $2): '$3'" % [$dist, $depth, sym.name.s]
+    addDeclaredLocMaybe(result, c.config, sym) # skipAlias not needed
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
