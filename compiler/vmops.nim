@@ -85,7 +85,7 @@ template wrap2svoid(op, modop) {.dirty.} =
   modop op
 
 template wrapDangerous(op, modop) {.dirty.} =
-  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmd == cmdCheck):
+  if vmopsDanger notin c.config.features and (defined(nimsuggest) or c.config.cmdRaw == cmd0check):
     proc `op Wrapper`(a: VmArgs) {.nimcall.} =
       discard
     modop op
@@ -193,7 +193,7 @@ proc registerAdditionalOps*(c: PCtx) =
       registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) =
         setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
 
-    if defined(nimsuggest) or c.config.cmd == cmdCheck:
+    if defined(nimsuggest) or c.config.cmdRaw == cmd0check:
       discard "don't run staticExec for 'nim suggest'"
     else:
       systemop gorgeEx

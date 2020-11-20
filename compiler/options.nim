@@ -124,8 +124,11 @@ type
     cmd0oc
     cmd0js
     cmd0r # compile and run in nimache
-    cmd0run # run the project via TCC backend
+    cmd0tcc # run the project via TCC backend
     cmd0check # semantic checking for whole project
+    cmd0parse # parse a single file (for debugging)
+    cmd0scan # scan a single file (for debugging)
+    cmd0ideTools
     cmd0nimscript # evaluate nimscript (makes optWasNimscript redundant)
     cmd0doc0
     cmd0doc
@@ -137,35 +140,29 @@ type
     cmd0buildindex
     cmd0gendepend
     cmd0dump
-    cmd0parse # parse a single file (for debugging)
-    cmd0scan # scan a single file (for debugging)
-    cmd0Interactive # start interactive session
-    cmd0help
+    cmd0interactive # start interactive session
+    cmd0nop
     cmd0jsonscript # compile a .json build file
-    cmd0nimsuggest # xxx remove?
-    # cmd0pretty
-    # cmd0IdeTools,              # ide tools
+
+const
+  cmd0backends* = {cmd0c, cmd0cpp, cmd0oc, cmd0js, cmd0r}
+  cmd0docLike* = {cmd0doc0, cmd0doc, cmd0jsondoc0, cmd0jsondoc, cmd0ctags, cmd0buildindex}
+
+type
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**; xxx: why?
-    cmdNone                   # deadcode
+    cmdNone
     cmdCompileToC,            # deadcode
     cmdCompileToCpp,          # deadcode
     cmdCompileToOC,           # deadcode
     cmdCompileToJS,           # deadcode
     cmdCompileToLLVM,         # deadcode
-    cmdInterpret, cmdPretty, cmdDoc,
-    cmdGenDepend, cmdDump,
-    cmdCheck,                 # semantic checking for whole project
-    # cmdParse,                 # parse a single file (for debugging)
-    # cmdScan,                  # scan a single file (for debugging)
+    # cmdInterpret,
+    cmdPretty, # xxx rename cmdNimfix
+    # cmdDoc, cmdGenDepend, cmdDump, cmdCheck, cmdParse, cmdScan
     cmdIdeTools,              # ide tools
     # cmdDef,                   # def feature (find definition for IDEs)
-    cmdRst2html,              # convert a reStructuredText file to HTML
-    cmdRst2tex,               # convert a reStructuredText file to TeX
-    cmdInteractive,           # start interactive session
-    cmdRun,                   # run the project via TCC backend
-    cmdJsonScript             # compile a .json build file
-    cmdCompileToBackend,      # compile to backend in TBackend
+    # cmdRst2html, cmdRst2tex, cmdInteractive, cmdTcc, cmdJsonScript
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
@@ -560,7 +557,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmdRaw notin cmd0docLike + {cmd0ideTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =

@@ -87,7 +87,7 @@ proc commandCompileToC(graph: ModuleGraph) =
   if graph.config.errorCounter > 0:
     return # issue #9933
   cgenWriteModules(graph.backend, conf)
-  if conf.cmd != cmdRun:
+  if conf.cmdRaw != cmd0tcc:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
@@ -209,15 +209,13 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with documentation generator"
     else:
       wantMainModule(conf)
-      conf.cmd = cmdDoc
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
-  const backends = {cmd0c, cmd0cpp, cmd0oc, cmd0js, cmd0r}
   block: ## command prepass
     if conf.cmdRaw == cmd0r: conf.globalOptions.incl {optRun, optUseNimcache}
-    if conf.cmdRaw notin backends + {cmd0run}: customizeForBackend(backendC)
+    if conf.cmdRaw notin cmd0backends + {cmd0tcc}: customizeForBackend(backendC)
     if conf.outDir.isEmpty:
       # doc like commands can generate a lot of files (especially with --project)
       # so by default should not end up in $PWD nor in $projectPath.
@@ -230,8 +228,8 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## process all commands
   case conf.cmdRaw
-  of backends: compileToBackend()
-  of cmd0run:
+  of cmd0backends: compileToBackend()
+  of cmd0tcc:
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
       if conf.backend != backendC:
@@ -256,25 +254,20 @@ proc mainCommand*(graph: ModuleGraph) =
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
-      conf.cmd = cmdRst2html
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of cmd0rst2tex:
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
-      conf.cmd = cmdRst2tex
       loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
   of cmd0jsondoc0: docLikeCmd commandJson(cache, conf)
   of cmd0jsondoc: docLikeCmd commandDoc2(graph, true)
   of cmd0ctags: docLikeCmd commandTags(cache, conf)
   of cmd0buildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
-  of cmd0gendepend:
-    conf.cmd = cmdGenDepend
-    commandGenDepend(graph)
+  of cmd0gendepend: commandGenDepend(graph)
   of cmd0dump:
-    conf.cmd = cmdDump
     if getConfigVar(conf, "dump.format") == "json":
       wantMainModule(conf)
 
@@ -324,19 +317,12 @@ proc mainCommand*(graph: ModuleGraph) =
     wantMainModule(conf)
     commandScan(cache, conf)
     msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
-  of cmd0interactive:
-    conf.cmd = cmdInteractive
-    commandInteractive(graph)
-  of cmd0help:
-    # prevent the "success" message:
-    conf.cmd = cmdDump
+  of cmd0interactive: commandInteractive(graph)
+  of cmd0nop: discard
+  of cmd0check: commandCheck(graph)
   of cmd0jsonscript:
-    conf.cmd = cmdJsonScript
     setOutFile(graph.config)
     commandJsonScript(graph)
-  of cmd0check:
-    conf.cmd = cmdCheck
-    commandCheck(graph)
   of cmd0nimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
@@ -344,11 +330,10 @@ proc mainCommand*(graph: ModuleGraph) =
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
-  of cmd0unknown, cmd0none, cmd0nimsuggest:
+  of cmd0unknown, cmd0none, cmd0ideTools:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if conf.errorCounter == 0 and
-     conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
+  if conf.errorCounter == 0 and conf.cmdRaw notin {cmd0tcc, cmd0dump, cmd0nop}:
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -360,9 +345,9 @@ proc mainCommand*(graph: ModuleGraph) =
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
 
     var output: string
-    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonScript:
+    if optCompileOnly in conf.globalOptions and conf.cmdRaw != cmd0jsonscript:
       output = $conf.jsonBuildFile
-    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonScript, cmdCompileToBackend, cmdDoc}:
+    elif conf.outFile.isEmpty and conf.cmdRaw notin {cmd0jsonscript} + cmd0docLike + cmd0backends:
       # for some cmd we expect a valid absOutFile
       output = "unknownOutput"
     else:

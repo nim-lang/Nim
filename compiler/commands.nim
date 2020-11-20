@@ -405,7 +405,7 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "objc", "compiletooc": cmd0oc
   of "js", "compiletojs": cmd0js
   of "r": cmd0r
-  of "run": cmd0run
+  of "run": cmd0tcc
   of "check": cmd0check
   of "e": cmd0nimscript
   of "doc0": cmd0doc0
@@ -421,26 +421,23 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "parse": cmd0parse
   of "scan": cmd0scan
   of "secret": cmd0interactive
-  of "nop", "help": cmd0help
+  of "nop", "help": cmd0nop
   of "jsonscript": cmd0jsonscript
-  of "nimsuggest": cmd0nimsuggest # xxx checkme
   else: cmd0unknown
 
 proc setCommandRaw*(conf: ConfigRef, cmdRaw: CommandRaw) =
-  ## sets cmd, cmdRaw, backend
+  ## sets cmdRaw, backend
   # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmdRaw = cmdRaw
-  var cmd = cmdCompileToBackend
   case cmdRaw
   of cmd0c: conf.backend = backendC # compile means compileToC currently
   of cmd0cpp: conf.backend = backendCpp
   of cmd0oc: conf.backend = backendObjc
   of cmd0js: conf.backend = backendJs
-  of cmd0r: conf.backend = backendC # different from `"run"`!
-  of cmd0run: (conf.backend = backendC; cmd = cmdRun)
-  else: cmd = conf.cmd
-  conf.cmd = cmd
+  of cmd0r: conf.backend = backendC
+  of cmd0tcc: conf.backend = backendC
+  else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
