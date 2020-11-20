@@ -87,4 +87,4 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
 
 proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef; graph: ModuleGraph): bool =
   ## Alias for loadConfigsAndProcessCmdLine, here for backwards compatibility
-  loadConfigsAndProcessCmdLine(self, cache; conf; graph)
+  loadConfigsAndProcessCmdLine(self, cache, conf, graph)
