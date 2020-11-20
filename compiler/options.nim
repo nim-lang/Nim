@@ -80,6 +80,7 @@ type                          # please make sure we have under 32 options
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
     optDeclaredLocs           # show declaration locations in messages
+    optSpellSuggest           # spelling suggestions for typos
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll

@@ -863,6 +863,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
   of "listfullpaths":
     processOnOffSwitchG(conf, {optListFullPaths}, arg, pass, info)
+  of "spellsuggest":
+    processOnOffSwitchG(conf, {optSpellSuggest}, arg, pass, info)
   of "declaredlocs":
     processOnOffSwitchG(conf, {optDeclaredLocs}, arg, pass, info)
   of "dynliboverride":
