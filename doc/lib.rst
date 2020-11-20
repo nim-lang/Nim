@@ -540,13 +540,6 @@ Regular expressions
   Wrapper for the PCRE library.
 
 
-GUI libraries
--------------
-
-* `iup <iup.html>`_
-  The wrapper of the IUP GUI library.
-
-
 Database support
 ----------------
 

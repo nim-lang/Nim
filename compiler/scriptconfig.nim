@@ -199,7 +199,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    idgen: IdGenerator;
-                   freshDefines=true; conf: ConfigRef) =
+                   freshDefines=true; conf: ConfigRef, stream: PLLStream) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -226,7 +226,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   graph.vm = vm
 
   graph.compileSystemModule()
-  discard graph.processModule(m, vm.idgen, llStreamOpen(scriptName, fmRead))
+  discard graph.processModule(m, vm.idgen, stream)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:

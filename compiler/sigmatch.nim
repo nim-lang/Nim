@@ -1079,7 +1079,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     return typeRel(c, f, lastSon(aOrig), flags)
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar, tyLent, tySink}).kind notin {
+      skipTypes(f, {tyStatic, tyVar, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a), flags)
@@ -1240,8 +1240,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result < isGeneric: result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
-    # varargs[expr] is special too but handled earlier. So we only need to
-    # handle varargs[stmt] which is the same as varargs[typed]:
+    # varargs[untyped] is special too but handled earlier. So we only need to
+    # handle varargs[typed]:
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon, flags)
@@ -1555,7 +1555,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         for i in 1..<f.len:
           let x = PType(idTableGet(c.bindings, genericBody[i-1]))
           if x == nil:
-            discard "maybe fine (for eg. a==tyNil)"
+            discard "maybe fine (for e.g. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError(c.c.graph.config, "wrong instantiated type!")
           else:
@@ -2489,7 +2489,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             container = nil
           else:
             # we end up here if the argument can be converted into the varargs
-            # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
+            # formal (e.g. seq[T] -> varargs[T]) but we have already instantiated
             # a container
             #assert arg.kind == nkHiddenStdConv # for 'nim check'
             # this assertion can be off

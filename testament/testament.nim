@@ -41,7 +41,7 @@ Options:
   --print                   also print results to the console
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
-  --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --targets:"c cpp js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messages coloring on|off.

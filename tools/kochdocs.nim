@@ -127,7 +127,6 @@ lib/system/channels.nim
 
   withoutIndex = """
 lib/wrappers/mysql.nim
-lib/wrappers/iup.nim
 lib/wrappers/sqlite3.nim
 lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim

@@ -1441,6 +1441,7 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  result.constraint = s.constraint
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
     result.bitsize = s.bitsize
@@ -1804,7 +1805,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
 
 proc isEmptyType*(t: PType): bool {.inline.} =
-  ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
+  ## 'void' and 'typed' types are often equivalent to 'nil' these days:
   result = t == nil or t.kind in {tyVoid, tyTyped}
 
 proc makeStmtList*(n: PNode): PNode =

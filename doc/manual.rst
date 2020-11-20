@@ -8,7 +8,7 @@ Nim Manual
 .. contents::
 
 
-  "Complexity" seems to be a lot like "energy": you can transfer it from the 
+  "Complexity" seems to be a lot like "energy": you can transfer it from the
   end-user to one/some of the other players, but the total amount seems to remain
   pretty much constant for a given task. -- Ran
 
@@ -311,6 +311,32 @@ is the preferred way of writing keywords).
 Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was not even a
 distinction between ``foo`` and ``Foo``.
+
+
+Stropping
+---------
+
+If a keyword is enclosed in backticks it loses its keyword property and becomes an ordinary identifier.
+
+Examples
+
+.. code-block:: nim
+  var `var` = "Hello Stropping"
+
+.. code-block:: nim
+  type Type = object
+    `int`: int
+
+  let `object` = Type(`int`: 9)
+  assert `object` is Type
+  assert `object`.`int` == 9
+
+  var `var` = 42
+  let `let` = 8
+  assert `var` + `let` == 50
+
+  const `assert` = true
+  assert `assert`
 
 
 String literals
@@ -883,9 +909,7 @@ Ordinal types have the following characteristics:
   than the largest value produces a panic or a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
-types) belong to ordinal types. For reasons of simplicity of implementation
-the types ``uint`` and ``uint64`` are not ordinal types. (This will be changed
-in later versions of the language.)
+types) belong to ordinal types.
 
 A distinct type is an ordinal type if its base type is an ordinal type.
 
@@ -1281,6 +1305,20 @@ string from a cstring:
   var str: string = "Hello!"
   var cstr: cstring = str
   var newstr: string = $cstr
+
+``cstring`` literals shouldn't be modified.
+
+.. code-block:: nim
+  var x = cstring"literals"
+  x[1] = 'A' # This is wrong!!!
+
+If the ``cstring`` originates from a regular memory (not read-only memory),
+it can be modified:
+
+.. code-block:: nim
+  var x = "123456"
+  var s: cstring = x
+  s[0] = 'u' # This is ok
 
 Structured types
 ----------------
@@ -2697,6 +2735,36 @@ the variable has been initialized and does not rely on syntactic properties:
       x = a()
     # use x
 
+`requiresInit` pragma can also be applyied to `distinct` types.
+
+Given the following distinct type definitions:
+
+.. code-block:: nim
+  type
+    DistinctObject {.requiresInit, borrow: `.`.} = distinct MyObject
+    DistinctString {.requiresInit.} = distinct string
+
+The following code blocks will fail to compile:
+
+.. code-block:: nim
+  var foo: DistinctFoo
+  foo.x = "test"
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  var s: DistinctString
+  s = "test"
+  doAssert s == "test"
+
+But these ones will compile successfully:
+
+.. code-block:: nim
+  let foo = DistinctFoo(Foo(x: "test"))
+  doAssert foo.x == "test"
+
+.. code-block:: nim
+  let s = "test"
+  doAssert s == "test"
 
 Let statement
 -------------
@@ -4031,9 +4099,12 @@ Closure iterators and inline iterators have some restrictions:
 1. For now, a closure iterator cannot be executed at compile time.
 2. ``return`` is allowed in a closure iterator but not in an inline iterator
    (but rarely useful) and ends the iteration.
-3. Neither inline nor closure iterators can be recursive.
+3. Neither inline nor closure iterators can be (directly)* recursive.
 4. Neither inline nor closure iterators have the special ``result`` variable.
 5. Closure iterators are not supported by the js backend.
+
+(*) Closure iterators can be co-recursive with a factory proc which results
+in similar syntax to a recursive iterator.  More details follow.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but this may change in future versions of the
@@ -4129,7 +4200,41 @@ parameters of an outer factory proc:
   for f in foo():
     echo f
 
+The call can be made more like an inline iterator with a for loop macro:
 
+.. code-block:: nim
+  import macros
+  macro toItr(x: ForLoopStmt): untyped =
+    let expr = x[0]
+    let call = x[1][1] # Get foo out of toItr(foo)
+    let body = x[2]
+    result = quote do:
+      block:
+        let itr = `call`
+        for `expr` in itr():
+            `body`
+
+  for f in toItr(mycount(1, 4)): # using early `proc mycount`
+    echo f
+
+Because of full backend function call aparatus involvment, closure iterator
+invocation is typically higher cost than inline iterators.  Adornment by
+a macro wrapper at the call site like this is a possibly useful reminder.
+
+The factory ``proc``, as an ordinary procedure, can be recursive.  The
+above macro allows such recursion to look much like a recursive iterator
+would.  For example:
+
+.. code-block:: nim
+  proc recCountDown(n: int): iterator(): int =
+    result = iterator(): int =
+      if n > 0:
+        yield n
+        for e in toItr(recCountDown(n - 1)):
+            yield e
+
+  for i in toItr(recCountDown(6)): # Emits: 6 5 4 3 2 1
+    echo i
 
 Converters
 ==========
@@ -4309,7 +4414,9 @@ Custom exceptions can be raised like any others, e.g.:
 Defer statement
 ---------------
 
-Instead of a ``try finally`` statement a ``defer`` statement can be used.
+Instead of a ``try finally`` statement a ``defer`` statement can be used, which
+avoids lexical nesting and offers more flexibility in terms of scoping as shown
+below.
 
 Any statements following the ``defer`` in the current block will be considered
 to be in an implicit try block:
@@ -4318,7 +4425,7 @@ to be in an implicit try block:
     :test: "nim c $1"
 
   proc main =
-    var f = open("numbers.txt")
+    var f = open("numbers.txt", fmWrite)
     defer: close(f)
     f.write "abc"
     f.write "def"
@@ -4335,6 +4442,33 @@ Is rewritten to:
       f.write "def"
     finally:
       close(f)
+
+When `defer` is at the outermost scope of a template/macro, its scope extends
+to the block where the template is called from:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  template safeOpenDefer(f, path) =
+    var f = open(path, fmWrite)
+    defer: close(f)
+
+  template safeOpenFinally(f, path, body) =
+    var f = open(path, fmWrite)
+    try: body # without `defer`, `body` must be specified as parameter
+    finally: close(f)
+
+  block:
+    safeOpenDefer(f, "/tmp/z01.txt")
+    f.write "abc"
+  block:
+    safeOpenFinally(f, "/tmp/z01.txt"):
+      f.write "abc" # adds a lexical scope
+  block:
+    var f = open("/tmp/z01.txt", fmWrite)
+    try:
+      f.write "abc" # adds a lexical scope
+    finally: close(f)
 
 Top-level ``defer`` statements are not supported
 since it's unclear what such a statement should refer to.
@@ -4619,8 +4753,8 @@ The following example shows a generic binary tree can be modeled:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
