@@ -81,3 +81,9 @@ block: # #14142
   discard dirExists("/usr")
   discard fileExists("/usr/foo")
   discard findExe("nim")
+
+block:
+  doAssertRaises(AssertionDefect): doAssert false
+  try: doAssert false
+  except Exception as e:
+    discard

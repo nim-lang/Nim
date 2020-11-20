@@ -70,6 +70,9 @@ king
 hi
 try
 bye
+()
+()
+()
 '''
 """
 
@@ -502,7 +505,7 @@ weirdScopes()
 # bug #14985
 proc getScope(): string =
   if true:
-    "hi"
+    return "hi"
   else:
     "else"
 
@@ -512,15 +515,45 @@ proc getScope3(): string =
   try:
     "try"
   except:
-    "except"
+    return "except"
 
 echo getScope3()
 
 proc getScope2(): string =
   case true
   of true:
-    "bye"
+    return "bye"
   else:
     "else"
 
 echo getScope2()
+
+
+#--------------------------------------------------------------------
+#bug  #15609
+
+type
+  Wrapper = object
+    discard
+
+proc newWrapper(): ref Wrapper =
+  new(result)
+  result
+
+
+proc newWrapper2(a: int): ref Wrapper =
+  new(result)
+  if a > 0:
+    result
+  else:
+    new(Wrapper)
+
+
+let w1 = newWrapper()
+echo $w1[]
+
+let w2 = newWrapper2(1)
+echo $w2[]
+
+let w3 = newWrapper2(-1)
+echo $w3[]

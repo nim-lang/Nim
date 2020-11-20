@@ -46,3 +46,14 @@ proc main() =
     echo i, ": ", x
 
 main()
+
+# This has to continue to work:
+
+type
+  PNode = ref object
+  TSrcGen = object
+    comStack: seq[PNode]
+
+proc pushCom(g: var TSrcGen, n: PNode) =
+  setLen(g.comStack, g.comStack.len + 1)
+  g.comStack[^1] = n

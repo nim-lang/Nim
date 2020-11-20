@@ -10,7 +10,7 @@
 # This scanner is handwritten for efficiency. I used an elegant buffering
 # scheme which I have not seen anywhere else:
 # We guarantee that a whole line is in the buffer. Thus only when scanning
-# the \n or \r character we have to check wether we need to read in the next
+# the \n or \r character we have to check whether we need to read in the next
 # chunk. (\n or \r already need special handling for incrementing the line
 # counter; choosing both \n and \r allows the scanner to properly read Unix,
 # DOS or Macintosh text files, even when it is not the native format.
@@ -31,37 +31,44 @@ const
 
 type
   TokType* = enum
-    tkInvalid, tkEof,         # order is important here!
-    tkSymbol, # keywords:
-    tkAddr, tkAnd, tkAs, tkAsm,
-    tkBind, tkBlock, tkBreak, tkCase, tkCast,
-    tkConcept, tkConst, tkContinue, tkConverter,
-    tkDefer, tkDiscard, tkDistinct, tkDiv, tkDo,
-    tkElif, tkElse, tkEnd, tkEnum, tkExcept, tkExport,
-    tkFinally, tkFor, tkFrom, tkFunc,
-    tkIf, tkImport, tkIn, tkInclude, tkInterface,
-    tkIs, tkIsnot, tkIterator,
-    tkLet,
-    tkMacro, tkMethod, tkMixin, tkMod, tkNil, tkNot, tkNotin,
-    tkObject, tkOf, tkOr, tkOut,
-    tkProc, tkPtr, tkRaise, tkRef, tkReturn,
-    tkShl, tkShr, tkStatic,
-    tkTemplate,
-    tkTry, tkTuple, tkType, tkUsing,
-    tkVar, tkWhen, tkWhile, tkXor,
-    tkYield, # end of keywords
-    tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
-    tkUIntLit, tkUInt8Lit, tkUInt16Lit, tkUInt32Lit, tkUInt64Lit,
-    tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit,
-    tkStrLit, tkRStrLit, tkTripleStrLit,
-    tkGStrLit, tkGTripleStrLit, tkCharLit, tkParLe, tkParRi, tkBracketLe,
-    tkBracketRi, tkCurlyLe, tkCurlyRi,
-    tkBracketDotLe, tkBracketDotRi, # [. and  .]
-    tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
-    tkParDotLe, tkParDotRi,   # (. and .)
-    tkComma, tkSemiColon,
-    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, tkBracketLeColon,
-    tkOpr, tkComment, tkAccent,
+    tkInvalid = "tkInvalid", tkEof = "[EOF]", # order is important here!
+    tkSymbol = "tkSymbol", # keywords:
+    tkAddr = "addr", tkAnd = "and", tkAs = "as", tkAsm = "asm",
+    tkBind = "bind", tkBlock = "block", tkBreak = "break", tkCase = "case", tkCast = "cast",
+    tkConcept = "concept", tkConst = "const", tkContinue = "continue", tkConverter = "converter",
+    tkDefer = "defer", tkDiscard = "discard", tkDistinct = "distinct", tkDiv = "div", tkDo = "do",
+    tkElif = "elif", tkElse = "else", tkEnd = "end", tkEnum = "enum", tkExcept = "except", tkExport = "export",
+    tkFinally = "finally", tkFor = "for", tkFrom = "from", tkFunc = "func",
+    tkIf = "if", tkImport = "import", tkIn = "in", tkInclude = "include", tkInterface = "interface",
+    tkIs = "is", tkIsnot = "isnot", tkIterator = "iterator",
+    tkLet = "let",
+    tkMacro = "macro", tkMethod = "method", tkMixin = "mixin", tkMod = "mod", tkNil = "nil", tkNot = "not", tkNotin = "notin",
+    tkObject = "object", tkOf = "of", tkOr = "or", tkOut = "out",
+    tkProc = "proc", tkPtr = "ptr", tkRaise = "raise", tkRef = "ref", tkReturn = "return",
+    tkShl = "shl", tkShr = "shr", tkStatic = "static",
+    tkTemplate = "template",
+    tkTry = "try", tkTuple = "tuple", tkType = "type", tkUsing = "using",
+    tkVar = "var", tkWhen = "when", tkWhile = "while", tkXor = "xor",
+    tkYield = "yield", # end of keywords
+
+    tkIntLit = "tkIntLit", tkInt8Lit = "tkInt8Lit", tkInt16Lit = "tkInt16Lit", 
+    tkInt32Lit = "tkInt32Lit", tkInt64Lit = "tkInt64Lit",
+    tkUIntLit = "tkUIntLit", tkUInt8Lit = "tkUInt8Lit", tkUInt16Lit = "tkUInt16Lit", 
+    tkUInt32Lit = "tkUInt32Lit", tkUInt64Lit = "tkUInt64Lit",
+    tkFloatLit = "tkFloatLit", tkFloat32Lit = "tkFloat32Lit",
+    tkFloat64Lit = "tkFloat64Lit", tkFloat128Lit = "tkFloat128Lit",
+    tkStrLit = "tkStrLit", tkRStrLit = "tkRStrLit", tkTripleStrLit = "tkTripleStrLit",
+    tkGStrLit = "tkGStrLit", tkGTripleStrLit = "tkGTripleStrLit", tkCharLit = "tkCharLit", 
+    
+    tkParLe = "(", tkParRi = ")", tkBracketLe = "[",
+    tkBracketRi = "]", tkCurlyLe = "{", tkCurlyRi = "}",
+    tkBracketDotLe = "[.", tkBracketDotRi = ".]",
+    tkCurlyDotLe = "{.", tkCurlyDotRi = ".}",
+    tkParDotLe = "(.", tkParDotRi = ".)",
+    tkComma = ",", tkSemiColon = ";",
+    tkColon = ":", tkColonColon = "::", tkEquals = "=", 
+    tkDot = ".", tkDotDot = "..", tkBracketLeColon = "[:",
+    tkOpr, tkComment, tkAccent = "`",
     # these are fake tokens used by renderer.nim
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
@@ -74,35 +81,6 @@ const
     # tokens that should not be considered for previousToken
   tokKeywordLow* = succ(tkSymbol)
   tokKeywordHigh* = pred(tkIntLit)
-  TokTypeToStr*: array[TokType, string] = ["tkInvalid", "[EOF]",
-    "tkSymbol",
-    "addr", "and", "as", "asm",
-    "bind", "block", "break", "case", "cast",
-    "concept", "const", "continue", "converter",
-    "defer", "discard", "distinct", "div", "do",
-    "elif", "else", "end", "enum", "except", "export",
-    "finally", "for", "from", "func", "if",
-    "import", "in", "include", "interface", "is", "isnot", "iterator",
-    "let",
-    "macro", "method", "mixin", "mod",
-    "nil", "not", "notin", "object", "of", "or",
-    "out", "proc", "ptr", "raise", "ref", "return",
-    "shl", "shr", "static",
-    "template",
-    "try", "tuple", "type", "using",
-    "var", "when", "while", "xor",
-    "yield",
-    "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit",
-    "tkUIntLit", "tkUInt8Lit", "tkUInt16Lit", "tkUInt32Lit", "tkUInt64Lit",
-    "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkFloat128Lit",
-    "tkStrLit", "tkRStrLit",
-    "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(",
-    ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
-    ",", ";",
-    ":", "::", "=", ".", "..", "[:",
-    "tkOpr", "tkComment", "`",
-    "tkSpaces", "tkInfixOpr",
-    "tkPrefixOpr", "tkPostfixOpr"]
 
 type
   NumericalBase* = enum
@@ -171,7 +149,7 @@ proc `$`*(tok: Token): string =
   of tkIntLit..tkInt64Lit: $tok.iNumber
   of tkFloatLit..tkFloat64Lit: $tok.fNumber
   of tkInvalid, tkStrLit..tkCharLit, tkComment: tok.literal
-  of tkParLe..tkColon, tkEof, tkAccent: TokTypeToStr[tok.tokType]
+  of tkParLe..tkColon, tkEof, tkAccent: $tok.tokType
   else:
     if tok.ident != nil:
       tok.ident.s
@@ -183,8 +161,7 @@ proc prettyTok*(tok: Token): string =
   else: $tok
 
 proc printTok*(conf: ConfigRef; tok: Token) =
-  msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
-      TokTypeToStr[tok.tokType] & " " & $tok)
+  msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" & $tok.tokType & " " & $tok)
 
 proc initToken*(L: var Token) =
   L.tokType = tkInvalid

@@ -416,13 +416,13 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
   else:
     result = n
 
-proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode
-proc transformSpawnSons(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator;owner: PSym; n, barrier: PNode): PNode
+proc transformSpawnSons(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
   for i in 0..<n.len:
-    result[i] = transformSpawn(g, owner, n[i], barrier)
+    result[i] = transformSpawn(g, idgen, owner, n[i], barrier)
 
-proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     result = nil
@@ -436,25 +436,25 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
           result.add n
         let t = b[1][0].typ[0]
         if spawnResult(t, true) == srByVar:
-          result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
+          result.add wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, it[0])
           it[^1] = newNodeI(nkEmpty, it.info)
         else:
-          it[^1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
+          it[^1] = wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
     if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
         spawnResult(t, true) == srByVar):
       let m = transformSlices(g, b)
-      return wrapProcForSpawn(g, owner, m, b.typ, barrier, n[0])
-    result = transformSpawnSons(g, owner, n, barrier)
+      return wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, n[0])
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   of nkCallKinds:
     if getMagic(n) == mSpawn:
       result = transformSlices(g, n)
-      return wrapProcForSpawn(g, owner, result, n.typ, barrier, nil)
-    result = transformSpawnSons(g, owner, n, barrier)
+      return wrapProcForSpawn(g, idgen, owner, result, n.typ, barrier, nil)
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   elif n.safeLen > 0:
-    result = transformSpawnSons(g, owner, n, barrier)
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   else:
     result = n
 
@@ -464,7 +464,7 @@ proc checkArgs(a: var AnalysisCtx; n: PNode) =
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
   discard "too implement"
 
-proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
+proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination
 
   # first pass:
@@ -482,16 +482,16 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), nextId idgen, owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)
   varSection.addVar tempNode
 
-  let barrier = genAddrOf(tempNode)
+  let barrier = genAddrOf(tempNode, idgen)
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
   result.add callCodegenProc(g, "openBarrier", barrier.info, barrier)
-  result.add transformSpawn(g, owner, body, barrier)
+  result.add transformSpawn(g, idgen, owner, body, barrier)
   result.add callCodegenProc(g, "closeBarrier", barrier.info, barrier)

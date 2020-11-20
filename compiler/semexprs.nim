@@ -33,7 +33,8 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   # Note: This is n.info on purpose. It prevents template from creating an info
   # context when called from an another template
   pushInfoContext(c.config, n.info, s.detailedInfo)
-  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache, c.templInstCounter, efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), c.config, c.cache,
+                        c.templInstCounter, c.idgen, efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext(c.config)
 
@@ -384,7 +385,7 @@ proc fixupStaticType(c: PContext, n: PNode) =
   # apply this measure only in code that is enlightened to work
   # with static types.
   if n.typ.kind != tyStatic:
-    n.typ = newTypeWithSons(getCurrOwner(c), tyStatic, @[n.typ])
+    n.typ = newTypeWithSons(getCurrOwner(c), tyStatic, @[n.typ], c.idgen)
     n.typ.n = n # XXX: cycles like the one here look dangerous.
                 # Consider using `n.copyTree`
 
@@ -431,7 +432,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
     res = typeRel(m, t2, t1) >= isSubtype # isNone
-    # `res = sameType(t1, t2)` would be wrong, eg for `int is (int|float)`
+    # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
   result.typ = n.typ
@@ -555,7 +556,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
     var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
-    addSonSkipIntLit(typ, t)
+    addSonSkipIntLit(typ, t, c.idgen)
   typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
 
@@ -605,11 +606,11 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
       let xx = semExprWithType(c, x, flags*{efAllowDestructor})
       result.add xx
-      typ = commonType(typ, xx.typ)
+      typ = commonType(c, typ, xx.typ)
       #n[i] = semExprWithType(c, x, flags*{efAllowDestructor})
       #result.add fitNode(c, typ, n[i])
       inc(lastIndex)
-    addSonSkipIntLit(result.typ, typ)
+    addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<result.len:
       result[i] = fitNode(c, typ, result[i], result[i].info)
   result.typ[0] = makeRangeType(c, toInt64(firstIndex), toInt64(lastIndex), n.info,
@@ -756,14 +757,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     call.add(n[0])
     var allConst = true
     for i in 1..<n.len:
-      var a = getConstExpr(c.module, n[i], c.graph)
+      var a = getConstExpr(c.module, n[i], c.idgen, c.graph)
       if a == nil:
         allConst = false
         a = n[i]
         if a.kind == nkHiddenStdConv: a = a[1]
       call.add(a)
     if allConst:
-      result = semfold.getConstExpr(c.module, call, c.graph)
+      result = semfold.getConstExpr(c.module, call, c.idgen, c.graph)
       if result.isNil: result = n
       else: return result
 
@@ -800,19 +801,19 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n[0])
     for i in 1..<n.len:
-      let a = getConstExpr(c.module, n[i], c.graph)
+      let a = getConstExpr(c.module, n[i], c.idgen, c.graph)
       if a == nil: return n
       call.add(a)
 
     #echo "NOW evaluating at compile time: ", call.renderTree
     if c.inStaticContext == 0 or sfNoSideEffect in callee.flags:
       if sfCompileTime in callee.flags:
-        result = evalStaticExpr(c.module, c.graph, call, c.p.owner)
+        result = evalStaticExpr(c.module, c.idgen, c.graph, call, c.p.owner)
         if result.isNil:
           localError(c.config, n.info, errCannotInterpretNodeX % renderTree(call))
         else: result = fixupTypeAfterEval(c, result, n)
       else:
-        result = evalConstExpr(c.module, c.graph, call)
+        result = evalConstExpr(c.module, c.idgen, c.graph, call)
         if result.isNil: result = n
         else: result = fixupTypeAfterEval(c, result, n)
     else:
@@ -827,7 +828,7 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec c.inStaticContext
   if a.findUnresolvedStatic != nil: return a
-  result = evalStaticExpr(c.module, c.graph, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.idgen, c.graph, a, c.p.owner)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
     result = c.graph.emptyNode
@@ -965,8 +966,9 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
           # t.kind != tySequence(It is tyProc)
           if typ.sym != nil and sfAnon notin typ.sym.flags and
                                 typ.kind == tyProc:
-            msg.add(" = " &
-                typeToString(typ, preferDesc))
+            # when can `typ.sym != nil` ever happen?
+            msg.add(" = " & typeToString(typ, preferDesc))
+          msg.addDeclaredLocMaybe(c.config, typ)
           localError(c.config, n.info, msg)
         return errorNode(c, n)
       result = nil
@@ -1115,7 +1117,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             # This seems semantically correct and then we'll be able
             # to return the section symbol directly here
             let foundType = makeTypeDesc(c, def[2].typ)
-            return newSymNode(copySym(def[0].sym).linkTo(foundType), info)
+            return newSymNode(copySym(def[0].sym, nextId c.idgen).linkTo(foundType), info)
 
       of nkConstSection:
         for def in statement:
@@ -1140,7 +1142,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
-          return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
+          return newSymNode(copySym(tParam.sym, nextId c.idgen).linkTo(foundTyp), info)
 
   return nil
 
@@ -1438,6 +1440,11 @@ proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n[0] = semExprWithType(c, n[0])
+  let a = getConstExpr(c.module, n[0], c.idgen, c.graph)
+  if a != nil:
+    if a.kind == nkNilLit:
+      localError(c.config, n.info, "nil dereference is not allowed")
+    n[0] = a
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
@@ -1700,7 +1707,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
       # prefer to do these rewritings in transf.nim:
-      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.p.owner), {})
+      return semStmt(c, lowerTupleUnpackingForAsgn(c.graph, n, c.idgen, c.p.owner), {})
     else:
       a = semExprWithType(c, a, {efLValue})
   else:
@@ -1930,7 +1937,7 @@ proc expectString(c: PContext, n: PNode): string =
     localError(c.config, n.info, errStringLiteralExpected)
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
-  result = newSym(kind, c.cache.idAnon, getCurrOwner(c), info)
+  result = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), info)
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
@@ -2145,9 +2152,9 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvocation, c.module)
-  addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ)
-  addSonSkipIntLit(result, t)
+  result = newType(tyGenericInvocation, nextId c.idgen, c.module)
+  addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
+  addSonSkipIntLit(result, t, c.idgen)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
 
 proc instantiateCreateFlowVarCall(c: PContext; t: PType;
@@ -2328,7 +2335,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if whenNimvm:
         if semCheck:
           it[1] = semExpr(c, it[1])
-          typ = commonType(typ, it[1].typ)
+          typ = commonType(c, typ, it[1].typ)
         result = n # when nimvm is not elimited until codegen
       else:
         let e = forceBool(c, semConstExpr(c, it[0]))
@@ -2343,17 +2350,13 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
       if result == nil or whenNimvm:
         if semCheck:
           it[0] = semExpr(c, it[0])
-          typ = commonType(typ, it[0].typ)
+          typ = commonType(c, typ, it[0].typ)
         if result == nil:
           result = it[0]
     else: illFormedAst(n, c.config)
   if result == nil:
     result = newNodeI(nkEmpty, n.info)
   if whenNimvm: result.typ = typ
-  # The ``when`` statement implements the mechanism for platform dependent
-  # code. Thus we try to ensure here consistent ID allocation after the
-  # ``when`` statement.
-  idSynchronizationPoint(200)
 
 proc semSetConstr(c: PContext, n: PNode): PNode =
   result = newNodeI(nkCurly, n.info)
@@ -2386,7 +2389,7 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
     elif lengthOrd(c.config, typ) > MaxSetElements:
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
-    addSonSkipIntLit(result.typ, typ)
+    addSonSkipIntLit(result.typ, typ, c.idgen)
     for i in 0..<n.len:
       var m: PNode
       let info = n[i].info
@@ -2467,7 +2470,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n[i][1].typ = errorType(c)
 
     var f = newSymS(skField, n[i][0], c)
-    f.typ = skipIntLit(n[i][1].typ)
+    f.typ = skipIntLit(n[i][1].typ, c.idgen)
     f.position = i
     rawAddSon(typ, f.typ)
     typ.n.add newSymNode(f)
@@ -2481,7 +2484,7 @@ proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
     n[i] = semExprWithType(c, n[i], flags*{efAllowDestructor})
-    addSonSkipIntLit(typ, n[i].typ)
+    addSonSkipIntLit(typ, n[i].typ, c.idgen)
   result.typ = typ
 
 include semobjconstr
@@ -2608,7 +2611,8 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
     let paramPos = defExpr.sym.position + 1
 
     if call[paramPos].kind != nkSym:
-      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), c.p.owner, letSection.info, c.p.owner.options)
+      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), nextId c.idgen,
+                                 c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
 
       letSection.add newTreeI(nkIdentDefs, letSection.info,

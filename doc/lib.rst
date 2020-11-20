@@ -7,7 +7,7 @@ Nim Standard Library
 
 .. contents::
 
-Nim's library is divided into *pure libraries*, *impure libraries* and *wrappers*.
+Nim's library is divided into *pure libraries*, *impure libraries*, and *wrappers*.
 
 Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
 while impure libraries do. A wrapper is an impure library that is a very
@@ -32,7 +32,7 @@ Automatic imports
 * `system <system.html>`_
   Basic procs and operators that every program needs. It also provides IO
   facilities for reading and writing text and binary files. It is imported
-  implicitly by the compiler. Do not import it directly. It relies on compiler
+  implicitly by the compiler. Do not import it directly. It relies on compiler 
   magic to work.
 
 * `threads <threads.html>`_
@@ -48,7 +48,7 @@ Core
 ----
 
 * `bitops <bitops.html>`_
-  Provides a series of low level methods for bit manipulation.
+  Provides a series of low-level methods for bit manipulation.
 
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
@@ -69,7 +69,7 @@ Core
   Reentrant locks for Nim.
 
 * `typeinfo <typeinfo.html>`_
-  Provides (unsafe) access to Nim's run time type information.
+  Provides (unsafe) access to Nim's run-time type information.
 
 * `typetraits <typetraits.html>`_
   This module defines compile-time reflection procs for working with types.
@@ -83,7 +83,7 @@ Algorithms
 ----------
 
 * `algorithm <algorithm.html>`_
-  Implements some common generic algorithms like sort or binary search.
+  This module implements some common generic algorithms like sort or binary search.
 
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
@@ -96,7 +96,7 @@ Collections
 
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
-  container for a sorted set of strings, or for a sorted mapping of strings.
+  container for a sorted set of strings, or a sorted mapping of strings.
 
 * `deques <deques.html>`_
   Implementation of a double-ended queue.
@@ -119,13 +119,13 @@ Collections
   Nim hash and bit set support.
 
 * `sharedlist <sharedlist.html>`_
-  Nim shared linked list support. Contains shared singly linked list.
+  Nim shared linked list support. Contains a shared singly-linked list.
 
 * `sharedtables <sharedtables.html>`_
   Nim shared hash table support. Contains shared tables.
 
 * `tables <tables.html>`_
-  Nim hash table support. Contains tables, ordered tables and count tables.
+  Nim hash table support. Contains tables, ordered tables, and count tables.
 
 
 
@@ -154,11 +154,11 @@ String handling
 
 * `ropes <ropes.html>`_
   This module contains support for a *rope* data type.
-  Ropes can represent very long strings efficiently; especially concatenation
-  is done in O(1) instead of O(n).
+  Ropes can represent very long strings efficiently; 
+  especially concatenation is done in O(1) instead of O(n).
 
 * `strformat <strformat.html>`_
-  Macro based standard string interpolation / formatting. Inspired by
+  Macro based standard string interpolation/formatting. Inspired by
   Python's ``f``-strings.
 
 * `strmisc <strmisc.html>`_
@@ -207,7 +207,7 @@ Generic Operating System Services
   and the OS's native package manager.
   Its primary purpose is to produce output for Nimble packages,
   but it also contains the widely used **Distribution** enum
-  that is useful for writing platform specific code.
+  that is useful for writing platform-specific code.
   See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
 * `dynlib <dynlib.html>`_
@@ -218,7 +218,7 @@ Generic Operating System Services
   data structures.
 
 * `memfiles <memfiles.html>`_
-  This module provides support for memory mapped files (Posix's ``mmap``)
+  This module provides support for memory-mapped files (Posix's ``mmap``)
   on the different operating systems.
 
 * `os <os.html>`_
@@ -231,8 +231,8 @@ Generic Operating System Services
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the `FileStream` and the `StringStream` which implement the stream
-  interface for Nim file objects (`File`) and strings. Other modules
+  the `FileStream` and the `StringStream` which implement the stream 
+  interface for Nim file objects (`File`) and strings. Other modules 
   may provide other implementations for this standard stream interface.
 
 * `terminal <terminal.html>`_
@@ -245,7 +245,7 @@ Math libraries
 --------------
 
 * `complex <complex.html>`_
-  This module implements complex numbers and their mathematical operations.
+  This module implements complex numbers and relevant mathematical operations.
 
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
@@ -261,7 +261,7 @@ Math libraries
   Fast and tiny random number generator.
 
 * `rationals <rationals.html>`_
-  This module implements rational numbers and their mathematical operations.
+  This module implements rational numbers and relevant mathematical operations.
 
 * `stats <stats.html>`_
   Statistical analysis
@@ -317,10 +317,10 @@ Internet Protocols and Support
 
 * `selectors <selectors.html>`_
   This module implements a selector API with backends specific to each OS.
-  Currently epoll on Linux and select on other operating systems.
+  Currently, epoll on Linux and select on other operating systems.
 
 * `smtp <smtp.html>`_
-  This module implement a simple SMTP client.
+  This module implements a simple SMTP client.
 
 * `uri <uri.html>`_
   This module provides functions for working with URIs.
@@ -340,47 +340,46 @@ Parsers
   This module parses an HTML document and creates its XML tree representation.
 
 * `json <json.html>`_
-  High performance JSON parser.
+  High-performance JSON parser.
 
 * `lexbase <lexbase.html>`_
-  This is a low level module that implements an extremely efficient buffering
+  This is a low-level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
 * `parsecfg <parsecfg.html>`_
-  The ``parsecfg`` module implements a high performance configuration file
+  The ``parsecfg`` module implements a high-performance configuration file
   parser. The configuration file's syntax is similar to the Windows ``.ini``
   format, but much more powerful, as it is not a line based parser. String
-  literals, raw string literals and triple quote string literals are supported
+  literals, raw string literals, and triple quote string literals are supported
   as in the Nim programming language.
 
 * `parsecsv <parsecsv.html>`_
-  The ``parsecsv`` module implements a simple high performance CSV parser.
+  The ``parsecsv`` module implements a simple high-performance CSV parser.
 
 * `parseopt <parseopt.html>`_
   The ``parseopt`` module implements a command line option parser.
 
 * `parsesql <parsesql.html>`_
-  The ``parsesql`` module implements a simple high performance SQL parser.
+  The ``parsesql`` module implements a simple high-performance SQL parser.
 
 * `parsexml <parsexml.html>`_
   The ``parsexml`` module implements a simple high performance XML/HTML parser.
   The only encoding that is supported is UTF-8. The parser has been designed
-  to be somewhat error correcting, so that even some "wild HTML" found on the
-  Web can be parsed with it.
+  to be somewhat error-correcting, so that even some "wild HTML" found on the
+  web can be parsed with it.
 
 
 Docutils
 --------
 
 * `packages/docutils/highlite <highlite.html>`_
-  Source highlighter for programming or markup languages.  Currently
-  only few languages are supported, other languages may be added.
+  Source highlighter for programming or markup languages.  Currently, 
+  only a few languages are supported, other languages may be added.
   The interface supports one language nested in another.
 
 * `packages/docutils/rst <rst.html>`_
-  This module implements a reStructuredText parser. A large subset
-  is implemented. Some features of the markdown wiki syntax are
-  also supported.
+  This module implements a reStructuredText parser. A large subset 
+  is implemented. Some features of the markdown wiki syntax are also supported.
 
 * `packages/docutils/rstast <rstast.html>`_
   This module implements an AST for the reStructuredText parser.
@@ -404,8 +403,8 @@ Generators
 ----------
 
 * `htmlgen <htmlgen.html>`_
-  This module implements a simple XML and HTML code
-  generator. Each commonly used HTML tag has a corresponding macro
+  This module implements a simple XML and HTML code 
+  generator. Each commonly used HTML tag has a corresponding macro 
   that generates a string with its HTML representation.
 
 
@@ -425,7 +424,7 @@ Hashing
 
 * `oids <oids.html>`_
   An OID is a global ID that consists of a timestamp,
-  a unique counter and a random value. This combination should suffice to
+  a unique counter, and a random value. This combination should suffice to
   produce a globally distributed unique ID. This implementation was extracted
   from the Mongodb interface and it thus binary compatible with a Mongo OID.
 
@@ -460,7 +459,7 @@ Miscellaneous
   Implements a Unit testing DSL.
 
 * `std/varints <varints.html>`_
-  Decode variable length integers that are compatible with SQLite.
+  Decode variable-length integers that are compatible with SQLite.
 
 
 Modules for JS backend
@@ -476,7 +475,7 @@ Modules for JS backend
   Wrapper for the ``console`` object.
 
 * `jscore <jscore.html>`_
-  Wrapper of core JavaScript functions. For most purposes you should be using
+  The wrapper of core JavaScript functions. For most purposes, you should be using
   the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
 * `jsffi <jsffi.html>`_
@@ -490,7 +489,7 @@ Regular expressions
 -------------------
 
 * `re <re.html>`_
-  This module contains procedures and operators for handling regular
+  This module contains procedures and operators for handling regular 
   expressions. The current implementation uses PCRE.
 
 
@@ -517,7 +516,7 @@ The generated HTML for some of these wrappers is so huge that it is
 not contained in the distribution. You can then find them on the website.
 
 
-Windows specific
+Windows-specific
 ----------------
 
 * `winlean <winlean.html>`_
@@ -539,13 +538,6 @@ Regular expressions
 
 * `pcre <pcre.html>`_
   Wrapper for the PCRE library.
-
-
-GUI libraries
--------------
-
-* `iup <iup.html>`_
-  Wrapper of the IUP GUI library.
 
 
 Database support

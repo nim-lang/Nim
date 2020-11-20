@@ -325,5 +325,6 @@ when not defined(useNimRtl):
     else:
       var p = p
       reprAux(result, addr(p), typ, cl)
-    add result, "\n"
+    when defined(nimLegacyReprWithNewline): # see PR #16034
+      add result, "\n"
     deinitReprClosure(cl)

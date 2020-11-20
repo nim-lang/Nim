@@ -118,8 +118,8 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t[1]
     else: t
 
-proc getTypeDescNode(typ: PType, sym: PSym, info: TLineInfo): PNode =
-  var resType = newType(tyTypeDesc, sym)
+proc getTypeDescNode(c: PContext; typ: PType, sym: PSym, info: TLineInfo): PNode =
+  var resType = newType(tyTypeDesc, nextId c.idgen, sym)
   rawAddSon(resType, typ)
   result = toNode(resType, info)
 
@@ -133,7 +133,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     traitCall[2].typ.skipTypes({tyTypeDesc})
 
   template typeWithSonsResult(kind, sons): PNode =
-    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
+    newTypeWithSons(context, kind, sons, c.idgen).toNode(traitCall.info)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
     return traitCall  ## too early to evaluate
@@ -160,19 +160,19 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.info = traitCall.info
   of "arity":
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
-    result.typ = newType(tyInt, context)
+    result.typ = newType(tyInt, nextId c.idgen, context)
     result.info = traitCall.info
   of "genericHead":
     var arg = operand
     case arg.kind
     of tyGenericInst:
-      result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
+      result = getTypeDescNode(c, arg.base, operand.owner, traitCall.info)
     # of tySequence: # this doesn't work
     #   var resType = newType(tySequence, operand.owner)
     #   result = toNode(resType, traitCall.info) # doesn't work yet
     else:
       localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
-      result = newType(tyError, context).toNode(traitCall.info)
+      result = newType(tyError, nextId c.idgen, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -194,11 +194,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       while arg.kind == tyDistinct:
         arg = arg.base
         arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      result = getTypeDescNode(arg, operand.owner, traitCall.info)
+      result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
-      result = newType(tyError, context).toNode(traitCall.info)
+      result = newType(tyError, nextId c.idgen, context).toNode(traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -286,7 +286,7 @@ proc semDynamicBindSym(c: PContext, n: PNode): PNode =
     return semBindSym(c, n)
 
   if c.graph.vm.isNil:
-    setupGlobalCtx(c.module, c.graph)
+    setupGlobalCtx(c.module, c.graph, c.idgen)
 
   let
     vm = PCtx c.graph.vm
@@ -370,7 +370,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         elems[i] = unownedType(c, t[i])
         if elems[i] != t[i]: someChange = true
       if someChange:
-        result = newType(tyTuple, t.owner)
+        result = newType(tyTuple, nextId c.idgen, t.owner)
         # we have to use 'rawAddSon' here so that type flags are
         # properly computed:
         for e in elems: result.rawAddSon(e)
@@ -381,7 +381,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])
       if b != t[^1]:
-        result = copyType(t, t.owner, keepId = false)
+        result = copyType(t, nextId c.idgen, t.owner)
         result[^1] = b
         result.flags.excl tfHasOwned
       else:
@@ -399,7 +399,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # Replace nkDerefExpr by nkHiddenDeref
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
-  proc transform(procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+  proc transform(c: PContext; procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh
@@ -407,26 +407,26 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
       if n.sym == oldParam:
         result.sym = newParam
       elif n.sym.owner == orig:
-        result.sym = copySym(n.sym)
+        result.sym = copySym(n.sym, nextId c.idgen)
         result.sym.owner = procSym
     for i in 0 ..< safeLen(n):
-      result[i] = transform(procSym, n[i], old, fresh, oldParam, newParam)
+      result[i] = transform(c, procSym, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
-  result = copySym(orig)
+  result = copySym(orig, nextId c.idgen)
   result.info = info
   result.flags.incl sfFromGeneric
   result.owner = orig
   let origParamType = orig.typ[1]
-  let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
+  let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
-  let newParam = newSym(skParam, oldParam.name, result, result.info)
+  let newParam = newSym(skParam, oldParam.name, nextId c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
-  result.ast = transform(result, orig.ast, origParamType, newParamType, oldParam, newParam)
+  result.ast = transform(c, result, orig.ast, origParamType, newParamType, oldParam, newParam)
   # proc signature:
-  result.typ = newProcType(result.info, result)
+  result.typ = newProcType(result.info, nextId c.idgen, result)
   result.typ.addParam newParam
 
 proc semQuantifier(c: PContext; n: PNode): PNode =
@@ -527,14 +527,24 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
-      let fin = if n[^1].kind in {nkLambda, nkDo}: n[^1][namePos].sym
-                else: n[^1].sym
-      # check if we converted this finalizer into a destructor already:
-      let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
-      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
-        discard "already turned this one into a finalizer"
-      else:
-        bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
+      let nfin = skipConvCastAndClosure(n[^1])
+      let fin = case nfin.kind 
+        of nkSym: nfin.sym
+        of nkLambda, nkDo: nfin[namePos].sym
+        else: 
+          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+          nil
+      if fin != nil:
+        if fin.kind notin {skProc, skFunc}:
+          # calling convention is checked in codegen
+          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+
+        # check if we converted this finalizer into a destructor already:
+        let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
+        if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
+          discard "already turned this one into a finalizer"
+        else:
+          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n

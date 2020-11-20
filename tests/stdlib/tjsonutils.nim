@@ -57,7 +57,7 @@ template fn() =
       """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null}]"""
 
   block:
-    # edge case when user defined `==` doesn't handle `nil` well, eg:
+    # edge case when user defined `==` doesn't handle `nil` well, e.g.:
     # https://github.com/nim-lang/nimble/blob/63695f490728e3935692c29f3d71944d83bb1e83/src/nimblepkg/version.nim#L105
     testRoundtrip(@[Foo(id: 10), nil]): """[{"id":10},null]"""
 

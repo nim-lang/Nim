@@ -2,19 +2,22 @@ Testament is an advanced automatic unittests runner for Nim tests, is used for t
 offers process isolation for your tests, it can generate statistics about test cases,
 supports multiple targets (C, C++, ObjectiveC, JavaScript, etc),
 simulated `Dry-Runs <https://en.wikipedia.org/wiki/Dry_run_(testing)>`_,
-has logging, can generate HTML reports, skip tests from a file and more,
+has logging, can generate HTML reports, skip tests from a file, and more,
 so can be useful to run your tests, even the most complex ones.
 
 
 Test files location
 ===================
 
-By default Testament looks for test files on ``"./tests/*.nim"``,
-you can overwrite this pattern glob using ``pattern <glob>``,
-the default working directory path can be changed using ``--directory:"folder/subfolder/"``.
+By default Testament looks for test files on ``"./tests/*.nim"``.
+You can overwrite this pattern glob using ``pattern <glob>``.
+The default working directory path can be changed using
+``--directory:"folder/subfolder/"``.
 
-Testament uses the nim compiler on ``PATH`` you can change that using ``--nim:"folder/subfolder/nim"``,
-running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on ``PATH``.
+Testament uses the ``nim`` compiler on ``PATH``.
+You can change that using ``--nim:"folder/subfolder/nim"``.
+Running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on
+``PATH``.
 
 
 Options
@@ -23,7 +26,7 @@ Options
 * ``--print``                   Also print results to the console
 * ``--simulate``                See what tests would be run but don't run them (for debugging)
 * ``--failing``                 Only show failing/ignored tests
-* ``--targets:"c c++ js objc"`` Run tests for specified targets (default: all)
+* ``--targets:"c cpp js objc"`` Run tests for specified targets (default: all)
 * ``--nim:path``                Use a particular nim executable (default: ``$PATH/nim``)
 * ``--directory:dir``           Change to directory dir before reading the tests or doing anything else.
 * ``--colors:on|off``           Turn messages coloring on|off.
@@ -47,8 +50,6 @@ not very useful for production, but easy to understand:
   $ testament r test0
     PASS: tests/test0.nim C                                       ( 0.2 sec)
 
-  $
-
 
 Running all tests from a directory
 ==================================
@@ -57,6 +58,12 @@ Running all tests from a directory
 
   $ testament pattern "tests/*.nim"
 
+To search for tests deeper in a directory, use
+
+.. code::
+
+  $ testament pattern "tests/**/*.nim"    # one level deeper
+  $ testament pattern "tests/**/**/*.nim" # two levels deeper
 
 HTML Reports
 ============
@@ -78,32 +85,80 @@ Example "template" **to edit** and write a Testament unittest:
 
   discard """
 
-    action: "run"     # What to do, one of "compile" OR "run".
+    # What actions to expect completion on.
+    # Options:
+    #   "compile": expect successful compilation
+    #   "run": expect successful compilation and execution
+    #   "reject": expect failed compilation. The "reject" action can catch
+    #             {.error.} pragmas but not {.fatal.} pragmas because
+    #             {.fatal.} pragmas guarantee that compilation will be aborted.
+    action: "run"
 
-    exitcode: 0       # This is the Exit Code the test should return, zero typically.
+    # The exit code that the test is expected to return. Typically, the default
+    # value of 0 is fine. Note that if the test will be run by valgrind, then
+    # the test will exit with either a code of 0 on success or 1 on failure.
+    exitcode: 0
 
-    output: ""        # This is the Standard Output the test should print, if any.
+    # Provide an `output` string to assert that the test prints to standard out
+    # exatly the expected string. Provide an `outputsub` string to assert that
+    # the string given here is a substring of the standard out output of the
+    # test.
+    output: ""
+    outputsub: ""
 
-    input:  ""        # This is the Standard Input the test should take, if any.
+    # Whether to sort the output lines before comparing them to the desired
+    # output.
+    sortoutput: true
 
-    errormsg: ""      # Error message the test should print, if any.
+    # Each line in the string given here appears in the same order in the
+    # compiler output, but there may be more lines that appear before, after, or
+    # in between them.
+    nimout: '''
+  a very long,
+  multi-line
+  string'''
 
-    batchable: true   # Can be run in batch mode, or not.
+    # This is the Standard Input the test should take, if any.
+    input: ""
 
-    joinable: true    # Can be run Joined with other tests to run all togheter, or not.
+    # Error message the test should print, if any.
+    errormsg: ""
 
+    # Can be run in batch mode, or not.
+    batchable: true
+
+    # Can be run Joined with other tests to run all togheter, or not.
+    joinable: true
+
+    # On Linux 64-bit machines, whether to use Valgrind to check for bad memory
+    # accesses or memory leaks. On other architectures, the test will be run
+    # as-is, without Valgrind.
+    # Options:
+    #   true: run the test with Valgrind
+    #   false: run the without Valgrind
+    #   "leaks": run the test with Valgrind, but do not check for memory leaks
     valgrind: false   # Can use Valgrind to check for memory leaks, or not (Linux 64Bit only).
 
-    cmd: "nim c -r $file" # Command the test should use to run.
+    # Command the test should use to run. If left out or an empty string is
+    # provided, the command is taken to be:
+    # "nim $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    # You can use the $target, $options, and $file placeholders in your own
+    # command, too.
+    cmd: "nim c -r $file"
 
-    maxcodesize: 666  # Maximum generated temporary intermediate code file size for the test.
+    # Maximum generated temporary intermediate code file size for the test.
+    maxcodesize: 666
 
-    timeout: 666      # Timeout microseconds to run the test.
+    # Timeout seconds to run the test. Fractional values are supported.
+    timeout: 1.5
 
-    target: "c js"    # Targets to run the test into (C, C++, JavaScript, etc).
+    # Targets to run the test into (C, C++, JavaScript, etc).
+    target: "c js"
 
-    disabled: "bsd"   # Disable the test by condition, here BSD is disabled just as an example.
-    disabled: "win"   # Can disable multiple OSes at once
+    # Conditions that will skip this test. Use of multiple "disabled" clauses
+    # is permitted.
+    disabled: "bsd"   # Can disable OSes...
+    disabled: "win"
     disabled: "32bit" # ...or architectures
     disabled: "i386"
     disabled: "azure" # ...or pipeline runners
@@ -115,9 +170,9 @@ Example "template" **to edit** and write a Testament unittest:
 
 
 * As you can see the "Spec" is just a ``discard """ """``.
-* Spec has sane defaults, so you dont need to provide them all, any simple assert will work Ok.
+* Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
 * `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
-* `Nim itself uses Testament, so theres plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
+* `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_
 * Has some built-in CI compatibility, like Azure Pipelines, etc.
 * `Testament supports inlined error messages on Unittests, basically comments with the expected error directly on the code. <https://github.com/nim-lang/Nim/blob/9a110047cbe2826b1d4afe63e3a1f5a08422b73f/tests/effects/teffects1.nim>`_
 
@@ -172,7 +227,7 @@ JavaScript tests:
     import jsconsole
     console.log("My Frontend Project")
 
-Compile time tests:
+Compile-time tests:
 
 .. code-block:: nim
 

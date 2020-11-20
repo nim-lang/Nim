@@ -55,7 +55,7 @@ when hasThreadSupport:
       maxFD: int
       numFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ptr SelectorImpl[T]
 else:
   type
@@ -64,7 +64,7 @@ else:
       maxFD: int
       numFD: int
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 type
   SelectEventImpl = object

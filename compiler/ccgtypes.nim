@@ -282,7 +282,8 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = false
   # first parameter and return type is 'lent T'? --> use pass by pointer
   if s.position == 0 and retType != nil and retType.kind == tyLent:
-    result = pt.kind != tyVar
+    result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
+      pt.kind == tySet and mapSetType(conf, pt) == ctArray)
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
@@ -1266,10 +1267,10 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, owner)
-  result.rawAddSon(newType(tyPointer, owner))
-  var r = newType(tyRef, owner)
-  let obj = createObj(m.g.graph, owner, owner.info, final=false)
+  result = newType(tyTuple, nextId m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, nextId m.idgen, owner))
+  var r = newType(tyRef, nextId m.idgen, owner)
+  let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
 
@@ -1395,9 +1396,9 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, t.owner)
-  let p = newType(tyPtr, t.owner)
-  let a = newType(tyUncheckedArray, t.owner)
+  result = newType(tyTuple, nextId m.idgen, t.owner)
+  let p = newType(tyPtr, nextId m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, nextId m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p

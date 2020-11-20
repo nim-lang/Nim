@@ -127,6 +127,7 @@ template declareClosures =
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
     of meGridTableNotImplemented: k = errGridTableNotImplemented
+    of meMarkdownIllformedTable: k = errMarkdownIllformedTable
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
@@ -591,8 +592,10 @@ proc getRoutineBody(n: PNode): PNode =
   (0 or more) doc comments and runnableExamples.
   ]##
   result = n[bodyPos]
-  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
-    doAssert result[0].kind == nkSym
+
+  # This won't be transformed: result.id = 10. Namely result[0].kind != nkSym.
+  if result.kind == nkAsgn and result[0].kind == nkSym and
+                               n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
     doAssert result.len == 2
     result = result[1]
 
@@ -997,7 +1000,7 @@ proc documentEffect(cache: IdentCache; n, x: PNode, effectType: TSpecialWord, id
       effects[i].typ = real[i].typ
 
     result = newTreeI(nkExprColonExpr, n.info,
-      newIdentNode(getIdent(cache, specialWords[effectType]), n.info), effects)
+      newIdentNode(getIdent(cache, $effectType), n.info), effects)
 
 proc documentWriteEffect(cache: IdentCache; n: PNode; flag: TSymFlag; pragmaName: string): PNode =
   let s = n[namePos].sym

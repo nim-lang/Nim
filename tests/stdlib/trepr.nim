@@ -1,36 +1,69 @@
 discard """
-  output: '''{a, b}{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
-[1, 2, 3, 4, 5, 6]'''
+  targets: "c cpp js"
+  matrix: ";--gc:arc"
 """
 
-type
-  TEnum = enum
-    a, b
+# if excessive, could remove 'cpp' from targets
 
-var val = {a, b}
-stdout.write(repr(val))
-stdout.writeLine(repr({'a'..'z', 'A'..'Z'}))
+from strutils import endsWith, contains
 
-type
-  TObj {.pure, inheritable.} = object
-    data: int
-  TFoo = ref object of TObj
-    d2: float
-var foo: TFoo
-new(foo)
+template main() =
+  doAssert repr({3,5}) == "{3, 5}"
 
-when false:
-  # cannot capture this output as it contains a memory address :-/
-  echo foo.repr
-#var testseq: seq[string] = @[
-#  "a", "b", "c", "d", "e"
-#]
-#echo(repr(testseq))
+  block:
+    type TEnum = enum a, b
+    var val = {a, b}
+    when nimvm:
+      discard
+      #[
+      # BUG:
+      {0, 1}
+      {97..99, 65..67}
+      ]#
+    else:
+      doAssert repr(val) == "{a, b}"
+      doAssert repr({'a'..'c', 'A'..'C'}) == "{'A', 'B', 'C', 'a', 'b', 'c'}"
 
-# bug #7878
-proc test(variable: var openarray[int]) =
-  echo repr(variable)
+    type
+      TObj {.pure, inheritable.} = object
+        data: int
+      TFoo = ref object of TObj
+        d2: float
+    var foo: TFoo
+    new(foo)
 
-var arr = [1, 2, 3, 4, 5, 6]
+  #[
+  BUG:
+  --gc:arc returns `"abc"`
+  regular gc returns with address, e.g. 0x1068aae60"abc", but only 
+  for c,cpp backends (not js, vm)
+  ]#
+  block:
+    doAssert repr("abc").endsWith "\"abc\""
+    var b: cstring = "def"
+    doAssert repr(b).endsWith "\"def\""
 
-test(arr)
+  block:
+    var c = @[1,2]
+    when nimvm:
+      discard # BUG: this shows [1, 2] instead of @[1, 2]
+    else:
+      # BUG (already mentioned above): some backends / gc show address, others don't
+      doAssert repr(c).endsWith "@[1, 2]"
+
+    let d = @["foo", "bar"]
+    let s = repr(d)
+    # depending on backend/gc, we get 0x106a1c350@[0x106a1c390"foo", 0x106a1c3c0"bar"]
+    doAssert "\"foo\"," in s
+
+  var arr = [1, 2, 3]
+  doAssert repr(arr) == "[1, 2, 3]"
+
+  block: # bug #7878
+    proc reprOpenarray(variable: var openarray[int]): string = repr(variable)
+    when defined(js): discard # BUG: doesn't work
+    else:
+      doAssert reprOpenarray(arr) == "[1, 2, 3]"
+
+static: main()
+main()
