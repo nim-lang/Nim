@@ -110,19 +110,16 @@ type
   TBackend* = enum
     backendInvalid = "" # for parseEnum
     backendC = "c"
-    backendCpp = "cpp"  # was cmdCompileToCpp
-    backendJs = "js" # was cmdCompileToJS
-    backendObjc = "objc" # was cmdCompileToOC
+    backendCpp = "cpp"
+    backendJs = "js"
+    backendObjc = "objc"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
   CommandRaw* = enum  ## Nim's commands
     cmdNone # not yet processed command
     cmdUnknown # command unmapped
-    cmdCompileToC
-    cmdCompileToCpp
-    cmdCompileToOC
-    cmdCompileToJS
+    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
     cmdCrun # compile and run in nimache
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
@@ -143,7 +140,7 @@ type
     cmdInteractive # start interactive session
     cmdNop
     cmdJsonscript # compile a .json build file
-    cmdPretty, # xxx rename cmdNimfix
+    cmdNimfix
     # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
 
 const
