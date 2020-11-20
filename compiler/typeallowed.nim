@@ -138,7 +138,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if kind != skParam or taIsOpenArray in flags or t[0].kind in {tySink, tyLent, tyVar}:
       result = t
     else:
-      result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+      result = typeAllowedAux(marker, t[0], kind, c, flags)
   of tyUncheckedArray:
     if kind != skParam and taHeap notin flags:
       result = t
