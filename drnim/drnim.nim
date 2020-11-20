@@ -1223,9 +1223,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var argsCount = 1
 
   config.commandLine.setLen 0
-  config.command = "check"
-  config.cmd = cmdCheck
-
+  config.setCommandEarly "check"
   while true:
     parseopt.next(p)
     case p.kind
@@ -1253,7 +1251,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
+        config.arguments.len > 0 and config.command.normalize notin ["run", $cmdNimscript]:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =

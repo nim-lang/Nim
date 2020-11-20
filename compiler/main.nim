@@ -195,10 +195,7 @@ proc mainCommand*(graph: ModuleGraph) =
     if conf.selectedGC in {gcArc, gcOrc} and conf.backend != backendCpp:
       conf.exc = excGoto
 
-  var commandAlreadyProcessed = false
-
   proc compileToBackend() =
-    commandAlreadyProcessed = true
     customizeForBackend(conf.backend)
     case conf.backend
     of backendC: commandCompileToC(graph)
@@ -234,7 +231,7 @@ proc mainCommand*(graph: ModuleGraph) =
         if docLikeCmd2: ret = ret / htmldocsDir
         ret
 
-  ## process all backend commands
+  # call compileToBackend or customizeForBackend
   case conf.cmd
   of cmdCompileToBackend: compileToBackend()
   of cmdRun:
@@ -246,6 +243,20 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   else: customizeForBackend(backendC) # fallback for other commands
+  assert conf.backend != backendInvalid
+
+  var commandAlreadyProcessed = true
+  case conf.cmd
+  of cmdCompileToBackend, cmdRun: discard
+  of cmdCheck: commandCheck(graph)
+  of cmdNimscript:
+    if conf.projectIsCmd or conf.projectIsStdin: discard
+    elif not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in `loadConfigs`.
+  else: commandAlreadyProcessed = false
 
   ## process all other commands
   case conf.command.normalize # synchronize with `cmdUsingHtmlDocs`
@@ -327,9 +338,6 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
-  of "check":
-    conf.cmd = cmdCheck
-    commandCheck(graph)
   of "parse":
     conf.cmd = cmdParse
     wantMainModule(conf)
@@ -342,13 +350,6 @@ proc mainCommand*(graph: ModuleGraph) =
   of "secret":
     conf.cmd = cmdInteractive
     commandInteractive(graph)
-  of "e":
-    if conf.projectIsCmd or conf.projectIsStdin: discard
-    elif not fileExists(conf.projectFull):
-      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
-    elif not conf.projectFull.string.endsWith(".nims"):
-      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
-    # main NimScript logic handled in `loadConfigs`.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump

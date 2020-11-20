@@ -47,7 +47,7 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optWasNimscript,
+    optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -127,7 +127,7 @@ type
     cmdCompileToLLVM,         # deadcode
     cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
-    cmdCheck,                 # semantic checking for whole project
+    cmdCheck = "check",       # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)
     cmdIdeTools,              # ide tools
@@ -138,6 +138,7 @@ type
     cmdRun,                   # run the project via TCC backend
     cmdJsonScript             # compile a .json build file
     cmdCompileToBackend,      # compile to backend in TBackend
+    cmdNimscript = "e"        # evaluate nimscript (makes optWasNimscript redundant)
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,

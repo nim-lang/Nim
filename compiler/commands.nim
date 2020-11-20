@@ -413,6 +413,8 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
   of "js", "compiletojs": conf.backend = backendJs
   of "r": conf.backend = backendC # different from `"run"`!
   of "run": (conf.backend = backendC; cmd = cmdRun)
+  of "check": cmd = cmdCheck
+  of $cmdNimscript: cmd = cmdNimscript
   else: cmd = conf.cmd
   conf.cmd = cmd
 
@@ -425,8 +427,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
-    if conf.command == "":
-      conf.command = "e" # better than "r" as a default
+    if conf.cmd == cmdNone:
+      conf.setCommandEarly $cmdNimscript # better than "r" as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -969,7 +971,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      setCommandEarly(config, "e")
+      setCommandEarly(config, $cmdNimscript)
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
