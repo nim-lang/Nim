@@ -67,10 +67,8 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
     let scriptFile = conf.projectFull.changeFileExt("nims")
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
-      case conf.cmd
-      of cmdNone: (conf.setCommandRaw cmdNimscript; return false)
-      of cmdNimscript: return false
-      else: discard
+      if conf.cmd == cmdNone: conf.setCommandRaw cmdNimscript
+      if conf.cmd == cmdNimscript: return false
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)

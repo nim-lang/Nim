@@ -431,12 +431,10 @@ proc setCommandRaw*(conf: ConfigRef, cmd: CommandRaw) =
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmd = cmd
   case cmd
-  of cmdCompileToC: conf.backend = backendC
+  of cmdCompileToC, cmdCrun, cmdTcc: conf.backend = backendC
   of cmdCompileToCpp: conf.backend = backendCpp
   of cmdCompileToOC: conf.backend = backendObjc
   of cmdCompileToJS: conf.backend = backendJs
-  of cmdCrun: conf.backend = backendC
-  of cmdTcc: conf.backend = backendC
   else: discard
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
