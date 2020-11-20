@@ -268,7 +268,7 @@ proc registerAdditionalOps*(c: PCtx) =
         fn.typ.n[0][effectIndex] != nil:
       var list = newNodeI(nkBracket, fn.info)
       for e in fn.typ.n[0][effectIndex]:
-        list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info)
+        list.add opMapTypeInstToAst(c.cache, e.typ.skipTypes({tyRef}), e.info, c.idgen)
       setResult(a, list)
 
   registerCallback c, "stdlib.effecttraits.getRaisesListImpl", proc (a: VmArgs) =

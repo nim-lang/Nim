@@ -300,7 +300,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -460,6 +460,13 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,Table[A,B],A>`_
@@ -474,6 +481,17 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
 
+    # An example of accidentally creating a copy
+    var t = initTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
+
   mgetOrPutImpl(enlarge)
 
 proc len*[A, B](t: Table[A, B]): int =
@@ -484,7 +502,7 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -839,7 +857,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -944,6 +962,12 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at ``t[key]`` or puts ``val`` if not present, either way
   ## returning a value which can be modified.
   ##
+  ## Note that while the value returned is of type `var B`,
+  ## it is easy to accidentally create an copy of the value at `t[key]`.
+  ## Remember that seqs and strings are value types, and therefore
+  ## cannot be copied into a separate variable for modification.
+  ## See the example below.
+  ##
   ## See also:
   ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
@@ -958,6 +982,16 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert a.mgetOrPut('z', 99) == 99
     doAssert a == {'a': 5, 'b': 9, 'z': 99}.newTable
 
+    # An example of accidentally creating a copy
+    var t = newTable[int, seq[int]]()
+    # In this example, we expect t[10] to be modified,
+    # but it is not.
+    var copiedSeq = t.mgetOrPut(10, @[10])
+    copiedSeq.add(20)
+    doAssert t[10] == @[10]
+    # Correct
+    t.mgetOrPut(25, @[25]).add(35)
+    doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -968,7 +1002,7 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -1217,7 +1251,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
   data[h].next = -1
   if t.first < 0: t.first = h
@@ -1268,7 +1302,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -1455,7 +1489,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##
@@ -1619,6 +1653,8 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
 
   if s.counter != t.counter:
     return false
+  if s.counter == 0 and t.counter == 0:
+    return true
   var ht = t.first
   var hs = s.first
   while ht >= 0 and hs >= 0:
@@ -1810,7 +1846,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -1939,7 +1975,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) {.deprecated:
+proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new ``(key, value)`` pair into ``t`` even if ``t[key]`` already exists.
   ##

@@ -12,6 +12,6 @@ We do not backport security fixes to older releases.
 
 Please do not report vulnerabilities via GitHub issues.
 
-If you have discovered a vulnerability, it is the best to notify us about it via
-security@nim-lang.org in order to setup a meeting where we can discuss the next
+If you have discovered a vulnerability, it is best to notify us about it via
+security@nim-lang.org in order to set up a meeting where we can discuss the next
 steps.

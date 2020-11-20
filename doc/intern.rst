@@ -125,7 +125,7 @@ you can rebuild the compiler as follows:
 A faster approach if you don't need to run the full bootstrapping implied by `koch boot`,
 is the following:
 * `pathto/nim c --lib:lib -d:release -o:bin/nim_temp compiler/nim.nim`
-Where `pathto/nim` is any nim binary sufficiently recent (eg `bin/nim_cources`
+Where `pathto/nim` is any nim binary sufficiently recent (e.g. `bin/nim_cources`
 built during bootstrap or `$HOME/.nimble/bin/nim` installed by `choosenim 1.2.0`)
 
 You can pass any additional options such as `-d:leanCompiler` if you don't need
@@ -153,12 +153,20 @@ are also lots of procs that aid in debugging:
   debug(symbol)
   # pretty prints the Nim ast, but annotates symbol IDs:
   echo renderTree(someNode, {renderIds})
-  if n.info ?? "temp.nim":
+  if `??`(conf, n.info, "temp.nim"):
     # only output when it comes from "temp.nim"
     echo renderTree(n)
-  if n.info ?? "temp.nim":
+  if `??`(conf, n.info, "temp.nim"):
     # why does it process temp.nim here?
     writeStackTrace()
+
+These procs may not be imported by a module. You can import them directly for debugging:
+
+.. code-block:: nim
+  from astalgo import debug
+  from types import typeToString
+  from renderer import renderTree
+  from msgs import `??`
 
 To create a new compiler for each run, use ``koch temp``::
 

@@ -19,13 +19,13 @@ type
 proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
     s.cap = s.cap * 3 div 2
-    when defined(useMalloc):
-      var d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
+    when compileOption("threads"):
+      var d = cast[CellArray](allocShared(uint(s.cap * sizeof(CellTuple))))
     else:
       var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
     copyMem(d, s.d, s.len * sizeof(CellTuple))
-    when defined(useMalloc):
-      c_free(s.d)
+    when compileOption("threads"):
+      deallocShared(s.d)
     else:
       dealloc(s.d)
     s.d = d
@@ -36,15 +36,15 @@ proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
 proc init(s: var CellSeq, cap: int = 1024) =
   s.len = 0
   s.cap = cap
-  when defined(useMalloc):
-    s.d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
+  when compileOption("threads"):
+    s.d = cast[CellArray](allocShared(uint(s.cap * sizeof(CellTuple))))
   else:
     s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
 
 proc deinit(s: var CellSeq) =
   if s.d != nil:
-    when defined(useMalloc):
-      c_free(s.d)
+    when compileOption("threads"):
+      deallocShared(s.d)
     else:
       dealloc(s.d)
     s.d = nil

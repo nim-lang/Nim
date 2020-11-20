@@ -41,7 +41,7 @@ Options:
   --print                   also print results to the console
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
-  --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --targets:"c cpp js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messages coloring on|off.
@@ -501,8 +501,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
             args = concat(@[exeFile], args)
           else:
             exeCmd = exeFile.dup(normalizeExe)
-            if expected.useValgrind:
-              args = @["--error-exitcode=1"] & exeCmd & args
+            if expected.useValgrind != disabled:
+              var valgrindOptions = @["--error-exitcode=1"]
+              if expected.useValgrind != leaking:
+                valgrindOptions.add "--leak-check=yes"
+              args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used

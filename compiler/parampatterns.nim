@@ -100,7 +100,7 @@ proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
       # check all symkinds:
       internalAssert conf, int(high(TSymKind)) < 255
       for i in TSymKind:
-        if cmpIgnoreStyle(($i).substr(2), spec) == 0:
+        if cmpIgnoreStyle(i.toHumanStr, spec) == 0:
           result.add(ppSymKind)
           result.add(chr(i.ord))
           return

@@ -19,7 +19,7 @@ General Guidelines
 .. code-block:: nim
 
   proc someproc*(s: string, foo: int) =
-    ## Use single backticks for inline code, eg: `s` or `someExpr(true)`.
+    ## Use single backticks for inline code, e.g.: `s` or `someExpr(true)`.
     ## Use a backlash to follow with alphanumeric char: `int8`\s are great.
 
 

@@ -44,11 +44,11 @@ proc writeVersion() =
   quit(0)
 
 type
-  PrettyOptions = object
-    indWidth: Natural
-    maxLineLen: Positive
+  PrettyOptions* = object
+    indWidth*: Natural
+    maxLineLen*: Positive
 
-proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
+proc prettyPrint*(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -119,4 +119,5 @@ proc main =
       os.copyFile(source = infile, dest = infileBackup)
     prettyPrint(infile, outfile, opt)
 
-main()
+when isMainModule:
+  main()

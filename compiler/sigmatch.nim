@@ -143,7 +143,7 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
         writeStackTrace()
     if c.c.module.name.s == "temp3":
       echo "binding ", key, " -> ", val
-  idTablePut(c.bindings, key, val.skipIntLit)
+  idTablePut(c.bindings, key, val.skipIntLit(c.c.idgen))
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
                     binding: PNode, calleeScope = -1,
@@ -726,7 +726,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, nextId(c.idgen), typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -739,6 +739,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyStatic:
           param = paramSym skConst
           param.typ = typ.exactReplica
+          #copyType(typ, nextId(c.idgen), typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
@@ -746,6 +747,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyUnknown:
           param = paramSym skVar
           param.typ = typ.exactReplica
+          #copyType(typ, nextId(c.idgen), typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -796,7 +798,8 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
-    result = copyType(ff, ff.owner, true)
+    result = ff.exactReplica
+    #copyType(ff, nextId(c.idgen), ff.owner)
 
   result.n = checkedBody
 
@@ -1076,7 +1079,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     return typeRel(c, f, lastSon(aOrig), flags)
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar, tyLent, tySink}).kind notin {
+      skipTypes(f, {tyStatic, tyVar, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a), flags)
@@ -1086,7 +1089,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   template bindingRet(res) =
     if doBind:
-      let bound = aOrig.skipTypes({tyRange}).skipIntLit
+      let bound = aOrig.skipTypes({tyRange}).skipIntLit(c.c.idgen)
       put(c, f, bound)
     return res
 
@@ -1237,8 +1240,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result < isGeneric: result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
-    # varargs[expr] is special too but handled earlier. So we only need to
-    # handle varargs[stmt] which is the same as varargs[typed]:
+    # varargs[untyped] is special too but handled earlier. So we only need to
+    # handle varargs[typed]:
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon, flags)
@@ -1500,14 +1503,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+
     var preventHack = false
     if x.kind == tyOwned and f[0].kind != tyOwned:
       preventHack = true
       x = x.lastSon
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
-       c.calleeSym != nil and
-       c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
+      c.calleeSym != nil and
+      c.calleeSym.kind in {skProc, skFunc} and c.call != nil and not preventHack:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       #echo "inferred ", typeToString(inst), " for ", f
       return typeRel(c, inst, a, flags)
@@ -1551,7 +1555,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         for i in 1..<f.len:
           let x = PType(idTableGet(c.bindings, genericBody[i-1]))
           if x == nil:
-            discard "maybe fine (for eg. a==tyNil)"
+            discard "maybe fine (for e.g. a==tyNil)"
           elif x.kind in {tyGenericInvocation, tyGenericParam}:
             internalError(c.c.graph.config, "wrong instantiated type!")
           else:
@@ -2291,7 +2295,7 @@ proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ,
-      {tyGenericInst, tyVar, tyLent, tyOrdinal}))
+      {tyGenericInst, tyVar, tyLent, tyOrdinal}), c.idgen)
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArray, c)
@@ -2485,7 +2489,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             container = nil
           else:
             # we end up here if the argument can be converted into the varargs
-            # formal (eg. seq[T] -> varargs[T]) but we have already instantiated
+            # formal (e.g. seq[T] -> varargs[T]) but we have already instantiated
             # a container
             #assert arg.kind == nkHiddenStdConv # for 'nim check'
             # this assertion can be off

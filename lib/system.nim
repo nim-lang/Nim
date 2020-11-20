@@ -1334,6 +1334,9 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
 when not defined(nimV2):
   proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
     ## Takes any Nim variable and returns its string representation.
+    ## No trailing newline is inserted (so `echo` won't add an empty newline).
+    ## Use `-d:nimLegacyReprWithNewline` to revert to old behavior where newlines
+    ## were added in some cases.
     ##
     ## It works even for complex data graphs with cycles. This is a great
     ## debugging tool.
@@ -2102,11 +2105,11 @@ const
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
     # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 3
+  NimMinor* {.intdefine.}: int = 5
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 7
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 
@@ -2360,7 +2363,8 @@ when notJSnotNims and hostOS != "standalone":
     ##
     ## **Warning**: Only use this if you know what you are doing.
     currException = exc
-
+elif defined(nimscript):
+  proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
 
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
@@ -2578,6 +2582,7 @@ proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
   system.`[]`(s, s.len - int(i))
 proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
+proc `[]`*(s: var string; i: BackwardsIndex): var char {.inline.} = s[s.len - int(i)]
 
 proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   system.`[]=`(s, s.len - int(i), x)
