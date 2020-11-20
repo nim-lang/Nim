@@ -343,8 +343,10 @@ template doCopy(a, b, start, endp1: untyped): untyped =
   jsOrVmBlock:
     a = b[start ..< endp1]
   do:
-    a.setLen endp1 - start
-    copyMem a[0].addr, b[start].addr, endp1 - start
+    let n = endp1 - start
+    if n > 0:
+      a.setLen n
+      copyMem a[0].addr, b[start].addr, n
 
 proc i64(c: char): int64 {.inline.} = int64(ord(c) - ord('0'))
 
