@@ -43,9 +43,14 @@
   if `checkSize` is `true` then checks the file sizes *before reading the files*.
   Added `checkFiles` argument to `os.sameFileContent` to `raise` if a file does not exist,
   because `sameFileContent("nonexistant", "nonexistant")` would silently return `false`.
+- ``--gc:orc`` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
+  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
 ## Language changes
 
@@ -53,7 +58,7 @@
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
-
+- nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
 ## Compiler changes
 

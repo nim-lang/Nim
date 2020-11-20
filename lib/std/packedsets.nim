@@ -265,7 +265,7 @@ proc incl*[A](s: var PackedSet[A], other: PackedSet[A]) =
     assert len(a) == 2
     assert 5 in a
 
-  for item in other: incl(s, item)
+  for item in other.items: incl(s, item)
 
 proc toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
   ## Creates a new PackedSet[A] that contains the elements of `x`.
@@ -358,7 +358,7 @@ proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
     assert len(a) == 1
     assert 5 notin a
 
-  for item in other:
+  for item in other.items:
     excl(s, item)
 
 proc len*[A](s: PackedSet[A]): int {.inline.} =
@@ -367,7 +367,8 @@ proc len*[A](s: PackedSet[A]): int {.inline.} =
     result = s.elems
   else:
     result = 0
-    for _ in s:
+    for _ in s.items:
+      # pending bug #11167; when fixed, check each explicit `items` to see if it can be removed
       inc(result)
 
 proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
@@ -488,7 +489,7 @@ proc intersection*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     ## {3}
 
   result = initPackedSet[A]()
-  for item in s1:
+  for item in s1.items:
     if contains(s2, item):
       incl(result, item)
 
@@ -506,7 +507,7 @@ proc difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     ## {1, 2}
 
   result = initPackedSet[A]()
-  for item in s1:
+  for item in s1.items:
     if not contains(s2, item):
       incl(result, item)
 
@@ -522,7 +523,7 @@ proc symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     ## {1, 2, 4, 5}
 
   result.assign(s1)
-  for item in s2:
+  for item in s2.items:
     if containsOrIncl(result, item): excl(result, item)
 
 proc `+`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
@@ -549,7 +550,7 @@ proc disjoint*[A](s1, s2: PackedSet[A]): bool =
     b.excl(2)
     assert disjoint(a, b) == true
 
-  for item in s1:
+  for item in s1.items:
     if contains(s2, item):
       return false
   return true
@@ -575,7 +576,7 @@ proc `<=`*[A](s1, s2: PackedSet[A]): bool =
     a.incl(3)
     assert(not (a <= b))
 
-  for item in s1:
+  for item in s1.items:
     if not s2.contains(item):
       return false
   return true

@@ -1,6 +1,5 @@
 discard """
-  output: '''[1, 0, 0, 0, 0, 0, 0, 0]
- CTBool[Ct[system.uint32]]'''
+  output: '''[1, 0, 0, 0, 0, 0, 0, 0] CTBool[Ct[system.uint32]]'''
 """
 
 block tconstraints:
