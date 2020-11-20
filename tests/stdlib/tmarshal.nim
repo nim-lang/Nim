@@ -148,3 +148,19 @@ block:
 
   let test = to[LegacyEntry](str)
   echo test
+
+# issue #16022
+block:
+  proc p1() = echo "hello world"
+  doAssertRaises(ValueError):
+    discard $$p1
+    doAssert false
+  
+  doAssertRaises(ValueError):
+    (to[typeof(p1)](""))()
+    doAssert false
+  let p2 : proc () = proc () = echo "hello world"
+  
+  doAssertRaises(ValueError):
+    (to[typeof(p2)](""))()
+    doAssert false

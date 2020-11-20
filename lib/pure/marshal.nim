@@ -316,7 +316,8 @@ proc `$$`*[T](x: T): string =
     ## serialize:
     let y = $$x
     assert y == """{"id": 1, "bar": "baz"}"""
-
+  when T is typedesc[proc]:
+    raise newException(ValueError, "marshall procedure is not supported")
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -338,7 +339,8 @@ proc to*[T](data: string): T =
     assert typeof(z) is Foo
     assert z.id == 1
     assert z.bar == "baz"
-
+  when T is typedesc[proc]:
+    raise newException(ValueError, "unmarshall procedure is not supported")
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
 
