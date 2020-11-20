@@ -327,10 +327,10 @@ proc setPointer*(x: Any, y: pointer) =
   ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
   ## ``akPointer``, ``akSequence``.
   assert x.rawType.kind in pointerLike
-  if y != nil:
+  if y != nil and x.rawType.kind != tyPointer:
     genericAssign(x.value, y, x.rawType)
   else:
-    cast[ppointer](x.value)[] = nil
+    cast[ppointer](x.value)[] = y
 
 proc fieldsAux(p: pointer, n: ptr TNimNode,
                ret: var seq[tuple[name: cstring, any: Any]]) =
