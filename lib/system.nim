@@ -1897,53 +1897,54 @@ else:
 # however, stack-traces are available for most parts
 # of the code
 
-var
-  globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
-    ## With this hook you can influence exception handling on a global level.
-    ## If not nil, every 'raise' statement ends up calling this hook.
-    ##
-    ## **Warning**: Ordinary application code should never set this hook!
-    ## You better know what you do when setting this.
-    ##
-    ## If ``globalRaiseHook`` returns false, the exception is caught and does
-    ## not propagate further through the call stack.
+when notJSnotNims:
+  var
+    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a global level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## **Warning**: Ordinary application code should never set this hook!
+      ## You better know what you do when setting this.
+      ##
+      ## If ``globalRaiseHook`` returns false, the exception is caught and does
+      ## not propagate further through the call stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
-    ## With this hook you can influence exception handling on a
-    ## thread local level.
-    ## If not nil, every 'raise' statement ends up calling this hook.
-    ##
-    ## **Warning**: Ordinary application code should never set this hook!
-    ## You better know what you do when setting this.
-    ##
-    ## If ``localRaiseHook`` returns false, the exception
-    ## is caught and does not propagate further through the call stack.
+    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a
+      ## thread local level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## **Warning**: Ordinary application code should never set this hook!
+      ## You better know what you do when setting this.
+      ##
+      ## If ``localRaiseHook`` returns false, the exception
+      ## is caught and does not propagate further through the call stack.
 
-  outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
-    ## Set this variable to provide a procedure that should be called
-    ## in case of an `out of memory`:idx: event. The standard handler
-    ## writes an error message and terminates the program.
-    ##
-    ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
-    ##
-    ## .. code-block:: Nim
-    ##
-    ##   var gOutOfMem: ref EOutOfMemory
-    ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
-    ##   gOutOfMem.msg = "out of memory"
-    ##
-    ##   proc handleOOM() =
-    ##     raise gOutOfMem
-    ##
-    ##   system.outOfMemHook = handleOOM
-    ##
-    ## If the handler does not raise an exception, ordinary control flow
-    ## continues and the program is terminated.
-  unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
-    ## Set this variable to provide a procedure that should be called
-    ## in case of an `unhandle exception` event. The standard handler
-    ## writes an error message and terminates the program, except when
-    ## using `--os:any`
+    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `out of memory`:idx: event. The standard handler
+      ## writes an error message and terminates the program.
+      ##
+      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
+      ##
+      ## .. code-block:: Nim
+      ##
+      ##   var gOutOfMem: ref EOutOfMemory
+      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
+      ##   gOutOfMem.msg = "out of memory"
+      ##
+      ##   proc handleOOM() =
+      ##     raise gOutOfMem
+      ##
+      ##   system.outOfMemHook = handleOOM
+      ##
+      ## If the handler does not raise an exception, ordinary control flow
+      ## continues and the program is terminated.
+    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `unhandle exception` event. The standard handler
+      ## writes an error message and terminates the program, except when
+      ## using `--os:any`
 
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
