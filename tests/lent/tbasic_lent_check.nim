@@ -18,7 +18,6 @@ main()
 
 template main2 = # bug #15958
   proc byLent[T](a: T): lent T = a
-  # proc byLent[T](a: T): lent T = result=a
   let a = [11,12]
   let b = @[21,23]
   let ss = {1, 2, 3, 5}
