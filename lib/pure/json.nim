@@ -809,22 +809,12 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    if rawIntegers:
-      result = newJRawNumber(p.a)
-    else:
-      try:
-        result = newJInt(p.getInt)
-      except ValueError:
-        result = newJRawNumber(p.a)
+    result = if rawIntegers or p.giant: newJRawNumber(p.a)
+             else: newJInt(p.getInt)
     discard getTok(p)
   of tkFloat:
-    if rawFloats:
-      result = newJRawNumber(p.a)
-    else:
-      try:
-        result = newJFloat(p.getFloat)
-      except ValueError:
-        result = newJRawNumber(p.a)
+    result = if rawFloats or p.giant: newJRawNumber(p.a)
+             else: newJFloat(p.getFloat)
     discard getTok(p)
   of tkTrue:
     result = newJBool(true)

@@ -66,6 +66,7 @@ type
     a*: string      ## last valid string
     i*: int64       ## last valid integer
     f*: float       ## last valid float
+    giant*: bool    ## true if tkInt or tkFloat overflow native bounds
     tok*: TokKind   ## current token kind
     kind: JsonEventKind
     err: JsonError
@@ -379,6 +380,7 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
   var p10 = 0
   var pnt = -1                                  # find '.' (point); do digits
   var nD = 0
+  my.giant = false
   my.i = 0'i64                                  # build my.i up from zero..
   if my.buf[i] in Sign:
     i.inc                                       # skip optional sign
@@ -391,6 +393,7 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
     elif nD < 18:                               # 2**63==9.2e18 => 18 digits ok
       my.i = 10 * my.i + my.buf[i].i64          # core ASCII->binary transform
     else:                                       # 20+ digits before decimal
+      my.giant = true #XXX condition should be more precise than "18 digits"
       p10.inc                                   # any digit moves implicit '.'
     i.inc
     nD.inc
@@ -412,11 +415,13 @@ proc parseNumber(my: var JsonParser): TokKind {.inline.} =
       exp = -exp                                # adjust sign
   elif noDot: # and my.i < (1'i64 shl 53'i64) ? # No '.' & No [Ee]xponent
     my.bufpos = i
-    if my.strIntegers: doCopy(my.a, my.buf, my.bufpos, i)
+    if my.strIntegers or my.giant:
+      doCopy(my.a, my.buf, my.bufpos, i)
     return tkInt                                # mark as integer
   exp += pnt - nD + p10                         # combine explicit&implicit exp
   my.f = my.i.float * pow10(exp)                # has round-off vs. 80-bit
-  if my.strFloats: doCopy(my.a, my.buf, my.bufpos, i)
+  if my.strFloats or my.giant:
+    doCopy(my.a, my.buf, my.bufpos, i)
   my.bufpos = i
   return tkFloat                                # mark as float
 
