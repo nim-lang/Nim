@@ -1811,7 +1811,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       localError(c.config, c.p.resultSym.info, errCannotInferReturnType %
         c.p.owner.name.s)
   if isInlineIterator(c.p.owner.typ) and c.p.owner.typ[0] != nil and
-      c.p.owner.typ[0].kind == tyUntyped:
+      c.p.owner.typ[0].kind in {tyUntyped, tyAnything}:
     localError(c.config, c.p.owner.info, errCannotInferReturnType %
       c.p.owner.name.s)
   closeScope(c)
