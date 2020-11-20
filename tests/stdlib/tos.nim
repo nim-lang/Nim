@@ -408,7 +408,7 @@ block ospaths:
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
   doAssert joinPath(".","abc") == unixToNativePath"./abc"
-  
+
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
   doAssert joinPath("foo", "") == "foo"
