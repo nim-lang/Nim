@@ -153,7 +153,7 @@ proc runRepl*(r: TLLRepl;
     conf.searchPaths.add(AbsoluteDir p)
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
-  conf.setCommandRaw cmdInteractive
+  conf.setCmd cmdInteractive
   conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")

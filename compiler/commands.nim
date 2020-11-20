@@ -425,9 +425,8 @@ proc parseCommandRaw*(command: string): CommandRaw =
   of "jsonscript": cmdJsonscript
   else: cmdUnknown
 
-proc setCommandRaw*(conf: ConfigRef, cmd: CommandRaw) =
-  ## sets cmd, backend
-  # set backend early so subsequent commands can use this (e.g. so --gc:arc can be ignored for backendJs)
+proc setCmd*(conf: ConfigRef, cmd: CommandRaw) =
+  ## sets cmd, backend so subsequent flags can query it (e.g. so --gc:arc can be ignored for backendJs)
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
   conf.cmd = cmd
   case cmd
@@ -439,7 +438,7 @@ proc setCommandRaw*(conf: ConfigRef, cmd: CommandRaw) =
 
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
-  setCommandRaw(conf, command.parseCommandRaw)
+  setCmd(conf, command.parseCommandRaw)
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -451,7 +450,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
     if conf.cmd == cmdNone:
-      conf.setCommandRaw cmdNimscript # better than `cmdCrun` as a default
+      conf.setCmd cmdNimscript # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -994,7 +993,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      config.setCommandRaw cmdNimscript
+      config.setCmd cmdNimscript
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)

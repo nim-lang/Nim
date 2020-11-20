@@ -223,7 +223,7 @@ proc mainCommand*(graph: ModuleGraph) =
         var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
                   else: conf.projectPath
         doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if conf.cmd in {cmdDoc0, cmdDoc2, cmdRst2html, cmdRst2tex, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}: ret = ret / htmldocsDir
+        if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
         ret
 
   ## process all commands
@@ -310,6 +310,7 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
+  of cmdCheck: commandCheck(graph)
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
@@ -318,11 +319,6 @@ proc mainCommand*(graph: ModuleGraph) =
     commandScan(cache, conf)
     msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
-  of cmdNop: discard
-  of cmdCheck: commandCheck(graph)
-  of cmdJsonscript:
-    setOutFile(graph.config)
-    commandJsonScript(graph)
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
@@ -330,6 +326,10 @@ proc mainCommand*(graph: ModuleGraph) =
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
+  of cmdNop: discard
+  of cmdJsonscript:
+    setOutFile(graph.config)
+    commandJsonScript(graph)
   of cmdUnknown, cmdNone, cmdIdeTools, cmdPretty:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 

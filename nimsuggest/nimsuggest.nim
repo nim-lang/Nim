@@ -517,7 +517,7 @@ proc mainCommand(graph: ModuleGraph) =
   clearPasses(graph)
   registerPass graph, verbosePass
   registerPass graph, semPass
-  conf.setCommandRaw cmdIdeTools
+  conf.setCmd cmdIdeTools
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
@@ -666,7 +666,7 @@ else:
       clearPasses(graph)
       registerPass graph, verbosePass
       registerPass graph, semPass
-      conf.setCommandRaw cmdIdeTools
+      conf.setCmd cmdIdeTools
       wantMainModule(conf)
 
       if not fileExists(conf.projectFull):

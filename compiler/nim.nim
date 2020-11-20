@@ -98,7 +98,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       of backendJs: cmdPrefix = findNodeJs() & " "
       else: doAssert false, $conf.backend
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-    of cmdDocLike, cmdRst2html: # PRTEMP: cmdRst2tex?
+    of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
         rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
