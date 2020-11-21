@@ -58,12 +58,26 @@ proc fromLib(l: PackedLib; ir: PackedTree; c: var Context): PLib =
                 kind: l.kind, name: rope ir.sh.strings[l.name],
                 path: fromTree(l.path, c))
 
-iterator unpackSymbols*(n: PackedTree; c: var Context; m: PSym;
-                        name: PIdent = nil): PSym =
+proc contains*(n: PackedTree; name: PIdent): bool =
+  ## true if the tree contains a symbol having the given identifier
+  for symId, p in n.sh.syms.pairs:
+    result = 0 == cmpIgnoreStyle(n.sh.strings[p.name], name.s, len name.s)
+    if result:
+      break
+
+iterator unpackSymbols*(n: PackedTree; c: var Context; m: PSym): PSym =
   ## unpack the symbols from the tree
   c.thisModule = m.itemId.module
   for symId, p in n.sh.syms.pairs:
-    if name == nil or name.s == n.sh.strings[p.name]:
+    let id = ItemId(module: m.itemId.module, item: symId.int32)
+    yield p.fromSym(id, n, c)
+
+iterator unpackSymbols*(n: PackedTree; c: var Context; m: PSym;
+                        name: PIdent): PSym =
+  ## unpack the symbols from the tree which share the given name
+  c.thisModule = m.itemId.module
+  for symId, p in n.sh.syms.pairs:
+    if 0 == cmpIgnoreStyle(n.sh.strings[p.name], name.s, len name.s):
       let id = ItemId(module: m.itemId.module, item: symId.int32)
       yield p.fromSym(id, n, c)
 
@@ -173,8 +187,6 @@ proc irToModule*(n: PackedTree; module: PSym; c: var Context): PNode =
   result = fromTree(n, c)
 
 proc unpackAllSymbols*(n: PackedTree; c: var Context; m: PSym): seq[PSym] =
-  setLen result, n.sh.syms.len
-  var i = 0
+  result = newSeqOfCap[PSym](len n.sh.syms)
   for s in unpackSymbols(n, c, m):
-    result[i] = s
-    inc i
+    result.add s

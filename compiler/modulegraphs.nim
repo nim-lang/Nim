@@ -297,6 +297,7 @@ proc initIface*(iface: var Iface; conf: ConfigRef; s: PSym) =
     let m = tryReadModule(conf, rodFile(conf, s))
     iface.state =
       if m.isNone:
+        initStrTable iface.exports
         Unloaded
       else:
         iface.tree = (get m).ast
@@ -339,7 +340,20 @@ proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
   else:
     result = initIdentIter(it, iface.exports, name)
 
-iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent = nil): PSym =
+iterator symbols*(g: ModuleGraph; m: PSym): PSym =
+  ## lazy version of patterns
+  template iface: Iface = g.ifaces[m.position]
+  case iface.state
+  of Uninitialized:
+    assert false, "init iface first"
+  of Loaded:
+    for s in unpackSymbols(iface.tree, iface.decoder, iface.module):
+      yield s
+  of Unpacked, Unloaded:
+    for s in iface.patterns:
+      yield s
+
+iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## lazy version of patterns
   template iface: Iface = g.ifaces[m.position]
   case iface.state
@@ -370,17 +384,23 @@ proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
   filterIt patterns(g, m): it.kind == skConverter
 
 proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
-  echo "unimplemented"
+  raise
 
 proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
-  echo "unimplemented"
+  raise
 
 proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## fetch an exported symbol for the module by ident
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
-    for s in symbols(g, m, name = name):
-      return s
+    case iface.state
+    of Uninitialized: assert false
+    of Unloaded:
+      result = strTableGet(iface.exports, name)
+    of Unpacked, Loaded:
+      for s in symbols(g, m, name = name):
+        result = s
+        break
   else:
     # implicit assertion that `m` is skPackage
     result = strTableGet(m.pkgTab, name)
@@ -394,7 +414,12 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
     s.flags.incl sfExported
   if sfExported in s.flags:
     if m.kind == skModule:
-      strTableAdd(iface.exports, s)
+      case iface.state
+      of Uninitialized: assert false
+      of Unloaded:
+        strTableAdd iface.exports, s
+      of Unpacked, Loaded:
+        assert false, "imagine the two of us, meeting like this"
     else:
       # implicit assertion that `m` is skPackage
       strTableAdd(m.pkgTab, s)
@@ -413,12 +438,6 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   addExport(g, m, m)       # a module always knows itself
 
 when false:
-  proc exports*(iface: Iface): TStrTable {.deprecated.} =
-    initExports(iface.graph, iface.module)
-    initStrTable result
-    for s in iface.patterns.items:
-      result.strTableAdd s
-
   proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
     ## hide the .exports from ic
     result = initIdentIter(it, iface.exports, name)
