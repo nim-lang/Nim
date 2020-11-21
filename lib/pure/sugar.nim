@@ -273,8 +273,6 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
-import timn/dbgs
-
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
