@@ -291,6 +291,12 @@ proc `state=`*(iface: var Iface; state: IfaceState) =
 
 proc state*(iface: Iface): IfaceState = iface.state
 
+proc contains(state: IfaceState; iface: Iface): bool =
+  if state == Loaded:
+    iface.state in {Loaded, Unpacked}
+  else:
+    iface.state == state
+
 proc initIface*(iface: var Iface; conf: ConfigRef; s: PSym) =
   ## try to initialize the iface with an available rodfile
   if iface.state == Uninitialized:
@@ -318,7 +324,8 @@ template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
-  if iface.state == Loaded:
+  initIface(iface, g.config, m)
+  if iface in Loaded:
     for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
       if s.name.s == it.name.s:
         it.name = s.name
@@ -333,7 +340,7 @@ proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
   initIface(iface, g.config, m)
-  if iface.state == Loaded:
+  if iface in Loaded:
     it.name = name
     it.h = 0.Hash
     result = nextIdentIter(it, g, m)
@@ -349,8 +356,11 @@ iterator symbols*(g: ModuleGraph; m: PSym): PSym =
   of Loaded:
     for s in unpackSymbols(iface.tree, iface.decoder, iface.module):
       yield s
-  of Unpacked, Unloaded:
+  of Unpacked:
     for s in iface.patterns:
+      yield s
+  of Unloaded:
+    for s in iface.exports.items:
       yield s
 
 iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
@@ -393,14 +403,13 @@ proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## fetch an exported symbol for the module by ident
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
-    case iface.state
-    of Uninitialized: assert false
-    of Unloaded:
-      result = strTableGet(iface.exports, name)
-    of Unpacked, Loaded:
+    initIface(iface, g.config, m)
+    if iface in Loaded:
       for s in symbols(g, m, name = name):
         result = s
         break
+    else:
+      result = strTableGet(iface.exports, name)
   else:
     # implicit assertion that `m` is skPackage
     result = strTableGet(m.pkgTab, name)
