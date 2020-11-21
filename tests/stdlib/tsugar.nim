@@ -95,4 +95,4 @@ block: # collect
 
 block: # collectTo
   # bug: this doesn't work inside a `runnableExamples`, see bug #13491
-  doAssert (collectTo(newStringOfCap(10)) do: (for c in 'a'..'c': yield c)) == "abc"
+  doAssert ("".collectIt do: (for c in "abc": yield c)) == "abc"

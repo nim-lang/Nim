@@ -350,16 +350,22 @@ macro collectIt*(init: typed, body: untyped): untyped {.since: (1, 5, 1).} =
   ##
   ## `init` must resolve to a well typed expression, unlike with `collect`.
   runnableExamples:
-    let x1 = collectIt(""): (for c in 'a'..'c': yield c)
-    doAssert x1 == "abc"
-    var x2 = "t".collectIt: (for c in 'a'..'c': yield c)
-    doAssert x2 == "tabc"
+    import std/random
+    # generate a random string starting with "pre"
+    doAssert "pre".collectIt(for i in 1..4: yield sample({'a'..'z'})).len == 3+4
+
+    # multiple yield
+    let x1 = "".collectIt:
+      yield '{'
+      for c in 'a'..'c': yield c
+      yield '}'
+    doAssert x1 == "{abc}"
+
+    # custom initializer
     let x3 = newStringOfCap(10).collectIt:
       for i, c in "abc":
         if i!=1: yield c
     doAssert x3 == "ac"
-    # can also be used as a call argument, thanks to `do` notation:
-    # doAssert (collectIt(newStringOfCap(10)) do: (for c in 'a'..'c': yield c)) == "abc"
 
     # allows specifying an explicit type:
     type KV = tuple[key: int, val: string]
@@ -372,40 +378,27 @@ macro collectIt*(init: typed, body: untyped): untyped {.since: (1, 5, 1).} =
       for i, d in @["a"].pairs: yield (i, d)
     doAssert k2 == @[(key: 0, val: "a")]
 
-    let x4 = "".collectIt:
-      yield "{"
-      for i,a in "abc": (if i!=1: yield a)
-      for i,a in "def":
-        if i!=1: yield a
-      yield "}"
-    echo x4
+    # custom collections: array, table, set
+    let arr = array[3, int].default.collectIt(for i in 0..it.high: it[i] = i*10)
+    doAssert arr == [0, 10, 20]
 
     import std/tables
-    let s = collectIt(initOrderedTable[int, char]()):
-      for i, v in "abc": yield {i: v}
-    doAssert s == {0: 'a', 1: 'b', 2: 'c'}.toOrderedTable
+    let s = initTable[int, char]().collectIt(for i, v in "ab": yield {i: v})
+    doAssert s[1] == 'b'
 
     import std/sets
     let y = initHashSet[int]().collectIt:
-      for a in 0..3: yield {a*2}
-    doAssert y == [4, 2, 6, 0].toHashSet
+      for a in 0..3: yield {a*2} # syntax for set
+      it.excl 0 # possible too
+      it.incl it.len*10 # possible too
+    doAssert y == [4, 2, 6, 30].toHashSet
 
-    let s = array[3, int].default.collectIt():
-      for i in 0..it.high: it[i] = i*10
-    doAssert s == [0, 10, 20]
-
-  # pending bug #13491, uncomment `also works:` snippet above
   let res = genSym(nskVar, "collectResult")
   let body2 = transfYield(body, res)
   result = quote do:
     var `res` = `init`
     `body2`
     `res`
-  echo result.repr
-
-
-  # let (resBody, keyType, valueType) = transLastStmt(body, res, newEmptyNode())
-  # result = newTree(nnkStmtListExpr, newVarStmt(res, init), resBody, res)
   # xxx `seq[auto]`, and `newSeqOfCap[auto](3)` (with `auto` or `_`)
   # could also be supported, providing a more explicit and flexible syntax than `collect`.
   # xxx we could also make 1st argument optional, in which case it would default
