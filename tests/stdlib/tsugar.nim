@@ -40,8 +40,9 @@ import random
 
 const b = @[0, 1, 2]
 let c = b.dup shuffle()
-doAssert c[0] == 1
-doAssert c[1] == 0
+doAssert c[0] in [0,1,2]
+doAssert c[1] in [0,1,2]
+doAssert c[1] != c[0]
 
 import sets, tables, strutils
 
