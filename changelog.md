@@ -22,6 +22,9 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added an overload for the `collect` macro that inferes the container type based
+  on the syntax of the last expression. Works with std seqs, tables and sets.
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
