@@ -158,7 +158,7 @@ proc repr*[T](x: seq[T]): string =
   ##
   ## .. code-block:: Nim
   ##   $(@[23, 45]) == "@[23, 45]"
-  collectionToRepr(x, "@[", ", ", "]")
+  repr(pointer(unsafeAddr(s[0]))) & collectionToRepr(x, "@[", ", ", "]")
 
 proc repr*[T, U](x: HSlice[T, U]): string =
   ## Generic `repr` operator for slices that is lifted from the components
