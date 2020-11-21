@@ -24,8 +24,8 @@ var x2 = toAny(test2)
 var i = 0
 for n, a in fields(x2):
   case i
-  of 0: assert n == "name" and $a.kind == "akString"
-  of 1: assert n == "s" and $a.kind == "akInt"
+  of 0: assert n == "Field0" and $a.kind == "akString"
+  of 1: assert n == "Field1" and $a.kind == "akInt"
   else: assert false
   inc i
 
@@ -57,4 +57,4 @@ block:
   var m = toAny(myArr)
   for i in 0 .. m.len-1:
     for j in 0 .. m[i].len-1:
-      echo getString(m[i][j])
+      doAssert getString(m[i][j]) == myArr[i][j]
