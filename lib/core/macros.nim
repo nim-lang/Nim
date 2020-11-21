@@ -1697,3 +1697,18 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
         result.add ni
       else: break
     else: break
+
+proc freshIdentNodes*(n: NimNode): NimNode =
+  ## Replaces every `nnkSym` node in `n` by a fresh identifier node.
+  ## This forces the compiler to perform a new lookup pass.
+  case n.kind:
+  of nnkSym:
+    result = ident(n.strVal)
+  of nnkNone, nnkEmpty, nnkIdent, nnkLiterals:
+    result = n
+  of nnkClosedSymChoice, nnkOpenSymChoice:
+    result = freshIdentNodes(n[0])
+  else:
+    result = copyNimNode(n)
+    for x in n:
+      result.add freshIdentNodes(x)
