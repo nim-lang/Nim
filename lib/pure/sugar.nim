@@ -179,17 +179,17 @@ macro dump*(x: untyped): untyped =
   return r
 
 # TODO: consider exporting this in macros.nim
-proc freshIdentNodes(ast: NimNode): NimNode =
+proc deSym(ast: NimNode): NimNode =
   # Replace NimIdent and NimSym by a fresh ident node
   # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
   proc inspect(node: NimNode): NimNode =
     case node.kind:
     of nnkIdent, nnkSym:
-      result = ident($node)
+      result = ident(node.strVal)
     of nnkEmpty, nnkLiterals:
       result = node
     else:
-      result = node.kind.newTree()
+      result = node.copyNimNode()
       for child in node:
         result.add inspect(child)
   result = inspect(ast)
@@ -217,7 +217,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   for arg in locals:
     if arg.strVal == "result":
       error("The variable name cannot be `result`!", arg)
-    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
+    params.add(newIdentDefs(ident(arg.strVal), deSym getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
@@ -317,9 +317,6 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-proc deSym(n: NimNode): NimNode =
-  result = if n.kind == nnkSym: ident(n.strVal) else: n
-
 proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
@@ -378,113 +375,25 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   result = collectImpl(init, body)
 
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
-  result = collectImpl(nil, body)
-
-when isMainModule:
-  since (1, 1):
-    block dup_with_field:
-      type
-        Foo = object
-          col, pos: int
-          name: string
-
-      proc inc_col(foo: var Foo) = inc(foo.col)
-      proc inc_pos(foo: var Foo) = inc(foo.pos)
-      proc name_append(foo: var Foo, s: string) = foo.name &= s
-
-      let a = Foo(col: 1, pos: 2, name: "foo")
-      block:
-        let b = a.dup(inc_col, inc_pos):
-          _.pos = 3
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
-
-      block:
-        let b = a.dup(inc_col, pos = 3, name = "bar"):
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "barbar"))
-
-    import algorithm
-
-    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert dup(a, sort(_)) == sorted(a)
-    doAssert a.dup(sort) == sorted(a)
-    #Chaining:
-    var aCopy = a
-    aCopy.insert(10)
-    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
-
-    import random
-
-    const b = @[0, 1, 2]
-    let c = b.dup shuffle()
-    doAssert c[0] == 1
-    doAssert c[1] == 0
-
-    #test collect
+  ## Same as `collect` but without an `init` parameter.
+  runnableExamples:
     import sets, tables
+    # Seq:
+    let data = @["bird", "word"]
+    let k = collect:
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
 
-    let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
-    assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
-          1: "word"}.toTable
-    assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
+    assert k == @["bird"]
+    ## HashSet:
+    let n = collect:
+      for d in data.items: {d}
 
-    let x = collect(newSeqOfCap(4)):
-        for (i, d) in data.pairs:
-          if i mod 2 == 0: d
-    assert x == @["bird"]
+    assert n == data.toHashSet
+    ## Table:
+    let m = collect:
+      for i, d in data.pairs: {i: d}
 
-    # bug #12874
+    assert m == {0: "bird", 1: "word"}.toTable
 
-    let bug1 = collect(
-        newSeq,
-        for (i, d) in data.pairs:(
-          block:
-            if i mod 2 == 0:
-              d
-            else:
-              d & d
-          )
-    )
-    assert bug1 == @["bird", "wordword"]
-
-    import strutils
-    let y = collect(newSeq):
-      for (i, d) in data.pairs:
-        try: parseInt(d) except: 0
-    assert y == @[0, 0]
-
-    let z = collect(newSeq):
-      for (i, d) in data.pairs:
-        case d
-        of "bird": "word"
-        else: d
-    assert z == @["word", "word"]
-
-
-    proc tforum =
-      let ans = collect(newSeq):
-        for y in 0..10:
-          if y mod 5 == 2:
-            for x in 0..y:
-              x
-
-    tforum()
-
-  since (1, 5):
-    block:
-      let x = collect:
-        for d in data.items:
-          when d is int: "word"
-          else: d
-      assert x == @["bird", "word"]
-    assert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
-    assert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
-    assert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
-        0: "bird"}.toTable
-    assert collect(for d in data.items: {d}) == data.toHashSet
+  result = collectImpl(nil, body)
