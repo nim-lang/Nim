@@ -179,20 +179,20 @@ macro dump*(x: untyped): untyped =
   return r
 
 # TODO: consider exporting this in macros.nim
-proc deSym(ast: NimNode): NimNode =
-  # Replace NimIdent and NimSym by a fresh ident node
+proc deSym(n: NimNode): NimNode =
+  # Replace NimSym by a fresh ident node.
   # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
-  proc inspect(node: NimNode): NimNode =
-    case node.kind:
-    of nnkIdent, nnkSym:
-      result = ident(node.strVal)
-    of nnkEmpty, nnkLiterals:
-      result = node
-    else:
-      result = node.copyNimNode()
-      for child in node:
-        result.add inspect(child)
-  result = inspect(ast)
+  case n.kind:
+  of nnkSym:
+    result = ident(n.strVal)
+  of nnkEmpty, nnkLiterals, nnkIdent:
+    result = n
+  of nnkClosedSymChoice, nnkOpenSymChoice:
+    result = deSym(n[0])
+  else:
+    result = copyNimNode(n)
+    for x in n:
+      result.add deSym(x)
 
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
