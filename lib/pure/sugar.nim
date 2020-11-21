@@ -317,13 +317,16 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
+proc deSym(n: NimNode): NimNode =
+  result = if n.kind == nnkSym: ident(n.strVal) else: n
+
 proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
   if init != nil:
     expectKind init, {nnkCall, nnkIdent, nnkSym}
     bracketExpr = newTree(nnkBracketExpr,
-      if init.kind == nnkCall: init[0] else: init)
+      if init.kind == nnkCall: deSym(init[0]) else: deSym(init))
   else:
     bracketExpr = newTree(nnkBracketExpr)
   let (resBody, keyType, valueType) = trans(body, res, bracketExpr)
