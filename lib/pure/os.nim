@@ -3187,7 +3187,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
 
-proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = -1): bool {.
+proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = 0.Natural): bool {.
     rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
@@ -3213,7 +3213,7 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
       if checkFiles:
         raise newException(IOError, "Can not open file: $1" % [path2])
       mustRead = false
-    var bufferSize = if bufferSize == -1: getFileInfo(a).blockSize else: bufferSize
+    var bufferSize = if bufferSize == 0: getFileInfo(a).blockSize else: bufferSize
     if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
