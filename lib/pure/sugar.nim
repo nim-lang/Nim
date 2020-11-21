@@ -273,8 +273,7 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
-
-proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
+proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
   of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt, nnkWhenStmt:
@@ -318,7 +317,7 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-proc collectImpl(init, body: NimNode): NimNode =
+proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
   if init != nil:
@@ -339,7 +338,7 @@ proc collectImpl(init, body: NimNode): NimNode =
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
-macro collect*(init, body: untyped): untyped =
+macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   ## Comprehension for seqs/sets/tables.
   ##
   ## The last expression of `body` has special syntax that specifies
@@ -375,7 +374,7 @@ macro collect*(init, body: untyped): untyped =
 
   result = collectImpl(init, body)
 
-macro collect*(body: untyped): untyped =
+macro collect*(body: untyped): untyped {.since: (1, 5).} =
   result = collectImpl(nil, body)
 
 when isMainModule:
@@ -474,14 +473,15 @@ when isMainModule:
 
     tforum()
 
+  since (1, 5):
     block:
       let x = collect:
         for d in data.items:
           when d is int: "word"
           else: d
       assert x == @["bird", "word"]
-    assert collect(for (i, d) in pairs(data.items): (i, d)) == @[(0, "bird"), (1, "word")]
+    assert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
     assert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
-    assert collect(for (i, d) in pairs(data.items): {i: d}) == {1: "word",
+    assert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
         0: "bird"}.toTable
     assert collect(for d in data.items: {d}) == data.toHashSet
