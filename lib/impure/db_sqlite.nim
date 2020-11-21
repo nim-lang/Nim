@@ -850,7 +850,7 @@ macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (
     else:
       result.add newCall(bindNull, preparedStatement, newIntLitNode idx + 1)
 
-macro untypedLen(args: varargs[untyped]): int =
+macro untypedLen*(args: varargs[untyped]): int =
   newLit(args.len)
 
 template exec*(db: DbConn, stmtName: SqlPrepared,
