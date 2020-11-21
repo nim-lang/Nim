@@ -3187,7 +3187,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
 
-proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = 8192.Positive): bool {.
+proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = -1): bool {.
     rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
@@ -3196,15 +3196,13 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
   ## `checkSize = true` may be faster, specially for very big files.
   ## This does not fail if the file never existed in the first place, unless `checkFiles = true`.
   ##
-  ## .. code-block:: nim
-  ##   echo sameFileContent("file0.txt", "file1.txt", checkSize = true, bufferSize = 999)
-  ##
   ## See also:
   ## * `sameFile proc <#sameFile,string,string>`_
   runnableExamples:
     doAssert sameFileContent(currentSourcePath, currentSourcePath, checkSize = true, bufferSize = 4096)
   var a, b: File
   var mustRead = true
+  var bufferSize = if bufferSize == -1: getFileInfo(path1).blockSize else: bufferSize
   var bufA = alloc(bufferSize)
   var bufB = alloc(bufferSize)
   try:  # readBuffer or open may or may not raise IOError.
