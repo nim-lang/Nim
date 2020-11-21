@@ -3213,8 +3213,8 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
         raise newException(IOError, "Can not open file: $1" % [path2])
       mustRead = false
     var bufferSize = if bufferSize == 0: getFileInfo(a).blockSize else: bufferSize
-    bufA = alloc(bufferSize)
-    bufB = alloc(bufferSize)
+    bufA = alloc0(bufferSize)
+    bufB = alloc0(bufferSize)
     if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
