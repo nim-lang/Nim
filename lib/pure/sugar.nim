@@ -273,6 +273,7 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
+import timn/dbgs
 
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
@@ -311,16 +312,114 @@ proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
+proc transfYield(n, res: NimNode): NimNode =
+  case n.kind
+  of nnkIdent:
+    if n.strVal == "it":
+      result = res
+    else:
+      result = n
+  of nnkYieldStmt:
+    let v = n[0]
+    case v.kind
+    of nnkTableConstr:
+      doAssert v.len == 1, v.repr
+      let v0 = v[0]
+      v0.expectKind nnkExprColonExpr
+      let key = v0[0]
+      let val = v0[1]
+      result = quote do: `res`[`key`] = `val`
+    of nnkCurly:
+      doAssert v.len == 1, v.repr
+      let v0 = v[0]
+      result = quote do: `res`.incl(`v0`)
+    else:
+      result = quote do: `res`.add(`v`)
+  else:
+    result = n
+    for i, ni in n:
+      result[i] = transfYield(ni, res)
+
+macro collectIt*(init: typed, body: untyped): untyped {.since: (1, 5, 1).} =
+  ## Comprehension for seq/set/table collections. `init` is
+  ## the initialization call, and so custom collections are supported.
+  ##
+  ## The last statement of ``body`` has special syntax that specifies
+  ## the collection's add operation. Use `yield {e}` for set's `incl`,
+  ## `yield {k: v}` for table's `[]=` and `yield e` for seq's `add`.
+  ##
+  ## `init` must resolve to a well typed expression, unlike with `collect`.
+  runnableExamples:
+    let x1 = collectIt(""): (for c in 'a'..'c': yield c)
+    doAssert x1 == "abc"
+    var x2 = "t".collectIt: (for c in 'a'..'c': yield c)
+    doAssert x2 == "tabc"
+    let x3 = newStringOfCap(10).collectIt:
+      for i, c in "abc":
+        if i!=1: yield c
+    doAssert x3 == "ac"
+    # can also be used as a call argument, thanks to `do` notation:
+    # doAssert (collectIt(newStringOfCap(10)) do: (for c in 'a'..'c': yield c)) == "abc"
+
+    # allows specifying an explicit type:
+    type KV = tuple[key: int, val: string]
+    let k = newSeq[KV]().collectIt:
+      for i, d in @["a","b"].pairs: yield (i, d)
+    doAssert k == @[(key: 0, val: "a"), (key: 1, val: "b")]
+
+    # likewise, without specifying initializer, but via `default`:
+    let k2 = seq[KV].default.collectIt:
+      for i, d in @["a"].pairs: yield (i, d)
+    doAssert k2 == @[(key: 0, val: "a")]
+
+    let x4 = "".collectIt:
+      yield "{"
+      for i,a in "abc": (if i!=1: yield a)
+      for i,a in "def":
+        if i!=1: yield a
+      yield "}"
+    echo x4
+
+    import std/tables
+    let s = collectIt(initOrderedTable[int, char]()):
+      for i, v in "abc": yield {i: v}
+    doAssert s == {0: 'a', 1: 'b', 2: 'c'}.toOrderedTable
+
+    import std/sets
+    let y = initHashSet[int]().collectIt:
+      for a in 0..3: yield {a*2}
+    doAssert y == [4, 2, 6, 0].toHashSet
+
+    let s = array[3, int].default.collectIt():
+      for i in 0..it.high: it[i] = i*10
+    doAssert s == [0, 10, 20]
+
+  # pending bug #13491, uncomment `also works:` snippet above
+  let res = genSym(nskVar, "collectResult")
+  let body2 = transfYield(body, res)
+  result = quote do:
+    var `res` = `init`
+    `body2`
+    `res`
+  echo result.repr
+
+
+  # let (resBody, keyType, valueType) = transLastStmt(body, res, newEmptyNode())
+  # result = newTree(nnkStmtListExpr, newVarStmt(res, init), resBody, res)
+  # xxx `seq[auto]`, and `newSeqOfCap[auto](3)` (with `auto` or `_`)
+  # could also be supported, providing a more explicit and flexible syntax than `collect`.
+  # xxx we could also make 1st argument optional, in which case it would default
+  # to `seq`, like `sequtils.toSeq`.
+  # echo result.repr
+
 macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
-  ## Comprehension for seq/set/table collections. ``init`` is
-  ## the init call, and so custom collections are supported.
+  ## Same as `collectIt` but `init` is instantiated with the type of the elements
+  ## in `body`. `init` can be called with any number of arguments,
+  ## i.e. `initTable(initialSize)`.
   ##
   ## The last statement of ``body`` has special syntax that specifies
   ## the collection's add operation. Use ``{e}`` for set's ``incl``,
   ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
-  ##
-  ## The ``init`` proc can be called with any number of arguments,
-  ## i.e. ``initTable(initialSize)``.
   runnableExamples:
     import sets, tables
     let data = @["bird", "word"]
@@ -328,24 +427,24 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
     let k = collect(newSeq):
       for i, d in data.pairs:
         if i mod 2 == 0: d
-
     assert k == @["bird"]
+
     ## seq with initialSize:
     let x = collect(newSeqOfCap(4)):
       for i, d in data.pairs:
         if i mod 2 == 0: d
-
     assert x == @["bird"]
+
     ## HashSet:
     let y = initHashSet.collect:
       for d in data.items: {d}
-
     assert y == data.toHashSet
+
     ## Table:
     let z = collect(initTable(2)):
       for i, d in data.pairs: {i: d}
-
     assert z == {0: "bird", 1: "word"}.toTable
+
   # analyse the body, find the deepest expression 'it' and replace it via
   # 'result.add it'
   let res = genSym(nskVar, "collectResult")
@@ -363,100 +462,3 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
     for i in 1 ..< init.len:
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
-
-
-when isMainModule:
-  since (1, 1):
-    block dup_with_field:
-      type
-        Foo = object
-          col, pos: int
-          name: string
-
-      proc inc_col(foo: var Foo) = inc(foo.col)
-      proc inc_pos(foo: var Foo) = inc(foo.pos)
-      proc name_append(foo: var Foo, s: string) = foo.name &= s
-
-      let a = Foo(col: 1, pos: 2, name: "foo")
-      block:
-        let b = a.dup(inc_col, inc_pos):
-          _.pos = 3
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
-
-      block:
-        let b = a.dup(inc_col, pos = 3, name = "bar"):
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "barbar"))
-
-    import algorithm
-
-    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert dup(a, sort(_)) == sorted(a)
-    doAssert a.dup(sort) == sorted(a)
-    #Chaining:
-    var aCopy = a
-    aCopy.insert(10)
-    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
-
-    import random
-
-    const b = @[0, 1, 2]
-    let c = b.dup shuffle()
-    doAssert c[0] == 1
-    doAssert c[1] == 0
-
-    #test collect
-    import sets, tables
-
-    let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
-    assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
-          1: "word"}.toTable
-    assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
-
-    let x = collect(newSeqOfCap(4)):
-        for (i, d) in data.pairs:
-          if i mod 2 == 0: d
-    assert x == @["bird"]
-
-    # bug #12874
-
-    let bug1 = collect(
-        newSeq,
-        for (i, d) in data.pairs:(
-          block:
-            if i mod 2 == 0:
-              d
-            else:
-              d & d
-          )
-    )
-    assert bug1 == @["bird", "wordword"]
-
-    import strutils
-    let y = collect(newSeq):
-      for (i, d) in data.pairs:
-        try: parseInt(d) except: 0
-    assert y == @[0, 0]
-
-    let z = collect(newSeq):
-      for (i, d) in data.pairs:
-        case d
-        of "bird": "word"
-        else: d
-    assert z == @["word", "word"]
-
-
-    proc tforum =
-      let ans = collect(newSeq):
-        for y in 0..10:
-          if y mod 5 == 2:
-            for x in 0..y:
-              x
-
-    tforum()
