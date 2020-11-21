@@ -1,5 +1,6 @@
 import sets
 
+
 proc testModule() =
   ## Internal micro test to validate docstrings and such.
   block lenTest:
