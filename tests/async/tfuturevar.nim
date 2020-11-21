@@ -1,7 +1,6 @@
 discard """
-action: compile
+action: run
 """
-# XXX: action should be run!
 
 import asyncdispatch
 
