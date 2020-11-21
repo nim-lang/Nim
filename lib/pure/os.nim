@@ -3202,8 +3202,7 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
     doAssert sameFileContent(currentSourcePath, currentSourcePath, checkSize = true, bufferSize = 4096)
   var a, b: File
   var mustRead = true
-  var bufA = alloc(bufferSize)
-  var bufB = alloc(bufferSize)
+  var bufA, bufB: pointer
   try:  # readBuffer or open may or may not raise IOError.
     if not open(a, path1):
       if checkFiles:
@@ -3214,6 +3213,8 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
         raise newException(IOError, "Can not open file: $1" % [path2])
       mustRead = false
     var bufferSize = if bufferSize == 0: getFileInfo(a).blockSize else: bufferSize
+    bufA = alloc(bufferSize)
+    bufB = alloc(bufferSize)
     if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
     if mustRead:
       while true:
