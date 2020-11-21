@@ -178,21 +178,21 @@ macro dump*(x: untyped): untyped =
     debugEcho `s`, " = ", `x`
   return r
 
-# TODO: consider exporting this in macros.nim
-proc deSym(n: NimNode): NimNode =
-  # Replace NimSym by a fresh ident node.
-  # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
+#TODO move to macros
+proc freshIdentNodes(n: NimNode): NimNode =
+  ## Replaces every `nnkSym` node in `n` by a fresh identifier node.
+  ## Forces the compiler to perform a new lookup pass.
   case n.kind:
   of nnkSym:
     result = ident(n.strVal)
-  of nnkEmpty, nnkLiterals, nnkIdent:
+  of nnkNone, nnkEmpty, nnkIdent, nnkLiterals:
     result = n
   of nnkClosedSymChoice, nnkOpenSymChoice:
-    result = deSym(n[0])
+    result = freshIdentNodes(n[0])
   else:
     result = copyNimNode(n)
     for x in n:
-      result.add deSym(x)
+      result.add freshIdentNodes(x)
 
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
@@ -217,7 +217,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   for arg in locals:
     if arg.strVal == "result":
       error("The variable name cannot be `result`!", arg)
-    params.add(newIdentDefs(ident(arg.strVal), deSym getTypeInst arg))
+    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
@@ -323,7 +323,7 @@ proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   if init != nil:
     expectKind init, {nnkCall, nnkIdent, nnkSym}
     bracketExpr = newTree(nnkBracketExpr,
-      if init.kind == nnkCall: deSym(init[0]) else: deSym(init))
+      if init.kind == nnkCall: freshIdentNodes(init[0]) else: freshIdentNodes(init))
   else:
     bracketExpr = newTree(nnkBracketExpr)
   let (resBody, keyType, valueType) = trans(body, res, bracketExpr)
