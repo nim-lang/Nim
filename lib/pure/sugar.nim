@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import macros, typetraits, sets, tables
+import macros, typetraits
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -294,7 +294,7 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
     result[1] = n[0][0]
     result[2] = n[0][1]
     if bracketExpr.len == 0:
-      bracketExpr.add(bindSym"initTable")
+      bracketExpr.add(ident"initTable") # don't import tables
     if bracketExpr.len == 1:
       bracketExpr.add([newCall(bindSym"typeof",
           newEmptyNode()), newCall(bindSym"typeof", newEmptyNode())])
@@ -303,7 +303,7 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
   of nnkCurly:
     result[2] = n[0]
     if bracketExpr.len == 0:
-      bracketExpr.add(bindSym"initHashSet")
+      bracketExpr.add(ident"initHashSet")
     if bracketExpr.len == 1:
       bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
     template adder(res, v) = res.incl(v)
