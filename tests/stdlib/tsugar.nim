@@ -104,3 +104,8 @@ assert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
 assert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
     0: "bird"}.toTable
 assert collect(for d in data.items: {d}) == data.toHashSet
+# bug #14332
+template foo =
+  discard collect(newSeq, for i in 1..3: i)
+
+foo()
