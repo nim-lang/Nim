@@ -23,4 +23,4 @@ addPackage conf, rr, "ab-0.1", unknownLineInfo
 addPackage conf, rr, "justone-1.0", unknownLineInfo
 
 doAssert toSeq(rr.chosen) ==
-  @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]
+  @["irc-#head", "ab-0.1.3", "justone-1.0", "another-0.1"]
