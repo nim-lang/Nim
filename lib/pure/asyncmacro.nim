@@ -198,7 +198,8 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
     if params[i][1].kind == nnkBracketExpr and
-       params[i][1][0].eqIdent("futurevar"):
+       params[i][1][0].eqIdent(FutureVar.astToStr):
+      ## eqIdent: first char is case sensitive!!!
       result.add(params[i][0])
 
 proc isInvalidReturnType(typeName: string): bool =
