@@ -1,3 +1,24 @@
+discard """
+  output: '''
+www.amazon.com: 207.171.182.16
+www.apple.com: 17.112.152.32
+www.cnn.com: 64.236.16.20
+www.cs.princeton.edu: abc
+www.dell.com: 143.166.224.230
+www.ebay.com: 66.135.192.87
+www.espn.com: 199.181.135.201
+www.google.com: 216.239.41.99
+www.microsoft.com: 207.126.99.140
+www.nytimes.com: 199.239.136.200
+www.princeton.edu: 128.112.128.15
+www.simpsons.com: 209.052.165.60
+www.slashdot.org: 66.35.250.151
+www.weather.com: 63.111.66.11
+www.yahoo.com: 216.109.118.65
+www.yale.edu: 130.132.143.21
+'''
+"""
+
 import compiler/btrees
 
 import random, tables
@@ -42,7 +63,7 @@ proc main =
       let x = b2.getOrDefault($i)
       if x != $(iters - i):
         echo "got ", x, ", but expected ", iters - i
-    echo b2.entries
+    echo b2.len
 
   when true:
     var b2 = initBTree[int, string]()
