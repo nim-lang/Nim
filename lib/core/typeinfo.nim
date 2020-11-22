@@ -282,7 +282,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   else: assert false
 
 proc len*(x: Any): int =
-  ## ``len`` for an any `x` that represents an array or a sequence.
+  ## `len` for an any `x` that represents an array or a sequence.
   case x.rawType.kind
   of tyArray:
     result = x.rawType.size div x.rawType.base.size
