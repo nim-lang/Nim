@@ -1805,6 +1805,7 @@ proc toVar*(typ: PType; kind: TTypeKind): PType =
 proc toRef*(typ: PType): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, typ.owner)
     rawAddSon(result, typ)
