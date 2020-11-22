@@ -74,6 +74,12 @@ func `[]`[T, U](a: var SeqOfDistinct[T, U], index: T): var U =
 func len[T, U](a: SeqOfDistinct[T, U]): T =
   (seq[U])(a).len.T
 
+func low[T, U](a: SeqOfDistinct[T, U]): T =
+  (seq[U])(a).low.T
+
+func high[T, U](a: SeqOfDistinct[T, U]): T =
+  (seq[U])(a).high.T
+
 proc setLen[T, U](a: var SeqOfDistinct[T, U], length: T) =
   ((seq[U])(a)).setLen(length.Natural)
 
@@ -134,6 +140,7 @@ type
     expressions: SeqOfDistinct[ExprIndex, PNode] ## a sequence of pre-indexed expressions
     dependants: SeqOfDistinct[ExprIndex, IntSet] ## expr indices for expressions which are compound and based on others
     warningLocations: HashSet[TLineInfo] ## warning locations to check we don't warn twice for stuff like warnings in for loops
+    idgen: IdGenerator ## id generator
     config: ConfigRef ## the config of the compiler
 
   ## a map that is containing the current nilability for usually a branch
@@ -955,7 +962,7 @@ proc checkIsNil(n, ctx, map; isElse: bool = false): Check =
   # let value2 = symbol(value)
   result.map.store(ctx, ctx.index(n[1]), if not isElse: Nil else: Safe, TArg, n.info, n)
 
-proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
+proc infix(ctx: NilCheckerContext, l: PNode, r: PNode, magic: TMagic): PNode =
   var name = case magic:
     of mEqRef: "=="
     of mAnd: "and"
@@ -963,30 +970,51 @@ proc infix(l: PNode, r: PNode, magic: TMagic): PNode =
     else: ""
 
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent(name), nil, r.info)
+  var op = newSym(skVar, cache.getIdent(name), nextId ctx.idgen, nil, r.info)
 
   op.magic = magic
   result = nkInfix.newTree(
     newSymNode(op, r.info),
     l,
     r)
-  result.typ = newType(tyBool, nil)
+  result.typ = newType(tyBool, nextId ctx.idgen, nil)
 
-proc prefixNot(node: PNode): PNode =
+proc prefixNot(ctx: NilCheckerContext, node: PNode): PNode =
   var cache = newIdentCache()
-  var op = newSym(skVar, cache.getIdent("not"), nil, node.info)
+  var op = newSym(skVar, cache.getIdent("not"), nextId ctx.idgen, nil, node.info)
 
   op.magic = mNot
   result = nkPrefix.newTree(
     newSymNode(op, node.info),
     node)
-  result.typ = newType(tyBool, nil)
+  result.typ = newType(tyBool, nextId ctx.idgen, nil)
 
-proc infixEq(l: PNode, r: PNode): PNode =
-  infix(l, r, mEqRef)
+proc infixEq(ctx: NilCheckerContext, l: PNode, r: PNode): PNode =
+  infix(ctx, l, r, mEqRef)
 
-proc infixOr(l: PNode, r: PNode): PNode =
-  infix(l, r, mOr)
+proc infixOr(ctx: NilCheckerContext, l: PNode, r: PNode): PNode =
+  infix(ctx, l, r, mOr)
+
+
+proc hasNilCheck(n: PNode): bool =
+  case n.kind
+  of nkSym, nkIdent:
+    return false
+  of nkLiterals:
+    return false
+  of nkCallKinds:
+    if n[0].kind == nkSym and n[0].sym.magic == mIsNil:
+      return true
+    else:
+      for item in n:
+        if hasNilCheck(item):
+          return true
+      return false
+  else:
+    for item in n:
+      if hasNilCheck(item):
+        return true
+    return false
 
 
 proc checkCase(n, ctx, map): Check =
@@ -1011,11 +1039,11 @@ proc checkCase(n, ctx, map): Check =
         continue # TODO why does this happen
       let branchBase = child[0] # TODO a, b or a, b..c etc
       let code = child[^1]
-      let test = infixEq(base, branchBase)
+      let test = infixEq(ctx, base, branchBase)
       if a.isNil:
         a = test
       else:
-        a = infixOr(a, test)
+        a = infixOr(ctx, a, test)
       let conditionMap = checkCondition(test, ctx, map.copyMap(), false, false)
       let newCheck = checkBranch(code, ctx, conditionMap)
       result.map = ctx.union(result.map, newCheck.map)
@@ -1023,7 +1051,7 @@ proc checkCase(n, ctx, map): Check =
     of nkElifBranch:
       discard "TODO: maybe adapt to be similar to checkIf"
     of nkElse:
-      let mapElse = checkCondition(prefixNot(a), ctx, map.copyMap(), false, false)
+      let mapElse = checkCondition(prefixNot(ctx, a), ctx, map.copyMap(), false, false)
       let newCheck = checkBranch(child[0], ctx, mapElse)
       result.map = ctx.union(result.map, newCheck.map)
       result.nilability = union(result.nilability, newCheck.nilability)
@@ -1402,12 +1430,12 @@ proc preVisit(ctx: NilCheckerContext, s: PSym, body: PNode, conf: ConfigRef) =
   # echo ctx.expressions
   # echo ctx.dependants
 
-proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
+proc checkNil*(s: PSym; body: PNode; conf: ConfigRef, idgen: IdGenerator) =
   let line = s.ast.info.line
   let fileIndex = s.ast.info.fileIndex.int
   var filename = conf.m.fileInfos[fileIndex].fullPath.string
 
-  var context = NilCheckerContext(config: conf)
+  var context = NilCheckerContext(config: conf, idgen: idgen)
   context.preVisit(s, body, conf)
   var map = newNilMap(nil, context.symbolIndices.len)
   
@@ -1422,12 +1450,52 @@ proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
   # echo "checking ", s.name.s, " ", filename
 
   let res = check(body, context, map)
-  if res.nilability == Safe and res.map.history[resultExprIndex].len <= 1:
+  var canCheck = resultExprIndex in res.map.history.low .. res.map.history.high
+  if res.nilability == Safe and canCheck and res.map.history[resultExprIndex].len <= 1:
     res.map.store(context, resultExprIndex, Safe, TAssign, s.ast.info)
-  
-  # check for nilability result
+  else:
+    if res.nilability == Safe:
+      res.map.store(context, resultExprIndex, Safe, TAssign, s.ast.info)
+
+  # TODO check for nilability result
   # (ANotNil, BNotNil) : 
   # do we check on asgn nilability at all?
 
   if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
     checkResult(s.ast, context, res.map)
+
+  # echo "symbol ", symbolCount, " dot ", dotCount, " bracketCount ", bracketCount
+  # echo "copy ", copyCountLength, " copy map ", copyMapCount
+  # echo "common ", commonCount
+  # echo "newNilMap ", newNilMapCount
+
+
+# proc checkNil*(s: PSym; body: PNode; conf: ConfigRef) =
+#   let line = s.ast.info.line
+#   let fileIndex = s.ast.info.fileIndex.int
+#   var filename = conf.m.fileInfos[fileIndex].fullPath.string
+
+#   var context = NilCheckerContext(config: conf)
+#   context.preVisit(s, body, conf)
+#   var map = newNilMap(nil, context.symbolIndices.len)
+  
+#   for i, child in s.typ.n.sons:
+#     if i > 0:
+#       if child.kind != nkSym:
+#         continue
+#       map.store(context, context.index(child), typeNilability(child.typ), TArg, child.info, child)
+
+#   map.store(context, resultExprIndex, if not s.typ[0].isNil and s.typ[0].kind == tyRef: Nil else: Safe, TResult, s.ast.info)
+    
+#   # echo "checking ", s.name.s, " ", filename
+
+#   let res = check(body, context, map)
+#   if res.nilability == Safe and res.map.history[resultExprIndex].len <= 1:
+#     res.map.store(context, resultExprIndex, Safe, TAssign, s.ast.info)
+  
+#   # check for nilability result
+#   # (ANotNil, BNotNil) : 
+#   # do we check on asgn nilability at all?
+
+#   if not s.typ[0].isNil and s.typ[0].kind == tyRef and tfNotNil in s.typ[0].flags:
+#     checkResult(s.ast, context, res.map)

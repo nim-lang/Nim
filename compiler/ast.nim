@@ -1385,10 +1385,6 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
       echo "KNID ", kind
       writeStackTrace()
 
-proc newRefType*(owner: PSym, nilable = false): PType =
-  result = newType(tyRef, owner)
-  #if not nilable:
-    #result.flags.incl tfNotNil
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
