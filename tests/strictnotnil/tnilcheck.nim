@@ -227,30 +227,36 @@ proc testAliasChanging(a: Nilable) =
 # #   echo result.a
 
 
-# # proc testCStringDeref(a: cstring) =
-# #   echo a[0] # can't deref a: it might be nil
+proc testCStringDeref(a: cstring) =
+  echo a[0] #[tt.Warning
+       ^ can't deref a, it might be nil
+  ]#
 
-# # proc testNonNilCString(a: cstring not nil) =
-# #   echo a[0] # ok
 
-# # proc testNilablePtr(a: ptr int) =
-# #   if not a.isNil:
-# #     echo a[] # ok
-# #   echo a[] # can't deref a: it might be nil
+proc testNilablePtr(a: ptr int) =
+  if not a.isNil:
+    echo a[] # ok
+  echo a[] #[tt.Warning
+       ^ can't deref a, it might be nil
+  ]#
 
 # # proc testNonNilPtr(a: ptr int not nil) =
 # #   echo a[] # ok
 
-# # proc raiseCall: NonNilable = # return value is nil
-# #   raise newException(ValueError, "raise for test") 
+proc raiseCall: NonNilable = #[tt.Warning
+^ return value is nil
+]#
+  raise newException(ValueError, "raise for test") 
 
-# # proc testTryCatch(a: Nilable) =
-# #   var other = a
-# #   try:
-# #     other = raiseCall()
-# #   except:
-# #     discard
-# #   echo other.a # can't deref other: it might be nil
+# proc testTryCatch(a: Nilable) =
+#   var other = a
+#   try:
+#     other = raiseCall()
+#   except:
+#     discard
+#   echo other.a #[ tt.Warning
+#             ^ can't deref other, it might be nil
+#   ]#
 
 # # proc testTryCatchDetectNoRaise(a: Nilable) =
 # #   var other = Nilable()
@@ -367,28 +373,6 @@ proc testItemDeref(a: var seq[Nilable]) =
   echo a[0].a # ok
 
 
-# # var it = root;
-# # while it != nil:
-# #   baz(it)
-# #   it = it.next
-#   # quite different from:
-#   # it = it.next.next
-
-# # # ok, but most calls maybe can raise
-# # # so this makes us mostly force initialization of result with a valid default
-
-# # # a -> Safe
-# # # a.field -> Safe
-# # # aliasA -> Safe
-# # # aliasA.field -> Nil
-# # # aliasA = a => aliased dependency
-# # # so now aliasA.field -> update dependencies:
-# # # aliasA.field.* : none
-# # # aliasA.field aliases : none
-# # # aliasA aliases : a
-# # # a.field -> Nil
-
-# # # var globalA = Nilable()
 
 # # # proc test10(a: Nilable) =
 # # #   if not a.isNil and not a.b.isNil:
@@ -396,12 +380,3 @@ proc testItemDeref(a: var seq[Nilable]) =
 # # #     globalA = nil
 # # #     echo a.a # can't deref a: it might be nil
 
-# var nilable: Nilable
-# var withField = Nilable(a: 0, field: Nilable())
-# var a = Nilable()
-# # testPtrAlias(a)
-# # testFieldAlias(a)
-# # testRootAliasField(withField)
-# # discard testUniqueHashTree(withField)
-# # # test1(nilable)
-# # # test10(globalA)

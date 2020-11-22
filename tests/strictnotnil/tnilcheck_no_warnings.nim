@@ -90,30 +90,12 @@ proc testSeparateShadowingResult(a: Nilable): Nilable =
   echo result.a
 
 
-#proc testCStringDeref(a: cstring) =
-#  echo a[0] # can't deref a: it might be nil
-
 proc testNonNilCString(a: cstring not nil) =
   echo a[0] # ok
-
-# proc testNilablePtr(a: ptr int) =
-#   if not a.isNil:
-#     echo a[] # ok
-#   echo a[] # can't deref a: it might be nil
 
 proc testNonNilPtr(a: ptr int not nil) =
   echo a[] # ok
 
-# proc raiseCall: NonNilable = # return value is nil
-#   raise newException(ValueError, "raise for test") 
-
-# proc testTryCatch(a: Nilable) =
-#   var other = a
-#   try:
-#     other = raiseCall()
-#   except:
-#     discard
-#   echo other.a # can't deref other: it might be nil
 
 # proc testTryCatchDetectNoRaise(a: Nilable) =
 #   var other = Nilable()
