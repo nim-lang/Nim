@@ -26,6 +26,7 @@ Raises
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
+from stdtest/specialpaths import buildDir
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -502,6 +503,16 @@ block: # normalizePathEnd
     doAssert r"D:\".normalizePathEnd == r"D:"
     doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
     doAssert "/".normalizePathEnd == r"\"
+
+block: # getFileSize
+  var s = "abc\0def\0"
+  let file = buildDir / "D20201121T182307"
+  writeFile(file, s)
+  defer: removeFile(file)
+  let f = open(file)
+  defer: close(f)
+  doAssert f.getFileSize == s.len
+  doAssert file.getFileSize == s.len
 
 block: # isValidFilename
   # Negative Tests.

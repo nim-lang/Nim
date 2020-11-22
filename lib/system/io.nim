@@ -745,8 +745,10 @@ proc getFilePos*(f: File): int64 {.benign.} =
   result = c_ftell(f)
   if result < 0: raiseEIO("cannot retrieve file position")
 
-proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
+proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign, deprecated: "use `os.getFileSize`".} =
   ## retrieves the file size (in bytes) of `f`.
+  ## Caution: this uses `c_fseek(f, 0, SEEK_END)`, which is undefined behavior
+  ## on some systems, and can overflow for large files on others.
   let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)

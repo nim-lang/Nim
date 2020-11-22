@@ -2998,23 +2998,6 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTar
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
-proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect], noWeirdTarget.} =
-  ## Returns the file size of `file` (in bytes). ``OSError`` is
-  ## raised in case of an error.
-  when defined(windows):
-    var a: WIN32_FIND_DATA
-    var resA = findFirstFile(file, a)
-    if resA == -1: raiseOSError(osLastError(), file)
-    result = rdFileSize(a)
-    findClose(resA)
-  else:
-    var f: File
-    if open(f, file):
-      result = getFileSize(f)
-      close(f)
-    else: raiseOSError(osLastError(), file)
-
 when defined(Windows) or weirdTarget:
   type
     DeviceId* = int32
@@ -3186,6 +3169,27 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
       if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
+
+proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
+  tags: [ReadIOEffect], noWeirdTarget.} =
+  ## Returns the file size of `file` (in bytes). ``OSError`` is raised in case of an error.
+  when defined(windows):
+    # xxx use `GetFileSizeEx` see https://wiki.sei.cmu.edu/confluence/display/c/FIO19-C.+Do+not+use+fseek%28%29+and+ftell%28%29+to+compute+the+size+of+a+regular+file
+    # or perhaps, also `getFileInfo(file).size`
+    var a: WIN32_FIND_DATA
+    var resA = findFirstFile(file, a)
+    if resA == -1: raiseOSError(osLastError(), file)
+    result = rdFileSize(a)
+    findClose(resA)
+  else:
+    result = getFileInfo(file).size
+    # undefined behavior on some systems, or can overflow for large files on others.
+    when false:
+      var f: File
+      if open(f, file):
+        result = getFileSize(f)
+        close(f)
+      else: raiseOSError(osLastError(), file)
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadIOEffect], noWeirdTarget.} =
