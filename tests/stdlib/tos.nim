@@ -408,7 +408,7 @@ block ospaths:
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
   doAssert joinPath(".","abc") == unixToNativePath"./abc"
-  
+
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
   doAssert joinPath("foo", "") == "foo"
@@ -539,3 +539,20 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+
+block: # sameFileContent
+  const f0 = getTempDir() / "test_sameFileContent0.txt"
+  const f1 = getTempDir() / "test_sameFileContent1.txt"
+  writeFile(f0, "nim")
+  copyFile(f0, f1)
+  doAssert sameFileContent(f0, f1)
+  doAssert sameFileContent(f0, f1, checkSize = true)
+  doAssert sameFileContent(f0, f1, bufferSize = 1024)
+  writeFile(f0, "?")
+  doAssert not(sameFileContent(f0, f1))
+  doAssert not(sameFileContent(f0, f1, checkSize = true))
+  doAssert not(sameFileContent(f0, f1, bufferSize = 1024))
+  doAssert not sameFileContent("nonexistant", "nonexistant") # false
+  doAssertRaises(IOError):
+    discard sameFileContent("nonexistant", "nonexistant", checkFiles = true)
