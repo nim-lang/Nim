@@ -44,6 +44,10 @@
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Changed `os.sameFileContent` buffer size from hardcoded to `os.FileInfo.blockSize`, and
+  added `checkSize`, `checkFiles`, `bufferSize` params.
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 

@@ -3187,8 +3187,8 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
 
-proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = false; bufferSize = 0.Natural): bool {.
-    rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
+proc sameFileContent*(path1, path2: string; checkFiles = false, checkSize = false, bufferSize = 0.Natural): bool
+  {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns `true` if both pathname arguments refer to files with identical binary content.
   ##
   ## If `checkSize` is `true` then checks the file sizes *before reading the files*,
@@ -3201,39 +3201,43 @@ proc sameFileContent*(path1, path2: string; checkSize = false; checkFiles = fals
   runnableExamples:
     doAssert sameFileContent(currentSourcePath, currentSourcePath, checkSize = true, bufferSize = 4096)
   var a, b: File
-  var mustRead = true
   var bufA, bufB: pointer
   try:  # readBuffer or open may or may not raise IOError.
     if not open(a, path1):
       if checkFiles:
         raise newException(IOError, "Can not open file: $1" % [path1])
-      mustRead = false
+      return false
     if not open(b, path2):
       if checkFiles:
         raise newException(IOError, "Can not open file: $1" % [path2])
-      mustRead = false
-    let bufferSize = if bufferSize == 0: getFileInfo(a).blockSize else: bufferSize
-    bufA = alloc0(bufferSize)
-    bufB = alloc0(bufferSize)
-    if checkSize and getFileInfo(a).size != getFileInfo(b).size: mustRead = false
-    if mustRead:
-      while true:
-        let readA = readBuffer(a, bufA, bufferSize)
-        let readB = readBuffer(b, bufB, bufferSize)
-        if readA != readB: break
-        if readA > 0:
-          result = equalMem(bufA, bufB, readA)
-          if not result: break
-        if readA != bufferSize:
-          let enda = endOfFile(a)
-          let endb = endOfFile(b)
-          if enda != endb: break
-          if enda:
-            result = true
-            break
+      return false
+
+    var bufferSize = bufferSize
+    if bufferSize == 0 or checkSize:
+      var infoA = getFileInfo(a)
+      if bufferSize == 0: bufferSize = infoA.blockSize
+      var infoB = getFileInfo(a)
+      # see also: getFileSize
+      if checkSize and infoA.size != infoB.size: return false
+    bufA = alloc(bufferSize)
+    bufB = alloc(bufferSize)
+    while true:
+      let readA = readBuffer(a, bufA, bufferSize)
+      let readB = readBuffer(b, bufB, bufferSize)
+      if readA != readB: break
+        # xxx: we should handle short reads, e.g. EINTR
+      if readA > 0:
+        result = equalMem(bufA, bufB, readA)
+        if not result: break
+      if readA != bufferSize:
+        let enda = endOfFile(a)
+        let endb = endOfFile(b)
+        if enda != endb: return false
+        if enda: return true
   finally:
-    dealloc(bufA)
-    dealloc(bufB)
+    if bufA != nil: dealloc(bufA)
+      # xxx should `dealloc` be changed to allow nil or would that impact performance?
+    if bufB != nil: dealloc(bufB)
     close(a)
     close(b)
 
