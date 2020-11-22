@@ -1703,7 +1703,7 @@ proc freshIdentNodes*(n: NimNode): NimNode =
   ## This forces the compiler to perform a new lookup pass.
   case n.kind:
   of nnkSym:
-    result = ident(n.strVal)
+    result = ident(n.repr)
   of nnkNone, nnkEmpty, nnkIdent, nnkLiterals:
     result = n
   of nnkClosedSymChoice, nnkOpenSymChoice:
