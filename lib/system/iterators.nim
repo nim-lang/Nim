@@ -3,6 +3,16 @@ when defined(nimHasLentIterators) and not defined(nimWorkaround14447):
 else:
   template lent2(T): untyped = T
 
+iterator items*[T](it: iterator(): T): T =
+  ## Iterates over each result of `it` iterator
+  while true:
+    let next = it()
+    if it.finished:
+      break
+    else:
+      yield next
+
+
 iterator items*[T: not char](a: openArray[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
   var i = 0
