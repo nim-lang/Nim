@@ -145,6 +145,12 @@ suite "YAML syntax highlighting":
   <span class="StringLit">?not a map key</span></pre>"""
 
 
+suite "RST/Markdown general":
+  test "RST emphasis":
+    assert rstToHtml("*Hello* **world**!", {},
+      newStringTable(modeStyleInsensitive)) ==
+      "<em>Hello</em> <strong>world</strong>!"
+
   test "Markdown links":
     let
       a = rstToHtml("(( [Nim](https://nim-lang.org/) ))", {roSupportMarkdown}, defaultConfig())
@@ -205,14 +211,98 @@ H0     H1   H
 ====   ===  =
 A0     A1   X
        Ax   Y
-====   ===  =
-"""
+====   ===  = """
     let output2 = rstToLatex(input2, {})
     assert "{|X|X|X|}" in output2  # 3 columns
     assert count(output2, "\\\\") == 2  # 2 rows
     for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
       assert cell in output2
 
-assert rstToHtml("*Hello* **world**!", {},
-  newStringTable(modeStyleInsensitive)) ==
-  "<em>Hello</em> <strong>world</strong>!"
+
+  test "RST adornments":
+    let input1 = """
+Check that a few punctuation symbols are not parsed as adornments:
+:word1: word2 .... word3 """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    discard output1
+
+  test "RST sections":
+    let input1 = """
+Long chapter name
+'''''''''''''''''''
+"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "Long chapter name" in output1 and "<h1" in output1
+
+    let input2 = """
+Short chapter name:
+
+ChA
+===
+"""
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "ChA" in output2 and "<h1" in output2
+
+    let input3 = """
+Very short chapter name:
+
+X
+~
+"""
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    assert "X" in output3 and "<h1" in output3
+
+  test "RST links":
+    let input1 = """
+Want to learn about `my favorite programming language`_?
+
+.. _my favorite programming language: https://nim-lang.org"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<a" in output1 and "href=\"https://nim-lang.org\"" in output1
+
+  test "RST transitions":
+    let input1 = """
+context1
+
+~~~~
+
+context2
+"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<hr" in output1
+
+    let input2 = """
+This is too short to be a transition:
+
+---
+
+context2
+"""
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "<hr" notin output2
+
+  test "RST literal block":
+    let input1 = """
+Test literal block
+
+::
+
+  check """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<pre>" in output1
+
+  test "Markdown code block":
+    let input1 = """
+```
+let x = 1
+``` """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    let input2 = """
+Parse the block with language specifier:
+```Nim
+let x = 1
+``` """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "<pre" in output2 and "class=\"Keyword\"" in output2
