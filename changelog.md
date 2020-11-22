@@ -47,6 +47,9 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
+- Added `sugar.exported` for converting unexported statements to exported ones.
+  Can be used for macro outputs.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`

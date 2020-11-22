@@ -364,6 +364,44 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
+macro exported*(decl: typed) {.since: (1, 5).} =
+  ## Exports the symbols inside `decl`.
+  ## Useful for when macros generate unexported declarations.
+  ## 
+  ## Will not export object fields. Macro pragmas will only work for
+  ## routines, not for types or variables.
+  runnableExamples:
+    template defineX(y) =
+      let x {.inject.} = y
+
+    exported defineX(3)
+
+    template bar(T, body) {.dirty.} =
+      proc foo(x: T) =
+        body
+
+    exported:
+      bar int:
+        echo x + 1
+      bar string:
+        echo x & '.'
+  case decl.kind
+  of nnkStmtList:
+    result = newStmtList()
+    for d in decl:
+      result.add(getAst(exported(d)))
+  of RoutineNodes:
+    result = copy(decl)
+    if result[0].kind != nnkPostfix:
+      result[0] = postfix(result[0], "*")
+  of nnkLetSection, nnkConstSection, nnkVarSection, nnkTypeSection:
+    result = copy(decl)
+    for i in 0..<result.len:
+      for j in 0..<result[i].len - 2:
+        if result[i][j].kind != nnkPostfix:
+          result[i][j] = postfix(result[i][j], "*")
+  else: result = decl
+
 
 when isMainModule:
   since (1, 1):
