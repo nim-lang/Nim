@@ -10,7 +10,7 @@ macro check(val, body: untyped): untyped =
     let p = b[0]
     let s = b[1]
     result.add quote do:
-      echo prefixMatch(`p`, `s`) == `val`
+      doAssert prefixMatch(`p`, `s`) == `val`
 
 check PrefixMatch.Prefix:
   ("abc", "abc")
