@@ -1,7 +1,3 @@
-discard """
-action: run
-"""
-
 import asyncdispatch
 
 proc completeOnReturn(fut: FutureVar[string], x: bool) {.async.} =
