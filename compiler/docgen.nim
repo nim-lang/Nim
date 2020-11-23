@@ -968,13 +968,17 @@ proc exportSym(d: PDoc; s: PSym) =
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
-      let external = externalDep(d, module)
+      let
+        complexSymbol = complexName(s.kind, s.ast, s.name.s)
+        symbolOrIdRope = rope(d.newUniquePlainSymbol(complexSymbol))
+        external = externalDep(d, module)
       if d.section[k] != nil: d.section[k].add(", ")
       # XXX proper anchor generation here
       dispA(d.conf, d.section[k],
-            "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
+            "<a href=\"$2#$3\"><span class=\"Identifier\">$1</span></a>",
             "$1", [rope esc(d.target, s.name.s),
-            rope changeFileExt(external, "html")])
+            rope changeFileExt(external, "html"),
+            symbolOrIdRope])
 
 proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n[namePos].sym
@@ -1077,7 +1081,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
       if it.kind == nkSym:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, kForceExport)
-        else:
+        elif it.sym.ast != nil:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
