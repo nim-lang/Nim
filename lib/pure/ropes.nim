@@ -262,7 +262,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break
+          if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)
