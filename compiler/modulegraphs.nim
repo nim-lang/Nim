@@ -321,17 +321,35 @@ proc initExports*(g: ModuleGraph; m: PSym) =
 
 template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
 
+proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
+  template iface: Iface = g.ifaces[m.position]
+  case iface.state
+  of Uninitialized:
+    assert false, "initialize iface first"
+  of Loaded:
+    iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
+    iface.state = Unpacked
+  of Unpacked, Unloaded:
+    discard
+  result = iface.patterns
+
+proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
+  template iface: Iface = g.ifaces[m.position]
+  filterIt patterns(g, m): it.kind == skConverter
+
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
   initIface(iface, g.config, m)
   if iface in Loaded:
-    for i, s in pairs iface.patterns[1 + it.h.int .. ^1]:
-      if s.name.s == it.name.s:
-        it.name = s.name
-        it.h = i.Hash
-        result = s
-        break
+    # XXX: unpack all symbols (via a side-effect) for now
+    if patterns(g, m).len > 0:
+      for i, s in pairs patterns(g, m)[0 + it.h.int .. ^1]:
+        if s.name.s == it.name.s:
+          it.name = s.name
+          it.h = i.Hash
+          result = s
+          break
   else:
     result = nextIdentIter(it, iface.exports)
 
@@ -373,25 +391,13 @@ iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
     for s in unpackSymbols(iface.tree, iface.decoder, iface.module,
                            name = name):
       yield s
-  of Unpacked, Unloaded:
+  of Unpacked:
     for s in iface.patterns:
-      yield s
-
-proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
-  template iface: Iface = g.ifaces[m.position]
-  case iface.state
-  of Uninitialized:
-    assert false, "initialize iface first"
-  of Loaded:
-    iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
-    iface.state = Unpacked
-  of Unpacked, Unloaded:
-    discard
-  result = iface.patterns
-
-proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
-  template iface: Iface = g.ifaces[m.position]
-  filterIt patterns(g, m): it.kind == skConverter
+      if name.s == s.name.s:
+        yield s
+  of Unloaded:
+    var ti: TIdentIter
+    yield initIdentIter(ti, iface.exports, name)
 
 proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
   raise
