@@ -97,3 +97,9 @@ block: # collect
 block: # collectTo
   # bug: this doesn't work inside a `runnableExamples`, see bug #13491
   doAssert ("".collectIt do: (for c in "abc": yield c)) == "abc"
+
+  block: # bug #16098
+    let a =  set[int8].default.collectIt:
+      for i in 0 .. 8:
+        if i mod 2 == 0 : yield {i.int8}
+    doAssert a == {0'i8, 2, 4, 6, 8}
