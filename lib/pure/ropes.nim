@@ -204,8 +204,8 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
       if x.left.length > j:
         x = x.left
       else:
+        dec(j, x.left.length)
         x = x.right
-        dec(j, x.len)
 
 iterator leaves*(r: Rope): string =
   ## iterates over any leaf string in the rope `r`.
