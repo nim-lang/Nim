@@ -1,3 +1,7 @@
+discard """
+  action: compile
+"""
+
 import random
 
 proc main =
@@ -50,4 +54,6 @@ proc main =
   doAssert compiles(rand[int](low(int) .. high(int)))
 
 randomize(223)
-main()
+
+for i in 0 .. 10:
+  main()
