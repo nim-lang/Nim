@@ -1,4 +1,4 @@
-import stats, random
+import random
 
 proc main =
   var occur: array[1000, int]
@@ -49,4 +49,5 @@ proc main =
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
 
+randomize(223)
 main()
