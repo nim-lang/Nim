@@ -158,7 +158,7 @@ since (1, 5):
 
     for idx, c in str:
       if c in '0' .. '9':  # Digits
-        if pfSepAnywhere notin options and hasAnySep and not afterDot and successive > 2:
+        if hasAnySep and not afterDot and successive > 2:
           parseFloatThousandSepRaise(idx, c, str)
         else:
           s.add c
@@ -174,8 +174,9 @@ since (1, 5):
           hasAnySep = true
           successive = 0
       if c == decimalDot:  # This is the dot
-        if pfLeadingDot notin options and (isNegative and idx == 1 or idx == 0) or
-          pfLeadingDot in options and hasAnySep and successive != 3: # Disallow .1
+        if (not afterDot and not hasAnyDot and not lastWasDot) and
+          (pfLeadingDot notin options and (isNegative and idx == 1 or idx == 0)) or
+          (hasAnySep and pfSepAnywhere notin options and successive != 3): # Disallow .1
           parseFloatThousandSepRaise(idx, c, str)
         else:
           s.add '.' # Replace decimalDot to '.' so parseFloat can take it.
@@ -187,7 +188,7 @@ since (1, 5):
         if isNegative or idx != 0:  # Disallow ---1.0
           parseFloatThousandSepRaise(idx, c, str)
         else:
-          if idx == 0: s.add '-'
+          s.add '-'
           isNegative = true
 
     if pfDotOptional notin options and not hasAnyDot:
