@@ -445,12 +445,3 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   g.ifaces[m.position] = Iface(module: m)
   initExports(g, m)
   addExport(g, m, m)       # a module always knows itself
-
-when false:
-  proc initIdentIter*(it: var TIdentIter; iface: Iface; name: PIdent): PSym =
-    ## hide the .exports from ic
-    result = initIdentIter(it, iface.exports, name)
-
-  proc nextIdentIter*(it: var TIdentIter; iface: Iface): PSym =
-    ## hide the .exports from ic
-    result = nextIdentIter(it, iface.exports)
