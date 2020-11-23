@@ -204,8 +204,8 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
       if x.left.length > j:
         x = x.left
       else:
+        dec(j, x.left.length)
         x = x.right
-        dec(j, x.len)
 
 iterator leaves*(r: Rope): string =
   ## iterates over any leaf string in the rope `r`.
@@ -262,7 +262,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break
+          if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)

@@ -57,26 +57,26 @@ type HeapQueue*[T] = object
   data: seq[T]
 
 proc initHeapQueue*[T](): HeapQueue[T] =
-  ## Create a new empty heap.
+  ## Creates a new empty heap.
   ##
   ## See also:
   ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
   discard
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
-  ## Return the number of elements of `heap`.
+  ## Returns the number of elements of `heap`.
   heap.data.len
 
 proc `[]`*[T](heap: HeapQueue[T], i: Natural): T {.inline.} =
-  ## Access the i-th element of `heap`.
+  ## Accesses the i-th element of `heap`.
   heap.data[i]
 
 proc heapCmp[T](x, y: T): bool {.inline.} =
   return (x < y)
 
 proc siftdown[T](heap: var HeapQueue[T], startpos, p: int) =
-  ## 'heap' is a heap at all indices >= startpos, except possibly for pos.  pos
-  ## is the index of a leaf with a possibly out-of-order value.  Restore the
+  ## 'heap' is a heap at all indices >= startpos, except possibly for `pos`. `pos`
+  ## is the index of a leaf with a possibly out-of-order value. Restores the
   ## heap invariant.
   var pos = p
   var newitem = heap[pos]
@@ -114,7 +114,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   siftdown(heap, startpos, pos)
 
 proc push*[T](heap: var HeapQueue[T], item: T) =
-  ## Push `item` onto heap, maintaining the heap invariant.
+  ## Pushes `item` onto heap, maintaining the heap invariant.
   heap.data.add(item)
   siftdown(heap, 0, len(heap)-1)
 
@@ -133,7 +133,7 @@ proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
     result.push(item)
 
 proc pop*[T](heap: var HeapQueue[T]): T =
-  ## Pop and return the smallest item from `heap`,
+  ## Pops and returns the smallest item from `heap`,
   ## maintaining the heap invariant.
   let lastelt = heap.data.pop()
   if heap.len > 0:
@@ -158,7 +158,7 @@ proc del*[T](heap: var HeapQueue[T], index: Natural) =
     heap.siftup(index)
 
 proc replace*[T](heap: var HeapQueue[T], item: T): T =
-  ## Pop and return the current smallest value, and add the new item.
+  ## Pops and returns the current smallest value, and add the new item.
   ## This is more efficient than pop() followed by push(), and can be
   ## more appropriate when using a fixed-size heap. Note that the value
   ## returned may be larger than item! That constrains reasonable uses of
@@ -179,7 +179,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
     siftup(heap, 0)
 
 proc clear*[T](heap: var HeapQueue[T]) =
-  ## Remove all elements from `heap`, making it empty.
+  ## Removes all elements from `heap`, making it empty.
   runnableExamples:
     var heap = initHeapQueue[int]()
     heap.push(1)
@@ -188,7 +188,7 @@ proc clear*[T](heap: var HeapQueue[T]) =
   heap.data.setLen(0)
 
 proc `$`*[T](heap: HeapQueue[T]): string =
-  ## Turn a heap into its string representation.
+  ## Turns a heap into its string representation.
   runnableExamples:
     var heap = initHeapQueue[int]()
     heap.push(1)
@@ -199,55 +199,3 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     if result.len > 1: result.add(", ")
     result.addQuoted(x)
   result.add("]")
-
-when isMainModule:
-  proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
-    var tmp = h
-    result = @[]
-    while tmp.len > 0:
-      result.add(pop(tmp))
-
-  block: # Simple sanity test
-    var heap = initHeapQueue[int]()
-    let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
-    for item in data:
-      push(heap, item)
-    doAssert(heap == data.toHeapQueue)
-    doAssert(heap[0] == 0)
-    doAssert(heap.toSortedSeq == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
-
-  block: # Test del
-    var heap = initHeapQueue[int]()
-    let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
-    for item in data: push(heap, item)
-
-    heap.del(0)
-    doAssert(heap[0] == 1)
-
-    heap.del(heap.find(7))
-    doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 5, 6, 8, 9])
-
-    heap.del(heap.find(5))
-    doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 6, 8, 9])
-
-    heap.del(heap.find(6))
-    doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 8, 9])
-
-    heap.del(heap.find(2))
-    doAssert(heap.toSortedSeq == @[1, 3, 4, 8, 9])
-
-    doAssert(heap.find(2) == -1)
-
-  block: # Test del last
-    var heap = initHeapQueue[int]()
-    let data = [1, 2, 3]
-    for item in data: push(heap, item)
-
-    heap.del(2)
-    doAssert(heap.toSortedSeq == @[1, 2])
-
-    heap.del(1)
-    doAssert(heap.toSortedSeq == @[1])
-
-    heap.del(0)
-    doAssert(heap.toSortedSeq == @[])

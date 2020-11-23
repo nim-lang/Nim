@@ -97,9 +97,8 @@ block:
     doAssert a2 == 10
 
   block:
-    when not defined(cpp): # pending bug #15958
-      let a = [11,12]
-      doAssert byLent(a) == [11,12]
+    let a = [11,12]
+    doAssert byLent(a) == [11,12] # bug #15958
     let a2 = (11,)
     doAssert byLent(a2) == (11,)
 
