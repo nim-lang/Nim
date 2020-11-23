@@ -599,31 +599,3 @@ proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
 proc eat*(p: var JsonParser, tok: TokKind) =
   if p.tok == tok: discard getTok(p)
   else: raiseParseErr(p, tokToStr[tok])
-
-iterator jsonTokens*(input: Stream, path: string, rawStringLiterals = false,
-                     strIntegers = true, strFloats = true): ptr JsonParser =
-  ## Yield each successive `ptr JsonParser` while parsing `input` with error
-  ## label `path`.
-  var p: JsonParser
-  p.open(input, path, rawStringLiterals = rawStringLiterals,
-         strIntegers = strIntegers, strFloats = strFloats)
-  try:
-    var tok = p.getTok
-    while tok notin {tkEof,tkError}:
-      yield p.addr                      # `JsonParser` is a pretty big struct
-      tok = p.getTok
-  finally:
-    p.close()
-
-iterator jsonTokens*(path: string, rawStringLiterals = false,
-                     strIntegers = true, strFloats = true): ptr JsonParser =
-  ## Yield each successive `ptr JsonParser` while parsing file data at `path`.
-  ## Example usage:
-  ##
-  ## .. code-block:: nim
-  ##   var sum = 0.0 # total all json floats named "myKey" in JSON file `path`.
-  ##   for tok in jsonTokens(path, false, false, false):
-  ##     if t.tok == tkFloat and t.a == "myKey": sum += t.f
-  for tok in jsonTokens(newFileStream(path), path,
-                        rawStringLiterals, strIntegers, strFloats):
-    yield tok
