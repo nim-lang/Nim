@@ -432,7 +432,7 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       case iface.state
       of Uninitialized: assert false
       of Unloaded:
-        strTableAdd iface.exports, s
+        strTableAdd(iface.exports, s)
       of Unpacked, Loaded:
         assert false, "imagine the two of us, meeting like this"
     else:
