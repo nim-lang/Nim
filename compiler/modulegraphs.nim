@@ -329,8 +329,10 @@ proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
   of Loaded:
     iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
     iface.state = Unpacked
-  of Unpacked, Unloaded:
+  of Unpacked:
     discard
+  of Unloaded:
+    return toSeq items(iface.exports)
   result = iface.patterns
 
 proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
