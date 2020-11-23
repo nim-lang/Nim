@@ -137,8 +137,8 @@ proc str*(my: JsonParser): string {.inline.} =
 
 proc isGiant*(my: JsonParser): bool {.inline.} =
   ## returns whether the last ``tkInt|tkFloat`` token was not CPU native
-  assert(my.tok == tkInt)
-  return cast[BiggestInt](my.i) # A no-op unless BiggestInt changes
+  assert(my.tok in {tkInt, tkFloat})
+  return my.giant
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the last ``tkInt`` token as a ``BiggestInt``
