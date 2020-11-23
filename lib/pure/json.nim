@@ -809,11 +809,11 @@ proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = if rawIntegers or p.giant: newJRawNumber(p.a)
+    result = if rawIntegers or p.isGiant: newJRawNumber(p.a)
              else: newJInt(p.getInt)
     discard getTok(p)
   of tkFloat:
-    result = if rawFloats or p.giant: newJRawNumber(p.a)
+    result = if rawFloats or p.isGiant: newJRawNumber(p.a)
              else: newJFloat(p.getFloat)
     discard getTok(p)
   of tkTrue:

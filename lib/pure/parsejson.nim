@@ -64,9 +64,9 @@ type
 
   JsonParser* = object of BaseLexer ## the parser object.
     a*: string      ## last valid string
-    i*: int64       ## last valid integer
-    f*: float       ## last valid float
-    giant*: bool    ## true if tkInt or tkFloat overflow native bounds
+    i: int64        # last valid integer
+    f: float        # last valid float
+    giant: bool     # true if tkInt or tkFloat overflow native bounds
     tok*: TokKind   ## current token kind
     kind: JsonEventKind
     err: JsonError
@@ -135,13 +135,18 @@ proc str*(my: JsonParser): string {.inline.} =
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
+proc isGiant*(my: JsonParser): bool {.inline.} =
+  ## returns whether the last ``tkInt|tkFloat`` token was not CPU native
+  assert(my.tok == tkInt)
+  return cast[BiggestInt](my.i) # A no-op unless BiggestInt changes
+
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
-  ## returns the number for the event: ``jsonInt``
+  ## returns the number for the last ``tkInt`` token as a ``BiggestInt``
   assert(my.tok == tkInt)
   return cast[BiggestInt](my.i) # A no-op unless BiggestInt changes
 
 proc getFloat*(my: JsonParser): float {.inline.} =
-  ## returns the number for the event: ``jsonFloat``
+  ## returns the number for the last ``tkFloat`` token as a ``float``.
   assert(my.tok == tkFloat)
   return my.f
 
