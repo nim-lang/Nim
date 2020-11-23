@@ -64,3 +64,10 @@ block:
     inc i
 
   doAssert r[66] == '\0'
+
+block:
+  let r1 = "$1 $2 $3" % [rope("Nim"), rope("is"), rope("a great language")]
+  doAssert $r1 == "Nim is a great language"
+
+  let r2 = "$# $# $#" % [rope("Nim"), rope("is"), rope("a great language")]
+  doAssert $r2 == "Nim is a great language"
