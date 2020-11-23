@@ -252,6 +252,17 @@ X
     let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
     assert "X" in output3 and "<h1" in output3
 
+    let input4 = """
+Check that short underline is not enough to make section:
+
+Wrong chapter
+------------
+
+"""
+    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    assert "Wrong chapter" in output4 and "<h1" notin output4
+
+
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?

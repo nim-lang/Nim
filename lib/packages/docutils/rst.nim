@@ -1042,6 +1042,12 @@ proc tokenAfterNewline(p: RstParser): int =
       break
     else: inc result
 
+proc isAdornmentHeadline(p: RstParser, tokAfter: int): bool =
+  var headlineLen = 0
+  for i in p.idx ..< tokAfter-1:  # tokAfter-1 is a linebreak
+    headlineLen += p.tok[i].symbol.len
+  return p.tok[tokAfter].symbol.len >= headlineLen
+
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
   result = currentTok(p).col == p.tok[j].col and p.tok[j].symbol == "|" or
@@ -1131,7 +1137,10 @@ proc whichSection(p: RstParser): RstNodeKind =
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
-    if match(p, tokenAfterNewline(p), "ai"): result = rnHeadline
+    let tokIdx =  tokenAfterNewline(p)
+    if match(p, tokIdx, "ai"):
+      if isAdornmentHeadline(p, tokIdx): result = rnHeadline
+      else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
     elif isDefList(p): result = rnDefList
     else: result = rnParagraph
@@ -1176,7 +1185,6 @@ proc parseParagraph(p: var RstParser, result: PRstNode) =
       if currentTok(p).symbol == "::" and
           nextTok(p).kind == tkIndent and
           currInd(p) < nextTok(p).ival:
-        echo "add rnleaf"
         result.add(newRstNode(rnLeaf, ":"))
         inc p.idx            # skip '::'
         result.add(parseLiteralBlock(p))
