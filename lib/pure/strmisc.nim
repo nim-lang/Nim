@@ -94,6 +94,7 @@ since (1, 5):
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
     pfDotOptional    ## Allow "9", "-0", integer literals, etc.
     pfScientific     ## Allow Scientific Notation "1.0e9", "1.0e-9", etc.
+    pfNanInf         ## Allow "NaN", "Inf", "-Inf", etc.
 
   func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions] = {};
       sep = ','; decimalDot = '.'): float =
@@ -152,6 +153,16 @@ since (1, 5):
       parseFloatThousandSepRaise(strLen, decimalDot, str)
     if pfSepAnywhere notin options and (str.len <= 4 and sep in str):
       parseFloatThousandSepRaise(0, sep, str)                 # "1,1"
+
+    if (strLen == 3 or strLen == 4) and (
+      (str[0] in {'i', 'I'} and str[1] in {'n', 'N'} and str[2] in {'f', 'F'}) or
+      (str[0] in {'n', 'N'} and str[1] in {'a', 'A'} and str[2] in {'n', 'N'}) or
+      (str[0] in {'+', '-'} and str[1] in {'i', 'I'} and str[2] in {'n', 'N'} and str[3] in {'f', 'F'}) or
+      (str[0] in {'+', '-'} and str[1] in {'n', 'N'} and str[2] in {'a', 'A'} and str[3] in {'n', 'N'})):
+      if pfNanInf notin options:
+        parseFloatThousandSepRaise(0, sep, str)
+      else:
+        return parseFloat(str.join)  # Allow NaN, Inf, -Inf, +Inf
 
     var
       s = newStringOfCap(strLen)
