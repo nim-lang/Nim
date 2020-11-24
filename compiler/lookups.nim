@@ -107,8 +107,8 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; graph: ModuleGraph;
-                   im: ImportedModule): PSym =
+proc nextIdentIter(ti: var TIdentIter; marked: var IntSet;
+                   graph: ModuleGraph; im: ImportedModule): PSym =
   while true:
     result = nextIdentIter(ti, graph, im.m)
     if result == nil:
@@ -569,15 +569,20 @@ proc lastOverloadScope*(o: TOverloadIter): int =
   of oimOtherModule: result = 0
   else: result = -1
 
-proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+proc nextOverloadIterImports(o: var TOverloadIter; c: PContext;
+                             n: PNode): PSym =
+  ## try to find the next overload among subsequent ImportedModule(s)
   assert o.currentScope == nil
+  # for some reason, we don't actually use the object field
   var idx = o.importIdx+1
-  o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
+  # assume the other imported modules lack this symbol too
+  o.importIdx = c.imports.len
   while idx < c.imports.len:
-    result = initIdentIter(o.it, o.marked, c.graph, c.imports[idx], o.it.name)
+    result = initIdentIter(o.it, o.marked, c.graph, c.imports[idx],
+                           o.it.name)
     result = result.skipAlias(n, c.config)
     if result != nil:
-      # oh, we were wrong, some other module had the symbol, so remember that:
+      # some other module DID have the symbol, so update the iterator
       o.importIdx = idx
       break
     inc idx
@@ -596,34 +601,38 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  echo o.mode
   case o.mode
   of oimDone:
     result = nil
   of oimNoQualifier:
     if o.currentScope != nil:
+      # search the current scope
       assert o.importIdx < 0
       result = nextIdentIter(o.it, o.currentScope.symbols)
       result = result.skipAlias(n, c.config)
       while result == nil:
+        # proceed to the next parent scope
         o.currentScope = o.currentScope.parent
         if o.currentScope != nil:
           result = initIdentIter(o.it, o.currentScope.symbols, o.it.name)
           result = result.skipAlias(n, c.config)
           # BUGFIX: o.it.name <-> n.ident
         else:
-          o.importIdx = 0
-          if c.imports.len > 0:
-            result = initIdentIter(o.it, o.marked, c.graph,
-                                   c.imports[o.importIdx], o.it.name)
-            result = result.skipAlias(n, c.config)
-            if result == nil:
-              result = nextOverloadIterImports(o, c, n)
+          # devolve into scanning the imports
+          o.importIdx = -1
+          result = nextOverloadIterImports(o, c, n)
           break
+    # we don't have a scope to search,
     elif o.importIdx < c.imports.len:
-      result = nextIdentIter(o.it, o.marked, c.graph, c.imports[o.importIdx])
+      # search the import according to index
+      result = nextIdentIter(o.it, o.marked, c.graph,
+                             c.imports[o.importIdx])
       result = result.skipAlias(n, c.config)
       if result == nil:
+        # proceed to the next import
         result = nextOverloadIterImports(o, c, n)
+    # and we're all outta imports to search
     else:
       result = nil
   of oimSelfModule:

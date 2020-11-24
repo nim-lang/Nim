@@ -51,17 +51,18 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
   result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
-                name: getModuleIdent(graph, filename),
+                name: getModuleIdent(graph, filename), position: int fileIdx,
                 info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
 
-  let packSym = getPackage(graph, fileIdx)
-  result.owner = packSym
-  result.position = int fileIdx
+  # due to the addition of exports, we setup the module's iface before
+  # we determine which package to assign as the owner
+  registerModule(graph, result)
 
-  registerModule(graph, result)         # setup the module's iface
-  addExport(graph, packSym, result)     # add module to package exports
+  # XXX: this should arguably move into the module registration
+  result.owner = getPackage(graph, FileIndex result.position)
+  addExport(graph, result.owner, result)     # add module to package exports
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
   var flags = flags

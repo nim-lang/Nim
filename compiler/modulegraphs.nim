@@ -45,7 +45,6 @@ type
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
     exports: TStrTable
-    patterns: seq[PSym]
     tree: PackedTree
 
   ModuleGraph* = ref object
@@ -183,7 +182,8 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen),
+                  nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
@@ -299,22 +299,21 @@ proc contains(state: IfaceState; iface: Iface): bool =
 
 proc initIface*(iface: var Iface; conf: ConfigRef; s: PSym) =
   ## try to initialize the iface with an available rodfile
-  if iface.state == Uninitialized:
-    let m = tryReadModule(conf, rodFile(conf, s))
-    iface.state =
-      if m.isNone:
-        initStrTable iface.exports
-        Unloaded
-      else:
-        iface.tree = (get m).ast
-        assert iface.tree[0].kind != nkNone, "unexpectedly none ast"
-        Loaded
+  let m = tryReadModule(conf, rodFile(conf, s))
+  iface.state =
+    if m.isNone:
+      Unloaded
+    else:
+      iface.tree = (get m).ast
+      assert iface.tree[0].kind != nkNone, "unexpectedly none ast"
+      Loaded
 
 proc initExports*(g: ModuleGraph; m: PSym) =
   ## prepare module to addExport
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
-    initIface(iface, g.config, m)
+    if iface.state == Uninitialized:
+      initIface(iface, g.config, m)
   else:
     # implicit assertion that `m` is skPackage
     initStrTable m.pkgTab
@@ -322,6 +321,7 @@ proc initExports*(g: ModuleGraph; m: PSym) =
 template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
 
 proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
+  ## return symbols exported from the given module
   template iface: Iface = g.ifaces[m.position]
   case iface.state
   of Uninitialized:
@@ -329,43 +329,41 @@ proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
   of Loaded:
     iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
     iface.state = Unpacked
-  of Unpacked:
+  of Unpacked, Unloaded:
     discard
-  of Unloaded:
-    return toSeq items(iface.exports)
   result = iface.patterns
 
 proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
+  ## return converters exported from the given module
   template iface: Iface = g.ifaces[m.position]
   filterIt patterns(g, m): it.kind == skConverter
 
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
-  initIface(iface, g.config, m)
-  if iface in Loaded:
-    # XXX: unpack all symbols (via a side-effect) for now
-    if patterns(g, m).len > 0:
-      for i, s in pairs patterns(g, m)[0 + it.h.int .. ^1]:
+  assert iface.state != Uninitialized
+  block done:
+    if patterns(g, m).high > it.h.int:
+      for i, s in patterns(g, m)[1 + it.h.int .. ^1].pairs:
         if s.name.s == it.name.s:
           it.name = s.name
           it.h = i.Hash
           result = s
-          break
-  else:
-    result = nextIdentIter(it, iface.exports)
+          echo cast[int](addr it), " found ", i
+          break done
+      # advance the iterator to the last index
+      it.h = Hash patterns(g, m).high
+      writeStackTrace()
+      quit(1)
 
 proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
                     name: PIdent): PSym =
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
-  initIface(iface, g.config, m)
-  if iface in Loaded:
-    it.name = name
-    it.h = 0.Hash
-    result = nextIdentIter(it, g, m)
-  else:
-    result = initIdentIter(it, iface.exports, name)
+  assert iface.state != Uninitialized
+  it.name = name
+  it.h = 0.Hash
+  result = nextIdentIter(it, g, m)
 
 iterator symbols*(g: ModuleGraph; m: PSym): PSym =
   ## lazy version of patterns
@@ -376,11 +374,8 @@ iterator symbols*(g: ModuleGraph; m: PSym): PSym =
   of Loaded:
     for s in unpackSymbols(iface.tree, iface.decoder, iface.module):
       yield s
-  of Unpacked:
+  of Unpacked, Unloaded:
     for s in iface.patterns:
-      yield s
-  of Unloaded:
-    for s in iface.exports.items:
       yield s
 
 iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
@@ -393,31 +388,19 @@ iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
     for s in unpackSymbols(iface.tree, iface.decoder, iface.module,
                            name = name):
       yield s
-  of Unpacked:
+  of Unpacked, Unloaded:
     for s in iface.patterns:
       if name.s == s.name.s:
         yield s
-  of Unloaded:
-    var ti: TIdentIter
-    yield initIdentIter(ti, iface.exports, name)
-
-proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
-  raise
-
-proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) {.deprecated.} =
-  raise
 
 proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   ## fetch an exported symbol for the module by ident
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
-    initIface(iface, g.config, m)
-    if iface in Loaded:
-      for s in symbols(g, m, name = name):
-        result = s
-        break
-    else:
-      result = strTableGet(iface.exports, name)
+    assert iface.state != Uninitialized
+    for s in symbols(g, m, name = name):
+      result = s
+      break
   else:
     # implicit assertion that `m` is skPackage
     result = strTableGet(m.pkgTab, name)
@@ -434,7 +417,8 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       case iface.state
       of Uninitialized: assert false
       of Unloaded:
-        strTableAdd(iface.exports, s)
+        echo "grew patterns"
+        iface.patterns.add s
       of Unpacked, Loaded:
         assert false, "imagine the two of us, meeting like this"
     else:
@@ -442,6 +426,18 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       strTableAdd(m.pkgTab, s)
   else:
     internalError(g.config, "cannot add export for unexported symbol")
+
+proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
+  ## a pcontext version calls this one to record the converter in the
+  ## correct iface ... i guess.
+  assert m.kind == skModule
+  addExport(g, m, s)
+
+proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) =
+  ## a pcontext version calls this one to record the pattern in the
+  ## correct iface ... i guess.
+  assert m.kind == skModule
+  addExport(g, m, s)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   ## setup the module's interface
