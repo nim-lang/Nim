@@ -30,7 +30,7 @@ type
 
 const
   version =
-    when defined(release): NimVersion else: CompileDate & CompileTime
+    when defined(release): NimVersion else: CompileDate & " " & CompileTime
 
 template config(m: Module): ConfigRef = m.ast.sh.config
 
