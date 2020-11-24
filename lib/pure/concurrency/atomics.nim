@@ -30,7 +30,8 @@ runnableExamples:
   assert loc.compareExchange(expected, 5, moRelaxed, moRelaxed)
   assert expected == 7
   assert loc.load == 5
-  assert loc.compareExchange(expected, 12, moRelaxed, moRelaxed)
+
+  assert not loc.compareExchange(expected, 12, moRelaxed, moRelaxed)
   assert expected == 5
   assert loc.load == 5
 
