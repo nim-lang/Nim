@@ -1765,7 +1765,7 @@ when notJSnotNims and defined(nimSeqsV2):
 
 {.pop.}
 
-when notJSnotNims:
+when not defined(nimscript):
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
     ## Writes the current stack trace to ``stderr``. This is only works
     ## for debug builds. Since it's usually used for debugging, this
