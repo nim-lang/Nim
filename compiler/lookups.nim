@@ -573,7 +573,7 @@ proc nextOverloadIterImports(o: var TOverloadIter; c: PContext;
                              n: PNode): PSym =
   ## try to find the next overload among subsequent ImportedModule(s)
   assert o.currentScope == nil
-  # for some reason, we don't actually use the object field
+  # for some reason, we don't actually use the iterator's importIdx field
   var idx = o.importIdx+1
   # assume the other imported modules lack this symbol too
   o.importIdx = c.imports.len
@@ -601,7 +601,6 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  echo o.mode
   case o.mode
   of oimDone:
     result = nil

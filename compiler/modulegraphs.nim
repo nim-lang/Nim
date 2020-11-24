@@ -343,18 +343,16 @@ proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   template iface: Iface = g.ifaces[m.position]
   assert iface.state != Uninitialized
   block done:
-    if patterns(g, m).high > it.h.int:
-      for i, s in patterns(g, m)[1 + it.h.int .. ^1].pairs:
+    if patterns(g, m).high >= it.h.int:
+      for i in countup(1 + it.h.int, patterns(g, m).high):
+        let s = patterns(g, m)[i]
         if s.name.s == it.name.s:
           it.name = s.name
           it.h = i.Hash
           result = s
-          echo cast[int](addr it), " found ", i
           break done
-      # advance the iterator to the last index
-      it.h = Hash patterns(g, m).high
-      writeStackTrace()
-      quit(1)
+      # advance the iterator past the last index
+      it.h = Hash patterns(g, m).len
 
 proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
                     name: PIdent): PSym =
@@ -362,7 +360,7 @@ proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
   template iface: Iface = g.ifaces[m.position]
   assert iface.state != Uninitialized
   it.name = name
-  it.h = 0.Hash
+  it.h = -1.Hash
   result = nextIdentIter(it, g, m)
 
 iterator symbols*(g: ModuleGraph; m: PSym): PSym =
@@ -417,7 +415,6 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       case iface.state
       of Uninitialized: assert false
       of Unloaded:
-        echo "grew patterns"
         iface.patterns.add s
       of Unpacked, Loaded:
         assert false, "imagine the two of us, meeting like this"
