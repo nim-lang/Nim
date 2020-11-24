@@ -22,6 +22,7 @@ runnableExamples:
   assert loc.load(moAcquire) == 9
   loc.store(0, moRelease)
   assert loc.load == 0
+
   assert loc.exchange(7) == 0
   assert loc.load == 7
 
