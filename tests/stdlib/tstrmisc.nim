@@ -66,6 +66,8 @@ func main() =
   doAssert parseFloatThousandSep("-Inf", {pfNanInf}) == -Inf
   doAssert parseFloatThousandSep("+Inf", {pfNanInf}) == +Inf
   doAssert parseFloatThousandSep("1000.000000E+90") == 1e93
+  doAssert parseFloatThousandSep("-10 000 000 000.0001", sep=' ') == -10000000000.0001
+  doAssert parseFloatThousandSep("-10 000 000 000,0001", sep=' ', decimalDot = ',') == -10000000000.0001
   discard parseFloatThousandSep("NaN", {pfNanInf})
 
 
