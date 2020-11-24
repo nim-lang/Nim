@@ -138,19 +138,17 @@ proc isCurrentLineAdornment(L: var Lexer): bool =
   let c = L.buf[pos]
   while true:
     inc pos
-    if L.buf[pos] in ['\c', '\l', '\0']:
+    if L.buf[pos] in {'\c', '\l', '\0'}:
       break
     if c == '+':  # grid table
-      if L.buf[pos] notin ['-', '=', '+']:
+      if L.buf[pos] notin {'-', '=', '+'}:
         return false
     else:  # section adornment or table horizontal border
-      if L.buf[pos] notin [c, ' ', '\t', '\v', '\f']:
+      if L.buf[pos] notin {c, ' ', '\t', '\v', '\f'}:
         return false
   result = true
 
 proc getPunctAdornment(L: var Lexer, tok: var Token) =
-  if L.col == 0:
-    L.adornmentLine = L.isCurrentLineAdornment()
   if L.adornmentLine:
     tok.kind = tkAdornment
   else:
@@ -228,9 +226,12 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       rawGetTok(L, tok)       # ignore spaces before \n
   of '\x0D', '\x0A':
     getIndent(L, tok)
+    L.adornmentLine = false
   of '!', '\"', '#', '$', '%', '&', '\'',  '*', '+', ',', '-', '.',
      '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
      '|', '~':
+    if L.col == 0:
+      L.adornmentLine = L.isCurrentLineAdornment()
     getPunctAdornment(L, tok)
   of '(', ')', '[', ']', '{', '}':
     getBracket(L, tok)

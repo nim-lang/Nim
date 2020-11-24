@@ -262,6 +262,16 @@ Wrong chapter
     let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
     assert "Wrong chapter" in output4 and "<h1" notin output4
 
+    let input5 = """
+Check that punctuation after adornment and indent are not detected as adornment.
+
+Some chapter
+--------------
+
+  "punctuation symbols" """
+    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    assert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
+
 
   test "RST links":
     let input1 = """
