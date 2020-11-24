@@ -718,7 +718,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
   else: discard
-  if n.len > paramsPos and n[paramsPos].kind == nkFormalParams:
+  if n.safeLen > paramsPos and n[paramsPos].kind == nkFormalParams:
     let params = renderParamTypes(n[paramsPos])
     if params.len > 0:
       result.add(defaultParamSeparator)
