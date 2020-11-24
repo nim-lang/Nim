@@ -1703,11 +1703,13 @@ proc freshIdentNodes*(n: NimNode): NimNode =
   ## This forces the compiler to perform a new lookup pass.
   runnableExamples:
     macro lc(init: untyped): untyped =
+      expectKind(init, {nnkIdent, nnkSym})
       let x = freshIdentNodes(init)
       expectKind(x, nnkIdent)
       result = newStmtList()
 
     newSeq.lc()
+    lc(newSeq)
 
   case n.kind:
   of nnkSym:
