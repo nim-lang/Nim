@@ -39,6 +39,8 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("-Inf")
   doAssertRaises(ValueError): discard parseFloatThousandSep("+Inf")
   doAssertRaises(ValueError): discard parseFloatThousandSep("NaN")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("aNa", {pfNanInf})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("fnI", {pfNanInf})
 
   doAssert parseFloatThousandSep("10,00.0", {pfSepAnywhere}) == 1000.0
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0

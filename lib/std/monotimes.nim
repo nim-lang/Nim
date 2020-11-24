@@ -152,19 +152,3 @@ proc high*(typ: typedesc[MonoTime]): MonoTime =
 proc low*(typ: typedesc[MonoTime]): MonoTime =
   ## Returns the lowest representable `MonoTime`.
   MonoTime(ticks: low(int64))
-
-when isMainModule:
-  let d = initDuration(nanoseconds = 10)
-  let t1 = getMonoTime()
-  let t2 = t1 + d
-
-  doAssert t2 - t1 == d
-  doAssert t1 == t1
-  doAssert t1 != t2
-  doAssert t2 - d == t1
-  doAssert t1 < t2
-  doAssert t1 <= t2
-  doAssert t1 <= t1
-  doAssert not(t2 < t1)
-  doAssert t1 < high(MonoTime)
-  doAssert low(MonoTime) < t1

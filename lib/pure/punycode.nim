@@ -206,9 +206,3 @@ runnableExamples:
       doAssert decode("Mnchen-3ya-") == "Mnchen-3ya"
       doAssert decode("Mnchen-Ost-9db") == "München-Ost"
       doAssert decode("Bahnhof Mnchen-Ost-u6b") == "Bahnhof München-Ost"
-
-
-when isMainModule:
-  assert(decode(encode("", "bücher")) == "bücher")
-  assert(decode(encode("münchen")) == "münchen")
-  assert encode("xn--", "münchen") == "xn--mnchen-3ya"

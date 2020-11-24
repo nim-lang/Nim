@@ -1,19 +1,12 @@
-discard """
-output: "[Suite] httpcore"
-"""
-
-import unittest
-
 import httpcore, strutils
 
-suite "httpcore":
-
-  test "HttpCode":
+block:
+  block HttpCode:
     assert $Http418 == "418 I'm a teapot"
     assert Http418.is4xx() == true
     assert Http418.is2xx() == false
 
-  test "headers":
+  block headers:
     var h = newHttpHeaders()
     assert h.len == 0
     h.add("Cookie", "foo")
@@ -35,7 +28,7 @@ suite "httpcore":
 
     assert seq[string](h1["a"]).join(",") == "1,2,3"
 
-  test "test cookies with comma":
+  block test_cookies_with_comma:
     doAssert parseHeader("cookie: foo, bar") ==  ("cookie", @["foo, bar"])
     doAssert parseHeader("cookie: foo, bar, prologue") == ("cookie", @["foo, bar, prologue"])
     doAssert parseHeader("cookie: foo, bar, prologue, starlight") == ("cookie", @["foo, bar, prologue, starlight"])
@@ -52,7 +45,7 @@ suite "httpcore":
     doAssert parseHeader("Accept: foo, bar, prologue") == (key: "Accept", value: @["foo", "bar", "prologue"])
     doAssert parseHeader("Accept: foo, bar, prologue, starlight") == (key: "Accept", value: @["foo", "bar", "prologue", "starlight"])
 
-  test "add empty sequence to HTTP headers":
+  block add_empty_sequence_to_HTTP_headers:
     block:
       var headers = newHttpHeaders()
       headers["empty"] = @[]
@@ -78,3 +71,28 @@ suite "httpcore":
       headers["existing"] = @[]
       headers["existing"] = @["true"]
       doAssert headers.hasKey("existing")
+
+block:
+  var test = newHttpHeaders()
+  test["Connection"] = @["Upgrade", "Close"]
+  doAssert test["Connection", 0] == "Upgrade"
+  doAssert test["Connection", 1] == "Close"
+  test.add("Connection", "Test")
+  doAssert test["Connection", 2] == "Test"
+  doAssert "upgrade" in test["Connection"]
+
+  # Bug #5344.
+  doAssert parseHeader("foobar: ") == ("foobar", @[""])
+  let (key, value) = parseHeader("foobar: ")
+  test = newHttpHeaders()
+  test[key] = value
+  doAssert test["foobar"] == ""
+
+  doAssert parseHeader("foobar:") == ("foobar", @[""])
+
+  block: # test title case
+    var testTitleCase = newHttpHeaders(titleCase=true)
+    testTitleCase.add("content-length", "1")
+    doAssert testTitleCase.hasKey("Content-Length")
+    for key, val in testTitleCase:
+        doAssert key == "Content-Length"
