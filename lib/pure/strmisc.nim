@@ -93,6 +93,7 @@ since (1, 5):
     pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
     pfDotOptional    ## Allow "9", "-0", integer literals, etc.
+    pfScientific     ## Allow Scientific Notation "1.0e9", "1.0e-9", etc.
 
   func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions] = {};
       sep = ','; decimalDot = '.'): float =
@@ -128,6 +129,7 @@ since (1, 5):
       doAssert parseFloatThousandSep("1.", {pfTrailingDot}) == 1.0
       doAssert parseFloatThousandSep("10,0.0,0,0", {pfSepAnywhere}) == 100.0
       doAssert parseFloatThousandSep("01.00") == 1.0
+      doAssert parseFloatThousandSep("1,000.000e-9", {pfScientific}) == 1e-06
 
     assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
 
@@ -154,7 +156,7 @@ since (1, 5):
     var
       s = newStringOfCap(strLen)
       successive: int
-      afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative, hasAnyDot: bool
+      afterDot, lastWasDot, lastWasSep, hasAnySep, isNegative, hasAnyDot, isScientific: bool
 
     for idx, c in str:
       if c in '0' .. '9':  # Digits
@@ -185,11 +187,18 @@ since (1, 5):
           afterDot = true
           hasAnyDot = true
       elif c == '-':  # Allow negative float
-        if isNegative or idx != 0:  # Disallow ---1.0
-          parseFloatThousandSepRaise(idx, c, str)
+        if isNegative or idx != 0 and pfScientific notin options: # Disallow ---1.0
+          parseFloatThousandSepRaise(idx, c, str)                 # Allow 1.0e-9
         else:
           s.add '-'
-          isNegative = true
+          if idx == 0: # Allow 1.0e-9
+            isNegative = true
+      elif c in {'e', 'E'}:   # Allow scientific notation
+        if isScientific or pfScientific notin options:
+          parseFloatThousandSepRaise(idx, c, str)
+        else:
+          s.add 'e'
+          isScientific = true
 
     if pfDotOptional notin options and not hasAnyDot:
       parseFloatThousandSepRaise(0, sep, str)
