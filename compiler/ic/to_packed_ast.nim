@@ -14,8 +14,8 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options]
 when not defined(release): import ".." / astalgo # debug()
 
 type
-  Context = object
-    thisModule: int32
+  PackedEncoder* = object
+    thisModule*: int32
     lastFile: FileIndex # remember the last lookup entry.
     lastLit: LitId
     filenames: Table[FileIndex, LitId]
@@ -23,6 +23,7 @@ type
     pendingSyms: seq[PSym]
     typeMap: Table[ItemId, TypeId]  # ItemId.item -> TypeId
     symMap: Table[ItemId, SymId]    # ItemId.item -> SymId
+  Context = PackedEncoder  # legacy name
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
@@ -198,8 +199,8 @@ proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
   ## serialize a node into the tree
-  let info = toPackedInfo(n.info, ir, c)
   if n.isNil: return
+  let info = toPackedInfo(n.info, ir, c)
   case n.kind
   of nkNone, nkEmpty, nkNilLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags, operand: 0,
