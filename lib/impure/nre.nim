@@ -68,7 +68,6 @@ from pcre import nil
 import nre/private/util
 import tables
 from strutils import `%`
-from math import ceil
 import options
 from unicode import runeLenAt
 
@@ -742,8 +741,25 @@ proc replace*(str: string, pattern: Regex, sub: string): string =
   replaceImpl(str, pattern,
     formatStr(sub, match.captures[name], match.captures[id - 1]))
 
-let SpecialCharMatcher = re"([\\+*?[^\]$(){}=!<>|:-])"
-proc escapeRe*(str: string): string =
-  ## Escapes the string so it doesn’t match any special characters.
+proc escapeRe*(str: string): string {.gcsafe.} =
+  ## Escapes the string so it doesn't match any special characters.
   ## Incompatible with the Extra flag (``X``).
-  str.replace(SpecialCharMatcher, "\\$1")
+  ##
+  ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
+  runnableExamples:
+    doAssert escapeRe("fly+wind") == "fly\\+wind"
+    doAssert escapeRe("!") == "\\!"
+    doAssert escapeRe("nim*") == "nim\\*"
+
+  #([\\+*?[^\]$(){}=!<>|:-])
+  const SpecialCharMatcher = {'\\', '+', '*', '?', '[', '^', ']', '$', '(',
+                              ')', '{', '}', '=', '!', '<', '>', '|', ':',
+                              '-'}
+
+  for c in items(str):
+    case c
+    of SpecialCharMatcher:
+      result.add("\\")
+      result.add(c)
+    else:
+      result.add(c)
