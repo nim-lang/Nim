@@ -744,6 +744,8 @@ proc replace*(str: string, pattern: Regex, sub: string): string =
 proc escapeRe*(str: string): string {.gcsafe.} =
   ## Escapes the string so it doesn't match any special characters.
   ## Incompatible with the Extra flag (``X``).
+  ##
+  ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
   runnableExamples:
     doAssert escapeRe("fly+wind") == "fly\\+wind"
     doAssert escapeRe("!") == "\\!"
