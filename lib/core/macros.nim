@@ -1701,9 +1701,17 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
 proc freshIdentNodes*(n: NimNode): NimNode =
   ## Replaces every `nnkSym` node in `n` by a fresh identifier node.
   ## This forces the compiler to perform a new lookup pass.
+  runnableExamples:
+    macro lc(init: untyped): untyped =
+      let x = freshIdentNodes(init)
+      expectKind(x, nnkIdent)
+      result = newStmtList()
+
+    newSeq.lc()
+
   case n.kind:
   of nnkSym:
-    result = ident(n.repr)
+    result = newIdentNode(n.repr)
   of nnkNone, nnkEmpty, nnkIdent, nnkLiterals:
     result = n
   of nnkClosedSymChoice, nnkOpenSymChoice:
