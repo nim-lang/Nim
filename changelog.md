@@ -48,6 +48,8 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
+- `writeStackTrace` is available in JS backend now.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`
