@@ -95,21 +95,20 @@ proc siftdown[T](heap: var HeapQueue[T], startpos, p: int) =
   var newitem = heap[pos]
   # Follow the path to the root, moving parents down until finding a place
   # newitem fits.
+  let cmp =
+    if heap.cmp != nil:
+      heap.cmp
+    else:
+      minHeapCmp
   while pos > startpos:
     let parentpos = (pos - 1) shr 1
     let parent = heap[parentpos]
-    if heap.cmp != nil:
-      if heap.cmp(newitem, parent):
-        heap.data[pos] = parent
-        pos = parentpos
-      else:
-        break
+    if cmp(newitem, parent):
+      heap.data[pos] = parent
+      pos = parentpos
     else:
-      if minHeapCmp(newitem, parent):
-        heap.data[pos] = parent
-        pos = parentpos
-      else:
-        break
+      break
+
   heap.data[pos] = newitem
 
 proc siftup[T](heap: var HeapQueue[T], p: int) =
@@ -119,15 +118,17 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   let newitem = heap[pos]
   # Bubble up the smaller child until hitting a leaf.
   var childpos = 2*pos + 1 # leftmost child position
+  let cmp =
+    if heap.cmp != nil:
+      heap.cmp
+    else:
+      minHeapCmp
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
-    if heap.cmp != nil:
-      if rightpos < endpos and not heap.cmp(heap[childpos], heap[rightpos]):
-        childpos = rightpos
-    else:
-      if rightpos < endpos and not minHeapCmp(heap[childpos], heap[rightpos]):
-        childpos = rightpos
+
+    if rightpos < endpos and not cmp(heap[childpos], heap[rightpos]):
+      childpos = rightpos
     # Move the smaller child up.
     heap.data[pos] = heap[childpos]
     pos = childpos
@@ -198,14 +199,14 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
   result = item
-  if heap.cmp != nil:
-    if heap.len > 0 and heap.cmp(heap.data[0], item):
-      swap(result, heap.data[0])
-      siftup(heap, 0)
-  else:
-    if heap.len > 0 and minHeapCmp(heap.data[0], item):
-      swap(result, heap.data[0])
-      siftup(heap, 0)
+  let cmp =
+    if heap.cmp != nil:
+      heap.cmp
+    else:
+      minHeapCmp
+  if heap.len > 0 and cmp(heap.data[0], item):
+    swap(result, heap.data[0])
+    siftup(heap, 0)
 
 proc clear*[T](heap: var HeapQueue[T]) =
   ## Removes all elements from `heap`, making it empty.
