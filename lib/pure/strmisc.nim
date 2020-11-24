@@ -107,10 +107,11 @@ since (1, 5):
     ## consequently `parseFloatThousandSep` by design is slower than `parseFloat`.
     ##
     ## The following assumptions and requirements must be met:
-    ## - `sep` must not be `'-'`.
-    ## - `decimalDot` must not be `'-'` nor `' '`.
-    ## - `sep` and `decimalDot` must be different.
+    ## - `str` must not be empty string.
     ## - `str` must be stripped of trailing and leading whitespaces.
+    ## - `sep` and `decimalDot` must be different.
+    ## - `sep` must not be in `{'-', '+', 'e', 'i', 'n', 'f', 'a', '\n'}`.
+    ## - `decimalDot` must not be in `{'-', '+', 'e', 'i', 'n', 'f', 'a', ' ', '\t', '\v', '\c', '\n', '\f'}`.
     ##
     ## See also:
     ## * `parseFloat <strutils.html#parseFloat,string>`_
