@@ -104,17 +104,6 @@ block:
     doAssert byLent(a2) == (11,)
 
   block:
-    when (defined(c) or defined(cpp)) and defined(release):
-      discard # probably not a bug since optimizer is free to pass by value, and `unsafeAddr` is used
-    else:
-      var a = @[12]
-      doAssert byPtr(a)[] == @[12]
-      let a2 = [13]
-      doAssert byPtr(a2)[] == [13]
-      let a3 = 14
-      doAssert byPtr(a3)[] == 14
-
-  block:
     proc byLent2[T](a: seq[T]): lent T = a[1]
     var a = @[20,21,22]
     doAssert byLent2(a) == 21

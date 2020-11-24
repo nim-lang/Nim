@@ -720,6 +720,7 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkBracketExpr: result = foldArrayAccess(m, n, g)
   of nkDotExpr: result = foldFieldAccess(m, n, g)
   of nkCheckedFieldExpr:
+    assert n[0].kind == nkDotExpr
     result = foldFieldAccess(m, n[0], g)
   of nkStmtListExpr:
     var i = 0

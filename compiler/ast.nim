@@ -1085,7 +1085,7 @@ proc safeLen*(n: PNode): int {.inline.} =
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
+  if n.kind in {nkStrLit..nkTripleStrLit}: result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
