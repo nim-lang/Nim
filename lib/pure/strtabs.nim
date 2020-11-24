@@ -420,15 +420,3 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
     else:
       add(result, f[i])
       inc(i)
-
-when isMainModule:
-  var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
-  assert x["k"] == "v"
-  assert x["11"] == "22"
-  assert x["565"] == "67"
-  x["11"] = "23"
-  assert x["11"] == "23"
-
-  x.clear(modeCaseInsensitive)
-  x["11"] = "22"
-  assert x["11"] == "22"
