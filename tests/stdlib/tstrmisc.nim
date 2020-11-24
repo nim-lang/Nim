@@ -29,12 +29,10 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep(" ", {pfDotOptional})
   doAssertRaises(ValueError): discard parseFloatThousandSep(".1.", {pfLeadingDot,pfTrailingDot})
   doAssertRaises(ValueError): discard parseFloatThousandSep("10,00.0")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1.0e9")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1.0e-9")
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1,000.000ee9", {pfScientific})
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1ee9", {pfScientific, pfDotOptional})
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1e02.2", {pfScientific})
-  doAssertRaises(ValueError): discard parseFloatThousandSep("1.0e--9", {pfScientific})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1,000.000ee9")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1ee9", {pfDotOptional})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1e02.2")
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1.0e--9")
   doAssertRaises(ValueError): discard parseFloatThousandSep("Inf")
   doAssertRaises(ValueError): discard parseFloatThousandSep("-Inf")
   doAssertRaises(ValueError): discard parseFloatThousandSep("+Inf")
@@ -57,12 +55,12 @@ func main() =
   doAssert parseFloatThousandSep("10", {pfDotOptional, pfSepAnywhere}) == 10.0
   doAssert parseFloatThousandSep("1.0,0,0,0,0,0,0,0", {pfSepAnywhere}) == 1.0
   doAssert parseFloatThousandSep("0,0,0,0,0,0,0,0.1", {pfSepAnywhere}) == 0.1
-  doAssert parseFloatThousandSep("1.0e9", {pfScientific}) == 1000000000.0
-  doAssert parseFloatThousandSep("1.0e-9", {pfScientific}) == 1e-09
-  doAssert parseFloatThousandSep("1,000.000e9", {pfScientific}) == 1000000000000.0
-  doAssert parseFloatThousandSep("1e9", {pfScientific, pfDotOptional}) == 1000000000.0
-  doAssert parseFloatThousandSep("1.0E9", {pfScientific}) == 1000000000.0
-  doAssert parseFloatThousandSep("1.0E-9", {pfScientific}) == 1e-09
+  doAssert parseFloatThousandSep("1.0e9") == 1000000000.0
+  doAssert parseFloatThousandSep("1.0e-9") == 1e-09
+  doAssert parseFloatThousandSep("1,000.000e9") == 1000000000000.0
+  doAssert parseFloatThousandSep("1e9", {pfDotOptional}) == 1000000000.0
+  doAssert parseFloatThousandSep("1.0E9") == 1000000000.0
+  doAssert parseFloatThousandSep("1.0E-9") == 1e-09
   doAssert parseFloatThousandSep("Inf", {pfNanInf}) == Inf
   doAssert parseFloatThousandSep("-Inf", {pfNanInf}) == -Inf
   doAssert parseFloatThousandSep("+Inf", {pfNanInf}) == +Inf
