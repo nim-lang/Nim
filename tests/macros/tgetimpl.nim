@@ -65,3 +65,22 @@ macro check_gen_proc(ex: typed): (bool, bool) =
 let a = @[1,2,3]
 assert: check_gen_proc(len(a)) == (false, true)
 
+
+
+#---------------------------------------------------------------
+# issue #16110
+
+macro check(x: type): untyped =
+  let z = getType(x)
+  let y = getImpl(z[1])
+  echo z.treeRepr
+  expectKind(z[1], nnkSym)
+  expectKind(y[0], nnkSym)
+  doAssert(y[0] == z[1])
+
+type
+  TirePtr = ptr object
+    code: int
+
+var z: TirePtr
+check(typeof(z[]))
