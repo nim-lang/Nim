@@ -179,7 +179,7 @@ since (1, 5):
           inc successive
       elif c == sep:  # Thousands separator, this is NOT the dot
         if pfSepAnywhere notin options and (lastWasSep or afterDot) or
-          (isNegative and idx == 1 or idx == 0):
+          (isNegative and idx == 1 or idx == 0) or isScientific:
           parseFloatThousandSepRaise(idx, c, str)
         else:
           lastWasSep = true # Do NOT add the Thousands separator here.
