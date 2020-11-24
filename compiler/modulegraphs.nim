@@ -292,6 +292,7 @@ proc `state=`*(iface: var Iface; state: IfaceState) =
 proc state*(iface: Iface): IfaceState = iface.state
 
 proc contains(state: IfaceState; iface: Iface): bool =
+  ## syntax comfort for `iface in Loaded` (state)
   if state == Loaded:
     iface.state in {Loaded, Unpacked}
   else:

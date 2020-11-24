@@ -40,14 +40,17 @@ proc flush(ir: var PackedTree; c: var Context) =
       break
 
 proc toLitId(x: string; ir: var PackedTree; c: var Context): LitId =
+  ## store a string as a literal
   result = getOrIncl(ir.sh.strings, x)
 
 proc toLitId(x: BiggestInt; ir: var PackedTree; c: var Context): LitId =
+  ## store an integer as a literal
   # i think smaller integers aren't worth putting into a table
   # because there they become 32bit hash values on the heap...
   result = getOrIncl(ir.sh.integers, x)
 
 proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
+  ## store a file index as a literal
   if x == c.lastFile:
     result = c.lastLit
   else:
@@ -59,11 +62,12 @@ proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
     c.lastFile = x
     c.lastLit = result
 
-proc toPackedInfo(x: TLineInfo; ir: var PackedTree; c: var Context): PackedLineInfo =
+proc toPackedInfo(x: TLineInfo; ir: var PackedTree;
+                  c: var Context): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
 
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
-  ## add a symbol reference to the tree
+  ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(ir, c)
   ir.nodes.add PackedNode(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
                           typeId: toPackedType(n.typ, ir, c), info: info)
@@ -73,18 +77,24 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
                           operand: int32 toLitId(n.sym.name.s, ir, c))
 
 proc addMissing(c: var Context; p: PSym) =
+  ## consider queuing a symbol for later addition to the packed tree
   if not p.isNil:
+    # we do not pack foreign symbols
     if p.itemId.module == c.thisModule:
       if p.itemId notin c.symMap:
         c.pendingSyms.add p
 
 proc addMissing(c: var Context; p: PType) =
+  ## consider queuing a type for later addition to the packed tree
   if not p.isNil:
+    # XXX: we DO pack foreign types (for now?), essentially copying them
+    #      to make evaluation (much) easier
     #if p.uniqueId.module == c.thisModule:
     if p.uniqueId notin c.typeMap:
       c.pendingTypes.add p
 
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
+  ## serialize a ptype
   if t.isNil: return TypeId(-1)
   template info: PackedLineInfo =
     # too bad the most variant part of the operation comes first...
@@ -120,9 +130,11 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
     p.nodekind = t.n.kind
     p.nodeflags = t.n.flags
     t.n.toPackedNode(p.node, c)
-  ir.flush c
+
+  ir.flush c   # flush any pending types and symbols
 
 proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
+  ## serialize a psym
   if s.isNil: return SymId(-1)
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
 
@@ -154,9 +166,11 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
   s.ast.toPackedNode(p.ast, c)
   when hasFFI:
     p.cname = toLitId(s.cname, ir, c)
-  ir.flush c
+
+  ir.flush c   # flush any pending types and symbols
 
 proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
+  ## store a local or remote psym reference in the tree
   assert n.kind == nkSym
   template s: PSym = n.sym
   template info: PackedLineInfo = toPackedInfo(n.info, ir, c)
@@ -173,6 +187,7 @@ proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   c.symMap[s.itemId] = id
 
 proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
+  ## the plib hangs off the psym via the .annex field
   if l.isNil: return
   result.kind = l.kind
   result.generated = l.generated
@@ -182,6 +197,7 @@ proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
   l.path.toPackedNode(result.path, c)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
+  ## serialize a node into the tree
   let info = toPackedInfo(n.info, ir, c)
   if n.isNil: return
   case n.kind
@@ -217,31 +233,36 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
       toPackedNode(n[i], ir, c)
     ir.patch patchPos
 
-  ir.flush c
-
-template countLocal(c: Context; tab: typed): int =
-  var local = 0
-  for item, sym in pairs tab:
-    if item.module == c.thisModule:
-      inc local
-  local
+  ir.flush c   # flush any pending types and symbols
 
 proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
-  var local: int
+  ## serialize a module into packed ast
   var c = Context(thisModule: module.itemId.module)
   toPackedNode(n, ir, c)
-  echo "     module id: ", c.thisModule
-  echo "       symbols: ", ir.sh.syms.len
-  local = c.countLocal c.symMap
-  echo "                local: ", local
-  echo "               remote: ", ir.sh.syms.len - local
-  echo "         types: ", ir.sh.types.len
-  local = c.countLocal c.typeMap
-  echo "                local: ", local
-  echo "               remote: ", ir.sh.types.len - local
-  echo "         nodes: ", ir.nodes.len
-  echo "float literals: ", ir.sh.floats.len
-  echo "  int literals: ", ir.sh.integers.len
-  echo "  str literals: ", ir.sh.strings.len
-  debug ir
-  echo ""
+
+  when not defined(release):
+    var local: int
+    template countLocal(c: Context; tab: typed): int =
+      var local = 0
+      for item, sym in pairs tab:
+        if item.module == c.thisModule:
+          inc local
+      local
+
+    echo "     module id: ", c.thisModule
+    echo "       symbols: ", ir.sh.syms.len
+    local = c.countLocal c.symMap
+    echo "                local: ", local
+    echo "               remote: ", ir.sh.syms.len - local
+    echo "         types: ", ir.sh.types.len
+    local = c.countLocal c.typeMap
+    echo "                local: ", local
+    echo "               remote: ", ir.sh.types.len - local
+    echo "         nodes: ", ir.nodes.len
+    echo "float literals: ", ir.sh.floats.len
+    echo "  int literals: ", ir.sh.integers.len
+    echo "  str literals: ", ir.sh.strings.len
+    debug ir
+    echo ""
+  assert c.pendingTypes.len == 0
+  assert c.pendingSyms.len == 0

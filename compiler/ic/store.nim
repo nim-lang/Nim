@@ -40,6 +40,8 @@ proc rodFile*(conf: ConfigRef; m: PSym): AbsoluteFile =
   result = result.changeFileExt "rod"
 
 proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
+  ## write the module into the given rodfile path; the hash value
+  ## allows us to save an extra computation of the hash
   let noSerializeSubstitute = m.ast.sh.config
   var stream = newFileStream($fn, fmWrite)
   m.ast.sh.config = nil

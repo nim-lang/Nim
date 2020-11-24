@@ -18,13 +18,11 @@ type
     lastFile: FileIndex # remember the last lookup entry.
     lastLit: LitId
     filenames: Table[LitId, FileIndex]
-    pendingTypes: seq[ItemId]
-    pendingSyms: seq[ItemId]
     typeMap: Table[ItemId, PType]  # ItemId.item -> PType
     symMap: Table[ItemId, PSym]    # ItemId.item -> PSym
     resolver: Resolver
     idents: IdentCache
-  Context = PackedDecoder
+  Context = PackedDecoder  # legacy name
 
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
@@ -32,17 +30,21 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
 
 proc fromSym(s: SymId or int32; id: ItemId; ir: PackedTree;
              c: var Context): PSym =
+  ## guard unpack of a symbol via index
   if s.int >= 0:
     result = fromSym(ir.sh.syms[int s], id, ir, c)
 
 proc fromType(t: TypeId or int32; ir: PackedTree; c: var Context): PType =
+  ## guard unpack of a type via index
   if t.int >= 0:
     result = fromType(ir.sh.types[int t], ir, c)
 
 proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
+  ## use the context's ident cache to resolve an ident via literal id
   result = getIdent(c.idents, ir.sh.strings[l])
 
 proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo =
+  ## unpack line info, obviously
   if p.file notin c.filenames:
     var itIsKnown: bool
     c.filenames[p.file] = fileInfoIdx(ir.sh.config,
@@ -82,6 +84,7 @@ iterator unpackSymbols*(n: PackedTree; c: var Context; m: PSym;
       yield p.fromSym(id, n, c)
 
 proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
+  ## unserialize a module which may be stored outside this tree
   if id == nilItemId: return nil
   # short-circuit if we already have the PSym
   result = getOrDefault(c.symMap, id, nil)
@@ -94,6 +97,7 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
     c.symMap[id] = result
 
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
+  ## unpack a symbol, what else?
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return nil
 
@@ -125,6 +129,7 @@ proc asItemId(ir: PackedTree; pos = 0.NodePos): ItemId =
   result.item = ir.nodes[pos.int + 2].operand
 
 proc fromSymNode(ir: PackedTree; c: var Context; pos = 0.NodePos): PSym =
+  ## unpack a symbol node which may refer to a foreign symbol
   template n: PackedNode = ir.nodes[int pos]
   let id =
     case n.kind
@@ -135,6 +140,7 @@ proc fromSymNode(ir: PackedTree; c: var Context; pos = 0.NodePos): PSym =
   result = loadSymbol(id, c, ir)
 
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
+  ## unpack a type, what else?
   # short-circuit if we already have the PType
   result = getOrDefault(c.typeMap, t.nonUniqueId, nil)
   if result != nil: return nil
@@ -155,6 +161,7 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
     result.methods.add (generic, loadSymbol(id, c, ir))
 
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
+  ## unpack the entire tree to a PNode
   template n: PackedNode = ir.nodes[int pos]
   result = PNode(typ: fromType(n.typeId, ir, c), flags: n.flags,
                  kind: n.kind, info: fromLineInfo(n.info, ir, c))
@@ -179,14 +186,17 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
       result.sons.add fromTree(ir, c, son)
 
 proc initDecoder*(c: var Context; cache: IdentCache; resolver: Resolver) =
+  ## setup a context with the critical resolution tools it needs
   c.idents = cache
   c.resolver = resolver
 
 proc irToModule*(n: PackedTree; module: PSym; c: var Context): PNode =
+  ## convert packed ast into unpacked ast
   c.thisModule = module.itemId.module
   result = fromTree(n, c)
 
 proc unpackAllSymbols*(n: PackedTree; c: var Context; m: PSym): seq[PSym] =
+  ## a slightly faster unpack that saves seq growth
   result = newSeqOfCap[PSym](len n.sh.syms)
   for s in unpackSymbols(n, c, m):
     result.add s
