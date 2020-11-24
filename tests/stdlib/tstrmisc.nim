@@ -33,6 +33,7 @@ func main() =
   doAssertRaises(ValueError): discard parseFloatThousandSep("1.0e-9")
   doAssertRaises(ValueError): discard parseFloatThousandSep("1,000.000ee9", {pfScientific})
   doAssertRaises(ValueError): discard parseFloatThousandSep("1ee9", {pfScientific, pfDotOptional})
+  doAssertRaises(ValueError): discard parseFloatThousandSep("1e02.2", {pfScientific})
 
   doAssert parseFloatThousandSep("10,00.0", {pfSepAnywhere}) == 1000.0
   doAssert parseFloatThousandSep("0", {pfDotOptional}) == 0.0
