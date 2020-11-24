@@ -92,7 +92,7 @@ since (1, 5):
     pfLeadingDot,    ## Allow leading dot, like ".9" and similar.
     pfTrailingDot,   ## Allow trailing dot, like "9." and similar.
     pfSepAnywhere,   ## Allow separator anywhere in between, like "9,9", "9,99".
-    pfDotOptional    ## Allow "9", "-0", integers literals, etc.
+    pfDotOptional    ## Allow "9", "-0", integer literals, etc.
 
   func parseFloatThousandSep*(str: openArray[char]; options: set[ParseFloatOptions] = {};
       sep = ','; decimalDot = '.'): float =
@@ -165,7 +165,7 @@ since (1, 5):
           lastWasSep = false
           lastWasDot = false
           inc successive
-      if c == sep:  # Thousands separator, this is NOT the dot
+      elif c == sep:  # Thousands separator, this is NOT the dot
         if pfSepAnywhere notin options and (lastWasSep or afterDot) or
           (isNegative and idx == 1 or idx == 0):
           parseFloatThousandSepRaise(idx, c, str)
@@ -173,7 +173,7 @@ since (1, 5):
           lastWasSep = true # Do NOT add the Thousands separator here.
           hasAnySep = true
           successive = 0
-      if c == decimalDot:  # This is the dot
+      elif c == decimalDot:  # This is the dot
         if (not afterDot and not hasAnyDot and not lastWasDot) and
           (pfLeadingDot notin options and (isNegative and idx == 1 or idx == 0)) or
           (hasAnySep and pfSepAnywhere notin options and successive != 3): # Disallow .1
@@ -184,7 +184,7 @@ since (1, 5):
           lastWasDot = true
           afterDot = true
           hasAnyDot = true
-      if c == '-':  # Allow negative float
+      elif c == '-':  # Allow negative float
         if isNegative or idx != 0:  # Disallow ---1.0
           parseFloatThousandSepRaise(idx, c, str)
         else:
