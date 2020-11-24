@@ -107,11 +107,11 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   ir.sh.types.add:
     PackedType(kind: t.kind, flags: t.flags, info: info, callConv: t.callConv,
-               size: t.size, align: t.align, nonUniqueId: t.itemId,
+               size: t.size, align: t.align, nonUniqueId: t.uniqueId,
                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
                node: newTreeFrom(ir))
   result = TypeId(ir.sh.types.high)
-  c.typeMap[t.itemId] = result
+  c.typeMap[t.uniqueId] = result
   template p: PackedType = ir.sh.types[int result]
 
   for op, s in pairs t.attachedOps:
