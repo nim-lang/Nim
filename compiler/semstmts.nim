@@ -1277,7 +1277,8 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       incl st.flags, tfRefsAnonObj
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                               getCurrOwner(c), s.info)
-      obj.ast = a
+      obj.ast = a.copyTree
+      obj.ast[0] = newSymNode(obj)
       if sfPure in s.flags:
         obj.flags.incl sfPure
       obj.typ = st.lastSon
