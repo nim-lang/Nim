@@ -131,7 +131,9 @@ since (1, 5):
       doAssert parseFloatThousandSep("01.00") == 1.0
       doAssert parseFloatThousandSep("1,000.000e-9") == 1e-06
 
-    assert sep != '-' and decimalDot notin {'-', ' '} and sep != decimalDot
+    assert decimalDot notin {'-', '+', 'e', 'i', 'n', 'f', 'a', ' ', '\t', '\v', '\c', '\n', '\f'}
+    assert sep notin {'-', '+', 'e', 'i', 'n', 'f', 'a', '\n'}
+    assert sep != decimalDot
 
     proc parseFloatThousandSepRaise(i: int; c: char; s: openArray[char]) {.noinline, noreturn.} =
       raise newException(ValueError,
