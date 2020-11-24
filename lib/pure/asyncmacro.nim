@@ -11,6 +11,13 @@
 
 import macros, strutils, asyncfutures
 
+
+# TODO: Ref https://github.com/nim-lang/Nim/issues/5617
+# TODO: Add more line infos
+proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
+  result = newCall(theProc, args)
+  result.copyLineInfo(fromNode)
+
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
@@ -52,15 +59,13 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
     # Only complete them if they have not been completed already by the user.
-    # TODO: Once https://github.com/nim-lang/Nim/issues/5617 is fixed.
-    # TODO: Add line info to the complete() call!
     # In the meantime, this was really useful for debugging :)
     #result.add(newCall(newIdentNode("echo"), newStrLitNode(fromNode.lineinfo)))
     result.add newIfStmt(
       (
         newCall(newIdentNode("not"),
                 newDotExpr(ident, newIdentNode("finished"))),
-        newCall(newIdentNode("complete"), ident)
+        newCallWithLineInfo(fromNode, newIdentNode("complete"), ident)
       )
     )
 
