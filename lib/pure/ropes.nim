@@ -16,39 +16,38 @@
 ## Leaves can be cached for better memory efficiency at the cost of
 ## runtime efficiency.
 ##
-##  A little picture makes everything clear:
-##
-##  "this string" & " is internally " & "represented as"
-##
-##            con  -- inner nodes do not contain raw data
-##           /   \
-##          /     \
-##         /       \
-##       con       "represented as"
-##      /   \
-##     /     \
-##    /       \
-##   /         \
-##  /           \
-##"this string"  " is internally "
-##
-##  Note that this is the same as:
-##  "this string" & (" is internally " & "represented as")
-##
-##            con
-##           /   \
-##          /     \
-##         /       \
-##"this string"    con
-##                /   \
-##               /     \
-##              /       \
-##             /         \
-##            /           \
-##" is internally "        "represented as"
-##
-##  The 'con' operator is associative! This does not matter however for
-##  the algorithms we use for ropes.
+## A little picture makes everything clear
+## ::
+##|  "this string" & " is internally " & "represented as"
+##|            con  -- inner nodes do not contain raw data
+##|           /   \
+##|          /     \
+##|         /       \
+##|       con       "represented as"
+##|      /   \
+##|     /     \
+##|    /       \
+##|   /         \
+##|  /           \
+##|"this string"  " is internally "
+##|
+##|  Note that this is the same as:
+##|  "this string" & (" is internally " & "represented as")
+##|
+##|            con
+##|           /   \
+##|          /     \
+##|         /       \
+##|"this string"    con
+##|                /   \
+##|               /     \
+##|              /       \
+##|             /         \
+##|            /           \
+##|" is internally "        "represented as"
+##|
+##|  The 'con' operator is associative! This does not matter however for
+##|  the algorithms we use for ropes.
 
 include "system/inclrtl"
 import streams
