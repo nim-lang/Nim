@@ -10,9 +10,10 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, msgs, options,
-  idents, lexer, passes, syntaxes, llstream, modulegraphs,
-  lineinfos, pathutils, tables
+  ast, astalgo, magicsys, msgs, options, idents, lexer, passes, syntaxes,
+  llstream, modulegraphs, lineinfos, pathutils, tables
+
+import std/[os, strutils, hashes]
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
@@ -46,13 +47,53 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   initExports(graph, result)
   graph.packageSyms.strTableAdd(result)
 
+type
+  SubType = enum                ## tokens we use for rodfile pathsubs
+    stCache = "nimcache"
+    #stConfig = "config"        # i don't want to pass a config directory
+    stNimbleDir = "nimbledir"
+    stNimblePath = "nimblepath"
+    stProjectDir = "projectdir"
+    stProjectPath = "projectpath"
+    stLib = "lib"
+    stNim = "nim"
+    stHome = "home"
+
+iterator pathSubsFor(config: ConfigRef; sub: SubType): AbsoluteDir =
+  ## a convenience to work around the compiler's broken pathSubs
+  let pattern = "$" & $sub
+  if sub notin {stNimbleDir, stNimblePath}:
+    # if we don't need to handle a nimbledir or nimblepath, it's one and done
+    yield config.pathSubs(pattern, "").toAbsoluteDir
+  else:
+    for path in config.nimbleSubs(pattern):
+      yield path.toAbsoluteDir
+
+iterator pathSubstitutions*(config: ConfigRef; path: AbsoluteFile): string =
+  ## compute the possible path substitions, including the original path
+  for sub in SubType.items:
+    for attempt in pathSubsFor(config, sub):
+      if not attempt.isEmpty and not isRootDir($attempt):
+        if startsWith($path, $attempt):
+          # it's okay if paths that we yield here don't end in a DirSep
+          yield replace($path, $attempt, "$" & $sub)
+  # finally, yield the original path
+  yield $path
+
+proc moduleId(config: ConfigRef; fn: AbsoluteFile): int32 =
+  ## compute stable module identifier by pathsub'ing filename
+  for path in pathSubstitutions(config, fn):
+    return int32(hash(path) and int32.high)
+  assert false
+
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+  let moduleId = moduleId(graph.config, filename)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
-                name: getModuleIdent(graph, filename), position: int fileIdx,
-                info: newLineInfo(fileIdx, 1, 1))
+  result = PSym(kind: skModule, name: getModuleIdent(graph, filename),
+                itemId: ItemId(module: moduleId, item: 0'i32),
+                position: int fileIdx, info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
 
