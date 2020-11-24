@@ -3,6 +3,7 @@ discard """
 (name: "hello")
 (-1, 0)
 (FirstName: "James", LastName: "Franco")
+[1, 2, 3]
 '''
 """
 
@@ -70,3 +71,20 @@ static: # issue #11861
   var ifb2: InheritedFromBase
   initBase(ifb2)
   doAssert(ifb2.txt == "Initialized string from base")
+
+# bug #16069
+type
+  E = enum
+    val1, val2
+  Obj = object
+    case k: E
+    of val1:
+      x: array[3, int]
+    of val2:
+      y: uint32
+
+const
+  foo = [1, 2, 3]
+  arr = Obj(k: val1, x: foo)
+
+echo arr.x
