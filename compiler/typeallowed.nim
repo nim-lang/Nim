@@ -52,7 +52,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   result = nil
   if typ == nil: return nil
   if containsOrIncl(marker, typ.id): return nil
-  var t = skipTypes(typ, abstractInst-{tyTypeDesc})
+  var t = skipTypes(typ, abstractInst-{tyTypeDesc, tySink})
   case t.kind
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
@@ -60,7 +60,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif t.kind == tyLent and kind != skResult and (views notin c.features):
       result = t
     else:
-      var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc})
+      var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})
       case t2.kind
       of tyVar, tyLent:
         if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
@@ -70,6 +70,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       of tyUncheckedArray:
         if kind != skParam and views notin c.features: result = t
         else: result = typeAllowedAux(marker, t2[0], kind, c, flags)
+      of tySink:
+        result = t
       else:
         if kind notin {skParam, skResult} and views notin c.features: result = t
         else: result = typeAllowedAux(marker, t2, kind, c, flags)
@@ -125,12 +127,18 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     else:
       result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
-  of tyVarargs, tySink:
+  of tyVarargs:
     # you cannot nest openArrays/sinks/etc.
     if kind != skParam or taIsOpenArray in flags:
       result = t
     else:
       result = typeAllowedAux(marker, t[0], kind, c, flags+{taIsOpenArray})
+  of tySink:
+    # you cannot nest openArrays/sinks/etc.
+    if kind != skParam or taIsOpenArray in flags or t[0].kind in {tySink, tyLent, tyVar}:
+      result = t
+    else:
+      result = typeAllowedAux(marker, t[0], kind, c, flags)
   of tyUncheckedArray:
     if kind != skParam and taHeap notin flags:
       result = t
@@ -260,4 +268,5 @@ proc directViewType*(t: PType): ViewTypeKind =
     result = noView
 
 proc requiresInit*(t: PType): bool =
-  (t.flags * {tfRequiresInit, tfNotNil} != {}) or classifyViewType(t) != noView
+  (t.flags * {tfRequiresInit, tfNeedsFullInit, tfNotNil} != {}) or
+  classifyViewType(t) != noView

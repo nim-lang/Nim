@@ -367,3 +367,14 @@ block:
   let x = RefType2()
   for fieldName, fieldSym in fieldPairs(x[]):
     doAssert hasCustomPragma(fieldSym, myCustomPragma)
+
+# bug 8457
+block:
+  template world {.pragma.}
+
+  type
+    Hello = ref object
+      a: float32
+      b {.world.}: int
+
+  discard Hello(a: 1.0, b: 12)

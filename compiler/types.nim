@@ -23,7 +23,7 @@ type
     preferTypeName,
     preferResolved, # fully resolved symbols
     preferMixed,
-      # most useful, shows: symbol + resolved symbols if it differs, eg:
+      # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
@@ -700,7 +700,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < t.len - 1: result.add(", ")
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
-      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: CallingConvToStr[t.callConv]
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
@@ -747,8 +747,9 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.len > 0 and t[0] != nil:
       result = firstOrd(conf, t[0])
     else:
-      assert(t.n[0].kind == nkSym)
-      result = toInt128(t.n[0].sym.position)
+      if t.n.len > 0:
+        assert(t.n[0].kind == nkSym)
+        result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
@@ -804,8 +805,9 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt64:
     result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
-    assert(t.n[^1].kind == nkSym)
-    result = toInt128(t.n[^1].sym.position)
+    if t.n.len > 0:
+      assert(t.n[^1].kind == nkSym)
+      result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))

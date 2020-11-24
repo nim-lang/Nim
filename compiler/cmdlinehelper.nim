@@ -41,7 +41,9 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
-  if self.supportsStdinFile and conf.projectName == "-":
+  if conf.projectIsCmd and conf.projectName in ["-", ""]:
+    handleCmdInput(conf)
+  elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
     try:
@@ -55,10 +57,12 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   else:
     conf.projectPath = AbsoluteDir canonicalizePath(conf, AbsoluteFile getCurrentDir())
 
-proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef;
+proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
     conf.command = "nimsuggest"
+  if conf.command == "e":
+    incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
   if not self.suggestMode:
@@ -80,3 +84,7 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
 
   graph.suggestMode = self.suggestMode
   return true
+
+proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: ConfigRef; graph: ModuleGraph): bool =
+  ## Alias for loadConfigsAndProcessCmdLine, here for backwards compatibility
+  loadConfigsAndProcessCmdLine(self, cache, conf, graph)

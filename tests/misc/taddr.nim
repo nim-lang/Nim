@@ -1,5 +1,6 @@
 discard """
-  targets: "c js"
+  targets: "c cpp js"
+  matrix: "; -d:release"
 """
 
 type T = object
@@ -79,7 +80,7 @@ someGlobalPtr[] = 10
 doAssert(someGlobal == 10)
 
 block:
-  # issue #14576
+  # bug #14576
   # lots of these used to give: Error: internal error: genAddr: 2
   proc byLent[T](a: T): lent T = a
   proc byPtr[T](a: T): ptr T = a.unsafeAddr
@@ -89,24 +90,20 @@ block:
     let (x,y) = byLent(a)
     doAssert (x,y) == a
 
-  block:
-    when defined(c) and defined(release):
-      # bug; pending https://github.com/nim-lang/Nim/issues/14578
-      discard
-    else:
-      let a = 10
-      doAssert byLent(a) == 10
-      let a2 = byLent(a)
-      doAssert a2 == 10
+  block: # (with -d:release) bug #14578
+    let a = 10
+    doAssert byLent(a) == 10
+    let a2 = byLent(a)
+    doAssert a2 == 10
 
   block:
     let a = [11,12]
-    doAssert byLent(a) == [11,12]
+    doAssert byLent(a) == [11,12] # bug #15958
     let a2 = (11,)
     doAssert byLent(a2) == (11,)
 
   block:
-    when defined(c) and defined(release):
+    when (defined(c) or defined(cpp)) and defined(release):
       discard # probably not a bug since optimizer is free to pass by value, and `unsafeAddr` is used
     else:
       var a = @[12]
@@ -134,6 +131,6 @@ block:
     bar(a2).inc
     doAssert a2 == 13
 
-  block: # xxx: bug this doesn't work
+  block: # pending bug #15959
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]

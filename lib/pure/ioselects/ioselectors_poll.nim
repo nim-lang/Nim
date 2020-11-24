@@ -21,7 +21,7 @@ when hasThreadSupport:
       pollcnt: int
       fds: ptr SharedArray[SelectorKey[T]]
       pollfds: ptr SharedArray[TPollFd]
-      count: int
+      count*: int
       lock: Lock
     Selector*[T] = ptr SelectorImpl[T]
 else:
@@ -31,7 +31,7 @@ else:
       pollcnt: int
       fds: seq[SelectorKey[T]]
       pollfds: seq[TPollFd]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 
 type

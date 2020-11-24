@@ -25,7 +25,7 @@ move semantics and destructors work in Nim.
 Motivating example
 ==================
 
-With the language mechanisms described here a custom seq could be
+With the language mechanisms described here, a custom seq could be
 written as:
 
 .. code-block:: nim
@@ -88,7 +88,7 @@ Lifetime-tracking hooks
 =======================
 
 The memory management for Nim's standard ``string`` and ``seq`` types as
-well as other standard collections is performed via so called
+well as other standard collections is performed via so-called
 "Lifetime-tracking hooks" or "type-bound operators". There are 3 different
 hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
 ``distinct`` type) that are called implicitly by the compiler.
@@ -128,13 +128,13 @@ The general pattern in ``=destroy`` looks like:
 ------------
 
 A `=sink` hook moves an object around, the resources are stolen from the source
-and passed to the destination. It is ensured that source's destructor does
-not free the resources afterwards by setting the object to its default value
+and passed to the destination. It is ensured that the source's destructor does
+not free the resources afterward by setting the object to its default value
 (the value the object's state started in). Setting an object ``x`` back to its
 default value is written as ``wasMoved(x)``. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
-provide `=destroy` and `=copy`, compiler will take care about the rest.
+provide `=destroy` and `=copy`, compiler will take care of the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
@@ -184,14 +184,20 @@ The general pattern in ``=copy`` looks like:
 
 
 The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
-that otherwise would lead to a copy is prevented at compile-time.
+that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
+.. code-block:: nim
+
+  proc `=copy`(dest: var T; source: T) {.error.}
+
+but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
+by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
 
 Move semantics
 ==============
 
 A "move" can be regarded as an optimized copy operation. If the source of the
-copy operation is not used afterwards, the copy can be replaced by a move. This
+copy operation is not used afterward, the copy can be replaced by a move. This
 document uses the notation ``lastReadOf(x)`` to describe that ``x`` is not
 used afterwards. This property is computed by a static control flow analysis
 but can also be enforced by using ``system.move`` explicitly.
@@ -218,7 +224,7 @@ Sink parameters
 ===============
 
 To move a variable into a collection usually ``sink`` parameters are involved.
-A location that is passed to a ``sink`` parameter should not be used afterwards.
+A location that is passed to a ``sink`` parameter should not be used afterward.
 This is ensured by a static analysis over a control flow graph. If it cannot be
 proven to be the last usage of the location, a copy is done instead and this
 copy is then passed to the sink parameter.
@@ -232,7 +238,7 @@ without any further overloads and ``put`` might not take ownership of ``k`` if
 not a linear type system.
 
 The employed static analysis is limited and only concerned with local variables;
-however object and tuple fields are treated as separate entities:
+however, object and tuple fields are treated as separate entities:
 
 .. code-block:: nim
 
@@ -509,7 +515,7 @@ to avoid this overhead:
 In fact, ``.cursor`` more generally prevents object construction/destruction pairs
 and so can also be useful in other contexts. The alternative solution would be to
 use raw pointers (``ptr``) instead which is more cumbersome and also more dangerous
-for Nim's evolution: Later on the compiler can try to prove ``.cursor`` annotations
+for Nim's evolution: Later on, the compiler can try to prove ``.cursor`` annotations
 to be safe, but for ``ptr`` the compiler has to remain silent about possible
 problems.
 
@@ -522,7 +528,7 @@ a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
 do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
-afterwards. If `dest` is a local variable that is simple to analyse. And if `src` is a
+afterwards. If `dest` is a local variable that is simple to analyze. And if `src` is a
 location derived from a formal parameter, we also know it is not mutated! In other
 words, we do a compile-time copy-on-write analysis.
 
@@ -547,9 +553,9 @@ other words, a copy ``x = y`` is implemented
 as ``x[0] = y[0]; x[1] = y[1]; ...``, likewise for ``=sink`` and ``=destroy``.
 
 Other value-based compound types like ``object`` and ``array`` are handled
-correspondingly. For ``object`` however, the compiler generated hooks
+correspondingly. For ``object`` however, the compiler-generated hooks
 can be overridden. This can also be important to use an alternative traversal
-of the involved datastructure that is more efficient or in order to avoid
+of the involved data structure that is more efficient or in order to avoid
 deep recursions.
 
 

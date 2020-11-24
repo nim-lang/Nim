@@ -260,7 +260,7 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
         # because currently generates lots of false positives due to conflation
-        # of labels links in doc comments, eg for random.rand:
+        # of labels links in doc comments, e.g. for random.rand:
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
       commandDoc2(graph, false)
@@ -303,10 +303,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
-        hints[a.msgToStr] = %(a in conf.notes)
+        hints[$a] = %(a in conf.notes)
       var warnings = newJObject()
       for a in warnMin..warnMax:
-        warnings[a.msgToStr] = %(a in conf.notes)
+        warnings[$a] = %(a in conf.notes)
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
@@ -348,11 +348,12 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
-    if not fileExists(conf.projectFull):
+    if conf.projectIsCmd or conf.projectIsStdin: discard
+    elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
     elif not conf.projectFull.string.endsWith(".nims"):
       rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
-    # main NimScript logic handled in cmdlinehelper.nim.
+    # main NimScript logic handled in `loadConfigs`.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump

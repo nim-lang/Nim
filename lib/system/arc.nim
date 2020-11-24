@@ -75,6 +75,8 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
+  const traceId = -1
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
   let s = size + hdrSize
@@ -99,7 +101,7 @@ proc nimNewObjUninit(size, alignment: int): pointer {.compilerRtl.} =
   when defined(nimscript):
     discard
   else:
-    result = cast[ptr RefHeader](alignedAlloc0(s, alignment) +! hdrSize)
+    result = cast[ptr RefHeader](alignedAlloc(s, alignment) +! hdrSize)
   head(result).rc = 0
   when defined(gcOrc):
     head(result).rootIdx = 0
@@ -126,13 +128,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
-  # This is only used by the old RTTI mechanism and we know
-  # that 'dest[]' is nil and needs no destruction. Which is really handy
-  # as we cannot destroy the object reliably if it's an object of unknown
-  # compile-time type.
-  dest[] = src
-  if src != nil: nimIncRef src
+when not defined(gcOrc) or defined(nimThinout):
+  proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+    # This is only used by the old RTTI mechanism and we know
+    # that 'dest[]' is nil and needs no destruction. Which is really handy
+    # as we cannot destroy the object reliably if it's an object of unknown
+    # compile-time type.
+    dest[] = src
+    if src != nil: nimIncRef src
 
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =
@@ -165,7 +168,7 @@ template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignO
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   let rti = cast[ptr PNimTypeV2](p)
-  if rti.destructor != nil: 
+  if rti.destructor != nil:
     cast[DestructorProc](rti.destructor)(p)
   when false:
     cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name

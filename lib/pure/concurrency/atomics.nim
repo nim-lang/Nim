@@ -51,10 +51,11 @@ when defined(cpp) or defined(nimdoc):
         ## with other moSequentiallyConsistent operations.
 
   type
-    Atomic* {.importcpp: "std::atomic".} [T] = object
+    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
       ## An atomic object with underlying type `T`.
+      raw: T
 
-    AtomicFlag* {.importcpp: "std::atomic_flag".} = object
+    AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 
   # Access operations
@@ -249,10 +250,10 @@ else:
     type
       # Atomic* {.importcpp: "_Atomic('0)".} [T] = object
 
-      AtomicInt8 {.importc: "_Atomic NI8".} = object
-      AtomicInt16 {.importc: "_Atomic NI16".} = object
-      AtomicInt32 {.importc: "_Atomic NI32".} = object
-      AtomicInt64 {.importc: "_Atomic NI64".} = object
+      AtomicInt8 {.importc: "_Atomic NI8", size: 1.} = object
+      AtomicInt16 {.importc: "_Atomic NI16", size: 2.} = object
+      AtomicInt32 {.importc: "_Atomic NI32", size: 4.} = object
+      AtomicInt64 {.importc: "_Atomic NI64", size: 8.} = object
 
     template atomicType*(T: typedesc[Trivial]): untyped =
       # Maps the size of a trivial type to it's internal atomic type
@@ -262,7 +263,7 @@ else:
       elif sizeof(T) == 8: AtomicInt64
 
     type
-      AtomicFlag* {.importc: "atomic_flag".} = object
+      AtomicFlag* {.importc: "atomic_flag", size: 1.} = object
 
       Atomic*[T] = object
         when T is Trivial:

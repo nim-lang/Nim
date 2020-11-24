@@ -683,6 +683,8 @@ proc genNewSeq(c: PCtx; n: PNode) =
 
 proc genNewSeqOfCap(c: PCtx; n: PNode; dest: var TDest) =
   let t = n.typ
+  if dest < 0:
+    dest = c.getTemp(n.typ)
   let tmp = c.getTemp(n[1].typ)
   c.gABx(n, opcLdNull, dest, c.genType(t))
   c.gABx(n, opcLdImmInt, tmp, 0)
@@ -899,6 +901,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.gABx(n, opcSetType, dest, c.genType(dst))
     c.gABC(n, opcCastIntToPtr, dest, tmp)
     c.freeTemp(tmp)
+  elif src.kind == tyNil and dst.kind in NilableTypes:
+    # supports casting nil literals to NilableTypes in VM
+    # see #16024
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    genLit(c, n[1], dest)
   else:
     # todo: support cast from tyInt to tyRef
     globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind)
@@ -1120,7 +1127,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(d)
   of mSwap:
     unused(c, n, dest)
-    c.gen(lowerSwap(c.graph, n, c.idgen, if c.prc == nil: c.module else: c.prc.sym))
+    c.gen(lowerSwap(c.graph, n, c.idgen, if c.prc == nil or c.prc.sym == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)
@@ -1980,6 +1987,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       genRdVar(c, n, dest, flags)
     of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
+      if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
+        globalError(c.config, n.info, "Closure iterators are not supported by VM!")
       if procIsCallback(c, s): discard
       elif importcCond(s): c.importcSym(n.info, s)
       genLit(c, n, dest)
