@@ -1002,6 +1002,11 @@ proc transform(c: PTransf, n: PNode): PNode =
     return n
   of nkExceptBranch:
     result = transformExceptBranch(c, n)
+  of nkCheckedFieldExpr:
+    result = transformSons(c, n)
+    if result[0].kind != nkDotExpr:
+      # simplfied beyond a dot expression --> simplify further.
+      result = result[0]
   else:
     result = transformSons(c, n)
   when false:
