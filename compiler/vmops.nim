@@ -20,7 +20,7 @@ from times import cpuTime
 
 from hashes import hash
 from osproc import nil
-from system/ansi_c import cstderr, rawWrite
+from system/ansi_c import rawWrite, CFilePtrFake, CFilePtr, cstdin, cstdout, cstderr
 
 import vmconv
 
@@ -200,9 +200,14 @@ proc registerAdditionalOps*(c: PCtx) =
       systemop gorgeEx
   macrosop getProjectPath
 
-  registerCallback c, "stdlib.rawWrite", proc (a: VmArgs) {.nimcall.} =
-    # let file = a[0]
-    let file = cstderr
+  registerCallback c, "ansi_c.rawWrite", proc (a: VmArgs) =
+    let fileFake = a.getInt(0).CFilePtrFake
+    var file: CFilePtr
+    case fileFake
+    of CFilePtrFake.kunknown, CFilePtrFake.kstdin:
+      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, "invalid: " % $fileFake, a.currentLineInfo)
+    of CFilePtrFake.kstderr: file = cstderr
+    of CFilePtrFake.kstdout: file = cstdout
     let s = a.getString(1)
     setResult(a, rawWrite(file, s))
 
