@@ -418,7 +418,16 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       of Unloaded:
         iface.patterns.add s
       of Unpacked, Loaded:
-        assert false, "imagine the two of us, meeting like this"
+        if s.kind != skModule:
+          block found:
+            for p in patterns(g, m):
+              assert p.itemId.module == s.itemId.module
+              echo "export ", p.itemId
+              if p.itemId.item == s.itemId.item:
+                break found
+            echo "we received ", s.kind, " ", s.itemId
+            echo iface.state, " wants to export ", s.name.s
+            assert false, "imagine the two of us, meeting like this"
     else:
       # implicit assertion that `m` is skPackage
       strTableAdd(m.pkgTab, s)
