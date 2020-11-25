@@ -20,6 +20,7 @@ from times import cpuTime
 
 from hashes import hash
 from osproc import nil
+from system/ansi_c import cstderr, rawWrite
 
 import vmconv
 
@@ -198,6 +199,12 @@ proc registerAdditionalOps*(c: PCtx) =
     else:
       systemop gorgeEx
   macrosop getProjectPath
+
+  registerCallback c, "stdlib.rawWrite", proc (a: VmArgs) {.nimcall.} =
+    # let file = a[0]
+    let file = cstderr
+    let s = a.getString(1)
+    setResult(a, rawWrite(file, s))
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())

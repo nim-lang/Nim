@@ -13,6 +13,7 @@ template setX(k, field) {.dirty.} =
   a.slots[a.ra].ensureKind(k)
   a.slots[a.ra].field = v
 
+template setResult*[T: void](a: VmArgs, b: T) = discard
 proc setResult*(a: VmArgs; v: BiggestInt) = setX(rkInt, intVal)
 proc setResult*(a: VmArgs; v: BiggestFloat) = setX(rkFloat, floatVal)
 proc setResult*(a: VmArgs; v: bool) =
