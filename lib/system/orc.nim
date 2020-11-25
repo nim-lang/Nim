@@ -276,7 +276,7 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         t.setColor(colBlack)
         trace(t, desc, j)
 
-proc collectCyclesBacon(j: var GcEnv) =
+proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   # pretty direct translation from
   # https://researcher.watson.ibm.com/researcher/files/us-bacon/Bacon01Concurrent.pdf
   # Fig. 2. Synchronous Cycle Collection
@@ -290,13 +290,14 @@ proc collectCyclesBacon(j: var GcEnv) =
       s.buffered = false
       collectWhite(s)
   ]#
+  let last = roots.len - 1
   when logOrc:
-    for i in 0 ..< roots.len:
+    for i in countdown(last, lowMark):
       writeCell("root", roots.d[i][0], roots.d[i][1])
 
-  for i in 0 ..< roots.len:
+  for i in countdown(last, lowMark):
     markGray(roots.d[i][0], roots.d[i][1], j)
-  for i in 0 ..< roots.len:
+  for i in countdown(last, lowMark):
     scan(roots.d[i][0], roots.d[i][1], j)
 
   init j.toFree
@@ -320,6 +321,18 @@ when defined(nimStressOrc):
 else:
   var rootsThreshold = defaultThreshold
 
+proc partialCollect(lowMark: int) =
+  if roots.len < 10 + lowMark: return
+  when logOrc:
+    cfprintf(cstderr, "[partialCollect] begin\n")
+  var j: GcEnv
+  init j.traceStack
+  collectCyclesBacon(j, lowMark)
+  cfprintf(cstderr, "[partialCollect] end; freed %ld touched: %ld work: %ld\n", j.freed, j.touched,
+    roots.len - lowMark)
+  roots.len = lowMark
+  deinit j.traceStack
+
 proc collectCycles() =
   ## Collect cycles.
   when logOrc:
@@ -329,14 +342,14 @@ proc collectCycles() =
   init j.traceStack
   when useJumpStack:
     init j.jumpStack
-    collectCyclesBacon(j)
+    collectCyclesBacon(j, 0)
     while j.jumpStack.len > 0:
       let (t, desc) = j.jumpStack.pop
       # not in jump stack anymore!
       t.rc = t.rc and not jumpStackFlag
     deinit j.jumpStack
   else:
-    collectCyclesBacon(j)
+    collectCyclesBacon(j, 0)
 
   deinit j.traceStack
   deinit roots
@@ -384,6 +397,10 @@ proc GC_disableOrc*() =
   when not defined(nimStressOrc):
     rootsThreshold = high(int)
 
+proc GC_prepareOrc*(): int {.inline.} = roots.len
+
+proc GC_partialCollect*(limit: int) =
+  partialCollect(limit)
 
 proc GC_fullCollect* =
   ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
