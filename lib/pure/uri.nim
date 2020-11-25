@@ -11,7 +11,7 @@
 ##
 ## A Uniform Resource Identifier (URI) provides a simple and extensible
 ## means for identifying a resource. A URI can be further classified
-## as a locator, a name, or both. The term “Uniform Resource Locator”
+## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
 ## Basic usage
@@ -19,30 +19,33 @@
 ##
 ## Combine URIs
 ## -------------
-## .. code-block::
-##    import uri
-##    let host = parseUri("https://nim-lang.org")
-##    let blog = "/blog.html"
-##    let bloguri = host / blog
-##    assert $host == "https://nim-lang.org"
-##    assert $bloguri == "https://nim-lang.org/blog.html"
-##
+## 
+
+runnableExamples:
+  let host = parseUri("https://nim-lang.org")
+  let blog = "/blog.html"
+  let bloguri = host / blog
+  assert $host == "https://nim-lang.org"
+  assert $bloguri == "https://nim-lang.org/blog.html"
+
 ## Access URI item
 ## ---------------
-## .. code-block::
-##    import uri
-##    let res = parseUri("sftp://127.0.0.1:4343")
-##    if isAbsolute(res):
-##      assert res.port == "4343"
-##    else:
-##      echo "Wrong format"
-##
+## 
+
+runnableExamples:
+  let res = parseUri("sftp://127.0.0.1:4343")
+  if isAbsolute(res):
+    assert res.port == "4343"
+  else:
+    echo "Wrong format"
+
 ## Data URI Base64
 ## ---------------
-##
-## .. code-block::nim
-##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+## 
+
+runnableExamples:
+  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 import std/private/since
 
@@ -51,9 +54,9 @@ include includes/decode_helpers
 
 
 type
-  Url* = distinct string
+  Url* = distinct string  ## A Uniform Resource Locator.
 
-  Uri* = object
+  Uri* = object  ## A Uniform Resource Identifier.
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
