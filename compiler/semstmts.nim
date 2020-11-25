@@ -1284,6 +1284,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         of nkSym: obj.ast[0] = symNode
         of nkPragmaExpr: obj.ast[0][0] = symNode
         else: assert(false)
+      obj.ast[2] = obj.ast[2][0]
       if sfPure in s.flags:
         obj.flags.incl sfPure
       obj.typ = st.lastSon

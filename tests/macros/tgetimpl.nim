@@ -75,6 +75,7 @@ macro check(x: type): untyped =
   let sym = if y[0].kind == nnkSym: y[0] else: y[0][0]
   expectKind(z[1], nnkSym)
   expectKind(sym, nnkSym)
+  expectKind(y[2], nnkObjectTy)
   doAssert(sym == z[1])
 
 type
@@ -87,6 +88,8 @@ type
   TireRef2* {.inheritable.} = ref object
     code: int
 
+  TireRef3* {.inheritable.} = object
+    code: int
 
 var z1: TirePtr
 check(typeof(z1[]))
@@ -94,3 +97,4 @@ var z2: TireRef
 check(typeof(z2[]))
 var z3: TireRef2
 check(typeof(z3[]))
+check(TireRef3)
