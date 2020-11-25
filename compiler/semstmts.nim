@@ -1279,12 +1279,16 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        nextId c.idgen, getCurrOwner(c), s.info)
       let symNode = newSymNode(obj)
-      obj.ast = a.copyTree
-      case obj.ast[0].kind
+      obj.ast = a.shallowCopy
+      case a[0].kind
         of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr: obj.ast[0][0] = symNode
+        of nkPragmaExpr: 
+          obj.ast[0] = a[0].shallowCopy
+          obj.ast[0][0] = symNode
+          obj.ast[0][1] = a[0][1]
         else: assert(false)
-      obj.ast[2] = obj.ast[2][0]
+      obj.ast[1] = a[1]
+      obj.ast[2] = a[2][0]
       if sfPure in s.flags:
         obj.flags.incl sfPure
       obj.typ = st.lastSon
