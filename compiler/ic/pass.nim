@@ -77,17 +77,21 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
       internalError(graph.config, "failed to write " & ic.name & " rod file")
 
   proc resolver(module: int32; name: string): PSym =
-    block found:
-      # we'll just do this stupidly for now
-      for i in countup(0, graph.ifaces.high):
-        template iface: Iface = graph.ifaces[i]
-        if iface.module != nil and iface.module.itemId.module == module:
-          let ident = getIdent(graph.cache, name)
-          result = getExport(graph, iface.module, ident)
-          if result == nil:
-            internalError(graph.config, "unable to retrieve " & name)
-          break found
-      internalError(graph.config, "unable to resolve module " & $module)
+    let ident = getIdent(graph.cache, name)
+    if module == PackageModuleId:
+      result = strTableGet(graph.packageSyms, ident)
+    else:
+      block found:
+        # we'll just do this stupidly for now
+        for i in countup(0, graph.ifaces.high):
+          template iface: Iface = graph.ifaces[i]
+          if iface.module != nil:
+            if iface.module.itemId.module == module:
+              result = getExport(graph, iface.module, ident)
+              break found
+        internalError(graph.config, "unable to resolve module " & $module)
+    if result == nil:
+      internalError(graph.config, "unable to retrieve " & name)
 
   # the result is immediately parsed from the rodfile
   var decoder: PackedDecoder
