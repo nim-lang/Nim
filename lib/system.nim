@@ -1774,7 +1774,7 @@ when not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-when notJSnotNims:
+when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
 
   proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
