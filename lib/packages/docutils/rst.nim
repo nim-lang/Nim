@@ -1136,7 +1136,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
-    let tokIdx =  tokenAfterNewline(p)
+    let tokIdx = tokenAfterNewline(p)
     if match(p, tokIdx, "ai"):
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
