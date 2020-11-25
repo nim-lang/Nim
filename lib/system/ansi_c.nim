@@ -111,21 +111,35 @@ type CSighandlerT = proc (a: cint) {.noconv.}
 proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 
-type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
-  CFilePtr* = ptr CFile ## The type representing a file handle.
+when defined(nodejs):
+  type CFilePtr* = ref object of RootObj
+  var
+    cstderr* {.importcpp: "process.stderr".}: CFilePtr
+    cstdout* {.importcpp: "process.stdout".}: CFilePtr
+    cstdin* {.importcpp: "process.stdin".}: CFilePtr
+  proc write(a: CFilePtr, b: cstring) {.importcpp.}
+elif defined(js):
+  type CFilePtr* = enum kstderr, kstdout, kstdin
+  let
+    cstderr* = kstderr
+    cstdout* = kstdout
+    cstdin* = kstdin
+  import jsconsole
+else:
+  type
+    CFile {.importc: "FILE", header: "<stdio.h>",
+            incompleteStruct.} = object
+    CFilePtr* = ptr CFile ## The type representing a file handle.
 
-# duplicated between io and ansi_c
-const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
-const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
-const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
-const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
-
-var
-  cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
-  cstdout* {.importc: stdoutName, header: "<stdio.h>".}: CFilePtr
-  cstdin* {.importc: stdinName, header: "<stdio.h>".}: CFilePtr
+  # xxx refactor to remove code duplication between io and ansi_c
+  const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
+  const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
+  const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
+  const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
+  var
+    cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
+    cstdout* {.importc: stdoutName, header: "<stdio.h>".}: CFilePtr
+    cstdin* {.importc: stdinName, header: "<stdio.h>".}: CFilePtr
 
 proc c_fprintf*(f: CFilePtr, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
@@ -156,7 +170,19 @@ proc c_fflush(f: CFilePtr): cint {.
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
-  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
-  discard c_fflush(f)
+  when defined(nodejs):
+    f.write(s)
+  elif defined(js):
+    # caveat: implicitly adds a new line.
+    case f
+    of kstderr: console.error(s)
+    of kstdout: console.log(s)
+    of kstdin:
+      console.error(s)
+      console.error("can't write to stdin")
+      quit 1
+  else:
+    discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+    discard c_fflush(f)
 
 {.pop.}
