@@ -10,9 +10,8 @@
 ## incremental compilation passes
 
 import
-  ".."/[ast, passes, idents, msgs, options, lineinfos, pathutils,
+  ".."/[ast, passes, idents, msgs, options, pathutils,
   modulegraphs, astalgo],
-  std/[sequtils, hashes],
   std/options as stdoptions
 
 import
@@ -68,6 +67,13 @@ template performCaching*(context: PPassContext, n: PNode; body: untyped) =
       body
       toPackedNode(result, ic.m.ast, ic.encoder[])
 
+proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
+  ## add a generic
+  var ic = IncrementalRef context
+  assert not ic.ready
+  let key = initGenericKey(s, types)
+  addGeneric(ic.m, ic.encoder[], key, s)
+
 proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   ## the closer writes the module to a rodfile if necessary, and parses
   ## the packed ast in any event
@@ -78,6 +84,7 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
 
   proc resolver(module: int32; name: string): PSym =
     let ident = getIdent(graph.cache, name)
+    echo "resolve ", name
     if module == PackageModuleId:
       result = strTableGet(graph.packageSyms, ident)
     else:
@@ -92,6 +99,7 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
         internalError(graph.config, "unable to resolve module " & $module)
     if result == nil:
       internalError(graph.config, "unable to retrieve " & name)
+    echo "ok"
 
   # the result is immediately parsed from the rodfile
   var decoder: PackedDecoder

@@ -10,7 +10,7 @@
 # Built-in types and compilerprocs are registered here.
 
 import
-  ast, astalgo, msgs, platform, idents, ic, modulegraphs, lineinfos
+  ast, astalgo, msgs, platform, idents, modulegraphs, lineinfos
 
 export createMagic
 

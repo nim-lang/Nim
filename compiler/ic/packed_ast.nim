@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables, strtabs]
+import std / [hashes, tables, strtabs, md5]
 import bitabs
 import ".." / [ast, lineinfos, options]
 
@@ -121,6 +121,7 @@ type
   Module* = object
     name*: string
     ast*: PackedTree
+    generics*: Table[GenericKey, SymId]
 
   Program* = ref object
     modules*: seq[Module]
@@ -134,14 +135,22 @@ type
     integers*: BiTable[BiggestInt]
     floats*: BiTable[BiggestFloat]
     config*: ConfigRef
-    #thisModule*: ModuleId
-    #program*: Program
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
-    # removed to ease my lazy hashing
-    #toPosition* {.deprecated.}: Table[SymId, NodePos]
     sh*: Shared
+
+  GenericKey* = object
+    module*: int32
+    name*: string
+    types*: seq[MD5Digest]
+
+proc hash*(key: GenericKey): Hash =
+  var h: Hash = 0
+  h = h !& hash(key.module)
+  h = h !& hash(key.name)
+  h = h !& hash(key.types)
+  result = !$h
 
 proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}

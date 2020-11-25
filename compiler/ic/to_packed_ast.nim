@@ -7,9 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables]
+import std / [hashes, tables, md5, sequtils]
 import packed_ast, bitabs
-import ".." / [ast, idents, lineinfos, msgs, ropes, options]
+import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes]
 
 when not defined(release): import ".." / astalgo # debug()
 
@@ -247,6 +247,17 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
     ir.patch patchPos
 
   ir.flush c   # flush any pending types and symbols
+
+proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
+  result.module = s.owner.itemId.module
+  result.name = s.name.s
+  result.types = mapIt types: hashType(it, {CoType, CoDistinct}).MD5Digest
+
+proc addGeneric*(m: var Module; c: var Context; key: GenericKey; s: PSym) =
+  ## add a generic to the module
+  if key notin m.generics:
+    m.generics[key] = toPackedSym(s, m.ast, c)
+    toPackedNode(s.ast, m.ast, c)
 
 proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
   ## serialize a module into packed ast

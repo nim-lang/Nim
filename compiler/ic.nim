@@ -9,11 +9,5 @@
 
 ## incremental compilation interface
 
-import
-  ast, idents, msgs, options, lineinfos, pathutils,
-  astalgo, modulegraphs,
-  std/[sequtils, hashes],
-  std/options as stdoptions
-
-import ic/[pass, from_packed_ast, to_packed_ast, packed_ast, store]
-export icPass, performCaching, ready
+import ic/[pass, to_packed_ast]
+export icPass, performCaching, ready, addGeneric

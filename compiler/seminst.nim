@@ -401,3 +401,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   dec(c.instCounter)
   c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)
+
+  # inform IC of the generic
+  addGeneric(c.ic, result, entry.concreteTypes)
