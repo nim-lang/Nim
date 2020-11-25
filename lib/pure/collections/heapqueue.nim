@@ -52,32 +52,16 @@
 ]##
 import std/private/since
 
-type
-  Cmp*[T] = proc (x, y: T): bool
-  HeapQueue*[T] = object
-    ## A heap queue, commonly known as a priority queue.
-    data: seq[T]
-    cmp: Cmp[T]
-
-proc minHeapCmp*[T](x, y: T): bool =
-  result = (x < y)
-
-proc maxHeapCmp*[T](x, y: T): bool =
-  result = (x > y)
+type HeapQueue*[T] = object
+  ## A heap queue, commonly known as a priority queue.
+  data: seq[T]
 
 proc initHeapQueue*[T](): HeapQueue[T] =
   ## Creates a new empty heap.
   ##
   ## See also:
   ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
-  result.cmp = minHeapCmp
-
-proc initHeapQueue*[T](cmp: Cmp): HeapQueue[T] =
-  ## Creates a new empty heap.
-  ##
-  ## See also:
-  ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
-  result.cmp = cmp
+  discard
 
 proc len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.
@@ -86,6 +70,9 @@ proc len*[T](heap: HeapQueue[T]): int {.inline.} =
 proc `[]`*[T](heap: HeapQueue[T], i: Natural): T {.inline.} =
   ## Accesses the i-th element of `heap`.
   heap.data[i]
+
+proc heapCmp[T](x, y: T): bool {.inline.} =
+  return (x < y)
 
 proc siftdown[T](heap: var HeapQueue[T], startpos, p: int) =
   ## 'heap' is a heap at all indices >= startpos, except possibly for `pos`. `pos`
@@ -98,7 +85,7 @@ proc siftdown[T](heap: var HeapQueue[T], startpos, p: int) =
   while pos > startpos:
     let parentpos = (pos - 1) shr 1
     let parent = heap[parentpos]
-    if heap.cmp(newitem, parent):
+    if heapCmp(newitem, parent):
       heap.data[pos] = parent
       pos = parentpos
     else:
@@ -115,7 +102,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
-    if rightpos < endpos and not heap.cmp(heap[childpos], heap[rightpos]):
+    if rightpos < endpos and not heapCmp(heap[childpos], heap[rightpos]):
       childpos = rightpos
     # Move the smaller child up.
     heap.data[pos] = heap[childpos]
@@ -187,7 +174,7 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
 proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   ## Fast version of a push followed by a pop.
   result = item
-  if heap.len > 0 and heap.cmp(heap.data[0], item):
+  if heap.len > 0 and heapCmp(heap.data[0], item):
     swap(result, heap.data[0])
     siftup(heap, 0)
 
