@@ -520,8 +520,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
   c.hasUnresolvedArgs = hasUnresolvedArgs
   c.templInstCounter = new int
-  when defined(nimIcSem):
-    c.ic = icPass.open(graph, module, idgen)
+  c.ic = icPass.open(graph, module, idgen)
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
@@ -645,8 +644,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  when defined(nimIcSem):
-    result = icPass.close(graph, c.ic, result)
+  result = icPass.close(graph, c.ic, result)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

@@ -57,15 +57,12 @@ proc processor(context: PPassContext, n: PNode): PNode =
 
 template performCaching*(context: PPassContext, n: PNode; body: untyped) =
   ## wraps a sem call to stow the result
-  when not defined(nimIcSem):
-    body
+  var ic = IncrementalRef context.ic
+  if ic.ready:
+    result = nil
   else:
-    var ic = IncrementalRef context.ic
-    if ic.ready:
-      result = nil
-    else:
-      body
-      toPackedNode(result, ic.m.ast, ic.encoder[])
+    body
+    toPackedNode(result, ic.m.ast, ic.encoder[])
 
 proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
   ## add a generic
