@@ -16,4 +16,4 @@ import
   std/options as stdoptions
 
 import ic/[pass, from_packed_ast, to_packed_ast, packed_ast, store]
-export icPass
+export icPass, performCaching, ready

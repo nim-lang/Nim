@@ -601,27 +601,29 @@ proc recoverContext(c: PContext) =
 
 proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
-  when defined(nimIcSem):
-    result = icPass.process(c.ic, n)
-    if result == nil: return
   # no need for an expensive 'try' if we stop after the first error anyway:
-  if c.config.errorMax <= 1:
-    result = semStmtAndGenerateGenerics(c, n)
-  else:
-    let oldContextLen = msgs.getInfoContextLen(c.config)
-    let oldInGenericInst = c.inGenericInst
-    try:
+  #
+  # XXX: use a template if you care so much.
+  #
+  #if c.config.errorMax <= 1:
+  #  result = semStmtAndGenerateGenerics(c, n)
+  #else:
+
+  let oldContextLen = msgs.getInfoContextLen(c.config)
+  let oldInGenericInst = c.inGenericInst
+  try:
+    performCaching(c, n):
       result = semStmtAndGenerateGenerics(c, n)
-    except ERecoverableError, ESuggestDone:
-      recoverContext(c)
-      c.inGenericInst = oldInGenericInst
-      msgs.setInfoContextLen(c.config, oldContextLen)
-      if getCurrentException() of ESuggestDone:
-        c.suggestionsMade = true
-        result = nil
-      else:
-        result = newNodeI(nkEmpty, n.info)
-      #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
+  except ERecoverableError, ESuggestDone:
+    recoverContext(c)
+    c.inGenericInst = oldInGenericInst
+    msgs.setInfoContextLen(c.config, oldContextLen)
+    if getCurrentException() of ESuggestDone:
+      c.suggestionsMade = true
+      result = nil
+    else:
+      result = newNodeI(nkEmpty, n.info)
+    #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
