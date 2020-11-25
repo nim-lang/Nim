@@ -148,6 +148,7 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
   result = PType(kind: t.kind, flags: t.flags, size: t.size, align: t.align,
                  paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
                  uniqueId: t.nonUniqueId)
+  c.typeMap[result.uniqueId] = result
 
   result.sym = loadSymbol(t.sym, c, ir)
   result.owner = loadSymbol(t.owner, c, ir)
@@ -162,6 +163,7 @@ proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType =
 
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode =
   ## unpack the entire tree to a PNode
+  if ir.nodes.len == 0: return nil
   template n: PackedNode = ir.nodes[int pos]
   result = PNode(typ: fromType(n.typeId, ir, c), flags: n.flags,
                  kind: n.kind, info: fromLineInfo(n.info, ir, c))
