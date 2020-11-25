@@ -110,6 +110,9 @@ from system/ansi_c import cstderr, rawWrite
 
 proc writeStackTrace() =
   var trace = rawWriteStackTrace()
+  when not defined(nodejs):
+    # maybe we need `rawWriteln`, instead of special case here
+    trace.setLen(trace.len - 1)
   rawWrite(cstderr, trace)
 
 proc getStackTrace*(): string = rawWriteStackTrace()
