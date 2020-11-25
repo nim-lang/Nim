@@ -24,6 +24,9 @@ type
     idents: IdentCache
   Context = PackedDecoder  # legacy name
 
+template ready(c: Context): bool =
+  c.resolver != nil and c.idents != nil
+
 proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
@@ -41,6 +44,7 @@ proc fromType(t: TypeId or int32; ir: PackedTree; c: var Context): PType =
 
 proc fromIdent(l: LitId; ir: PackedTree; c: var Context): PIdent =
   ## use the context's ident cache to resolve an ident via literal id
+  assert c.ready
   result = getIdent(c.idents, ir.sh.strings[l])
 
 proc fromLineInfo(p: PackedLineInfo; ir: PackedTree; c: var Context): TLineInfo =
@@ -92,6 +96,7 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
     if id.module == c.thisModule:
       result = fromSym(id.item, id, ir, c)
     else:
+      assert c.ready
       echo "local mod: ", c.thisModule
       echo "  foreign: ", id
       result = c.resolver(id.module, ir.sh.strings[LitId id.item])
