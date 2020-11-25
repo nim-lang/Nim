@@ -1090,14 +1090,18 @@ proc findPipe(p: RstParser, start: int): bool =
     inc i
 
 proc whichSection(p: RstParser): RstNodeKind =
+  if currentTok(p).kind in {tkAdornment, tkPunct}:
+    # for punctuation sequences that can be both tkAdornment and tkPunct
+    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+      return rnCodeBlock
+    elif currentTok(p).symbol == "::":
+      return rnLiteralBlock
+    elif currentTok(p).symbol == ".." and predNL(p):
+     return rnDirective
   case currentTok(p).kind
   of tkAdornment:
     if match(p, p.idx + 1, "ii") and currentTok(p).symbol.len >= 4:
       result = rnTransition
-    elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      result = rnCodeBlock
-    elif currentTok(p).symbol == "::":
-      result = rnLiteralBlock
     elif match(p, p.idx, "+a+"):
       result = rnGridTable
       rstMessage(p, meGridTableNotImplemented)
@@ -1113,19 +1117,13 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
-    elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
-      result = rnCodeBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
-    elif currentTok(p).symbol == "::":
-      result = rnLiteralBlock
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
-    elif currentTok(p).symbol == ".." and predNL(p):
-      result = rnDirective
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList

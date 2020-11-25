@@ -327,3 +327,12 @@ let x = 1
 ``` """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
     assert "<pre" in output2 and "class=\"Keyword\"" in output2
+
+  test "RST comments":
+    let input1 = """
+Check that comment disappears:
+
+..
+  some comment """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert output1 == "Check that comment disappears:"
