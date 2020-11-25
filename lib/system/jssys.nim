@@ -110,7 +110,6 @@ from system/ansi_c import cstderr, rawWrite
 
 proc writeStackTrace() =
   var trace = rawWriteStackTrace()
-  trace.setLen(trace.len - 1)
   rawWrite(cstderr, trace)
 
 proc getStackTrace*(): string = rawWriteStackTrace()
