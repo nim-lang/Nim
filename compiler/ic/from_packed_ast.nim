@@ -92,6 +92,8 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
     if id.module == c.thisModule:
       result = fromSym(id.item, id, ir, c)
     else:
+      echo "local mod: ", c.thisModule
+      echo "  foreign: ", id
       result = c.resolver(id.module, ir.sh.strings[LitId id.item])
     # cache the result
     c.symMap[id] = result
