@@ -30,6 +30,18 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId
 proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib
 
+proc safeItemId(s: PSym; ir: var PackedTree; c: var Context): ItemId =
+  ## given a symbol, produce an ItemId with the correct properties
+  ## for local or remote symbols, packing the symbol as necessary
+  var id = if s.isNil: nilItemId else: s.itemId
+  if id == nilItemId:
+    discard
+  elif id.module == c.thisModule:
+    id.item = int32 toPackedSym(s, ir, c)
+  else:
+    id.item = int32 getOrIncl(ir.sh.strings, s.name.s)
+  result = id
+
 proc flush(ir: var PackedTree; c: var Context) =
   ## serialize any pending types or symbols from the context
   while true:
@@ -56,7 +68,7 @@ proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
     result = c.lastLit
   else:
     result = c.filenames.getOrDefault(x)
-    if result == LitId(0):
+    if result == LitId 0:
       let p = msgs.toFullPath(ir.sh.config, x)
       result = getOrIncl(ir.sh.strings, p)
       c.filenames[x] = result
@@ -116,17 +128,17 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   for op, s in pairs t.attachedOps:
     c.addMissing s
-    p.attachedOps[op] = s.safeItemId itemId
+    p.attachedOps[op] = s.safeItemId(ir, c)
   p.typeInst = t.typeInst.toPackedType(ir, c)
   for kid in items t.sons:
     p.types.add kid.toPackedType(ir, c)
   for i, s in items t.methods:
     c.addMissing s
-    p.methods.add (i, s.safeItemId itemId)
+    p.methods.add (i, s.safeItemId(ir, c))
   c.addMissing t.sym
-  p.sym = t.sym.safeItemId itemId
+  p.sym = t.sym.safeItemId(ir, c)
   c.addMissing t.owner
-  p.owner = t.owner.safeItemId itemId
+  p.owner = t.owner.safeItemId(ir, c)
   if not t.n.isNil:
     p.nodekind = t.n.kind
     p.nodeflags = t.n.flags
@@ -154,14 +166,14 @@ proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
 
   if s.kind in {skLet, skVar, skField, skForVar}:
     c.addMissing s.guard
-    p.guard = s.guard.safeItemId itemId
+    p.guard = s.guard.safeItemId(ir, c)
     p.bitsize = s.bitsize
     p.alignment = s.alignment
   p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, ir, c)
   c.addMissing s.typ
   p.typeId = s.typ.toPackedType(ir, c)
   c.addMissing s.owner
-  p.owner = s.owner.safeItemId itemId
+  p.owner = s.owner.safeItemId(ir, c)
   p.annex = toPackedLib(s.annex, ir, c)
   s.constraint.toPackedNode(p.constraint, c)
   s.ast.toPackedNode(p.ast, c)
