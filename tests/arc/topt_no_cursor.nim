@@ -46,7 +46,7 @@ var
   lvalue
   lnext
   _
-`=copy`(lresult, [123])
+lresult = @[123]
 _ = (
   let blitTmp = lresult
   blitTmp, ";")

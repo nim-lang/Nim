@@ -48,6 +48,7 @@
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
 - Added `**` to jsffi.
+- `writeStackTrace` is available in JS backend now.
 
 ## Language changes
 

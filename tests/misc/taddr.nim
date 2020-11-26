@@ -103,17 +103,6 @@ block:
     doAssert byLent(a2) == (11,)
 
   block:
-    when (defined(c) or defined(cpp)) and defined(release):
-      discard # probably not a bug since optimizer is free to pass by value, and `unsafeAddr` is used
-    else:
-      var a = @[12]
-      doAssert byPtr(a)[] == @[12]
-      let a2 = [13]
-      doAssert byPtr(a2)[] == [13]
-      let a3 = 14
-      doAssert byPtr(a3)[] == 14
-
-  block:
     proc byLent2[T](a: seq[T]): lent T = a[1]
     var a = @[20,21,22]
     doAssert byLent2(a) == 21
@@ -134,3 +123,83 @@ block:
   block: # pending bug #15959
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]
+
+proc test14420() = # bug #14420
+  # s/proc/template/ would hit bug #16005
+  block:
+    type Foo = object
+      x: float
+
+    proc fn(a: var Foo): var float =
+      ## WAS: discard <- turn this into a comment (or a `discard`) and error disappears
+      # result = a.x # this works
+      a.x #  WAS: Error: limited VM support for 'addr'
+
+    proc fn2(a: var Foo): var float =
+      result = a.x # this works
+      a.x #  WAS: Error: limited VM support for 'addr'
+
+    var a = Foo()
+    discard fn(a)
+    discard fn2(a)
+
+  block:
+    proc byLent2[T](a: T): lent T =
+      runnableExamples: discard
+      a
+    proc byLent3[T](a: T): lent T =
+      runnableExamples: discard
+      result = a
+    var a = 10
+    let x3 = byLent3(a) # works
+    let x2 = byLent2(a) # WAS: Error: internal error: genAddr: nkStmtListExpr
+
+  block:
+    type MyOption[T] = object
+      case has: bool
+      of true:
+        value: T
+      of false:
+        discard
+    func some[T](val: T): MyOption[T] =
+      result = MyOption[T](has: true, value: val)
+    func get[T](opt: MyOption[T]): lent T =
+      doAssert opt.has
+      # result = opt.value # this was ok
+      opt.value # this had the bug
+    let x = some(10)
+    doAssert x.get() == 10
+
+template test14339() = # bug #14339
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c # was: Error: limited VM support for 'addr'
+      c.val
+    var a = Node()
+    discard a.bar()
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c
+      doAssert n.val == n[].val
+      n.val
+    var a = Node(val: 3)
+    a.bar() = 5
+    when nimvm:
+      doAssert a.val == 5
+    else:
+      when not defined(js): # pending bug #16003
+        doAssert a.val == 5
+
+template main =
+  # xxx wrap all other tests here like that so they're also tested in VM
+  test14420()
+  test14339()
+
+static: main()
+main()
