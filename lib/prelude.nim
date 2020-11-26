@@ -16,10 +16,8 @@
 ## Same as:
 ##
 ## .. code-block:: nim
-##   # c backend
-##   import os, strutils, times, parseutils, parseopt, hashes, tables, sets
-##   # js backend
 ##   import os, strutils, times, parseutils, hashes, tables, sets
+##   when not defined(js): import parseopt
 
 import os, strutils, times, parseutils, hashes, tables, sets
 when not defined(js): import parseopt
