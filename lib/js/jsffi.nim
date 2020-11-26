@@ -180,6 +180,7 @@ proc `>`  *(x, y: JsObject): JsObject {.importcpp: "(# > #)".}
 proc `<`  *(x, y: JsObject): JsObject {.importcpp: "(# < #)".}
 proc `>=` *(x, y: JsObject): JsObject {.importcpp: "(# >= #)".}
 proc `<=` *(x, y: JsObject): JsObject {.importcpp: "(# <= #)".}
+proc `**` *(x, y: JsObject): JsObject {.importcpp: "(# ** #)".}
 proc `and`*(x, y: JsObject): JsObject {.importcpp: "(# && #)".}
 proc `or` *(x, y: JsObject): JsObject {.importcpp: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importcpp: "(!#)".}
