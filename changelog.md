@@ -47,6 +47,7 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
+- Added `**` to jsffi.
 - `writeStackTrace` is available in JS backend now.
 
 ## Language changes
