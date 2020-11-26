@@ -13,8 +13,6 @@ import
   options, idents, nimconf, extccomp, commands, msgs,
   lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
 
-from strutils import normalize
-
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
     if os.isAbsolute(f.string): result = f
@@ -60,8 +58,8 @@ proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
 proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: ConfigRef;
                                    graph: ModuleGraph): bool =
   if self.suggestMode:
-    conf.command = "nimsuggest"
-  if conf.command == "e":
+    conf.setCmd cmdIdeTools
+  if conf.cmd == cmdNimscript:
     incl(conf.globalOptions, optWasNimscript)
   loadConfigs(DefaultConfig, cache, conf, graph.idgen) # load all config files
 
@@ -69,17 +67,13 @@ proc loadConfigsAndProcessCmdLine*(self: NimProg, cache: IdentCache; conf: Confi
     let scriptFile = conf.projectFull.changeFileExt("nims")
     # 'nim foo.nims' means to just run the NimScript file and do nothing more:
     if fileExists(scriptFile) and scriptFile == conf.projectFull:
-      if conf.command == "":
-        conf.command = "e"
-        return false
-      elif conf.command.normalize == "e":
-        return false
-
+      if conf.cmd == cmdNone: conf.setCmd cmdNimscript
+      if conf.cmd == cmdNimscript: return false
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
   self.processCmdLine(passCmd2, "", conf)
-  if conf.command == "":
+  if conf.cmd == cmdNone:
     rawMessage(conf, errGenerated, "command missing")
 
   graph.suggestMode = self.suggestMode
