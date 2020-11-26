@@ -1679,3 +1679,21 @@ proc isCharArrayPtr*(t: PType; allowPointerToChar: bool): bool =
       result = allowPointerToChar
     else:
       discard
+
+template quoteExpr*(a: string): untyped =
+  ## can be used for quoting expressions in error msgs.
+  "'" & a & "'"
+
+proc genFieldDefect*(conf: ConfigRef, field: PSym, disc: PSym): string =
+  ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
+  ## provide this error msg FieldDefect; msgs would be better but it does not
+  ## import ast
+  result = "field "
+  if field == nil: result.add "?".quoteExpr
+  else: result.add field.name.s.quoteExpr
+  # `types.typeToString` would be better, eg for generics
+  result.add " is not accessible using discriminant " & disc.name.s.quoteExpr
+  result.add " for type " & disc.owner.name.s.quoteExpr
+  # addDeclaredLoc(result, conf, typ)
+  # addDeclaredLoc(result, conf, disc.owner)
+  addDeclaredLoc(result, conf, disc)

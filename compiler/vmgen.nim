@@ -1762,7 +1762,7 @@ proc genCheckedObjAccessAux(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags
     c.gABC(n, opcInvalidField, fieldNameRegister)
     c.freeTemp(fieldNameRegister)
 
-  let msg = genFieldError(if field.kind == nkSym: field.sym else: nil, disc.sym)
+  let msg = genFieldDefect(c.config, if field.kind == nkSym: field.sym else: nil, disc.sym)
   # instead of `nil`, could track down the `sym` inside `field`
   # could also report `discVal` (shown as enum)
   let s = newStrNode(msg, n.info)

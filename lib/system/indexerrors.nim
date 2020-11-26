@@ -9,3 +9,6 @@ template formatErrorIndexBound*[T](i, a, b: T): string =
 
 template formatErrorIndexBound*[T](i, n: T): string =
   formatErrorIndexBound(i, 0, n)
+
+template formatFieldDefect*(f, discVal): string =
+  f & " discriminant was: " & discVal

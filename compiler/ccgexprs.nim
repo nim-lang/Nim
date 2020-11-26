@@ -880,7 +880,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # should have no runtime cost (unlike -d:stacktrace)
       # this could be added to all/most chcks.nim errors, and perhaps
       # can be disabled with a compile flag.
-    msg.add " " & genFieldDefect(field, disc.sym)
+    msg.add " " & genFieldDefect(p.config, field, disc.sym)
 
     template newLitRope(s: string): untyped = genStringLiteral(p.module, newStrNode(nkStrLit, s))
     let strLit = newLitRope(msg)
@@ -889,7 +889,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
 
     ## raiseFieldError2 on failure
-    if optNimV2 in p.config.globalOptions:
+    if optTinyRtti in p.config.globalOptions: # optNimV2 disappeared in 61ea85687c2950bb40c23a1a7cd2c13473bd9662
       const code = "{ #raiseFieldError2($1, $2); $3} $n"
       linefmt(p, cpsStmts, code, [strLit, newLitRope("(repr unavailable in newruntime)"), raiseInstr(p)])
     else:
@@ -897,7 +897,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       let first = p.config.firstOrd(disc.sym.typ)
       let firstLit = int64Literal(cast[int](first))
       let discIndex = rdSetElemLoc(p.config, v, u.t)
-      let discName = genTypeInfo(p.module, disc.sym.typ, e.info)
+      let discName = genTypeInfo(p.config, p.module, disc.sym.typ, e.info)
       const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$2) + (NI)$3, $4)); $5} $n"
       linefmt(p, cpsStmts, code, [strLit, discIndex, firstLit, discName, raiseInstr(p)])
 
@@ -1582,10 +1582,13 @@ proc genNewFinalize(p: BProc, e: PNode) =
   initLocExpr(p, e[1], a)
   initLocExpr(p, e[2], f)
   initLoc(b, locExpr, a.lode, OnHeap)
+
+  # xxx use `genTypeInfo`
   if optTinyRtti in p.config.globalOptions:
     ti = genTypeInfoV2(p.module, refType, e.info)
   else:
     ti = genTypeInfoV1(p.module, refType, e.info)
+
   p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
