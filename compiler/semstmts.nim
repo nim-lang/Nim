@@ -477,7 +477,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
     result = semLowerLetVarCustomPragma(c, n[0], n)
-    if result!=nil: return result
+    if result != nil: return result
 
   var b: PNode
   result = copyNode(n)
@@ -513,7 +513,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           def = fitNode(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
-        typ = def.typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
+        typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
           typ = typ.lastSon
         if hasEmpty(typ):
@@ -1282,7 +1282,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       obj.ast = a.shallowCopy
       case a[0].kind
         of nkSym: obj.ast[0] = symNode
-        of nkPragmaExpr: 
+        of nkPragmaExpr:
           obj.ast[0] = a[0].shallowCopy
           obj.ast[0][0] = symNode
           obj.ast[0][1] = a[0][1]
