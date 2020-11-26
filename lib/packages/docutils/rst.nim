@@ -1043,11 +1043,17 @@ proc tokenAfterNewline(p: RstParser): int =
       break
     else: inc result
 
-proc isAdornmentHeadline(p: RstParser, tokAfter: int): bool =
+proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   var headlineLen = 0
-  for i in p.idx ..< tokAfter-1:  # tokAfter-1 is a linebreak
-    headlineLen += p.tok[i].symbol.len
-  return p.tok[tokAfter].symbol.len >= headlineLen
+  if p.idx < adornmentIdx:  # underline
+    for i in p.idx ..< adornmentIdx-1:  # adornmentIdx-1 is a linebreak
+      headlineLen += p.tok[i].symbol.len
+  else:  # overline
+    var i = p.idx + 2
+    while p.tok[i].kind notin {tkEof, tkIndent}:
+      headlineLen += p.tok[i].symbol.len
+      inc i
+  return p.tok[adornmentIdx].symbol.len >= headlineLen
 
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
@@ -1106,7 +1112,8 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnGridTable
       rstMessage(p, meGridTableNotImplemented)
     elif match(p, p.idx + 1, " a"): result = rnTable
-    elif match(p, p.idx + 1, "i"): result = rnOverline
+    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+      result = rnOverline
     elif isMarkdownHeadline(p):
       result = rnHeadline
     else:
