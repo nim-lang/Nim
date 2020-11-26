@@ -1,5 +1,5 @@
 discard """
-output: "[Suite] object basic methods"
+output: "\n[Suite] object basic methods"
 """
 
 import unittest

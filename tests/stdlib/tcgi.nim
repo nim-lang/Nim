@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 [Suite] Test cgi module
 (key: "a", value: "1")
 (key: "b", value: "0")

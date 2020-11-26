@@ -1,6 +1,8 @@
 discard """
   action: run
-  output: '''[Suite] random int
+  output: '''
+
+[Suite] random int
 
 [Suite] random float
 
@@ -9,7 +11,6 @@ discard """
 [Suite] random sample
 
 [Suite] ^
-
 '''
 """
 

@@ -517,7 +517,8 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
               sort(x, system.cmp)
               join(x, "\n")
             else:
-              strip(buf.string)
+              # not needed anymore: strip(buf.string)
+              buf.string
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &

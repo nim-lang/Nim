@@ -1,6 +1,8 @@
 discard """
 output: '''
-9.0'''
+9.0
+
+'''
 """
 
 ### bug #6773
@@ -41,6 +43,7 @@ proc `^`(x: vfloat, exp: static[float]): vfloat =
  
 proc `$`(x: vfloat): string =
   let y = cast[ptr float](unsafeAddr x)
+  # xxx not sure if intentional in this issue, but this returns ""
   echo y[]
  
 let x = set1(9.0)

@@ -1,6 +1,6 @@
 discard """
   output:'''@["3", "2", "1"]
-  '''
+'''
 """
 #12928,10456
 import sequtils, strutils, algorithm, json
