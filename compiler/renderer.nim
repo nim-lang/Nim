@@ -1769,6 +1769,6 @@ proc genFieldDefect*(field: PSym, disc: PSym): string =
   ## import ast
   if field == nil: result.add "field(?)".quoteExpr
   else: result.add field.name.s.quoteExpr
-  result.add " is not accessible using discriminant " &
-    disc.name.s.quoteExpr & " of type " &
-    disc.owner.name.s.quoteExpr
+  # `types.typeToString` would be better, eg for generics
+  result.add " of type " & disc.owner.name.s.quoteExpr
+  result.add " is not accessible using discriminant " & disc.name.s.quoteExpr

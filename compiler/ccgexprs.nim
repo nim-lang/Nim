@@ -881,14 +881,25 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
       # this could be added to all/most chcks.nim errors, and perhaps
       # can be disabled with a compile flag.
     msg.add " " & genFieldDefect(field, disc.sym)
-    let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
-    let discIndex = rdSetElemLoc(p.config, v, u.t)
-    let discName = genTypeInfo(p.module, disc.sym.typ, e.info)
-    const code = "{ #raiseFieldError2($2, #reprEnum((NI)$3, $4)); $5 }$n"
-    template fun(code) =
-      linefmt(p, cpsStmts, code, [rdLoc(test), strLit, discIndex, discName, raiseInstr(p)])
-    if op.magic == mNot: fun("if ($1)" & code)
-    else: fun("if (!($1))" & code)
+
+    template newLitRope(s: string): untyped = genStringLiteral(p.module, newStrNode(nkStrLit, s))
+    let strLit = newLitRope(msg)
+    ## discriminant check
+    template fun(code) = linefmt(p, cpsStmts, code, [rdLoc(test)])
+    if op.magic == mNot: fun("if ($1) ") else: fun("if (!($1)) ")
+
+    ## raiseFieldError2 on failure
+    if optNimV2 in p.config.globalOptions:
+      const code = "{ #raiseFieldError2($1, $2); $3} $n"
+      linefmt(p, cpsStmts, code, [strLit, newLitRope("(repr unavailable in newruntime)"), raiseInstr(p)])
+    else:
+      # complication needed for signed types
+      let first = p.config.firstOrd(disc.sym.typ)
+      let firstLit = int64Literal(cast[int](first))
+      let discIndex = rdSetElemLoc(p.config, v, u.t)
+      let discName = genTypeInfo(p.module, disc.sym.typ, e.info)
+      const code = "{ #raiseFieldError2($1, #reprDiscriminant(((NI)$2) + (NI)$3, $4)); $5} $n"
+      linefmt(p, cpsStmts, code, [strLit, discIndex, firstLit, discName, raiseInstr(p)])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   assert e[0].kind == nkDotExpr
