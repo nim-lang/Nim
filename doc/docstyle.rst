@@ -78,7 +78,7 @@ Whenever an example of usage would be helpful to the user, you should include on
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
 
-The commands ``nim doc`` and ``nim doc2`` will then correctly syntax highlight the Nim code within the documentation.
+The command ``nim doc`` will then correctly syntax highlight the Nim code within the documentation.
 
 Types
 -----
