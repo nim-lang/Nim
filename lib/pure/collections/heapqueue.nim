@@ -65,7 +65,7 @@ proc len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.
   heap.data.len
 
-proc `[]`*[T](heap: HeapQueue[T], i: Natural): T {.inline.} =
+proc `[]`*[T](heap: HeapQueue[T], i: Natural): lent T {.inline.} =
   ## Accesses the i-th element of `heap`.
   heap.data[i]
 
@@ -111,7 +111,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   heap.data[pos] = newitem
   siftdown(heap, startpos, pos)
 
-proc push*[T](heap: var HeapQueue[T], item: T) =
+proc push*[T](heap: var HeapQueue[T], item: sink T) =
   ## Pushes `item` onto heap, maintaining the heap invariant.
   heap.data.add(item)
   siftdown(heap, 0, len(heap)-1)
@@ -168,7 +168,7 @@ proc del*[T](heap: var HeapQueue[T], index: Natural) =
   if index < newLen:
     heap.siftup(index)
 
-proc replace*[T](heap: var HeapQueue[T], item: T): T =
+proc replace*[T](heap: var HeapQueue[T], item: sink T): T =
   ## Pops and returns the current smallest value, and add the new item.
   ## This is more efficient than pop() followed by push(), and can be
   ## more appropriate when using a fixed-size heap. Note that the value
@@ -186,7 +186,7 @@ proc replace*[T](heap: var HeapQueue[T], item: T): T =
   heap.data[0] = item
   siftup(heap, 0)
 
-proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
+proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
   ## Fast version of a push followed by a pop.
   runnableExamples:
     var heap = initHeapQueue[int]()
@@ -197,7 +197,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
     assert heap[0] == 6
     assert heap.pushpop(4) == 4
   result = item
-  if heap.len > 0 and heapCmp(heap.data[0], item):
+  if heap.len > 0 and heapCmp(heap.data[0], result):
     swap(result, heap.data[0])
     siftup(heap, 0)
 
