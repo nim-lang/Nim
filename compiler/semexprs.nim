@@ -1745,7 +1745,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ[0] = rhsTyp
         else:
-          typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
+          typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
 
     n[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))

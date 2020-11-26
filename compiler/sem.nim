@@ -96,7 +96,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
-      typeMismatch(c.config, info, formal, arg.typ)
+      typeMismatch(c.config, info, formal, arg.typ, arg)
       # error correction:
       result = copyTree(arg)
       result.typ = formal
