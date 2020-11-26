@@ -6,7 +6,7 @@ outputsub: ""
 
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
-import unittest
+import unittest, strtabs
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -177,3 +177,8 @@ not in table"""
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
     assert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
+
+
+assert rstToHtml("*Hello* **world**!", {},
+  newStringTable(modeStyleInsensitive)) ==
+  "<em>Hello</em> <strong>world</strong>!"
