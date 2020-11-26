@@ -37,7 +37,7 @@ type
     g: ControlFlowGraph
     graph: ModuleGraph
     otherRead: PNode
-    inLoop, inSpawn: int
+    inLoop, inSpawn, inLoopCond: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -295,8 +295,8 @@ proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
 proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
-  if isUnpackedTuple(dest) or isDecl or
-      (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or
+  if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or isDecl or
+      (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
       isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
@@ -588,8 +588,10 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
 
   of nkWhileStmt:
     inc c.inLoop
+    inc c.inLoopCond
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
+    dec c.inLoopCond
     var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
     result.add processScope(c, bodyScope, bodyResult)
