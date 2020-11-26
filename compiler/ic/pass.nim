@@ -75,32 +75,18 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   ## the closer writes the module to a rodfile if necessary, and parses
   ## the packed ast in any event
   var ic = IncrementalRef context
-  if ic.ready:
+  if not ic.ready:
     if not tryWriteModule(ic.m, ic.rodFile):
       internalError(graph.config, "failed to write " & ic.name & " rod file")
-
-  proc resolver(module: int32; name: string): PSym =
-    let ident = getIdent(graph.cache, name)
-    echo "resolve ", name
-    if module == PackageModuleId:
-      result = strTableGet(graph.packageSyms, ident)
-    else:
-      block found:
-        # we'll just do this stupidly for now
-        for i in countup(0, graph.ifaces.high):
-          template iface: Iface = graph.ifaces[i]
-          if iface.module != nil:
-            if iface.module.itemId.module == module:
-              result = getExport(graph, iface.module, ident)
-              break found
-        internalError(graph.config, "unable to resolve module " & $module)
-    if result == nil:
-      internalError(graph.config, "unable to retrieve " & name)
-    echo "ok"
-
-  # the result is immediately parsed from the rodfile
-  var decoder: PackedDecoder
-  initDecoder(decoder, graph.cache, resolver)
-  result = irToModule(ic.m.ast, ic.s, decoder)
+    result = n
+  else:
+    # the result is immediately parsed from the rodfile
+    var decoder: PackedDecoder
+    initDecoder(decoder, graph.cache, makeResolver graph)
+    result = irToModule(ic.m.ast, ic.s, decoder)
+    echo "N"
+    debug n
+    echo "R"
+    debug result
 
 const icPass* = makePass(open = opener, process = processor, close = closer)

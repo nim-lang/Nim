@@ -105,6 +105,8 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym
+
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
@@ -298,8 +300,33 @@ proc contains(state: IfaceState; iface: Iface): bool =
   else:
     iface.state == state
 
-proc initIface*(iface: var Iface; conf: ConfigRef; s: PSym) =
+proc makeResolver*(graph: ModuleGraph): Resolver =
+  proc resolver(module: int32; name: string): PSym =
+    ## this resolver callback serves to add the graph to the scope of
+    ## the packed ast decoder without requiring the graph itself
+    let ident = getIdent(graph.cache, name)
+    echo "resolve ", name
+    if module == PackageModuleId:
+      result = strTableGet(graph.packageSyms, ident)
+    else:
+      block found:
+        # we'll just do this stupidly for now
+        for i in countup(0, graph.ifaces.high):
+          template iface: Iface = graph.ifaces[i]
+          if iface.module != nil:
+            if iface.module.itemId.module == module:
+              result = getExport(graph, iface.module, ident)
+              break found
+        internalError(graph.config, "unable to resolve module " & $module)
+    if result == nil:
+      internalError(graph.config, "unable to retrieve " & name)
+    echo "ok"
+  result = resolver
+
+proc initIface*(iface: var Iface; graph: ModuleGraph; s: PSym) =
   ## try to initialize the iface with an available rodfile
+  template conf: ConfigRef = graph.config
+  initDecoder(iface.decoder, graph.cache, makeResolver graph)
   let m = tryReadModule(conf, rodFile(conf, s))
   iface.state =
     if m.isNone:
@@ -314,7 +341,7 @@ proc initExports*(g: ModuleGraph; m: PSym) =
   template iface: Iface = g.ifaces[m.position]
   if m.kind == skModule:
     if iface.state == Uninitialized:
-      initIface(iface, g.config, m)
+      initIface(iface, g, m)
   else:
     # implicit assertion that `m` is skPackage
     initStrTable m.pkgTab
@@ -336,7 +363,6 @@ proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
 
 proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
   ## return converters exported from the given module
-  template iface: Iface = g.ifaces[m.position]
   filterIt patterns(g, m): it.kind == skConverter
 
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =

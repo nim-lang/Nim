@@ -12,7 +12,7 @@ import bitabs, packed_ast
 import ".." / [ast, lineinfos, options, pathutils, ropes, msgs, idents]
 
 type
-  Resolver = proc(module: int32; name: string): PSym
+  Resolver* = proc(module: int32; name: string): PSym
   PackedDecoder* = object
     thisModule: int32
     lastFile: FileIndex # remember the last lookup entry.

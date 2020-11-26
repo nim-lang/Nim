@@ -48,7 +48,7 @@ proc writeModuleInto(m: Module; fn: AbsoluteFile; value = hash(m)) =
   try:
     # the following three values constitute the rodfile's "header"
     freeze(version, stream)
-    freeze(hash noSerializeSubstitute, stream)   # XXX: cache config hash?
+    freeze(hash noSerializeSubstitute, stream)
     freeze(value, stream)
     # try to reduce some buffer churn on the read
     freeze(compress(freeze m), stream)
@@ -101,7 +101,6 @@ template handleFileError(config: ConfigRef; fn: AbsoluteFile; e: typed) =
 proc tryReadModule*(config: ConfigRef; fn: AbsoluteFile): Option[Module] =
   ## populated option if reading the module was successful
   if not fileExists fn: return none(Module)
-  echo "📖", $fn
   var stream = newFileStream($fn, fmRead)
   try:
     let reply = readHeader stream
@@ -118,6 +117,8 @@ proc tryReadModule*(config: ConfigRef; fn: AbsoluteFile): Option[Module] =
       # we omitted the config during write, so we must now reinstall it
       m.ast.sh.config = config
       result = some m
+      when not defined(release):
+        echo "📖", $fn
     else:
       when not defined(release):
         echo reply.msg
