@@ -13,6 +13,14 @@
 ## See also: `db_odbc <db_odbc.html>`_, `db_sqlite <db_sqlite.html>`_,
 ## `db_postgres <db_postgres.html>`_.
 ##
+## Note: Nim does not currently include the ``libmysql.dll`` (Windows)
+## dynamically linked dependency for the proper operation of MySql wrapper.
+## You may also find that users that do not have a mysql shell installation
+## will require the ``libssl-1_1-X64.dll`` (Windows) and ``libcrypto-1_1-X64.dll``
+## dependencies to be included.
+## Tools which explore dependency requirements can be helpful in resolving
+## issues.
+##
 ## Parameter substitution
 ## ======================
 ##
