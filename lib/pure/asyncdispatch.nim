@@ -1199,9 +1199,10 @@ else:
     not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
 
   proc prependSeq(dest: var seq[Callback]; src: sink seq[Callback]) =
-    let old = move dest
+    var old = move dest
     dest = src
-    dest.add old
+    for i in 0..high(old):
+      dest.add(move old[i])
 
   proc processBasicCallbacks(
     fd: AsyncFD, event: Event
