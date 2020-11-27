@@ -163,6 +163,8 @@ proc getPunctAdornment(L: var Lexer, tok: var Token) =
     if L.buf[pos] != c: break
   inc L.col, pos - L.bufpos
   L.bufpos = pos
+  if tok.symbol == "\\": tok.kind = tkPunct
+    # nim extension: standalone \ can not be adornment
 
 proc getBracket(L: var Lexer, tok: var Token) =
   tok.kind = tkPunct
