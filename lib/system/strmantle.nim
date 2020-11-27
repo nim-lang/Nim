@@ -90,7 +90,7 @@ proc addInt*(result: var string; x: int64) =
     setLen(result, length)
   var next = length - 1
 
-  while num > 100:
+  while num >= 100:
     let index = (num mod 100) * 2
     num = num div 100
     result[next] = DIGITS[index + 1]
