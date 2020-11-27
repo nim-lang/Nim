@@ -290,9 +290,9 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       echo given
     else:
       maybeStyledEcho fgYellow, "Expected:"
-      maybeStyledEcho styleBright, "{", expected, "}\n"
+      maybeStyledEcho styleBright, expected, "\n"
       maybeStyledEcho fgYellow, "Gotten:"
-      maybeStyledEcho styleBright, "{", given, "}\n"
+      maybeStyledEcho styleBright, given, "\n"
 
 
   if backendLogging and (isAppVeyor or isAzure):
