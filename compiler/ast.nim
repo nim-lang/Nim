@@ -765,7 +765,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -1122,7 +1122,7 @@ proc safeLen*(n: PNode): int {.inline.} =
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
+  if n.kind in {nkStrLit..nkTripleStrLit}: result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 

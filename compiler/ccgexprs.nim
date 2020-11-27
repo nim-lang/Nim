@@ -881,6 +881,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
               [rdLoc(test), strLit, raiseInstr(p)])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
+  assert e[0].kind == nkDotExpr
   if optFieldCheck in p.options:
     var a: TLoc
     genRecordFieldAux(p, e[0], d, a)

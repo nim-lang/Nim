@@ -61,3 +61,17 @@ doAssert a.readDataStr(buffer, 1..3) == 3
 
 echo buffer
 
+
+block:
+  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
+  assert(ss.getPosition == 0)
+  assert(ss.peekStr(5) == "The q")
+  assert(ss.getPosition == 0) # haven't moved
+  assert(ss.readStr(5) == "The q")
+  assert(ss.getPosition == 5) # did move
+  assert(ss.peekLine() == "uick brown fox jumped over the lazy dog.")
+  assert(ss.getPosition == 5) # haven't moved
+  var str = newString(100)
+  assert(ss.peekLine(str))
+  assert(str == "uick brown fox jumped over the lazy dog.")
+  assert(ss.getPosition == 5) # haven't moved
