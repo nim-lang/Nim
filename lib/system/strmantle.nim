@@ -40,31 +40,95 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
+const DIGITS = "0001020304050607080910111213141516171819" &
+    "2021222324252627282930313233343536373839" &
+    "4041424344454647484950515253545556575859" &
+    "6061626364656667686970717273747576777879" &
+    "8081828384858687888990919293949596979899"
+
+
+proc digits10(num: uint64): int =
+  if num < 10:
+    result = 1
+  elif num < 100:
+    result = 2
+  elif num < 1_000:
+    result = 3
+  elif num < 10_000:
+    result = 4
+  elif num < 100_000:
+    result = 5
+  elif num < 1_000_000:
+    result = 6
+  elif num < 10_000_000:
+    result = 7
+  elif num < 100_000_000:
+    result = 8
+  elif num < 1_000_000_000:
+    result = 9
+  elif num < 10_000_000_000'u64:
+    result = 10
+  elif num < 100_000_000_000'u64:
+    result = 11
+  elif num < 1_000_000_000_000'u64:
+    result = 12
+  else:
+    result = 12 + digits10(num div 1_000_000_000_000'u64)
+
 proc addInt*(result: var string; x: int64) =
-  ## Converts integer to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45
-  ##   a.addInt(b) # a <- "12345"
   let base = result.len
-  setLen(result, base + sizeof(x)*4)
-  var i = 0
-  var y = x
-  while true:
-    var d = y div 10
-    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
-    inc(i)
-    y = d
-    if y == 0: break
+  var num: uint64
+  var length: int
   if x < 0:
-    result[base+i] = '-'
-    inc(i)
-  setLen(result, base+i)
-  # mirror the string:
-  for j in 0..i div 2 - 1:
-    swap(result[base+j], result[base+i-j-1])
+    num = uint64(-x)
+    length = base + digits10(num) + 1
+    setLen(result, length)
+    result[base] = '-'
+  else:
+    num = uint64(x)
+    length = base + digits10(num)
+    setLen(result, length)
+  var next = length - 1
+
+  while num > 100:
+    let index = (num mod 100) * 2
+    num = num div 100
+    result[next] = DIGITS[index + 1]
+    result[next - 1] = DIGITS[index]
+    dec(next, 2)
+
+  if num < 10:
+    result[next] = chr(num)
+  else:
+    let index = num * 2
+    result[next] = DIGITS[index + 1]
+    result[next - 1] = DIGITS[index]
+
+# proc addInt*(result: var string; x: int64) =
+#   ## Converts integer to its string representation and appends it to `result`.
+#   ##
+#   ## .. code-block:: Nim
+#   ##   var
+#   ##     a = "123"
+#   ##     b = 45
+#   ##   a.addInt(b) # a <- "12345"
+#   let base = result.len
+#   setLen(result, base + sizeof(x)*4)
+#   var i = 0
+#   var y = x
+#   while true:
+#     var d = y div 10
+#     result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
+#     inc(i)
+#     y = d
+#     if y == 0: break
+#   if x < 0:
+#     result[base+i] = '-'
+#     inc(i)
+#   setLen(result, base+i)
+#   # mirror the string:
+#   for j in 0..i div 2 - 1:
+#     swap(result[base+j], result[base+i-j-1])
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
