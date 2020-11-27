@@ -290,9 +290,9 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       echo given
     else:
       maybeStyledEcho fgYellow, "Expected:"
-      maybeStyledEcho styleBright, expected, "\n"
+      maybeStyledEcho styleBright, "{", expected, "}\n"
       maybeStyledEcho fgYellow, "Gotten:"
-      maybeStyledEcho styleBright, given, "\n"
+      maybeStyledEcho styleBright, "{", given, "}\n"
 
 
   if backendLogging and (isAppVeyor or isAzure):
@@ -517,9 +517,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           if exitCode != 0: exitCode = 1
           let bufB =
             if expected.sortoutput:
-              var x = splitLines(strip(buf.string))
+              var buf2 = buf.string
+              buf2.stripLineEnd
+              var x = splitLines(buf2)
               sort(x, system.cmp)
-              join(x, "\n")
+              join(x, "\n") & "\n"
             else:
               buf.string
           if exitCode != expected.exitCode:
