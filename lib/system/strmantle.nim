@@ -98,7 +98,7 @@ proc addInt*(result: var string; x: int64) =
     dec(next, 2)
 
   if num < 10:
-    result[next] = chr(num)
+    result[next] = chr(ord('0') + num)
   else:
     let index = num * 2
     result[next] = DIGITS[index + 1]
