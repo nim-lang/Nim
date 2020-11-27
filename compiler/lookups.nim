@@ -366,7 +366,7 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   ## when we cannot find the identifier, suggest nearby spellings
   # note: defined(nimfix) used to try `altSpelling` and
   # prettybase.replaceDeprecated(n.info, ident, alt)
-  if optSpellSuggest notin c.config.globalOptions: return
+  if c.config.spellSuggestMax == 0: return
   if c.compilesContextId > 0: return # don't slowdown inside compiles()
   type E = tuple[dist: int, depth: int, sym: PSym]
   proc `<`(a, b: E): bool =
@@ -383,31 +383,18 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
         list.push (dist, depth, identi)
     depth.inc
   if list.len == 0: return
+
   let e0 = list[0]
-  let maxNum = 100 # PRTEMP
-  for i in 0..<list.len: # xxx: items(list) should work for HeapQueue
-    if i >= maxNum: break
-    let e = list[i]
-    doAssert false
-    #[
-    BUG! this is wrong
-
-/Users/timothee/git_clone/nim/timn/tests/nim/all/t11346.nim(54, 3) Error: undeclared identifier: 'write2'
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(189, 6)]
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(500, 6)]
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(240, 6)]
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(508, 6)]
-  candidate misspelling (dist: 4, depth: 1): 'pointer' [type declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system.nim(36, 3)]
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(479, 6)]
-  candidate misspelling (dist: 1, depth: 1): 'write' [proc declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system/io.nim(491, 6)]
-  candidate misspelling (dist: 4, depth: 1): 'ref' [type declared in /Users/timothee/git_clone/nim/Nim_prs/lib/system.nim(43, 3)]
-
-    ]#
-    # if e0 < e: break
+  var count = 0
+  while true:
+    # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
+    if count >= c.config.spellSuggestMax or list.len == 0: break
+    let e = list.pop()
     let (dist, depth, sym) = e
     # result.add "\n  candidate misspelling (dist: $1): '$2'" % [$dist, sym.name.s]
     result.add "\n  candidate misspelling (dist: $1, depth: $2): '$3'" % [$dist, $depth, sym.name.s]
     addDeclaredLocMaybe(result, c.config, sym) # skipAlias not needed
+    count.inc
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
