@@ -15,7 +15,7 @@ import
   std/options as stdoptions
 
 import
-  store, packed_ast, to_packed_ast, from_packed_ast
+  store, packed_ast, contexts, to_packed_ast, from_packed_ast
 
 type
   IncrementalRef* = ref object of PPassContext
@@ -43,7 +43,18 @@ proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   else:
     ic.m = Module(name: ic.name)
     ic.m.ast.sh = Shared(config: ic.config)
-    ic.encoder = (ref PackedEncoder)(thisModule: s.itemId.module)
+
+    template iface: Iface = graph.ifaces[s.position]
+    iface.encoder = (ref PackedEncoder)()
+    initEncoder(iface.encoder[], s)
+
+    # hook the recordStmt() from the graph
+    ic.graph.recordStmt = proc(g: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
+      echo "record"
+      debug n
+      template iface: Iface = g.ifaces[m.position]
+      toPackedNode(n, iface.tree, iface.encoder[])
+
   result = ic
 
 proc processor(context: PPassContext, n: PNode): PNode =
@@ -52,7 +63,7 @@ proc processor(context: PPassContext, n: PNode): PNode =
   if ic.ready:
     result = nil
   else:
-    toPackedNode(n, ic.m.ast, ic.encoder[])
+    # use recordStmt to pack the node; see opener()
     result = n
 
 template performCaching*(context: PPassContext, n: PNode; body: untyped) =
@@ -62,7 +73,7 @@ template performCaching*(context: PPassContext, n: PNode; body: untyped) =
     result = nil
   else:
     body
-    toPackedNode(result, ic.m.ast, ic.encoder[])
+    #toPackedNode(result, ic.m.ast, ic.encoder[])
 
 proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
   ## add a generic
@@ -80,13 +91,14 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
       internalError(graph.config, "failed to write " & ic.name & " rod file")
     result = n
   else:
-    # the result is immediately parsed from the rodfile
-    var decoder: PackedDecoder
-    initDecoder(decoder, graph.cache, makeResolver graph)
-    result = irToModule(ic.m.ast, ic.s, decoder)
-    echo "N"
-    debug n
-    echo "R"
-    debug result
+    when true:
+      result = n
+    else:
+      template iface: Iface = graph.ifaces[ic.s.position]
+
+      # the result is immediately parsed from the rodfile
+      var decoder: PackedDecoder
+      initDecoder(decoder, graph.cache, makeResolver graph)
+      result = irToModule(iface.tree, ic.s, decoder)
 
 const icPass* = makePass(open = opener, process = processor, close = closer)

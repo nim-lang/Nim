@@ -28,23 +28,24 @@
 import ast, intsets, tables, options, lineinfos, hashes, idents,
   incremental, btrees, md5, astalgo, msgs
 
-import ic/[packed_ast, from_packed_ast, store]
+type
+  SigHash* = distinct MD5Digest
+
+import ic/[packed_ast, contexts, store]
 
 import std/sequtils
 import std/options as stdoptions
 
 type
-  SigHash* = distinct MD5Digest
-
   IfaceState = enum Uninitialized, Loaded, Unpacked, Unloaded
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
-    decoder: PackedDecoder
+    encoder*: ref PackedEncoder
+    decoder*: ref PackedDecoder
     module*: PSym       ## module this "Iface" belongs to
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
-    exports: TStrTable
     tree: PackedTree
 
   ModuleGraph* = ref object
@@ -286,6 +287,8 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
 
+import ic/[to_packed_ast, from_packed_ast]
+
 proc `state=`*(iface: var Iface; state: IfaceState) =
   ## guard crazy state changes
   assert state > iface.state, "state can only advance"
@@ -326,12 +329,13 @@ proc makeResolver*(graph: ModuleGraph): Resolver =
 proc initIface*(iface: var Iface; graph: ModuleGraph; s: PSym) =
   ## try to initialize the iface with an available rodfile
   template conf: ConfigRef = graph.config
-  initDecoder(iface.decoder, graph.cache, makeResolver graph)
   let m = tryReadModule(conf, rodFile(conf, s))
   iface.state =
     if m.isNone:
       Unloaded
     else:
+      iface.decoder = new (ref PackedDecoder)
+      initDecoder(iface.decoder[], graph.cache, makeResolver graph)
       iface.tree = (get m).ast
       assert iface.tree[0].kind != nkNone, "unexpectedly none ast"
       Loaded
@@ -355,7 +359,7 @@ proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
   of Uninitialized:
     assert false, "initialize iface first"
   of Loaded:
-    iface.patterns = unpackAllSymbols(iface.tree, iface.decoder, iface.module)
+    iface.patterns = unpackAllSymbols(iface.tree, iface.decoder[], iface.module)
     iface.state = Unpacked
   of Unpacked, Unloaded:
     discard
@@ -397,7 +401,7 @@ iterator symbols*(g: ModuleGraph; m: PSym): PSym =
   of Uninitialized:
     assert false, "init iface first"
   of Loaded:
-    for s in unpackSymbols(iface.tree, iface.decoder, iface.module):
+    for s in unpackSymbols(iface.tree, iface.decoder[], iface.module):
       yield s
   of Unpacked, Unloaded:
     for s in iface.patterns:
@@ -410,7 +414,7 @@ iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   of Uninitialized:
     assert false, "init iface first"
   of Loaded:
-    for s in unpackSymbols(iface.tree, iface.decoder, iface.module,
+    for s in unpackSymbols(iface.tree, iface.decoder[], iface.module,
                            name = name):
       yield s
   of Unpacked, Unloaded:

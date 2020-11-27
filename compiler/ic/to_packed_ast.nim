@@ -8,21 +8,12 @@
 #
 
 import std / [hashes, tables, md5, sequtils]
-import packed_ast, bitabs
+import packed_ast, bitabs, contexts
 import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes]
 
 when not defined(release): import ".." / astalgo # debug()
 
 type
-  PackedEncoder* = object
-    thisModule*: int32
-    lastFile: FileIndex # remember the last lookup entry.
-    lastLit: LitId
-    filenames: Table[FileIndex, LitId]
-    pendingTypes: seq[PType]
-    pendingSyms: seq[PSym]
-    typeMap: Table[ItemId, TypeId]  # ItemId.item -> TypeId
-    symMap: Table[ItemId, SymId]    # ItemId.item -> SymId
   Context = PackedEncoder  # legacy name
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
@@ -261,7 +252,8 @@ proc addGeneric*(m: var Module; c: var Context; key: GenericKey; s: PSym) =
 
 proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
   ## serialize a module into packed ast
-  var c = Context(thisModule: module.itemId.module)
+  var c: PackedEncoder
+  initEncoder(c, module)
   toPackedNode(n, ir, c)
 
   when not defined(release):
