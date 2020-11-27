@@ -31,12 +31,12 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
-- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
+- `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
-  active async event handles/file descriptors
+  active async event handles/file descriptors.
 
 - ``--gc:orc`` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
@@ -44,15 +44,17 @@
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
 - Added `**` to jsffi.
+
 - `writeStackTrace` is available in JS backend now.
 
 ## Language changes
 
-- `nimscript` now handles `except Exception as e`
+- `nimscript` now handles `except Exception as e`.
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
