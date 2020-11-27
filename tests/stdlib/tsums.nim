@@ -6,7 +6,7 @@ while 1.0 + epsilon != 1.0:
   epsilon /= 2.0
 let data = @[1.0, epsilon, -epsilon]
 assert sumKbn(data) == 1.0
-assert sumPairs(data) != 1.0 # known to fail
+# assert sumPairs(data) != 1.0 # known to fail in 64 bits
 assert (1.0 + epsilon) - epsilon != 1.0
 
 var tc1: seq[float]
