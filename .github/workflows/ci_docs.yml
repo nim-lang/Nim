@@ -1,22 +1,37 @@
 name: Nim Docs CI
 on:
   push:
-    # Run only on changes on these files
     paths:
-      - 'lib/**.nim'
+      - 'compiler/docgen.nim'
+      - 'compiler/renderverbatim.nim'
+      - 'config/nimdoc.cfg'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
+      - 'lib/**.nim'
+      - 'nimdoc/testproject/expected/testproject.html'
+      - 'tools/dochack/dochack.nim'
+      - 'tools/kochdocs.nim'
+      - '.github/workflows/ci_docs.yml'
+      - 'koch.nim'
+  pull_request:
+    # Run only on changes on these files.
+    paths:
+      - 'compiler/docgen.nim'
+      - 'compiler/renderverbatim.nim'
+      - 'config/nimdoc.cfg'
+      - 'doc/**.rst'
+      - 'doc/nimdoc.css'
+      - 'lib/**.nim'
+      - 'nimdoc/testproject/expected/testproject.html'
+      - 'tools/dochack/dochack.nim'
+      - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
 
-  pull_request:
-    # Run only on changes on these files
-    paths:
-      - 'lib/**.nim'
-      - 'doc/**.rst'
-      - '.github/workflows/ci_docs.yml'
 
 jobs:
   build:
+    if: |
+      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -49,11 +64,11 @@ jobs:
           curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
           7z x dist/mingw64.7z -odist
           7z x dist/dlls.zip -obin
-          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
-        run: echo "::add-path::${{ github.workspace }}/bin"
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
       - name: 'Get current csources version'
         id: csources-version
@@ -111,16 +126,13 @@ jobs:
         shell: bash
         run: ./koch boot -d:release
 
+      - name: 'Clone fusion'
+        shell: bash
+        run: ./koch fusion
+
       - name: 'Build documentation'
         shell: bash
         run: ./koch doc --git.commit:devel
-
-      - name: 'Prepare documentation for deployment'
-        if: |
-          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
-          matrix.target == 'linux'
-        shell: bash
-        run: cp -f doc/html/{overview,index}.html
 
       - name: 'Publish documentation to Github Pages'
         if: |

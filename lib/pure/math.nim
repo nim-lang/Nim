@@ -52,11 +52,11 @@
 ##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
-include "system/inclrtl"
+import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops
+import bitops, fenv
 
 proc binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -158,6 +158,40 @@ proc classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
+proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
+      since: (1, 5), inline, noSideEffect.} =
+  ## Checks if two float values are almost equal, using
+  ## `machine epsilon <https://en.wikipedia.org/wiki/Machine_epsilon>`_.
+  ##
+  ## `unitsInLastPlace` is the max number of
+  ## `units in last place <https://en.wikipedia.org/wiki/Unit_in_the_last_place>`_
+  ## difference tolerated when comparing two numbers. The larger the value, the
+  ## more error is allowed. A ``0`` value means that two numbers must be exactly the
+  ## same to be considered equal.
+  ##
+  ## The machine epsilon has to be scaled to the magnitude of the values used
+  ## and multiplied by the desired precision in ULPs unless the difference is
+  ## subnormal.
+  ##
+  # taken from: https://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
+  runnableExamples:
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert almostEqual(Inf, -Inf) == false
+    doAssert almostEqual(-Inf, Inf) == false
+    doAssert almostEqual(Inf, NaN) == false
+    doAssert almostEqual(NaN, NaN) == false
+
+  if x == y:
+    # short circuit exact equality -- needed to catch two infinities of
+    # the same sign. And perhaps speeds things up a bit sometimes.
+    return true
+  let diff = abs(x - y)
+  result = diff <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
+      diff < minimumPositiveValue(T)
+
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
   ##
@@ -195,17 +229,6 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 2)
   result = result or (result shr 1)
   result += 1 + ord(x <= 0)
-
-proc countBits32*(n: int32): int {.noSideEffect, deprecated:
-  "Deprecated since v0.20.0; use 'bitops.countSetBits' instead".} =
-  runnableExamples:
-    doAssert countBits32(7) == 3
-    doAssert countBits32(8) == 1
-    doAssert countBits32(15) == 4
-    doAssert countBits32(16) == 1
-    doAssert countBits32(17) == 2
-
-  bitops.countSetBits(n)
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in ``x``.
@@ -611,13 +634,6 @@ when not defined(js): # C
       ##  echo gamma(4.0)  # 6.0
       ##  echo gamma(11.0) # 3628800.0
       ##  echo gamma(-1.0) # nan
-    proc tgamma*(x: float32): float32
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
-          importc: "tgammaf", header: "<math.h>".}
-    proc tgamma*(x: float64): float64
-      {.deprecated: "Deprecated since v0.19.0; use 'gamma' instead",
-          importc: "tgamma", header: "<math.h>".}
-      ## The gamma function
     proc lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     proc lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".}
       ## Computes the natural log of the gamma function for ``x``.
@@ -750,12 +766,6 @@ when not defined(js): # C
       ##  echo trunc(PI) # 3.0
       ##  echo trunc(-1.85) # -1.0
 
-  proc fmod*(x, y: float32): float32 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead",
-      importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.deprecated: "Deprecated since v0.19.0; use 'mod' instead",
-      importc: "fmod", header: "<math.h>".}
-    ## Computes the remainder of ``x`` divided by ``y``.
-
   proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
   proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
     ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
@@ -792,8 +802,7 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
-proc round*[T: float32|float64](x: T, places: int): T {.
-    deprecated: "use strformat module instead".} =
+proc round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
   ##
   ## This function is NOT reliable. Floating point numbers cannot hold
@@ -864,10 +873,10 @@ when not defined(js):
     ## float value) equals ``m * 2**n``. frexp stores n in `exponent` and returns
     ## m.
     ##
-    ## .. code-block:: nim
-    ##  var x: int
-    ##  echo frexp(5.0, x) # 0.625
-    ##  echo x # 3
+    runnableExamples:
+      var x: int
+      doAssert frexp(5.0, x) == 0.625
+      doAssert x == 3
     var exp: int32
     result = c_frexp(x, exp)
     exponent = exp
@@ -931,9 +940,9 @@ proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Both parts have the same sign as ``x``.  Analogous to the ``modf``
   ## function in C.
   ##
-  ## .. code-block:: nim
-  ##  echo splitDecimal(5.25)  # (intpart: 5.0, floatpart: 0.25)
-  ##  echo splitDecimal(-2.73) # (intpart: -2.0, floatpart: -0.73)
+  runnableExamples:
+    doAssert splitDecimal(5.25) == (intpart: 5.0, floatpart: 0.25)
+    doAssert splitDecimal(-2.73) == (intpart: -2.0, floatpart: -0.73)
   var
     absolute: T
   absolute = abs(x)
@@ -951,8 +960,8 @@ proc degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## See also:
   ## * `radToDeg proc <#radToDeg,T>`_
   ##
-  ## .. code-block:: nim
-  ##  echo degToRad(180.0) # 3.141592653589793
+  runnableExamples:
+    doAssert degToRad(180.0) == 3.141592653589793
   result = T(d) * RadPerDeg
 
 proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
@@ -961,8 +970,8 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## See also:
   ## * `degToRad proc <#degToRad,T>`_
   ##
-  ## .. code-block:: nim
-  ##  echo degToRad(2 * PI) # 360.0
+  runnableExamples:
+    doAssert radToDeg(2 * PI) == 360.0
   result = T(d) / RadPerDeg
 
 proc sgn*[T: SomeNumber](x: T): int {.inline.} =
@@ -973,16 +982,16 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## * `1` for positive numbers and ``Inf``,
   ## * `0` for positive zero, negative zero and ``NaN``
   ##
-  ## .. code-block:: nim
-  ##  echo sgn(5)    # 1
-  ##  echo sgn(0)    # 0
-  ##  echo sgn(-4.1) # -1
+  runnableExamples:
+    doAssert sgn(5) == 1
+    doAssert sgn(0) == 0
+    doAssert sgn(-4.1) == -1
   ord(T(0) < x) - ord(x < T(0))
 
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x: T, y: Natural): T =
+proc `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use
@@ -1103,143 +1112,3 @@ proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
-
-when isMainModule and not defined(js) and not windowsCC89:
-  # Check for no side effect annotation
-  proc mySqrt(num: float): float {.noSideEffect.} =
-    return sqrt(num)
-
-  # check gamma function
-  assert(gamma(5.0) == 24.0) # 4!
-  assert($tgamma(5.0) == $24.0) # 4!
-  assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
-  assert(erf(6.0) > erf(5.0))
-  assert(erfc(6.0) < erfc(5.0))
-
-when isMainModule:
-  # Function for approximate comparison of floats
-  proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
-
-  block: # prod
-    doAssert prod([1, 2, 3, 4]) == 24
-    doAssert prod([1.5, 3.4]) == 5.1
-    let x: seq[float] = @[]
-    doAssert prod(x) == 1.0
-
-  block: # round() tests
-    # Round to 0 decimal places
-    doAssert round(54.652) ==~ 55.0
-    doAssert round(54.352) ==~ 54.0
-    doAssert round(-54.652) ==~ -55.0
-    doAssert round(-54.352) ==~ -54.0
-    doAssert round(0.0) ==~ 0.0
-    # Round to positive decimal places
-    doAssert round(-547.652, 1) ==~ -547.7
-    doAssert round(547.652, 1) ==~ 547.7
-    doAssert round(-547.652, 2) ==~ -547.65
-    doAssert round(547.652, 2) ==~ 547.65
-    # Round to negative decimal places
-    doAssert round(547.652, -1) ==~ 550.0
-    doAssert round(547.652, -2) ==~ 500.0
-    doAssert round(547.652, -3) ==~ 1000.0
-    doAssert round(547.652, -4) ==~ 0.0
-    doAssert round(-547.652, -1) ==~ -550.0
-    doAssert round(-547.652, -2) ==~ -500.0
-    doAssert round(-547.652, -3) ==~ -1000.0
-    doAssert round(-547.652, -4) ==~ 0.0
-
-  block: # splitDecimal() tests
-    doAssert splitDecimal(54.674).intpart ==~ 54.0
-    doAssert splitDecimal(54.674).floatpart ==~ 0.674
-    doAssert splitDecimal(-693.4356).intpart ==~ -693.0
-    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-    doAssert splitDecimal(0.0).intpart ==~ 0.0
-    doAssert splitDecimal(0.0).floatpart ==~ 0.0
-
-  block: # trunc tests for vcc
-    doAssert(trunc(-1.1) == -1)
-    doAssert(trunc(1.1) == 1)
-    doAssert(trunc(-0.1) == -0)
-    doAssert(trunc(0.1) == 0)
-
-    #special case
-    doAssert(classify(trunc(1e1000000)) == fcInf)
-    doAssert(classify(trunc(-1e1000000)) == fcNegInf)
-    doAssert(classify(trunc(0.0/0.0)) == fcNan)
-    doAssert(classify(trunc(0.0)) == fcZero)
-
-    #trick the compiler to produce signed zero
-    let
-      f_neg_one = -1.0
-      f_zero = 0.0
-      f_nan = f_zero / f_zero
-
-    doAssert(classify(trunc(f_neg_one*f_zero)) == fcNegZero)
-
-    doAssert(trunc(-1.1'f32) == -1)
-    doAssert(trunc(1.1'f32) == 1)
-    doAssert(trunc(-0.1'f32) == -0)
-    doAssert(trunc(0.1'f32) == 0)
-    doAssert(classify(trunc(1e1000000'f32)) == fcInf)
-    doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
-    doAssert(classify(trunc(f_nan.float32)) == fcNan)
-    doAssert(classify(trunc(0.0'f32)) == fcZero)
-
-  block: # sgn() tests
-    assert sgn(1'i8) == 1
-    assert sgn(1'i16) == 1
-    assert sgn(1'i32) == 1
-    assert sgn(1'i64) == 1
-    assert sgn(1'u8) == 1
-    assert sgn(1'u16) == 1
-    assert sgn(1'u32) == 1
-    assert sgn(1'u64) == 1
-    assert sgn(-12342.8844'f32) == -1
-    assert sgn(123.9834'f64) == 1
-    assert sgn(0'i32) == 0
-    assert sgn(0'f32) == 0
-    assert sgn(NegInf) == -1
-    assert sgn(Inf) == 1
-    assert sgn(NaN) == 0
-
-  block: # fac() tests
-    try:
-      discard fac(-1)
-    except AssertionError:
-      discard
-
-    doAssert fac(0) == 1
-    doAssert fac(1) == 1
-    doAssert fac(2) == 2
-    doAssert fac(3) == 6
-    doAssert fac(4) == 24
-
-  block: # floorMod/floorDiv
-    doAssert floorDiv(8, 3) == 2
-    doAssert floorMod(8, 3) == 2
-
-    doAssert floorDiv(8, -3) == -3
-    doAssert floorMod(8, -3) == -1
-
-    doAssert floorDiv(-8, 3) == -3
-    doAssert floorMod(-8, 3) == 1
-
-    doAssert floorDiv(-8, -3) == 2
-    doAssert floorMod(-8, -3) == -2
-
-    doAssert floorMod(8.0, -3.0) ==~ -1.0
-    doAssert floorMod(-8.5, 3.0) ==~ 0.5
-
-  block: # log
-    doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
-    doAssert log2(8.0'f64) == 3.0'f64
-    doAssert log2(4.0'f64) == 2.0'f64
-    doAssert log2(2.0'f64) == 1.0'f64
-    doAssert log2(1.0'f64) == 0.0'f64
-    doAssert classify(log2(0.0'f64)) == fcNegInf
-
-    doAssert log2(8.0'f32) == 3.0'f32
-    doAssert log2(4.0'f32) == 2.0'f32
-    doAssert log2(2.0'f32) == 1.0'f32
-    doAssert log2(1.0'f32) == 0.0'f32
-    doAssert classify(log2(0.0'f32)) == fcNegInf

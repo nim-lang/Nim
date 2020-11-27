@@ -36,6 +36,25 @@ block fileOperations:
   createDir(dname)
   doAssert dirExists(dname)
 
+  block: # copyFile, copyFileToDir
+    doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
+    let fname = "D20201009T112235"
+    let fname2 = "D20201009T112235.2"
+    writeFile(dname/fname, "foo")
+    let sub = "sub"
+    doAssertRaises(OSError): copyFile(dname/fname, dname/sub/fname2)
+    doAssertRaises(OSError): copyFileToDir(dname/fname, dname/sub)
+    doAssertRaises(ValueError): copyFileToDir(dname/fname, "")
+    copyFile(dname/fname, dname/fname2)
+    doAssert fileExists(dname/fname2)
+    createDir(dname/sub)
+    copyFileToDir(dname/fname, dname/sub)
+    doAssert fileExists(dname/sub/fname)
+    removeDir(dname/sub)
+    doAssert not dirExists(dname/sub)
+    removeFile(dname/fname)
+    removeFile(dname/fname2)
+
   # Test creating files and dirs
   for dir in dirs:
     createDir(dname/dir)
@@ -348,6 +367,9 @@ block ospaths:
   doAssert relativePath("", "foo") == ""
   doAssert relativePath("././/foo", "foo//./") == "."
 
+  doAssert relativePath(getCurrentDir() / "bar", "foo") == "../bar".unixToNativePath
+  doAssert relativePath("bar", getCurrentDir() / "foo") == "../bar".unixToNativePath
+
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
     doAssert relativePath(r"c:\foo\bar\baz.nim", r"c:\foo") == r"bar\baz.nim"
@@ -444,3 +466,76 @@ block isRelativeTo:
   doAssert isRelativeTo("foo/bar", ".")
   doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
   doAssert not isRelativeTo("/foo2", "/foo")
+
+block: # quoteShellWindows
+  assert quoteShellWindows("aaa") == "aaa"
+  assert quoteShellWindows("aaa\"") == "aaa\\\""
+  assert quoteShellWindows("") == "\"\""
+
+block: # quoteShellWindows
+  assert quoteShellPosix("aaa") == "aaa"
+  assert quoteShellPosix("aaa a") == "'aaa a'"
+  assert quoteShellPosix("") == "''"
+  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+
+block: # quoteShell
+  when defined(posix):
+    assert quoteShell("") == "''"
+
+block: # normalizePathEnd
+  # handle edge cases correctly: shouldn't affect whether path is
+  # absolute/relative
+  doAssert "".normalizePathEnd(true) == ""
+  doAssert "".normalizePathEnd(false) == ""
+  doAssert "/".normalizePathEnd(true) == $DirSep
+  doAssert "/".normalizePathEnd(false) == $DirSep
+
+  when defined(posix):
+    doAssert "//".normalizePathEnd(false) == "/"
+    doAssert "foo.bar//".normalizePathEnd == "foo.bar"
+    doAssert "bar//".normalizePathEnd(trailingSep = true) == "bar/"
+  when defined(Windows):
+    doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
+    doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
+    # this one is controversial: we could argue for returning `D:\` instead,
+    # but this is simplest.
+    doAssert r"D:\".normalizePathEnd == r"D:"
+    doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
+    doAssert "/".normalizePathEnd == r"\"
+
+block: # isValidFilename
+  # Negative Tests.
+  doAssert not isValidFilename("abcd", maxLen = 2)
+  doAssert not isValidFilename("0123456789", maxLen = 8)
+  doAssert not isValidFilename("con")
+  doAssert not isValidFilename("aux")
+  doAssert not isValidFilename("prn")
+  doAssert not isValidFilename("OwO|UwU")
+  doAssert not isValidFilename(" foo")
+  doAssert not isValidFilename("foo ")
+  doAssert not isValidFilename("foo.")
+  doAssert not isValidFilename("con.txt")
+  doAssert not isValidFilename("aux.bat")
+  doAssert not isValidFilename("prn.exe")
+  doAssert not isValidFilename("nim>.nim")
+  doAssert not isValidFilename(" foo.log")
+  # Positive Tests.
+  doAssert isValidFilename("abcd", maxLen = 42.Positive)
+  doAssert isValidFilename("c0n")
+  doAssert isValidFilename("foo.aux")
+  doAssert isValidFilename("bar.prn")
+  doAssert isValidFilename("OwO_UwU")
+  doAssert isValidFilename("cron")
+  doAssert isValidFilename("ux.bat")
+  doAssert isValidFilename("nim.nim")
+  doAssert isValidFilename("foo.log")
+
+import sugar
+
+block: # normalizeExe
+  doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    doAssert "foo".dup(normalizeExe) == "./foo"
+    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+  when defined(windows):
+    doAssert "foo".dup(normalizeExe) == "foo"

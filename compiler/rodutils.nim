@@ -80,16 +80,14 @@ proc decodeStr*(s: cstring, pos: var int): string =
     else: break
   pos = i
 
-const
-  chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 {.push overflowChecks: off.}
 
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
 # which are common in ROD files:
-const
-  vintDelta = 5
+const vintDelta = 5
 
 template encodeIntImpl(self) =
   var d: char

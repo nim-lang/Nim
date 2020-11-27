@@ -82,7 +82,7 @@ Async traceback:
     asyncmacro\.nim\(\d+?\)\s+?a
     asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
       ## Resumes an async procedure
-    tasync_traceback\.nim\(\d+?\)\s+?aIter
+    asyncmacro\.nim\(\d+?\)\s+?aIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: b failure
@@ -110,12 +110,14 @@ Async traceback:
       ## Executes pending callbacks
     asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
       ## Resumes an async procedure
-    tasync_traceback\.nim\(\d+?\)\s+?fooIter
+    asyncmacro\.nim\(\d+?\)\s+?fooIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: bar failure
 Exception type:
 """
+
+# TODO: is asyncmacro good enough location for fooIter traceback/debugging? just put the callsite info for all?
 
 let resLines = splitLines(result.strip)
 let expLines = splitLines(expected.strip)

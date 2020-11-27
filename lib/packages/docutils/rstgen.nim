@@ -28,6 +28,8 @@
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
 
+import ../../std/private/since
+
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
@@ -55,7 +57,9 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    filename*: string
+    outDir*: string      ## output directory, initialized by docgen.nim
+    destFile*: string    ## output (HTML) file, initialized by docgen.nim
+    filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
@@ -77,6 +81,9 @@ type
     filename: string
     testCmd: string
     status: int
+
+proc prettyLink*(file: string): string =
+  changeFileExt(file, "").replace("_._", "..")
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -574,7 +581,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   var chunks: seq[string] = @[]
   for name in modules:
-    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+    chunks.add("<a href=\"$1.html\">$2</a>" % [name, name.prettyLink])
 
   result.add(chunks.join(", ") & ".<br/>")
 
@@ -750,7 +757,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
+  let
+    htmlFileRelPath = if d.outDir.len == 0:
+                        # /foo/bar/zoo.nim -> zoo.html
+                        changeFileExt(extractFilename(d.filename), HtmlExt)
+                      else: # d is initialized in docgen.nim
+                        # outDir   = /foo              -\
+                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+                        d.destFile.relativePath(d.outDir, '/')
+  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
@@ -832,6 +847,18 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     """
   else:
     htmlOut = "<img src=\"$1\"$2/>"
+
+  # support for `:target:` links for images:
+  var target = esc(d.target, getFieldValue(n, "target").strip())
+  if target.len > 0:
+    # `htmlOut` needs to be of the following format for link to work for images:
+    # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
+    var htmlOutWithLink = ""
+    dispA(d.target, htmlOutWithLink,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [htmlOut, target])
+    htmlOut = htmlOutWithLink
+
   dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
         [esc(d.target, arg), options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
@@ -865,7 +892,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "nim c -r $1"
+      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
     else:
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
@@ -1067,7 +1094,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable:
+  of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
@@ -1327,6 +1354,16 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
+
+
+proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
+  ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
+  runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
+  if rstSource.len == 0: return
+  var option: bool
+  var rstGenera: RstGenerator
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
 
 
 when isMainModule:

@@ -16,8 +16,8 @@
 ## Same as:
 ##
 ## .. code-block:: nim
-##   import os, strutils, times, parseutils, parseopt, hashes, tables, sets
+##   import os, strutils, times, parseutils, hashes, tables, sets
+##   when not defined(js): import parseopt
 
-import os, strutils, times, parseutils, parseopt, hashes, tables, sets
-
-
+import os, strutils, times, parseutils, hashes, tables, sets
+when not defined(js): import parseopt

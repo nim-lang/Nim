@@ -26,6 +26,12 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     for i in 1..u-1: result.add n[i]
     result.add arg0
     for i in u+1..n.len-1: result.add n[i]
+  elif n.kind in {nnkAsgn, nnkExprEqExpr}:
+    var field = n[0]
+    if n[0].kind == nnkDotExpr and n[0][0].eqIdent("_"):
+      # handle _.field = ...
+      field = n[0][1]
+    result = newDotExpr(arg0, field).newAssignment n[1]
   else:
     # handle e.g. 'x.dup(sort)'
     result = newNimNode(nnkCall, n)
@@ -33,17 +39,10 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     result.add arg0
 
 proc underscoredCalls*(result, calls, arg0: NimNode) =
-  proc handleStmtList(result, n, arg0: NimNode) =
-    for a in n:
-      if a.kind in {nnkStmtList, nnkStmtListExpr}:
-        handleStmtList(result, a, arg0)
-      else:
-        result.add underscoredCall(a, arg0)
+  expectKind calls, {nnkArgList, nnkStmtList, nnkStmtListExpr}
 
-  expectKind calls, nnkArgList
-  if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
-    # the 'macro: body' syntax is used:
-    handleStmtList(result, calls[0], arg0)
-  else:
-    for call in calls:
+  for call in calls:
+    if call.kind in {nnkStmtList, nnkStmtListExpr}:
+      underscoredCalls(result, call, arg0)
+    else:
       result.add underscoredCall(call, arg0)

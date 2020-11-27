@@ -28,7 +28,7 @@ proc getIdentNode(c: PContext; n: PNode): PNode =
 
 type
   GenericCtx = object
-    toMixin: IntSet
+    toMixin, toBind: IntSet
     cursorInBody: bool # only for nimsuggest
     bracketExpr: PNode
 
@@ -95,7 +95,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
       else:
         result = n
     else:
-      result = newSymNodeTypeDesc(s, n.info)
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
     onUse(n.info, s)
   of skParam:
     result = n
@@ -103,7 +103,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skType:
     if (s.typ != nil) and
        (s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} == {}):
-      result = newSymNodeTypeDesc(s, n.info)
+      result = newSymNodeTypeDesc(s, c.idgen, n.info)
     else:
       result = n
     onUse(n.info, s)
@@ -124,7 +124,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     if ident.id notin ctx.toMixin and withinMixin notin flags:
       errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
-    if withinBind in flags:
+    if withinBind in flags or s.id in ctx.toBind:
       result = symChoice(c, n, s, scClosed)
     elif s.isMixedIn:
       result = symChoice(c, n, s, scForceOpen)
@@ -155,7 +155,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
     var s = searchInScopes(c, ident, routineKinds).skipAlias(n, c.config)
     if s != nil:
       isMacro = s.kind in {skTemplate, skMacro}
-      if withinBind in flags:
+      if withinBind in flags or s.id in ctx.toBind:
         result = newDot(result, symChoice(c, n, s, scClosed))
       elif s.isMixedIn:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
@@ -211,6 +211,8 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = semGenericStmt(c, n[0], flags+{withinBind}, ctx)
   of nkMixinStmt:
     result = semMixinStmt(c, n, ctx.toMixin)
+  of nkBindStmt:
+    result = semBindStmt(c, n, ctx.toBind)
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1, c.config)
@@ -226,8 +228,11 @@ proc semGenericStmt(c: PContext, n: PNode,
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles, mAstToStr}
-      let sc = symChoice(c, fn, s, if s.isMixedIn: scForceOpen else: scOpen)
+      mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
+      let whichChoice = if s.id in ctx.toBind: scClosed
+                        elif s.isMixedIn: scForceOpen
+                        else: scOpen
+      let sc = symChoice(c, fn, s, whichChoice)
       case s.kind
       of skMacro:
         if macroToExpand(s) and sc.safeLen <= 1:
@@ -260,15 +265,15 @@ proc semGenericStmt(c: PContext, n: PNode,
         # We're not interested in the example code during this pass so let's
         # skip it
         if s.magic == mRunnableExamples:
-          inc first
+          first = result.safeLen # see trunnableexamples.fun3
       of skGenericParam:
-        result[0] = newSymNodeTypeDesc(s, fn.info)
+        result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
         onUse(fn.info, s)
         first = 1
       of skType:
         # bad hack for generics:
         if (s.typ != nil) and (s.typ.kind != tyGenericParam):
-          result[0] = newSymNodeTypeDesc(s, fn.info)
+          result[0] = newSymNodeTypeDesc(s, c.idgen, fn.info)
           onUse(fn.info, s)
           first = 1
       else:
@@ -465,7 +470,7 @@ proc semGenericStmt(c: PContext, n: PNode,
                                               flags, ctx)
     if n[paramsPos].kind != nkEmpty:
       if n[paramsPos][0].kind != nkEmpty:
-        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nil, n.info))
+        addPrelimDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextId c.idgen, nil, n.info))
       n[paramsPos] = semGenericStmt(c, n[paramsPos], flags, ctx)
     n[pragmasPos] = semGenericStmt(c, n[pragmasPos], flags, ctx)
     var body: PNode
@@ -492,12 +497,14 @@ proc semGenericStmt(c: PContext, n: PNode,
 proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
   ctx.toMixin = initIntSet()
+  ctx.toBind = initIntSet()
   result = semGenericStmt(c, n, {}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
 proc semConceptBody(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
   ctx.toMixin = initIntSet()
+  ctx.toBind = initIntSet()
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 

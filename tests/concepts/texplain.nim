@@ -1,41 +1,45 @@
 discard """
   cmd: "nim c --verbosity:0 --colors:off $file"
   nimout: '''
-texplain.nim(158, 10) Hint: Non-matching candidates for e(y)
+texplain.nim(164, 10) Hint: Non-matching candidates for e(y)
 proc e(i: int): int
   first type mismatch at position: 1
   required type for i: int
   but expression 'y' is of type: MatchingType
 
-texplain.nim(161, 7) Hint: Non-matching candidates for e(10)
+texplain.nim(167, 7) Hint: Non-matching candidates for e(10)
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
   but expression '10' is of type: int literal(10)
-texplain.nim(124, 6) ExplainedConcept: undeclared field: 'foo'
-texplain.nim(124, 6) ExplainedConcept: undeclared field: '.'
-texplain.nim(124, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(124, 5) ExplainedConcept: concept predicate failed
-texplain.nim(125, 6) ExplainedConcept: undeclared field: 'bar'
-texplain.nim(125, 6) ExplainedConcept: undeclared field: '.'
-texplain.nim(125, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(124, 5) ExplainedConcept: concept predicate failed
+texplain.nim(130, 6) ExplainedConcept: undeclared field: 'foo'
+texplain.nim(130, 6) ExplainedConcept: undeclared field: '.'
+texplain.nim(130, 6) ExplainedConcept: expression '.' cannot be called
+texplain.nim(130, 6) ExplainedConcept: expression '' has no type (or is ambiguous)
+texplain.nim(130, 5) ExplainedConcept: concept predicate failed
+texplain.nim(131, 6) ExplainedConcept: undeclared field: 'bar'
+texplain.nim(131, 6) ExplainedConcept: undeclared field: '.'
+texplain.nim(131, 6) ExplainedConcept: expression '.' cannot be called
+texplain.nim(131, 6) ExplainedConcept: expression '' has no type (or is ambiguous)
+texplain.nim(130, 5) ExplainedConcept: concept predicate failed
 
-texplain.nim(164, 10) Hint: Non-matching candidates for e(10)
+texplain.nim(170, 10) Hint: Non-matching candidates for e(10)
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
   but expression '10' is of type: int literal(10)
-texplain.nim(124, 6) ExplainedConcept: undeclared field: 'foo'
-texplain.nim(124, 6) ExplainedConcept: undeclared field: '.'
-texplain.nim(124, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(124, 5) ExplainedConcept: concept predicate failed
-texplain.nim(125, 6) ExplainedConcept: undeclared field: 'bar'
-texplain.nim(125, 6) ExplainedConcept: undeclared field: '.'
-texplain.nim(125, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(124, 5) ExplainedConcept: concept predicate failed
+texplain.nim(130, 6) ExplainedConcept: undeclared field: 'foo'
+texplain.nim(130, 6) ExplainedConcept: undeclared field: '.'
+texplain.nim(130, 6) ExplainedConcept: expression '.' cannot be called
+texplain.nim(130, 6) ExplainedConcept: expression '' has no type (or is ambiguous)
+texplain.nim(130, 5) ExplainedConcept: concept predicate failed
+texplain.nim(131, 6) ExplainedConcept: undeclared field: 'bar'
+texplain.nim(131, 6) ExplainedConcept: undeclared field: '.'
+texplain.nim(131, 6) ExplainedConcept: expression '.' cannot be called
+texplain.nim(131, 6) ExplainedConcept: expression '' has no type (or is ambiguous)
+texplain.nim(130, 5) ExplainedConcept: concept predicate failed
 
-texplain.nim(168, 20) Error: type mismatch: got <NonMatchingType>
+texplain.nim(174, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc e(i: int): int
   first type mismatch at position: 1
@@ -45,11 +49,11 @@ proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
   but expression 'n' is of type: NonMatchingType
-texplain.nim(168, 9) template/generic instantiation of `assert` from here
-texplain.nim(124, 5) ExplainedConcept: concept predicate failed
+texplain.nim(174, 9) template/generic instantiation of `assert` from here
+texplain.nim(130, 5) ExplainedConcept: concept predicate failed
 
 expression: e(n)
-texplain.nim(169, 20) Error: type mismatch: got <NonMatchingType>
+texplain.nim(175, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc r(i: string): int
   first type mismatch at position: 1
@@ -59,15 +63,15 @@ proc r(o: RegularConcept): int
   first type mismatch at position: 1
   required type for o: RegularConcept
   but expression 'n' is of type: NonMatchingType
-texplain.nim(169, 9) template/generic instantiation of `assert` from here
-texplain.nim(128, 5) RegularConcept: concept predicate failed
+texplain.nim(175, 9) template/generic instantiation of `assert` from here
+texplain.nim(134, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
   first type mismatch at position: 1
   required type for a: SomeNumber
   but expression 'n' is of type: NonMatchingType
 
 expression: r(n)
-texplain.nim(170, 20) Hint: Non-matching candidates for r(y)
+texplain.nim(176, 20) Hint: Non-matching candidates for r(y)
 proc r(i: string): int
   first type mismatch at position: 1
   required type for i: string
@@ -77,25 +81,27 @@ proc r[T](a: SomeNumber; b: T; c: auto)
   required type for a: SomeNumber
   but expression 'y' is of type: MatchingType
 
-texplain.nim(178, 2) Error: type mismatch: got <MatchingType>
+texplain.nim(184, 2) Error: type mismatch: got <MatchingType>
 but expected one of:
 proc f(o: NestedConcept)
   first type mismatch at position: 1
   required type for o: NestedConcept
   but expression 'y' is of type: MatchingType
-texplain.nim(128, 6) RegularConcept: undeclared field: 'foo'
-texplain.nim(128, 6) RegularConcept: undeclared field: '.'
-texplain.nim(128, 6) RegularConcept: expression '.' cannot be called
-texplain.nim(128, 5) RegularConcept: concept predicate failed
-texplain.nim(129, 6) RegularConcept: undeclared field: 'bar'
-texplain.nim(129, 6) RegularConcept: undeclared field: '.'
-texplain.nim(129, 6) RegularConcept: expression '.' cannot be called
-texplain.nim(128, 5) RegularConcept: concept predicate failed
-texplain.nim(132, 5) NestedConcept: concept predicate failed
+texplain.nim(134, 6) RegularConcept: undeclared field: 'foo'
+texplain.nim(134, 6) RegularConcept: undeclared field: '.'
+texplain.nim(134, 6) RegularConcept: expression '.' cannot be called
+texplain.nim(134, 6) RegularConcept: expression '' has no type (or is ambiguous)
+texplain.nim(134, 5) RegularConcept: concept predicate failed
+texplain.nim(135, 6) RegularConcept: undeclared field: 'bar'
+texplain.nim(135, 6) RegularConcept: undeclared field: '.'
+texplain.nim(135, 6) RegularConcept: expression '.' cannot be called
+texplain.nim(135, 6) RegularConcept: expression '' has no type (or is ambiguous)
+texplain.nim(134, 5) RegularConcept: concept predicate failed
+texplain.nim(138, 5) NestedConcept: concept predicate failed
 
 expression: f(y)'''
   errormsg: "type mismatch: got <MatchingType>"
-  line: 178
+  line: 184
 
 """
 

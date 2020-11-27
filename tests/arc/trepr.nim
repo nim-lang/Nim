@@ -4,7 +4,16 @@ discard """
 Table[system.string, trepr.MyType](data: @[], counter: 0)
 nil
 '''
+  output: '''
+nil
+2
+Obj(member: ref @["hello"])
+ref (member: ref @["hello"])
+'''
 """
+
+# xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
+
 import tables
 
 type
@@ -31,4 +40,34 @@ macro dumpSym(a: typed) =
   myproc3((a: true, n: NimSym(a)))
 
 dumpSym(doAssert)
+
+# bug 13731
+
+import os
+var a: File
+echo repr a
+
+# bug 13872
+
+echo repr(2'u16)
+
+# bug 14270
+
+type
+  Obj = ref object
+    member: ref seq[string]
+
+var c = Obj(member: new seq[string])
+c.member[] = @["hello"]
+echo c.repr
+
+var c2 = new tuple[member: ref seq[string]]
+c2.member = new seq[string]
+c2.member[] = @["hello"]
+echo c2.repr
+
+proc p2 =
+  echo "hey"
+
+discard repr p2
 

@@ -27,6 +27,8 @@ end
 9014
 9016
 9018
+@[1, 2]
+@[1, 2, 3]
 '''
 """
 
@@ -191,7 +193,7 @@ block t3499_keepstate:
       break
 
   # bug #3499 last snippet fixed
-  # bug 705  last snippet fixed
+  # bug #705  last snippet fixed
 
 
 
@@ -225,7 +227,7 @@ block t2023_objiter:
 
 
 block:
-  # issue #13739
+  # bug #13739
   iterator myIter(arg: openarray[int]): int =
     var tmp = 0
     let len = arg.len
@@ -240,3 +242,12 @@ block:
       echo x
 
   someProc()
+
+block:
+  # bug #12576
+  iterator ff(sq: varargs[seq[int]]): int =
+    for x in sq:
+      echo x
+
+  for x in ff(@[1, 2], @[1, 2, 3]):
+    echo x

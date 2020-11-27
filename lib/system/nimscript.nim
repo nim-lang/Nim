@@ -136,13 +136,13 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsFile*(filename: string): bool =
-  ## An alias for ``fileExists``.
-  fileExists(filename)
+template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+  fileExists(args)
 
-proc existsDir*(dir: string): bool =
-  ## An alias for ``dirExists``.
-  dirExists(dir)
+template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+  dirExists(args)
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
@@ -384,11 +384,26 @@ when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   template task*(name: untyped; description: string; body: untyped): untyped =
     ## Defines a task. Hidden tasks are supported via an empty description.
+    ##
     ## Example:
     ##
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
+    ##
+    ## For a task named ``foo``, this template generates a ``proc`` named
+    ## ``fooTask``.  This is useful if you need to call one task in
+    ## another in your Nimscript.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task foo, "foo":        # > nim foo
+    ##    echo "Running foo"    # Running foo
+    ##
+    ##  task bar, "bar":        # > nim bar
+    ##    echo "Running bar"    # Running bar
+    ##    fooTask()             # Running foo
     proc `name Task`*() =
       setCommand "nop"
       body

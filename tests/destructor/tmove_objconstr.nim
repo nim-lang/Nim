@@ -112,7 +112,7 @@ proc myfunc2(x, y: int): tuple[a: MySeqNonCopyable, b:int, c:MySeqNonCopyable] =
   var cc = newMySeq(y, 5.0)
   (a: case x:
     of 1:
-      let (z1, z2) = myfunc(x,y)
+      let (z1, z2) = myfunc(x, y)
       z2
     elif x > 5: raise newException(ValueError, "new error")
     else: newMySeq(x, 1.0),

@@ -20,7 +20,7 @@ proc genBadFileName(limit = 100): string =
     var hitLimit = true
 
     for i in 0..100:
-      if existsFile(result):
+      if fileExists(result):
         result.add("a")
       else:
         hitLimit = false

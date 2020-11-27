@@ -1,27 +1,27 @@
 discard """
-  output: '''----
+  output: '''----1
 myobj constructed
 myobj destroyed
-----
+----2
 mygeneric1 constructed
 mygeneric1 destroyed
-----
+----3
 mygeneric2 constructed
 mygeneric2 destroyed
 myobj destroyed
-----
+----4
 mygeneric3 constructed
 mygeneric1 destroyed
-----
+----5
 mydistinctObj constructed
 myobj destroyed
 mygeneric2 destroyed
-------------------
-----
-----
-myobj destroyed
+------------------8
 mygeneric1 destroyed
----
+----6
+myobj destroyed
+----7
+---9
 myobj destroyed
 myobj destroyed
 '''
@@ -114,19 +114,19 @@ proc mydistinctObj =
 
   echo "mydistinctObj constructed"
 
-echo "----"
+echo "----1"
 myobj()
 
-echo "----"
+echo "----2"
 mygeneric1()
 
-echo "----"
+echo "----3"
 mygeneric2[int](10)
 
-echo "----"
+echo "----4"
 mygeneric3()
 
-echo "----"
+echo "----5"
 mydistinctObj()
 
 proc caseobj =
@@ -134,16 +134,16 @@ proc caseobj =
     var o1 = TCaseObj(kind: A, x: TMyGeneric1[int](x: 10))
 
   block:
-    echo "----"
+    echo "----6"
     var o2 = TCaseObj(kind: B, y: open())
 
   block:
-    echo "----"
+    echo "----7"
     var o3 = TCaseObj(kind: D, innerKind: B, r: "test",
                       p: TMyGeneric3[int, float, string](x: 10, y: 1.0, z: "test"))
 
 
-echo "------------------"
+echo "------------------8"
 caseobj()
 
 proc caseobj_test_sink: TCaseObj =
@@ -153,5 +153,15 @@ proc caseobj_test_sink: TCaseObj =
   result = TCaseObj(kind: B, y: open())
 
 
-echo "---"
+echo "---9"
 discard caseobj_test_sink()
+
+# issue #14315
+
+type Vector*[T] = object
+  x1: int
+  # x2: T # uncomment will remove error
+
+# proc `=destroy`*(x: var Vector[int]) = discard # this will remove error
+proc `=destroy`*[T](x: var Vector[T]) = discard
+var a: Vector[int] # Error: unresolved generic parameter

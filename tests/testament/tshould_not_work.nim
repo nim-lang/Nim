@@ -25,9 +25,15 @@ FAIL: tests/shouldfail/toutput.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/toutputsub.nim C
 Failure: reOutputsDiffer
+FAIL: tests/shouldfail/treject.nim C
+Failure: reFilesDiffer
 FAIL: tests/shouldfail/tsortoutput.nim C
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/ttimeout.nim C
 Failure: reTimeout
+FAIL: tests/shouldfail/tvalgrind.nim C
+Failure: reExitcodesDiffer
 '''
 """
+
+# xxx `--nim:../compiler/nim`, doesn't seem correct (and should also honor `testament --nim`)

@@ -66,10 +66,6 @@ proc addInt*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
-proc add*(result: var string; x: int64) {.deprecated:
-  "Deprecated since v0.20, use 'addInt'".} =
-  addInt(result, x)
-
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
@@ -94,13 +90,9 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buffer: array[65, char]
+    var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
-
-proc add*(result: var string; x: float) {.deprecated:
-  "Deprecated since v0.20, use 'addFloat'".} =
-  addFloat(result, x)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -121,7 +113,7 @@ when defined(nimHasInvariant):
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
-  # ie whose integer part can fit inside a 53bits integer.
+  # i.e. whose integer part can fit inside a 53bits integer.
   # their real exponent must also be <= 22. If the float doesn't follow
   # these restrictions, transform the float into this form:
   #  INTEGER * 10 ^ exponent and leave the work to standard `strtod()`.
@@ -131,8 +123,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     i = start
     sign = 1.0
     kdigits, fdigits = 0
-    exponent: int
-    integer: uint64
+    exponent = 0
+    integer = uint64(0)
     fracExponent = 0
     expSign = 1
     firstDigit = -1
@@ -290,26 +282,6 @@ proc nimBoolToStr(x: bool): string {.compilerRtl.} =
 proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
-
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
-  ## The stringify operator for an unsigned integer argument. Returns `x`
-  ## converted to a decimal string.
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
 
 when defined(gcDestructors):
   proc GC_getStatistics*(): string =

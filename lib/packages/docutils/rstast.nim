@@ -37,7 +37,7 @@ type
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # sons of the | thing
     rnBlockQuote,             # text just indented
-    rnTable, rnGridTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
+    rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
     rnCitation,               # similar to footnote

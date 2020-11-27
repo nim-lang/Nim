@@ -29,7 +29,7 @@ proc foo: bool =
   return true
 
 proc err =
-  raise newException(ArithmeticError, "some exception")
+  raise newException(ArithmeticDefect, "some exception")
 
 test "final test":
   echo "inside suite-less test"
@@ -40,8 +40,8 @@ test "final test":
     d > 10
 
 test "arithmetic failure":
-  expect(ArithmeticError):
+  expect(ArithmeticDefect):
     err()
 
-  expect(ArithmeticError, CatchableError):
+  expect(ArithmeticDefect, CatchableError):
     discard foo()

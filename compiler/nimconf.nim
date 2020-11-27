@@ -10,19 +10,19 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, commands, os, strutils, msgs, lexer,
+  llstream, commands, os, strutils, msgs, lexer, ast,
   options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
 
-proc ppGetTok(L: var TLexer, tok: var TToken) =
+proc ppGetTok(L: var Lexer, tok: var Token) =
   # simple filter
   rawGetTok(L, tok)
   while tok.tokType in {tkComment}: rawGetTok(L, tok)
 
-proc parseExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool
-proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
+proc parseExpr(L: var Lexer, tok: var Token; config: ConfigRef): bool
+proc parseAtom(L: var Lexer, tok: var Token; config: ConfigRef): bool =
   if tok.tokType == tkParLe:
     ppGetTok(L, tok)
     result = parseExpr(L, tok, config)
@@ -35,21 +35,21 @@ proc parseAtom(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
     result = isDefined(config, tok.ident.s)
     ppGetTok(L, tok)
 
-proc parseAndExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
+proc parseAndExpr(L: var Lexer, tok: var Token; config: ConfigRef): bool =
   result = parseAtom(L, tok, config)
   while tok.tokType == tkAnd:
     ppGetTok(L, tok)          # skip "and"
     var b = parseAtom(L, tok, config)
     result = result and b
 
-proc parseExpr(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
+proc parseExpr(L: var Lexer, tok: var Token; config: ConfigRef): bool =
   result = parseAndExpr(L, tok, config)
   while tok.tokType == tkOr:
     ppGetTok(L, tok)          # skip "or"
     var b = parseAndExpr(L, tok, config)
     result = result or b
 
-proc evalppIf(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
+proc evalppIf(L: var Lexer, tok: var Token; config: ConfigRef): bool =
   ppGetTok(L, tok)            # skip 'if' or 'elif'
   result = parseExpr(L, tok, config)
   if tok.tokType == tkColon: ppGetTok(L, tok)
@@ -57,7 +57,7 @@ proc evalppIf(L: var TLexer, tok: var TToken; config: ConfigRef): bool =
 
 #var condStack: seq[bool] = @[]
 
-proc doEnd(L: var TLexer, tok: var TToken; condStack: var seq[bool]) =
+proc doEnd(L: var Lexer, tok: var Token; condStack: var seq[bool]) =
   if high(condStack) < 0: lexMessage(L, errGenerated, "expected @if")
   ppGetTok(L, tok)            # skip 'end'
   setLen(condStack, high(condStack))
@@ -66,21 +66,21 @@ type
   TJumpDest = enum
     jdEndif, jdElseEndif
 
-proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest; config: ConfigRef;
+proc jumpToDirective(L: var Lexer, tok: var Token, dest: TJumpDest; config: ConfigRef;
                      condStack: var seq[bool])
-proc doElse(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
+proc doElse(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   if high(condStack) < 0: lexMessage(L, errGenerated, "expected @if")
   ppGetTok(L, tok)
   if tok.tokType == tkColon: ppGetTok(L, tok)
   if condStack[high(condStack)]: jumpToDirective(L, tok, jdEndif, config, condStack)
 
-proc doElif(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
+proc doElif(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   if high(condStack) < 0: lexMessage(L, errGenerated, "expected @if")
   var res = evalppIf(L, tok, config)
   if condStack[high(condStack)] or not res: jumpToDirective(L, tok, jdElseEndif, config, condStack)
   else: condStack[high(condStack)] = true
 
-proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest; config: ConfigRef;
+proc jumpToDirective(L: var Lexer, tok: var Token, dest: TJumpDest; config: ConfigRef;
                      condStack: var seq[bool]) =
   var nestedIfs = 0
   while true:
@@ -110,7 +110,7 @@ proc jumpToDirective(L: var TLexer, tok: var TToken, dest: TJumpDest; config: Co
     else:
       ppGetTok(L, tok)
 
-proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
+proc parseDirective(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)            # skip @
   case whichKeyword(tok.ident)
   of wIf:
@@ -149,16 +149,16 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
     else:
       lexMessage(L, errGenerated, "invalid directive: '$1'" % $tok)
 
-proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef; condStack: var seq[bool]) =
+proc confTok(L: var Lexer, tok: var Token; config: ConfigRef; condStack: var seq[bool]) =
   ppGetTok(L, tok)
   while tok.ident != nil and tok.ident.s == "@":
     parseDirective(L, tok, config, condStack)    # else: give the token to the parser
 
-proc checkSymbol(L: TLexer, tok: TToken) =
+proc checkSymbol(L: Lexer, tok: Token) =
   if tok.tokType notin {tkSymbol..tkInt64Lit, tkStrLit..tkTripleStrLit}:
     lexMessage(L, errGenerated, "expected identifier, but got: " & $tok)
 
-proc parseAssignment(L: var TLexer, tok: var TToken;
+proc parseAssignment(L: var Lexer, tok: var Token;
                      config: ConfigRef; condStack: var seq[bool]) =
   if tok.ident != nil:
     if tok.ident.s == "-" or tok.ident.s == "--":
@@ -211,8 +211,8 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
 proc readConfigFile*(filename: AbsoluteFile; cache: IdentCache;
                     config: ConfigRef): bool =
   var
-    L: TLexer
-    tok: TToken
+    L: Lexer
+    tok: Token
     stream: PLLStream
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
@@ -238,7 +238,7 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
 
   var configFiles = newSeq[AbsoluteFile]()
@@ -248,11 +248,16 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
     if readConfigFile(configPath, cache, conf):
       configFiles.add(configPath)
 
-  template runNimScriptIfExists(path: AbsoluteFile) =
+  template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    if fileExists(p):
+    var s: PLLStream
+    if isMain and optWasNimscript in conf.globalOptions:
+      if conf.projectIsStdin: s = stdin.llStreamOpen
+      elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
+    if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
+    if s != nil:
       configFiles.add(p)
-      runNimScript(cache, p, freshDefines = false, conf)
+      runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
@@ -287,17 +292,21 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
     if cfg == DefaultConfig:
       runNimScriptIfExists(pd / DefaultConfigNims)
 
-  for filename in configFiles:
-    # delayed to here so that `hintConf` is honored
-    rawMessage(conf, hintConf, filename.string)
-
-  block:
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if conf.command != "nimsuggest":
-      runNimScriptIfExists(scriptFile)
+  let scriptFile = conf.projectFull.changeFileExt("nims")
+  let scriptIsProj = scriptFile == conf.projectFull
+  template showHintConf =
+    for filename in configFiles:
+      # delayed to here so that `hintConf` is honored
+      rawMessage(conf, hintConf, filename.string)
+  if scriptIsProj:
+    showHintConf()
+    configFiles.setLen 0
+  if conf.cmd != cmdIdeTools:
+    runNimScriptIfExists(scriptFile, isMain = true)
+  else:
+    if not scriptIsProj:
+      runNimScriptIfExists(scriptFile, isMain = true)
     else:
-      if scriptFile != conf.projectFull:
-        runNimScriptIfExists(scriptFile)
-      else:
-        # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
-        discard
+      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
+      discard
+  showHintConf()

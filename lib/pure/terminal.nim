@@ -37,7 +37,10 @@ type
 
 var gTerm {.threadvar.}: owned(PTerminal)
 
-proc newTerminal(): owned(PTerminal) {.gcsafe.}
+when defined(windows) and defined(consoleapp):
+  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [OSError].}
+else:
+  proc newTerminal(): owned(PTerminal) {.gcsafe, raises: [].}
 
 proc getTerminal(): PTerminal {.inline.} =
   if isNil(gTerm):
@@ -689,10 +692,9 @@ template styledEchoProcessArg(f: File, color: Color) =
 template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == resetStyle:
     resetAttributes(f)
-  when cmd == fgColor:
-    fgSetColor = true
-  when cmd == bgColor:
-    fgSetColor = false
+  elif cmd in {fgColor, bgColor}:
+    let term = getTerminal()
+    term.fgSetColor = cmd == fgColor
 
 macro styledWrite*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``write``, but treating terminal style arguments specially.
@@ -776,25 +778,20 @@ when defined(windows):
     ## ``true`` otherwise.
     password.string.setLen(0)
     stdout.write(prompt)
-    while true:
-      let c = getch()
-      case c.char
-      of '\r', chr(0xA):
-        break
-      of '\b':
-        # ensure we delete the whole UTF-8 character:
-        var i = 0
-        var x = 1
-        while i < password.len:
-          x = runeLenAt(password.string, i)
-          inc i, x
-        password.string.setLen(max(password.len - x, 0))
-      of chr(0x0):
-        # modifier key - ignore - for details see
-        # https://github.com/nim-lang/Nim/issues/7764
-        continue
-      else:
-        password.string.add(toUTF8(c.Rune))
+    let hi = createFileA("CONIN$",
+      GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0)
+    var mode = DWORD 0
+    discard getConsoleMode(hi, addr mode)
+    let origMode = mode
+    const
+      ENABLE_PROCESSED_INPUT = 1
+      ENABLE_ECHO_INPUT = 4
+    mode = (mode or ENABLE_PROCESSED_INPUT) and not ENABLE_ECHO_INPUT
+
+    discard setConsoleMode(hi, mode)
+    result = readLine(stdin, password)
+    discard setConsoleMode(hi, origMode)
+    discard closeHandle(hi)
     stdout.write "\n"
 
 else:

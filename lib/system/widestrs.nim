@@ -27,8 +27,10 @@ when defined(nimv2):
 
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
-      deallocShared(a.data)
-      a.data = nil
+      when compileOption("threads"):
+        deallocShared(a.data)
+      else:
+        dealloc(a.data)
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
@@ -38,7 +40,10 @@ when defined(nimv2):
 
   proc createWide(a: var WideCStringObj; bytes: int) =
     a.bytes = bytes
-    a.data = cast[typeof(a.data)](allocShared0(bytes))
+    when compileOption("threads"):
+      a.data = cast[typeof(a.data)](allocShared0(bytes))
+    else:
+      a.data = cast[typeof(a.data)](alloc0(bytes))
 
   template `[]`*(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
   template `[]=`*(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
@@ -56,13 +61,14 @@ else:
     WideCStringObj* = WideCString
 
   template createWide(a; L) =
-    unsafeNew(a, L * 4 + 2)
+    unsafeNew(a, L)
 
 proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
+  result = 0
   while int16(w[result]) != 0'i16: inc result
 
 const
@@ -137,8 +143,7 @@ iterator runes(s: cstring, L: int): int =
     yield result
 
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
-  createWide(result, L * 4 + 2)
-  #result = cast[wideCString](alloc(L * 4 + 2))
+  createWide(result, L * 2 + 2)
   var d = 0
   for ch in runes(source, L):
 
@@ -209,3 +214,10 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
 
 proc `$`*(s: WideCString): string =
   result = s $ 80
+
+when defined(nimv2):
+  proc `$`*(s: WideCStringObj, estimate: int, replacement: int = 0xFFFD): string =
+    `$`(s.data, estimate, replacement)
+
+  proc `$`*(s: WideCStringObj): string =
+    $(s.data)

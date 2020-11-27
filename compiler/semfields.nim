@@ -23,7 +23,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     result = newNode(nkEmpty)
     return
   case n.kind
-  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
+  of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = copyNode(n)
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(c.c, n)
@@ -52,8 +52,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     if n.kind == nkContinueStmt:
       localError(c.c.config, n.info,
                  "'continue' not supported in a 'fields' loop")
-    result = copyNode(n)
-    newSons(result, n.len)
+    result = shallowCopy(n)
     for i in 0..<n.len:
       result[i] = instFieldLoopBody(c, n[i], forLoop)
 
@@ -110,7 +109,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "true"))
   if trueSymbol == nil:
     localError(c.config, n.info, "system needs: 'true'")
-    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), getCurrOwner(c), n.info)
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), nextId c.idgen, getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result[0] = newSymNode(trueSymbol, n.info)

@@ -6,8 +6,8 @@ discard """
 const expected = """
 tassert_c.nim(35)        tassert_c
 tassert_c.nim(34)        foo
-assertions.nim(29)       failedAssertImpl
-assertions.nim(22)       raiseAssert
+assertions.nim(30)       failedAssertImpl
+assertions.nim(23)       raiseAssert
 fatal.nim(49)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
@@ -33,7 +33,8 @@ try:
   proc foo() =
     assert(false)
   foo()
-except AssertionError:
+except AssertionDefect:
   let e = getCurrentException()
   let trace = e.getStackTrace
-  if tmatch(trace, expected): echo true else: echo "wrong trace:\n" & trace
+  if tmatch(trace, expected): echo true
+  else: echo "wrong trace:\n" & trace

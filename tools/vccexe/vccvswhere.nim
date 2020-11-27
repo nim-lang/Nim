@@ -18,7 +18,7 @@ proc vccVswhereExtractVcVarsAllPath(vswherePath: string): string =
   let vsPath = execProcess(&"\"{vswherePath}\" {vswhereArgs}").strip()
   if vsPath.len > 0:
     let vcvarsallPath = joinPath(vsPath, vcvarsRelativePath)
-    if existsFile(vcvarsallPath):
+    if fileExists(vcvarsallPath):
       return vcvarsallPath
 
 proc vccVswhereGeneratePath(envName: string): string =
@@ -41,7 +41,7 @@ proc vccVswhereVcVarsAllPath*(): string =
 
   for tryEnv in ["ProgramFiles(x86)", "ProgramFiles"]:
     let vswherePath = vccVswhereGeneratePath(tryEnv)
-    if vswherePath.len > 0 and existsFile(vswherePath):
+    if vswherePath.len > 0 and fileExists(vswherePath):
       let vcVarsAllPath = vccVswhereExtractVcVarsAllPath(vswherePath)
       if vcVarsAllPath.len > 0:
         return vcVarsAllPath

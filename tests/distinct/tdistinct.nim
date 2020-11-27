@@ -106,3 +106,35 @@ type FooD = distinct int
 proc `<=`(a, b: FooD): bool {.borrow.}
 
 for f in [FooD(0): "Foo"]: echo f
+
+block tRequiresInit:
+  template accept(x) =
+    static: doAssert compiles(x)
+
+  template reject(x) =
+    static: doAssert not compiles(x)
+
+  type
+    Foo = object
+      x: string
+
+    DistinctFoo {.requiresInit, borrow: `.`.} = distinct Foo
+    DistinctString {.requiresInit.} = distinct string
+
+  reject:
+    var foo: DistinctFoo
+    foo.x = "test"
+    doAssert foo.x == "test"
+
+  accept:
+    let foo = DistinctFoo(Foo(x: "test"))
+    doAssert foo.x == "test"
+
+  reject:
+    var s: DistinctString
+    s = "test"
+    doAssert s == "test"
+
+  accept:
+    let s = "test"
+    doAssert s == "test"

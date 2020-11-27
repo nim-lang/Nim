@@ -1,5 +1,5 @@
 discard """
-  nimout: "Warning: 'y' might not have been initialized [Uninit]"
+  nimout: "Warning: use explicit initialization of 'y' for clarity [Uninit]"
   line:34
   action: compile
 """

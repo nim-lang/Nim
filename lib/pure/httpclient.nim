@@ -17,7 +17,7 @@
 ## ``http://google.com``:
 ##
 ## .. code-block:: Nim
-##   import httpClient
+##   import httpclient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
 ##
@@ -25,15 +25,19 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
-##   import httpClient
-##   var client = newAsyncHttpClient()
-##   echo await client.getContent("http://google.com")
+##   import asyncdispatch, httpclient
+##
+##   proc asyncProc(): Future[string] {.async.} =
+##     var client = newAsyncHttpClient()
+##     return await client.getContent("http://example.com")
+##
+##   echo waitFor asyncProc()
 ##
 ## The functionality implemented by ``HttpClient`` and ``AsyncHttpClient``
 ## is the same, so you can use whichever one suits you best in the examples
 ## shown here.
 ##
-## **Note:** You will need to run asynchronous examples in an async proc
+## **Note:** You need to run asynchronous examples in an async proc
 ## otherwise you will get an ``Undeclared identifier: 'await'`` error.
 ##
 ## Using HTTP POST
@@ -196,7 +200,7 @@
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
 
-include "system/inclrtl"
+import std/private/since
 
 import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
   math, random, httpcore, times, tables, streams, std/monotimes
@@ -221,14 +225,14 @@ type
     bodyStream*: FutureStream[string]
 
 proc code*(response: Response | AsyncResponse): HttpCode
-           {.raises: [ValueError, OverflowError].} =
+           {.raises: [ValueError, OverflowDefect].} =
   ## Retrieves the specified response's ``HttpCode``.
   ##
   ## Raises a ``ValueError`` if the response's ``status`` does not have a
   ## corresponding ``HttpCode``.
   return response.status[0 .. 2].parseInt.HttpCode
 
-proc contentType*(response: Response | AsyncResponse): string =
+proc contentType*(response: Response | AsyncResponse): string {.inline.} =
   ## Retrieves the specified response's content type.
   ##
   ## This is effectively the value of the "Content-Type" header.
@@ -241,7 +245,8 @@ proc contentLength*(response: Response | AsyncResponse): int =
   ##
   ## A ``ValueError`` exception will be raised if the value is not an integer.
   var contentLengthHeader = response.headers.getOrDefault("Content-Length")
-  return contentLengthHeader.parseInt()
+  result = contentLengthHeader.parseInt()
+  doAssert(result >= 0 and result <= high(int32))
 
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
@@ -324,7 +329,7 @@ proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
   result = Proxy(url: parseUri(url), auth: auth)
 
-proc newMultipartData*: MultipartData =
+proc newMultipartData*: MultipartData {.inline.} =
   ## Constructs a new ``MultipartData`` object.
   MultipartData()
 
@@ -410,7 +415,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
-proc `[]=`*(p: MultipartData, name, content: string) =
+proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   ## Add a multipart entry to the multipart data ``p``. The value is added
   ## without a filename and without a content type.
   ##
@@ -419,7 +424,7 @@ proc `[]=`*(p: MultipartData, name, content: string) =
   p.add(name, content)
 
 proc `[]=`*(p: MultipartData, name: string,
-            file: tuple[name, contentType, content: string]) =
+            file: tuple[name, contentType, content: string]) {.inline.} =
   ## Add a file to the multipart data ``p``, specifying filename, contentType
   ## and content manually.
   ##
@@ -431,7 +436,7 @@ proc `[]=`*(p: MultipartData, name: string,
 proc getBoundary(p: MultipartData): string =
   if p == nil or p.content.len == 0: return
   while true:
-    result = $random(int.high)
+    result = $rand(int.high)
     for i, entry in p.content:
       if result in entry.content: break
       elif i == p.content.high: return
@@ -453,7 +458,7 @@ proc sendFile(socket: Socket | AsyncSocket,
   file.close()
 
 proc redirection(status: string): bool =
-  const redirectionNRs = ["301", "302", "303", "307"]
+  const redirectionNRs = ["301", "302", "303", "307", "308"]
   for i in items(redirectionNRs):
     if status.startsWith(i):
       return true
@@ -569,6 +574,17 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## ``TimeoutError`` is raised.
   ##
   ## ``headers`` specifies the HTTP Headers.
+  runnableExamples:
+    import asyncdispatch, httpclient, strutils
+
+    proc asyncProc(): Future[string] {.async.} =
+      var client = newAsyncHttpClient()
+      return await client.getContent("http://example.com")
+
+    let exampleHtml = waitFor asyncProc()
+    assert "Example Domain" in exampleHtml
+    assert not ("Pizza" in exampleHtml)
+
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -619,7 +635,7 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc getSocket*(client: HttpClient): Socket =
+proc getSocket*(client: HttpClient): Socket {.inline.} =
   ## Get network socket, useful if you want to find out more details about the connection
   ##
   ## this example shows info about local and remote endpoints
@@ -631,7 +647,7 @@ proc getSocket*(client: HttpClient): Socket =
   ##
   return client.socket
 
-proc getSocket*(client: AsyncHttpClient): AsyncSocket =
+proc getSocket*(client: AsyncHttpClient): AsyncSocket {.inline.} =
   return client.socket
 
 proc reportProgress(client: HttpClient | AsyncHttpClient,
@@ -1018,6 +1034,11 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
+  ##
+  ## You need to make sure that the ``url`` doesn't contain any newline
+  ## characters. Failing to do so will raise ``AssertionDefect``.
+  doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
+
   result = await client.requestAux(url, httpMethod, body, headers, multipart)
 
   var lastURL = url

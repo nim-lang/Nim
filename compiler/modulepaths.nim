@@ -91,8 +91,7 @@ when false:
             if result.len > 0: return result
 
   proc scriptableImport(pkg, sub: string; info: TLineInfo): string =
-    result = resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
-    if result.isNil: result = ""
+    resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
 
   proc lookupPackage(pkg, subdir: PNode): string =
     let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
@@ -112,8 +111,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result =
-        pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
+      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal

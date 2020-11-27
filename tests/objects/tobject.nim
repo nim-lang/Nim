@@ -42,3 +42,23 @@ var b: TMyObj = a
 type
   InheritableFoo {.inheritable.} = ref object
   InheritableBar = ref object of InheritableFoo # ERROR.
+
+block: # bug #14698
+  const N = 3
+  type Foo[T] = ref object
+    x1: int
+    when N == 2:
+      x2: float
+    when N == 3:
+      x3: seq[int]
+    else:
+      x4: char
+      x4b: array[9, char]
+
+  let t = Foo[float](x1: 1)
+  doAssert $(t[]) == "(x1: 1, x3: @[])"
+  doAssert t.sizeof == int.sizeof
+  type Foo1 = object
+    x1: int
+    x3: seq[int]
+  doAssert t[].sizeof == Foo1.sizeof

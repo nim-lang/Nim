@@ -10,5 +10,5 @@ var
 try:
   var
     r = initRational(1, 0)  # this fails - no zero denominator
-except AssertionError:
+except AssertionDefect:
   echo "true"

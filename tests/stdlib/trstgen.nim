@@ -153,3 +153,27 @@ suite "YAML syntax highlighting":
     assert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
     assert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
     assert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""
+
+  test "Markdown tables":
+    let input1 = """
+| A1 header    | A2 \| not fooled
+| :---         | ----:       |
+| C1           | C2 **bold** | ignored |
+| D1 `code \|` | D2          | also ignored
+| E1 \| text   |
+|              | F2 without pipe
+not in table"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
+<tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
+<tr><td>E1 | text</td><td></td></tr>
+<tr><td></td><td>F2 without pipe</td></tr>
+</table><p>not in table</p>
+"""
+    let input2 = """
+| A1 header | A2 |
+| --- | --- |"""
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
+</table>"""

@@ -1,9 +1,8 @@
 discard """
   cmd: "nim c --gc:arc --exceptions:goto --panics:off $file"
-  output: '''field error prevented
-prevented!
+  output: '''prevented!
 caught
-AssertionError
+AssertionDefect
 900'''
 """
 
@@ -26,26 +25,23 @@ proc helper = doAssert(false)
 
 proc main(i: int) =
   var obj = Obj(kind: kindA, s: "abc")
-  try:
-    obj.kind = kindB
-  except FieldError:
-    echo "field error prevented"
-
+  obj.kind = kindB
+  obj.i = 2
   try:
     var objA = ObjA()
     bplease(ObjB(objA))
-  except ObjectConversionError:
+  except ObjectConversionDefect:
     echo "prevented!"
 
   try:
     takeRange(i)
-  except RangeError:
+  except RangeDefect:
     echo "caught"
 
   try:
     helper()
-  except AssertionError:
-    echo "AssertionError"
+  except AssertionDefect:
+    echo "AssertionDefect"
 
   echo i * i
 

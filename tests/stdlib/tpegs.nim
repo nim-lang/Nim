@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   output: '''
 PEG AST traversal output
 ------------------------

@@ -27,21 +27,37 @@ proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## repr for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc repr*(x: char): string {.magic: "CharToStr", noSideEffect.}
+proc repr*(x: char): string {.noSideEffect.} =
   ## repr for a character argument. Returns `x`
-  ## converted to a string.
+  ## converted to an escaped string.
   ##
   ## .. code-block:: Nim
-  ##   assert repr('c') == "c"
+  ##   assert repr('c') == "'c'"
+  result.add '\''
+  # Elides string creations if not needed
+  if x in {'\\', '\0'..'\31', '\127'..'\255'}:
+    result.add '\\'
+  if x in {'\0'..'\31', '\127'..'\255'}:
+    result.add $x.uint8
+  else:
+    result.add x
+  result.add '\''
 
-proc repr*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
-  ## repr for a CString argument. Returns `x`
-  ## converted to a string.
-
-proc repr*(x: string): string {.magic: "StrToStr", noSideEffect.}
+proc repr*(x: string | cstring): string {.noSideEffect.} =
   ## repr for a string argument. Returns `x`
-  ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
+  ## converted to a quoted and escaped string.
+  result.add '\"'
+  for i in 0..<x.len:
+    if x[i] in {'"', '\\', '\0'..'\31', '\127'..'\255'}:
+      result.add '\\'
+    case x[i]:
+    of '\n':
+      result.add "n\n"
+    of '\0'..'\9', '\11'..'\31', '\127'..'\255':
+      result.add $x[i].uint8
+    else:
+      result.add x[i]
+  result.add '\"'
 
 proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## repr for an enumeration argument. This works for
@@ -65,6 +81,10 @@ proc repr*(p: pointer): string =
       for j in countdown(len-1, 0):
         result[j] = HexChars[n and 0xF]
         n = n shr 4
+
+proc repr*(p: proc): string =
+  ## repr of a proc as its address
+  repr(cast[pointer](p))
 
 template repr*(x: distinct): string =
   repr(distinctBase(typeof(x))(x))
@@ -106,8 +126,12 @@ proc repr*[T: tuple|object](x: T): string =
 
 proc repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"
-  result = $typeof(x)
-  reprObject(result, x[])
+  when T is object:
+    result = $typeof(x)
+    reprObject(result, x[])
+  else:
+    result = when typeof(x) is ref: "ref " else: "ptr "
+    result.add repr(x[])
 
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
   result = prefix

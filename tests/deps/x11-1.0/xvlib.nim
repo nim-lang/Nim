@@ -155,7 +155,7 @@ type
     vert_y_period*: cuint
     vert_u_period*: cuint
     vert_v_period*: cuint
-    component_order*: array[0..31, char] # eg. UYVY
+    component_order*: array[0..31, char] # e.g. UYVY
     scanline_order*: cint     # XvTopToBottom, XvBottomToTop
 
   PXvImage* = ptr TXvImage
