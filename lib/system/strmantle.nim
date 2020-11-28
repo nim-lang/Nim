@@ -54,7 +54,7 @@ proc addInt*(result: var string; x: int64) =
   let base = result.len
   if x == low(int64):
     result.setLen(base + 20)
-    result.add "-9223372036854775808"
+    result[base .. ^1] = "-9223372036854775808"
     return
 
   var length: int
