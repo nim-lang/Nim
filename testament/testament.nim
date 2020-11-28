@@ -661,9 +661,6 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
-  os.putEnv "NIMTEST_COLOR", "never"
-  os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
-
   azure.init()
   backend.open()
   var optPrintResults = false
