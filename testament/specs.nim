@@ -251,6 +251,8 @@ proc parseSpec*(filename: string): TSpec =
     of cfgKeyValuePair:
       let key = e.key.normalize
       const whiteListMulti = ["disabled", "ccodecheck"]
+        ## list of flags that are correctly handled when passed multiple times
+        ## (instead of being overwritten)
       if key notin whiteListMulti:
         doAssert key notin flags, $(key, filename)
       flags.incl key
