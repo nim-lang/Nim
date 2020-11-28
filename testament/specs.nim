@@ -57,10 +57,10 @@ type
     reInvalidSpec       # test had problems to parse the spec
 
   TTarget* = enum
-    targetC = "C"
-    targetCpp = "C++"
-    targetObjC = "ObjC"
-    targetJS = "JS"
+    targetC = "c"
+    targetCpp = "cpp"
+    targetObjC = "objc"
+    targetJS = "js"
 
   InlineError* = object
     kind*: string
