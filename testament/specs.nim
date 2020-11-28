@@ -82,7 +82,7 @@ type
     tline*, tcolumn*: int
     exitCode*: int
     msg*: string
-    ccodeCheck*: string
+    ccodeCheck*: seq[string]
     maxCodeSize*: int
     err*: TResultEnum
     inCurrentBatch*: bool
@@ -250,7 +250,8 @@ proc parseSpec*(filename: string): TSpec =
     case e.kind
     of cfgKeyValuePair:
       let key = e.key.normalize
-      const whiteListMulti = ["disabled"]
+      # const whiteListMulti = ["disabled"]
+      const whiteListMulti = ["disabled", "ccodecheck"] # PRTEMP
       if key notin whiteListMulti:
         doAssert key notin flags, $(key, filename)
       flags.incl key
@@ -367,7 +368,7 @@ proc parseSpec*(filename: string): TSpec =
         else:
           result.cmd = e.value
       of "ccodecheck":
-        result.ccodeCheck = e.value
+        result.ccodeCheck.add e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
       of "timeout":

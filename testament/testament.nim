@@ -401,8 +401,7 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
   try:
     let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
-    let check = spec.ccodeCheck
-    if check.len > 0:
+    for check in spec.ccodeCheck:
       if check[0] == '\\':
         # little hack to get 'match' support:
         if not contents.match(check.peg):
