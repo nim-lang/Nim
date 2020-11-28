@@ -9,6 +9,12 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
+const digitsTable = "0001020304050607080910111213141516171819" &
+    "2021222324252627282930313233343536373839" &
+    "4041424344454647484950515253545556575859" &
+    "6061626364656667686970717273747576777879" &
+    "8081828384858687888990919293949596979899"
+
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
@@ -40,13 +46,6 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-const DIGITS = "0001020304050607080910111213141516171819" &
-    "2021222324252627282930313233343536373839" &
-    "4041424344454647484950515253545556575859" &
-    "6061626364656667686970717273747576777879" &
-    "8081828384858687888990919293949596979899"
-
-
 func digits10(num: uint64): int {.noinline.} =
   if num < 10:
     result = 1
@@ -76,6 +75,13 @@ func digits10(num: uint64): int {.noinline.} =
     result = 12 + digits10(num div 1_000_000_000_000'u64)
 
 proc addInt*(result: var string; x: int64) =
+  ## Converts integer to its string representation and appends it to `result`.
+  ##
+  ## .. code-block:: Nim
+  ##   var
+  ##     a = "123"
+  ##     b = 45
+  ##   a.addInt(b) # a <- "12345"
   let base = result.len
   var num: uint64
   var length: int
@@ -93,42 +99,16 @@ proc addInt*(result: var string; x: int64) =
   while num >= 100:
     let index = (num mod 100) * 2
     num = num div 100
-    result[next] = DIGITS[index + 1]
-    result[next - 1] = DIGITS[index]
+    result[next] = digitsTable[index + 1]
+    result[next - 1] = digitsTable[index]
     dec(next, 2)
 
   if num < 10:
     result[next] = chr(ord('0') + num)
   else:
     let index = num * 2
-    result[next] = DIGITS[index + 1]
-    result[next - 1] = DIGITS[index]
-
-# proc addInt*(result: var string; x: int64) =
-#   ## Converts integer to its string representation and appends it to `result`.
-#   ##
-#   ## .. code-block:: Nim
-#   ##   var
-#   ##     a = "123"
-#   ##     b = 45
-#   ##   a.addInt(b) # a <- "12345"
-#   let base = result.len
-#   setLen(result, base + sizeof(x)*4)
-#   var i = 0
-#   var y = x
-#   while true:
-#     var d = y div 10
-#     result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
-#     inc(i)
-#     y = d
-#     if y == 0: break
-#   if x < 0:
-#     result[base+i] = '-'
-#     inc(i)
-#   setLen(result, base+i)
-#   # mirror the string:
-#   for j in 0..i div 2 - 1:
-#     swap(result[base+j], result[base+i-j-1])
+    result[next] = digitsTable[index + 1]
+    result[next - 1] = digitsTable[index]
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
