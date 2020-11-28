@@ -280,7 +280,7 @@ proc parseSpec*(filename: string): TSpec =
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
-        result.output = strip(e.value)
+        result.output = e.value
       of "input":
         result.input = e.value
       of "outputsub":

@@ -469,6 +469,10 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
+proc equalModuloLastNewline(a, b: string): bool =
+  # allow lazy output spec that omits last newline, but really those should be fixed instead
+  result = a == b or b.endsWith("\n") and a == b[0 ..< ^1]
+
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
@@ -513,16 +517,18 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           if exitCode != 0: exitCode = 1
           let bufB =
             if expected.sortoutput:
-              var x = splitLines(strip(buf.string))
+              var buf2 = buf.string
+              buf2.stripLineEnd
+              var x = splitLines(buf2)
               sort(x, system.cmp)
-              join(x, "\n")
+              join(x, "\n") & "\n"
             else:
-              strip(buf.string)
+              buf.string
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
-          elif (expected.outputCheck == ocEqual and expected.output != bufB) or
+          elif (expected.outputCheck == ocEqual and not expected.output.equalModuloLastNewline(bufB)) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
             r.addResult(test, target, expected.output, bufB, reOutputsDiffer)

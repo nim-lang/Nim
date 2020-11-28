@@ -591,12 +591,14 @@ proc isJoinableSpec(spec: TSpec): bool =
     if spec.file.readFile.contains "when isMainModule":
       result = false
 
-proc norm(s: var string) =
-  while true:
-    let tmp = s.replace("\n\n", "\n")
-    if tmp == s: break
-    s = tmp
-  s = s.strip
+when false:
+  proc norm(s: var string) =
+    ## strip empty newlines
+    while true:
+      let tmp = s.replace("\n\n", "\n")
+      if tmp == s: break
+      s = tmp
+    s = s.strip
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
@@ -654,16 +656,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     echo buf.string
     quit(failString & "megatest execution failed")
 
-  norm buf.string
   const outputExceptedFile = "outputExpected.txt"
   const outputGottenFile = "outputGotten.txt"
   writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
-    outputExpected.add runSpec.output.strip
-    outputExpected.add '\n'
-  norm outputExpected
+    if runSpec.output.len > 0:
+      outputExpected.add runSpec.output
+      if not runSpec.output.endsWith "\n":
+        outputExpected.add '\n'
 
   if buf.string != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
