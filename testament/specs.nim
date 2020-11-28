@@ -250,7 +250,9 @@ proc parseSpec*(filename: string): TSpec =
     case e.kind
     of cfgKeyValuePair:
       let key = e.key.normalize
-      doAssert key notin flags, key
+      const whiteListMulti = ["disabled"]
+      if key notin whiteListMulti:
+        doAssert key notin flags, $(key, filename)
       flags.incl key
       case key
       of "action":
