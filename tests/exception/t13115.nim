@@ -3,7 +3,11 @@ discard """
   targets: "c js cpp"
   matrix: "-d:debug; -d:release"
   outputsub: ''' and works fine! [Exception]'''
+  disabled: openbsd
 """
+#[
+disabled: openbsd: just for js
+]#
 
 # bug #13115
 
