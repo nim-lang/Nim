@@ -55,7 +55,10 @@ proc addInt*(result: var string; x: int64) =
   var length: int
   var num: uint64
   if x < 0:
-    num = uint64(-x)
+    if x == low(int64):
+      num = uint64(x)
+    else:
+      num = uint64(-x)
     length = base + digits10(num) + 1
     setLen(result, length)
     result[base] = '-'
