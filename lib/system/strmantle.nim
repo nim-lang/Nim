@@ -47,7 +47,7 @@ const DIGITS = "0001020304050607080910111213141516171819" &
     "8081828384858687888990919293949596979899"
 
 
-proc digits10(num: uint64): int =
+func digits10(num: uint64): int {.noinline.} =
   if num < 10:
     result = 1
   elif num < 100:
