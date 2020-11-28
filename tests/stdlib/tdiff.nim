@@ -11,7 +11,7 @@ proc testHelper(f: seq[Item]): string =
       $it.deletedA & "." & $it.insertedB & "." & $it.startA & "." & $it.startB & "*"
     )
 
-template main() =
+proc main() =
   var a, b: string
 
   # Diff Self Test
