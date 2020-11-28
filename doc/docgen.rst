@@ -193,7 +193,7 @@ Index switch
 ------------
 
 ::
-  nim doc2 --index:on filename.nim
+  nim doc --index:on filename.nim
 
 This will generate an index of all the exported symbols in the input Nim
 module, and put it into a neighboring file with the extension of ``.idx``. The
@@ -210,7 +210,7 @@ See source switch
 -----------------
 
 ::
-  nim doc2 --git.url:<url> filename.nim
+  nim doc --git.url:<url> filename.nim
 
 With the ``git.url`` switch the *See source* hyperlink will appear below each
 documented item in your source code pointing to the implementation of that
@@ -262,8 +262,8 @@ HTML anchor generation
 When you run the ``rst2html`` command, all sections in the RST document will
 get an anchor you can hyperlink to. Usually, you can guess the anchor lower
 casing the section title and replacing spaces with dashes, and in any case, you
-can get it from the table of contents. But when you run the ``doc`` or ``doc2``
-commands to generate API documentation, some symbol get one or two anchors at
+can get it from the table of contents. But when you run the ``doc``
+command to generate API documentation, some symbol get one or two anchors at
 the same time: a numerical identifier, or a plain name plus a complex name.
 
 The numerical identifier is just a random number. The number gets assigned

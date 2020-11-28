@@ -64,7 +64,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.command.normalize notin ["run", "e", "r"]:
+        config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
@@ -86,19 +86,19 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
-    if conf.cmd == cmdRun:
+    if conf.cmd == cmdTcc:
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
     case conf.cmd
-    of cmdCompileToBackend:
+    of cmdBackends, cmdTcc:
       var cmdPrefix = ""
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
       of backendJs: cmdPrefix = findNodeJs() & " "
       else: doAssert false, $conf.backend
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-    of cmdDoc, cmdRst2html:
+    of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
         rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
