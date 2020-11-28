@@ -139,24 +139,19 @@ type
   ConsoleOutputFormatter* = ref object of OutputFormatter
     colorOutput: bool
       ## Have test results printed in color.
-      ## Default is `auto` depending on `isatty(stdout)`, or override with
-      ## -d:nimUnittestColor:auto|on|off.
+      ## Default is `auto` depending on `isatty(stdout)`, or override it with
+      ## `-d:nimUnittestColor:auto|on|off`.
       ##
-      ## Deprecated: Setting the environment variable
-      ## ``NIMTEST_COLOR`` to ``always`` or
-      ## ``never`` changes the default for the
-      ## non-js target to true or false respectively.
-      ## Deprecated: the environment variable
-      ## ``NIMTEST_NO_COLOR``, when set,
-      ## changes the default to true, if
-      ## ``NIMTEST_COLOR`` is undefined.
+      ## Deprecated: Setting the environment variable `NIMTEST_COLOR` to `always`
+      ## or `never` changes the default for the non-js target to true or false respectively.
+      ## Deprecated: the environment variable `NIMTEST_NO_COLOR`, when set, changes the
+      ## default to true, if `NIMTEST_COLOR` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
-      ## Default is ``PRINT_ALL``, or override with:
-      ##  -d:nimUnittestOutputLevel:PRINT_ALL|PRINT_FAILURES|PRINT_NONE
+      ## Default is `PRINT_ALL`, or override with:
+      ## `-d:nimUnittestOutputLevel:PRINT_ALL|PRINT_FAILURES|PRINT_NONE`.
       ##
-      ## Deprecated: the ``NIMTEST_OUTPUT_LVL`` environment
-      ## variable is set for the non-js target.
+      ## Deprecated: the `NIMTEST_OUTPUT_LVL` environment variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
 
@@ -169,11 +164,10 @@ type
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
-                                    ## or override with -d:nimUnittestAbortOnError:on|off.
+                                    ## or override with `-d:nimUnittestAbortOnError:on|off`.
                                     ##
-                                    ## Deprecated: can also override depending on
-                                    ## whether ``NIMTEST_ABORT_ON_ERROR``
-                                    ## environment variable is set.
+                                    ## Deprecated: can also override depending on whether
+                                    ## `NIMTEST_ABORT_ON_ERROR` environment variable is set.
 
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
@@ -187,7 +181,7 @@ const
   nimUnittestAbortOnError {.booldefine.} = false
 
 template deprecateEnvVarHere() =
-  # xxx issue a warning to deprecate this envvar.
+  # xxx issue a runtime warning to deprecate this envvar.
   discard
 
 abortOnError = nimUnittestAbortOnError
