@@ -134,7 +134,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e.position = int(counter)
     let symNode = newSymNode(e)
     if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil and
-        c.config.cmd != cmdDoc: # A hack to produce documentation for enum fields.
+        c.config.cmd notin cmdDocLike: # A hack to produce documentation for enum fields.
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
@@ -1315,7 +1315,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
             "' is only valid for macros and templates")
       # 'auto' as a return type does not imply a generic:
       elif r.kind == tyAnything:
-        # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
+        # 'p(): auto' and 'p(): untyped' are equivalent, but the rest of the
         # compiler is hardly aware of 'auto':
         r = newTypeS(tyUntyped, c)
       elif r.kind == tyStatic:

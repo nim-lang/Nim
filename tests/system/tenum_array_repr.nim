@@ -2,10 +2,8 @@ discard """
   output: '''
 1
 [a, b]
-
 2
 [c, d]
-
 4
 [e, f]'''
 """

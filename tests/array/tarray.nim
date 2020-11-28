@@ -1,11 +1,8 @@
 discard """
 output: '''
 [4, 5, 6]
-
 [16, 25, 36]
-
 [16, 25, 36]
-
 apple
 banana
 Fruit

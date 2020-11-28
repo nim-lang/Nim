@@ -1364,9 +1364,3 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
   rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
-
-
-when isMainModule:
-  assert rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive)) ==
-    "<em>Hello</em> <strong>world</strong>!"

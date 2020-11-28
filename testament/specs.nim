@@ -57,10 +57,10 @@ type
     reInvalidSpec       # test had problems to parse the spec
 
   TTarget* = enum
-    targetC = "C"
-    targetCpp = "C++"
-    targetObjC = "ObjC"
-    targetJS = "JS"
+    targetC = "c"
+    targetCpp = "cpp"
+    targetObjC = "objc"
+    targetJS = "js"
 
   InlineError* = object
     kind*: string
@@ -280,7 +280,7 @@ proc parseSpec*(filename: string): TSpec =
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
-        result.output = strip(e.value)
+        result.output = e.value
       of "input":
         result.input = e.value
       of "outputsub":
