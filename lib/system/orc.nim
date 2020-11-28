@@ -71,7 +71,7 @@ type
     when useJumpStack:
       jumpStack: CellSeq   # Lins' jump stack in order to speed up traversals
     toFree: CellSeq
-    freed, touched: int
+    freed, touched, edges, rcSum: int
 
 proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -174,11 +174,14 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   if s.color != colGray:
     s.setColor colGray
     inc j.touched
+    # keep in mind that refcounts are zero based so add 1 here:
+    inc j.rcSum, (s.rc shr rcShift) + 1
     orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
       dec t.rc, rcIncrement
+      inc j.edges
       when useJumpStack:
         if (t.rc shr rcShift) >= 0 and (t.rc and jumpStackFlag) == 0:
           t.rc = t.rc or jumpStackFlag
@@ -188,6 +191,8 @@ proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
       if t.color != colGray:
         t.setColor colGray
         inc j.touched
+        # we already decremented its refcount so account for that:
+        inc j.rcSum, (t.rc shr rcShift) + 2
         trace(t, desc, j)
 
 proc scan(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
@@ -254,8 +259,10 @@ when false:
     cfprintf(cstderr, "%s %p root index: %ld; RC: %ld; color: %ld\n",
       msg, s, s.rootIdx, s.rc shr rcShift, s.color)
 
-proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
+proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
   #[
+    was: 'collectWhite'.
+
   proc collectWhite(s: Cell) =
     if s.color == colWhite and not buffered(s):
       s.setColor(colBlack)
@@ -263,7 +270,7 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         collectWhite(t)
       free(s) # watch out, a bug here!
   ]#
-  if s.color == colWhite and s.rootIdx == 0:
+  if s.color == col and s.rootIdx == 0:
     orcAssert(j.traceStack.len == 0, "collectWhite: trace stack not empty")
 
     s.setColor(colBlack)
@@ -271,7 +278,7 @@ proc collectWhite(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
-      if t.color == colWhite and t.rootIdx == 0:
+      if t.color == col and t.rootIdx == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
         trace(t, desc, j)
@@ -297,14 +304,20 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
 
   for i in countdown(last, lowMark):
     markGray(roots.d[i][0], roots.d[i][1], j)
-  for i in countdown(last, lowMark):
-    scan(roots.d[i][0], roots.d[i][1], j)
+
+  var colToCollect = colWhite
+  if j.rcSum == j.edges:
+    # short-cut: we know everything is garbage:
+    colToCollect = colGray
+  else:
+    for i in countdown(last, lowMark):
+      scan(roots.d[i][0], roots.d[i][1], j)
 
   init j.toFree
   for i in 0 ..< roots.len:
     let s = roots.d[i][0]
     s.rootIdx = 0
-    collectWhite(s, roots.d[i][1], j)
+    collectColor(s, roots.d[i][1], colToCollect, j)
 
   for i in 0 ..< j.toFree.len:
     free(j.toFree.d[i][0], j.toFree.d[i][1])
@@ -328,8 +341,9 @@ proc partialCollect(lowMark: int) =
   var j: GcEnv
   init j.traceStack
   collectCyclesBacon(j, lowMark)
-  cfprintf(cstderr, "[partialCollect] end; freed %ld touched: %ld work: %ld\n", j.freed, j.touched,
-    roots.len - lowMark)
+  when logOrc:
+    cfprintf(cstderr, "[partialCollect] end; freed %ld touched: %ld work: %ld\n", j.freed, j.touched,
+      roots.len - lowMark)
   roots.len = lowMark
   deinit j.traceStack
 
@@ -368,8 +382,8 @@ proc collectCycles() =
     elif rootsThreshold < high(int) div 4:
       rootsThreshold = rootsThreshold * 3 div 2
   when logOrc:
-    cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld\n", j.freed, rootsThreshold, j.touched,
-      getOccupiedMem())
+    cfprintf(cstderr, "[collectCycles] end; freed %ld new threshold %ld touched: %ld mem: %ld rcSum: %ld edges: %ld\n", j.freed, rootsThreshold, j.touched,
+      getOccupiedMem(), j.rcSum, j.edges)
 
 proc registerCycle(s: Cell; desc: PNimTypeV2) =
   s.rootIdx = roots.len+1
