@@ -80,6 +80,8 @@
 
 - `cast` now works in VM in more contexts, behaving like in RT; eg: `int <=> ptr T | ref T`,
   see `tcastint.testCastRefOrPtr`
+- `cast` now works in VM in more contexts, behaving the same as in runtime, in particular
+  `cast[int](x)` now works for `x: ptr T | ref T`, and likewise for reverse direction.
 
 ## Tool changes
 
