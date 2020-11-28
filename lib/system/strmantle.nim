@@ -52,13 +52,16 @@ proc addInt*(result: var string; x: int64) =
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
   let base = result.len
+  if x == low(int64):
+    result.setLen(base + 20)
+    result.add "-9223372036854775808"
+    return
+
   var length: int
   var num: uint64
+
   if x < 0:
-    if x == low(int64):
-      num = uint64(x)
-    else:
-      num = uint64(-x)
+    num = uint64(-x)
     length = base + digits10(num) + 1
     setLen(result, length)
     result[base] = '-'
