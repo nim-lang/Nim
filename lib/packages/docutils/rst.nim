@@ -1114,10 +1114,10 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnGridTable
       rstMessage(p, meGridTableNotImplemented)
     elif match(p, p.idx + 1, " a"): result = rnTable
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
     elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
       result = rnOverline
-    elif isMarkdownHeadline(p):
-      result = rnHeadline
     else:
       result = rnLeaf
   of tkPunct:
@@ -1126,13 +1126,13 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif currentTok(p).symbol == "|" and isLineBlock(p):
-      result = rnLineBlock
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList

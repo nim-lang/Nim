@@ -6,8 +6,7 @@ outputsub: ""
 
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
-import unittest
-import strutils
+import unittest, strutils, strtabs
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -336,3 +335,28 @@ Check that comment disappears:
   some comment """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
     assert output1 == "Check that comment disappears:"
+
+  test "RST line blocks":
+    let input1 = """
+=====
+Test1
+=====
+
+|
+|
+| line block
+| other line
+
+"""
+    var option: bool
+    var rstGenera: RstGenerator
+    var output1: string
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
+    assert rstGenera.meta[metaTitle] == "Test1"
+      # check that title was not overwritten to '|'
+    assert "line block<br />" in output1
+    assert "other line<br />" in output1
+    let output1l = rstToLatex(input1, {})
+    assert "line block\\\\" in output1l
+    assert "other line\\\\" in output1l
