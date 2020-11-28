@@ -162,7 +162,7 @@ when defined(nimdoc):
     ## Unregisters file/socket descriptor ``fd`` from selector ``s``.
 
   proc selectInto*[T](s: Selector[T], timeout: int,
-                      results: var openarray[ReadyKey]): int =
+                      results: var openArray[ReadyKey]): int =
     ## Waits for events registered in selector ``s``.
     ##
     ## The ``timeout`` argument specifies the maximum number of milliseconds
