@@ -455,6 +455,3 @@ block:
         yield i
 
   doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
-
-when not defined(testing):
-  echo "Finished doc tests"

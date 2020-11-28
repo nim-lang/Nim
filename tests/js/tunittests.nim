@@ -1,7 +1,9 @@
 discard """
   output: '''
+
 [Suite] Bacon
-  [OK] >:)'''
+  [OK] >:)
+'''
 """
 
 import unittest

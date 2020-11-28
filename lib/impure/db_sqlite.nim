@@ -855,7 +855,7 @@ macro untypedLen(args: varargs[untyped]): int =
 
 template exec*(db: DbConn, stmtName: SqlPrepared,
           args: varargs[typed]): untyped =
-  when args.untypedLen > 0:
+  when untypedLen(args) > 0:
     if reset(stmtName.PStmt) != SQLITE_OK:
       dbError(db)
     if clear_bindings(stmtName.PStmt) != SQLITE_OK:

@@ -371,7 +371,6 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       for i, d in data.pairs: {i: d}
 
     assert z == {0: "bird", 1: "word"}.toTable
-
   result = collectImpl(init, body)
 
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
@@ -395,5 +394,4 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
       for i, d in data.pairs: {i: d}
 
     assert m == {0: "bird", 1: "word"}.toTable
-
   result = collectImpl(nil, body)

@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 10
 assigning z = 20
 reading field y
@@ -12,7 +13,8 @@ no params call to b
 100
 one param call to c with 10
 100
-0 4'''
+0 4
+'''
 """
 
 type
