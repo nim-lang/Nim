@@ -8,7 +8,7 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
-  tables, hashes
+  tables, hashes, sets
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -244,11 +244,15 @@ proc parseSpec*(filename: string): TSpec =
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)
+  var flags: HashSet[string]
   while true:
     var e = next(p)
     case e.kind
     of cfgKeyValuePair:
-      case normalize(e.key)
+      let key = e.key.normalize
+      doAssert key notin flags, key
+      flags.incl key
+      case key
       of "action":
         case e.value.normalize
         of "compile":
