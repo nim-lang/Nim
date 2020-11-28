@@ -250,8 +250,7 @@ proc parseSpec*(filename: string): TSpec =
     case e.kind
     of cfgKeyValuePair:
       let key = e.key.normalize
-      # const whiteListMulti = ["disabled"]
-      const whiteListMulti = ["disabled", "ccodecheck"] # PRTEMP
+      const whiteListMulti = ["disabled", "ccodecheck"]
       if key notin whiteListMulti:
         doAssert key notin flags, $(key, filename)
       flags.incl key
@@ -305,7 +304,7 @@ proc parseSpec*(filename: string): TSpec =
         result.msg = e.value
         if result.action != actionRun:
           result.action = actionCompile
-      of "errormsg", "errmsg":
+      of "errormsg", "errmsg": # xxx just use errormsg, no need for such aliases
         result.msg = e.value
         result.action = actionReject
       of "nimout":
