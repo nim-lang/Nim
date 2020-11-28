@@ -29,25 +29,10 @@ else:
     elif x == 1:
       return "1"
 
-    var num = x
-    let length = digits10(num)
+    let length = digits10(x)
     setLen(result, length)
-    var next = length - 1
 
-    while num >= 100:
-      let index = (num mod 100) * 2
-      num = num div 100
-      result[next] = digitsTable[index + 1]
-      result[next - 1] = digitsTable[index]
-      dec(next, 2)
-
-    # process last 1-2 digits
-    if num < 10:
-      result[next] = chr(ord('0') + num)
-    else:
-      let index = num * 2
-      result[next] = digitsTable[index + 1]
-      result[next - 1] = digitsTable[index]
+    numToString(result, x, length)
 
 proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`

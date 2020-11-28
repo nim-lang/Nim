@@ -53,32 +53,16 @@ proc addInt*(result: var string; x: int64) =
   ##   a.addInt(b) # a <- "12345"
   let base = result.len
   var num: uint64
-  var length: int
+  var length = base + digits10(num)
   if x < 0:
     num = uint64(-x)
-    length = base + digits10(num) + 1
+    inc length
     setLen(result, length)
     result[base] = '-'
   else:
     num = uint64(x)
-    length = base + digits10(num)
     setLen(result, length)
-  var next = length - 1
-
-  while num >= 100:
-    let index = (num mod 100) * 2
-    num = num div 100
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
-    dec(next, 2)
-
-  # process last 1-2 digits
-  if num < 10:
-    result[next] = chr(ord('0') + num)
-  else:
-    let index = num * 2
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
+  numToString(result, num, length)
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

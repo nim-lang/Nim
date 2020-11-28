@@ -31,3 +31,21 @@ func digits10*(num: uint64): int {.noinline.} =
     result = 12
   else:
     result = 12 + digits10(num div 1_000_000_000_000'u64)
+
+template numToString*(result: var string, origin: uint64, length: int) =
+  var num = origin
+  var next = length - 1
+  while num >= 100:
+    let index = (num mod 100) * 2
+    num = num div 100
+    result[next] = digitsTable[index + 1]
+    result[next - 1] = digitsTable[index]
+    dec(next, 2)
+
+  # process last 1-2 digits
+  if num < 10:
+    result[next] = chr(ord('0') + num)
+  else:
+    let index = num * 2
+    result[next] = digitsTable[index + 1]
+    result[next - 1] = digitsTable[index]
