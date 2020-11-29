@@ -17,6 +17,11 @@ Some of these are not covered by the ``.experimental`` pragma or
 one may want to use Nim libraries using these features without using them
 oneself.
 
+Whether or not an experimental feature is enabled can be checked in user code
+by checking if the symbol with the prefix ``nimHas`` and the name of the
+experimental feature is defined. For example, to check if ``implicitDeref`` is
+enabled, you can use the check ``defined(nimHasImplicitDeref)``.
+
 **Note**: Unless otherwise indicated, these features are not to be removed,
 but refined and overhauled.
 
