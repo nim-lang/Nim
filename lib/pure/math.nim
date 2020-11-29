@@ -802,6 +802,17 @@ else: # JS
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
 
+proc copySign*[T: float32 | float64](x, y: T): T {.inline, since: (1,5,1).} =
+  ## Returns a value with the magnitude of `x` and the sign of `y`.
+  runnableExamples:
+    doAssert copysign( 10.0, -1.0) == -10.0
+    doAssert copysign(-10.0, -1.0) == -10.0
+    doAssert copysign(-10.0, 1.0) == 10.0
+  if (x > 0 and y < 0) or (x < 0 and y > 0):
+    result = -x
+  else:
+    result = x
+
 proc round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
   ##

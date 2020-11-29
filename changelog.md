@@ -52,6 +52,8 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+- Added `math.copySign`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
