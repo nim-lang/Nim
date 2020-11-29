@@ -778,6 +778,22 @@ when not defined(js): # C
     ##  (-6.5 mod  2.5) == -1.5
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
+  
+  proc copySign*[T: float32 | float64](x, y: T): T {.importc: "copysign", header: "math.h".} =
+    ## Returns a value with the magnitude of `x` and the sign of `y`.
+    runnableExamples:
+      doAssert copysign(10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, 1.0) == 10.0
+      doAssert copySign(10'f32, -1.0) == -10.0
+
+      doAssert copySign(Inf, -1.0) == -Inf
+      doAssert copySign(-Inf, 1.0) == Inf
+      doAssert copySign(1.0, -0.0) == -1.0
+      doAssert copySign(0.0, -0.0) == -0.0
+      doAssert copySign(-1.0, 0.0) == 1.0
+
+    # TODO add examples for isNaN and JS version
 
 else: # JS
   proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
@@ -801,17 +817,6 @@ else: # JS
     ##  (-6.5 mod  2.5) == -1.5
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
-
-proc copySign*[T: float32 | float64](x, y: T): T {.inline, since: (1,5,1).} =
-  ## Returns a value with the magnitude of `x` and the sign of `y`.
-  runnableExamples:
-    doAssert copysign( 10.0, -1.0) == -10.0
-    doAssert copysign(-10.0, -1.0) == -10.0
-    doAssert copysign(-10.0, 1.0) == 10.0
-  if (x > 0 and y < 0) or (x < 0 and y > 0):
-    result = -x
-  else:
-    result = x
 
 proc round*[T: float32|float64](x: T, places: int): T =
   ## Decimal rounding on a binary floating point number.
