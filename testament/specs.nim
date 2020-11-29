@@ -8,7 +8,7 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
-  tables, hashes
+  tables, hashes, sets
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -82,7 +82,7 @@ type
     tline*, tcolumn*: int
     exitCode*: int
     msg*: string
-    ccodeCheck*: string
+    ccodeCheck*: seq[string]
     maxCodeSize*: int
     err*: TResultEnum
     inCurrentBatch*: bool
@@ -244,11 +244,19 @@ proc parseSpec*(filename: string): TSpec =
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)
+  var flags: HashSet[string]
   while true:
     var e = next(p)
     case e.kind
     of cfgKeyValuePair:
-      case normalize(e.key)
+      let key = e.key.normalize
+      const whiteListMulti = ["disabled", "ccodecheck"]
+        ## list of flags that are correctly handled when passed multiple times
+        ## (instead of being overwritten)
+      if key notin whiteListMulti:
+        doAssert key notin flags, $(key, filename)
+      flags.incl key
+      case key
       of "action":
         case e.value.normalize
         of "compile":
@@ -298,7 +306,7 @@ proc parseSpec*(filename: string): TSpec =
         result.msg = e.value
         if result.action != actionRun:
           result.action = actionCompile
-      of "errormsg", "errmsg":
+      of "errormsg", "errmsg": # xxx just use errormsg, no need for such aliases
         result.msg = e.value
         result.action = actionReject
       of "nimout":
@@ -361,7 +369,7 @@ proc parseSpec*(filename: string): TSpec =
         else:
           result.cmd = e.value
       of "ccodecheck":
-        result.ccodeCheck = e.value
+        result.ccodeCheck.add e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
       of "timeout":
