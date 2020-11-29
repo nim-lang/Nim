@@ -52,8 +52,6 @@
 
 - `writeStackTrace` is available in JS backend now.
 
-- Added `math.copySign`.
-
 - Added `algorithm.merge`.
 
 ## Language changes
