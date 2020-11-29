@@ -325,12 +325,13 @@ proc getDefaultSSL(): SslContext =
       result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
-proc newProxy*(url: Uri | string, auth = ""): Proxy =
+proc newProxy*(url: string; auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
-  when url is string:
-    result = Proxy(url: parseUri(url), auth: auth)
-  else:
-    result = Proxy(url: url, auth: auth)
+  result = Proxy(url: parseUri(url), auth: auth)
+
+proc newProxy*(url: Uri; auth = ""): Proxy =
+  ## Constructs a new ``TProxy`` object.
+  result = Proxy(url: url, auth: auth)
 
 proc newMultipartData*: MultipartData {.inline.} =
   ## Constructs a new ``MultipartData`` object.
@@ -1033,6 +1034,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ##
   ## You need to make sure that the ``url`` doesn't contain any newline
   ## characters. Failing to do so will raise ``AssertionDefect``.
+  ##
   ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
   when url is string:
     doAssert(not url.contains({'\c', '\L'}), "url shouldn't contain any newline characters")
@@ -1087,7 +1089,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
       # The body is stripped away
       redirectBody = ""
       # Delete any header value associated with the body
-      if headers != nil:
+      if not headers.isNil():
         headers.del("Content-Length")
         headers.del("Content-Type")
         headers.del("Transfer-Encoding")
