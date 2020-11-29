@@ -46,6 +46,8 @@
 ## * `sequtils module<sequtils.html>`_ for working with the built-in seq type
 ## * `tables module<tables.html>`_ for sorting tables
 
+import std/private/since
+
 type
   SortOrder* = enum
     Descending, Ascending
@@ -555,6 +557,64 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
     assert isSorted(d) == true
     assert isSorted(e) == false
   isSorted(a, system.cmp[T], order)
+
+proc merge*[T](
+  x, y: openArray[T], cmp: proc(x, y: T
+): int {.closure.}, order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+  ## Merges two sorted `openArray`. All of inputs are assumed to be sorted.
+  ## If you do not wish to provide your own ``cmp``,
+  ## you may use `system.cmp` or instead call the overloaded
+  ## version of `merge`, which uses `system.cmp`.
+  ##
+  ## **See also:**
+  ## * `merge proc<#merge,openArray[T],openArray[T]>`_
+  runnableExamples:
+    let x = @[1, 3, 6]
+    let y = @[2, 3, 4]
+
+    let res = x.merge(y, system.cmp[int])
+    assert res.isSorted
+    assert res == @[1, 2, 3, 3, 4, 6]
+  let
+    size_x = x.len
+    size_y = y.len
+  
+  result = newSeqOfCap[T](size_x + size_y)
+  var
+    index_x = 0
+    index_y = 0
+  while true:
+    if index_x == size_x:
+      result.add y[index_y .. ^1]
+      return
+
+    if index_y == size_y:
+      result.add x[index_x .. ^1]
+      return
+
+    let item_x = x[index_x]
+    let item_y = y[index_y]
+
+    if cmp(item_x, item_y) * order > 0:
+      result.add item_y
+      inc index_y
+    else:
+      result.add item_x
+      inc index_x
+
+proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+  ## Shortcut version of ``merge`` that uses ``system.cmp[T]`` as the comparison function.
+  ##
+  ## **See also:**
+  ## * `merge proc<#merge,openArray[T],openArray[T],proc(T,T)>`_
+  runnableExamples:
+    let x = [5,10,15,20,25]
+    let y = [50,40,30,20,10].sorted
+
+    let res = x.merge(y)
+    assert res.isSorted
+    assert res == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
+  merge(x, y, system.cmp, order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array. Warning: complexity
