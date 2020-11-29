@@ -778,22 +778,8 @@ when not defined(js): # C
     ##  (-6.5 mod  2.5) == -1.5
     ##  ( 6.5 mod -2.5) ==  1.5
     ##  (-6.5 mod -2.5) == -1.5
-  
-  proc copySign*[T: float32 | float64](x, y: T): T {.importc: "copysign", header: "math.h".} =
-    ## Returns a value with the magnitude of `x` and the sign of `y`.
-    runnableExamples:
-      doAssert copysign(10.0, -1.0) == -10.0
-      doAssert copysign(-10.0, -1.0) == -10.0
-      doAssert copysign(-10.0, 1.0) == 10.0
-      doAssert copySign(10'f32, -1.0) == -10.0
 
-      doAssert copySign(Inf, -1.0) == -Inf
-      doAssert copySign(-Inf, 1.0) == Inf
-      doAssert copySign(1.0, -0.0) == -1.0
-      doAssert copySign(0.0, -0.0) == -0.0
-      doAssert copySign(-1.0, 0.0) == 1.0
 
-    # TODO add examples for isNaN and JS version
 
 else: # JS
   proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
@@ -930,6 +916,22 @@ when not defined(js):
       ##  echo log2(0.0)  # -inf
       ##  echo log2(-2.0) # nan
 
+  proc copySign*[T: float32 | float64](x, y: T): T {.importc: "copysign", header: "math.h".} =
+    ## Returns a value with the magnitude of `x` and the sign of `y`.
+    runnableExamples:
+      doAssert copysign(10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, 1.0) == 10.0
+      doAssert copySign(10'f32, -1.0) == -10.0
+
+      doAssert copySign(Inf, -1.0) == -Inf
+      doAssert copySign(-Inf, 1.0) == Inf
+      doAssert copySign(1.0, -0.0) == -1.0
+      doAssert copySign(0.0, -0.0) == -0.0
+      doAssert copySign(-1.0, 0.0) == 1.0
+
+    # TODO add examples for isNaN
+
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -946,6 +948,12 @@ else:
         result = result / 2
       if exponent == 1024 and result == 0.0:
         result = 0.99999999999999988898
+
+  proc copySign*[T: float32 | float64](x, y: T): T =
+    if (x > 0 and (y < 0 or y == -0.0)) or (x < 0 and (y > 0 or y == 0.0)):
+      result = -x
+    else:
+      result = x
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks ``x`` into an integer and a fractional part.
