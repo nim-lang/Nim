@@ -929,8 +929,9 @@ when not defined(js):
       doAssert copySign(1.0, -0.0) == -1.0
       doAssert copySign(0.0, -0.0) == -0.0
       doAssert copySign(-1.0, 0.0) == 1.0
+      doAssert copySign(10.0, 0.0) == 10.0
 
-    # TODO add examples for isNaN
+    # TODO add examples for isNaN and JS version
 
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
