@@ -950,11 +950,6 @@ else:
       if exponent == 1024 and result == 0.0:
         result = 0.99999999999999988898
 
-  proc copySign*[T: float32 | float64](x, y: T): T =
-    if (x > 0 and (y < 0 or y == -0.0)) or (x < 0 and (y > 0 or y == 0.0)):
-      result = -x
-    else:
-      result = x
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks ``x`` into an integer and a fractional part.
