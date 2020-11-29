@@ -580,9 +580,11 @@ proc merge*[T](
     size_y = y.len
   
   result = newSeqOfCap[T](size_x + size_y)
+
   var
     index_x = 0
     index_y = 0
+
   while true:
     if index_x == size_x:
       result.add y[index_y .. ^1]
