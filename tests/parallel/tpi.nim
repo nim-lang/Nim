@@ -9,9 +9,9 @@ proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
 proc piU(n: int): float =
   var ch = newSeq[FlowVar[float]](n+1)
-  for k in 0..n:
+  for k in 0..ch.high:
     ch[k] = spawn term(float(k))
-  for k in 0..n:
+  for k in 0..ch.high:
     result += ^ch[k]
 
 proc piS(n: int): float =

@@ -4,7 +4,17 @@ int32
 int32
 1280
 1280
+3
+1
+2
+2
+3
+4294967295
+2
+0
+tUnsignedOps OK
 '''
+nimout: "tUnsignedOps OK"
 """
 
 import typetraits
@@ -29,6 +39,7 @@ block tcast:
     let rt = ty(exp)
     const ct = ty(exp)
     if $rt != $ct:
+      echo astToStr(exp)
       echo "Got ", ct
       echo "Expected ", rt
 
@@ -52,7 +63,8 @@ block tcast:
   crossCheck(uint8, uint8.high + 5'u8)
   crossCheck(uint16, uint16.high + 5'u16)
   crossCheck(uint32, uint32.high + 5'u32)
-  crossCheck(uint64, (-1).uint64 + 5'u64)
+  crossCheck(uint64, 0xFFFFFFFFFFFFFFFF'u64 + 5'u64)
+  crossCheck(uint64, uint64.high + 5'u64)
 
   doAssert $sub1(0'u8) == "255"
   doAssert $sub1(0'u16) == "65535"
@@ -69,12 +81,10 @@ block tcast:
   crossCheck(int64, high(int8).int16.int32.int64)
   crossCheck(int64, low(int8).int16.int32.int64)
 
-  crossCheck(int64, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int32, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int16, 0xFFFFFFFFFFFFFFFF'u64)
-  crossCheck(int8 , 0xFFFFFFFFFFFFFFFF'u64)
-
-
+  doAssert not compiles(echo int64(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo int32(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo int16(0xFFFFFFFFFFFFFFFF'u64))
+  doAssert not compiles(echo  int8(0xFFFFFFFFFFFFFFFF'u64))
 
 block tnot:
   # Signed types
@@ -116,32 +126,6 @@ block tnot:
     doAssert t7 == 4
 
 
-
-block tshl:
-  # Signed types
-  block:
-    const t0: int8  = 1'i8 shl 8
-    const t1: int16 = 1'i16 shl 16
-    const t2: int32 = 1'i32 shl 32
-    const t3: int64 = 1'i64 shl 64
-    doAssert t0 == 0
-    doAssert t1 == 0
-    doAssert t2 == 1
-    doAssert t3 == 1
-
-  # Unsigned types
-  block:
-    const t0: uint8  = 1'u8 shl 8
-    const t1: uint16 = 1'u16 shl 16
-    const t2: uint32 = 1'u32 shl 32
-    const t3: uint64 = 1'u64 shl 64
-    doAssert t0 == 0
-    doAssert t1 == 0
-    doAssert t2 == 0
-    doAssert t3 == 1
-
-
-
 block tshr:
   proc T() =
     # let VI = -8
@@ -150,10 +134,10 @@ block tshr:
     let VI16 = -8'i16
     let VI8 = -8'i8
     # doAssert( (VI shr 1) == 9_223_372_036_854_775_804, "Actual: " & $(VI shr 1))
-    doAssert( (VI64 shr 1) == 9_223_372_036_854_775_804, "Actual: " & $(VI64 shr 1))
-    doAssert( (VI32 shr 1) == 2_147_483_644, "Actual: " & $(VI32 shr 1))
-    doAssert( (VI16 shr 1) == 32_764, "Actual: " & $(VI16 shr 1))
-    doAssert( (VI8 shr 1) == 124, "Actual: " & $(VI8 shr 1))
+    doAssert( (VI64 shr 1) == -4, "Actual: " & $(VI64 shr 1))
+    doAssert( (VI32 shr 1) == -4, "Actual: " & $(VI32 shr 1))
+    doAssert( (VI16 shr 1) == -4, "Actual: " & $(VI16 shr 1))
+    doAssert( (VI8 shr 1) == -4, "Actual: " & $(VI8 shr 1))
 
   T()
   static:
@@ -169,5 +153,35 @@ block tsubrange:
   var level: n16 = 1
   let maxLevel: n16 = 1
 
-  level = min(level + 2, maxLevel)
+  level = min(level + 2, maxLevel).n16
   doAssert level == 1
+
+block tissue12177:
+  var a: uint16 = 1
+  var b: uint32 = 2
+
+  echo(b + a)
+  echo(b - a)
+  echo(b * a)
+  echo(b div a)
+
+  echo(a + b)
+  echo(a - b)
+  echo(a * b)
+  echo(a div b)
+
+block tUnsignedOps:
+  proc testUnsignedOps() =
+    let a: int8 = -128
+    let b: int8 = 127
+
+    doAssert b +% 1 == -128
+    doAssert b -% -1 == -128
+    doAssert b *% 2 == -2
+    doAssert a /% 4 == 32
+    doAssert a %% 7 == 2
+    echo "tUnsignedOps OK"
+
+  testUnsignedOps()
+  static:
+    testUnsignedOps()

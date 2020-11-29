@@ -179,3 +179,19 @@ proc varargProc(args: varargs[AbstractObject, convert]): int =
 
 var obj = SomeObject(a: 17)
 discard varargProc(obj)
+
+
+
+# bug #11239
+
+type MySeq*[T] = object
+
+proc foo(a: seq[int]): string = "foo: seq[int]"
+proc foo[T](a: seq[T]): string = "foo: seq[T]"
+proc foo(a: MySeq[int]): string = "foo: MySeq[int]"
+proc foo[T](a: MySeq[T]): string = "foo: MySeq[T]"
+
+doAssert foo(@[1,2,3]) == "foo: seq[int]"
+doAssert foo(@["WER"]) == "foo: seq[T]"
+doAssert foo(MySeq[int]()) == "foo: MySeq[int]"
+doAssert foo(MySeq[string]()) == "foo: MySeq[T]"

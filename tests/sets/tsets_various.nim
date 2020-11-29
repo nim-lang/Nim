@@ -7,9 +7,14 @@ set is empty
 
 import sets, hashes
 
+from sequtils import toSeq
+from algorithm import sorted
+
+proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
+template sortedItems(t: untyped): untyped = sorted(toSeq(t))
 
 block tsetpop:
-  var a = initSet[int]()
+  var a = initHashSet[int]()
   for i in 1..1000:
     a.incl(i)
   doAssert len(a) == 1000
@@ -50,7 +55,7 @@ block tsets2:
       "80"]
 
   block tableTest1:
-    var t = initSet[tuple[x, y: int]]()
+    var t = initHashSet[tuple[x, y: int]]()
     t.incl((0,0))
     t.incl((1,0))
     assert(not t.containsOrIncl((0,1)))
@@ -63,7 +68,7 @@ block tsets2:
     #  "{(x: 0, y: 0), (x: 0, y: 1), (x: 1, y: 0), (x: 1, y: 1)}")
 
   block setTest2:
-    var t = initSet[string]()
+    var t = initHashSet[string]()
     t.incl("test")
     t.incl("111")
     t.incl("123")
@@ -102,9 +107,9 @@ block tsets2:
 
 block tsets3:
   let
-    s1: HashSet[int] = toSet([1, 2, 4, 8, 16])
-    s2: HashSet[int] = toSet([1, 2, 3, 5, 8])
-    s3: HashSet[int] = toSet([3, 5, 7])
+    s1: HashSet[int] = toHashSet([1, 2, 4, 8, 16])
+    s2: HashSet[int] = toHashSet([1, 2, 3, 5, 8])
+    s3: HashSet[int] = toHashSet([3, 5, 7])
 
   block union:
     let
@@ -172,7 +177,7 @@ block tsets3:
       assert i in s1_s3 xor i in s1
       assert i in s2_s3 xor i in s2
 
-    assert((s3 -+- s3) == initSet[int]())
+    assert((s3 -+- s3) == initHashSet[int]())
     assert((s3 -+- s1) == s1_s3)
 
   block difference:
@@ -191,10 +196,61 @@ block tsets3:
     for i in s2:
       assert i in s2_s3 xor i in s3
 
-    assert((s2 - s2) == initSet[int]())
+    assert((s2 - s2) == initHashSet[int]())
 
   block disjoint:
     assert(not disjoint(s1, s2))
     assert disjoint(s1, s3)
     assert(not disjoint(s2, s3))
     assert(not disjoint(s2, s2))
+
+block: # https://github.com/nim-lang/Nim/issues/13496
+  template testDel(body) =
+    block:
+      body
+      t.incl(15)
+      t.incl(19)
+      t.incl(17)
+      t.incl(150)
+      t.excl(150)
+      doAssert t.len == 3
+      doAssert sortedItems(t) == @[15, 17, 19]
+      var s = newSeq[int]()
+      for v in t: s.add(v)
+      assert s.len == 3
+      doAssert sortedItems(s) == @[15, 17, 19]
+      when t is OrderedSet:
+        doAssert sortedPairs(t) == @[(a: 0, b: 15), (a: 1, b: 19), (a: 2, b: 17)]
+        doAssert toSeq(t) == @[15, 19, 17]
+
+  testDel(): (var t: HashSet[int])
+  testDel(): (var t: OrderedSet[int])
+
+block: # test correctness after a number of inserts/deletes
+  template testDel(body) =
+    block:
+      body
+      var expected: seq[int]
+      let n = 100
+      let n2 = n*2
+      for i in 0..<n:
+        t.incl(i)
+      for i in 0..<n:
+        if i mod 3 == 0:
+          t.excl(i)
+      for i in n..<n2:
+        t.incl(i)
+      for i in 0..<n2:
+        if i mod 7 == 0:
+          t.excl(i)
+
+      for i in 0..<n2:
+        if (i>=n or i mod 3 != 0) and i mod 7 != 0:
+          expected.add i
+
+      for i in expected: doAssert i in t
+      doAssert t.len == expected.len
+      doAssert sortedItems(t) == expected
+
+  testDel(): (var t: HashSet[int])
+  testDel(): (var t: OrderedSet[int])

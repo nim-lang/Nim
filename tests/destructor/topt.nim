@@ -14,8 +14,7 @@ type
 proc some*[T](val: sink T): opt[T] {.inline.} =
   ## Returns an ``opt`` that has the value.
   ## nil is considered as none for reference types
-  result.exists = true
-  result.val = val
+  result = opt[T](exists: true, val: val)
 
 proc none*(T: typedesc): opt[T] {.inline.} =
   ## Returns an ``opt`` for this type that has no value.
@@ -32,7 +31,7 @@ proc unsafeGet*[T](self: opt[T]): lent T {.inline.} =
 
 type
   VSeq*[T] = object
-    len: int 
+    len: int
     data: ptr UncheckedArray[T]
 
 proc `=destroy`*[T](m: var VSeq[T]) {.inline.} =

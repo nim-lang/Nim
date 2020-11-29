@@ -34,7 +34,7 @@ proc produce() {.thread.} =
     m.data = line
     chan.send(m)
   close(input)
-  m.k = mEof
+  m = TMsg(k: mEof)
   chan.send(m)
 
 open(chan)

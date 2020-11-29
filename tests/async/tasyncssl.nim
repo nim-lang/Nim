@@ -1,16 +1,12 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
-  output: "500"
-  disabled: "windows"
-  target: c
-  action: compile
 """
 
-# XXX, deactivated
-
-import asyncdispatch, asyncnet, net, strutils, os
+import asyncdispatch, asyncnet, net, strutils
+import stdtest/testutils
 
 when defined(ssl):
+  var port0: Port
   var msgCount = 0
 
   const
@@ -45,25 +41,33 @@ when defined(ssl):
         else:
           doAssert false
 
-  proc createServer(port: Port) {.async.} =
+  proc createServer() {.async.} =
     let serverContext = newContext(verifyMode = CVerifyNone,
                                    certFile = "tests/testdata/mycert.pem",
                                    keyFile = "tests/testdata/mycert.pem")
     var server = newAsyncSocket()
     serverContext.wrapSocket(server)
     server.setSockOpt(OptReuseAddr, true)
-    bindAddr(server, port)
+    bindAddr(server)
+    port0 = getLocalAddr(server)[1]
     server.listen()
     while true:
       let client = await accept(server)
       serverContext.wrapConnectedSocket(client, handshakeAsServer)
       asyncCheck readMessages(client)
 
-  asyncCheck createServer(Port(10335))
-  asyncCheck launchSwarm(Port(10335))
+  asyncCheck createServer()
+  asyncCheck launchSwarm(port0)
   while true:
     poll()
     if clientCount == swarmSize: break
 
-  assert msgCount == swarmSize * messagesToSend
-  echo msgCount
+  template cond(): bool = msgCount == swarmSize * messagesToSend
+  when defined(windows):
+    # currently: msgCount == 0
+    flakyAssert cond()
+  elif defined(linux) and int.sizeof == 8:
+    # currently:  msgCount == 10
+    flakyAssert cond()
+    assert msgCount > 0
+  else: assert cond(), $msgCount

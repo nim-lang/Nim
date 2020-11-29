@@ -12,7 +12,8 @@ type
 proc makePair: PCyclic =
   new(result)
   new(result.sibling)
-  result.sibling.sibling = result
+  when not defined(gcDestructors):
+    result.sibling.sibling = result
 
 proc loop =
   for i in 0..10000:

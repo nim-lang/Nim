@@ -8,10 +8,10 @@ discard """
 type Foo* {.pure, final.} = object
   elt: float
 
-template defineOpAssign(T, op: untyped) {.immediate.} =
-  proc op*(v: var T, w: T) {.inline.} =
+template defineOpAssign(T, op: untyped) =
+  proc `op`*(v: var T, w: T) {.inline.} =
     for i in 0..1:
-      op(v.elt, w.elt)
+      `op`(v.elt, w.elt)
 
 const ATTEMPT = 0
 

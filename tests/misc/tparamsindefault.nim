@@ -18,6 +18,7 @@ f3 10 15 25
 true true
 false true
 world
+typedescDefault
 '''
 """
 
@@ -112,3 +113,8 @@ block:
 
   echo pySubstr("Hello world", -5)
 
+
+# bug #11660
+
+func typedescDefault(T: typedesc; arg: T = 0) = debugEcho "typedescDefault"
+typedescDefault(int)

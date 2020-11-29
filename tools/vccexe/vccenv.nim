@@ -8,7 +8,7 @@ type
                         ## Valid versions are Versions of Visual Studio that permanently set a COMNTOOLS
                         ## environment variable. That includes Visual Studio version up to and including
                         ## Visual Studio 2015
-    vsUndefined = (0, ""), ## Version not specified, use latest recogized version on the system
+    vsUndefined = (0, ""), ## Version not specified, use latest recognized version on the system
     vs90  = (90,   "VS90COMNTOOLS"), ## Visual Studio 2008
     vs100 = (100, "VS100COMNTOOLS"), ## Visual Studio 2010
     vs110 = (110, "VS110COMNTOOLS"), ## Visual Studio 2012

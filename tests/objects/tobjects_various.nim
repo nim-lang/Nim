@@ -17,7 +17,6 @@ block tobject2:
       z: int # added a field
 
   proc getPoint( p: var TPoint2d) =
-    {.breakpoint.}
     writeLine(stdout, p.x)
 
   var p: TPoint3d

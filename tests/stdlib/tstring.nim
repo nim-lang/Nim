@@ -1,5 +1,7 @@
 discard """
-  output: "OK"
+  output: '''OK
+@[@[], @[], @[], @[], @[]]
+'''
 """
 const characters = "abcdefghijklmnopqrstuvwxyz"
 const numbers = "1234567890"
@@ -50,7 +52,7 @@ proc test_string_slice() =
   doAssert s == "ab1234567890cdefghijklmnopqrstuvwxyz"
 
   # bug #6223
-  doAssertRaises(IndexError):
+  doAssertRaises(IndexDefect):
     discard s[0..999]
 
   echo("OK")
@@ -76,3 +78,23 @@ proc test_string_cmp() =
 
 test_string_slice()
 test_string_cmp()
+
+
+#--------------------------
+# bug #7816
+import sugar
+import sequtils
+
+proc tester[T](x: T) =
+  let test = toSeq(0..4).map(i => newSeq[int]())
+  echo test
+
+tester(1)
+
+# #14497 
+func reverse*(a: string): string =
+  result = a
+  for i in 0 ..< a.len div 2:
+    swap(result[i], result[^(i + 1)])
+
+doAssert reverse("hello") == "olleh"

@@ -1,8 +1,6 @@
 discard """
   output: '''[0.0, 0.0, 0.0]
-
 [0.0, 0.0, 0.0, 0.0]
-
 5050
 123'''
 """
@@ -57,7 +55,7 @@ converter int2string(x: int): string = $x
 template wrap(body: typed): untyped =
   body
 
-macro makeProc(): typed =
+macro makeProc() =
   # Make a template tree
   result = quote do:
     proc someProc* =
@@ -70,3 +68,21 @@ macro makeProc(): typed =
 makeProc()
 
 someProc()
+
+# bug #12193
+import macros, strutils
+
+macro gen(T: typedesc): untyped =
+  let typeSym = getTypeImpl(T)[1]
+  let param = genSym(nskParam, "s")
+  let value = nnkBracketExpr.newTree(param, newIntLitNode(0))
+  result = newProc(
+    name = ident"pack",
+    params = [typeSym,
+      newIdentDefs(param, nnkBracketExpr.newTree(ident"seq", ident"string"))],
+    body = newStmtList(newCall(typeSym, newCall(bindSym"parseInt", value))),
+    procType = nnkTemplateDef)
+  echo repr result
+
+gen(int)
+let i = pack(@["2"])

@@ -1,6 +1,9 @@
 discard """
   output: '''Hello
-Hello'''
+Hello
+c
+d
+e'''
 """
 
 block: # bug #2581
@@ -85,3 +88,8 @@ block: # String cmp
   doAssert(cmp("foo", "foobar") == -3)
   doAssert(cmp("fooz", "foog") == 19)
   doAssert(cmp("foog", "fooz") == -19)
+
+proc main(x: openArray[char]) =
+  for c in x: echo c
+
+main(toOpenArray(['a', 'b', 'c', 'd', 'e'], 2, 4))

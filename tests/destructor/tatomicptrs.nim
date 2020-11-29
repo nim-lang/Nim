@@ -147,3 +147,21 @@ proc newMySeq*[T](size: int, initial_value: T): MySeq[T] =
 
 let x = makeShared(newMySeq(10, 1.0))
 doAssert: x.get().len == 10
+
+
+
+#-------------------------------------------------------
+#bug #12882
+
+type
+  ValueObject = object
+    v: MySeq[int]
+    name: string
+
+  TopObject = object
+    internal: seq[ValueObject]
+
+var zz = new(TopObject)
+
+
+

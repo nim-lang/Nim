@@ -10,10 +10,8 @@ template processTest(t, x: untyped) =
   #stdout.flushFile()
   if not x: echo(t & " FAILED\r\n")
 
-when defined(macosx):
-  echo "All tests passed!"
-elif not defined(windows):
-  import os, posix, nativesockets, times
+when not defined(windows):
+  import os, posix, nativesockets
 
   when ioselSupportedPlatform:
     import osproc
@@ -128,9 +126,9 @@ elif not defined(windows):
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
     var rc0 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc1 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
     assert(len(rc0) == 0 and len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
@@ -147,15 +145,16 @@ elif not defined(windows):
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
-      var rc1 = selector.select(140)
-      var rc2 = selector.select(140)
-      assert(len(rc1) == 1 and len(rc2) == 1)
+      var rc1 = selector.select(10000)
+      var rc2 = selector.select(10000)
+      # if this flakes, see tests/m14634.nim
+      assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(100, true, 0)
-      var rc4 = selector.select(120)
-      var rc5 = selector.select(120)
-      assert(len(rc4) == 1 and len(rc5) == 0)
+      var rc4 = selector.select(10000)
+      var rc5 = selector.select(1000) # this will be an actual wait, keep it small
+      assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
       assert(selector.isEmpty())
       selector.close()
       result = true
@@ -445,14 +444,14 @@ elif not defined(windows):
       var
         thr: array[0..7, Thread[SelectEvent]]
       var selector = newSelector[int]()
-      var sock = newNativeSocket()
+      var sock = createNativeSocket()
       var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
       selector.registerHandle(sock, {Event.Read}, 1)
       discard selector.select(500)
       selector.unregister(sock)
-      event.setEvent()
+      event.trigger()
       joinThreads(thr)
       assert(counter == 1)
       result = true
@@ -475,7 +474,7 @@ else:
 
   proc socket_notification_test(): bool =
     proc create_test_socket(): SocketHandle =
-      var sock = newNativeSocket()
+      var sock = createNativeSocket()
       setBlocking(sock, false)
       result = sock
 

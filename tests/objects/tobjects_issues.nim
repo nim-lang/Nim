@@ -113,5 +113,5 @@ block t3038:
     Type = ref object of RootObj
     SubType[T] = ref object of Type
       data: Data[T]
-    SubSubType = ref object of SubType
+    SubSubType = ref object of SubType[int]
     SubSubSubType = ref object of SubSubType

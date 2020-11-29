@@ -1,5 +1,3 @@
-{.deadCodeElim: on.}  # dce option deprecated
-
 import posix
 
 const

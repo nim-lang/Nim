@@ -99,6 +99,7 @@ var EXDEV* {.importc: "EXDEV", header: "<errno.h>".}: cint
 
 # <fcntl.h>
 var F_DUPFD* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
+var F_DUPFD_CLOEXEC* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
 var F_GETFD* {.importc: "F_GETFD", header: "<fcntl.h>".}: cint
 var F_SETFD* {.importc: "F_SETFD", header: "<fcntl.h>".}: cint
 var F_GETFL* {.importc: "F_GETFL", header: "<fcntl.h>".}: cint
@@ -125,6 +126,7 @@ var O_ACCMODE* {.importc: "O_ACCMODE", header: "<fcntl.h>".}: cint
 var O_RDONLY* {.importc: "O_RDONLY", header: "<fcntl.h>".}: cint
 var O_RDWR* {.importc: "O_RDWR", header: "<fcntl.h>".}: cint
 var O_WRONLY* {.importc: "O_WRONLY", header: "<fcntl.h>".}: cint
+var O_CLOEXEC* {.importc: "O_CLOEXEC", header: "<fcntl.h>".}: cint
 var POSIX_FADV_NORMAL* {.importc: "POSIX_FADV_NORMAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_SEQUENTIAL* {.importc: "POSIX_FADV_SEQUENTIAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_RANDOM* {.importc: "POSIX_FADV_RANDOM", header: "<fcntl.h>".}: cint
@@ -434,6 +436,9 @@ var PROT_READ* {.importc: "PROT_READ", header: "<sys/mman.h>".}: cint
 var PROT_WRITE* {.importc: "PROT_WRITE", header: "<sys/mman.h>".}: cint
 var PROT_EXEC* {.importc: "PROT_EXEC", header: "<sys/mman.h>".}: cint
 var PROT_NONE* {.importc: "PROT_NONE", header: "<sys/mman.h>".}: cint
+var MAP_ANONYMOUS* {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
+var MAP_FIXED_NOREPLACE* {.importc: "MAP_FIXED_NOREPLACE", header: "<sys/mman.h>".}: cint
+var MAP_NORESERVE* {.importc: "MAP_NORESERVE", header: "<sys/mman.h>".}: cint
 var MAP_SHARED* {.importc: "MAP_SHARED", header: "<sys/mman.h>".}: cint
 var MAP_PRIVATE* {.importc: "MAP_PRIVATE", header: "<sys/mman.h>".}: cint
 var MAP_FIXED* {.importc: "MAP_FIXED", header: "<sys/mman.h>".}: cint
@@ -655,7 +660,7 @@ var SC_MQ_OPEN_MAX* {.importc: "_SC_MQ_OPEN_MAX", header: "<unistd.h>".}: cint
 var SC_MQ_PRIO_MAX* {.importc: "_SC_MQ_PRIO_MAX", header: "<unistd.h>".}: cint
 var SC_NGROUPS_MAX* {.importc: "_SC_NGROUPS_MAX", header: "<unistd.h>".}: cint
 var SC_OPEN_MAX* {.importc: "_SC_OPEN_MAX", header: "<unistd.h>".}: cint
-var SC_PAGE_SIZE* {.importc: "_SC_PAGE_SIZE", header: "<unistd.h>".}: cint
+var SC_PAGESIZE* {.importc: "_SC_PAGESIZE", header: "<unistd.h>".}: cint
 var SC_PRIORITIZED_IO* {.importc: "_SC_PRIORITIZED_IO", header: "<unistd.h>".}: cint
 var SC_PRIORITY_SCHEDULING* {.importc: "_SC_PRIORITY_SCHEDULING", header: "<unistd.h>".}: cint
 var SC_RAW_SOCKETS* {.importc: "_SC_RAW_SOCKETS", header: "<unistd.h>".}: cint

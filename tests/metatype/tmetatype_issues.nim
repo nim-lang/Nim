@@ -34,7 +34,7 @@ block t898:
 
 
 block t7528:
-  macro bar(n: untyped): typed =
+  macro bar(n: untyped) =
     result = newNimNode(nnkStmtList, n)
     result.add(newCall("write", newIdentNode("stdout"), n))
 

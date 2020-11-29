@@ -14,7 +14,7 @@ type
 # TODO: Change to TVT when compiler issue is resolved.
 proc `$`*[T](o: TV2[T]): string =
   result = "("
-  for i in 0 .. <o.len:
+  for i in 0 ..< o.len:
     result &= $o[0]
     if i != o.len - 1:
       result &= ", "
@@ -47,7 +47,7 @@ proc `+`*(lhs: TV2[TR], rhs: TV2[TR]): TV2[TR] =
 #    result += a[i] * b[i]
 
 proc dot[T](a, b: TV2[T]): T =
-  for i in 0 .. <a.len:
+  for i in 0 ..< a.len:
     result += a[i] * b[i]
 
 assert dot(newV2(), newV2()) == 0.0

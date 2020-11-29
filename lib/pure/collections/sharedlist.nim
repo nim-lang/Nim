@@ -8,8 +8,10 @@
 #
 
 ## Shared list support.
+##
+## Unstable API.
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 
 import
   locks
@@ -63,11 +65,14 @@ iterator items*[A](x: var SharedList[A]): A =
 proc add*[A](x: var SharedList[A]; y: A) =
   withLock(x):
     var node: SharedListNode[A]
-    if x.tail == nil or x.tail.dataLen == ElemsPerNode:
-      node = cast[type node](allocShared0(sizeof(node[])))
-      node.next = x.tail
+    if x.tail == nil:
+      node = cast[typeof node](allocShared0(sizeof(node[])))
       x.tail = node
-      if x.head == nil: x.head = node
+      x.head = node
+    elif x.tail.dataLen == ElemsPerNode:
+      node = cast[typeof node](allocShared0(sizeof(node[])))
+      x.tail.next = node
+      x.tail = node
     else:
       node = x.tail
     node.d[node.dataLen] = y
@@ -91,12 +96,5 @@ proc clear*[A](t: var SharedList[A]) =
 proc deinitSharedList*[A](t: var SharedList[A]) =
   clear(t)
   deinitLock t.lock
-
-proc initSharedList*[A](): SharedList[A] {.deprecated.} =
-  ## Deprecated. Use `init` instead.
-  ## This is not posix compliant, may introduce undefined behavior.
-  initLock result.lock
-  result.head = nil
-  result.tail = nil
 
 {.pop.}

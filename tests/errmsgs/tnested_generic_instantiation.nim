@@ -1,6 +1,5 @@
 discard """
-errormsg: "generic instantiation too nested"
-file: "system.nim"
+action: compile
 """
 
 # bug #4766

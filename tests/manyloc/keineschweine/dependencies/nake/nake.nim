@@ -51,7 +51,7 @@ template withDir*(dir: string; body: stmt): stmt =
   cd(curDir)
 
 when true:
-  if not existsFile("nakefile.nim"):
+  if not fileExists("nakefile.nim"):
     echo "No nakefile.nim found. Current working dir is ", getCurrentDir()
     quit 1
   var args = ""

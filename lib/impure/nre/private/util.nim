@@ -47,5 +47,5 @@ template formatStr*(howExpr, namegetter, idgetter): untyped =
         i += 1
         val.add(namegetter)
       else:
-        raise newException(Exception, "Syntax error in format string at " & $i)
+        raise newException(ValueError, "Syntax error in format string at " & $i)
   val

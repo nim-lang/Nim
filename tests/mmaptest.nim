@@ -1,25 +1,7 @@
 # Small test program to test for mmap() weirdnesses
 
-include "lib/system/ansi_c"
-
-const
-  PageSize = 4096
-  PROT_READ  = 1             # page can be read
-  PROT_WRITE = 2             # page can be written
-  MAP_PRIVATE = 2            # Changes are private
-
-when defined(macosx) or defined(bsd):
-  const MAP_ANONYMOUS = 0x1000
-elif defined(solaris):
-  const MAP_ANONYMOUS = 0x100
-else:
-  var
-    MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
-
-proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
-          off: int): pointer {.header: "<sys/mman.h>".}
-
-proc munmap(adr: pointer, len: int) {.header: "<sys/mman.h>".}
+import system/ansi_c
+import posix
 
 proc osAllocPages(size: int): pointer {.inline.} =
   result = mmap(nil, size, PROT_READ or PROT_WRITE,
@@ -31,18 +13,21 @@ proc osAllocPages(size: int): pointer {.inline.} =
 
 proc osDeallocPages(p: pointer, size: int) {.inline} =
   cfprintf(c_stdout, "freed pages %p..%p\n", p, cast[int](p) + size)
-  munmap(p, size-1)
+  discard munmap(p, size-1)
 
 proc `+!!`(p: pointer, size: int): pointer {.inline.} =
   result = cast[pointer](cast[int](p) + size)
+
+const
+  PageShift = when defined(cpu16): 8 else: 12 # \
+    # my tests showed no improvements for using larger page sizes.
+  PageSize = 1 shl PageShift
 
 var p = osAllocPages(3 * PageSize)
 
 osDeallocPages(p, PageSize)
 # If this fails the OS has freed the whole block starting at 'p':
-echo(cast[ptr int](p +!! (pageSize*2))[])
+echo(cast[ptr int](p +!! (PageSize*2))[])
 
 osDeallocPages(p +!! PageSize*2, PageSize)
 osDeallocPages(p +!! PageSize, PageSize)
-
-

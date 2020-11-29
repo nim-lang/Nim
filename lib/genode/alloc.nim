@@ -70,7 +70,7 @@ proc newMapSlab(): ptr MapSlab =
 
 iterator items(s: ptr MapSlab): ptr Map =
   let mapCount = (SlabBackendSize - sizeof(SlabMeta)) div sizeof(Map)
-  for i in 0 .. <mapCount:
+  for i in 0 ..< mapCount:
     yield s.maps[i].addr
 
 var slabs: ptr MapSlab

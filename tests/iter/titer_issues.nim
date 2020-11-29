@@ -18,11 +18,22 @@ end
 1
 2
 7
+9002
+9004
+9006
+9008
+9010
+9012
+9014
+9016
+9018
+@[1, 2]
+@[1, 2, 3]
 '''
 """
 
 
-import algorithm, math, sequtils, strutils
+import sequtils, strutils
 
 
 block t338:
@@ -182,7 +193,7 @@ block t3499_keepstate:
       break
 
   # bug #3499 last snippet fixed
-  # bug 705  last snippet fixed
+  # bug #705  last snippet fixed
 
 
 
@@ -213,3 +224,30 @@ block t2023_objiter:
 
   var o = init()
   echo(o.iter())
+
+
+block:
+  # bug #13739
+  iterator myIter(arg: openarray[int]): int =
+    var tmp = 0
+    let len = arg.len
+    while tmp < len:
+      yield arg[tmp] * 2
+      inc tmp
+
+  proc someProc() =
+    var data = [4501,4502,4503,4504,4505,4506,4507,4508,4509]
+    # StmtListExpr should not get special treatment.
+    for x in myIter((discard;data)):
+      echo x
+
+  someProc()
+
+block:
+  # bug #12576
+  iterator ff(sq: varargs[seq[int]]): int =
+    for x in sq:
+      echo x
+
+  for x in ff(@[1, 2], @[1, 2, 3]):
+    echo x

@@ -2,7 +2,7 @@ discard """
   nimout: '''0
 0
 0
-{"hallo": "123", "welt": "456"}'''
+'''
 """
 
 import tables
@@ -35,4 +35,4 @@ static:
   otherTable["hallo"] = "123"
   otherTable["welt"]  = "456"
 
-  echo otherTable
+  assert otherTable == {"hallo": "123", "welt": "456"}.newTable

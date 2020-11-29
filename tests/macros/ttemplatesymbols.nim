@@ -122,7 +122,7 @@ template overloadedTemplate(x: string) =
 """
 
 inspectUntyped bindSym("overloadedTemplate"), """bindSym("overloadedTemplate")"""
-  # binSym is active only in the presense of `typed` params.
+  # binSym is active only in the presence of `typed` params.
   # `untyped` params still get the raw AST
 
 inspectSymbol normalProc, """

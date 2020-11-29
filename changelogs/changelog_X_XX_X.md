@@ -1,27 +1,20 @@
-## v0.XX.0 - XX/XX/2018
+# v1.xx.x - yyyy-mm-dd
 
-### Changes affecting backwards compatibility
-
-- Example item: ``Foo`` changed to ``Bar``.
-
-#### Breaking changes in the standard library
+This is an example file.
+The changes should go to changelog.md!
 
 
-#### Breaking changes in the compiler
+## Standard library additions and changes
 
-### Library additions
-
-### Library changes
-
-
-### Language additions
+- Added `example.exampleProc`.
+- Changed `example.foo` to take additional `bar` parameter.
 
 
-### Language changes
+## Language changes
 
 
-### Tool changes
+## Compiler changes
 
-### Compiler changes
 
-### Bugfixes
+## Tool changes
+

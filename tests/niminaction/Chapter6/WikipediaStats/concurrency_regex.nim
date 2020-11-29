@@ -51,9 +51,9 @@ proc readChunks(filename: string, chunksize = 1000000): Stats =
       # Find where the last line ends
       chunkLen.dec
 
-    responses.add(spawn parse(buffer[0 .. <chunkLen]))
+    responses.add(spawn parse(buffer[0 ..< chunkLen]))
     oldBufferLen = readSize - chunkLen
-    buffer[0 .. <oldBufferLen] = buffer[readSize - oldBufferLen .. ^1]
+    buffer[0 ..< oldBufferLen] = buffer[readSize - oldBufferLen .. ^1]
 
   echo("Spawns: ", responses.len)
   for resp in responses:

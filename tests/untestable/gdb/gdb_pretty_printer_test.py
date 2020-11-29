@@ -22,6 +22,9 @@ outputs = [
 ]
 
 for i, expected in enumerate(outputs):
+  functionSymbol = gdb.selected_frame().block().function
+  assert functionSymbol.line == 21
+
   if i == 5:
     # myArray is passed as pointer to int to myDebug. I look up myArray up in the stack
     gdb.execute("up")

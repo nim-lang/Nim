@@ -1,12 +1,14 @@
 discard """
-  targets: "js c c++"
+  targets: "js c cpp"
   output: '''ok'''
 """
 
 import math
-import strformat
 
 const manualTest = false
+
+when manualTest:
+  import strformat
 
 proc frexp_test(lo, hi, step: float64) =
   var exp: int
@@ -39,6 +41,6 @@ when manualTest:
 
   frexp_test(-1000.0, 1000.0, 0.0125)
 else:
-  frexp_test(-1000000.0, 1000000.0, 0.125)
+  frexp_test(-200000.0, 200000.0, 0.125)
 
 echo "ok"

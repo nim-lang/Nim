@@ -51,7 +51,7 @@ proc setConnected(state: bool) =
     for b in connectionButtons: disable(b)
 
 proc setActiveZone(ind: int; zone: ScZoneRecord) =
-  #hilight it or something
+  #highlight it or something
   dispmessage("Selected " & zone.name)
   connectZone(zone.ip, zone.port)
   playBtn.enable()
@@ -243,7 +243,7 @@ proc lobbyInit*() =
     messageArea.scrollBack -= 1
     update(messageArea))
   gui.newButton(text = "Flood msg area", position = vec2f(185, 30), onClick = proc(b: PButton) =
-    for i in 0.. <30:
+    for i in 0..< 30:
       dispMessage($i))
 
 var i = 0

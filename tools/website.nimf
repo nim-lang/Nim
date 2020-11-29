@@ -250,7 +250,7 @@ runForever()
 <p>This section lists the companies and individuals that are, very kindly, contributing a
 monthly amount to help sustain Nim's development. For more details take a
 look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
-<p class="lastUpdate">Last updated: ${getTime().getGMTime().format("dd/MM/yyyy")}</p>
+<p class="lastUpdate">Last updated: ${getTime().utc().format("dd/MM/yyyy")}</p>
 <dl>
 ${generateSponsors(activeSponsors)}
 </dl>

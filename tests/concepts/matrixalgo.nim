@@ -16,8 +16,8 @@ type
   AnyTransform3D* = AnyMatrix[4, 4, float]
 
 proc transposed*(m: AnyMatrix): m.TransposedType =
-  for r in 0 .. <m.R:
-    for c in 0 .. <m.C:
+  for r in 0 ..< m.R:
+    for c in 0 ..< m.C:
       result[r, c] = m[c, r]
 
 proc determinant*(m: AnySquareMatrix): int =

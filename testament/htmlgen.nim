@@ -9,14 +9,14 @@
 
 ## HTML generator for the tester.
 
-import cgi, backend, strutils, json, os, tables, times
+import strutils, json, os, times
 
 import "testamenthtml.nimf"
 
 proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
   let
     trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str).
-        multiReplace({".": "_", " ": "_", ":": "_"})
+        multiReplace({".": "_", " ": "_", ":": "_", "/": "_"})
     name = testResultRow["name"].str.htmlQuote()
     category = testResultRow["category"].str.htmlQuote()
     target = testResultRow["target"].str.htmlQuote()
@@ -52,7 +52,7 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
     trId, name, target, category, action, resultDescription,
     timestamp, result, resultSign, panelCtxClass, textCtxClass, bgCtxClass
   )
-  if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
+  if expected.isEmptyOrWhitespace() and gotten.isEmptyOrWhitespace():
     outfile.generateHtmlTestresultOutputNone()
   else:
     outfile.generateHtmlTestresultOutputDetails(
@@ -63,7 +63,7 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
 
 type
   AllTests = object
-    data: JSonNode
+    data: JsonNode
     totalCount, successCount, ignoredCount, failedCount: int
     successPercentage, ignoredPercentage, failedPercentage: BiggestFloat
 

@@ -7,8 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## Note this API is still experimental! A variable length integer
+## A variable length integer
 ## encoding implementation inspired by SQLite.
+##
+## Unstable API.
 
 const
   maxVarIntLen* = 9 ## the maximal number of bytes a varint can take
@@ -47,57 +49,57 @@ proc readVu64*(z: openArray[byte]; pResult: var uint64): int =
   return 9
 
 proc varintWrite32(z: var openArray[byte]; y: uint32) =
-  z[0] = uint8(y shr 24)
-  z[1] = uint8(y shr 16)
-  z[2] = uint8(y shr 8)
-  z[3] = uint8(y)
+  z[0] = cast[uint8](y shr 24)
+  z[1] = cast[uint8](y shr 16)
+  z[2] = cast[uint8](y shr 8)
+  z[3] = cast[uint8](y)
 
 proc writeVu64*(z: var openArray[byte], x: uint64): int =
   ## Write a varint into z. The buffer z must be at least 9 characters
   ## long to accommodate the largest possible varint. Returns the number of
   ## bytes used.
   if x <= 240:
-    z[0] = uint8 x
+    z[0] = cast[uint8](x)
     return 1
   if x <= 2287:
-    let y = uint32(x - 240)
-    z[0] = uint8(y shr 8 + 241)
-    z[1] = uint8(y and 255)
+    let y = cast[uint32](x - 240)
+    z[0] = cast[uint8](y shr 8 + 241)
+    z[1] = cast[uint8](y and 255)
     return 2
   if x <= 67823:
-    let y = uint32(x - 2288)
+    let y = cast[uint32](x - 2288)
     z[0] = 249
-    z[1] = uint8(y shr 8)
-    z[2] = uint8(y and 255)
+    z[1] = cast[uint8](y shr 8)
+    z[2] = cast[uint8](y and 255)
     return 3
-  let y = uint32 x
-  let w = uint32(x shr 32)
+  let y = cast[uint32](x)
+  let w = cast[uint32](x shr 32)
   if w == 0:
     if y <= 16777215:
       z[0] = 250
-      z[1] = uint8(y shr 16)
-      z[2] = uint8(y shr 8)
-      z[3] = uint8(y)
+      z[1] = cast[uint8](y shr 16)
+      z[2] = cast[uint8](y shr 8)
+      z[3] = cast[uint8](y)
       return 4
     z[0] = 251
     varintWrite32(toOpenArray(z, 1, z.high-1), y)
     return 5
   if w <= 255:
     z[0] = 252
-    z[1] = uint8 w
+    z[1] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 2, z.high-2), y)
     return 6
   if w <= 65535:
     z[0] = 253
-    z[1] = uint8(w shr 8)
-    z[2] = uint8 w
+    z[1] = cast[uint8](w shr 8)
+    z[2] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 3, z.high-3), y)
     return 7
   if w <= 16777215:
     z[0] = 254
-    z[1] = uint8(w shr 16)
-    z[2] = uint8(w shr 8)
-    z[3] = uint8 w
+    z[1] = cast[uint8](w shr 16)
+    z[2] = cast[uint8](w shr 8)
+    z[3] = cast[uint8](w)
     varintWrite32(toOpenArray(z, 4, z.high-4), y)
     return 8
   z[0] = 255
@@ -117,36 +119,3 @@ proc encodeZigzag*(x: int64): uint64 {.inline.} =
 proc decodeZigzag*(x: uint64): int64 {.inline.} =
   let casted = cast[int64](x)
   result = (`shr`(casted, 1)) xor (-(casted and 1))
-
-when isMainModule:
-  #import random
-
-  var dest: array[50, byte]
-  var got: uint64
-
-  for test in [0xFFFF_FFFF_FFFFF_FFFFu64, 77u64, 0u64, 10_000_000u64, uint64(high(int64)),
-               uint64(high(int32)),uint64(low(int32)),uint64(low(int64))]:
-    let wrLen = writeVu64(dest, test)
-    let rdLen = readVu64(dest, got)
-    assert wrLen == rdLen
-    echo(if got == test: "YES" else: "NO")
-    echo "number is ", got
-
-    if encodeZigzag(decodeZigzag(test)) != test:
-      echo "Failure for ", test, " ", encodeZigzag(decodeZigzag(test)), " ", decodeZigzag(test)
-
-  for test in 0u64..300u64:
-    let wrLen = writeVu64(dest, test)
-    let rdLen = readVu64(dest, got)
-    assert wrLen == rdLen
-    if got != test:
-      echo "BUG! expected: ", test, " got: ", got, " z0: ", dest[0]
-
-  # check this also works for floats:
-  for test in [0.0, 0.1, 2.0, +Inf, Nan, NegInf]:
-    let t = cast[uint64](test)
-    let wrLenB = writeVu64(dest, t)
-    let rdLenB = readVu64(dest, got)
-    assert wrLenB == rdLenB
-    echo rdLenB
-    echo(if cast[float64](got) == test: "YES" else: "NO")

@@ -18,9 +18,9 @@ proc get_values(): (seq[int8], seq[int16], seq[int32]) =
     let i32 = -(1'i64 shl 33) + offset
 
     # higher bits are masked. these should be exactly equal to offset.
-    result[0].add cast[int8 ](uint8 cast[uint64](i8 ))
-    result[1].add cast[int16](uint16 cast[uint64](i16))
-    result[2].add cast[int32](uint32 cast[uint64](i32))
+    result[0].add cast[int8](cast[uint64](i8))
+    result[1].add cast[int16](cast[uint64](i16))
+    result[2].add cast[int32](cast[uint64](i32))
 
 
 # these values this computed by VM

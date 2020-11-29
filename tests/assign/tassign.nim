@@ -5,6 +5,7 @@ TEMP=C:\Programs\xyz\bin
 8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
+abc123
 '''
 """
 
@@ -207,3 +208,11 @@ when false:
     var
       a, b: Foo
     a = b
+
+block tgeneric_assign_varargs:
+  template fatal(msgs: varargs[string]) =
+    for msg in msgs:
+      stdout.write(msg)
+    stdout.write('\n')
+
+  fatal "abc", "123"

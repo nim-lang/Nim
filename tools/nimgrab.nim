@@ -5,7 +5,7 @@ when defined(windows):
 
   proc syncDownload(url, file: string) =
     proc progress(status: DownloadStatus, progress: uint, total: uint,
-                  message: string) {.procvar, gcsafe.} =
+                  message: string) {.gcsafe.} =
       echo "Downloading " & url
       let t = total.BiggestInt
       if t != 0:
