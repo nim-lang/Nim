@@ -57,6 +57,7 @@ import std/private/since
                        # of the standard library!
 
 import bitops, fenv
+from std/cmath import nil
 
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -133,16 +134,33 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
+func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
+  ## Returns whether `x` is a `NaN`, more efficiently than via `classify(x) == fcNan`.
+  ## Works even with: `--passc:-ffast-math`.
+  runnableExamples:
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+  template fn: untyped = result = x != x
+  when nimvm: fn()
+  else:
+    when defined(js): fn()
+    else: result = cmath.isnan(x)
+
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
+  ## Doesn't work with: `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
     doAssert classify(0.3/0.0) == fcInf
     doAssert classify(-0.3/0.0) == fcNegInf
     doAssert classify(5.0e-324) == fcSubnormal
+
+  # xxx support `--passc:-ffast-math`; we could use `isNaN` and make sure
+  # it works for all floats.
 
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
@@ -157,15 +175,6 @@ func classify*(x: float): FloatClass =
   if abs(x) < MinFloatNormal:
     return fcSubnormal
   return fcNormal
-
-proc isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
-  ## Returns whether `x` is a `NaN`, more efficiently than via `classify(x) == fcNan`.
-  ## Does not work with: `--passc:-ffast-math`.
-  runnableExamples:
-    doAssert NaN.isNaN
-    doAssert not Inf.isNaN
-    doAssert isNaN(Inf - Inf)
-  result = x != x
 
 func almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
     since: (1, 5), inline.} =
