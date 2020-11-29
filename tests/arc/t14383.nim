@@ -19,6 +19,8 @@ seq[T]:
 destroying: ('first', 42)
 destroying: ('second', 20)
 destroying: ('third', 12)
+
+1 1
 '''
 """
 
@@ -112,3 +114,15 @@ echo()
 echo "seq[T]:"
 seqT()
 echo()
+
+
+#------------------------------------------------------------------------------
+# Issue #16120, const seq into sink
+#------------------------------------------------------------------------------
+
+proc main =
+  let avals = @[@[1.0'f32, 4.0, 7.0, 10.0]]
+  let rankdef = avals
+  echo avals.len, " ", rankdef.len
+
+main()

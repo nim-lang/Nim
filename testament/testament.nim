@@ -81,6 +81,7 @@ let
   pegOfInterest = pegLineError / pegOtherError
 
 var gTargets = {low(TTarget)..high(TTarget)}
+var targetsSet = false
 
 proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
@@ -469,6 +470,10 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
+proc equalModuloLastNewline(a, b: string): bool =
+  # allow lazy output spec that omits last newline, but really those should be fixed instead
+  result = a == b or b.endsWith("\n") and a == b[0 ..< ^1]
+
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
@@ -513,16 +518,18 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           if exitCode != 0: exitCode = 1
           let bufB =
             if expected.sortoutput:
-              var x = splitLines(strip(buf.string))
+              var buf2 = buf.string
+              buf2.stripLineEnd
+              var x = splitLines(buf2)
               sort(x, system.cmp)
-              join(x, "\n")
+              join(x, "\n") & "\n"
             else:
-              strip(buf.string)
+              buf.string
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
-          elif (expected.outputCheck == ocEqual and expected.output != bufB) or
+          elif (expected.outputCheck == ocEqual and not expected.output.equalModuloLastNewline(bufB)) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
             r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
@@ -685,6 +692,7 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       gTargets = parseTargets(targetsStr)
+      targetsSet = true
     of "nim":
       compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
@@ -794,14 +802,16 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
+    # "/pathto/tests/stdlib/nre/captures.nim" -> "stdlib" + "tests/stdlib/nre/captures.nim"
     var subPath = p.key.string
-    if subPath.isAbsolute: subPath = subPath.relativePath(getCurrentDir())
+    let nimRoot = currentSourcePath / "../.."
+      # makes sure points to this regardless of cwd or which nim is used to compile this.
+    doAssert existsDir(nimRoot/testsDir) # sanity check
+    if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
     # at least one directory is required in the path, to use as a category name
-    let pathParts = split(subPath, {DirSep, AltSep})
-    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})
     let cat = Category(pathParts[0])
-    subPath = joinPath(pathParts[1..^1])
-    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:

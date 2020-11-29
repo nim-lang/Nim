@@ -177,6 +177,17 @@ proc almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
   runnableExamples:
     doAssert almostEqual(3.141592653589793, 3.1415926535897936)
     doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert almostEqual(Inf, -Inf) == false
+    doAssert almostEqual(-Inf, Inf) == false
+    doAssert almostEqual(Inf, NaN) == false
+    doAssert almostEqual(NaN, NaN) == false
+
+  if x == y:
+    # short circuit exact equality -- needed to catch two infinities of
+    # the same sign. And perhaps speeds things up a bit sometimes.
+    return true
   let diff = abs(x - y)
   result = diff <= epsilon(T) * abs(x + y) * T(unitsInLastPlace) or
       diff < minimumPositiveValue(T)
