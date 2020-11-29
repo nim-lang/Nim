@@ -158,6 +158,15 @@ func classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
+proc isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
+  ## Returns whether `x` is a `NaN`, more efficiently than via `classify(x) == fcNan`.
+  ## Does not work with: `--passc:-ffast-math`.
+  runnableExamples:
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+  result = x != x
+
 func almostEqual*[T: SomeFloat](x, y: T; unitsInLastPlace: Natural = 4): bool {.
     since: (1, 5), inline.} =
   ## Checks if two float values are almost equal, using

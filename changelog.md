@@ -58,6 +58,8 @@
 - `strscans.scanf` now supports parsing single characters.
 
 
+- Added `math.isNaN`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
