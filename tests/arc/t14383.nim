@@ -208,10 +208,10 @@ proc toTensor[T](s: seq[T]): Tensor[T] =
   for i, x in s:
     result[i] = x
 
-proc main() =
+proc main2() =
   var t: TestObject
   t.x = toTensor(@[1.0, 2, 3, 4])
   t.x = t.x  
   doAssert(t.x.buf != nil) # self-assignment above should be eliminated
 
-main()
+main2()
