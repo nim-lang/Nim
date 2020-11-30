@@ -1571,6 +1571,8 @@ proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## * `isNil(string) <#isNil,string>`_
 
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
+  ## `x == nil` or `x != nil` is preferred, please use that instead.
+
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
   ##
@@ -1578,9 +1580,17 @@ proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
+  ## `x == nil` or `x != nil` is preferred, please use that instead.
+
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
+  ## `x == nil` or `x != nil` is preferred, please use that instead.
+
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
+  ## `x == nil` or `x != nil` is preferred, please use that instead.
+
 proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
+  ## `x == nil` or `x != nil` is preferred, please use that instead.
+  ## 
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
 
