@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
-from trees import exprStructuralEquivalent, getRoot
+from trees import exprStructuralEquivalent, getRoot, sameLocation
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -969,67 +969,68 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
-  case ri.kind
-  of nkCallKinds:
-    result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkBracketExpr:
-    if isUnpackedTuple(ri[0]):
-      # unpacking of tuple: take over the elements
-      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        not aliases(dest, ri):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      var snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-  of nkBracket:
-    # array constructor
-    if ri.len > 0 and isDangerousSeq(ri.typ):
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-    else:
-      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
-    result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkSym:
-    if dest.kind == nkSym and dest.sym == ri.sym:
-      # rule (self-assignment-removal):
-      result = newNodeI(nkEmpty, dest.info)
-    elif isSinkParam(ri.sym) and isLastRead(ri, c):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-  of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
-    result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
-  of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
-    template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
-    # We know the result will be a stmt so we use that fact to optimize
-    handleNestedTempl(ri, process, willProduceStmt = true)
-  of nkRaiseStmt:
-    result = pRaiseStmt(ri, c, s)
+  if sameLocation(dest, ri):
+    # rule (self-assignment-removal):
+    result = newNodeI(nkEmpty, dest.info)
   else:
-    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        canBeMoved(c, dest.typ):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+    case ri.kind
+    of nkCallKinds:
+      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkBracketExpr:
+      if isUnpackedTuple(ri[0]):
+        # unpacking of tuple: take over the elements
+        result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+          not aliases(dest, ri):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        var snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+    of nkBracket:
+      # array constructor
+      if ri.len > 0 and isDangerousSeq(ri.typ):
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+      else:
+        result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
+      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkSym:
+      if isSinkParam(ri.sym) and isLastRead(ri, c):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
+          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+    of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
+      result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+      # We know the result will be a stmt so we use that fact to optimize
+      handleNestedTempl(ri, process, willProduceStmt = true)
+    of nkRaiseStmt:
+      result = pRaiseStmt(ri, c, s)
     else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
+      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+          canBeMoved(c, dest.typ):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
