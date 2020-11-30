@@ -120,7 +120,7 @@ block:
   var y = @[6, 7, 9, 12, 57, 66]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
+  doAssert merged.isSorted
   doAssert merged == @[1, 6, 7, 7, 8, 9, 11, 12, 21, 33, 45, 57, 66, 99]
 
 block:
@@ -128,7 +128,7 @@ block:
   var y = @[99, 85, 83, 82, 69, 64, 48, 42, 33, 31, 26, 13]
 
   let merged = merge(x, y, SortOrder.Descending)
-  doAssert merged.issorted(SortOrder.Descending)
+  doAssert merged.isSorted(SortOrder.Descending)
   doAssert merged == @[111, 99, 88, 85, 83, 82, 76, 69, 64, 56, 48, 45, 42, 33, 31, 31, 26, 22, 19, 13, 11, 3]
   # doAssert merged == @[99, 85, 83, 82, 69, 64, 48, 42, 33, 31, 26, 13, 111, 88, 76, 56, 45, 31, 22, 19, 11, 3]
 
@@ -137,8 +137,8 @@ block:
   var y = @[1]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
-  doAssert merged.issorted(SortOrder.Descending)
+  doAssert merged.isSorted
+  doAssert merged.isSorted(SortOrder.Descending)
   doAssert merged == @[1]
 
 block:
@@ -146,7 +146,7 @@ block:
   var y: seq[int] = @[]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
+  doAssert merged.isSorted
   doAssert merged == @x
 
 block:
@@ -154,7 +154,7 @@ block:
   var y = [1, 4, 6, 7, 9]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
+  doAssert merged.isSorted
   doAssert merged == @y
 
 block:
@@ -162,7 +162,7 @@ block:
   var y: array[0, int]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
+  doAssert merged.isSorted
   doAssert merged.len == 0
 
 block:
@@ -170,7 +170,7 @@ block:
   var y: seq[int]
 
   let merged = merge(x, y)
-  doAssert merged.issorted
+  doAssert merged.isSorted
   doAssert merged.len == 0
 
 block:
@@ -190,5 +190,5 @@ block:
   var y = @[r(4), r(7), r(12), r(13), r(77), r(99)]
 
   let merged = merge(x, y, cmp)
-  doAssert merged.issorted(cmp)
+  doAssert merged.isSorted(cmp)
   doAssert merged.len == 12
