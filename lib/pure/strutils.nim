@@ -209,7 +209,7 @@ proc toLowerAscii*(c: char): char {.noSideEffect,
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
-    result = chr(ord(c) + (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
@@ -248,7 +248,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect,
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
-    result = chr(ord(c) - (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
