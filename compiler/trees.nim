@@ -54,6 +54,21 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
                                           strictSymEquality): return
         result = true
 
+proc sameLocation*(a, b: PNode): bool = 
+  if a == b: true
+  elif a == nil or b == nil: false
+  elif a.kind == b.kind:
+    case a.kind:
+      of nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref,
+        nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
+        sameLocation(a[0], b[0])  
+      of nkDotExpr, nkBracketExpr:
+        sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])    
+      of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b[1])
+      of nkNone..nkNilLit: exprStructuralEquivalent(a, b, strictSymEquality = true)
+      else: false
+  else: false
+
 proc sameTree*(a, b: PNode): bool =
   if a == b:
     result = true

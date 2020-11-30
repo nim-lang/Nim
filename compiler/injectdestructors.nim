@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
-from trees import exprStructuralEquivalent, getRoot
+from trees import exprStructuralEquivalent, getRoot, sameLocation
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -969,7 +969,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
-  if isAnalysableFieldAccess(dest, c.owner) and exprStructuralEquivalent(dest, ri, strictSymEquality = true):
+  if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
   else:
@@ -1000,10 +1000,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
     of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
       result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
     of nkSym:
-      if dest.kind == nkSym and dest.sym == ri.sym:
-        # rule (self-assignment-removal):
-        result = newNodeI(nkEmpty, dest.info)
-      elif isSinkParam(ri.sym) and isLastRead(ri, c):
+      if isSinkParam(ri.sym) and isLastRead(ri, c):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
