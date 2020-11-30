@@ -561,7 +561,7 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
 proc merge*[T](
   x, y: openArray[T], cmp: proc(x, y: T
 ): int {.closure.}, order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
-  ## Merges two sorted `openArray`. All of inputs are assumed to be sorted.
+  ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
   ## If you do not wish to provide your own ``cmp``,
   ## you may use `system.cmp` or instead call the overloaded
   ## version of `merge`, which uses `system.cmp`.
@@ -615,7 +615,7 @@ proc merge*[T](
     inc i
 
 proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
-  ## Shortcut version of ``merge`` that uses ``system.cmp[T]`` as the comparison function.
+  ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
   ##
   ## **See also:**
   ## * `merge proc<#merge,openArray[T],openArray[T],proc(T,T)>`_
