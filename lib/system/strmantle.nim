@@ -8,6 +8,7 @@
 #
 
 # Compilerprocs for strings that do not depend on the string implementation.
+
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
