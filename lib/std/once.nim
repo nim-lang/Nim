@@ -3,7 +3,7 @@ import locks
 
 
 type
-  Once = object
+  Once* = object
     finished: Atomic[bool]
     lock: Lock
 
