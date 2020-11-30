@@ -209,7 +209,7 @@ proc toLowerAscii*(c: char): char {.noSideEffect,
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
-    result = cast[char](cast[uint8](c) xor 0b0010_0000'u8)
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
