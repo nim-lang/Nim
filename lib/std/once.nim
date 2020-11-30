@@ -19,7 +19,7 @@ template once*(alreadyExecuted: Once, body: untyped) =
 
 
     for i in 1 .. 10:
-      onlyOnce(block1):
+      once(block1):
         inc count
 
     doAssert count == 1
