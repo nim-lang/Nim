@@ -2334,6 +2334,7 @@ when notJSnotNims and hasAlloc:
     include "system/sysstr"
   {.pop.}
 
+  import system/commonstrs
   include "system/strmantle"
   include "system/assign"
 
