@@ -36,8 +36,9 @@ template numToString*(result: var string, origin: uint64, length: int) =
   var num = origin
   var next = length - 1
   while num >= 100:
-    let index = (num mod 100) * 2
+    let originNum = num
     num = num div 100
+    let index = (originNum - num * 100) shl 1
     result[next] = digitsTable[index + 1]
     result[next - 1] = digitsTable[index]
     dec(next, 2)
