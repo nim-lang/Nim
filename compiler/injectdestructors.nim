@@ -969,7 +969,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
-  if exprStructuralEquivalent(dest, ri, strictSymEquality = true):
+  if isAnalysableFieldAccess(dest) and exprStructuralEquivalent(dest, ri, strictSymEquality = true):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
   else:
