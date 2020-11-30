@@ -562,7 +562,7 @@ proc merge*[T](
   x, y: openArray[T], cmp: proc(x, y: T
 ): int {.closure.}, order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
   ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
-  ## If you do not wish to provide your own ``cmp``,
+  ## If you do not wish to provide your own `cmp`,
   ## you may use `system.cmp` or instead call the overloaded
   ## version of `merge`, which uses `system.cmp`.
   ##
