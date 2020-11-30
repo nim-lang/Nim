@@ -575,34 +575,44 @@ proc merge*[T](
     let res = x.merge(y, system.cmp[int])
     assert res.isSorted
     assert res == @[1, 2, 3, 3, 4, 6]
+
   let
-    size_x = x.len
-    size_y = y.len
-  
-  result = newSeqOfCap[T](size_x + size_y)
+    sizeX = x.len
+    sizeY = y.len
+
+  result = newSeq[T](sizeX + sizeY)
 
   var
-    index_x = 0
-    index_y = 0
+    ix = 0
+    iy = 0
+    i = 0
 
   while true:
-    if index_x == size_x:
-      result.add y[index_y .. ^1]
+    if ix == sizeX:
+      while iy < sizeY:
+        result[i] = y[iy]
+        inc i
+        inc iy
       return
 
-    if index_y == size_y:
-      result.add x[index_x .. ^1]
+    if iy == sizeY:
+      while ix < sizeX:
+        result[i] = x[ix]
+        inc i
+        inc ix
       return
 
-    let item_x = x[index_x]
-    let item_y = y[index_y]
+    let itemX = x[ix]
+    let itemY = y[iy]
 
-    if cmp(item_x, item_y) * order > 0:
-      result.add item_y
-      inc index_y
+    if cmp(itemX, itemY) * order > 0:
+      result[i] = itemY
+      inc iy
     else:
-      result.add item_x
-      inc index_x
+      result[i] = itemX
+      inc ix
+
+    inc i
 
 proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
   ## Shortcut version of ``merge`` that uses ``system.cmp[T]`` as the comparison function.
