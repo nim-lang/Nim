@@ -1572,6 +1572,7 @@ proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
 
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
   ## `x == nil` or `x != nil` is preferred, please use that instead.
+  # see #16191
 
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
@@ -1581,19 +1582,22 @@ proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
   ## `x == nil` or `x != nil` is preferred, please use that instead.
+  # see #16191
 
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
   ## `x == nil` or `x != nil` is preferred, please use that instead.
+  # see #16191
 
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
   ## `x == nil` or `x != nil` is preferred, please use that instead.
+  # see #16191
 
 proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## `x == nil` or `x != nil` is preferred, please use that instead.
   ## 
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
-
+  # see #16191
 
 proc `@`*[T](a: openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
