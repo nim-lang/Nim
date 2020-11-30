@@ -248,7 +248,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect,
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
-    result = cast[char](cast[uint8](c) xor 0b0010_0000'u8)
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
