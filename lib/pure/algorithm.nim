@@ -11,36 +11,34 @@
 ##
 ## Basic usage
 ## ===========
-##
-## .. code-block::
-##    import algorithm
-##
-##    type People = tuple
-##      year: int
-##      name: string
-##
-##    var a: seq[People]
-##
-##    a.add((2000, "John"))
-##    a.add((2005, "Marie"))
-##    a.add((2010, "Jane"))
-##
-##    # Sorting with default system.cmp
-##    a.sort()
-##    assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
-##                  (year: 2010, name: "Jane")]
-##
-##    proc myCmp(x, y: People): int =
-##      if x.name < y.name: -1
-##      elif x.name == y.name: 0
-##      else: 1
-##
-##    # Sorting with custom proc
-##    a.sort(myCmp)
-##    assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"),
-##                  (year: 2005, name: "Marie")]
-##
-##
+## 
+
+runnableExamples:
+  type People = tuple
+    year: int
+    name: string
+
+  var a: seq[People]
+
+  a.add((2000, "John"))
+  a.add((2005, "Marie"))
+  a.add((2010, "Jane"))
+
+  # Sorting with default system.cmp
+  a.sort()
+  assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
+                (year: 2010, name: "Jane")]
+
+  proc myCmp(x, y: People): int =
+    if x.name < y.name: -1
+    elif x.name == y.name: 0
+    else: 1
+
+  # Sorting with custom proc
+  a.sort(myCmp)
+  assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"),
+                (year: 2005, name: "Marie")]
+
 ## See also
 ## ========
 ## * `sequtils module<sequtils.html>`_ for working with the built-in seq type
