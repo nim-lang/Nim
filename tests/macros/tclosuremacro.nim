@@ -81,6 +81,6 @@ type
 
 var myBot = Bot()
 myBot.call = () {.noSideEffect.} => "I'm a bot."
-doAssert myBot.call() == "I'm a bot.
+doAssert myBot.call() == "I'm a bot."
 
 
