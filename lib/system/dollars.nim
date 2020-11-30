@@ -21,25 +21,6 @@ when defined(js):
       # pending https://github.com/nim-lang/RFCs/issues/187
       $(cast[int](x))
 else:
-  template numToString*(result: var string, origin: uint64, length: int) =
-    var num = origin
-    var next = length - 1
-    while num >= 100:
-      let originNum = num
-      num = num div 100
-      let index = (originNum - num * 100) shl 1
-      result[next] = digitsTable[index + 1]
-      result[next - 1] = digitsTable[index]
-      dec(next, 2)
-
-    # process last 1-2 digits
-    if num < 10:
-      result[next] = chr(ord('0') + num)
-    else:
-      let index = num * 2
-      result[next] = digitsTable[index + 1]
-      result[next - 1] = digitsTable[index]
-
   proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
     ## The stringify operator for an unsigned integer argument. Returns `x`
     ## converted to a decimal string.

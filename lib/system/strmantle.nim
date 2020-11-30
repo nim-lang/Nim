@@ -8,9 +8,6 @@
 #
 
 # Compilerprocs for strings that do not depend on the string implementation.
-import commonstrs
-
-
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
@@ -42,25 +39,6 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-template numToString*(result: var string, origin: uint64, length: int) =
-  var num = origin
-  var next = length - 1
-  while num >= 100:
-    let originNum = num
-    num = num div 100
-    let index = (originNum - num * 100) shl 1
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
-    dec(next, 2)
-
-  # process last 1-2 digits
-  if num < 10:
-    result[next] = chr(ord('0') + num)
-  else:
-    let index = num * 2
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
-
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
@@ -70,22 +48,22 @@ proc addInt*(result: var string; x: int64) =
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
   let base = result.len
-  var length: int
-  var num: uint64
-
+  setLen(result, base + sizeof(x)*4)
+  var i = 0
+  var y = x
+  while true:
+    var d = y div 10
+    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
+    inc(i)
+    y = d
+    if y == 0: break
   if x < 0:
-    if x == low(int64):
-      num = uint64(x)
-    else:
-      num = uint64(-x)
-    length = base + digits10(num) + 1
-    setLen(result, length)
-    result[base] = '-'
-  else:
-    num = uint64(x)
-    length = base + digits10(num)
-    setLen(result, length)
-  numToString(result, num, length)
+    result[base+i] = '-'
+    inc(i)
+  setLen(result, base+i)
+  # mirror the string:
+  for j in 0..i div 2 - 1:
+    swap(result[base+j], result[base+i-j-1])
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
