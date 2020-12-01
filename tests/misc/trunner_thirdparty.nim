@@ -5,6 +5,7 @@ discard """
 
 #[
 runs tests that depend on 3rd party code and requires special treatment.
+xxx test all tests/untestable/* here, possibly with adjustments to make running times reasonable
 ]#
 
 import std/[strformat,os,unittest]
