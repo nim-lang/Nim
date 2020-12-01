@@ -122,7 +122,7 @@ block:
   var merged: seq[int]
   merged.merge(x, y)
   doAssert merged.isSorted
-  doAssert merged == @[1, 6, 7, 7, 8, 9, 11, 12, 21, 33, 45, 57, 66, 99]
+  doAssert merged == sorted(x & y)
 
 block:
   var x = @[111, 88, 76, 56, 45, 31, 22, 19, 11, 3]
@@ -131,7 +131,7 @@ block:
   var merged: seq[int]
   merged.merge(x, y, proc (x, y: int): int = -system.cmp(x, y))
   doAssert merged.isSorted(proc (x, y: int): int = -system.cmp(x, y))
-  doAssert merged == @[111, 99, 88, 85, 83, 82, 76, 69, 64, 56, 48, 45, 42, 33, 31, 31, 26, 22, 19, 13, 11, 3]
+  doAssert merged == sorted(x & y, SortOrder.Descending)
 
 block:
   var x: seq[int] = @[]
@@ -243,20 +243,19 @@ block:
   var merged: seq[Record]
   merged.merge(x, y, ascendingCmp)
   doAssert merged.isSorted(ascendingCmp)
-  doAssert merged.len == 12
+  doAssert merged == sorted(x & y, ascendingCmp)
 
   reverse(x)
   reverse(y)
   merged.merge(x, y, descendingCmp)
   doAssert merged.isSorted(descendingCmp)
-  doAssert merged.len == 12
-
+  doAssert merged == sorted(x & y, ascendingCmp, SortOrder.Descending)
 
   reverse(x)
   reverse(y)
   merged.merge(x, y, proc (x, y: Record): int = -descendingCmp(x, y))
   doAssert merged.isSorted(proc (x, y: Record): int = -descendingCmp(x, y))
-  doAssert merged.len == 12
+  doAssert merged == sorted(x & y, ascendingCmp)
 
 
 import sugar
