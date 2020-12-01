@@ -748,7 +748,9 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+      const whiteListedDirs = ["deps"]
+      doAssert cat.string in whiteListedDirs,
+        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0

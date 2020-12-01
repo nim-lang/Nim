@@ -15,6 +15,7 @@ import
   algorithm, times, md5, sequtils, azure, intsets
 from std/sugar import dup
 import compiler/nodejs
+import lib/stdtest/testutils
 
 var useColors = true
 var backendLogging = true
@@ -364,7 +365,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     checkForInlineErrors(r, expected, given, test, target)
   elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -422,17 +423,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let giv = given.nimout.strip
-  var currentPos = 0
-  # Only check that nimout contains all expected lines in that order.
-  # There may be more output in nimout. It is ignored here.
-  for line in expectedNimout.strip.splitLines:
-    currentPos = giv.find(line.strip, currentPos)
-    if currentPos < 0:
-      given.err = reMsgsDiffer
-      break
-
-
+  if not greedyOrderedSubsetLines(expectedNimout, given.nimout):
+    given.err = reMsgsDiffer
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =

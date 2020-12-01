@@ -1,3 +1,5 @@
+/* xxx consider removing, this seems redundant with tmain.nim */
+
 #ifdef WIN
 #include <windows.h>
 #else
@@ -28,7 +30,7 @@ int main(int argc, char* argv[])
     status = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"status");
     count = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"count");
     checkOccupiedMem = (pFunc)GetProcAddress((HMODULE) hndl, (char const*)"checkOccupiedMem");
-#else /* OSX || NIX */
+#else /* OSX || NIX xxx: OSX assumes dylib*/
     hndl = (void*) dlopen((char const*)"./tests/realtimeGC/libshared.so", RTLD_LAZY);
     status = (pFunc) dlsym(hndl, (char const*)"status");
     count = (pFunc) dlsym(hndl, (char const*)"count");

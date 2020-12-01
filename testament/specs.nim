@@ -306,7 +306,7 @@ proc parseSpec*(filename: string): TSpec =
         result.msg = e.value
         if result.action != actionRun:
           result.action = actionCompile
-      of "errormsg", "errmsg": # xxx just use errormsg, no need for such aliases
+      of "errormsg":
         result.msg = e.value
         result.action = actionReject
       of "nimout":
