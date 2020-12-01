@@ -1948,7 +1948,7 @@ Nim supports these `calling conventions`:idx:\:
     hardware stack.
 
 `inline`:idx:
-    The inline convention means the the caller should not call the procedure,
+    The inline convention means the caller should not call the procedure,
     but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates ``__inline`` procedures. This is
     only a hint for the compiler: it may completely ignore it and

@@ -622,7 +622,7 @@ when not defined(js): # C
       ## Note: Not available for JS backend.
     proc gamma*(x: float32): float32 {.importc: "tgammaf", header: "<math.h>".}
     proc gamma*(x: float64): float64 {.importc: "tgamma", header: "<math.h>".}
-      ## Computes the the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
+      ## Computes the `gamma function <https://en.wikipedia.org/wiki/Gamma_function>`_ for ``x``.
       ##
       ## Note: Not available for JS backend.
       ##
