@@ -578,6 +578,12 @@ proc merge*[T](
     assert merged.isSorted
     assert merged == @[1, 2, 3, 3, 4, 6]
 
+    import sugar
+
+    var res: seq[(int, int)]
+    res.merge([(1,1)], [(1,2)], (a,b) => a[0] - b[0])
+    assert res == @[(1, 1), (1, 2)]
+
   let
     sizeX = x.len
     sizeY = y.len

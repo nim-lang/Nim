@@ -257,3 +257,10 @@ block:
   merged.merge(x, y, proc (x, y: Record): int = -descendingCmp(x, y))
   doAssert merged.isSorted(proc (x, y: Record): int = -descendingCmp(x, y))
   doAssert merged.len == 12
+
+
+import sugar
+
+var x: seq[(int, int)]
+x.merge([(1,1)], [(1,2)], (a,b) => a[0] - b[0])
+doAssert x == @[(1, 1), (1, 2)]
