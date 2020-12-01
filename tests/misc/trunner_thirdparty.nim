@@ -7,7 +7,7 @@ discard """
 runs tests that depend on 3rd party code and requires special treatment.
 ]#
 
-import std/[strformat,os]
+import std/[strformat,os,unittest]
 import stdtest/specialpaths
 
 const
@@ -19,7 +19,7 @@ const
 
 proc runCmd(cmd: string) =
   let ret = execShellCmd(cmd)
-  doAssert ret == 0
+  check ret == 0 # allows more than 1 failure
 
 proc main =
   let options = fmt"-b:{mode} --hints:off"
