@@ -2379,7 +2379,8 @@ when notJSnotNims and hasAlloc:
     include "system/sysstr"
   {.pop.}
 
-  include "system/strmantle"
+  from std/private/strmantle import addInt, addFloat
+  export addInt, addFloat
   include "system/assign"
 
   when not defined(nimV2):

@@ -9,6 +9,9 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
+import system/ansi_c
+include system/inclrtl
+
 const digitsTable = "0001020304050607080910111213141516171819" &
     "2021222324252627282930313233343536373839" &
     "4041424344454647484950515253545556575859" &
@@ -143,7 +146,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
   result.setLen newLen
   copyMem(result[oldLen].addr, buf, buflen)
 
-import formatfloat
+import system/formatfloat
 
 proc addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
