@@ -559,28 +559,30 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
   isSorted(a, system.cmp[T], order)
 
 proc merge*[T](
-  x, y: openArray[T], cmp: proc(x, y: T
-): int {.closure.}, order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+  result: var seq[T],
+  x, y: openArray[T], cmp: proc(x, y: T): int {.closure.}
+) {.since: (1, 5, 1).} =
   ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
   ## If you do not wish to provide your own `cmp`,
   ## you may use `system.cmp` or instead call the overloaded
   ## version of `merge`, which uses `system.cmp`.
   ##
   ## **See also:**
-  ## * `merge proc<#merge,openArray[T],openArray[T]>`_
+  ## * `merge proc<#merge,var seq[T],openArray[T],openArray[T]>`_
   runnableExamples:
     let x = @[1, 3, 6]
     let y = @[2, 3, 4]
 
-    let res = x.merge(y, system.cmp[int])
-    assert res.isSorted
-    assert res == @[1, 2, 3, 3, 4, 6]
+    var merged: seq[int]
+    merged.merge(x, y, system.cmp[int])
+    assert merged.isSorted
+    assert merged == @[1, 2, 3, 3, 4, 6]
 
   let
     sizeX = x.len
     sizeY = y.len
 
-  result = newSeq[T](sizeX + sizeY)
+  result.setlen(sizeX + sizeY)
 
   var
     ix = 0
@@ -605,7 +607,7 @@ proc merge*[T](
     let itemX = x[ix]
     let itemY = y[iy]
 
-    if cmp(itemX, itemY) * order > 0:
+    if cmp(itemX, itemY) > 0:
       result[i] = itemY
       inc iy
     else:
@@ -614,19 +616,20 @@ proc merge*[T](
 
     inc i
 
-proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+proc merge*[T](result: var seq[T], x, y: openArray[T]) {.since: (1, 5, 1).} =
   ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
   ##
   ## **See also:**
-  ## * `merge proc<#merge,openArray[T],openArray[T],proc(T,T)>`_
+  ## * `merge proc<#merge,var seq[T],openArray[T],openArray[T],proc(T,T)>`_
   runnableExamples:
     let x = [5,10,15,20,25]
     let y = [50,40,30,20,10].sorted
 
-    let res = x.merge(y)
-    assert res.isSorted
-    assert res == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
-  merge(x, y, system.cmp, order)
+    var merged: seq[int]
+    merged.merge(x, y)
+    assert merged.isSorted
+    assert merged == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
+  merge(result, x, y, system.cmp)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array. Warning: complexity
