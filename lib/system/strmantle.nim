@@ -46,10 +46,12 @@ func digits10(num: uint64): int {.noinline.} =
 template numToString(result: var string, origin: uint64, length: int) =
   var num = origin
   var next = length - 1
-  while num >= 100:
+  const nbatch = 100
+
+  while num >= nbatch:
     let originNum = num
-    num = num div 100
-    let index = (originNum - num * 100) shl 1
+    num = num div nbatch
+    let index = (originNum - num * nbatch) shl 1
     result[next] = digitsTable[index + 1]
     result[next - 1] = digitsTable[index]
     dec(next, 2)
@@ -61,8 +63,6 @@ template numToString(result: var string, origin: uint64, length: int) =
     let index = num * 2
     result[next] = digitsTable[index + 1]
     result[next - 1] = digitsTable[index]
-
-
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
