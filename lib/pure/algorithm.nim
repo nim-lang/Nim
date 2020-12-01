@@ -558,9 +558,15 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
     assert isSorted(e) == false
   isSorted(a, system.cmp[T], order)
 
-proc merge*[T](
-  x, y: openArray[T], cmp: proc(x, y: T
-): int {.closure.}, order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp = system.cmp[:T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp = system.cmp[:int], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp2 = cmp[int], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp2 = cmp[int]): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp2 = cmp[T]): seq[T] {.since: (1, 5, 1).} =
+# proc merge*[T](x, y: openArray[T], cmp2: proc(x, y: T): int {.closure.} = cmp[T]): seq[T] {.since: (1, 5, 1).} =
+
+# proc merge*[T](x, y: openArray[T], cmp2: proc(x, y: T): int {.closure.} = nil): seq[T] {.since: (1, 5, 1).} =
+proc merge*[T](x, y: openArray[T], cmp: proc(x, y: T): int {.closure.} = nil): seq[T] {.since: (1, 5, 1).} =
   ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
   ## If you do not wish to provide your own `cmp`,
   ## you may use `system.cmp` or instead call the overloaded
@@ -581,6 +587,12 @@ proc merge*[T](
     sizeY = y.len
 
   result = newSeq[T](sizeX + sizeY)
+  var cmp = cmp
+  if cmp == nil:
+    when compiles(system.cmp[T]):
+      cmp = system.cmp[T]
+    else:
+      doAssert false
 
   var
     ix = 0
@@ -605,7 +617,9 @@ proc merge*[T](
     let itemX = x[ix]
     let itemY = y[iy]
 
-    if cmp(itemX, itemY) * order > 0:
+    # if cmp(itemX, itemY) * order > 0:
+    # if cmp2(itemX, itemY) * order > 0:
+    if cmp(itemX, itemY) > 0:
       result[i] = itemY
       inc iy
     else:
@@ -614,19 +628,19 @@ proc merge*[T](
 
     inc i
 
-proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
-  ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
-  ##
-  ## **See also:**
-  ## * `merge proc<#merge,openArray[T],openArray[T],proc(T,T)>`_
-  runnableExamples:
-    let x = [5,10,15,20,25]
-    let y = [50,40,30,20,10].sorted
+# proc merge*[T](x, y: openArray[T], order = SortOrder.Ascending): seq[T] {.since: (1, 5, 1).} =
+#   ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
+#   ##
+#   ## **See also:**
+#   ## * `merge proc<#merge,openArray[T],openArray[T],proc(T,T)>`_
+#   runnableExamples:
+#     let x = [5,10,15,20,25]
+#     let y = [50,40,30,20,10].sorted
 
-    let res = x.merge(y)
-    assert res.isSorted
-    assert res == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
-  merge(x, y, system.cmp, order)
+#     let res = x.merge(y)
+#     assert res.isSorted
+#     assert res == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
+#   merge(x, y, system.cmp, order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array. Warning: complexity
