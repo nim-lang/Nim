@@ -1,18 +1,27 @@
 discard """
-  cmd: "nim $target --debuginfo $options $file"
-  output: "Done"
+  cmd: "nim $target --threads:on -d:release -d:useRealtimeGC $options $file"
+  joinable:false
 """
 
-import times, os, threadpool
+#[
+was: cmd: "nim $target --debuginfo $options $file"
+these dont' seem needed --debuginfo
+nor these from the previous main.nim.cfg: --app:console
+]#
 
-const RUNTIME = 15 * 60 # 15 minutes
+import times, os, strformat, strutils
+from stdtest/specialpaths import buildDir
+# import threadpool
 
-when defined(windows):
-  const dllname = "./tests/realtimeGC/shared.dll"
-elif defined(macosx):
-  const dllname = "./tests/realtimeGC/libshared.dylib"
-else:
-  const dllname = "./tests/realtimeGC/libshared.so"
+const runtimeSecs {.intdefine.} = 5
+
+const file = "shared.nim"
+const dllname = buildDir / (DynlibFormat % file)
+
+static:
+  let nim = getCurrentCompilerExe()
+  let (output, exitCode) = gorgeEx(fmt"{nim} c -o:{dllname} --debuginfo --app:lib --threads:on -d:release -d:useRealtimeGC {file}")
+  doAssert exitCode == 0, output
 
 proc status() {.importc: "status", dynlib: dllname.}
 proc count() {.importc: "count", dynlib: dllname.}
@@ -20,7 +29,7 @@ proc checkOccupiedMem() {.importc: "checkOccupiedMem", dynlib: dllname.}
 
 proc process() =
   let startTime = getTime()
-  let runTime = cast[Time](RUNTIME) #
+  let runTime = cast[Time](runtimeSecs)
   var accumTime: Time
   while accumTime < runTime:
     for i in 0..10:
@@ -41,6 +50,5 @@ proc main() =
   #   for i in 0..0:
   #     spawn process()
   # sync()
-  echo("Done")
 
 main()
