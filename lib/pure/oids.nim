@@ -52,7 +52,7 @@ proc parseOid*(str: cstring): Oid =
     inc(i)
 
 proc oidToString*(oid: Oid, str: cstring) =
-  ## Converts a oid to `str`.
+  ## Converts an oid to `str`.
   const hex = "0123456789abcdef"
   # work around a compiler bug:
   var str = str
