@@ -67,7 +67,7 @@ proc oidToString*(oid: Oid, str: cstring) =
   str[24] = '\0'
 
 proc `$`*(oid: Oid): string =
-  ## Converts a oid to string.
+  ## Converts an oid to string.
   result = newString(24)
   oidToString(oid, result)
 
