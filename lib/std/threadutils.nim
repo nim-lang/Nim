@@ -21,7 +21,10 @@ template onceGlobal*(body: untyped) =
       body
 
 template onceThread*(body: untyped) =
-  var witness {.threadvar.}: bool
+  # var witness {.threadvar.}: bool
+  # var witness {.threadvar, inject.}: bool
+  var witness {.threadvar, global.}: bool
   if not witness:
+    echo "here"
     witness = true
     body
