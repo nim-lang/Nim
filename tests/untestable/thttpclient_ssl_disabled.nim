@@ -9,10 +9,7 @@
 ## Compile and run with:
 ## ./bin/nim c -d:nimDisableCertificateValidation -d:ssl -r -p:. tests/untestable/thttpclient_ssl_disabled.nim
 
-import httpclient,
-  net,
-  unittest,
-  os
+import httpclient, net, unittest
 
 from strutils import contains
 

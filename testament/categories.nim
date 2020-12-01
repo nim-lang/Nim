@@ -34,7 +34,7 @@ const
     "nimble-packages-2",
     "niminaction",
     "threads",
-    "untestable",
+    "untestable", # see trunner_thirdparty
     "testdata",
     "nimcache",
     "coroutines",
@@ -666,8 +666,9 @@ proc processCategory(r: var TResults, cat: Category,
     of "niminaction":
       testNimInAction(r, cat, options)
     of "untestable":
-      # We can't test it because it depends on a third party.
-      discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
+      # These require special treatment e.g. because they depend on a third party
+      # dependency; see `trunner_thirdparty` which runs some of those.
+      discard
     else:
       handled = false
   if not handled:
