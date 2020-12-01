@@ -23,9 +23,11 @@ template once*(alreadyExecuted: Once, body: untyped) =
         inc count
 
     doAssert count == 1
+
   if not alreadyExecuted.finished.load:
     withLock alreadyExecuted.lock:
-      try:
-        body
-      finally:
-        alreadyExecuted.finished.store(true)
+      if not alreadyExecuted.finished.load:
+        try:
+          body
+        finally:
+          alreadyExecuted.finished.store(true)
