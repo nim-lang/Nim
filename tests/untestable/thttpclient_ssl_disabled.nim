@@ -11,8 +11,6 @@
 
 import httpclient, net, unittest
 
-from strutils import contains
-
 const expired = "https://expired.badssl.com/"
 
 doAssert defined(nimDisableCertificateValidation)
