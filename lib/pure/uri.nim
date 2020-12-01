@@ -47,7 +47,7 @@
 import std/private/since
 
 import strutils, parseutils, base64
-include includes/decode_helpers
+import std/decode_helpers
 
 
 type
