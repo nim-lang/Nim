@@ -81,6 +81,7 @@ let
   pegOfInterest = pegLineError / pegOtherError
 
 var gTargets = {low(TTarget)..high(TTarget)}
+var targetsSet = false
 
 proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
@@ -401,9 +402,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
   try:
     let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
-    let check = spec.ccodeCheck
-    if check.len > 0:
-      if check[0] == '\\':
+    for check in spec.ccodeCheck:
+      if check.len > 0 and check[0] == '\\':
         # little hack to get 'match' support:
         if not contents.match(check.peg):
           given.err = reCodegenFailure
@@ -691,6 +691,7 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       gTargets = parseTargets(targetsStr)
+      targetsSet = true
     of "nim":
       compilerPrefix = addFileExt(p.val.string, ExeExt)
     of "directory":
@@ -800,14 +801,16 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
+    # "/pathto/tests/stdlib/nre/captures.nim" -> "stdlib" + "tests/stdlib/nre/captures.nim"
     var subPath = p.key.string
-    if subPath.isAbsolute: subPath = subPath.relativePath(getCurrentDir())
+    let nimRoot = currentSourcePath / "../.."
+      # makes sure points to this regardless of cwd or which nim is used to compile this.
+    doAssert existsDir(nimRoot/testsDir) # sanity check
+    if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
     # at least one directory is required in the path, to use as a category name
-    let pathParts = split(subPath, {DirSep, AltSep})
-    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})
     let cat = Category(pathParts[0])
-    subPath = joinPath(pathParts[1..^1])
-    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:
