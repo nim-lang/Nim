@@ -568,7 +568,7 @@ proc merge*[T](
   ## version of `merge`, which uses `system.cmp`.
   ##
   ## **See also:**
-  ## * `merge proc<#merge,var seq[T],openArray[T],openArray[T]>`_
+  ## * `merge proc<#merge,seq[T],openArray[T],openArray[T]>`_
   runnableExamples:
     let x = @[1, 3, 6]
     let y = @[2, 3, 4]
@@ -626,7 +626,7 @@ proc merge*[T](result: var seq[T], x, y: openArray[T]) {.since: (1, 5, 1).} =
   ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
   ##
   ## **See also:**
-  ## * `merge proc<#merge,var seq[T],openArray[T],openArray[T],proc(T,T)>`_
+  ## * `merge proc<#merge,seq[T],openArray[T],openArray[T],proc(T,T)>`_
   runnableExamples:
     let x = [5,10,15,20,25]
     let y = [50,40,30,20,10].sorted
