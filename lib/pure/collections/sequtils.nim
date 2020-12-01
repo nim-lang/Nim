@@ -283,10 +283,10 @@ template zipImpl(s1, s2, retType: untyped): untyped =
     for i in 0 ..< m:
       result[i] = (s1[i], s2[i])
 
-when (NimMajor, NimMinor) <= (1, 0):
-  zipImpl(s1, s2, seq[tuple[a: S, b: T]])
-else:
-  zipImpl(s1, s2, seq[(S, T)])
+# when (NimMajor, NimMinor) <= (1, 0):
+#   zipImpl(s1, s2, seq[tuple[a: S, b: T]])
+# else:
+zipImpl(s1, s2, seq[(S, T)])
 
 proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
