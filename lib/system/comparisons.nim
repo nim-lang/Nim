@@ -4,14 +4,14 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
   runnableExamples:
     type
       Enum1 = enum
-        Field1 = 3, Field2
+        field1 = 3, field2
       Enum2 = enum
-        Place1, Place2 = 3
+        place1, place2 = 3
     var
-      e1 = Field1
-      e2 = Enum1(Place2)
+      e1 = field1
+      e2 = Enum1(place2)
     assert e1 == e2
-    assert not compiles(e1 == Place2) # raises error
+    assert not compiles(e1 == place2) # raises error
 proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =
   ## Checks for equality between two `pointer` variables.
   runnableExamples:
@@ -251,7 +251,9 @@ proc max*[T](x: openArray[T]): T =
 
 proc clamp*[T](x, a, b: T): T =
   ## Limits the value `x` within the interval [a, b].
-  ## This proc is equivalent to `max(a, min(b, x))`.
+  ## This proc is equivalent to but fatser than `max(a, min(b, x))`.
+  ## 
+  ## **Note that** `a < b` is assuemed and no check for it.
   runnableExamples:
     assert (1.4).clamp(0.0, 1.0) == 1.0
     assert (0.5).clamp(0.0, 1.0) == 0.5
