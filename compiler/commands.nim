@@ -450,6 +450,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
     if conf.cmd == cmdNone:
+      conf.command = "e"
       conf.setCmd cmdNimscript # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":
