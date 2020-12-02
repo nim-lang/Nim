@@ -1,4 +1,5 @@
 import std/private/miscdollars
+import std/strutils
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
@@ -23,3 +24,13 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
       msg2.add " FLAKY_FAILURE "
     msg2.add $expr & " " & msg
     echo msg2
+
+proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+  ## returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+  let rhs = rhs.strip
+  var currentPos = 0
+  for line in lhs.strip.splitLines:
+    currentPos = rhs.find(line.strip, currentPos)
+    if currentPos < 0:
+      return false
+  return true

@@ -3,18 +3,18 @@ discard """
   action: "reject"
   nimout: '''
 tcaseexpr1.nim(33, 10) Error: not all cases are covered; missing: {C}
+tcaseexpr1.nim(39, 12) Error: type mismatch: got <string> but expected 'int literal(10)'
 '''
 """
 
-#[
-# xxx make nimout comparison use nimoutCheck instead of:
-elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
 
-and then use nimout: '''
-tcaseexpr1.nim(33, 10) Error: not all cases are covered2; missing: {C}
-tcaseexpr1.nim(39, 12) Error: type mismatch: got <string> but expected 'int literal(10)'
-'''
-]#
+
+
+
+
+
+
+
 
 
 # line 20
