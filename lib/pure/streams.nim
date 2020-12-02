@@ -346,7 +346,7 @@ proc write*[T](s: Stream, x: T) =
   writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
-  ## Writes the string `x` to the the stream `s`. No length field or
+  ## Writes the string `x` to the stream `s`. No length field or
   ## terminating zero is written.
   runnableExamples:
     var strm = newStringStream("")
