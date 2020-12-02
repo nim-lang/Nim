@@ -251,10 +251,6 @@ template zipImpl(s1, s2, retType: untyped): untyped =
     ## The input containers can be of different types.
     ## If one container is shorter, the remaining items in the longer container
     ## are discarded.
-    ##
-    ## **Note**: For Nim 1.0.x and older version, ``zip`` returned a seq of
-    ## named tuple with fields ``a`` and ``b``. For Nim versions 1.1.x and newer,
-    ## ``zip`` returns a seq of unnamed tuples.
     runnableExamples:
       let
         short = @[1, 2, 3]
@@ -267,25 +263,17 @@ template zipImpl(s1, s2, retType: untyped): untyped =
       assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
       assert zip1[2][0] == 3
       assert zip2[1][1] == "two"
-      when (NimMajor, NimMinor) <= (1, 0):
-        let
-          zip3 = zip(long, letters)
-        assert zip3 == @[(a: 6, b: 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
-        assert zip3[0].b == 'a'
-      else:
-        let
-          zip3: seq[tuple[num: int, letter: char]] = zip(long, letters)
-        assert zip3 == @[(6, 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
-        assert zip3[0].letter == 'a'
+
+      let
+        zip3: seq[tuple[num: int, letter: char]] = zip(long, letters)
+      assert zip3 == @[(6, 'a'), (5, 'b'), (4, 'c'), (3, 'd')]
+      assert zip3[0].letter == 'a'
 
     var m = min(s1.len, s2.len)
     newSeq(result, m)
     for i in 0 ..< m:
       result[i] = (s1[i], s2[i])
 
-# when (NimMajor, NimMinor) <= (1, 0):
-#   zipImpl(s1, s2, seq[tuple[a: S, b: T]])
-# else:
 zipImpl(s1, s2, seq[(S, T)])
 
 proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
