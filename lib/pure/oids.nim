@@ -12,24 +12,24 @@
 ## produce a globally distributed unique ID. This implementation was extracted
 ## from the Mongodb interface and it thus binary compatible with a Mongo OID.
 ##
-## This implementation calls `random.randomize()` for the first call of
+## This implementation calls ``math.randomize()`` for the first call of
 ## ``genOid``.
 
-import hashes, times, endians, random
+import hashes, times, endians
 
 type
-  Oid* = object  ## An OID.
+  Oid* = object  ## an OID
     time: int32  ##
     fuzz: int32  ##
     count: int32 ##
 
 proc `==`*(oid1: Oid, oid2: Oid): bool =
-  ## Compares two Mongo Object IDs for equality.
+  ## Compare two Mongo Object IDs for equality
   return (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and
           (oid1.count == oid2.count)
 
 proc hash*(oid: Oid): Hash =
-  ## Generates hash of Oid for use in hashtables.
+  ## Generate hash of Oid for use in hashtables
   var h: Hash = 0
   h = h !& hash(oid.time)
   h = h !& hash(oid.fuzz)
@@ -44,7 +44,7 @@ proc hexbyte*(hex: char): int =
   else: discard
 
 proc parseOid*(str: cstring): Oid =
-  ## Parses an OID.
+  ## parses an OID.
   var bytes = cast[cstring](addr(result.time))
   var i = 0
   while i < 12:
@@ -52,7 +52,6 @@ proc parseOid*(str: cstring): Oid =
     inc(i)
 
 proc oidToString*(oid: Oid, str: cstring) =
-  ## Converts a oid to `str`.
   const hex = "0123456789abcdef"
   # work around a compiler bug:
   var str = str
@@ -67,20 +66,21 @@ proc oidToString*(oid: Oid, str: cstring) =
   str[24] = '\0'
 
 proc `$`*(oid: Oid): string =
-  ## Converts a oid to string.
   result = newString(24)
   oidToString(oid, result)
 
+proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
+proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
 
 var t = getTime().toUnix.int32
-randomize(t)
+srand(t)
 
 var
-  incr: int = rand(0x7fff)
-  fuzz = int32(rand(high(int32)))
+  incr: int = rand()
+  fuzz: int32 = rand()
 
 proc genOid*(): Oid =
-  ## Generates a new OID.
+  ## generates a new OID.
   t = getTime().toUnix.int32
   var i = int32(atomicInc(incr))
 
@@ -89,7 +89,7 @@ proc genOid*(): Oid =
   bigEndian32(addr result.count, addr(i))
 
 proc generatedTime*(oid: Oid): Time =
-  ## Returns the generated timestamp of the OID.
+  ## returns the generated timestamp of the OID.
   var tmp: int32
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
