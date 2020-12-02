@@ -9,6 +9,9 @@ runnableExamples:
   # bug #11078
   for x in "xx": discard
 
+
+var someVariable*: bool ## This should be visible.
+
 when true:
   ## top2
   runnableExamples:
