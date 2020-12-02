@@ -5,8 +5,8 @@ proc handleHexChar*(c: char, x: var int, f: var bool) {.inline.} =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: f = true
 
-proc decodePercent*(s: string, i: var int): char =
-  ## Converts `%xx` hexadecimal to the charracter with ordinal number `xx`.
+proc decodePercent*(s: openArray[char], i: var int): char =
+  ## Converts `%xx` hexadecimal to the character with ordinal number `xx`.
   ##
   ## If `xx` is not a valid hexadecimal value, it is left intact: only the
   ## leading `%` is returned as-is, and `xx` characters will be processed in the
