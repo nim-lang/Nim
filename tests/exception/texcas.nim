@@ -1,8 +1,9 @@
 discard """
   targets: "c cpp"
-  output: '''Hello
+  output: '''
 Hello
-  '''
+Hello
+'''
 """
 proc test[T]() =
   try:

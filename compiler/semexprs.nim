@@ -2280,7 +2280,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
     markUsed(c, n.info, s)
-    if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+    if c.config.cmd in cmdDocLike and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
         # some of this dead code was moved to `prepareExamples`
         if sfMainModule in c.module.flags:
@@ -2724,7 +2724,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      #if c.config.cmd == cmdPretty and n[0].kind == nkDotExpr:
+      #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:

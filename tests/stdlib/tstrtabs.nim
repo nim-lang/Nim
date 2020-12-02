@@ -102,3 +102,15 @@ writeLine(stdout, "length of table ", $tab.len)
 writeLine(stdout, `%`("$key1 = $key2", tab, {useEnvironment}))
 tab.clear
 writeLine(stdout, "length of table ", $tab.len)
+
+block:
+  var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
+  assert x["k"] == "v"
+  assert x["11"] == "22"
+  assert x["565"] == "67"
+  x["11"] = "23"
+  assert x["11"] == "23"
+
+  x.clear(modeCaseInsensitive)
+  x["11"] = "22"
+  assert x["11"] == "22"

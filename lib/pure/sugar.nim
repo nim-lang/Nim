@@ -17,10 +17,7 @@ proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:
       prag = ex[1]
-      if ex[0].kind == nnkPar and ex[0].len == 1:
-        ex = ex[0][0]
-      else:
-        ex = ex[0]
+      ex = ex[0]
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkProcTy)
@@ -66,12 +63,12 @@ macro `=>`*(p, b: untyped): untyped =
 
     type
       Bot = object
-        call: proc (): string {.nosideEffect.}
+        call: proc (name: string): string {.noSideEffect.}
 
     var myBot = Bot()
 
-    myBot.call = () {.nosideEffect.} => "I'm a bot."
-    doAssert myBot.call() == "I'm a bot."
+    myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
+    doAssert myBot.call("John") == "Hello John, I'm a bot."
 
   var
     params = @[ident"auto"]
@@ -89,7 +86,7 @@ macro `=>`*(p, b: untyped): untyped =
   checkPragma(p, pragma) # check again after -> transform
 
   since (1, 3):
-    if p.kind == nnkCall:
+    if p.kind in {nnkCall, nnkObjConstr}:
       # foo(x, y) => x + y
       kind = nnkProcDef
       name = p[0]
@@ -129,7 +126,7 @@ macro `=>`*(p, b: untyped): untyped =
           error("Expected proc type (->) got (" & c[0].strVal & ").", c)
         break
       else:
-        error("Incorrect procedure parameter list.", c)
+        error("Incorrect procedure parameter.", c)
       params.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
@@ -363,100 +360,3 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
     for i in 1 ..< init.len:
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
-
-
-when isMainModule:
-  since (1, 1):
-    block dup_with_field:
-      type
-        Foo = object
-          col, pos: int
-          name: string
-
-      proc inc_col(foo: var Foo) = inc(foo.col)
-      proc inc_pos(foo: var Foo) = inc(foo.pos)
-      proc name_append(foo: var Foo, s: string) = foo.name &= s
-
-      let a = Foo(col: 1, pos: 2, name: "foo")
-      block:
-        let b = a.dup(inc_col, inc_pos):
-          _.pos = 3
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
-
-      block:
-        let b = a.dup(inc_col, pos = 3, name = "bar"):
-          name_append("bar")
-          inc_pos
-
-        doAssert(b == Foo(col: 2, pos: 4, name: "barbar"))
-
-    import algorithm
-
-    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert dup(a, sort(_)) == sorted(a)
-    doAssert a.dup(sort) == sorted(a)
-    #Chaining:
-    var aCopy = a
-    aCopy.insert(10)
-    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
-
-    import random
-
-    const b = @[0, 1, 2]
-    let c = b.dup shuffle()
-    doAssert c[0] == 1
-    doAssert c[1] == 0
-
-    #test collect
-    import sets, tables
-
-    let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
-    assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
-          1: "word"}.toTable
-    assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
-
-    let x = collect(newSeqOfCap(4)):
-        for (i, d) in data.pairs:
-          if i mod 2 == 0: d
-    assert x == @["bird"]
-
-    # bug #12874
-
-    let bug1 = collect(
-        newSeq,
-        for (i, d) in data.pairs:(
-          block:
-            if i mod 2 == 0:
-              d
-            else:
-              d & d
-          )
-    )
-    assert bug1 == @["bird", "wordword"]
-
-    import strutils
-    let y = collect(newSeq):
-      for (i, d) in data.pairs:
-        try: parseInt(d) except: 0
-    assert y == @[0, 0]
-
-    let z = collect(newSeq):
-      for (i, d) in data.pairs:
-        case d
-        of "bird": "word"
-        else: d
-    assert z == @["word", "word"]
-
-
-    proc tforum =
-      let ans = collect(newSeq):
-        for y in 0..10:
-          if y mod 5 == 2:
-            for x in 0..y:
-              x
-
-    tforum()

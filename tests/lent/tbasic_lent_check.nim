@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp"
+  targets: "c cpp js"
   output: "1"
 """
 
@@ -16,29 +16,28 @@ proc main =
 
 main()
 
-
-#------------------------------------------------------------------------------
-# issue #15958
-
-block:
+template main2 = # bug #15958
   proc byLent[T](a: T): lent T = a
   let a = [11,12]
-  let b = @[21,23]  
+  let b = @[21,23]
   let ss = {1, 2, 3, 5}
   doAssert byLent(a) == [11,12]
   doAssert byLent(a).unsafeAddr == a.unsafeAddr
   doAssert byLent(b) == @[21,23]
-  doAssert byLent(b).unsafeAddr == b.unsafeAddr
+  when not defined(js): # pending bug #16073
+    doAssert byLent(b).unsafeAddr == b.unsafeAddr
   doAssert byLent(ss) == {1, 2, 3, 5}
   doAssert byLent(ss).unsafeAddr == ss.unsafeAddr
 
   let r = new(float)
   r[] = 10.0
-  doAssert byLent(r)[] == 10.0
+  when not defined(js): # pending bug #16073
+    doAssert byLent(r)[] == 10.0
 
-  let p = create(float)
-  p[] = 20.0
-  doAssert byLent(p)[] == 20.0
+  when not defined(js): # pending bug https://github.com/timotheecour/Nim/issues/372
+    let p = create(float)
+    p[] = 20.0
+    doAssert byLent(p)[] == 20.0
 
   proc byLent2[T](a: openarray[T]): lent T = a[0]
   doAssert byLent2(a) == 11
@@ -53,3 +52,7 @@ block:
     z = 30
   doAssert byLent3(x, y, z) == 20
 
+main2()
+when false:
+  # bug: Error: unhandled exception: 'node' is not accessible using discriminant 'kind' of type 'TFullReg' [FieldDefect]
+  static: main2()

@@ -563,13 +563,13 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startsWith(a): b else: a & b
 
-proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
-  let test = testsDir &.? cat.string / test
-  let target = if cat.string.normalize == "js": targetJS else: targetC
-  if fileExists(test):
-    testSpec r, makeTest(test, options, cat), {target}
-  else:
-    doAssert false, test & " test does not exist"
+proc processSingleTest(r: var TResults, cat: Category, options, test: string, targets: set[TTarget], targetsSet: bool) =
+  var targets = targets
+  if not targetsSet:
+    let target = if cat.string.normalize == "js": targetJS else: targetC
+    targets = {target}
+  doAssert fileExists(test), test & " test does not exist"
+  testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
@@ -591,12 +591,14 @@ proc isJoinableSpec(spec: TSpec): bool =
     if spec.file.readFile.contains "when isMainModule":
       result = false
 
-proc norm(s: var string) =
-  while true:
-    let tmp = s.replace("\n\n", "\n")
-    if tmp == s: break
-    s = tmp
-  s = s.strip
+when false:
+  proc norm(s: var string) =
+    ## strip empty newlines
+    while true:
+      let tmp = s.replace("\n\n", "\n")
+      if tmp == s: break
+      s = tmp
+    s = s.strip
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
@@ -654,16 +656,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     echo buf.string
     quit(failString & "megatest execution failed")
 
-  norm buf.string
   const outputExceptedFile = "outputExpected.txt"
   const outputGottenFile = "outputGotten.txt"
   writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
-    outputExpected.add runSpec.output.strip
-    outputExpected.add '\n'
-  norm outputExpected
+    if runSpec.output.len > 0:
+      outputExpected.add runSpec.output
+      if not runSpec.output.endsWith "\n":
+        outputExpected.add '\n'
 
   if buf.string != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
@@ -746,7 +748,9 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+      const whiteListedDirs = ["deps"]
+      doAssert cat.string in whiteListedDirs,
+        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0
