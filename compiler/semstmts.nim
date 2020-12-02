@@ -435,7 +435,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
   var b = a[0]
   if b.kind == nkPragmaExpr:
     if b[1].len != 1:
-      # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
+      # we could in future support pragmas w args e.g.: `var foo {.bar:"goo".} = expr`
       return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
@@ -477,7 +477,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
     result = semLowerLetVarCustomPragma(c, n[0], n)
-    if result!=nil: return result
+    if result != nil: return result
 
   var b: PNode
   result = copyNode(n)
@@ -513,7 +513,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           def = fitNode(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
-        typ = def.typ.skipTypes({tyStatic}).skipIntLit(c.idgen)
+        typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
         if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
           typ = typ.lastSon
         if hasEmpty(typ):
@@ -739,7 +739,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else:
             v.typ = iter[i]
           n[0][i] = newSymNode(v)
-          if sfGenSym notin v.flags: addDecl(c, v)
+          if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
           elif v.owner == nil: v.owner = getCurrOwner(c)
       else:
         var v = symForVar(c, n[0])
@@ -749,7 +749,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         # for an example:
         v.typ = iterBase
         n[0] = newSymNode(v)
-        if sfGenSym notin v.flags: addDecl(c, v)
+        if sfGenSym notin v.flags and not isDiscardUnderscore(v): addDecl(c, v)
         elif v.owner == nil: v.owner = getCurrOwner(c)
     else:
       localError(c.config, n.info, errWrongNumberOfVariables)
@@ -1278,7 +1278,17 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       incl st.flags, tfRefsAnonObj
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
                        nextId c.idgen, getCurrOwner(c), s.info)
-      obj.ast = a
+      let symNode = newSymNode(obj)
+      obj.ast = a.shallowCopy
+      case a[0].kind
+        of nkSym: obj.ast[0] = symNode
+        of nkPragmaExpr:
+          obj.ast[0] = a[0].shallowCopy
+          obj.ast[0][0] = symNode
+          obj.ast[0][1] = a[0][1]
+        else: assert(false)
+      obj.ast[1] = a[1]
+      obj.ast[2] = a[2][0]
       if sfPure in s.flags:
         obj.flags.incl sfPure
       obj.typ = st.lastSon

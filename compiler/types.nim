@@ -23,7 +23,7 @@ type
     preferTypeName,
     preferResolved, # fully resolved symbols
     preferMixed,
-      # most useful, shows: symbol + resolved symbols if it differs, eg:
+      # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string

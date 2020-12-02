@@ -153,12 +153,20 @@ are also lots of procs that aid in debugging:
   debug(symbol)
   # pretty prints the Nim ast, but annotates symbol IDs:
   echo renderTree(someNode, {renderIds})
-  if n.info ?? "temp.nim":
+  if `??`(conf, n.info, "temp.nim"):
     # only output when it comes from "temp.nim"
     echo renderTree(n)
-  if n.info ?? "temp.nim":
+  if `??`(conf, n.info, "temp.nim"):
     # why does it process temp.nim here?
     writeStackTrace()
+
+These procs may not be imported by a module. You can import them directly for debugging:
+
+.. code-block:: nim
+  from astalgo import debug
+  from types import typeToString
+  from renderer import renderTree
+  from msgs import `??`
 
 To create a new compiler for each run, use ``koch temp``::
 

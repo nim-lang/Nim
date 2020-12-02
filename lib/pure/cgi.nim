@@ -33,6 +33,9 @@ import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
 
+import std/private/decode_helpers
+
+
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")

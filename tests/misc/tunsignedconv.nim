@@ -67,8 +67,7 @@ let limit = 1'u64
 let rangeVar = 0'u64 ..< limit
 
 doAssert repr(rangeVar) == """[a = 0,
-b = 0]
-"""
+b = 0]"""
 
 # bug #15210
 

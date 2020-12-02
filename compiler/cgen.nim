@@ -244,7 +244,7 @@ proc safeLineNm(info: TLineInfo): int =
 
 proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
   assert line >= 0
-  if optLineDir in conf.options:
+  if optLineDir in conf.options and line > 0:
     r.addf("$N#line $2 $1$N",
         [rope(makeSingleLineCString(filename)), rope(line)])
 
@@ -471,6 +471,14 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.storage = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
+  when false:
+    # XXX Introduce a compiler switch in order to detect these easily.
+    if getSize(p.config, t) > 1024 * 1024:
+      if p.prc != nil:
+        echo "ENORMOUS TEMPORARY! ", p.config $ p.prc.info
+      else:
+        echo "ENORMOUS TEMPORARY! ", p.config $ p.lastLineInfo
+      writeStackTrace()
 
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   inc(p.labels)
@@ -1978,7 +1986,7 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cf)
     if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
-        if m.config.cmd == cmdRun:
+        if m.config.cmd == cmdTcc:
           tccgen.compileCCode($code, m.config)
           onExit()
           return

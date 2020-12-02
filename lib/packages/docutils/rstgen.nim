@@ -112,7 +112,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
-  ## are defined in the the `packages/docutils/rst module <rst.html>`_.
+  ## are defined in the `packages/docutils/rst module <rst.html>`_.
   ## ``options`` selects the behaviour of the rst parser.
   ##
   ## ``findFile`` is a proc used by the rst ``include`` directive among others.
@@ -1094,7 +1094,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
-  of rnTable, rnGridTable:
+  of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
       "\\begin{table}\\begin{rsttab}{" &
@@ -1364,9 +1364,3 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
   rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
-
-
-when isMainModule:
-  assert rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive)) ==
-    "<em>Hello</em> <strong>world</strong>!"

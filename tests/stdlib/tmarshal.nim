@@ -4,6 +4,10 @@ true
 true
 alpha 100
 omega 200
+Some(null)
+None[JsonNode]
+(numeric: "")
+hello world
 '''
 joinable: false
 """
@@ -123,3 +127,31 @@ var foo = Foo(a2: "", a4: @[], a6: @[1])
 foo.a6.setLen 0
 doAssert $$foo == """{"a1": "", "a2": "", "a3": [], "a4": [], "a5": [], "a6": []}"""
 testit(foo)
+
+import options, json
+
+# bug #15934
+block:
+  let
+    a1 = some(newJNull())
+    a2 = none(JsonNode)
+  echo ($$a1).to[:Option[JsonNode]]
+  echo ($$a2).to[:Option[JsonNode]]
+
+
+# bug #15620
+block:
+  let str = """{"numeric": null}"""
+
+  type
+    LegacyEntry = object
+      numeric: string
+
+  let test = to[LegacyEntry](str)
+  echo test
+
+# bug #16022
+block:
+  let p: proc () = proc () = echo "hello world"
+  let poc = (to[typeof(p)]($$p))
+  poc()

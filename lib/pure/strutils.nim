@@ -209,7 +209,7 @@ proc toLowerAscii*(c: char): char {.noSideEffect,
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
-    result = chr(ord(c) + (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
@@ -248,7 +248,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect,
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
-    result = chr(ord(c) - (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
@@ -1443,7 +1443,7 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
   ## * `unindent proc<#unindent,string,Natural,string>`_
-  ## * `dedent proc<#dedent,string,Natural,string>`_
+  ## * `dedent proc<#dedent,string,Natural>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1464,7 +1464,7 @@ proc unindent*(s: string, count: Natural = int.high, padding: string = " "): str
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `dedent proc<#dedent,string,Natural,string>`
+  ## * `dedent proc<#dedent,string,Natural>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1506,14 +1506,15 @@ proc indentation*(s: string): Natural {.since: (1, 3).} =
 proc dedent*(s: string, count: Natural = indentation(s)): string
     {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
   ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
-  ## is that this by default only cuts off the amount of indentation that all
-  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+  ## The only difference between this and the
+  ## `unindent proc<#unindent,string,Natural,string>`_ is that this by default
+  ## only cuts off the amount of indentation that all lines of ``s`` share as
+  ## opposed to all indentation. It only supports spaces as padding.
   ##
   ## **Note:** This does not preserve the new line characters used in ``s``.
   ##
   ## See also:
-  ## * `unindent proc<#unindent,string,Natural,string>`
+  ## * `unindent proc<#unindent,string,Natural,string>`_
   ## * `align proc<#align,string,Natural,char>`_
   ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
   ## * `spaces proc<#spaces,Natural>`_
@@ -1905,7 +1906,7 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
   ## Use `s[start..last].rfind` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,Natural,int>`_
+  ## * `rfind proc<#rfind,string,char,Natural>`_
   ## * `replace proc<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
@@ -1933,7 +1934,7 @@ proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noS
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],Natural,int>`_
+  ## * `rfind proc<#rfind,string,set[char],Natural>`_
   ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
@@ -1950,7 +1951,7 @@ proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
   ## Use `s[start..last].find` for a ``start``-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,Natural,int>`_
+  ## * `rfind proc<#rfind,string,string,Natural>`_
   ## * `replace proc<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
@@ -2919,220 +2920,3 @@ proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, rtl,
     extern: "nsuIsEmptyOrWhitespace".} =
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
-
-
-when isMainModule:
-  proc nonStaticTests =
-    doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    when not defined(js):
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
-    doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
-    doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-    doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
-                                                      ["1,0e-11", "1,0e-011"]
-    # bug #6589
-    when not defined(js):
-      doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
-
-    doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-    doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
-
-    block: # formatSize tests
-      when not defined(js):
-        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
-      doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
-      doAssert formatSize(4096) == "4KiB"
-      doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
-      doAssert formatSize(4096, includeSpace = true) == "4 KiB"
-      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
-
-    block: # formatEng tests
-      doAssert formatEng(0, 2, trim = false) == "0.00"
-      doAssert formatEng(0, 2) == "0"
-      doAssert formatEng(53, 2, trim = false) == "53.00"
-      doAssert formatEng(0.053, 2, trim = false) == "53.00e-3"
-      doAssert formatEng(0.053, 4, trim = false) == "53.0000e-3"
-      doAssert formatEng(0.053, 4, trim = true) == "53e-3"
-      doAssert formatEng(0.053, 0) == "53e-3"
-      doAssert formatEng(52731234) == "52.731234e6"
-      doAssert formatEng(-52731234) == "-52.731234e6"
-      doAssert formatEng(52731234, 1) == "52.7e6"
-      doAssert formatEng(-52731234, 1) == "-52.7e6"
-      doAssert formatEng(52731234, 1, decimalSep = ',') == "52,7e6"
-      doAssert formatEng(-52731234, 1, decimalSep = ',') == "-52,7e6"
-
-      doAssert formatEng(4100, siPrefix = true, unit = "V") == "4.1 kV"
-      doAssert formatEng(4.1, siPrefix = true, unit = "V",
-          useUnitSpace = true) == "4.1 V"
-      doAssert formatEng(4.1, siPrefix = true) == "4.1" # Note lack of space
-      doAssert formatEng(4100, siPrefix = true) == "4.1 k"
-      doAssert formatEng(4.1, siPrefix = true, unit = "",
-          useUnitSpace = true) == "4.1 " # Includes space
-      doAssert formatEng(4100, siPrefix = true, unit = "") == "4.1 k"
-      doAssert formatEng(4100) == "4.1e3"
-      doAssert formatEng(4100, unit = "V", useUnitSpace = true) == "4.1e3 V"
-      doAssert formatEng(4100, unit = "", useUnitSpace = true) == "4.1e3 "
-      # Don't use SI prefix as number is too big
-      doAssert formatEng(3.1e22, siPrefix = true, unit = "a",
-          useUnitSpace = true) == "31e21 a"
-      # Don't use SI prefix as number is too small
-      doAssert formatEng(3.1e-25, siPrefix = true, unit = "A",
-          useUnitSpace = true) == "310e-27 A"
-
-  proc staticTests =
-    doAssert align("abc", 4) == " abc"
-    doAssert align("a", 0) == "a"
-    doAssert align("1232", 6) == "  1232"
-    doAssert align("1232", 6, '#') == "##1232"
-
-    doAssert alignLeft("abc", 4) == "abc "
-    doAssert alignLeft("a", 0) == "a"
-    doAssert alignLeft("1232", 6) == "1232  "
-    doAssert alignLeft("1232", 6, '#') == "1232##"
-
-    doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
-             "The cat eats fish."
-
-    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
-    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-
-    doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
-    doAssert "oo".replace("", "abc") == "oo"
-
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
-
-    doAssert parseEnum("invalid enum value", enC) == enC
-
-    doAssert center("foo", 13) == "     foo     "
-    doAssert center("foo", 0) == "foo"
-    doAssert center("foo", 3, fillChar = 'a') == "foo"
-    doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
-
-    doAssert count("foofoofoo", "foofoo") == 1
-    doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
-    doAssert count("foofoofoo", 'f') == 3
-    doAssert count("foofoofoobar", {'f', 'b'}) == 4
-
-    doAssert strip("  foofoofoo  ") == "foofoofoo"
-    doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
-    doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
-    doAssert strip("stripme but don't strip this stripme",
-                   chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
-                   " but don't strip this "
-    doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
-    doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
-
-    doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
-
-    doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
-    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
-        "PEOPLE!")) == "HELLO PEOPLE!"
-    doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
-
-    doAssert isAlphaAscii('r')
-    doAssert isAlphaAscii('A')
-    doAssert(not isAlphaAscii('$'))
-
-    doAssert isAlphaNumeric('3')
-    doAssert isAlphaNumeric('R')
-    doAssert(not isAlphaNumeric('!'))
-
-    doAssert isDigit('3')
-    doAssert(not isDigit('a'))
-    doAssert(not isDigit('%'))
-
-    doAssert isSpaceAscii('\t')
-    doAssert isSpaceAscii('\l')
-    doAssert(not isSpaceAscii('A'))
-
-    doAssert(isEmptyOrWhitespace(""))
-    doAssert(isEmptyOrWhitespace("       "))
-    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
-    doAssert(not isEmptyOrWhitespace("ABc   \td"))
-
-    doAssert isLowerAscii('a')
-    doAssert isLowerAscii('z')
-    doAssert(not isLowerAscii('A'))
-    doAssert(not isLowerAscii('5'))
-    doAssert(not isLowerAscii('&'))
-    doAssert(not isLowerAscii(' '))
-
-    doAssert isUpperAscii('A')
-    doAssert(not isUpperAscii('b'))
-    doAssert(not isUpperAscii('5'))
-    doAssert(not isUpperAscii('%'))
-
-    doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
-    doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
-    doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
-    doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
-
-    doAssert(unescape(r"\x013", "", "") == "\x013")
-
-    doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
-    doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
-    doAssert join([1, 2, 3]) == "123"
-    doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
-
-    doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
-
-    doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
-    doAssert """~~foo
-~~  bar
-~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
-    doAssert """foo
-bar
-    baz
-  """.unindent(4) == "foo\nbar\nbaz\n"
-    doAssert """foo
-    bar
-    baz
-  """.unindent(2) == "foo\n  bar\n  baz\n"
-    doAssert """foo
-    bar
-    baz
-  """.unindent(100) == "foo\nbar\nbaz\n"
-
-    doAssert """foo
-    foo
-    bar
-  """.unindent() == "foo\nfoo\nbar\n"
-
-    let s = " this is an example  "
-    let s2 = ":this;is;an:example;;"
-
-    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps = {':', ';'}) == @["", "this", "is", "an", "example",
-        "", ""]
-    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
-    doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
-    doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
-
-    doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
-    doAssert s.splitWhitespace(maxsplit = 1) == @["this", "is an example  "]
-    doAssert s.splitWhitespace(maxsplit = 2) == @["this", "is", "an example  "]
-    doAssert s.splitWhitespace(maxsplit = 3) == @["this", "is", "an", "example  "]
-    doAssert s.splitWhitespace(maxsplit = 4) == @["this", "is", "an", "example"]
-
-    block: # startsWith / endsWith char tests
-      var s = "abcdef"
-      doAssert s.startsWith('a')
-      doAssert s.startsWith('b') == false
-      doAssert s.endsWith('f')
-      doAssert s.endsWith('a') == false
-      doAssert s.endsWith('\0') == false
-
-    #echo("strutils tests passed")
-
-  nonStaticTests()
-  staticTests()
-  static: staticTests()
