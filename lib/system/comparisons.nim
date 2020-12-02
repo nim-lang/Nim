@@ -11,7 +11,7 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
       e1 = Field1
       e2 = Enum1(Place2)
     assert e1 == e2
-    # echo (e1 == Place2) # raises error
+    assert not compiles(e1 == Place2) # raises error
 proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =
   ## Checks for equality between two `pointer` variables.
   runnableExamples:
