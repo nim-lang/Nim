@@ -447,7 +447,7 @@ proc newConfig*(): Config =
   result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
 
 proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
-  ## Loadw the specified configuration from stream into a new Config instance.
+  ## Loads the specified configuration from stream into a new Config instance.
   ## `filename` parameter is only used for nicer error messages.
   var dict = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
