@@ -253,7 +253,7 @@ proc clamp*[T](x, a, b: T): T =
   ## Limits the value `x` within the interval [a, b].
   ## This proc is equivalent to but fatser than `max(a, min(b, x))`.
   ## 
-  ## **Note that** `a < b` is assuemed and no check for it.
+  ## **Note:** `a < b` is assumed and will not be checked.
   runnableExamples:
     assert (1.4).clamp(0.0, 1.0) == 1.0
     assert (0.5).clamp(0.0, 1.0) == 0.5
