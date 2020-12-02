@@ -1435,34 +1435,8 @@ proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
   for i in 1 ..< params.len:
-    # In, for example, proc p(s:string;i,j,k:int) ..., the i,j and k arguments
-    # get lumped together into a single nnkIdentDefs tree so from the AST's
-    # point of view the argument list looks like:
-    # nnkFormalParams.newTree(
-    #   newEmptyNode(),
-    #   nnkIdentDefs.newTree(
-    #     newIdentNode("s"),
-    #     newIdentNode("string"),
-    #     newEmptyNode()
-    #   ),
-    #   nnkIdentDefs.newTree(
-    #     newIdentNode("i"),
-    #     newIdentNode("j"),
-    #     newIdentNode("k"),
-    #     newIdentNode("int"),
-    #     newEmptyNode()
-    #   )
-    # )
-    # ... so to find an argument name in the i,j,k argument set we have to loop
-    # over the innards of the second nnkIdentDefs. The only way to identify an
-    # argument set is if the nnkIdentDefs node has more than 3 children, two
-    # nodes for the default value and type and the rest are argument names.
-    if params[i].len > 3:
-      for j in 0..params[i].len-3:
-        if name.eqIdent($params[i][j]):
-          return true
-    else:
-      if name.eqIdent($params[i][0]):
+    for j in 0..params[i].len-3:
+      if name.eqIdent($params[i][j]):
         return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
