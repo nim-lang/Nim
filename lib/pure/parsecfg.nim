@@ -306,7 +306,6 @@ proc getSymbol(c: var CfgParser, tok: var Token) =
     add(tok.literal, c.buf[pos])
     inc(pos)
     if not (c.buf[pos] in SymChars): break
-  tok.literal = tok.literal.strip
   c.bufpos = pos
   tok.kind = tkSymbol
 
