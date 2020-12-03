@@ -72,10 +72,9 @@ proc `$`*(oid: Oid): string =
   oidToString(oid, result)
 
 
-var t = getTime().toUnix.int32
-var seed = initRand(t)
-
 var
+  t = getTime().toUnix.int32
+  seed = initRand(t)
   incr: int = seed.rand(0x7fff)
   fuzz = int32(seed.rand(high(int32)))
 
