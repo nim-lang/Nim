@@ -12,7 +12,7 @@
 ## produce a globally distributed unique ID. This implementation was extracted
 ## from the Mongodb interface and it thus binary compatible with a Mongo OID.
 ##
-## This implementation calls `random.randomize()` for the first call of
+## This implementation calls `initRand()` for the first call of
 ## ``genOid``.
 
 import hashes, times, endians, random
