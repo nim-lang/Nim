@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements `enumerate` syntactic sugar based on Nim's
-## macro system.
+## The ``std/enumerate`` module implements `enumerate` syntactic sugar
+## based on Nim's macro system.
 
 import std/private/since
 import macros
