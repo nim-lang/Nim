@@ -9,7 +9,7 @@ var packages2*: seq[tuple[name, cmd: string; url: string, useHead: bool]] = @[]
 
 # packages A-M
 # pkg1 "alea"
-# pkg1 "argparse"
+pkg1 "argparse"
 pkg1 "arraymancer", "nim c tests/tests_cpu.nim"
 # pkg1 "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk"
