@@ -57,7 +57,14 @@ import std/private/since
                        # of the standard library!
 
 import bitops, fenv
-from std/cmath import nil
+
+when defined(c) or defined(cpp):
+  #[
+  Low level wrappers around C math functions.
+  Consider moving this to a dedicated `std/cmath`.
+  ]#
+  proc c_isnan*(x: float): bool {.importc: "isnan", header: "<math.h>".}
+    # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -145,7 +152,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   when nimvm: fn()
   else:
     when defined(js): fn()
-    else: result = cmath.isnan(x)
+    else: result = c_isnan(x)
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
