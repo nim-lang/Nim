@@ -73,11 +73,11 @@ proc `$`*(oid: Oid): string =
 
 
 var t = getTime().toUnix.int32
-randomize(t)
+var seed = initRand(t)
 
 var
-  incr: int = rand(0x7fff)
-  fuzz = int32(rand(high(int32)))
+  incr: int = seed.rand(0x7fff)
+  fuzz = int32(seed.rand(high(int32)))
 
 proc genOid*(): Oid =
   ## Generates a new OID.
