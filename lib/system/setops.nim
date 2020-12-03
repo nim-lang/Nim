@@ -41,7 +41,7 @@ func card*[T](x: set[T]): int {.magic: "Card".} =
   ## in the set.
   runnableExamples:
     var a = {1, 3, 5, 7, 5}
-    assert card(a) == 4
+    assert card(a) == 4 # repeated 5 doesn't count
 
 func len*[T](x: set[T]): int {.magic: "Card".}
   ## An alias for `card(x)`.
