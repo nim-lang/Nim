@@ -196,10 +196,76 @@ template test14339() = # bug #14339
       when not defined(js): # pending bug #16003
         doAssert a.val == 5
 
+template testStatic15464() = # bug #15464
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  static:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  static:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
+proc test15464() = # bug #15464 (v2)
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  block:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  block:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
+block: # bug #15939
+  block:
+    const foo = "foo"
+    proc proc1(s: var string) =
+      if s[^1] notin {'a'..'z'}:
+        s = ""
+    proc proc2(f: string): string =
+      result = f
+      proc1(result)
+    const bar = proc2(foo)
+    doAssert bar == "foo"
+
+proc test15939() = # bug #15939 (v2)
+  template fn(a) =
+    let pa = a[0].addr
+    doAssert pa != nil
+    doAssert pa[] == 'a'
+    pa[] = 'x'
+    doAssert pa[] == 'x'
+    doAssert a == "xbc"
+    when not defined js: # otherwise overflows
+      let pa2 = cast[ptr char](cast[int](pa) + 1)
+      doAssert pa2[] == 'b'
+      pa2[] = 'B'
+      doAssert a == "xBc"
+
+  # mystring[ind].addr
+  var a = "abc"
+  fn(a)
+
+  # mycstring[ind].addr
+  template cstringTest =
+    var a2 = "abc"
+    var b2 = a2.cstring
+    fn(b2)
+  when nimvm: cstringTest()
+  else: # can't take address of cstring element in js
+    when not defined(js): cstringTest()
+
 template main =
   # xxx wrap all other tests here like that so they're also tested in VM
   test14420()
   test14339()
+  test15464()
+  test15939()
 
+testStatic15464()
 static: main()
 main()
