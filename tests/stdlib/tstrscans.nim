@@ -2,7 +2,7 @@ discard """
   output: ""
 """
 
-import strscans
+import strscans, strutils
 
 block ParsePasswd:
   proc parsePasswd(content: string): seq[string] =
@@ -210,3 +210,20 @@ block:
   var a: int
   discard scanf(test(), ",$i", a)
   doAssert count == 1
+
+
+block:
+  let input = """1-3 s: abc
+15-18 9: def
+15-18 A: ghi
+15-18 _: jkl
+"""
+  var
+    lo, hi: int
+    w: string
+    c: char
+    res: int
+  for line in input.splitLines:
+    if line.scanf("$i-$i $c: $w", lo, hi, c, w):
+      inc res
+  doAssert res == 4

@@ -37,6 +37,7 @@ substrings starting with ``$``. These constructions are available:
 ``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Za-z_][A-Za-z_0-9]*``.
+``$c``              Matches a single ASCII character.
 ``$s``              Skips optional whitespace.
 ``$$``              Matches a single dollar sign.
 ``$.``              Matches if the end of the input string has been reached.
@@ -342,6 +343,12 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       of 'w':
         if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
+        else:
+          matchError
+        inc i
+      of 'c':
+        if i < results.len and getType(results[i]).typeKind == ntyChar:
+          matchBind "parseChar"
         else:
           matchError
         inc i
