@@ -16,7 +16,7 @@ when not defined(js):
   const file = buildDir / "tparsecfg.ini"
   config.writeConfig(file)
 
-  # test.ini now contains
+  # file now contains
   # [foo]
   # bar=-1
   # foo=abc
