@@ -52,7 +52,7 @@ proc parseOid*(str: cstring): Oid =
     inc(i)
 
 proc oidToString*(oid: Oid, str: cstring) =
-  ## Converts an oid to `str`.
+  ## Converts an oid to `str` which must have space allocated for 25 elements.
   const hex = "0123456789abcdef"
   # work around a compiler bug:
   var str = str
@@ -94,7 +94,3 @@ proc generatedTime*(oid: Oid): Time =
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
   result = fromUnix(tmp)
-
-when not defined(testing) and isMainModule:
-  let xo = genOid()
-  echo xo.generatedTime
