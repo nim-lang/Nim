@@ -10,14 +10,18 @@ when not defined(js):
   config.setSectionKey("foo", "bar", "-1")
   config.setSectionKey("foo", "foo", "abc")
 
-  config.writeConfig("test.ini")
+  from stdtest/specialpaths import buildDir
+  import os
+
+  const file = buildDir / "tparsecfg.ini"
+  config.writeConfig(file)
 
   # test.ini now contains
   # [foo]
   # bar=-1
   # foo=abc
 
-  var config2 = loadConfig("test.ini")
+  var config2 = loadConfig(file)
   let bar = config2.getSectionValue("foo", "bar")
   let foo = config2.getSectionValue("foo", "foo")
   assert(bar == "-1")
@@ -26,7 +30,7 @@ when not defined(js):
 
 ## Creating a configuration file.
 var dict1 = newConfig()
-dict1.setSectionKey("", "charset"," utf-8")
+dict1.setSectionKey("", "charset", "utf-8")
 dict1.setSectionKey("Package", "name", "hello")
 dict1.setSectionKey("Package", "--threads", "on")
 dict1.setSectionKey("Author", "name", "lihf8515")
