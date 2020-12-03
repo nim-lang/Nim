@@ -50,26 +50,17 @@ func len*[T](x: set[T]): int {.magic: "Card".}
 func `*`*[T](x, y: set[T]): set[T] {.magic: "MulSet".} =
   ## This operator computes the intersection of two sets.
   runnableExamples:
-    let
-      a = {1, 2, 3}
-      b = {2, 3, 4}
-    assert a * b == {2, 3}
+    assert {1, 2, 3} * {2, 3, 4} == {2, 3}
 
 func `+`*[T](x, y: set[T]): set[T] {.magic: "PlusSet".} =
   ## This operator computes the union of two sets.
   runnableExamples:
-    let
-      a = {1, 2, 3}
-      b = {2, 3, 4}
-    assert a + b == {1, 2, 3, 4}
+    assert {1, 2, 3} + {2, 3, 4} == {1, 2, 3, 4}
 
 func `-`*[T](x, y: set[T]): set[T] {.magic: "MinusSet".} =
   ## This operator computes the difference of two sets.
   runnableExamples:
-    let
-      a = {1, 2, 3}
-      b = {2, 3, 4}
-    assert a - b == {1}
+    assert {1, 2, 3} - {2, 3, 4} == {1}
 
 func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
   ## One should overload this proc if one wants to overload the `in` operator.
@@ -84,6 +75,7 @@ func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
     var s: set[range['a'..'z']] = {'a'..'c'}
     assert s.contains('c')
     assert 'b' in s
+    assert set['a'..'z'] is set[range['a'..'z']]
   ## If `in` had been declared as `[T](elem: T, s: set[T])` then `T` would
   ## have been bound to `char`. But `s` is not compatible to type
   ## `set[char]`! The solution is to bind `T` to `range['a'..'z']`. This
