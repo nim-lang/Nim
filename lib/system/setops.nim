@@ -40,6 +40,8 @@ func card*[T](x: set[T]): int {.magic: "Card".} =
   ## Returns the cardinality of the set `x`, i.e. the number of elements
   ## in the set.
   runnableExamples:
+    var a = {1, 3, 5, 7}
+    assert card(a) == 4
     var a = {1, 3, 5, 7, 5}
     assert card(a) == 4 # repeated 5 doesn't count
 
