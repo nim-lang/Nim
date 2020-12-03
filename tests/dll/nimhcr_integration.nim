@@ -79,7 +79,7 @@ After instrumenting code, the stacktrace actually points to the call to `check m
 ## A few files can be updated by calling `update` for each of their indexes
 ## and after that with a single call to `compileReloadExecute` the new version
 ## of the program will be compiled, reloaded, and the only thing the main module
-## calls from `nimhcr_0.nim` (the procedure `getInt` proc) is called for a result.
+## calls from `nimhcr_0.nim` (the procedure `tgetInt` proc) is called for a result.
 ##
 ## This test is expected to be executed with arguments - the full nim compiler
 ## command used for building it - so it can rebuild iself the same way - example:
@@ -91,7 +91,7 @@ After instrumenting code, the stacktrace actually points to the call to `check m
 
 import os, osproc, strutils, hotcodereloading
 
-import nimhcr_0 # getInt() - the only thing we continually call from the main module
+import nimhcr_0 # tgetInt() - the only thing we continually call from the main module
 
 proc compileReloadExecute() =
   # Remove the `--forceBuild` option - is there in the first place because:
@@ -121,7 +121,7 @@ proc compileReloadExecute() =
     quit 1
   echo "main: hasAnyModuleChanged? ", hasAnyModuleChanged()
   performCodeReload()
-  echo "              The answer is: ", getInt()
+  echo "              The answer is: ", tgetInt()
 
 # there are 3 files and all of them start from their 1st version
 var vers = [1, 1, 1]

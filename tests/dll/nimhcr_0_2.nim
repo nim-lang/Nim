@@ -9,7 +9,7 @@ echo "   0: I SHOULDN'T BE PRINTED!"
 
 var g_0 = 0 # changed value but won't take effect
 
-proc getInt*(): int = return g_0 + g_1 + f_1()
+proc tgetInt*(): int = return g_0 + g_1 + f_1()
 
 beforeCodeReload:
   echo "   0: before - improved!" # changed handlers!
