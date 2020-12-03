@@ -1434,7 +1434,7 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
-  for i in 1 ..< params.len:
+  for i in 1..<params.len:
     for j in 0..<params[i].len-2:
       if name.eqIdent($params[i][j]):
         return true
