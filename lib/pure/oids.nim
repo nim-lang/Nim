@@ -81,6 +81,9 @@ var
 
 proc genOid*(): Oid =
   ## Generates a new OID.
+  runnableExamples:
+    doAssert ($genOid()).len == 24
+    if false: doAssert $genOid() == "5fc7f546ddbbc84800006aaf"
   t = getTime().toUnix.int32
   var i = int32(atomicInc(incr))
 
