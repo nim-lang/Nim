@@ -2122,7 +2122,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
             template kSetGeneric() =  # pure Posix component `k` resolution
               if lstat(path, s) < 0'i32: continue  # don't yield
-              if S_ISDIR(s.st_mode):
+              elif S_ISDIR(s.st_mode):
                 k = pcDir
               elif S_ISLNK(s.st_mode):
                 k = getSymlinkFileKind(path)
