@@ -75,6 +75,7 @@ func contains*[T](x: set[T], y: T): bool {.magic: "InSet".} =
     var s: set[range['a'..'z']] = {'a'..'c'}
     assert s.contains('c')
     assert 'b' in s
+    assert 'd' notin s
     assert set['a'..'z'] is set[range['a'..'z']]
   ## If `in` had been declared as `[T](elem: T, s: set[T])` then `T` would
   ## have been bound to `char`. But `s` is not compatible to type
