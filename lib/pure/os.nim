@@ -2129,13 +2129,15 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
             when defined(linux) or defined(macosx) or
                  defined(bsd) or defined(genode) or defined(nintendoswitch):
-              if x.d_type != DT_UNKNOWN:
-                if x.d_type == DT_DIR: k = pcDir
-                if x.d_type == DT_LNK:
-                  if dirExists(path): k = pcLinkToDir
-                  else: k = pcLinkToFile
-              else:
+              case x.d_type
+              of DT_DIR: k = pcDir
+              of DT_LNK:
+                if dirExists(path): k = pcLinkToDir
+                else: k = pcLinkToFile
+              of DT_UNKNOWN:
                 kSetGeneric()
+              else: # e.g. DT_REG etc
+                discard # leave it as pcFile
             else:  # assuming that field `d_type` is not present
               kSetGeneric()
 
