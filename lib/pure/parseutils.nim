@@ -241,6 +241,10 @@ proc parseIdent*(s: string, start = 0): string =
     while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
 
+proc parseChar*(s: string, ident: var char, start = 0): int =
+  ident = s[start]
+  result = 1
+
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## Skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.

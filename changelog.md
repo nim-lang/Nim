@@ -52,6 +52,9 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+- `strscans.scanf` now supports parsing single characters.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -59,6 +62,7 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+
 
 ## Compiler changes
 
