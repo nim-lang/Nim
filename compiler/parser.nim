@@ -14,7 +14,7 @@
 # be seen as a refinement of the grammar, as it specifies how the AST is built
 # from the grammar and how comments belong to the AST.
 
-
+import timn/dbgs
 # In fact the grammar is generated from this file:
 when isMainModule:
   # Leave a note in grammar.txt that it is generated:
@@ -77,7 +77,7 @@ proc eat*(p: var Parser, tokType: TokType)
 proc skipInd*(p: var Parser)
 proc optPar*(p: var Parser)
 proc optInd*(p: var Parser, n: PNode)
-proc indAndComment*(p: var Parser, n: PNode)
+proc indAndComment*(p: var Parser, n: PNode, maybeMissEquals = false)
 proc setBaseFlags*(n: PNode, base: NumericalBase)
 proc parseSymbol*(p: var Parser, mode = smNormal): PNode
 proc parseTry(p: var Parser; isExpr: bool): PNode
@@ -223,9 +223,10 @@ proc parLineInfo(p: Parser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
   result = getLineInfo(p.lex, p.tok)
 
-proc indAndComment(p: var Parser, n: PNode) =
+proc indAndComment(p: var Parser, n: PNode, maybeMissEquals = false) =
   if p.tok.indent > p.currInd:
     if p.tok.tokType == tkComment: rawSkipComment(p, n)
+    elif maybeMissEquals: parMessage(p, "invalid indentation, maybe you forgot a '=' ?")
     else: parMessage(p, errInvalidIndentation)
   else:
     skipComment(p, n)
@@ -1773,13 +1774,18 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else: result.add(p.emptyNode)
   # empty exception tracking:
   result.add(p.emptyNode)
-  if p.tok.tokType == tkEquals and p.validInd:
+  let maybeMissEquals = p.tok.tokType != tkEquals
+  if (not maybeMissEquals) and p.validInd:
     getTok(p)
     skipComment(p, result)
     result.add(parseStmt(p))
   else:
+    # parMessage(p, msg: TMsgKind, arg = "gook")
+    # parMessage(p, warnInconsistentSpacing, arg = "gook") # PRTEMP
+    # lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
+    # lexMessageTok(L: Lexer, msg: TMsgKind, tok: Token, arg = "") =
     result.add(p.emptyNode)
-  indAndComment(p, result)
+  indAndComment(p, result, maybeMissEquals)
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
