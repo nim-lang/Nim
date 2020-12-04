@@ -14,7 +14,7 @@
 # be seen as a refinement of the grammar, as it specifies how the AST is built
 # from the grammar and how comments belong to the AST.
 
-import timn/dbgs
+
 # In fact the grammar is generated from this file:
 when isMainModule:
   # Leave a note in grammar.txt that it is generated:
@@ -44,6 +44,9 @@ type
     hasProgress: bool         # some while loop requires progress ensurance
     lex*: Lexer               # The lexer that is used for parsing
     tok*: Token               # The current token
+    lineStartPrevious*: int
+    lineNumberPrevious*: int
+    bufposPrevious*: int
     inPragma*: int            # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
@@ -100,6 +103,9 @@ template prettySection(body) =
 proc getTok(p: var Parser) =
   ## Get the next token from the parser's lexer, and store it in the parser's
   ## `tok` member.
+  p.lineNumberPrevious = p.lex.lineNumber
+  p.lineStartPrevious = p.lex.lineStart
+  p.bufposPrevious = p.lex.bufpos
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
   when defined(nimpretty):
@@ -226,7 +232,10 @@ proc parLineInfo(p: Parser): TLineInfo =
 proc indAndComment(p: var Parser, n: PNode, maybeMissEquals = false) =
   if p.tok.indent > p.currInd:
     if p.tok.tokType == tkComment: rawSkipComment(p, n)
-    elif maybeMissEquals: parMessage(p, "invalid indentation, maybe you forgot a '=' ?")
+    elif maybeMissEquals:
+      let col = p.bufposPrevious - p.lineStartPrevious
+      var info = newLineInfo(p.lex.fileIdx, p.lineNumberPrevious, col)
+      parMessage(p, "invalid indentation, maybe you forgot a '=' at $1 ?" % [p.lex.config$info])
     else: parMessage(p, errInvalidIndentation)
   else:
     skipComment(p, n)
@@ -1780,10 +1789,6 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
     skipComment(p, result)
     result.add(parseStmt(p))
   else:
-    # parMessage(p, msg: TMsgKind, arg = "gook")
-    # parMessage(p, warnInconsistentSpacing, arg = "gook") # PRTEMP
-    # lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
-    # lexMessageTok(L: Lexer, msg: TMsgKind, tok: Token, arg = "") =
     result.add(p.emptyNode)
   indAndComment(p, result, maybeMissEquals)
 
