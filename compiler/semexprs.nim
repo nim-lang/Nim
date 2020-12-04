@@ -163,7 +163,9 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     result = checkConversionBetweenObjects(d.skipTypes(abstractInst), s.skipTypes(abstractInst), pointers)
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
-    if targetTyp.kind == tyBool:
+    if targetTyp.kind == tyEnum and srcBaseTyp.kind == tyEnum:
+      result = convNotLegal
+    elif targetTyp.kind == tyBool:
       discard "convOk"
     elif targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and

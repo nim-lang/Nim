@@ -1,5 +1,7 @@
 template reject(x) =
-    static: assert(not compiles(x))
+  static: doAssert(not compiles(x))
+template accept(x) =
+  static: doAssert(compiles(x))
 
 reject:
     const x = int8(300)
@@ -55,3 +57,16 @@ block: # issue 3766
     proc r(x: static[R]) =
       echo x
     r 3.R
+
+
+block: # https://github.com/nim-lang/RFCs/issues/294
+  type Koo = enum k1, k2
+  type Goo = enum g1, g2
+
+  reject: Goo(k2)
+  reject: k2.Goo
+  reject: k2.string
+
+  accept: Koo(k2)
+  accept: k2.Koo
+  accept: k2.int.Goo

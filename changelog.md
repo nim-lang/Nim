@@ -286,6 +286,13 @@
 
 - `nim e` now accepts arbitrary file extensions for the nimscript file,
   although `.nims` is still the preferred extension in general.
+- An enum now can't be converted to another enum directly, you must use `ord`:
+  ```
+  type A = enum a1, a2
+  type B = enum b1, b2
+  doAssert not compiles(a1.B)
+  doAssert compiles(a1.ord.B)
+  ```
 
 ## Compiler changes
 
