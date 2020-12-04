@@ -14,7 +14,11 @@ else:
     const file = currentSourcePath
     for b in "c js cpp".split:
       when defined(openbsd):
-        if b == "js": continue # xxx bug: pending #13115
+        if b == "js":
+          # xxx bug: pending #13115
+          # remove special case once nodejs updated >= 12.16.2
+          # refs https://github.com/nim-lang/Nim/pull/16167#issuecomment-738270751
+          continue
       for opt in ["-d:nim_t13115_static", ""]:
         let cmd = fmt"{nim} r -b:{b} -d:nim_t13115 {opt} --hints:off {file}"
         let (outp, exitCode) = execCmdEx(cmd)
