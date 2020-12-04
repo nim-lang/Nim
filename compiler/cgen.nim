@@ -2044,7 +2044,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
       discard cgsym(m, "nimTestErrorFlag")
 
-    if {optGenStaticLib, optGenDynLib} * m.config.globalOptions == {}:
+    if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
