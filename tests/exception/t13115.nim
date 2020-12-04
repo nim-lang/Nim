@@ -19,7 +19,14 @@ else:
           # remove special case once nodejs updated >= 12.16.2
           # refs https://github.com/nim-lang/Nim/pull/16167#issuecomment-738270751
           continue
-      for opt in ["-d:nim_t13115_static", ""]:
+
+      # save CI time by avoiding mostly redundant combinations as far as this bug is concerned
+      var opts = case b
+        of "c": @["", "-d:nim_t13115_static", "-d:danger", "-d:debug"]
+        of "js": @["", "-d:nim_t13115_static"]
+        else: @[""]
+
+      for opt in opts:
         let cmd = fmt"{nim} r -b:{b} -d:nim_t13115 {opt} --hints:off {file}"
         let (outp, exitCode) = execCmdEx(cmd)
         when defined windows:
