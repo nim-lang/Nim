@@ -18,6 +18,10 @@ else:
       for opt in ["-d:nim_t13115_static", ""]:
         let cmd = fmt"{nim} r -b:{b} -d:nim_t13115 {opt} --hints:off {file}"
         let (outp, exitCode) = execCmdEx(cmd)
-        doAssert msg in outp, cmd & "\n" & msg
+        when defined windows:
+          # `\0` not preserved on windows
+          doAssert "` and works fine!" in outp, cmd & "\n" & msg
+        else:
+          doAssert msg in outp, cmd & "\n" & msg
         doAssert exitCode == 1
   main()
