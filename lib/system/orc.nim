@@ -39,7 +39,8 @@ template setColor(c, col) =
     c.rc = c.rc and not colorMask or col
 
 const
-  optimizedOrc = not defined(nimOldOrc)
+  optimizedOrc = false # not defined(nimOldOrc)
+# XXX Still incorrect, see tests/arc/tdestroy_in_loopcond
 
 proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
@@ -72,6 +73,7 @@ type
       jumpStack: CellSeq   # Lins' jump stack in order to speed up traversals
     toFree: CellSeq
     freed, touched, edges, rcSum: int
+    keepThreshold: bool
 
 proc trace(s: Cell; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -309,6 +311,8 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   if j.rcSum == j.edges:
     # short-cut: we know everything is garbage:
     colToCollect = colGray
+    # remember the fact that we got so lucky:
+    j.keepThreshold = true
   else:
     for i in countdown(last, lowMark):
       scan(roots.d[i][0], roots.d[i][1], j)
@@ -327,7 +331,7 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
   #roots.len = 0
 
 const
-  defaultThreshold = when defined(nimAdaptiveOrc): 128 else: 10_000
+  defaultThreshold = when defined(nimFixedOrc): 10_000 else: 128
 
 when defined(nimStressOrc):
   const rootsThreshold = 10 # broken with -d:nimStressOrc: 10 and for havlak iterations 1..8
@@ -335,7 +339,8 @@ else:
   var rootsThreshold = defaultThreshold
 
 proc partialCollect(lowMark: int) =
-  if roots.len < 10 + lowMark: return
+  when false:
+    if roots.len < 10 + lowMark: return
   when logOrc:
     cfprintf(cstderr, "[partialCollect] begin\n")
   var j: GcEnv
@@ -373,9 +378,11 @@ proc collectCycles() =
     # of the cycle collector's effectiveness:
     # we're effective when we collected 50% or more of the nodes
     # we touched. If we're effective, we can reset the threshold:
-    if j.freed * 2 >= j.touched:
-      when defined(nimAdaptiveOrc):
-        rootsThreshold = max(rootsThreshold div 2, 16)
+    if j.keepThreshold and rootsThreshold <= defaultThreshold:
+      discard
+    elif j.freed * 2 >= j.touched:
+      when not defined(nimFixedOrc):
+        rootsThreshold = max(rootsThreshold div 3 * 2, 16)
       else:
         rootsThreshold = defaultThreshold
       #cfprintf(cstderr, "[collectCycles] freed %ld, touched %ld new threshold %ld\n", j.freed, j.touched, rootsThreshold)
