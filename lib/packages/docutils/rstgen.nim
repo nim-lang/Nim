@@ -1009,7 +1009,8 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
 
 proc texColumns(n: PRstNode): string =
   result = ""
-  for i in countup(1, len(n)): add(result, "|X")
+  let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
+  for i in countup(1, nColumns): add(result, "|X")
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false

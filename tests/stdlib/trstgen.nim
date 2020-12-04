@@ -6,7 +6,7 @@ outputsub: ""
 
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
-import unittest, strtabs
+import unittest, strutils, strtabs
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -144,6 +144,12 @@ suite "YAML syntax highlighting":
   <span class="StringLit">?not a map key</span></pre>"""
 
 
+suite "RST/Markdown general":
+  test "RST emphasis":
+    assert rstToHtml("*Hello* **world**!", {},
+      newStringTable(modeStyleInsensitive)) ==
+      "<em>Hello</em> <strong>world</strong>!"
+
   test "Markdown links":
     let
       a = rstToHtml("(( [Nim](https://nim-lang.org/) ))", {roSupportMarkdown}, defaultConfig())
@@ -178,7 +184,179 @@ not in table"""
     assert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
 
+  test "RST tables":
+    let input1 = """
+Test 2 column/4 rows table:
+====   ===
+H0     H1 
+====   ===
+A0     A1 
+====   ===
+A2     A3 
+====   ===
+A4     A5 
+====   === """
+    let output1 = rstToLatex(input1, {})
+    assert "{|X|X|}" in output1  # 2 columns
+    assert count(output1, "\\\\") == 4  # 4 rows
+    for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
+      assert cell in output1
 
-assert rstToHtml("*Hello* **world**!", {},
-  newStringTable(modeStyleInsensitive)) ==
-  "<em>Hello</em> <strong>world</strong>!"
+    let input2 = """
+Now test 3 columns / 2 rows, and also borders containing 4 =, 3 =, 1 = signs:
+
+====   ===  =
+H0     H1   H
+====   ===  =
+A0     A1   X
+       Ax   Y
+====   ===  = """
+    let output2 = rstToLatex(input2, {})
+    assert "{|X|X|X|}" in output2  # 3 columns
+    assert count(output2, "\\\\") == 2  # 2 rows
+    for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
+      assert cell in output2
+
+
+  test "RST adornments":
+    let input1 = """
+Check that a few punctuation symbols are not parsed as adornments:
+:word1: word2 .... word3 """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    discard output1
+
+  test "RST sections":
+    let input1 = """
+Long chapter name
+'''''''''''''''''''
+"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "Long chapter name" in output1 and "<h1" in output1
+
+    let input2 = """
+Short chapter name:
+
+ChA
+===
+"""
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "ChA" in output2 and "<h1" in output2
+
+    let input3 = """
+Very short chapter name:
+
+X
+~
+"""
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    assert "X" in output3 and "<h1" in output3
+
+    let input4 = """
+Check that short underline is not enough to make section:
+
+Wrong chapter
+------------
+
+"""
+    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    assert "Wrong chapter" in output4 and "<h1" notin output4
+
+    let input5 = """
+Check that punctuation after adornment and indent are not detected as adornment.
+
+Some chapter
+--------------
+
+  "punctuation symbols" """
+    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    assert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
+
+
+  test "RST links":
+    let input1 = """
+Want to learn about `my favorite programming language`_?
+
+.. _my favorite programming language: https://nim-lang.org"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<a" in output1 and "href=\"https://nim-lang.org\"" in output1
+
+  test "RST transitions":
+    let input1 = """
+context1
+
+~~~~
+
+context2
+"""
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<hr" in output1
+
+    let input2 = """
+This is too short to be a transition:
+
+---
+
+context2
+"""
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "<hr" notin output2
+
+  test "RST literal block":
+    let input1 = """
+Test literal block
+
+::
+
+  check """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<pre>" in output1
+
+  test "Markdown code block":
+    let input1 = """
+```
+let x = 1
+``` """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "<pre" in output1 and "class=\"Keyword\"" notin output1
+
+    let input2 = """
+Parse the block with language specifier:
+```Nim
+let x = 1
+``` """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "<pre" in output2 and "class=\"Keyword\"" in output2
+
+  test "RST comments":
+    let input1 = """
+Check that comment disappears:
+
+..
+  some comment """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert output1 == "Check that comment disappears:"
+
+  test "RST line blocks":
+    let input1 = """
+=====
+Test1
+=====
+
+|
+|
+| line block
+| other line
+
+"""
+    var option: bool
+    var rstGenera: RstGenerator
+    var output1: string
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
+    assert rstGenera.meta[metaTitle] == "Test1"
+      # check that title was not overwritten to '|'
+    assert "line block<br />" in output1
+    assert "other line<br />" in output1
+    let output1l = rstToLatex(input1, {})
+    assert "line block\\\\" in output1l
+    assert "other line\\\\" in output1l
