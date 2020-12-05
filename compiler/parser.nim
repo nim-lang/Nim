@@ -47,6 +47,7 @@ type
     inPragma*: int            # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
+    prevParserLevel: ParserLevel
     when defined(nimpretty):
       em*: Emitter
 
@@ -55,6 +56,9 @@ type
 
   PrimaryMode = enum
     pmNormal, pmTypeDesc, pmTypeDef, pmSkipSuffix
+
+  ParserLevel = enum
+    plTop, plRoutine
 
 proc parseAll*(p: var Parser): PNode
 proc closeParser*(p: var Parser)
@@ -121,6 +125,7 @@ proc openParser*(p: var Parser, fileIdx: FileIndex, inputStream: PLLStream,
   getTok(p)                   # read the first token
   p.firstTok = true
   p.emptyNode = newNode(nkEmpty)
+  p.prevParserLevel = plTop
 
 proc openParser*(p: var Parser, filename: AbsoluteFile, inputStream: PLLStream,
                  cache: IdentCache; config: ConfigRef) =
@@ -1766,6 +1771,7 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else:
     result.add(p.emptyNode)
   indAndComment(p, result)
+  p.prevParserLevel = plRoutine
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT
@@ -2332,6 +2338,7 @@ proc parseTopLevelStmt(p: var Parser): PNode =
       result = complexOrSimpleStmt(p)
       if result.kind == nkEmpty: parMessage(p, errExprExpected, p.tok)
       break
+    p.prevParserLevel = plTop
 
 proc parseString*(s: string; cache: IdentCache; config: ConfigRef;
                   filename: string = ""; line: int = 0;
