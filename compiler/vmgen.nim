@@ -1435,7 +1435,7 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       # permanent, so that it's not used for anything else:
       c.prc.slots[tmp].kind = slotTempPerm
       # XXX this is still a hack
-      #message(n.info, warnUser, "suspicious opcode used")
+      #message(c.congig, n.info, warnUser, "suspicious opcode used")
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
@@ -1687,7 +1687,7 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.gABC(n, opcNodeToReg, dest, cc)
     c.freeTemp(cc)
   else:
-    #message(n.info, warnUser, "argh")
+    #message(c.config, n.info, warnUser, "argh")
     #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
     c.gABC(n, opc, dest, a, b)
   c.freeTemp(a)

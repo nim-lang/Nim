@@ -293,6 +293,7 @@
   doAssert not compiles(a1.B)
   doAssert compiles(a1.ord.B)
   ```
+  for a transition period, use `-d:nimLegacyConvEnumEnum`.
 
 ## Compiler changes
 

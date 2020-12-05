@@ -164,8 +164,11 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.kind == tyEnum and srcBaseTyp.kind == tyEnum:
-      result = convNotLegal
-    elif targetTyp.kind == tyBool:
+      if c.config.isDefined("nimLegacyConvEnumEnum"):
+        message(c.config, src.info, warnUser, "enum to enum conversion is now deprecated")
+      else: result = convNotLegal
+    # `elif` would be incorrect here
+    if targetTyp.kind == tyBool:
       discard "convOk"
     elif targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
