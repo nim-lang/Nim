@@ -66,6 +66,14 @@
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
+- A new import syntax `import {.all} foo` now allows to import all symbols (public or private)
+  from `foo`. It works in combination with all pre-existing import features. This
+  helps avoid using workarounds such as using `include` when you need a private symbol for
+  testing (which has known issues) or making some internal APIs public just because another internal
+  module needs those. It also helps mitigate the lack of cyclic imports in some cases.
+  Enable it with `{.experimental: "enableImportAll".}`, either
+  in command line or in a scope.
+
 
 ## Compiler changes
 
