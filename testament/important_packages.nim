@@ -96,14 +96,15 @@ pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround need
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
-pkg "nimgame2", "nim c nimgame2/nimgame.nim", allowFailure = true # XXX Doesn't work with deprecated 'randomize', will create a PR.
+pkg "nimgame2", "nim c -d:nimLegacyConvEnumEnum nimgame2/nimgame.nim", allowFailure = true
+  # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery"
+pkg "nimquery", allowFailure = true # pending https://github.com/GULPF/nimquery/pull/10
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
