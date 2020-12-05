@@ -102,6 +102,37 @@ _nim() {
     '*--gc=go[use Go garbage collection]' \
     '*--gc=regions[use region-based garbage collection]' \
     '*--gc=none[disable garbage collection]' \
+    '*--os=Standalone[generate a stand-alone executable]' \
+    '*--os=AIX[compile for AIX]' \
+    '*--os=Amiga[compile for Amiga OS]' \
+    '*--os=Android[compile for Android]' \
+    '*--os=Any[compile for any OS]' \
+    '*--os=Atari[compile for Atari]' \
+    '*--os=DOS[compile for DOS]' \
+    '*--os=DragonFly[compile for DragonFly]' \
+    '*--os=FreeBSD[compile for FreeBSD]' \
+    '*--os=FreeRTOS[compile for FreeRTOS]' \
+    '*--os=Genode[compile for Genode]' \
+    '*--os=Haiku[compile for Haiku]' \
+    '*--os=iOS[compile for iOS]' \
+    '*--os=Irix[compile for Irix]' \
+    '*--os=Linux[compile for Linux]' \
+    '*--os=MacOS[compile for MacOS]' \
+    '*--os=MacOSX[compile for MacOSX]' \
+    '*--os=MorphOS[compile for MorphOS]' \
+    '*--os=NetBSD[compile for NetBSD]' \
+    '*--os=Netware[compile for Netware]' \
+    '*--os=NimVM[compile for NimVM]' \
+    '*--os=NintendoSwitch[compile for NintendoSwitch]' \
+    '*--os=OS2[compile for OS2]' \
+    '*--os=OpenBSD[compile for OpenBSD]' \
+    '*--os=PalmOS[compile for PalmOS]' \
+    '*--os=QNX[compile for QNX]' \
+    '*--os=SkyOS[compile for SkyOS]' \
+    '*--os=Solaris[compile for Solaris]' \
+    '*--os=VxWorks[compile for VxWorks]' \
+    '*--os=Windows[compile for Windows]' \
+    '*--os=JS[generate javascript]' \
     ':filename:_files -g"*.nim"'
 }
 
