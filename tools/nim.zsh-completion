@@ -139,6 +139,9 @@ _nim() {
     '*--verbosity=1[set verbosity to 1 (default)]' \
     '*--verbosity=2[set verbosity to 2]' \
     '*--verbosity=3[set verbosity to 3]' \
+    '*--hints=on[print compilation hints]' \
+    '*--hints=off[disable compilation hints]' \
+    '*--hints=list[print compilation hints list]' \
     ':filename:_files -g"*.nim"'
 }
 
