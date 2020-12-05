@@ -42,7 +42,7 @@ type                          # please make sure we have under 32 options
     optNilSeqs,
     optSinkInference,         # 'sink T' inference
     optCursorInference,
-    optPrivateImport,
+    optImportAll,
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -177,7 +177,7 @@ type
     vmopsDanger,
     strictFuncs,
     views,
-    allowPrivateImport,
+    enableImportAll, # for: `import foo {.all.}`
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

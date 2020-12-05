@@ -75,8 +75,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
 template getTab(c: PContext, fromMod: PSym): untyped =
   # avoids doing a copy
   let tab2 =
-    if fromMod in c.friendModulesPrivateImport:
-      # so that `privateImport` also works with `import foo` without `as`
+    if fromMod in c.friendModulesImportAll:
+      # so that `import foo {.all/}` also works with `import foo` without `as`
       # another option is to force `createModuleAlias` to remove this branch
       fromMod.tabAll.addr
     else:
@@ -141,7 +141,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
 
 type
   ImportFlag = enum
-    ifPrivateImport
+    ifImportAll
   ImportFlags = set[ImportFlag]
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
@@ -154,23 +154,23 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
-  if ifPrivateImport in importFlags:
+  if ifImportAll in importFlags:
     if result == realModule:
       result = createModuleAlias(realModule, nextId c.idgen, realModule.name, realModule.info,
                                c.config.options)
-    result.options.incl optPrivateImport
-    c.friendModulesPrivateImport.add realModule # `realModule` needed, not `result`
+    result.options.incl optImportAll
+    c.friendModulesImportAll.add realModule # `realModule` needed, not `result`
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
   var ret: typeof(result)
   proc processPragma(n2: PNode): PNode =
     if n2.kind == nkPragmaExpr:
-      if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wPrivateImport: discard
+      if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wImportAll: discard
       else:
-        globalError(c.config, n.info, "invalid import pragma, expected: " & $wPrivateImport)
-      if allowPrivateImport notin c.features:
-        globalError(c.config, n.info, "requires --experimental:" & $allowPrivateImport)
-      ret.importFlags.incl ifPrivateImport
+        globalError(c.config, n.info, "invalid import pragma, expected: " & $wImportAll)
+      if enableImportAll notin c.features:
+        globalError(c.config, n.info, "requires --experimental:" & $enableImportAll)
+      ret.importFlags.incl ifImportAll
       result = n2[0]
     else:
       result = n2

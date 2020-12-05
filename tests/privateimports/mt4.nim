@@ -1,5 +1,5 @@
-{.push experimental: "allowPrivateImport".}
-import ./m1 {.privateImport.} except foo1
+{.push experimental: "enableImportAll".}
+import ./m1 {.all.} except foo1
 doAssert foo2 == 2
 doAssert declared(foo2)
 doAssert not compiles(foo1)

@@ -1,5 +1,5 @@
-{.push experimental: "allowPrivateImport".}
-import ./m1 {.privateImport.}
+{.push experimental: "enableImportAll".}
+import ./m1 {.all.}
 doAssert foo1 == 2
 
 doAssert m1.foo1 == 2

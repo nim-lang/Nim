@@ -2,8 +2,8 @@
 test multiple imports
 ]#
 
-{.push experimental: "allowPrivateImport".}
-import ./m1, m2 {.privateImport.}, ./m3 {.privateImport.}
+{.push experimental: "enableImportAll".}
+import ./m1, m2 {.all.}, ./m3 {.all.}
 
 # m1 is regularly imported
 doAssert declared(m1.foo0)

@@ -1964,7 +1964,7 @@ template addPublicSymbol*(module: PSym, s: PSym) =
 template tabOpt*(m: PSym): untyped =
   # avoids doing a copy
   let tab2 =
-    if optPrivateImport in m.options: m.tabAll.addr
+    if optImportAll in m.options: m.tabAll.addr
     else: m.tab.addr
   tab2[]
 

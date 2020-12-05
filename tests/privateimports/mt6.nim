@@ -1,5 +1,5 @@
-{.push experimental: "allowPrivateImport".}
-import ./m1 {.privateImport.} as m2
+{.push experimental: "enableImportAll".}
+import ./m1 {.all.} as m2
 doAssert compiles(foo1)
 doAssert compiles(m2.foo1)
 doAssert declared(foo1)

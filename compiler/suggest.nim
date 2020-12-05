@@ -257,7 +257,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     if fmoduleId == module.id:
       result = true
       break
-  for module in c.friendModulesPrivateImport:
+  for module in c.friendModulesImportAll:
     if fmoduleId == module.id:
       result = true
       break

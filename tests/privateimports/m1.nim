@@ -1,6 +1,6 @@
-{.experimental: "allowPrivateImport".}
+{.experimental: "enableImportAll".}
 import ./m2
-import ./m3 {.privateImport.} as m3
+import ./m3 {.all.} as m3
 from ./m3 as m3Bis import nil
 # export m3
 doAssert car2 == 2
