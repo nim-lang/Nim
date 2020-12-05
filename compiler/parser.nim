@@ -228,7 +228,6 @@ proc parLineInfo(p: Parser): TLineInfo =
 proc indAndComment(p: var Parser, n: PNode) =
   if p.tok.indent > p.currInd:
     if p.tok.tokType == tkComment: rawSkipComment(p, n)
-    else: parMessage(p, errInvalidIndentation)
   else:
     skipComment(p, n)
 
