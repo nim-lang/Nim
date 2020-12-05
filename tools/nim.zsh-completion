@@ -94,6 +94,14 @@ _nim() {
     '*--cpu=sparc64[compile for SPARC64 architecture]' \
     '*--cpu=vm[compile for Nim VM]' \
     '*--cpu=wasm32[compile to WASM 32]' \
+    '*--gc=refc[use reference counting garbage collection]' \
+    '*--gc=arc[use ARC garbage collection]' \
+    '*--gc=orc[use ORC garbage collection]' \
+    '*--gc=markAndSweep[use mark-and-sweep garbage collection]' \
+    '*--gc=boehm[use Boehm<F2> garbage collection]' \
+    '*--gc=go[use Go garbage collection]' \
+    '*--gc=regions[use region-based garbage collection]' \
+    '*--gc=none[disable garbage collection]' \
     ':filename:_files -g"*.nim"'
 }
 
