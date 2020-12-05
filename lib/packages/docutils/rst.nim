@@ -1511,6 +1511,8 @@ proc parseSection(p: var RstParser, result: PRstNode) =
         result.add(a)
         popInd(p)
       else:
+        while currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
+          inc p.idx  # skip blank lines
         leave = true
         break
     if leave or currentTok(p).kind == tkEof: break

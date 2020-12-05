@@ -361,6 +361,59 @@ Test1
     assert "line block\\\\" in output1l
     assert "other line\\\\" in output1l
 
+  test "RST enumerated lists":
+    let input1 = dedent """
+      1. line1
+         1
+      2. line2
+         2
+
+      3. line3
+         3
+
+
+      4. line4
+         4
+
+
+
+      5. line5
+         5
+      """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    echo output1
+    for i in 1..5:
+      assert ($i & ". line" & $i) notin output1
+      assert ("<li>line" & $i & " " & $i & "</li>") in output1
+
+  test "RST bullet lists":
+    let input1 = dedent """
+      * line1
+        1
+      * line2
+        2
+
+      * line3
+        3
+
+
+      * line4
+        4
+
+
+
+      * line5
+        5
+      """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    echo output1
+    for i in 1..5:
+      assert ("<li>line" & $i & " " & $i & "</li>") in output1
+    echo "count: ", count(output1, "<ul ")
+    echo "count: ", count(output1, "</ul>")
+    assert count(output1, "<ul ") == 1
+    assert count(output1, "</ul>") == 1
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
