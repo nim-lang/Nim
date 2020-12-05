@@ -135,6 +135,10 @@ _nim() {
     '*--os=JS[generate javascript]' \
     '*--panics=off[turn panics into process terminations: off by default]' \
     '*--panics=on[turn panics into process terminations]' \
+    '*--verbosity=0[set verbosity to 0]' \
+    '*--verbosity=1[set verbosity to 1 (default)]' \
+    '*--verbosity=2[set verbosity to 2]' \
+    '*--verbosity=3[set verbosity to 3]' \
     ':filename:_files -g"*.nim"'
 }
 
