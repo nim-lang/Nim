@@ -68,6 +68,32 @@ _nim() {
     '*--app=gui[generate a GUI app]' \
     '*--app=lib[generate a dynamic library]' \
     '*--app=staticlib[generate a static library]' \
+    '*--cpu=alpha[compile for Alpha architecture]' \
+    '*--cpu=amd64[compile for amd64/Intel architecture]' \
+    '*--cpu=arm[compile for ARM architecture]' \
+    '*--cpu=arm64[compile for ARM64 architecture]' \
+    '*--cpu=avr[compile for AVR architecture]' \
+    '*--cpu=esp[compile for ESP architecture]' \
+    '*--cpu=hppa[compile for HPPA architecture]' \
+    '*--cpu=i386[compile for i386 architecture]' \
+    '*--cpu=ia64[compile for ia64 architecture]' \
+    '*--cpu=js[compile to javascript]' \
+    '*--cpu=m68k[compile for m68k architecture]' \
+    '*--cpu=mips[compile for MIPS architecture]' \
+    '*--cpu=mipsel[compile for MIPS EL architecture]' \
+    '*--cpu=mips64[compile for MIPS64 architecture]' \
+    '*--cpu=mips64el[compile for MIPS64 EL architecture]' \
+    '*--cpu=msp430[compile for msp430 architecture]' \
+    '*--cpu=nimvm[compile for Nim VM]' \
+    '*--cpu=powerpc[compile for PowerPC architecture]' \
+    '*--cpu=powerpc64[compile for PowerPC64 architecture]' \
+    '*--cpu=powerpc64el[compile for PowerPC64 EL architecture]' \
+    '*--cpu=riscv32[compile for RISC-V 32 architecture]' \
+    '*--cpu=riscv64[compile for RISC-V 64 architecture]' \
+    '*--cpu=sparc[compile for SPARC architecture]' \
+    '*--cpu=sparc64[compile for SPARC64 architecture]' \
+    '*--cpu=vm[compile for Nim VM]' \
+    '*--cpu=wasm32[compile to WASM 32]' \
     ':filename:_files -g"*.nim"'
 }
 
