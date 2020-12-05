@@ -192,6 +192,9 @@ const
   errInvalidIndentation = "invalid indentation"
   errIdentifierExpected = "identifier expected, but got '$1'"
   errExprExpected = "expression expected, but found '$1'"
+  errInvalidIndentRoutine = """possible errors:
+  * invalid indentation of top level statement
+  * missing `=` to implement previous routine"""
 
 proc skipInd(p: var Parser) =
   if p.tok.indent >= 0:
@@ -2325,7 +2328,10 @@ proc parseTopLevelStmt(p: var Parser): PNode =
           parMessage(p, errGenerated,
             "invalid indentation; an export marker '*' follows the declared identifier")
         else:
-          parMessage(p, errInvalidIndentation)
+          if p.prevParserLevel == plRoutine:
+            parMessage(p, errInvalidIndentRoutine)
+          else:
+            parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
     of tkSemiColon:
