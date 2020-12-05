@@ -7,7 +7,7 @@ doAssert m.foo2 == 2
 doAssert compiles(foo1)
 doAssert compiles(m.foo2)
 doAssert not compiles(foo2)
-doAssert not compiles(car2)
+doAssert not compiles(m3h2)
 doAssert m.foo3 == 2
 doAssert m.foo6() == 2
 doAssert m.foo6b() == 2

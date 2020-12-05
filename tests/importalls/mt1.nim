@@ -3,10 +3,10 @@ import ./m1 {.all.} as m
 doAssert foo1 == 2
 doAssert m.foo1 == 2
 
-doAssert m.car2 == 2
-doAssert car2 == 2
+doAssert m.m3h2 == 2
+doAssert m3h2 == 2
 doAssert m.foo1Aux == 2
-doAssert m.car1 == 2
+doAssert m.m3p1 == 2
 
 ## field access
 var x = Foo5(z1: "foo", z2: m.kg1)

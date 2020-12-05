@@ -2,6 +2,7 @@
 test multiple imports
 ]#
 
+{.warning[UnusedImport]: off.}
 {.push experimental: "enableImportAll".}
 import ./m1, m2 {.all.}, ./m3 {.all.}
 
@@ -15,5 +16,5 @@ doAssert declared(m2.bar2)
 doAssert declared(bar2)
 
 # m3
-doAssert declared(m3.car2)
-doAssert declared(car2)
+doAssert declared(m3.m3h2)
+doAssert declared(m3h2)

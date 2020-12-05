@@ -2,11 +2,11 @@
 import ./m2
 import ./m3 {.all.} as m3
 from ./m3 as m3Bis import nil
-# export m3
-doAssert car2 == 2
-export car2
 
-export m3Bis.car1
+doAssert m3h2 == 2
+export m3h2
+
+export m3Bis.m3p1
 
 const foo0* = 2
 const foo1 = bar1
