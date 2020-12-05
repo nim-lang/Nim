@@ -488,7 +488,7 @@ template retryCommand(call): untyped =
   var backoff = 1
   for i in 0..<maxRetries:
     res = call
-    if res.exitCode == QuitSuccess or i == maxRetries: break
+    if res.exitCode == QuitSuccess or i == maxRetries-1: break
     sleep(backoff * 1000)
     backoff *= 2
   res
