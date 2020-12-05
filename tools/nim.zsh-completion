@@ -133,6 +133,8 @@ _nim() {
     '*--os=VxWorks[compile for VxWorks]' \
     '*--os=Windows[compile for Windows]' \
     '*--os=JS[generate javascript]' \
+    '*--panics=off[turn panics into process terminations: off by default]' \
+    '*--panics=on[turn panics into process terminations]' \
     ':filename:_files -g"*.nim"'
 }
 
