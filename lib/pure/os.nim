@@ -476,8 +476,8 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   let ret = relativePath(path, base)
   result = path.len > 0 and not ret.startsWith ".."
 
-proc rebasePath*(path, oldBase, newBase: string, check: static bool = true): string =
-  ## returns `newBase / path.relativePath(oldBase)`
+proc rebasePath*(path, oldBase, newBase: string, check: static bool = true): string {.since: (1,5,1).} =
+  ## returns `newBase / path.relativePath(oldBase)`, see examples for details.
   runnableExamples:
     doAssert "/home/foo/baz".rebasePath("/home/foo", "/tmp") == "/tmp/baz"
     ## `path` must be relative to `oldBase`:
