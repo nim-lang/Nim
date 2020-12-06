@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 #
-#..code-block:: nim
+#.. code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
