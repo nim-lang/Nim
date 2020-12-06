@@ -479,11 +479,12 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
 proc rebasePath*(path, oldBase, newBase: string, check: static bool = true): string {.since: (1,5,1).} =
   ## returns `newBase / path.relativePath(oldBase)`, see examples for details.
   runnableExamples:
-    doAssert "/home/foo/baz".rebasePath("/home/foo", "/tmp") == "/tmp/baz"
+    doAssert "/home/foo/baz".rebasePath("/home/foo", "/tmp").unixToNativePath == "/tmp/baz".unixToNativePath
     ## `path` must be relative to `oldBase`:
     doAssertRaises(OSError): discard "/home/foo/baz".rebasePath("/home/other", "/tmp")
     ## unless `check = false`, in which case it returns `path` unchanged:
-    doAssert "/home/foo/baz".rebasePath("/home/other", "/tmp", check = false) == "/home/foo/baz"
+    doAssert "/home/foo/baz".rebasePath("/home/other", "/tmp", check = false).unixToNativePath == "/home/foo/baz".unixToNativePath
+
   if path.isRelativeTo(oldBase):
     result = newBase / path.relativePath(oldBase)
   else:
