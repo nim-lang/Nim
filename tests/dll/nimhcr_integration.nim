@@ -1,7 +1,4 @@
 discard """
-  disabled: "openbsd"
-  disabled: "netbsd"
-  disabled: "macosx"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
@@ -100,6 +97,7 @@ proc compileReloadExecute() =
   #   binary triggers rebuilding itself here it shouldn't rebuild the main module -
   #   that would lead to replacing the main binary executable which is running!
   let cmd = commandLineParams()[0..^1].join(" ").replace(" --forceBuild")
+  doAssert cmd.len > 0
   let (stdout, exitcode) = execCmdEx(cmd)
   if exitcode != 0:
     echo "COMPILATION ERROR!"
