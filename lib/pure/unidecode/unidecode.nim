@@ -55,7 +55,7 @@ proc unidecode*(s: string): string =
   ##
   ## Example:
   ##
-  ## .. code-block:: nim
+  ## ..code-block:: nim
   ##
   ##   unidecode("北京")
   ##
