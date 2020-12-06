@@ -569,7 +569,9 @@ proc match(p: RstParser, start: int, expr: string): bool =
   # 'p'              tkPunct
   # 'T'              always true
   # 'E'              whitespace, indent or eof
-  # 'e'              tkWord or '#' (for enumeration lists)
+  # 'e'              any enumeration sequence or '#' (for enumeration lists)
+  # 'x'              a..z or '#' (for enumeration lists)
+  # 'n'              0..9 or '#' (for enumeration lists)
   var i = 0
   var j = start
   var last = expr.len - 1
@@ -583,12 +585,16 @@ proc match(p: RstParser, start: int, expr: string): bool =
     of 'o': result = p.tok[j].kind == tkOther
     of 'T': result = true
     of 'E': result = p.tok[j].kind in {tkEof, tkWhite, tkIndent}
-    of 'e':
+    of 'e', 'x', 'n':
       result = p.tok[j].kind == tkWord or p.tok[j].symbol == "#"
       if result:
         case p.tok[j].symbol[0]
-        of 'a'..'z', 'A'..'Z', '#': result = p.tok[j].symbol.len == 1
-        of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
+        of '#': result = true
+        of 'a'..'z', 'A'..'Z':
+          result = expr[i] in {'e', 'x'} and p.tok[j].symbol.len == 1
+        of '0'..'9':
+          result = expr[i] in {'e', 'n'} and
+                     allCharsInSet(p.tok[j].symbol, {'0'..'9'})
         else: result = false
     else:
       var c = expr[i]
@@ -1465,33 +1471,51 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
 
 proc parseEnumList(p: var RstParser): PRstNode =
   const
-    wildcards: array[0..2, string] = ["(e) ", "e) ", "e. "]
-    wildpos: array[0..2, int] = [1, 0, 0]
-  result = nil
+    wildcards: array[0..5, string] = ["(n)", "n) ", "n. ", "(x) ", "x) ", "x. "]
+      # enumerator patterns, where 'x' means letter and 'n' means number
+    wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
+    wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
+      # position of enumeration sequence (number/letter) in enumerator
+  result = newRstNode(rnEnumList)
+  let col = currentTok(p).col
   var w = 0
-  while w <= 2:
+  while w < wildcards.len:
     if match(p, p.idx, wildcards[w]): break
     inc w
-  if w <= 2:
-    var col = currentTok(p).col
-    result = newRstNode(rnEnumList)
-    inc p.idx, wildpos[w] + 3
-    var j = tokenAfterNewline(p)
-    if p.tok[j].col == currentTok(p).col or match(p, j, wildcards[w]):
-      pushInd(p, currentTok(p).col)
-      while true:
-        var item = newRstNode(rnEnumItem)
-        parseSection(p, item)
-        result.add(item)
-        if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-            match(p, p.idx + 1, wildcards[w]):
-          inc p.idx, wildpos[w] + 4
-        else:
+  assert w < wildcards.len
+  result.text = p.tok[p.idx + wildIndex[w]].symbol
+  if result.text == "#": result.text = "1"
+  var prevEnum = result.text
+  inc p.idx, wildToken[w]
+  while true:
+    var item = newRstNode(rnEnumItem)
+    pushInd(p, currentTok(p).col)
+    parseSection(p, item)
+    popInd(p)
+    result.add(item)
+    if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
+        match(p, p.idx+1, wildcards[w]):
+      let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
+      # check that it's in sequence: enumerator == next(prevEnum)
+      if "n" in wildcards[w]:  # arabic numeral
+        let prevEnumI = try: parseInt(prevEnum) except: 1
+        let curEnum =
+          if enumerator == "#": prevEnumI + 1
+          else: (try: parseInt(enumerator) except: 1)
+        if curEnum - prevEnumI != 1:
           break
-      popInd(p)
+        prevEnum = enumerator
+      else:  # a..z
+        let prevEnumI = ord(prevEnum[0])
+        let curEnum =
+          if enumerator == "#": prevEnumI + 1
+          else: ord(enumerator[0])
+        if curEnum - prevEnumI != 1:
+          break
+        prevEnum = $chr(curEnum)
+      inc p.idx, 1 + wildToken[w]
     else:
-      dec p.idx, wildpos[w] + 3
-      result = nil
+      break
 
 proc sonKind(father: PRstNode, i: int): RstNodeKind =
   result = rnLeaf

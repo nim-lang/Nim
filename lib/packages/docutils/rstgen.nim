@@ -1043,8 +1043,23 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
   of rnEnumList:
-    renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",
-                    "\\begin{enumerate}$1\\end{enumerate}\n", result)
+    let specifier =
+      if d.target == outLatex:
+        # use enumerate parameters from package enumitem
+        if n.text[0].isDigit:
+          "[start=$1]" % [n.text]
+        else:
+          "[label=(\alph*),start=$1]" % [
+              $(ord(n.text[0]) - ord('a') + 1)]
+      else:
+        if n.text[0].isDigit:
+          "class=\"simple\" start=\"$1\"" % [n.text]
+        else:
+          "class=\"loweralpha simple\" start=\"$1\"" % [
+              $(ord(n.text[0]) - ord('a') + 1)]
+    renderAux(d, n, "<ol " & specifier & ">$1</ol>\n",
+              "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
+              result)
   of rnDefList:
     renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
                        "\\begin{description}$1\\end{description}\n", result)
