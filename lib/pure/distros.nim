@@ -18,13 +18,10 @@
 ##
 ## The above output could be the result of a code snippet like:
 ##
-## .. code-block:: nim
-##
-##   if detectOs(Ubuntu):
-##     foreignDep "lbiblas-dev"
-##     foreignDep "libvoodoo"
-##
-##
+runnableExamples:
+  if detectOs(Ubuntu):
+    foreignDep "lbiblas-dev"
+    foreignDep "libvoodoo"
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
 from strutils import contains, toLowerAscii
@@ -201,7 +198,7 @@ proc detectOsImpl(d: Distribution): bool =
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
-  ## required ``Distribution.`` qualifier is added to the
+  ## required `Distribution.` qualifier is added to the
   ## enum value.
   detectOsImpl(Distribution.d)
 
