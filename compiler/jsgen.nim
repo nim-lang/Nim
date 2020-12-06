@@ -1288,7 +1288,7 @@ template isIndirect(x: PSym): bool =
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfExportc} * v.flags == {} and
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
-                  skConst, skTemp, skLet})
+                  skConst, skTemp, skLet, skVar})
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n[0].kind
