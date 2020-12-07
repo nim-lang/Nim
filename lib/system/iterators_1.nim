@@ -40,11 +40,11 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
-  ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+iterator countup*[T](a, b: T, step: Positive = 1): T {.inline.} =
+  ## Counts from ordinal value `a` to `b` (inclusive) with the given
   ## step count.
   ##
-  ## `S`, `T` may be any ordinal type, `step` may only be positive.
+  ## `T` may be any ordinal type, `step` may only be positive.
   ##
   ## **Note**: This fails to count to `high(int)` if T = int for
   ## efficiency reasons.
@@ -60,23 +60,23 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
       for i in countup(2, 9, 3):
         i
     assert y == @[2, 5, 8]
-
+  mixin inc
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res <= int(b):
       yield T(res)
       inc(res, step)
   else:
-    var res = T(a)
+    var res = a
     while res <= b:
       yield res
       inc(res, step)
 
-iterator `..`*[S, T](a: S, b: T): T {.inline.} =
+iterator `..`*[T](a, b: T): T {.inline.} =
   ## An alias for `countup(a, b, 1)`.
   ##
   ## See also:
-  ## * [..<](#..<.i,S,T)
+  ## * [..<](#..<.i,T,T)
   runnableExamples:
     import sugar
 
@@ -92,17 +92,48 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
       yield T(res)
       inc(res)
   else:
-    var res = T(a)
+    var res = a
     while res <= b:
       yield res
       inc(res)
 
-iterator `..<`*[S, T](a: S, b: T): T {.inline.} =
+template dotdotImpl(t) {.dirty.} =
+  iterator `..`*(a, b: t): t {.inline.} =
+    ## A type specialized version of `..` for convenience so that
+    ## mixing integer types works better.
+    ##
+    ## See also:
+    ## * [..<](#..<.i,T,T)
+    var res = a
+    while res <= b:
+      yield res
+      inc(res)
+
+dotdotImpl(int64)
+dotdotImpl(int32)
+dotdotImpl(uint64)
+dotdotImpl(uint32)
+
+iterator `..<`*[T](a, b: T): T {.inline.} =
   mixin inc
-  var i = T(a)
+  var i = a
   while i < b:
     yield i
     inc i
+
+template dotdotLessImpl(t) {.dirty.} =
+  iterator `..<`*(a, b: t): t {.inline.} =
+    ## A type specialized version of `..<` for convenience so that
+    ## mixing integer types works better.
+    var res = a
+    while res < b:
+      yield res
+      inc(res)
+
+dotdotLessImpl(int64)
+dotdotLessImpl(int32)
+dotdotLessImpl(uint64)
+dotdotLessImpl(uint32)
 
 iterator `||`*[S, T](a: S, b: T, annotation: static string = "parallel for"): T {.
   inline, magic: "OmpParFor", sideEffect.} =
