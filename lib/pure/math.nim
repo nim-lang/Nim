@@ -71,12 +71,12 @@ func binom*(n, k: int): int =
   for i in countup(2, k):
     result = (result * (n + 1 - i)) div i
 
-proc createFactTable[N: static[int]]: array[N, int] =
+func createFactTable[N: static[int]]: array[N, int] =
   result[0] = 1
   for i in 1 ..< N:
     result[i] = result[i - 1] * i
 
-proc fac*(n: int): int =
+func fac*(n: int): int =
   ## Computes the `factorial <https://en.wikipedia.org/wiki/Factorial>`_ of
   ## a non-negative integer ``n``.
   ##
@@ -133,7 +133,7 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
-proc classify*(x: float): FloatClass =
+func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
@@ -258,7 +258,7 @@ func prod*[T](x: openArray[T]): T =
   result = 1.T
   for i in items(x): result = result * i
 
-proc cumsummed*[T](x: openArray[T]): seq[T] =
+func cumsummed*[T](x: openArray[T]): seq[T] =
   ## Return cumulative (aka prefix) summation of ``x``.
   ##
   ## See also:
@@ -271,7 +271,7 @@ proc cumsummed*[T](x: openArray[T]): seq[T] =
   result[0] = x[0]
   for i in 1 ..< x.len: result[i] = result[i-1] + x[i]
 
-proc cumsum*[T](x: var openArray[T]) =
+func cumsum*[T](x: var openArray[T]) =
   ## Transforms ``x`` in-place (must be declared as `var`) into its
   ## cumulative (aka prefix) summation.
   ##
@@ -952,7 +952,7 @@ func splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
     result.floatpart = -result.floatpart
 
 
-proc degToRad*[T: float32|float64](d: T): T {.inline.} =
+func degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from degrees to radians.
   ##
   ## See also:
@@ -962,7 +962,7 @@ proc degToRad*[T: float32|float64](d: T): T {.inline.} =
     doAssert degToRad(180.0) == 3.141592653589793
   result = T(d) * RadPerDeg
 
-proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
+func radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees.
   ##
   ## See also:
@@ -972,7 +972,7 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
     doAssert radToDeg(2 * PI) == 360.0
   result = T(d) / RadPerDeg
 
-proc sgn*[T: SomeNumber](x: T): int {.inline.} =
+func sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## Sign function.
   ##
   ## Returns:
@@ -989,7 +989,7 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 {.pop.}
 
-proc `^`*[T: SomeNumber](x: T, y: Natural): T =
+func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use
@@ -1024,7 +1024,7 @@ proc `^`*[T: SomeNumber](x: T, y: Natural): T =
         break
       x *= x
 
-proc gcd*[T](x, y: T): T =
+func gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
   ##
   ## Note that for floats, the result cannot always be interpreted as
@@ -1042,7 +1042,7 @@ proc gcd*[T](x, y: T): T =
     swap x, y
   abs x
 
-proc gcd*(x, y: SomeInteger): SomeInteger =
+func gcd*(x, y: SomeInteger): SomeInteger =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``,
   ## using binary GCD (aka Stein's) algorithm.
   ##
@@ -1075,7 +1075,7 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
-proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
+func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of ``x``.
   ##
   ## See also:
@@ -1088,7 +1088,7 @@ proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
     result = gcd(result, x[i])
     inc(i)
 
-proc lcm*[T](x, y: T): T =
+func lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   ##
   ## See also:
@@ -1098,7 +1098,7 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
-proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
+func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of ``x``.
   ##
   ## See also:
