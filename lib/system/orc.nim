@@ -23,6 +23,7 @@ const
   colWhite = 0b010
   maybeCycle = 0b100 # possibly part of a cycle; this has to be a "sticky" bit
   jumpStackFlag = 0b1000
+  survivedBit = 0b1000 # node survival trial deletion
   colorMask = 0b011
 
   logOrc = defined(nimArcIds)
@@ -37,6 +38,9 @@ template setColor(c, col) =
     c.rc = c.rc and not colorMask
   else:
     c.rc = c.rc and not colorMask or col
+
+template didSurvive(c) =
+  c.rc = c.rc or survivedBit
 
 const
   optimizedOrc = false # not defined(nimOldOrc)
@@ -152,16 +156,88 @@ proc scanBlack(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
         scanBlack(t)
   ]#
   s.setColor colBlack
+  s.didSurvive()
   let until = j.traceStack.len
   trace(s, desc, j)
   when logOrc: writeCell("root still alive", s, desc)
   while j.traceStack.len > until:
     let (t, desc) = j.traceStack.pop()
     inc t.rc, rcIncrement
+    t.didSurvive
     if t.color != colBlack:
       t.setColor colBlack
       trace(t, desc, j)
       when logOrc: writeCell("child still alive", t, desc)
+
+var gyes*, gno*, gyesCost*, gnoCost*: int
+proc youngGen(s: Cell; desc: PNimTypeV2; j: var GcEnv): bool =
+  s.setColor colWhite
+  when logOrc: writeCell("young gen root found", s, desc)
+
+  # keep in mind that refcounts are zero based so add 1 here:
+  var rcSum = (s.rc shr rcShift) + 1
+  var edges = 0
+
+  var subgraph, foreign: CellSeq
+
+  orcAssert(j.traceStack.len == 0, "markGray: trace stack not empty")
+  trace(s, desc, j)
+  while j.traceStack.len > 0:
+    let (t, desc) = j.traceStack.pop()
+    if (t.rc and survivedBit) != 0:
+      foreign.add(t, desc)
+      when logOrc: writeCell("survivor found", t, desc)
+    else:
+      when logOrc: writeCell("child found", t, desc)
+      inc edges
+      if t.color != colWhite:
+        t.setColor colWhite
+        if t.rootIdx > 0: unregisterCycle(t)
+        subgraph.add(t, desc)
+        inc rcSum, (t.rc shr rcShift) + 1
+        trace(t, desc, j)
+  if rcSum == edges:
+    # the subgraph is provably dead.
+    for i in 0 ..< foreign.len:
+      let (t, desc) = foreign.d[i]
+      dec t.rc, rcIncrement
+      if t.rootIdx == 0:
+        t.rootIdx = roots.len+1
+        add(roots, t, desc)
+
+    for i in 0 ..< subgraph.len:
+      let (t, desc) = subgraph.d[i]
+      free(t, desc)
+    free(s, desc)
+    #cprintf("[Success] %ld %ld\n", rcSum, edges)
+    inc gyes
+    inc gyesCost, subgraph.len
+    if s.rootIdx > 0: unregisterCycle(s)
+    result = true
+  else:
+    # undo our changes to the object graph:
+    #cprintf("[Missed] %ld %ld\n", rcSum, edges)
+    inc gno
+    inc gnoCost #, subgraph.len
+    when false:
+      s.setColor colBlack
+      for i in 0 ..< subgraph.len:
+        let (t, desc) = subgraph.d[i]
+        t.setColor colBlack
+    result = false
+
+  deinit(foreign)
+  deinit(subgraph)
+
+proc collectCyclesAraq(j: var GcEnv) =
+  var i = 0
+  # cannot use a 'for' loop here as 'roots.len' is mutated
+  while i < roots.len:
+    let (s, desc) = roots.d[i]
+    if (s.rc and survivedBit) == 0:
+      if not youngGen(s, desc, j): inc i
+    else:
+      inc i
 
 proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
@@ -299,6 +375,8 @@ proc collectCyclesBacon(j: var GcEnv; lowMark: int) =
       s.buffered = false
       collectWhite(s)
   ]#
+  collectCyclesAraq(j)
+
   let last = roots.len - 1
   when logOrc:
     for i in countdown(last, lowMark):

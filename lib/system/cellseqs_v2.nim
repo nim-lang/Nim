@@ -18,16 +18,18 @@ type
 
 proc add(s: var CellSeq, c: PT; t: PNimTypeV2) {.inline.} =
   if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
+    if s.cap == 0: s.cap = 40
+    else: s.cap = s.cap * 3 div 2
     when compileOption("threads"):
       var d = cast[CellArray](allocShared(uint(s.cap * sizeof(CellTuple))))
     else:
       var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
     copyMem(d, s.d, s.len * sizeof(CellTuple))
-    when compileOption("threads"):
-      deallocShared(s.d)
-    else:
-      dealloc(s.d)
+    if s.d != nil:
+      when compileOption("threads"):
+        deallocShared(s.d)
+      else:
+        dealloc(s.d)
     s.d = d
     # XXX: realloc?
   s.d[s.len] = (c, t)
