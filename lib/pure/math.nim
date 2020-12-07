@@ -81,7 +81,7 @@ func fac*(n: int): int =
   ## a non-negative integer ``n``.
   ##
   ## See also:
-  ## * `prod proc <#prod,openArray[T]>`_
+  ## * `prod func <#prod,openArray[T]>`_
   runnableExamples:
     doAssert fac(3) == 6
     doAssert fac(4) == 24
@@ -124,7 +124,7 @@ const
 type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
                      ## This is the type that is returned by
-                     ## `classify proc <#classify,float>`_.
+                     ## `classify func <#classify,float>`_.
     fcNormal,        ## value is an ordinary nonzero floating point value
     fcSubnormal,     ## value is a subnormal (a very small) floating point value
     fcZero,          ## value is zero
@@ -198,7 +198,7 @@ func isPowerOfTwo*(x: int): bool =
   ## Zero and negative numbers are not a power of two.
   ##
   ## See also:
-  ## * `nextPowerOfTwo proc<#nextPowerOfTwo,int>`_
+  ## * `nextPowerOfTwo func<#nextPowerOfTwo,int>`_
   runnableExamples:
     doAssert isPowerOfTwo(16) == true
     doAssert isPowerOfTwo(5) == false
@@ -212,7 +212,7 @@ func nextPowerOfTwo*(x: int): int =
   ## Zero and negative numbers get rounded up to 1.
   ##
   ## See also:
-  ## * `isPowerOfTwo proc<#isPowerOfTwo,int>`_
+  ## * `isPowerOfTwo func<#isPowerOfTwo,int>`_
   runnableExamples:
     doAssert nextPowerOfTwo(16) == 16
     doAssert nextPowerOfTwo(5) == 8
@@ -236,9 +236,9 @@ func sum*[T](x: openArray[T]): T =
   ## If ``x`` is empty, 0 is returned.
   ##
   ## See also:
-  ## * `prod proc <#prod,openArray[T]>`_
-  ## * `cumsum proc <#cumsum,openArray[T]>`_
-  ## * `cumsummed proc <#cumsummed,openArray[T]>`_
+  ## * `prod func <#prod,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_
   runnableExamples:
     doAssert sum([1, 2, 3, 4]) == 10
     doAssert sum([-1.5, 2.7, -0.1]) == 1.1
@@ -250,8 +250,8 @@ func prod*[T](x: openArray[T]): T =
   ## If ``x`` is empty, 1 is returned.
   ##
   ## See also:
-  ## * `sum proc <#sum,openArray[T]>`_
-  ## * `fac proc <#fac,int>`_
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `fac func <#fac,int>`_
   runnableExamples:
     doAssert prod([1, 2, 3, 4]) == 24
     doAssert prod([-4, 3, 5]) == -60
@@ -262,8 +262,8 @@ func cumsummed*[T](x: openArray[T]): seq[T] =
   ## Return cumulative (aka prefix) summation of ``x``.
   ##
   ## See also:
-  ## * `sum proc <#sum,openArray[T]>`_
-  ## * `cumsum proc <#cumsum,openArray[T]>`_ for the in-place version
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsum func <#cumsum,openArray[T]>`_ for the in-place version
   runnableExamples:
     let a = [1, 2, 3, 4]
     doAssert cumsummed(a) == @[1, 3, 6, 10]
@@ -276,8 +276,8 @@ func cumsum*[T](x: var openArray[T]) =
   ## cumulative (aka prefix) summation.
   ##
   ## See also:
-  ## * `sum proc <#sum,openArray[T]>`_
-  ## * `cumsummed proc <#cumsummed,openArray[T]>`_ for a version which
+  ## * `sum func <#sum,openArray[T]>`_
+  ## * `cumsummed func <#cumsummed,openArray[T]>`_ for a version which
   ##   returns cumsummed sequence
   runnableExamples:
     var a = [1, 2, 3, 4]
@@ -291,7 +291,7 @@ when not defined(js): # C
     ## Computes the square root of ``x``.
     ##
     ## See also:
-    ## * `cbrt proc <#cbrt,float64>`_ for cubic root
+    ## * `cbrt func <#cbrt,float64>`_ for cubic root
     ##
     ## .. code-block:: nim
     ##  echo sqrt(4.0)  ## 2.0
@@ -302,7 +302,7 @@ when not defined(js): # C
     ## Computes the cubic root of ``x``.
     ##
     ## See also:
-    ## * `sqrt proc <#sqrt,float64>`_ for square root
+    ## * `sqrt func <#sqrt,float64>`_ for square root
     ##
     ## .. code-block:: nim
     ##  echo cbrt(8.0)   ## 2.0
@@ -314,10 +314,10 @@ when not defined(js): # C
     ## of ``x``.
     ##
     ## See also:
-    ## * `log proc <#log,T,T>`_
-    ## * `log10 proc <#log10,float64>`_
-    ## * `log2 proc <#log2,float64>`_
-    ## * `exp proc <#exp,float64>`_
+    ## * `log func <#log,T,T>`_
+    ## * `log10 func <#log10,float64>`_
+    ## * `log2 func <#log2,float64>`_
+    ## * `exp func <#exp,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo ln(exp(4.0)) ## 4.0
@@ -338,10 +338,10 @@ func log*[T: SomeFloat](x, base: T): T =
   ## Computes the logarithm of ``x`` to base ``base``.
   ##
   ## See also:
-  ## * `ln proc <#ln,float64>`_
-  ## * `log10 proc <#log10,float64>`_
-  ## * `log2 proc <#log2,float64>`_
-  ## * `exp proc <#exp,float64>`_
+  ## * `ln func <#ln,float64>`_
+  ## * `log10 func <#log10,float64>`_
+  ## * `log2 func <#log2,float64>`_
+  ## * `exp func <#exp,float64>`_
   ##
   ## .. code-block:: nim
   ##  echo log(9.0, 3.0)  ## 2.0
@@ -357,10 +357,10 @@ when not defined(js): # C
     ## Computes the common logarithm (base 10) of ``x``.
     ##
     ## See also:
-    ## * `ln proc <#ln,float64>`_
-    ## * `log proc <#log,T,T>`_
-    ## * `log2 proc <#log2,float64>`_
-    ## * `exp proc <#exp,float64>`_
+    ## * `ln func <#ln,float64>`_
+    ## * `log func <#log,T,T>`_
+    ## * `log2 func <#log2,float64>`_
+    ## * `exp func <#exp,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo log10(100.0)  ## 2.0
@@ -371,10 +371,10 @@ when not defined(js): # C
     ## Computes the exponential function of ``x`` (e^x).
     ##
     ## See also:
-    ## * `ln proc <#ln,float64>`_
-    ## * `log proc <#log,T,T>`_
-    ## * `log10 proc <#log10,float64>`_
-    ## * `log2 proc <#log2,float64>`_
+    ## * `ln func <#ln,float64>`_
+    ## * `log func <#log,T,T>`_
+    ## * `log10 func <#log10,float64>`_
+    ## * `log2 func <#log2,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo exp(1.0)     ## 2.718281828459045
@@ -386,10 +386,10 @@ when not defined(js): # C
     ## Computes the sine of ``x``.
     ##
     ## See also:
-    ## * `cos proc <#cos,float64>`_
-    ## * `tan proc <#tan,float64>`_
-    ## * `arcsin proc <#arcsin,float64>`_
-    ## * `sinh proc <#sinh,float64>`_
+    ## * `cos func <#cos,float64>`_
+    ## * `tan func <#tan,float64>`_
+    ## * `arcsin func <#arcsin,float64>`_
+    ## * `sinh func <#sinh,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo sin(PI / 6)         ## 0.4999999999999999
@@ -399,10 +399,10 @@ when not defined(js): # C
     ## Computes the cosine of ``x``.
     ##
     ## See also:
-    ## * `sin proc <#sin,float64>`_
-    ## * `tan proc <#tan,float64>`_
-    ## * `arccos proc <#arccos,float64>`_
-    ## * `cosh proc <#cosh,float64>`_
+    ## * `sin func <#sin,float64>`_
+    ## * `tan func <#tan,float64>`_
+    ## * `arccos func <#arccos,float64>`_
+    ## * `cosh func <#cosh,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo cos(2 * PI)         ## 1.0
@@ -412,10 +412,10 @@ when not defined(js): # C
     ## Computes the tangent of ``x``.
     ##
     ## See also:
-    ## * `sin proc <#sin,float64>`_
-    ## * `cos proc <#cos,float64>`_
-    ## * `arctan proc <#arctan,float64>`_
-    ## * `tanh proc <#tanh,float64>`_
+    ## * `sin func <#sin,float64>`_
+    ## * `cos func <#cos,float64>`_
+    ## * `arctan func <#arctan,float64>`_
+    ## * `tanh func <#tanh,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo tan(degToRad(45.0)) ## 0.9999999999999999
@@ -425,10 +425,10 @@ when not defined(js): # C
     ## Computes the `hyperbolic sine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
     ##
     ## See also:
-    ## * `cosh proc <#cosh,float64>`_
-    ## * `tanh proc <#tanh,float64>`_
-    ## * `arcsinh proc <#arcsinh,float64>`_
-    ## * `sin proc <#sin,float64>`_
+    ## * `cosh func <#cosh,float64>`_
+    ## * `tanh func <#tanh,float64>`_
+    ## * `arcsinh func <#arcsinh,float64>`_
+    ## * `sin func <#sin,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo sinh(0.0)            ## 0.0
@@ -439,10 +439,10 @@ when not defined(js): # C
     ## Computes the `hyperbolic cosine <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
     ##
     ## See also:
-    ## * `sinh proc <#sinh,float64>`_
-    ## * `tanh proc <#tanh,float64>`_
-    ## * `arccosh proc <#arccosh,float64>`_
-    ## * `cos proc <#cos,float64>`_
+    ## * `sinh func <#sinh,float64>`_
+    ## * `tanh func <#tanh,float64>`_
+    ## * `arccosh func <#arccosh,float64>`_
+    ## * `cos func <#cos,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo cosh(0.0)            ## 1.0
@@ -453,10 +453,10 @@ when not defined(js): # C
     ## Computes the `hyperbolic tangent <https://en.wikipedia.org/wiki/Hyperbolic_function#Definitions>`_ of ``x``.
     ##
     ## See also:
-    ## * `sinh proc <#sinh,float64>`_
-    ## * `cosh proc <#cosh,float64>`_
-    ## * `arctanh proc <#arctanh,float64>`_
-    ## * `tan proc <#tan,float64>`_
+    ## * `sinh func <#sinh,float64>`_
+    ## * `cosh func <#cosh,float64>`_
+    ## * `arctanh func <#arctanh,float64>`_
+    ## * `tan func <#tan,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo tanh(0.0)            ## 0.0
@@ -468,10 +468,10 @@ when not defined(js): # C
     ## Computes the arc cosine of ``x``.
     ##
     ## See also:
-    ## * `arcsin proc <#arcsin,float64>`_
-    ## * `arctan proc <#arctan,float64>`_
-    ## * `arctan2 proc <#arctan2,float64,float64>`_
-    ## * `cos proc <#cos,float64>`_
+    ## * `arcsin func <#arcsin,float64>`_
+    ## * `arctan func <#arctan,float64>`_
+    ## * `arctan2 func <#arctan2,float64,float64>`_
+    ## * `cos func <#cos,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo radToDeg(arccos(0.0)) ## 90.0
@@ -481,10 +481,10 @@ when not defined(js): # C
     ## Computes the arc sine of ``x``.
     ##
     ## See also:
-    ## * `arccos proc <#arccos,float64>`_
-    ## * `arctan proc <#arctan,float64>`_
-    ## * `arctan2 proc <#arctan2,float64,float64>`_
-    ## * `sin proc <#sin,float64>`_
+    ## * `arccos func <#arccos,float64>`_
+    ## * `arctan func <#arctan,float64>`_
+    ## * `arctan2 func <#arctan2,float64,float64>`_
+    ## * `sin func <#sin,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo radToDeg(arcsin(0.0)) ## 0.0
@@ -494,10 +494,10 @@ when not defined(js): # C
     ## Calculate the arc tangent of ``x``.
     ##
     ## See also:
-    ## * `arcsin proc <#arcsin,float64>`_
-    ## * `arccos proc <#arccos,float64>`_
-    ## * `arctan2 proc <#arctan2,float64,float64>`_
-    ## * `tan proc <#tan,float64>`_
+    ## * `arcsin func <#arcsin,float64>`_
+    ## * `arccos func <#arccos,float64>`_
+    ## * `arctan2 func <#arctan2,float64,float64>`_
+    ## * `tan func <#tan,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo arctan(1.0) ## 0.7853981633974483
@@ -511,10 +511,10 @@ when not defined(js): # C
     ## pi/2 or -pi/2 (``x`` near 0).
     ##
     ## See also:
-    ## * `arcsin proc <#arcsin,float64>`_
-    ## * `arccos proc <#arccos,float64>`_
-    ## * `arctan proc <#arctan,float64>`_
-    ## * `tan proc <#tan,float64>`_
+    ## * `arcsin func <#arcsin,float64>`_
+    ## * `arccos func <#arccos,float64>`_
+    ## * `arctan func <#arctan,float64>`_
+    ## * `tan func <#tan,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo arctan2(1.0, 0.0) ## 1.570796326794897
@@ -596,12 +596,12 @@ when not defined(js): # C
   func pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## Computes x to power raised of y.
     ##
-    ## To compute power between integers (e.g. 2^6), use `^ proc<#^,T,Natural>`_.
+    ## To compute power between integers (e.g. 2^6), use `^ func<#^,T,Natural>`_.
     ##
     ## See also:
-    ## * `^ proc<#^,T,Natural>`_
-    ## * `sqrt proc <#sqrt,float64>`_
-    ## * `cbrt proc <#cbrt,float64>`_
+    ## * `^ func<#^,T,Natural>`_
+    ## * `sqrt func <#sqrt,float64>`_
+    ## * `cbrt func <#cbrt,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo pow(100, 1.5)  ## 1000.0
@@ -626,7 +626,7 @@ when not defined(js): # C
       ## Note: Not available for JS backend.
       ##
       ## See also:
-      ## * `lgamma proc <#lgamma,float64>`_ for a natural log of gamma function
+      ## * `lgamma func <#lgamma,float64>`_ for a natural log of gamma function
       ##
       ## .. code-block:: Nim
       ##  echo gamma(1.0)  # 1.0
@@ -640,7 +640,7 @@ when not defined(js): # C
       ## Note: Not available for JS backend.
       ##
       ## See also:
-      ## * `gamma proc <#gamma,float64>`_ for gamma function
+      ## * `gamma func <#gamma,float64>`_ for gamma function
       ##
       ## .. code-block:: Nim
       ##  echo lgamma(1.0)  # 1.0
@@ -653,9 +653,9 @@ when not defined(js): # C
     ## Computes the floor function (i.e., the largest integer not greater than ``x``).
     ##
     ## See also:
-    ## * `ceil proc <#ceil,float64>`_
-    ## * `round proc <#round,float64>`_
-    ## * `trunc proc <#trunc,float64>`_
+    ## * `ceil func <#ceil,float64>`_
+    ## * `round func <#round,float64>`_
+    ## * `trunc func <#trunc,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo floor(2.1)  ## 2.0
@@ -668,9 +668,9 @@ when not defined(js): # C
     ## than ``x``).
     ##
     ## See also:
-    ## * `floor proc <#floor,float64>`_
-    ## * `round proc <#round,float64>`_
-    ## * `trunc proc <#trunc,float64>`_
+    ## * `floor func <#floor,float64>`_
+    ## * `round func <#round,float64>`_
+    ## * `trunc func <#trunc,float64>`_
     ##
     ## .. code-block:: nim
     ##  echo ceil(2.1)  ## 3.0
@@ -737,15 +737,15 @@ when not defined(js): # C
     func round*(x: float64): float64 {.importc: "round", header: "<math.h>".}
       ## Rounds a float to zero decimal places.
       ##
-      ## Used internally by the `round proc <#round,T,int>`_
+      ## Used internally by the `round func <#round,T,int>`_
       ## when the specified number of places is 0.
       ##
       ## See also:
-      ## * `round proc <#round,T,int>`_ for rounding to the specific
+      ## * `round func <#round,T,int>`_ for rounding to the specific
       ##   number of decimal places
-      ## * `floor proc <#floor,float64>`_
-      ## * `ceil proc <#ceil,float64>`_
-      ## * `trunc proc <#trunc,float64>`_
+      ## * `floor func <#floor,float64>`_
+      ## * `ceil func <#ceil,float64>`_
+      ## * `trunc func <#trunc,float64>`_
       ##
       ## .. code-block:: nim
       ##   echo round(3.4) ## 3.0
@@ -757,9 +757,9 @@ when not defined(js): # C
       ## Truncates ``x`` to the decimal point.
       ##
       ## See also:
-      ## * `floor proc <#floor,float64>`_
-      ## * `ceil proc <#ceil,float64>`_
-      ## * `round proc <#round,float64>`_
+      ## * `floor func <#floor,float64>`_
+      ## * `ceil func <#ceil,float64>`_
+      ## * `round func <#round,float64>`_
       ##
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
@@ -770,7 +770,7 @@ when not defined(js): # C
     ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
     ##
     ## See also:
-    ## * `floorMod proc <#floorMod,T,T>`_ for Python-like (% operator) behavior
+    ## * `floorMod func <#floorMod,T,T>`_ for Python-like (% operator) behavior
     ##
     ## .. code-block:: nim
     ##  ( 6.5 mod  2.5) ==  1.5
@@ -831,7 +831,7 @@ func floorDiv*[T: SomeInteger](x, y: T): T =
   ##
   ## See also:
   ## * `system.div proc <system.html#div,int,int>`_ for integer division
-  ## * `floorMod proc <#floorMod,T,T>`_ for Python-like (% operator) behavior
+  ## * `floorMod func <#floorMod,T,T>`_ for Python-like (% operator) behavior
   ##
   ## .. code-block:: nim
   ##  echo floorDiv( 13,  3) #  4
@@ -848,8 +848,8 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   ## This proc behaves the same as the ``%`` operator in Python.
   ##
   ## See also:
-  ## * `mod proc <#mod,float64,float64>`_
-  ## * `floorDiv proc <#floorDiv,T,T>`_
+  ## * `mod func <#mod,float64,float64>`_
+  ## * `floorDiv func <#floorDiv,T,T>`_
   ##
   ## .. code-block:: nim
   ##  echo floorMod( 13,  3) #  1
@@ -902,10 +902,10 @@ when not defined(js):
       ## Computes the binary logarithm (base 2) of ``x``.
       ##
       ## See also:
-      ## * `log proc <#log,T,T>`_
-      ## * `log10 proc <#log10,float64>`_
-      ## * `ln proc <#ln,float64>`_
-      ## * `exp proc <#exp,float64>`_
+      ## * `log func <#log,T,T>`_
+      ## * `log10 func <#log10,float64>`_
+      ## * `ln func <#ln,float64>`_
+      ## * `exp func <#exp,float64>`_
       ##
       ## .. code-block:: Nim
       ##  echo log2(8.0)  # 3.0
@@ -956,7 +956,7 @@ func degToRad*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from degrees to radians.
   ##
   ## See also:
-  ## * `radToDeg proc <#radToDeg,T>`_
+  ## * `radToDeg func <#radToDeg,T>`_
   ##
   runnableExamples:
     doAssert degToRad(180.0) == 3.141592653589793
@@ -966,7 +966,7 @@ func radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees.
   ##
   ## See also:
-  ## * `degToRad proc <#degToRad,T>`_
+  ## * `degToRad func <#degToRad,T>`_
   ##
   runnableExamples:
     doAssert radToDeg(2 * PI) == 360.0
@@ -993,13 +993,13 @@ func `^`*[T: SomeNumber](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use
-  ## `pow proc <#pow,float64,float64>`_ for negative exponents.
+  ## `pow func <#pow,float64,float64>`_ for negative exponents.
   ##
   ## See also:
-  ## * `pow proc <#pow,float64,float64>`_ for negative exponent or
+  ## * `pow func <#pow,float64,float64>`_ for negative exponent or
   ##   floats
-  ## * `sqrt proc <#sqrt,float64>`_
-  ## * `cbrt proc <#cbrt,float64>`_
+  ## * `sqrt func <#sqrt,float64>`_
+  ## * `cbrt func <#cbrt,float64>`_
   ##
   runnableExamples:
     assert -3.0^0 == 1.0
@@ -1032,8 +1032,8 @@ func gcd*[T](x, y: T): T =
   ## where N and M are positive integers."
   ##
   ## See also:
-  ## * `gcd proc <#gcd,SomeInteger,SomeInteger>`_ for integer version
-  ## * `lcm proc <#lcm,T,T>`_
+  ## * `gcd func <#gcd,SomeInteger,SomeInteger>`_ for integer version
+  ## * `lcm func <#lcm,T,T>`_
   runnableExamples:
     doAssert gcd(13.5, 9.0) == 4.5
   var (x, y) = (x, y)
@@ -1047,8 +1047,8 @@ func gcd*(x, y: SomeInteger): SomeInteger =
   ## using binary GCD (aka Stein's) algorithm.
   ##
   ## See also:
-  ## * `gcd proc <#gcd,T,T>`_ for floats version
-  ## * `lcm proc <#lcm,T,T>`_
+  ## * `gcd func <#gcd,T,T>`_ for floats version
+  ## * `lcm func <#lcm,T,T>`_
   runnableExamples:
     doAssert gcd(12, 8) == 4
     doAssert gcd(17, 63) == 1
@@ -1079,7 +1079,7 @@ func gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of ``x``.
   ##
   ## See also:
-  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  ## * `gcd func <#gcd,T,T>`_ for integer version
   runnableExamples:
     doAssert gcd(@[13.5, 9.0]) == 4.5
   result = x[0]
@@ -1092,7 +1092,7 @@ func lcm*[T](x, y: T): T =
   ## Computes the least common multiple of ``x`` and ``y``.
   ##
   ## See also:
-  ## * `gcd proc <#gcd,T,T>`_
+  ## * `gcd func <#gcd,T,T>`_
   runnableExamples:
     doAssert lcm(24, 30) == 120
     doAssert lcm(13, 39) == 39
@@ -1102,7 +1102,7 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of ``x``.
   ##
   ## See also:
-  ## * `gcd proc <#gcd,T,T>`_ for integer version
+  ## * `gcd func <#gcd,T,T>`_ for integer version
   runnableExamples:
     doAssert lcm(@[24, 30]) == 120
   result = x[0]
