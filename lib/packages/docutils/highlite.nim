@@ -62,11 +62,11 @@ type
 
   SourceLanguage* = enum
     langNone, langNim, langCpp, langCsharp, langC, langJava,
-    langYaml
+    langYaml, langPython
 
 const
   sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
-    "Nim", "C++", "C#", "C", "Java", "Yaml"]
+    "Nim", "C++", "C#", "C", "Java", "Yaml", "Python"]
   tokenClassToStr*: array[TokenClass, string] = ["Eof", "None", "Whitespace",
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber",
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit",
@@ -404,6 +404,162 @@ type
   TokenizerFlag = enum
     hasPreprocessor, hasNestedComments
   TokenizerFlags = set[TokenizerFlag]
+
+proc pythonLikeNextToken(g: var GeneralTokenizer, keywords: openArray[string]) =
+  const
+    hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
+    octChars = {'0'..'7', '_'}
+    binChars = {'0'..'1', '_'}
+    SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
+  var pos = g.pos
+  g.start = g.pos
+  if g.state == gtStringLit:
+    g.kind = gtStringLit
+    while true:
+      case g.buf[pos]
+      of '\\':
+        g.kind = gtEscapeSequence
+        inc(pos)
+        case g.buf[pos]
+        of 'x', 'X':
+          inc(pos)
+          if g.buf[pos] in hexChars: inc(pos)
+          if g.buf[pos] in hexChars: inc(pos)
+        of '0'..'9':
+          while g.buf[pos] in {'0'..'9'}: inc(pos)
+        of '\0':
+          g.state = gtNone
+        else: inc(pos)
+        break
+      of '\0', '\x0D', '\x0A':
+        g.state = gtNone
+        break
+      of '\"':
+        inc(pos)
+        g.state = gtNone
+        break
+      else: inc(pos)
+  else:
+    case g.buf[pos]
+    of ' ', '\x09'..'\x0D':
+      g.kind = gtWhitespace
+      while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
+    of '#':
+      g.kind = gtComment
+      inc(pos)
+      var isDoc = false
+      if g.buf[pos] == '#':
+        inc(pos)
+        isDoc = true
+      while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
+    of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF':
+      var id = ""
+      while g.buf[pos] in SymChars + {'_'}:
+        add(id, g.buf[pos])
+        inc(pos)
+      if (g.buf[pos] == '\"'):
+        if (g.buf[pos + 1] == '\"') and (g.buf[pos + 2] == '\"'):
+          inc(pos, 3)
+          g.kind = gtLongStringLit
+          while true:
+            case g.buf[pos]
+            of '\0':
+              break
+            of '\"':
+              inc(pos)
+              if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and
+                  g.buf[pos+2] != '\"':
+                inc(pos, 2)
+                break
+            else: inc(pos)
+        else:
+          g.kind = gtRawData
+          inc(pos)
+          while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}):
+            if g.buf[pos] == '"' and g.buf[pos+1] != '"': break
+            inc(pos)
+          if g.buf[pos] == '\"': inc(pos)
+      else:
+        if isKeyword(keywords, id) >= 0: g.kind = gtKeyword
+    of '0':
+      inc(pos)
+      case g.buf[pos]
+      of 'b', 'B':
+        g.kind = gtBinNumber
+        inc(pos)
+        while g.buf[pos] in binChars: inc(pos)
+        pos = nimNumberPostfix(g, pos)
+      of 'x', 'X':
+        g.kind = gtHexNumber
+        inc(pos)
+        while g.buf[pos] in hexChars: inc(pos)
+        pos = nimNumberPostfix(g, pos)
+      of 'o', 'O':
+        g.kind = gtOctNumber
+        inc(pos)
+        while g.buf[pos] in octChars: inc(pos)
+        pos = nimNumberPostfix(g, pos)
+      else: pos = nimNumber(g, pos)
+    of '1'..'9':
+      pos = nimNumber(g, pos)
+    of '\'':
+      inc(pos)
+      g.kind = gtCharLit
+      while true:
+        case g.buf[pos]
+        of '\0', '\x0D', '\x0A':
+          break
+        of '\'':
+          inc(pos)
+          break
+        of '\\':
+          inc(pos, 2)
+        else: inc(pos)
+    of '\"':
+      inc(pos)
+      if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'):
+        inc(pos, 2)
+        g.kind = gtLongStringLit
+        while true:
+          case g.buf[pos]
+          of '\0':
+            break
+          of '\"':
+            inc(pos)
+            if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and
+                g.buf[pos+2] != '\"':
+              inc(pos, 2)
+              break
+          else: inc(pos)
+      else:
+        g.kind = gtStringLit
+        while true:
+          case g.buf[pos]
+          of '\0', '\x0D', '\x0A':
+            break
+          of '\"':
+            inc(pos)
+            break
+          of '\\':
+            g.state = g.kind
+            break
+          else: inc(pos)
+    of '(', ')', '[', ']', '{', '}', '`', ':', ',', ';':
+      inc(pos)
+      g.kind = gtPunctuation
+    of '\0':
+      g.kind = gtEof
+    else:
+      if g.buf[pos] in OpChars:
+        g.kind = gtOperator
+        while g.buf[pos] in OpChars: inc(pos)
+      else:
+        inc(pos)
+        g.kind = gtNone
+  g.length = pos - g.pos
+  if g.kind != gtEof and g.state != gtNone and g.length <= 0:
+    assert false, "pythonLikeNextToken: produced an empty token"
+  g.pos = pos
 
 proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
                     flags: TokenizerFlags) =
@@ -886,6 +1042,16 @@ proc yamlNextToken(g: var GeneralTokenizer) =
   g.length = pos - g.pos
   g.pos = pos
 
+proc pythonNextToken(g: var GeneralTokenizer) =
+  const
+    keywords: array[0..34, string] = [
+      "False", "None", "True", "and", "as", "assert", "async", "await",
+      "break", "class", "continue", "def", "del", "elif", "else", "except",
+      "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+      "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
+      "with", "yield"]
+  pythonLikeNextToken(g, keywords)
+
 proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   case lang
   of langNone: assert false
@@ -895,6 +1061,7 @@ proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   of langC: cNextToken(g)
   of langJava: javaNextToken(g)
   of langYaml: yamlNextToken(g)
+  of langPython: pythonNextToken(g)
 
 when isMainModule:
   var keywords: seq[string]

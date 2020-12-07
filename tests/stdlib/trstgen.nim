@@ -188,13 +188,13 @@ not in table"""
     let input1 = """
 Test 2 column/4 rows table:
 ====   ===
-H0     H1 
+H0     H1
 ====   ===
-A0     A1 
+A0     A1
 ====   ===
-A2     A3 
+A2     A3
 ====   ===
-A4     A5 
+A4     A5
 ====   === """
     let output1 = rstToLatex(input1, {})
     assert "{|X|X|}" in output1  # 2 columns
@@ -360,3 +360,19 @@ Test1
     let output1l = rstToLatex(input1, {})
     assert "line block\\\\" in output1l
     assert "other line\\\\" in output1l
+
+suite "RST/Code highlight":
+  test "Basic Python code highlight":
+    let pythonCode = """
+    .. code-block:: python
+
+      def f_name(arg=42):
+          print(f"{arg}")
+
+    """
+
+    let expected = """<blockquote><p><span class="Keyword">def</span> f_name<span class="Punctuation">(</span><span class="Punctuation">arg</span><span class="Operator">=</span><span class="DecNumber">42</span><span class="Punctuation">)</span><span class="Punctuation">:</span>
+    print<span class="Punctuation">(</span><span class="RawData">f&quot;{arg}&quot;</span><span class="Punctuation">)</span></p></blockquote>"""
+
+    check strip(rstToHtml(pythonCode, {}, newStringTable(modeCaseSensitive))) ==
+      strip(expected)
