@@ -10,7 +10,7 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
     assert a == {1, 2, 3, 4, 5}
 
 func toSet*[char|byte|bool|int16|uint16|enum](ar: openArray[T]): set[T] =
-  ##Iterates through an array making a set from it.
+  ##Iterates through an openArray making a set from it.
   runnableExamples: 
     assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
     assert [10u16,20,30].toSet == {10u16, 20, 30}
