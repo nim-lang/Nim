@@ -2858,7 +2858,7 @@ proc stripInplace*(s: var string, leading = true, trailing = true,
         s[index - first] = s[index]
     else:
       # not JS and not Nimscript
-      when declared(moveMem):
+      when not declared(moveMem):
         for index in first .. last:
           s[index - first] = s[index]
       else:
