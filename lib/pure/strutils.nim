@@ -270,7 +270,7 @@ func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
-proc nimIdentNormalize*(s: string): string =
+func nimIdentNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## That means to convert to lower case and remove any '_' on all characters
@@ -370,7 +370,7 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
 
 # --------- Private templates for different split separators -----------
 
-proc substrEq(s: string, pos: int, substr: string): bool =
+func substrEq(s: string, pos: int, substr: string): bool =
   var i = 0
   var length = substr.len
   while i < length and pos+i < s.len and s[pos+i] == substr[i]:
@@ -1002,7 +1002,7 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-proc fromBin*[T: SomeInteger](s: string): T =
+func fromBin*[T: SomeInteger](s: string): T =
   ## Parses a binary integer value from a string `s`.
   ##
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
@@ -1025,7 +1025,7 @@ proc fromBin*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
 
-proc fromOct*[T: SomeInteger](s: string): T =
+func fromOct*[T: SomeInteger](s: string): T =
   ## Parses an octal integer value from a string `s`.
   ##
   ## If `s` is not a valid octal integer, `ValueError` is raised. `s` can have
@@ -1048,7 +1048,7 @@ proc fromOct*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
-proc fromHex*[T: SomeInteger](s: string): T =
+func fromHex*[T: SomeInteger](s: string): T =
   ## Parses a hex integer value from a string `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have
@@ -1179,7 +1179,7 @@ func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
 
-proc generateHexCharToValueMap(): string =
+func generateHexCharToValueMap(): string =
   ## Generate a string to map a hex digit to uint value
   result = ""
   for inp in 0..255:
@@ -1225,7 +1225,7 @@ func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
     else:
       result[pos div 2] = chr(val + buf shl 4)
 
-proc parseBool*(s: string): bool =
+func parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
   ##
   ## If ``s`` is one of the following values: ``y, yes, true, 1, on``, then
@@ -1241,7 +1241,7 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc parseEnum*[T: enum](s: string): T =
+func parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
@@ -1261,7 +1261,7 @@ proc parseEnum*[T: enum](s: string): T =
 
   genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
-proc parseEnum*[T: enum](s: string, default: T): T =
+func parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
@@ -1297,7 +1297,7 @@ func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-proc spaces*(n: Natural): string {.inline.} =
+func spaces*(n: Natural): string {.inline.} =
   ## Returns a string with `n` space characters. You can use this proc
   ## to left align strings.
   ##
@@ -1464,7 +1464,7 @@ func unindent*(s: string, count: Natural = int.high,
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc indentation*(s: string): Natural {.since: (1, 3).} =
+func indentation*(s: string): Natural {.since: (1, 3).} =
   ## Returns the amount of indentation all lines of ``s`` have in common,
   ## ignoring lines that consist only of whitespace.
   result = int.high
@@ -1615,8 +1615,8 @@ func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     inc(i)
 
 
-proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
-  rtl, extern: "nsuRemovePrefixCharSet".} =
+func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
+    extern: "nsuRemovePrefixCharSet".} =
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
   ##
@@ -1637,8 +1637,8 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   while start < s.len and s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
 
-proc removePrefix*(s: var string, c: char) {.
-  rtl, extern: "nsuRemovePrefixChar".} =
+func removePrefix*(s: var string, c: char) {.rtl,
+    extern: "nsuRemovePrefixChar".} =
   ## Removes all occurrences of a single character (in-place) from the start
   ## of a string.
   ##
@@ -1651,8 +1651,8 @@ proc removePrefix*(s: var string, c: char) {.
     doAssert ident == "Control"
   removePrefix(s, chars = {c})
 
-proc removePrefix*(s: var string, prefix: string) {.
-  rtl, extern: "nsuRemovePrefixString".} =
+func removePrefix*(s: var string, prefix: string) {.rtl,
+    extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
   ##
   ## See also:
@@ -1665,8 +1665,8 @@ proc removePrefix*(s: var string, prefix: string) {.
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
-proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
-  rtl, extern: "nsuRemoveSuffixCharSet".} =
+func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
+    extern: "nsuRemoveSuffixCharSet".} =
   ## Removes all characters from `chars` from the end of the string `s`
   ## (in-place).
   ##
@@ -1688,8 +1688,8 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   while last > -1 and s[last] in chars: last -= 1
   s.setLen(last + 1)
 
-proc removeSuffix*(s: var string, c: char) {.
-  rtl, extern: "nsuRemoveSuffixChar".} =
+func removeSuffix*(s: var string, c: char) {.rtl,
+    extern: "nsuRemoveSuffixChar".} =
   ## Removes all occurrences of a single character (in-place) from the end
   ## of a string.
   ##
@@ -1707,8 +1707,8 @@ proc removeSuffix*(s: var string, c: char) {.
 
   removeSuffix(s, chars = {c})
 
-proc removeSuffix*(s: var string, suffix: string) {.
-  rtl, extern: "nsuRemoveSuffixString".} =
+func removeSuffix*(s: var string, suffix: string) {.rtl,
+    extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
   ##
   ## See also:
@@ -1746,7 +1746,7 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
 
   if dest.len > startLen: add(dest, sep)
 
-proc allCharsInSet*(s: string, theSet: set[char]): bool =
+func allCharsInSet*(s: string, theSet: set[char]): bool =
   ## Returns true if every character of `s` is in the set `theSet`.
   runnableExamples:
     doAssert allCharsInSet("aeea", {'a', 'e'}) == true
@@ -1756,7 +1756,7 @@ proc allCharsInSet*(s: string, theSet: set[char]): bool =
     if c notin theSet: return false
   return true
 
-proc abbrev*(s: string, possibilities: openArray[string]): int =
+func abbrev*(s: string, possibilities: openArray[string]): int =
   ## Returns the index of the first item in ``possibilities`` which starts
   ## with ``s``, if not ambiguous.
   ##
@@ -1859,7 +1859,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
   return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
+  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
@@ -2576,7 +2576,7 @@ func formatEng*(f: BiggestFloat,
     exponent: int
     splitResult: seq[string]
     suffix: string = ""
-  proc getPrefix(exp: int): char =
+  func getPrefix(exp: int): char =
     ## Get the SI prefix for a given exponent
     ##
     ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
@@ -2643,7 +2643,7 @@ func formatEng*(f: BiggestFloat,
     result &= "e" & $exponent
   result &= suffix
 
-proc findNormalized(x: string, inArray: openArray[string]): int =
+func findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
@@ -2651,7 +2651,7 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-proc invalidFormatString() {.noinline.} =
+func invalidFormatString() {.noinline.} =
   raise newException(ValueError, "invalid format string")
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
@@ -2819,7 +2819,7 @@ func strip*(s: string, leading = true, trailing = true,
     while last >= 0 and s[last] in chars: dec(last)
   result = substr(s, first, last)
 
-proc stripLineEnd*(s: var string) =
+func stripLineEnd*(s: var string) =
   ## Returns ``s`` stripped from one of these suffixes:
   ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
   ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
