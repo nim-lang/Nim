@@ -23,12 +23,9 @@ template toSet*(iter: untyped): untyped =
     assert toSet(@[1321i16,321, 90]) == {90i16, 321, 1321}
     assert toSet([false]) == {false}
     assert toSet(0u8..10u8) == {0u8..10u8}
-  when compiles(elementType(iter)):
-    when elementType(iter) isnot SetElement: {.error: "Iterator does not yield a `SetElement`".}
-    else:
-      var result: set[elementType(iter)]
-      for x in iter:
-        result.incl(x)
-      result
-  else: {.error: "`toSet` can only be used on iteratable types.".}
-
+  type E = elementType(iter)
+  static: doAssert E is SetElement, "`iter` does not yield a `SetElement`"
+  var result: set[E]
+  for x in iter:
+    result.incl(x)
+  result

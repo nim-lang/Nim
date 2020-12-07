@@ -1,3 +1,6 @@
+discard """
+  targets: "c js"
+"""
 import std/setutils
 
 doAssert "abcbb".toSet == {'a','b','c'}
