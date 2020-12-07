@@ -845,7 +845,7 @@ func floorDiv*[T: SomeInteger](x, y: T): T =
 func floorMod*[T: SomeNumber](x, y: T): T =
   ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y)``.
   ##
-  ## This proc behaves the same as the ``%`` operator in Python.
+  ## This func behaves the same as the ``%`` operator in Python.
   ##
   ## See also:
   ## * `mod func <#mod,float64,float64>`_
