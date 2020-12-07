@@ -121,8 +121,7 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-func isAlphaAscii*(c: char): bool {.inline,
-  rtl, extern: "nsuIsAlphaAsciiChar".} =
+func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -133,8 +132,7 @@ func isAlphaAscii*(c: char): bool {.inline,
     doAssert isAlphaAscii('8') == false
   return c in Letters
 
-func isAlphaNumeric*(c: char): bool {.inline,
-  rtl, extern: "nsuIsAlphaNumericChar".} =
+func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -144,8 +142,7 @@ func isAlphaNumeric*(c: char): bool {.inline,
     doAssert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
-func isDigit*(c: char): bool {.inline,
-  rtl, extern: "nsuIsDigitChar".} =
+func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -154,8 +151,7 @@ func isDigit*(c: char): bool {.inline,
     doAssert isDigit('8') == true
   return c in Digits
 
-func isSpaceAscii*(c: char): bool {.inline,
-  rtl, extern: "nsuIsSpaceAsciiChar".} =
+func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
     doAssert isSpaceAscii('n') == false
@@ -163,8 +159,7 @@ func isSpaceAscii*(c: char): bool {.inline,
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
 
-func isLowerAscii*(c: char): bool {.inline,
-  rtl, extern: "nsuIsLowerAsciiChar".} =
+func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
@@ -178,8 +173,7 @@ func isLowerAscii*(c: char): bool {.inline,
     doAssert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
-func isUpperAscii*(c: char): bool {.inline,
-  rtl, extern: "nsuIsUpperAsciiChar".} =
+func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
