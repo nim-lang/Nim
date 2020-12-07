@@ -716,7 +716,7 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
 func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,char,int>`_
@@ -731,7 +731,7 @@ func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
 func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
     string] {.rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
@@ -768,7 +768,7 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
 
 func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitChar".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a func
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -797,7 +797,7 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
              {.rtl, extern: "nsuRSplitCharSet".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
-  ## proc that returns a sequence of substrings.
+  ## func that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
   ## particularly on systems that don't use a common delimiter.
@@ -823,7 +823,7 @@ func rsplit*(s: string, seps: set[char] = Whitespace,
 
 func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuRSplitString".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -860,7 +860,7 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
 func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
     extern: "nsuSplitLines".} =
   ## The same as the `splitLines iterator<#splitLines.i,string>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `splitLines iterator<#splitLines.i,string>`_
@@ -871,7 +871,7 @@ func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
 func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
     extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
-  ## (see its documentation), but is a proc that returns a sequence of substrings.
+  ## (see its documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
@@ -1298,7 +1298,7 @@ func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   for i in 1..n: result.add(s)
 
 func spaces*(n: Natural): string {.inline.} =
-  ## Returns a string with `n` space characters. You can use this proc
+  ## Returns a string with `n` space characters. You can use this func
   ## to left align strings.
   ##
   ## See also:
