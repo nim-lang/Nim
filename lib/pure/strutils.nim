@@ -121,8 +121,7 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-proc isAlphaAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsAlphaAsciiChar".} =
+func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -133,8 +132,7 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect,
     doAssert isAlphaAscii('8') == false
   return c in Letters
 
-proc isAlphaNumeric*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsAlphaNumericChar".} =
+func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -144,8 +142,7 @@ proc isAlphaNumeric*(c: char): bool {.noSideEffect,
     doAssert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
-proc isDigit*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsDigitChar".} =
+func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -154,8 +151,7 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isSpaceAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsSpaceAsciiChar".} =
+func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
     doAssert isSpaceAscii('n') == false
@@ -163,8 +159,7 @@ proc isSpaceAscii*(c: char): bool {.noSideEffect,
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
 
-proc isLowerAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsLowerAsciiChar".} =
+func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
@@ -178,8 +173,7 @@ proc isLowerAscii*(c: char): bool {.noSideEffect,
     doAssert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
-proc isUpperAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsUpperAsciiChar".} =
+func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
@@ -203,7 +197,7 @@ proc toLowerAscii*(c: char): char {.noSideEffect,
   ## character.
   ##
   ## See also:
-  ## * `isLowerAscii proc<#isLowerAscii,char>`_
+  ## * `isLowerAscii func<#isLowerAscii,char>`_
   ## * `toLowerAscii proc<#toLowerAscii,string>`_ for converting a string
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
@@ -241,7 +235,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect,
   ## character.
   ##
   ## See also:
-  ## * `isLowerAscii proc<#isLowerAscii,char>`_
+  ## * `isUpperAscii func<#isUpperAscii,char>`_
   ## * `toUpperAscii proc<#toUpperAscii,string>`_ for converting a string
   ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
   runnableExamples:
