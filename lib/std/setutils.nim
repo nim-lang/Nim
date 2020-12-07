@@ -23,10 +23,10 @@ template toSet*(iter: untyped): untyped =
     assert [30u8,100,10].toSet == {10u8, 30, 100}
     assert toSet(@[1321i16,321, 90]) == {90i16, 321, 1321}
     assert toSet([false]) == {false}
-    assert toSet(0u8..10u8) == {0u8..10u8}
+    assert toSet(0u8..10) == {0u8..10}
   type E = elementType(iter)
-  static: doAssert E is SetElement, "`iter` does not yield a `SetElement`"
+  static: doAssert E is SetElement, $elementType(iter) & " does not yield a `SetElement`"
   var result: set[E]
   for x in iter:
-    result.incl(x)
+    incl(result,x)
   result
