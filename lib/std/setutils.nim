@@ -8,10 +8,12 @@
 #
 
 ## This module adds functionality to the builtin set
+## See also std/packedsets, setd/sets
 
 import typetraits
 
 type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8
+  ## The allowed types of a builtin set.
 
 template toSet*(iter: untyped): untyped =
   ## Return a builtin set from the elements of iterable `iter`
