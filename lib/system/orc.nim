@@ -218,7 +218,7 @@ proc youngGen(s: Cell; desc: PNimTypeV2; j: var GcEnv): bool =
     # undo our changes to the object graph:
     #cprintf("[Missed] %ld %ld\n", rcSum, edges)
     inc gno
-    inc gnoCost #, subgraph.len
+    inc gnoCost, subgraph.len
     when false:
       s.setColor colBlack
       for i in 0 ..< subgraph.len:
@@ -230,14 +230,14 @@ proc youngGen(s: Cell; desc: PNimTypeV2; j: var GcEnv): bool =
   deinit(subgraph)
 
 proc collectCyclesAraq(j: var GcEnv) =
-  var i = 0
+  var i = roots.len-1
   # cannot use a 'for' loop here as 'roots.len' is mutated
-  while i < roots.len:
+  while i >= 0:
     let (s, desc) = roots.d[i]
     if (s.rc and survivedBit) == 0:
-      if not youngGen(s, desc, j): inc i
+      if not youngGen(s, desc, j): dec i
     else:
-      inc i
+      dec i
 
 proc markGray(s: Cell; desc: PNimTypeV2; j: var GcEnv) =
   #[
