@@ -76,7 +76,7 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup(a, b, 1)`.
   ##
   ## See also:
-  ## * [..<](#..<.i,T,T)
+  ## * [..<](#..<.i,S,T)
   runnableExamples:
     import sugar
 
@@ -84,7 +84,7 @@ iterator `..`*[S, T](a: S, b: T): T {.inline.} =
       for i in 3 .. 7:
         i
 
-    assert x = @[3, 4, 5, 6, 7]
+    assert x == @[3, 4, 5, 6, 7]
   mixin inc
   when T is IntLikeForCount and T is Ordinal:
     var res = int(a)
