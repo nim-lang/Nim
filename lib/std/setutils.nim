@@ -11,7 +11,7 @@
 
 import typetraits
 
-type SetElement* = char|byte|bool|int16|uint16|enum|int8
+type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8
 
 template toSet*(iter: untyped): untyped =
   ##Iterates through an openArray making a set from it.
