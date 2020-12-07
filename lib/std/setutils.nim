@@ -7,14 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-## This module adds functionality to the default set
+## This module adds functionality to the builtin set
 
 import typetraits
 
 type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8
 
 template toSet*(iter: untyped): untyped =
-  ##Iterates through an openArray making a set from it.
+  ## Return a builtin set from the elements of iterable `iter`
+  ## Example: "ab".toSet == {'a','b'} 
   runnableExamples: 
     assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
     assert toSet([10u16,20,30]) == {10u16, 20, 30}
