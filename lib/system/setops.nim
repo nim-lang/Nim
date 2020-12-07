@@ -9,17 +9,6 @@ func incl*[T](x: var set[T], y: T) {.magic: "Incl".} =
     a.incl(4)
     assert a == {1, 2, 3, 4, 5}
 
-func toSet*[char|byte|bool|int16|uint16|enum](ar: openArray[T]): set[T] =
-  ##Iterates through an openArray making a set from it.
-  runnableExamples: 
-    assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
-    assert [10u16,20,30].toSet == {10u16, 20, 30}
-    assert [30u8,100,10].toSet == {10u8, 30, 100}
-    assert @[1321i16,321, 90].toSet == {90i16, 321, 1321}
-    assert [false].toSet == {false}
-  for x in ar:
-    result.incl(x)
-
 template incl*[T](x: var set[T], y: set[T]) =
   ## Includes the set `y` in the set `x`.
   runnableExamples:
