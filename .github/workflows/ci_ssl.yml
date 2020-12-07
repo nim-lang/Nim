@@ -28,7 +28,7 @@ jobs:
       - name: 'Checkout csources'
         uses: actions/checkout@v2
         with:
-          repository: nim-lang/csources
+          repository: nim-lang/csources_v1
           path: csources
 
       - name: 'Install dependencies (Linux amd64)'

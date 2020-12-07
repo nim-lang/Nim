@@ -1,7 +1,7 @@
 sh ci/deps.sh
 
 # Build from C sources.
-git clone --depth 1 https://github.com/nim-lang/csources.git
+git clone --depth 1 https://github.com/nim-lang/csources_v1.git csources
 cd csources
 sh build.sh
 cd ..

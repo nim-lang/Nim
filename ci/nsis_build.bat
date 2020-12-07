@@ -25,7 +25,7 @@ Rem Build csources
 koch csources -d:release || exit /b
 
 rem Grab C sources and nimsuggest
-git clone --depth 1 https://github.com/nim-lang/csources.git
+git clone --depth 1 https://github.com/nim-lang/csources_v1.git csources
 
 set PATH=%CD%\bin;%PATH%
 
