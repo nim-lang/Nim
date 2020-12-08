@@ -2,30 +2,18 @@ discard """
   joinable: false
 """
 
-import random
+import std/[random, stats]
 
 randomize(233)
 
 proc main =
   var occur: array[1000, int]
 
-  var x = 8234
   for i in 0..100_000:
-    x = rand(high(occur))
+    let x = rand(high(occur))
     inc occur[x]
 
   doAssert max(occur) <= 140 and min(occur) >= 60 # gives some slack
-
-  when false:
-    var rs: RunningStat
-    for j in 1..5:
-      for i in 1 .. 1_000:
-        rs.push(gauss())
-      echo("mean: ", rs.mean,
-        " stdDev: ", rs.standardDeviation(),
-        " min: ", rs.min,
-        " max: ", rs.max)
-      rs.clear()
 
   var a = [0, 1]
   shuffle(a)
@@ -66,3 +54,14 @@ block:
 
   type DiceRoll = range[0..6]
   doAssert rand(DiceRoll).int == 4
+
+var rs: RunningStat
+for j in 1..5:
+  for i in 1 .. 1_000:
+    rs.push(gauss())
+  doAssert abs(rs.mean-0) < 0.08, $rs.mean
+  doAssert abs(rs.standardDeviation()-1.0) < 0.1
+  let maxVal = 3.0
+  doAssert abs(rs.min + maxVal) < 1.0
+  doAssert abs(rs.max-maxVal) < 1.0
+  rs.clear()

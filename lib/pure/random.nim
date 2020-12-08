@@ -255,7 +255,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     result = (cast[float](u) - 1.0) * max
 
 proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
-  ## Returns a random number in the range `T(0) .. max`. Notes that `max` must be >= T(0).
+  ## Returns a random number in the range `T(0) .. max`. Note that `max` must be >= T(0).
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
