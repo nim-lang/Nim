@@ -218,7 +218,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ##
   ## See also:
   ## * `rand proc<#rand,T>`_ that accepts an ordinal type
-  ## * `rand proc<#rand,T_2>_ that accepts a float type
+  ## * `rand proc<#rand,T_2>`_ that accepts a float type
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -265,7 +265,7 @@ proc rand*[T: Ordinal](max: T): int {.benign.} =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,T_2>_ that accepts a float type
+  ## * `rand proc<#rand,T_2>`_ that accepts a float type
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
   ##   provided state
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
@@ -344,7 +344,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice and uses
   ##   a provided state
   ## * `rand proc<#rand,T>`_ that accepts an ordinal type
-  ## * `rand proc<#rand,T_2>_ that accepts a float type
+  ## * `rand proc<#rand,T_2>`_ that accepts a float type
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
@@ -364,7 +364,7 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ##
   ## See also:
   ## * `rand proc<#rand,T>`_ that accepts an ordinal type
-  ## * `rand proc<#rand,T_2>_ that accepts a float type
+  ## * `rand proc<#rand,T_2>`_ that accepts a float type
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   runnableExamples:
     randomize(567)
