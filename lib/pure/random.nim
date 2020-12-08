@@ -279,6 +279,13 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
     let f = rand(1.0)
     doAssert f >= 0.0 and f <= 1.0
 
+  when T is range:
+    static:
+      doAssert T.low.ord == 0, "range should start from 0"
+  elif T is enum:
+    static:
+      doAssert T.low.ord == 0, "enum should start from 0"
+
   when T is SomeFloat:
     result = rand(state, max)
   else:
