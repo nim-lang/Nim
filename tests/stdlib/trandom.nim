@@ -1,8 +1,10 @@
 discard """
-  action: compile
+  joinable: false
 """
 
 import random
+
+randomize(233)
 
 proc main =
   var occur: array[1000, int]
@@ -11,11 +13,6 @@ proc main =
   for i in 0..100_000:
     x = rand(high(occur))
     inc occur[x]
-  for i, oc in occur:
-    if oc < 69:
-      doAssert false, "too few occurrences of " & $i
-    elif oc > 150:
-      doAssert false, "too many occurrences of " & $i
 
   when false:
     var rs: RunningStat
@@ -53,19 +50,17 @@ proc main =
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
 
-randomize(223)
 
-for i in 0 .. 10:
-  main()
+main()
 
 
 block:
   type Fooa = enum k0,k1,k2
-  echo rand(Fooa.high)
+  doAssert rand(Fooa.high) == k1
 
   type Dollar = distinct int
-  echo rand(int.high.Dollar).int
+  doAssert rand(int.high.Dollar).int == 7266116338782525390
 
-  echo rand(int64.high)
-  echo rand(uint64.high)
-  echo (rand(char.high),)
+  doAssert rand(int64.high) == 1967081787890826204
+  doAssert compiles(echo rand(uint64.high))
+  doAssert (rand(char.high),) == ('\a',)
