@@ -14,6 +14,8 @@ proc main =
     x = rand(high(occur))
     inc occur[x]
 
+  doAssert max(occur) <= 140 and min(occur) >= 60 # gives some slack
+
   when false:
     var rs: RunningStat
     for j in 1..5:
