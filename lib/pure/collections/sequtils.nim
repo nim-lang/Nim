@@ -115,7 +115,7 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## All sequences must be of the same type.
   ##
   ## See also:
-  ## * `distribute proc<#distribute,seq[T],Positive>`_ for a reverse
+  ## * `distribute func<#distribute,seq[T],Positive>`_ for a reverse
   ##   operation
   ##
   runnableExamples:
@@ -307,7 +307,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
   ##
   ## Returns a sequence of `num` sequences. For *some* input values this is the
-  ## inverse of the `concat <#concat,varargs[seq[T]]>`_ proc.
+  ## inverse of the `concat <#concat,varargs[seq[T]]>`_ func.
   ## The input sequence `s` can be empty, which will produce
   ## `num` empty sequences.
   ##
@@ -374,7 +374,7 @@ func map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
-  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
+  ## * `apply func<#apply,openArray[T],proc(T)_2>`_ for the in-place version
   ##
   runnableExamples:
     let
@@ -397,7 +397,7 @@ func apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ##
   ## See also:
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_
-  ## * `map proc<#map,openArray[T],proc(T)>`_
+  ## * `map func<#map,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     var a = @["1", "2", "3", "4"]
@@ -417,7 +417,7 @@ func apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ##
   ## See also:
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_
-  ## * `map proc<#map,openArray[T],proc(T)>`_
+  ## * `map func<#map,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     var a = @["1", "2", "3", "4"]
@@ -440,7 +440,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-  ## * `fliter proc<#filter,openArray[T],proc(T)>`_
+  ## * `fliter func<#filter,openArray[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -466,7 +466,7 @@ func filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
-  ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_ for the in-place version
+  ## * `keepIf func<#keepIf,seq[T],proc(T)>`_ for the in-place version
   ##
   runnableExamples:
     let
@@ -488,12 +488,12 @@ func keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   ##
   ## Note that `s` must be declared as a ``var``.
   ##
-  ## Similar to the `filter proc<#filter,openArray[T],proc(T)>`_,
+  ## Similar to the `filter func<#filter,openArray[T],proc(T)>`_,
   ## but modifies the sequence directly.
   ##
   ## See also:
   ## * `keepItIf template<#keepItIf.t,seq,untyped>`_
-  ## * `filter proc<#filter,openArray[T],proc(T)>`_
+  ## * `filter func<#filter,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
@@ -574,7 +574,7 @@ template filterIt*(s, pred: untyped): untyped =
   ## Returns a new sequence with all the items of `s` that fulfilled the
   ## predicate `pred`.
   ##
-  ## Unlike the `filter proc<#filter,openArray[T],proc(T)>`_ and
+  ## Unlike the `filter func<#filter,openArray[T],proc(T)>`_ and
   ## `filter iterator<#filter.i,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using the ``it`` variable
   ## for testing, like: ``filterIt("abcxyz", it == 'x')``.
@@ -584,7 +584,7 @@ template filterIt*(s, pred: untyped): untyped =
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-  ## * `fliter proc<#filter,openArray[T],proc(T)>`_
+  ## * `fliter func<#filter,openArray[T],proc(T)>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
   ##
   runnableExamples:
@@ -604,12 +604,12 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a ``var``)
   ## if they fulfilled the predicate.
   ##
-  ## Unlike the `keepIf proc<#keepIf,seq[T],proc(T)>`_,
+  ## Unlike the `keepIf func<#keepIf,seq[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``keepItIf("abcxyz", it == 'x')``.
   ##
   ## See also:
-  ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_
+  ## * `keepIf func<#keepIf,seq[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -654,7 +654,7 @@ func all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ##
   ## See also:
   ## * `allIt template<#allIt.t,untyped,untyped>`_
-  ## * `any proc<#any,openArray[T],proc(T)>`_
+  ## * `any func<#any,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -670,12 +670,12 @@ template allIt*(s, pred: untyped): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
-  ## Unlike the `all proc<#all,openArray[T],proc(T)>`_,
+  ## Unlike the `all func<#all,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``allIt("abba", it == 'a')``.
   ##
   ## See also:
-  ## * `all proc<#all,openArray[T],proc(T)>`_
+  ## * `all func<#all,openArray[T],proc(T)>`_
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -696,7 +696,7 @@ func any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ##
   ## See also:
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
-  ## * `all proc<#all,openArray[T],proc(T)>`_
+  ## * `all func<#all,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
@@ -712,12 +712,12 @@ template anyIt*(s, pred: untyped): bool =
   ## Iterates through a container and checks if some item fulfills the
   ## predicate.
   ##
-  ## Unlike the `any proc<#any,openArray[T],proc(T)>`_,
+  ## Unlike the `any func<#any,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``anyIt("abba", it == 'a')``.
   ##
   ## See also:
-  ## * `any proc<#any,openArray[T],proc(T)>`_
+  ## * `any func<#any,openArray[T],proc(T)>`_
   ## * `allIt template<#allIt.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -944,7 +944,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ##
   ## See also:
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-  ## * `map proc<#map,openArray[T],proc(T)>`_
+  ## * `map func<#map,openArray[T],proc(T)>`_
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
   ##
   runnableExamples:
@@ -1012,7 +1012,7 @@ template applyIt*(varSeq, op: untyped) =
   ## are mutating.
   ##
   ## See also:
-  ## * `apply proc<#apply,openArray[T],proc(T)_2>`_
+  ## * `apply func<#apply,openArray[T],proc(T)_2>`_
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ##
   runnableExamples:
