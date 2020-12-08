@@ -110,7 +110,7 @@ macro evalOnceAs(expAlias, exp: untyped,
     newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
       body = val, procType = nnkTemplateDef))
 
-proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
+func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
   ##
@@ -135,7 +135,7 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](s: openArray[T], x: T): int =
+func count*[T](s: openArray[T], x: T): int =
   ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
   runnableExamples:
@@ -150,7 +150,7 @@ proc count*[T](s: openArray[T], x: T): int =
     if itm == x:
       inc result
 
-proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
+func cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
   ## `n` times.
   ## `n` must be a non-negative number (zero or more).
@@ -168,7 +168,7 @@ proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
       result[o] = e
       inc o
 
-proc repeat*[T](x: T, n: Natural): seq[T] =
+func repeat*[T](x: T, n: Natural): seq[T] =
   ## Returns a new sequence with the item `x` repeated `n` times.
   ## `n` must be a non-negative number (zero or more).
   ##
@@ -181,7 +181,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 ..< n:
     result[i] = x
 
-proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
+func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## Setting the optional argument ``isSorted`` to ``true`` (default: false)
@@ -209,7 +209,7 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -226,7 +226,7 @@ proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
-proc maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -245,7 +245,7 @@ proc maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
 
 
 template zipImpl(s1, s2, retType: untyped): untyped =
-  proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
+  func zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
     ##
     ## The input containers can be of different types.
@@ -288,7 +288,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+func unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
     let
@@ -303,7 +303,7 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
     result[0][i] = s[i][0]
     result[1][i] = s[i][1]
 
-proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
+func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
   ##
   ## Returns a sequence of `num` sequences. For *some* input values this is the
@@ -360,7 +360,7 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
         result[i].add(s[g])
       first = last
 
-proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
+func map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` proc applied to every
   ## item in the container `s`.
@@ -386,7 +386,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
+func apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -406,7 +406,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
 
   for i in 0 ..< s.len: op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
+func apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -426,7 +426,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
+func apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
   ## Same as `apply` but for proc that do not return and do not mutate `s` directly.
   runnableExamples: apply([0, 1, 2, 3, 4], proc(item: int) = echo item)
   for i in 0 ..< s.len: op(s[i])
@@ -454,7 +454,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+func filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items of `s` that fulfilled the
   ## predicate `pred` (function that returns a `bool`).
@@ -481,7 +481,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
     if pred(s[i]):
       result.add(s[i])
 
-proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
+func keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
   ## Keeps the items in the passed sequence `s` if they fulfilled the
   ## predicate `pred` (function that returns a `bool`).
@@ -511,7 +511,7 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
-proc delete*[T](s: var seq[T]; first, last: Natural) =
+func delete*[T](s: var seq[T]; first, last: Natural) =
   ## Deletes in the items of a sequence `s` at positions ``first..last``
   ## (including both ends of a range).
   ## This modifies `s` itself, it does not return a copy.
@@ -536,7 +536,7 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     inc(j)
   setLen(s, newLen)
 
-proc insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
+func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
   ##
@@ -648,7 +648,7 @@ since (1, 1):
       if pred: result += 1
     result
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+func all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -690,7 +690,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+func any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if some item fulfills the
   ## predicate.
   ##
@@ -840,7 +840,7 @@ template foldl*(sequence, operation: untyped): untyped =
       procs = @["proc", "Is", "Also", "Fine"]
 
 
-    proc foo(acc, cur: string): string =
+    func foo(acc, cur: string): string =
       result = acc & cur
 
     assert addition == 25, "Addition is (((5)+9)+11)"
@@ -1048,7 +1048,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   result
 
-proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
+func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
   if constructor.kind in filter:
     result = newNimNode(nnkCall, lineInfoFrom = constructor)
