@@ -245,7 +245,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   runnableExamples:
     var r = initRand(234)
     let f = r.rand(1.0)
-    assert x >= 0.0 and x <= 1.0
+    assert f >= 0.0 and f <= 1.0
 
   let x = next(r)
   when defined(js):
@@ -277,7 +277,7 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
     doAssert rand(100) == 66
 
     let f = rand(1.0)
-    doAssert x >= 0.0 and x <= 1.0
+    doAssert f >= 0.0 and f <= 1.0
 
   when T is SomeFloat:
     result = rand(state, max)
