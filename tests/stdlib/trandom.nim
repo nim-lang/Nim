@@ -57,3 +57,15 @@ randomize(223)
 
 for i in 0 .. 10:
   main()
+
+
+block:
+  type Fooa = enum k0,k1,k2
+  echo rand(Fooa.high)
+
+  type Dollar = distinct int
+  echo rand(int.high.Dollar).int
+
+  echo rand(int64.high)
+  echo rand(uint64.high)
+  echo (rand(char.high),)
