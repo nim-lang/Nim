@@ -52,9 +52,9 @@ block:
   doAssert rand(Fooa.high) == k1
 
   type Dollar = distinct int
-  doAssert rand(int.high.Dollar).int == 7266116338782525390
+  doAssert $rand(int.high.Dollar).int == "7266116338782525390"
 
-  doAssert rand(int64.high) == 1967081787890826204
+  doAssert $rand(int64.high) == "1967081787890826204"
   doAssert compiles(echo rand(uint64.high))
   doAssert (rand(char.high),) == ('\a',)
 
