@@ -33,11 +33,12 @@ proc main =
   doAssert rand(0) == 0
   doAssert sample("a") == 'a'
 
-  doAssertRaises(RangeDefect):
-    discard rand(-1)
+  when compileOption("rangeChecks"):
+    doAssertRaises(RangeDefect):
+      discard rand(-1)
 
-  doAssertRaises(RangeDefect):
-    discard rand(-1.0)
+    doAssertRaises(RangeDefect):
+      discard rand(-1.0)
 
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
