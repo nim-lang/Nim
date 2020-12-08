@@ -60,3 +60,6 @@ block:
 
   doAssert almostEqual(rand(12.5), 6.371734653537684)
   doAssert almostEqual(rand(2233.3322), 1039.453087565187)
+
+  type DiceRoll = distinct range[0..6]
+  doAssert rand(6).int == 4
