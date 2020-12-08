@@ -277,7 +277,7 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
     doAssert rand(100) == 66
 
     let f = rand(1.0)
-    x >= 0.0 and x <= 1.0
+    doAssert x >= 0.0 and x <= 1.0
 
   when T is SomeFloat:
     result = rand(state, max)
