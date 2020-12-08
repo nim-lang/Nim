@@ -217,7 +217,8 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## See also:
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,int>`_ that returns an integer using the default
+  ##   random number generator
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -231,6 +232,28 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
     let x = next(r)
     if x <= randMax - (randMax mod Ui(max)):
       return int(x mod (uint64(max)+1u64))
+
+proc rand*(max: int): int {.benign.} =
+  ## Returns a random integer in the range `0..max`.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
+  ## numbers returned from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
+  ##   provided state
+  ## * `rand proc<#rand,float>`_ that returns a float
+  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  runnableExamples:
+    randomize(123)
+    doAssert rand(100) == 0
+    doAssert rand(100) == 96
+    doAssert rand(100) == 66
+  rand(state, max)
 
 proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max`
@@ -253,10 +276,8 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
-  ## Returns a random floating point number in the range `T(0) .. max`.
-  ## 
-  ## Allowed types for `T` are integers, floats, and enums without holes.
+proc rand*(max: float): float {.benign.} =
+  ## Returns a random floating point number in the range `0.0..max`.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -265,21 +286,16 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
-  ##   provided state
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
   ##   provided state
+  ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
-    randomize(123)
-    doAssert rand(100) == 0
-    doAssert rand(100) == 96
-    doAssert rand(100) == 66
-
+    randomize(234)
     let f = rand(1.0)
     ## f = 8.717181376738381e-07
-  result = T(rand(state, max))
+  rand(state, max)
 
 proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
@@ -319,7 +335,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## See also:
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice and uses
   ##   a provided state
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,int>`_ that returns an integer
+  ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
@@ -338,7 +355,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,int>`_ that returns an integer
+  ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   runnableExamples:
     randomize(567)
