@@ -279,7 +279,11 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
 
     let f = rand(1.0)
     ## f = 8.717181376738381e-07
-  result = T(rand(state, max))
+
+  when T is SomeFloat:
+    result = rand(state, max)
+  else:
+    result = T(rand(state, int(max)))
 
 proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
