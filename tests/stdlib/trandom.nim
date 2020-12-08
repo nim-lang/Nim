@@ -40,14 +40,14 @@ import math
 
 block:
   type Fooa = enum k0,k1,k2
-  doAssert rand(Fooa.high) == k1
+  doAssert rand(Fooa.high) == k1.int
 
   type Dollar = distinct int
   doAssert rand(int(100).Dollar).int == 35
 
   doAssert rand(12'u64) == 8
   doAssert compiles(echo rand(uint64.high))
-  doAssert (rand(char.high),) == ('\a',)
+  doAssert (rand(char.high),) == (ord('\a'),)
 
   doAssert almostEqual(rand(12.5), 6.371734653537684)
   doAssert almostEqual(rand(2233.3322), 1039.453087565187)
@@ -65,3 +65,10 @@ for j in 1..5:
   doAssert abs(rs.min + maxVal) < 1.0
   doAssert abs(rs.max-maxVal) < 1.0
   rs.clear()
+
+type DiceRoll = range[3..6]
+var flag = false
+for i in 0..<100000:
+  if rand(5.DiceRoll) < 3:
+    flag = true
+doAssert flag

@@ -217,7 +217,8 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## See also:
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,T>`_ that accepts an ordinal type
+  ## * `rand proc<#rand,T_2>_ that accepts a float type
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -254,8 +255,8 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
-  ## Returns a random number in the range `T(0) .. max`. Note that `max` must be >= T(0).
+proc rand*[T: Ordinal](max: T): int {.benign.} =
+  ## Returns an integer random number in the range `T(0) .. max`. Note that `max` must be >= T(0).
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -264,6 +265,7 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
   ## thread-safe.
   ##
   ## See also:
+  ## * `rand proc<#rand,T_2>_ that accepts a float type
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
   ##   provided state
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
@@ -276,20 +278,32 @@ proc rand*[T: Ordinal or SomeFloat](max: T): T {.benign.} =
     doAssert rand(100) == 96
     doAssert rand(100) == 66
 
+  result = rand(state, int(max))
+
+proc rand*[T: SomeFloat](max: T): float {.benign.} =
+  ## Returns a float random number in the range `T(0) .. max`. Note that `max` must be >= T(0).
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the sequence of random
+  ## numbers returned from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `rand proc<#rand,T>`_ that accepts an ordinal type
+  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
+  ##   provided state
+  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
+  ##   provided state
+  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  runnableExamples:
+    randomize(123)
+
     let f = rand(1.0)
     doAssert f >= 0.0 and f <= 1.0
 
-  when T is range:
-    static:
-      doAssert T.low.ord == 0, "range should start from 0"
-  elif T is enum:
-    static:
-      doAssert T.low.ord == 0, "enum should start from 0"
-
-  when T is SomeFloat:
-    result = rand(state, max)
-  else:
-    result = T(rand(state, int(max)))
+  result = rand(state, max)
 
 proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
@@ -329,7 +343,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## See also:
   ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice and uses
   ##   a provided state
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,T>`_ that accepts an ordinal type
+  ## * `rand proc<#rand,T_2>_ that accepts a float type
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
@@ -348,7 +363,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,T>`_ `T` are integers, floats, and enums without holes.
+  ## * `rand proc<#rand,T>`_ that accepts an ordinal type
+  ## * `rand proc<#rand,T_2>_ that accepts a float type
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   runnableExamples:
     randomize(567)
