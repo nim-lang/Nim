@@ -45,6 +45,9 @@ import
 from algorithm import binarySearch
 
 type
+  SourceLanguage* = enum
+    langNone, langNim, langCpp, langCsharp, langC, langJava,
+    langYaml, langPython
   TokenClass* = enum
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber,
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit,
@@ -59,10 +62,7 @@ type
     buf: cstring
     pos: int
     state: TokenClass
-
-  SourceLanguage* = enum
-    langNone, langNim, langCpp, langCsharp, langC, langJava,
-    langYaml, langPython
+    lang: SourceLanguage
 
 const
   sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
@@ -101,6 +101,7 @@ proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: cstring) =
   g.start = 0
   g.length = 0
   g.state = low(TokenClass)
+  g.lang = low(SourceLanguage)
   var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
@@ -161,7 +162,13 @@ const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
               '|', '=', '%', '&', '$', '@', '~', ':'}
 
-proc nimNextToken(g: var GeneralTokenizer) =
+proc isKeyword(x: openArray[string], y: string): int =
+  binarySearch(x, y)
+
+proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
+  binarySearch(x, y, cmpIgnoreCase)
+
+proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
   const
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
     octChars = {'0'..'7', '_'}
@@ -207,7 +214,7 @@ proc nimNextToken(g: var GeneralTokenizer) =
       if g.buf[pos] == '#':
         inc(pos)
         isDoc = true
-      if g.buf[pos] == '[':
+      if g.buf[pos] == '[' and g.lang == langNim:
         g.kind = gtLongComment
         var nesting = 0
         while true:
@@ -265,7 +272,10 @@ proc nimNextToken(g: var GeneralTokenizer) =
             inc(pos)
           if g.buf[pos] == '\"': inc(pos)
       else:
-        g.kind = nimGetKeyword(id)
+        if g.lang == langNim:
+          g.kind = nimGetKeyword(id)
+        elif isKeyword(keywords, id) >= 0:
+          g.kind = gtKeyword
     of '0':
       inc(pos)
       case g.buf[pos]
@@ -394,172 +404,10 @@ proc generalStrLit(g: var GeneralTokenizer, position: int): int =
         inc(pos)
   result = pos
 
-proc isKeyword(x: openArray[string], y: string): int =
-  binarySearch(x, y)
-
-proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
-  binarySearch(x, y, cmpIgnoreCase)
-
 type
   TokenizerFlag = enum
     hasPreprocessor, hasNestedComments
   TokenizerFlags = set[TokenizerFlag]
-
-proc pythonLikeNextToken(g: var GeneralTokenizer, keywords: openArray[string]) =
-  const
-    hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
-    octChars = {'0'..'7', '_'}
-    binChars = {'0'..'1', '_'}
-    SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF'}
-  var pos = g.pos
-  g.start = g.pos
-  if g.state == gtStringLit:
-    g.kind = gtStringLit
-    while true:
-      case g.buf[pos]
-      of '\\':
-        g.kind = gtEscapeSequence
-        inc(pos)
-        case g.buf[pos]
-        of 'x', 'X':
-          inc(pos)
-          if g.buf[pos] in hexChars: inc(pos)
-          if g.buf[pos] in hexChars: inc(pos)
-        of '0'..'9':
-          while g.buf[pos] in {'0'..'9'}: inc(pos)
-        of '\0':
-          g.state = gtNone
-        else: inc(pos)
-        break
-      of '\0', '\x0D', '\x0A':
-        g.state = gtNone
-        break
-      of '\"':
-        inc(pos)
-        g.state = gtNone
-        break
-      else: inc(pos)
-  else:
-    case g.buf[pos]
-    of ' ', '\x09'..'\x0D':
-      g.kind = gtWhitespace
-      while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
-    of '#':
-      g.kind = gtComment
-      inc(pos)
-      var isDoc = false
-      if g.buf[pos] == '#':
-        inc(pos)
-        isDoc = true
-      while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
-    of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF':
-      var id = ""
-      while g.buf[pos] in SymChars + {'_'}:
-        add(id, g.buf[pos])
-        inc(pos)
-      if (g.buf[pos] == '\"'):
-        if (g.buf[pos + 1] == '\"') and (g.buf[pos + 2] == '\"'):
-          inc(pos, 3)
-          g.kind = gtLongStringLit
-          while true:
-            case g.buf[pos]
-            of '\0':
-              break
-            of '\"':
-              inc(pos)
-              if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and
-                  g.buf[pos+2] != '\"':
-                inc(pos, 2)
-                break
-            else: inc(pos)
-        else:
-          g.kind = gtRawData
-          inc(pos)
-          while not (g.buf[pos] in {'\0', '\x0A', '\x0D'}):
-            if g.buf[pos] == '"' and g.buf[pos+1] != '"': break
-            inc(pos)
-          if g.buf[pos] == '\"': inc(pos)
-      else:
-        if isKeyword(keywords, id) >= 0: g.kind = gtKeyword
-    of '0':
-      inc(pos)
-      case g.buf[pos]
-      of 'b', 'B':
-        g.kind = gtBinNumber
-        inc(pos)
-        while g.buf[pos] in binChars: inc(pos)
-        pos = nimNumberPostfix(g, pos)
-      of 'x', 'X':
-        g.kind = gtHexNumber
-        inc(pos)
-        while g.buf[pos] in hexChars: inc(pos)
-        pos = nimNumberPostfix(g, pos)
-      of 'o', 'O':
-        g.kind = gtOctNumber
-        inc(pos)
-        while g.buf[pos] in octChars: inc(pos)
-        pos = nimNumberPostfix(g, pos)
-      else: pos = nimNumber(g, pos)
-    of '1'..'9':
-      pos = nimNumber(g, pos)
-    of '\'':
-      inc(pos)
-      g.kind = gtCharLit
-      while true:
-        case g.buf[pos]
-        of '\0', '\x0D', '\x0A':
-          break
-        of '\'':
-          inc(pos)
-          break
-        of '\\':
-          inc(pos, 2)
-        else: inc(pos)
-    of '\"':
-      inc(pos)
-      if (g.buf[pos] == '\"') and (g.buf[pos + 1] == '\"'):
-        inc(pos, 2)
-        g.kind = gtLongStringLit
-        while true:
-          case g.buf[pos]
-          of '\0':
-            break
-          of '\"':
-            inc(pos)
-            if g.buf[pos] == '\"' and g.buf[pos+1] == '\"' and
-                g.buf[pos+2] != '\"':
-              inc(pos, 2)
-              break
-          else: inc(pos)
-      else:
-        g.kind = gtStringLit
-        while true:
-          case g.buf[pos]
-          of '\0', '\x0D', '\x0A':
-            break
-          of '\"':
-            inc(pos)
-            break
-          of '\\':
-            g.state = g.kind
-            break
-          else: inc(pos)
-    of '(', ')', '[', ']', '{', '}', '`', ':', ',', ';':
-      inc(pos)
-      g.kind = gtPunctuation
-    of '\0':
-      g.kind = gtEof
-    else:
-      if g.buf[pos] in OpChars:
-        g.kind = gtOperator
-        while g.buf[pos] in OpChars: inc(pos)
-      else:
-        inc(pos)
-        g.kind = gtNone
-  g.length = pos - g.pos
-  if g.kind != gtEof and g.state != gtNone and g.length <= 0:
-    assert false, "pythonLikeNextToken: produced an empty token"
-  g.pos = pos
 
 proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
                     flags: TokenizerFlags) =
@@ -1050,9 +898,10 @@ proc pythonNextToken(g: var GeneralTokenizer) =
       "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
       "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
       "with", "yield"]
-  pythonLikeNextToken(g, keywords)
+  nimNextToken(g, keywords)
 
 proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
+  g.lang = lang
   case lang
   of langNone: assert false
   of langNim: nimNextToken(g)
