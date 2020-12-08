@@ -3584,7 +3584,7 @@ const
   NimMinor* {.intdefine.}: int = 0
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 10
+  NimPatch* {.intdefine.}: int = 11
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
