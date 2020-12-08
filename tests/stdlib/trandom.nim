@@ -72,3 +72,7 @@ for i in 0..<100000:
   if rand(5.DiceRoll) < 3:
     flag = true
 doAssert flag
+
+type Foob = enum g0 = 1, g1 , g2
+for i in 0 ..< 100:
+  discard rand(Foob.high)
