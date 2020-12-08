@@ -12,8 +12,8 @@
 ##
 ## Unstable API.
 
-import
-  strutils, lexbase
+import strutils, lexbase
+import std/private/decode_helpers
 
 # ------------------- scanner -------------------------------------------------
 
@@ -73,18 +73,10 @@ proc getLine(L: SqlLexer): int =
   result = L.lineNumber
 
 proc handleHexChar(c: var SqlLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
+  var incrFlag = false
+  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
+  if not incrFlag:
     inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
 
 proc handleOctChar(c: var SqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:

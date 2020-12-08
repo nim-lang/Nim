@@ -172,8 +172,8 @@ runnableExamples:
   doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
-import
-  strutils, lexbase, streams, tables
+import strutils, lexbase, streams, tables
+import std/private/decode_helpers
 
 include "system/inclrtl"
 
@@ -248,18 +248,9 @@ proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   result = c.filename
 
 proc handleHexChar(c: var CfgParser, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
+  var incrFlag = false
+  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
+  if not incrFlag: inc(c.bufpos)
 
 proc handleDecChars(c: var CfgParser, xi: var int) =
   while c.buf[c.bufpos] in {'0'..'9'}:

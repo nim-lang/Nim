@@ -21,6 +21,7 @@ const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
 import strutils, macros
+import std/private/decode_helpers
 
 when useUnicode:
   import unicode
@@ -1467,17 +1468,10 @@ proc errorStr(L: PegLexer, msg: string, line = -1, col = -1): string =
   result = "$1($2, $3) Error: $4" % [L.filename, $line, $col, msg]
 
 proc handleHexChar(c: var PegLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
+  var incrFlag = false
+  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
+  if not incrFlag:
     inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else: discard
 
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)

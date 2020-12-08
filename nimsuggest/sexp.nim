@@ -113,13 +113,16 @@ proc errorMsgExpected*(my: SexpParser, e: string): string =
   ## other error messages
   result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
+proc handleHexChar*(c: char, x: var int, f: var bool) {.inline.} =
   case c
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
+  else: f = true
+
+proc handleHexChar(c: char, x: var int): bool =
+  handleHexChar(c, x, result)
+  result = not result
 
 proc parseString(my: var SexpParser): TTokKind =
   result = tkString
