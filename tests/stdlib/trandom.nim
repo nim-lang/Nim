@@ -33,19 +33,11 @@ proc main =
   doAssert rand(0) == 0
   doAssert sample("a") == 'a'
 
-  when compileOption("rangeChecks"):
-    try:
-      discard rand(-1)
-      doAssert false
-    except RangeDefect:
-      discard
+  doAssertRaises(RangeDefect):
+    discard rand(-1)
 
-    try:
-      discard rand(-1.0)
-      doAssert false
-    except RangeDefect:
-      discard
-
+  doAssertRaises(RangeDefect):
+    discard rand(-1.0)
 
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
@@ -53,6 +45,7 @@ proc main =
 
 main()
 
+import math
 
 block:
   type Fooa = enum k0,k1,k2
@@ -64,3 +57,6 @@ block:
   doAssert rand(int64.high) == 1967081787890826204
   doAssert compiles(echo rand(uint64.high))
   doAssert (rand(char.high),) == ('\a',)
+
+  doAssert almostEqual(rand(12.5), 6.371734653537684)
+  doAssert almostEqual(rand(2233.3322), 1039.453087565187)
