@@ -312,10 +312,10 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## `num` empty sequences.
   ##
   ## If `spread` is false and the length of `s` is not a multiple of `num`, the
-  ## proc will max out the first sub-sequence with ``1 + len(s) div num``
+  ## func will max out the first sub-sequence with ``1 + len(s) div num``
   ## entries, leaving the remainder of elements to the last sequence.
   ##
-  ## On the other hand, if `spread` is true, the proc will distribute evenly
+  ## On the other hand, if `spread` is true, the func will distribute evenly
   ## the remainder of the division across all sequences, which makes the result
   ## more suited to multithreading where you are passing equal sized work units
   ## to a thread pool and want to maximize core usage.
@@ -1005,7 +1005,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     map(s, f)
 
 template applyIt*(varSeq, op: untyped) =
-  ## Convenience template around the mutable ``apply`` proc to reduce typing.
+  ## Convenience template around the mutable ``apply`` func to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression. The expression has to return the same type as the sequence you
