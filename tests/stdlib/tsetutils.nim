@@ -3,8 +3,12 @@ discard """
 """
 import std/setutils
 
-doAssert "abcbb".toSet == {'a','b','c'}
-doAssert toSet([10u8,12,13]) == {10u8, 12, 13}
-doAssert toSet(0u16..30) == {0u16..30}
-type A = distinct char
-doAssert ['x'.A].toSet == {'x'.A}
+template main =
+  doAssert "abcbb".toSet == {'a','b','c'}
+  doAssert toSet([10u8,12,13]) == {10u8, 12, 13}
+  doAssert toSet(0u16..30) == {0u16..30}
+  type A = distinct char
+  doAssert [A('x')].toSet == {A('x')}
+  
+main()
+static: main()
