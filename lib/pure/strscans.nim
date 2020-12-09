@@ -506,8 +506,7 @@ macro whenScanf*(input: untyped; pattern: static[string]; results: varargs[untyp
           inc typesFound
       of '{':
         if typesFound < (results.len - 1):
-          if results[typesFound].len != 2:
-            {.error: "When using user defined matchers, include a type for instance `a: int`".}
+          assert results[typesFound].len == 2, "When using user defined matchers, include a type for instance `a: int`"
           result.add(newNimNode(nnkVarSection).add(newIdentDefs(results[typesFound][0], results[typesFound][1], newEmptyNode())))
           arguments.add(results[typesFound][0])
           inc typesFound
