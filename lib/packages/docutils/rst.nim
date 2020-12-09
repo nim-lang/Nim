@@ -11,6 +11,21 @@
 ## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
 ## also supported.
 ##
+## Additional features:
+##
+## * emoji / smiley symbols
+## * markdown tables
+## * markdown code blocks
+## * markdown links
+## * markdown headlines
+##
+## Limitations:
+##
+## * no footnotes & citations support
+## * no grid tables
+## * no roman numerals in enumerated lists
+## * no simple-inline-markup
+##
 ## **Note:** Import ``packages/docutils/rst`` to use this module
 
 import

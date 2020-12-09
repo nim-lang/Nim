@@ -1043,23 +1043,28 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
   of rnEnumList:
-    let specifier =
-      if d.target == outLatex:
-        # use enumerate parameters from package enumitem
-        if n.text[0].isDigit:
-          if n.text == "1": "" else: "[start=$1]" % [n.text]
-        else:
-          "[label=(\alph*)$1]" % [
-              (if n.text == "a": ""
-               else: ",start=" & $(ord(n.text[0]) - ord('a') + 1))]
+    var
+      specifier = ""
+      specStart = ""
+    if d.target == outLatex:
+      # use enumerate parameters from package enumitem
+      if n.text[0].isDigit:
+        if n.text != "1":
+          specStart = "[start=$1]" % [n.text]
+          specifier = specStart
       else:
-        if n.text[0].isDigit:
-          "class=\"simple\"" &
-              (if n.text == "1": "" else: " start=\"$1\"" % [n.text])
-        else:
-          "class=\"loweralpha simple\"" &
-              (if n.text == "a": ""
-               else: " start=\"$1\"" % [ $(ord(n.text[0]) - ord('a') + 1)])
+        if n.text != "a":
+          specStart = ",start=" & $(ord(n.text[0]) - ord('a') + 1)
+        specifier = "[label=(\alph*)$1]" % [specStart]
+    else:
+      if n.text[0].isDigit:
+        if n.text != "1":
+          specStart = " start=\"$1\"" % [n.text]
+        specifier = "class=\"simple\"" & specStart
+      else:
+        if n.text != "a":
+          specStart = " start=\"$1\"" % [ $(ord(n.text[0]) - ord('a') + 1) ]
+        specifier = "class=\"loweralpha simple\"" & specStart
     renderAux(d, n, "<ol " & specifier & ">$1</ol>\n",
               "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
               result)
