@@ -465,6 +465,63 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   else:
     result.add res
 
+macro whenScanf*(input: untyped; pattern: static[string]; results: varargs[untyped]): untyped =
+  ## See top level documentation of this module about how ``scanf`` works.
+  ## Works identically as scanf, but instead of predeclaring variables you declare them inline.
+  ## `results[^1]` is the body of a generated `if scanf(input, pattern, results[0..^2])`
+  ## if using user defined matches annotate the identifier with `: T`
+  runnableExamples:
+    whenScanf("1000-01-01 00:00:00","$i-$i-$i$s$+", year, month, day, time):
+      assert year == 1000
+      assert month == 1
+      assert day == 1
+      assert time == "00:00:00"
+  var
+    p = 0
+    typesFound = 0
+    arguments: seq[NimNode]
+  result = newStmtList()
+  template addVar(typ: string) = 
+    result.add(newNimNode(nnkVarSection).add(newIdentDefs(results[typesFound], ident(typ), newEmptyNode())))
+    arguments.add(results[typesFound])
+  while p < pattern.len:
+    if pattern[p] == '$':
+      inc p
+      case pattern[p]
+      of 'w', '*', '+':
+        if typesFound < (results.len - 1):
+          addVar("string")
+          inc typesFound
+      of 'c':
+        if typesFound < (results.len - 1):
+          addVar("char")
+          inc typesFound
+      of 'b', 'o', 'i', 'h':
+        if typesFound < (results.len - 1):
+          addVar("int")
+          inc typesFound
+      of 'f':
+        if typesFound < (results.len - 1):
+          addVar("float")
+          inc typesFound
+      of '{':
+        if typesFound < (results.len - 1):
+          if results[typesFound].len != 2:
+            {.error: "When using user defined matchers, include a type for instance `a: int`".}
+          result.add(newNimNode(nnkVarSection).add(newIdentDefs(results[typesFound][0], results[typesFound][1], newEmptyNode())))
+          arguments.add(results[typesFound][0])
+          inc typesFound
+      else: discard
+    else:
+      var token = ""
+      while p < pattern.len and pattern[p] != '$':
+        token.add pattern[p]
+        inc p
+
+  result.add newIfStmt((newCall(ident("scanf"), input, newStrLitNode(pattern)), results[^1]))
+  for arg in arguments:
+    result[^1][0][0].add arg
+  echo result.repr
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
   ## EOF is matched as ``'\0'``.

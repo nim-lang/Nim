@@ -227,3 +227,63 @@ block:
     if line.scanf("$i-$i $c: $w", lo, hi, c, w):
       inc res
   doAssert res == 4
+
+block:
+  #whenscanf testing
+  let input = """1-3 s: abc
+15-18 9: def
+15-18 A: ghi
+15-18 _: jkl
+"""
+  proc twoDigits(input: string; x: var int; start: int): int =
+    if start+1 < input.len and input[start] == '0' and input[start+1] == '0':
+      result = 2
+      x = 13
+    else:
+      result = 0
+
+  proc someSep(input: string; start: int; seps: set[char] = {';', ',', '-', '.'}): int =
+    result = 0
+    while start+result < input.len and input[start+result] in seps: inc result
+
+  var res = 0
+  for line in input.splitLines:
+    line.whenScanf("$i-$i $c: $w", lo, hi, c, w):
+      inc res
+  doAssert res == 4
+
+  whenscanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intval, floatVal):
+    discard
+  doAssert key == "abc"
+  doAssert val == "xyz"
+  doAssert intval == 89
+  doAssert floatVal == 33.25
+
+
+  whenscanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval):
+    doAssert binval == 0b0101
+    doAssert octval == 0o1234
+    doAssert hexval == 0xabcd
+
+  var xx = block:
+    var res = false
+    whenscanf("$abc", "$$$i", intval):
+      res = true
+    res
+  doAssert xx == false
+
+
+  let xx2 = block:
+    var res = false
+    whenscanf("$1234", "$$$i", intval):
+      res = true
+    res
+  doAssert xx2
+
+  var yy = false
+  whenScanf(";.--Breakpoint00 [output]",
+      "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.",
+      intVal2: int, key2): yy = true
+  doAssert yy
+  doAssert key2 == "output"
+  doAssert intVal2 == 13
