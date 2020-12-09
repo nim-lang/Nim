@@ -98,7 +98,7 @@ _nim() {
     '*--gc=arc[use ARC garbage collection]' \
     '*--gc=orc[use ORC garbage collection]' \
     '*--gc=markAndSweep[use mark-and-sweep garbage collection]' \
-    '*--gc=boehm[use Boehm<F2> garbage collection]' \
+    '*--gc=boehm[use Boehm garbage collection]' \
     '*--gc=go[use Go garbage collection]' \
     '*--gc=regions[use region-based memory management]' \
     '*--gc=none[disable garbage collection]' \
