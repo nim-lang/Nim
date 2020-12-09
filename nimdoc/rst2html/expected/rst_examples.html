@@ -274,7 +274,7 @@ stmt = IND{&gt;} stmt ^+ IND{=} DED  # list of statements
 <li>An input parameter should not be aliased with a global or thread local variable updated by the called proc.</li>
 </ol>
 <p>One problem with rules 3 and 4 is that they affect specific global or thread local variables, but Nim's effect tracking only tracks &quot;uses no global variable&quot; via <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt>. The rules 3 and 4 can also be approximated by a different rule:</p>
-<ol class="simple"><li>A global or thread local variable (or a location derived from such a location) can only passed to a parameter of a <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt> proc.</li>
+<ol class="simple" start="5"><li>A global or thread local variable (or a location derived from such a location) can only passed to a parameter of a <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt> proc.</li>
 </ol>
 <p>These two procs are the two modus operandi of the real-time garbage collector:</p>
 <ol class="simple"><li><p>GC_SetMaxPause Mode</p>
