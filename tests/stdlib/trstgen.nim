@@ -446,7 +446,7 @@ Test1
     let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
     assert count(output5, "<ol ") == 1
     assert count(output5, "</ol>") == 1
-    assert "start=\"1\"" in output5
+    assert count(output5, "<li>") == 3
 
     let input6 = dedent """
       ... And for alphabetic enumerators too!

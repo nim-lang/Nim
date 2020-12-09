@@ -1047,16 +1047,19 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       if d.target == outLatex:
         # use enumerate parameters from package enumitem
         if n.text[0].isDigit:
-          "[start=$1]" % [n.text]
+          if n.text == "1": "" else: "[start=$1]" % [n.text]
         else:
-          "[label=(\alph*),start=$1]" % [
-              $(ord(n.text[0]) - ord('a') + 1)]
+          "[label=(\alph*)$1]" % [
+              (if n.text == "a": ""
+               else: ",start=" & $(ord(n.text[0]) - ord('a') + 1))]
       else:
         if n.text[0].isDigit:
-          "class=\"simple\" start=\"$1\"" % [n.text]
+          "class=\"simple\"" &
+              (if n.text == "1": "" else: " start=\"$1\"" % [n.text])
         else:
-          "class=\"loweralpha simple\" start=\"$1\"" % [
-              $(ord(n.text[0]) - ord('a') + 1)]
+          "class=\"loweralpha simple\"" &
+              (if n.text == "a": ""
+               else: " start=\"$1\"" % [ $(ord(n.text[0]) - ord('a') + 1)])
     renderAux(d, n, "<ol " & specifier & ">$1</ol>\n",
               "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
               result)
