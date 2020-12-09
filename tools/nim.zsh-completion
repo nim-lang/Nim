@@ -100,7 +100,7 @@ _nim() {
     '*--gc=markAndSweep[use mark-and-sweep garbage collection]' \
     '*--gc=boehm[use Boehm<F2> garbage collection]' \
     '*--gc=go[use Go garbage collection]' \
-    '*--gc=regions[use region-based garbage collection]' \
+    '*--gc=regions[use region-based memory management]' \
     '*--gc=none[disable garbage collection]' \
     '*--os=Standalone[generate a stand-alone executable]' \
     '*--os=AIX[compile for AIX]' \
