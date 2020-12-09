@@ -431,7 +431,7 @@ func sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
   ## * `sorted func<#sorted,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
-func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## Returns ``a`` sorted by ``cmp`` in the specified ``order``.
   ##
