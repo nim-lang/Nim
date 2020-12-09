@@ -211,6 +211,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## Parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ## If error, the value of `ident` is not changed.
   runnableExamples:
     var res: string
     doAssert parseIdent("Hello World", res, 0) == 5
@@ -241,9 +242,19 @@ proc parseIdent*(s: string, start = 0): string =
     while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
 
-proc parseChar*(s: string, ident: var char, start = 0): int =
-  ident = s[start]
-  result = 1
+proc parseChar*(s: string, c: var char, start = 0): int =
+  ## Parses a single character, stores it in `c` and returns 1.
+  ## In case of error (if start >= s.len) it returns 0
+  ## and the value of `c` is unchanged.
+  runnableExamples:
+    var c: char
+    doAssert "nim".parseChar(c, 3) == 0
+    doAssert c == '\0'
+    doAssert "nim".parseChar(c, 0) == 1
+    doAssert c == 'n'
+  if start < s.len:
+    c = s[start]
+    result = 1
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## Skips the whitespace starting at ``s[start]``. Returns the number of

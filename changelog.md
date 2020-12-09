@@ -77,6 +77,8 @@
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
 
 
 ## Tool changes

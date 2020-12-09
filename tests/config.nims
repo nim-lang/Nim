@@ -12,3 +12,5 @@ switch("excessiveStackTrace", "off")
 # for std/unittest
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
 switch("define", "nimUnittestColor:off")
+
+switch("define", "nimLegacyTypeMismatch")
