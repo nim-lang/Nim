@@ -1045,12 +1045,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skMethod)
@@ -1101,12 +1098,9 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       d.add %*{"comment": genComment(d, n)}
     else:
       d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skMethod)
