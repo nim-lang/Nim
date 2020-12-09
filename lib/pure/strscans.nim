@@ -517,11 +517,10 @@ macro whenScanf*(input: untyped; pattern: static[string]; results: varargs[untyp
       while p < pattern.len and pattern[p] != '$':
         token.add pattern[p]
         inc p
-
   result.add newIfStmt((newCall(ident("scanf"), input, newStrLitNode(pattern)), results[^1]))
   for arg in arguments:
     result[^1][0][0].add arg
-  echo result.repr
+
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
   ## EOF is matched as ``'\0'``.
