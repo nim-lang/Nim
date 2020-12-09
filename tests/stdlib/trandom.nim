@@ -1,5 +1,6 @@
 discard """
   joinable: false
+  targets: "c js"
 """
 
 import std/[random, stats]
@@ -38,29 +39,28 @@ main()
 import math
 
 block:
-  doAssert almostEqual(rand(12.5), 4.012897747078944)
-  doAssert almostEqual(rand(2233.3322), 879.702755321298)
+  when not defined(js):
+    doAssert almostEqual(rand(12.5), 4.012897747078944)
+    doAssert almostEqual(rand(2233.3322), 879.702755321298)
 
   type DiceRoll = range[0..6]
   doAssert rand(DiceRoll).int == 4
 
 var rs: RunningStat
 for j in 1..5:
-  for i in 1 .. 1_000:
+  for i in 1 .. 100_000:
     rs.push(gauss())
   doAssert abs(rs.mean-0) < 0.08, $rs.mean
   doAssert abs(rs.standardDeviation()-1.0) < 0.1
-  let maxVal = 3.0
-  doAssert abs(rs.min + maxVal) < 1.0
-  doAssert abs(rs.max-maxVal) < 1.0
+  let bounds = [3.5, 5.0]
+  for a in [rs.max, -rs.min]:
+    doAssert a >= bounds[0] and a <= bounds[1]
   rs.clear()
-
 
 block:
   type DiceRoll = range[3..6]
   var flag = false
-  # rand(max: int): int
   for i in 0..<100:
     if rand(5.DiceRoll) < 3:
       flag = true
-  doAssert flag
+  doAssert flag # because of: rand(max: int): int
