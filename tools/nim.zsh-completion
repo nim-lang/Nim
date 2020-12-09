@@ -77,7 +77,7 @@ _nim() {
     '*--cpu=hppa[compile for HPPA architecture]' \
     '*--cpu=i386[compile for i386 architecture]' \
     '*--cpu=ia64[compile for ia64 architecture]' \
-    '*--cpu=js[compile to javascript]' \
+    '*--cpu=js[compile to JavaScript]' \
     '*--cpu=m68k[compile for m68k architecture]' \
     '*--cpu=mips[compile for MIPS architecture]' \
     '*--cpu=mipsel[compile for MIPS EL architecture]' \
