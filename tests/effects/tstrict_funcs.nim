@@ -6,6 +6,7 @@ import tables, streams, parsecsv
 # We import the below modules to check that they compile with `strictFuncs`.
 # They are otherwise unused in this file.
 import
+  algorithm,
   complex,
   httpcore,
   math,
