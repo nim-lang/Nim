@@ -147,7 +147,7 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       addConverter(c, it)
   for it in c.graph.ifaces[fromMod.position].patterns:
     if filter:
-      addConverter(c, it)
+      addPattern(c, it)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
