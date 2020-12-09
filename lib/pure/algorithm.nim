@@ -472,7 +472,7 @@ func sorted*[T](a: openArray[T], order = SortOrder.Ascending): seq[T] =
   sorted[T](a, system.cmp[T], order)
 
 template sortedByIt*(seq1, op: untyped): untyped =
-  ## Convenience template around the ``sorted`` proc to reduce typing.
+  ## Convenience template around the ``sorted`` func to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression.
@@ -754,7 +754,7 @@ func rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
 
 func rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
-  ## Default arguments for slice, so that this procedure operates on the entire
+  ## Default arguments for slice, so that this func operates on the entire
   ## ``arg``, and not just on a part of it.
   ##
   ## **See also:**
@@ -788,7 +788,7 @@ func rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ##   Can be negative, can be any number.
   ##
   ## **See also:**
-  ## * `rotateLeft func<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for the in-place version of this proc
+  ## * `rotateLeft func<#rotateLeft,openArray[T],HSlice[int,int],int>`_ for the in-place version of this func
   ## * `rotatedLeft func<#rotatedLeft,openArray[T],int>`_ for a version which rotates the whole container
   runnableExamples:
     var a = @[1, 2, 3, 4, 5]
@@ -807,7 +807,7 @@ func rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
   ## **See also:**
-  ## * `rotateLeft func<#rotateLeft,openArray[T],int>`_ for the in-place version of this proc
+  ## * `rotateLeft func<#rotateLeft,openArray[T],int>`_ for the in-place version of this func
   ## * `rotatedLeft func<#rotatedLeft,openArray[T],HSlice[int,int],int>`_ for a version which rotates a range
   runnableExamples:
     var a = @[1, 2, 3, 4, 5]
