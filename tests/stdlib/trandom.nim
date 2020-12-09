@@ -56,9 +56,12 @@ for j in 1..5:
   doAssert abs(rs.max-maxVal) < 1.0
   rs.clear()
 
-type DiceRoll = range[3..6]
-var flag = false
-for i in 0..<100000:
-  if rand(5.DiceRoll) < 3:
-    flag = true
-doAssert flag
+
+block:
+  type DiceRoll = range[3..6]
+  var flag = false
+  # rand(max: int): int
+  for i in 0..<100:
+    if rand(5.DiceRoll) < 3:
+      flag = true
+  doAssert flag
