@@ -10,6 +10,7 @@ import
   httpcore,
   math,
   nre,
+  sequtils,
   strutils,
   uri
 
