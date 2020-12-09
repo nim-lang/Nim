@@ -17,8 +17,7 @@ proc main =
 
   var a = [0, 1]
   shuffle(a)
-  doAssert a[0] == 1
-  doAssert a[1] == 0
+  doAssert a in [[0,1], [1,0]]
 
   doAssert rand(0) == 0
   doAssert sample("a") == 'a'
