@@ -61,9 +61,10 @@ import bitops, fenv
 when defined(c) or defined(cpp):
   #[
   Low level wrappers around C math functions.
-  Consider moving this to a dedicated `std/cmath`.
+  Consider moving this and other direct c wrappers to a dedicated `std/cmath`,
+  refs https://github.com/nim-lang/RFCs/issues/92#issuecomment-735328291
   ]#
-  proc c_isnan*(x: float): bool {.importc: "isnan", header: "<math.h>".}
+  proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
 func binom*(n, k: int): int =
@@ -148,6 +149,9 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
+    doAssert not isNan(3.1415926)
+    doAssert not isNan(0'f32)
+
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
