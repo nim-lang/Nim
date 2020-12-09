@@ -165,7 +165,7 @@ proc reversed*[T](a: openArray[T]): seq[T] =
     assert b == @[6, 5, 4, 3, 2, 1]
   reversed(a, 0, a.high)
 
-proc binarySearch*[T, K](a: openArray[T], key: K,
+func binarySearch*[T, K](a: openArray[T], key: K,
               cmp: proc (x: T, y: K): int {.closure.}): int =
   ## Binary search for ``key`` in ``a``. Returns -1 if not found.
   ##
@@ -225,7 +225,7 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
+func lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
     closure.}): int =
   ## Returns a position to the first element in the ``a`` that is greater than
   ## ``key``, or last if no such element is found.
@@ -273,7 +273,7 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
   ## * `upperBound proc<#upperBound,openArray[T],K,proc(T,K)>`_ sorted by ``cmp`` in the specified order
   ## * `upperBound proc<#upperBound,openArray[T],T>`_
 
-proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
+func upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
     closure.}): int =
   ## Returns a position to the first element in the ``a`` that is not less
   ## (i.e. greater or equal to) than ``key``, or last if no such element is found.
@@ -329,7 +329,7 @@ template `<-` (a, b) =
   else:
     copyMem(addr(a), addr(b), sizeof(T))
 
-proc merge[T](a, b: var openArray[T], lo, m, hi: int,
+func merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4  ## 5 6 7 8
@@ -431,7 +431,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
   ## * `sorted proc<#sorted,openArray[T]>`_
   ## * `sortedByIt template<#sortedByIt.t,untyped,untyped>`_
 
-proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
+func sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
   ## Returns ``a`` sorted by ``cmp`` in the specified ``order``.
   ##
