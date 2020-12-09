@@ -160,7 +160,7 @@ proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## Compares two Nim nodes' types. Return true if the types are the same,
-  ## eg. true when comparing alias with original type.
+  ## e.g. true when comparing alias with original type.
   discard
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
@@ -280,7 +280,7 @@ else: # bootstrapping substitute
 when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
     ## For a typed proc returns the AST after transformation pass; this is useful
-    ## for debugging how the compiler transforms code (eg: `defer`, `for`) but
+    ## for debugging how the compiler transforms code (e.g.: `defer`, `for`) but
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
@@ -1434,10 +1434,10 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
-  for i in 1 ..< params.len:
-    template node: untyped = params[i]
-    if name.eqIdent( $ node[0]):
-      return true
+  for i in 1..<params.len:
+    for j in 0..<params[i].len-2:
+      if name.eqIdent($params[i][j]):
+        return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
   ## Add ``ident`` to ``dest`` if it is not present. This is intended for use

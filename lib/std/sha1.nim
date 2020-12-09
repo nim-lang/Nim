@@ -213,7 +213,22 @@ proc secureHashFile*(filename: string): SecureHash =
   ## **See also:**
   ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a ``SecureHash`` from a string
   ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
-  secureHash(readFile(filename))
+  const BufferLength = 8192
+
+  let f = open(filename)
+  var state = newSha1State()
+  var buffer = newString(BufferLength)
+  while true:
+    let length = readChars(f, buffer, 0, BufferLength)
+    if length == 0:
+      break
+    buffer.setLen(length)
+    state.update(buffer)
+    if length != BufferLength:
+      break
+  close(f)
+
+  SecureHash(state.finalize())
 
 proc `$`*(self: SecureHash): string =
   ## Returns the string representation of a ``SecureHash``.
@@ -252,16 +267,3 @@ proc `==`*(a, b: SecureHash): bool =
     assert a == c
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)
-
-when isMainModule:
-  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
-  doAssert hash1 == hash1
-  doAssert parseSecureHash($hash1) == hash1
-
-  template checkVector(s, exp: string) =
-    doAssert secureHash(s) == parseSecureHash(exp)
-
-  checkVector("", "da39a3ee5e6b4b0d3255bfef95601890afd80709")
-  checkVector("abc", "a9993e364706816aba3e25717850c26c9cd0d89d")
-  checkVector("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
-              "84983e441c3bd26ebaae4aa1f95129e5e54670f1")

@@ -154,6 +154,7 @@ type
     performance*: Performance
     onpopstate*: proc (event: Event)
     localStorage*: LocalStorage
+    parent*: Window
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -203,6 +204,7 @@ type
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
     activeElement*: Element
+    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element

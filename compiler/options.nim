@@ -47,7 +47,7 @@ type                          # please make sure we have under 32 options
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optWasNimscript,
+    optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -77,7 +77,7 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
-    optWholeProject           # for 'doc2': output any dependency
+    optWholeProject           # for 'doc': output any dependency
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
@@ -110,34 +110,44 @@ type
   TBackend* = enum
     backendInvalid = "" # for parseEnum
     backendC = "c"
-    backendCpp = "cpp"  # was cmdCompileToCpp
-    backendJs = "js" # was cmdCompileToJS
-    backendObjc = "objc" # was cmdCompileToOC
+    backendCpp = "cpp"
+    backendJs = "js"
+    backendObjc = "objc"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
+  Command* = enum  ## Nim's commands
+    cmdNone # not yet processed command
+    cmdUnknown # command unmapped
+    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
+    cmdCrun # compile and run in nimache
+    cmdTcc # run the project via TCC backend
+    cmdCheck # semantic checking for whole project
+    cmdParse # parse a single file (for debugging)
+    cmdScan # scan a single file (for debugging)
+    cmdIdeTools # ide tools (e.g. nimsuggest)
+    cmdNimscript # evaluate nimscript
+    cmdDoc0
+    cmdDoc2
+    cmdRst2html # convert a reStructuredText file to HTML
+    cmdRst2tex # convert a reStructuredText file to TeX
+    cmdJsondoc0
+    cmdJsondoc
+    cmdCtags
+    cmdBuildindex
+    cmdGendepend
+    cmdDump
+    cmdInteractive # start interactive session
+    cmdNop
+    cmdJsonscript # compile a .json build file
+    cmdNimfix
+    # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
+
+const
+  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
+  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
+
 type
-  TCommands* = enum           # Nim's commands
-                              # **keep binary compatible**
-    cmdNone,
-    cmdCompileToC,            # deadcode
-    cmdCompileToCpp,          # deadcode
-    cmdCompileToOC,           # deadcode
-    cmdCompileToJS,           # deadcode
-    cmdCompileToLLVM,         # deadcode
-    cmdInterpret, cmdPretty, cmdDoc,
-    cmdGenDepend, cmdDump,
-    cmdCheck,                 # semantic checking for whole project
-    cmdParse,                 # parse a single file (for debugging)
-    cmdScan,                  # scan a single file (for debugging)
-    cmdIdeTools,              # ide tools
-    cmdDef,                   # def feature (find definition for IDEs)
-    cmdRst2html,              # convert a reStructuredText file to HTML
-    cmdRst2tex,               # convert a reStructuredText file to TeX
-    cmdInteractive,           # start interactive session
-    cmdRun,                   # run the project via TCC backend
-    cmdJsonScript             # compile a .json build file
-    cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
@@ -245,7 +255,7 @@ type
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmd*: TCommands  # the command
+    cmd*: Command  # raw command parsed as enum
     cmdInput*: string  # input command
     projectIsCmd*: bool # whether we're compiling from a command input
     implicitCmd*: bool # whether some flag triggered an implicit `command`
@@ -531,7 +541,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =

@@ -149,7 +149,7 @@ mmain.html
       doAssert exitCode == 0, output
     block:
       let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
-      # on platforms that support _StaticAssert natively, errors will show full context, eg:
+      # on platforms that support _StaticAssert natively, errors will show full context, e.g.:
       # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
       # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
       check2 "sizeof(unsigned char) == 8"
@@ -216,3 +216,9 @@ mmain.html
     let file = testsDir / "misc/mimportc.nim"
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
+
+  block: # nim --eval
+    let opt = "--hints:off"
+    check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
+    check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
+    check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)

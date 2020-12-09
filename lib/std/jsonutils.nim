@@ -17,7 +17,7 @@ import std/[json,strutils,tables,sets,strtabs,options]
 
 #[
 Future directions:
-add a way to customize serialization, for eg:
+add a way to customize serialization, for e.g.:
 * field renaming
 * allow serializing `enum` and `char` as `string` instead of `int`
   (enum is more compact/efficient, and robust to enum renamings, but string

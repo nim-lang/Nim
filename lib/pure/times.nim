@@ -1049,7 +1049,7 @@ since((1, 3)):
   export isInitialized
 
 proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
-  ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
+  ## Returns whether `t` is a leap day, i.e. Feb 29 in a leap year. This matters
   ## as it affects time offset calculations.
   runnableExamples:
     let dt = initDateTime(29, mFeb, 2020, 00, 00, 00, utc())

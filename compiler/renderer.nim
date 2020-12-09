@@ -1226,7 +1226,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    # eg: `n1 == n2` decompses as following sum:
+    # e.g.: `n1 == n2` decompses as following sum:
     if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:

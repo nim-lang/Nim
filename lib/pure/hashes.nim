@@ -113,8 +113,12 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   const P0  = 0xa0761d6478bd642f'u64
   const P1  = 0xe7037ed1a0b428db'u64
   const P58 = 0xeb44accab455d165'u64 xor 8'u64
+  template h(x): untyped = hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58)
   when nimvm:
-    cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+    when defined(js): # Nim int64<->JS Number & VM match => JS gets 32-bit hash
+      result = cast[Hash](h(x)) and cast[Hash](0xFFFFFFFF)
+    else:
+      result = cast[Hash](h(x))
   else:
     when defined(js):
       asm """
@@ -132,8 +136,9 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
           var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
           `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
         }"""
+      result = result and cast[Hash](0xFFFFFFFF)
     else:
-      cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+      result = cast[Hash](h(x))
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
@@ -480,46 +485,3 @@ proc hash*[A](x: set[A]): Hash =
   for it in items(x):
     result = result !& hash(it)
   result = !$result
-
-
-when isMainModule:
-  block empty:
-    var
-      a = ""
-      b = newSeq[char]()
-      c = newSeq[int]()
-      d = cstring""
-      e = "abcd"
-    doAssert hash(a) == 0
-    doAssert hash(b) == 0
-    doAssert hash(c) == 0
-    doAssert hash(d) == 0
-    doAssert hashIgnoreCase(a) == 0
-    doAssert hashIgnoreStyle(a) == 0
-    doAssert hash(e, 3, 2) == 0
-  block sameButDifferent:
-    doAssert hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13)
-    doAssert hash("aa bb aaaa1234") == hash(cstring"aa bb aaaa1234")
-    doAssert hashIgnoreCase("aA bb aAAa1234") == hashIgnoreCase("aa bb aaaa1234")
-    doAssert hashIgnoreStyle("aa_bb_AAaa1234") == hashIgnoreCase("aaBBAAAa1234")
-  block smallSize: # no multibyte hashing
-    let
-      xx = @['H', 'i']
-      ii = @[72'u8, 105]
-      ss = "Hi"
-    doAssert hash(xx) == hash(ii)
-    doAssert hash(xx) == hash(ss)
-    doAssert hash(xx) == hash(xx, 0, xx.high)
-    doAssert hash(ss) == hash(ss, 0, ss.high)
-  block largeSize: # longer than 4 characters
-    let
-      xx = @['H', 'e', 'l', 'l', 'o']
-      xxl = @['H', 'e', 'l', 'l', 'o', 'w', 'e', 'e', 'n', 's']
-      ssl = "Helloweens"
-    doAssert hash(xxl) == hash(ssl)
-    doAssert hash(xxl) == hash(xxl, 0, xxl.high)
-    doAssert hash(ssl) == hash(ssl, 0, ssl.high)
-    doAssert hash(xx) == hash(xxl, 0, 4)
-    doAssert hash(xx) == hash(ssl, 0, 4)
-    doAssert hash(xx, 0, 3) == hash(xxl, 0, 3)
-    doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)

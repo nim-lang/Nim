@@ -399,6 +399,7 @@ proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
 proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
   ## Analyse if 'n' is an expression that owns the data, if so mark 'dest'
   ## with 'ownsData'.
+  if n.typ == nil: return
   case n.kind
   of nkEmpty, nkCharLit..nkNilLit:
     # primitive literals including the empty are harmless:
