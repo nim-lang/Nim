@@ -10,4 +10,4 @@
 ## incremental compilation interface
 
 import ic/[pass, to_packed_ast]
-export icPass, performCaching, ready, addGeneric
+export icPass, performCaching, available, addGeneric

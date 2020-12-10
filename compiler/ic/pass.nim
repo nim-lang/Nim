@@ -26,15 +26,18 @@ type
     m: Module
     encoder: ref PackedEncoder      # avoid the refs when possible
 
-proc ready*(context: PPassContext): bool =
-  var ic = IncrementalRef context
-  result = ic.encoder == nil
+proc available*(context: PPassContext): bool =
+  if context == nil:
+    result = false
+  else:
+    result = IncrementalRef(context).encoder == nil
 
 proc rodFile(ic: IncrementalRef): AbsoluteFile =
   result = rodFile(ic.graph.config, ic.s)
 
 proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
   ## the opener discovers whether the module is available in IC
+  when not defined(disruptic): return nil
   var ic = IncrementalRef(idgen: idgen, graph: graph, config: graph.config,
                           name: s.name.s, s: s)
   let maybe = tryReadModule(ic.config, ic.rodFile)
@@ -64,40 +67,34 @@ proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
 proc processor(context: PPassContext, n: PNode): PNode =
   ## the processor merely returns the input if IC is unavailable
   var ic = IncrementalRef context
-  if ic.ready:
+  if ic.available:
     result = nil
   else:
-    # use recordStmt to pack the node; see opener()
+    # we now use recordStmt to pack the node; see opener()
     result = n
 
 template performCaching*(context: PPassContext, n: PNode; body: untyped) =
-  ## wraps a sem call to stow the result
+  ## wraps a sem call to stow the result; presumed useful in future
   var ic = IncrementalRef context.ic
-  if ic.ready:
+  if ic.available:
     result = nil
   else:
     body
-    #toPackedNode(result, ic.m.ast, ic.encoder[])
 
 proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
   ## add a generic
-  when not defined(disruptic): return
-  var ic = IncrementalRef context
-  assert not ic.ready
-  let key = initGenericKey(s, types)
-  addGeneric(ic.m, ic.encoder[], key, s)
+  when defined(disruptic):
+    var ic = IncrementalRef context
+    assert not ic.available
+    let key = initGenericKey(s, types)
+    addGeneric(ic.m, ic.encoder[], key, s)
 
 proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   ## the closer writes the module to a rodfile if necessary, and parses
   ## the packed ast in any event
   result = n
   var ic = IncrementalRef context
-  if not ic.ready:
-    when defined(disruptic):
-      if not tryWriteModule(ic.m, ic.rodFile):
-        # XXX: turn this into a warning
-        internalError(graph.config, "failed to write " & ic.name & " rod file")
-  else:
+  if ic.available:
     when false:
       template iface: Iface = graph.ifaces[ic.s.position]
 
@@ -105,5 +102,10 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
       var decoder: PackedDecoder
       initDecoder(decoder, graph.cache, makeResolver graph)
       result = irToModule(iface.tree, ic.s, decoder)
+  else:
+    when defined(disruptic):
+      if not tryWriteModule(ic.m, ic.rodFile):
+        # XXX: turn this into a warning
+        internalError(graph.config, "failed to write " & ic.name & " rod file")
 
 const icPass* = makePass(open = opener, process = processor, close = closer)
