@@ -107,39 +107,35 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
+proc filterMarked(im: ImportedModule; marked: var IntSet; s: PSym): PSym =
+  ## see if a symbol should be imported given the module's import "mask"
+  # this tricked me the first time i rewrote it for readability 😑
+  let boolean = case im.mode
+    of importAll:
+      true
+    of importSet:
+      s.id in im.imported
+    of importExcept:
+      s.name.id in im.exceptSet
+  if boolean:
+    # the semantic filter is okay, so now we consider the set
+    if not containsOrIncl(marked, s.id):
+      result = s
+
 proc nextIdentIter(ti: var TIdentIter; marked: var IntSet;
                    graph: ModuleGraph; im: ImportedModule): PSym =
   while true:
     result = nextIdentIter(ti, graph, im.m)
     if result == nil: return nil
-
-    # this tricked me the first time i rewrote it for readability 😑
-    block filter:
-      case im.mode
-      of importAll:
-        discard
-      of importSet:
-        if result.id notin im.imported:
-          break filter
-      of importExcept:
-        if result.name.id in im.exceptSet:
-          break filter
-
-      # the semantic filter is okay, so now we consider the set
-      if not containsOrIncl(marked, result.id):
-        return result
+    result = filterMarked(im, marked, result)
+    if result != nil: return result
 
 proc initIdentIter(ti: var TIdentIter; marked: var IntSet; graph: ModuleGraph;
                    im: ImportedModule; name: PIdent): PSym =
   result = initIdentIter(ti, graph, im.m, name)
   while result != nil:
-    let b =
-      case im.mode
-      of importAll: true
-      of importSet: result.id in im.imported
-      of importExcept: name.id notin im.exceptSet
-    if b and not containsOrIncl(marked, result.id):
-      return result
+    result = filterMarked(im, marked, result)
+    if result != nil: return result
     # XXX: bugfix; the subsequent read must also de-dupe
     #result = nextIdentIter(ti, im.m.tab)
     result = nextIdentIter(ti, marked, graph, im)
