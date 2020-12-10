@@ -1,4 +1,3 @@
-{.push experimental: "enableImportAll".}
 import ./m1 {.all.} except foo1
 doAssert foo2 == 2
 doAssert declared(foo2)

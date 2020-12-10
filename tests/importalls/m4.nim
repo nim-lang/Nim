@@ -1,5 +1,4 @@
 {.warning[UnusedImport]: off.} # xxx bug: this shouldn't be needed since we have `export m3`
-{.push experimental: "enableImportAll".}
 import ./m3 {.all.}
 export m3
 # export m3 {.all.} # xxx this could be supported in future

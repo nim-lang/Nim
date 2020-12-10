@@ -1,4 +1,3 @@
-{.push experimental: "enableImportAll".}
 import ./m1 {.all.} as m
 doAssert foo1 == 2
 doAssert m.foo1 == 2

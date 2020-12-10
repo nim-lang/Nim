@@ -1,4 +1,3 @@
-{.push experimental: "enableImportAll".}
 from ./m1 {.all.} as m import foo1
 from ./m1 {.all.} as m2 import foo7
 doAssert foo1 == 2

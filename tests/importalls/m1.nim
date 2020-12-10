@@ -1,4 +1,3 @@
-{.experimental: "enableImportAll".}
 import ./m2
 import ./m3 {.all.} as m3
 from ./m3 as m3Bis import nil

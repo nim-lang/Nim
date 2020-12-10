@@ -1,4 +1,3 @@
-{.push experimental: "enableImportAll".}
 import ./m1 as m
 doAssert compiles(foo0)
 doAssert not compiles(foo1)

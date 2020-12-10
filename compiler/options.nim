@@ -177,7 +177,6 @@ type
     vmopsDanger,
     strictFuncs,
     views,
-    enableImportAll, # for: `import foo {.all.}`
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

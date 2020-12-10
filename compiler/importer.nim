@@ -168,8 +168,6 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
       if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wImportAll: discard
       else:
         globalError(c.config, n.info, "invalid import pragma, expected: " & $wImportAll)
-      if enableImportAll notin c.features:
-        globalError(c.config, n.info, "requires --experimental:" & $enableImportAll)
       ret.importFlags.incl ifImportAll
       result = n2[0]
     else:
