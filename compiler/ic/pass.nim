@@ -75,7 +75,7 @@ proc processor(context: PPassContext, n: PNode): PNode =
 
 template performCaching*(context: PPassContext, n: PNode; body: untyped) =
   ## wraps a sem call to stow the result; presumed useful in future
-  var ic = IncrementalRef context.ic
+  var ic = IncrementalRef context
   if ic.available:
     result = nil
   else:

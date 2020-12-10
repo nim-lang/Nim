@@ -600,18 +600,10 @@ proc recoverContext(c: PContext) =
 
 proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
-  # no need for an expensive 'try' if we stop after the first error anyway:
-  #
-  # XXX: use a template if you care so much.
-  #
-  #if c.config.errorMax <= 1:
-  #  result = semStmtAndGenerateGenerics(c, n)
-  #else:
-
   let oldContextLen = msgs.getInfoContextLen(c.config)
   let oldInGenericInst = c.inGenericInst
   try:
-    performCaching(c, n):
+    performCaching(c.ic, n):
       result = semStmtAndGenerateGenerics(c, n)
   except ERecoverableError, ESuggestDone:
     recoverContext(c)
