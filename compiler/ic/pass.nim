@@ -81,6 +81,7 @@ template performCaching*(context: PPassContext, n: PNode; body: untyped) =
 
 proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
   ## add a generic
+  when not defined(disruptic): return
   var ic = IncrementalRef context
   assert not ic.ready
   let key = initGenericKey(s, types)
@@ -89,17 +90,15 @@ proc addGeneric*(context: PPassContext, s: PSym; types: seq[PType]) =
 proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   ## the closer writes the module to a rodfile if necessary, and parses
   ## the packed ast in any event
+  result = n
   var ic = IncrementalRef context
   if not ic.ready:
     when defined(disruptic):
       if not tryWriteModule(ic.m, ic.rodFile):
         # XXX: turn this into a warning
         internalError(graph.config, "failed to write " & ic.name & " rod file")
-    result = n
   else:
-    when true:
-      result = n
-    else:
+    when false:
       template iface: Iface = graph.ifaces[ic.s.position]
 
       # the result is immediately parsed from the rodfile
