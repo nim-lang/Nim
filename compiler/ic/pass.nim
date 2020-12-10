@@ -93,6 +93,7 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   if not ic.ready:
     when defined(disruptic):
       if not tryWriteModule(ic.m, ic.rodFile):
+        # XXX: turn this into a warning
         internalError(graph.config, "failed to write " & ic.name & " rod file")
     result = n
   else:
