@@ -1388,10 +1388,6 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  align: defaultAlignment, itemId: id,
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
-  when false:
-    if result.id == 76426:
-      echo "KIND ", kind
-      writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
