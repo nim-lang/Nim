@@ -32,7 +32,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     pck = getPackageName(graph.config, filename.string)
     pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(graph.cache, pck2)
-  result = graph.packageSyms.strTableGet(pack)
+  result = strTableGet(graph.packageSyms, pack)
   if result == nil:
     result = newSym(skPackage, getIdent(graph.cache, pck2), packageId(),
                     nil, info)
@@ -45,7 +45,7 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
       result = newSym(skPackage, getIdent(graph.cache, pck3), packageId(),
                       result, info)
   initExports(graph, result)
-  graph.packageSyms.strTableAdd(result)
+  strTableAdd(graph.packageSyms, result)
 
 type
   SubType = enum                ## tokens we use for rodfile pathsubs
