@@ -245,7 +245,6 @@ type
     oimSymChoiceLocalLookup
   TOverloadIter* = object
     it*: TIdentIter
-    graph: ModuleGraph
     m*: PSym
     mode*: TOverloadIterMode
     symChoiceIndex*: int
@@ -499,7 +498,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
   o.marked = initIntSet()
-  o.graph = c.graph
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
