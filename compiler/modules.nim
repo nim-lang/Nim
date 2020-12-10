@@ -84,7 +84,7 @@ proc moduleId(config: ConfigRef; fn: AbsoluteFile): int32 =
   ## compute stable module identifier by pathsub'ing filename
   for path in pathSubstitutions(config, fn):
     return int32(hash(path) and int32.high)
-  assert false
+  internalError(config, "unable to determine module id")
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
