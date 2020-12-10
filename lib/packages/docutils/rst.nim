@@ -11,7 +11,37 @@
 ## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
 ## also supported.
 ##
+## Supported RST features:
+##
+## * body elements
+##   + sections
+##   + transitions
+##   + paragraphs
+##   + bullet lists using \+, \*, \-
+##   + enumerated lists using arabic numerals or alphabet
+##     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
+##   + definition lists
+##   + field lists
+##   + option lists
+##   + indented literal blocks
+##   + simple tables
+##   + directives
+##     - image, figure
+##     - code-block
+##     - substitution definitions: replace and image
+##     - ... a few more
+##   + comments
+## * inline markup
+##   + *emphasis*, **strong emphasis**, `interpreted text`,
+##     ``inline literals``, hyperlink references, substitution references,
+##     standalone hyperlinks
+##
 ## Additional features:
+##
+## * ***triple emphasis*** (bold and italic) using \*\*\*
+##
+## Optional additional features, turned on by ``options: RstParseOption`` in
+## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
 ##
 ## * emoji / smiley symbols
 ## * markdown tables
@@ -21,10 +51,18 @@
 ##
 ## Limitations:
 ##
-## * no footnotes & citations support
-## * no grid tables
-## * no roman numerals in enumerated lists
-## * no simple-inline-markup
+## * no Unicode support in character width calculations
+## * body elements
+##   - no roman numerals in enumerated lists
+##   - no quoted literal blocks
+##   - no doctest blocks
+##   - no grid tables
+##   - directives: no support for admonitions (notes, caution)
+##   - no footnotes & citations support
+##   - no inline internal targets
+## * inline markup
+##   - no simple-inline-markup
+##   - no embedded URI and aliases
 ##
 ## **Note:** Import ``packages/docutils/rst`` to use this module
 
@@ -1486,7 +1524,8 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
 
 proc parseEnumList(p: var RstParser): PRstNode =
   const
-    wildcards: array[0..5, string] = ["(n)", "n) ", "n. ", "(x) ", "x) ", "x. "]
+    wildcards: array[0..5, string] = ["(n) ", "n) ", "n. ",
+                                      "(x) ", "x) ", "x. "]
       # enumerator patterns, where 'x' means letter and 'n' means number
     wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
     wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
@@ -1498,9 +1537,12 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
-  result.text = p.tok[p.idx + wildIndex[w]].symbol
-  if result.text == "#": result.text = "1"
-  var prevEnum = result.text
+  for i in 0 ..< wildToken[w]-1:  # add first enumerator with (, ), and .
+    if p.tok[p.idx + i].symbol == "#":
+      result.text.add "1"
+    else:
+      result.text.add p.tok[p.idx + i].symbol
+  var prevEnum = p.tok[p.idx + wildIndex[w]].symbol
   inc p.idx, wildToken[w]
   while true:
     var item = newRstNode(rnEnumItem)

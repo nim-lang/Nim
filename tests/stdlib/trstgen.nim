@@ -461,6 +461,19 @@ Test1
     assert count(output6, "<li>") == 3
     assert "start=\"2\"" in output6 and "class=\"loweralpha simple\"" in output6
 
+    let input7 = dedent """
+      ... And for uppercase alphabetic enumerators.
+
+      C. string1
+      #. string2
+      #. string3
+      """
+    let output7 = rstToHtml(input7, {roSupportMarkdown}, defaultConfig())
+    assert count(output7, "<ol ") == 1
+    assert count(output7, "</ol>") == 1
+    assert count(output7, "<li>") == 3
+    assert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
+
   test "RST bullet lists":
     let input1 = dedent """
       * line1
