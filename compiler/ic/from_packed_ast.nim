@@ -189,7 +189,7 @@ proc irToModule*(n: PackedTree; module: PSym; c: var Context): PNode =
   initDecoder(c, module)
   result = fromTree(n, c)
 
-proc unpackAllSymbols*(n: PackedTree; c: var Context; m: PSym): seq[PSym] =
+proc unpackSymbols*(n: PackedTree; c: var Context; m: PSym): seq[PSym] =
   ## a slightly faster unpack that saves seq growth
   result = newSeqOfCap[PSym](len n.sh.syms)
   for s in unpackSymbols(n, c, m):

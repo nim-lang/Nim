@@ -17,7 +17,7 @@ type
   Context = PackedEncoder  # legacy name
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
-proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId
+proc toPackedSym*(s: PSym; ir: var PackedTree; c: var Context): SymId
 proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId
 proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib
 
@@ -137,7 +137,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   ir.flush c   # flush any pending types and symbols
 
-proc toPackedSym(s: PSym; ir: var PackedTree; c: var Context): SymId =
+proc toPackedSym*(s: PSym; ir: var PackedTree; c: var Context): SymId =
   ## serialize a psym
   if s.isNil: return SymId(-1)
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
