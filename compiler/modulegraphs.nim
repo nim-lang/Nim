@@ -446,14 +446,18 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
       case iface.state
       of Uninitialized: assert false
       of Unloaded:
-        iface.patterns.add s
+        block found:
+          for p in iface.patterns.items:
+            if p.id == s.id:
+              break found
+          iface.patterns.add s
       of Unpacked, Loaded:
         if s.kind != skModule:
           block found:
             for p in patterns(g, m):
               assert p.itemId.module == s.itemId.module
-              echo "export ", p.itemId
-              if p.itemId.item == s.itemId.item:
+              echo "export ", p.id
+              if p.id == s.id:
                 break found
             echo "we received ", s.kind, " ", s.itemId
             echo iface.state, " wants to export ", s.name.s
