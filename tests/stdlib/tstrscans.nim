@@ -248,42 +248,33 @@ block:
 
   var res = 0
   for line in input.splitLines:
-    line.whenScanf("$i-$i $c: $w", lo, hi, c, w):
+    let (success, lo, hi, c ,w) = scanTuple(line, "$i-$i $c: $w")
+    if success:
       inc res
   doAssert res == 4
 
-  whenscanf("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f", key, val, intval, floatVal):
-    discard
+  let (_, key, val, intval, floatVal) = scanTuple("abc:: xyz 89  33.25", "$w$s::$s$w$s$i  $f")
   doAssert key == "abc"
   doAssert val == "xyz"
   doAssert intval == 89
   doAssert floatVal == 33.25
 
 
-  whenscanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval):
-    doAssert binval == 0b0101
-    doAssert octval == 0o1234
-    doAssert hexval == 0xabcd
+  let (_, binVal, octVal, hexVal) = scanTuple("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
+  doAssert binval == 0b0101
+  doAssert octval == 0o1234
+  doAssert hexval == 0xabcd
 
-  var xx = block:
-    var res = false
-    whenscanf("$abc", "$$$i", intval):
-      res = true
-    res
+  var (xx,_) = scanTuple("$abc", "$$$i")
   doAssert xx == false
 
 
-  let xx2 = block:
-    var res = false
-    whenscanf("$1234", "$$$i", intval):
-      res = true
-    res
+  let (xx2, _) = block: scanTuple("$1234", "$$$i")
   doAssert xx2
 
-  var yy = false
-  whenScanf(";.--Breakpoint00 [output]",
+  var (yy, intval2, key2) = scanTuple(";.--Breakpoint00 [output]",
       "$[someSep]Breakpoint${twoDigits}$[someSep({';','.','-'})] [$+]$.",
-      intVal2: int, key2): yy = true
+      int)
   doAssert yy
   doAssert key2 == "output"
   doAssert intVal2 == 13
