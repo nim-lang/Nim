@@ -48,12 +48,13 @@ proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
     iface.encoder = (ref PackedEncoder)()
     initEncoder(iface.encoder[], s)
 
-    # hook the recordStmt() from the graph
-    ic.graph.recordStmt = proc(g: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
-      echo "record"
-      debug n
-      template iface: Iface = g.ifaces[m.position]
-      toPackedNode(n, iface.tree, iface.encoder[])
+    when defined(disruptic):
+      # hook the recordStmt() from the graph
+      ic.graph.recordStmt = proc(g: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
+        echo "record"
+        debug n
+        template iface: Iface = g.ifaces[m.position]
+        toPackedNode(n, iface.tree, iface.encoder[])
 
     # retain the encoder; this also signifies rodfile write versus read
     ic.encoder = iface.encoder
@@ -90,8 +91,9 @@ proc closer(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   ## the packed ast in any event
   var ic = IncrementalRef context
   if not ic.ready:
-    if not tryWriteModule(ic.m, ic.rodFile):
-      internalError(graph.config, "failed to write " & ic.name & " rod file")
+    when defined(disruptic):
+      if not tryWriteModule(ic.m, ic.rodFile):
+        internalError(graph.config, "failed to write " & ic.name & " rod file")
     result = n
   else:
     when true:
