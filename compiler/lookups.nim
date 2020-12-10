@@ -111,18 +111,23 @@ proc nextIdentIter(ti: var TIdentIter; marked: var IntSet;
                    graph: ModuleGraph; im: ImportedModule): PSym =
   while true:
     result = nextIdentIter(ti, graph, im.m)
-    if result == nil:
-      break
-    if not containsOrIncl(marked, result.id):
+    if result == nil: return nil
+
+    # this tricked me the first time i rewrote it for readability 😑
+    block filter:
       case im.mode
       of importAll:
-        break
+        discard
       of importSet:
-        if result.id in im.imported:
-          break
+        if result.id notin im.imported:
+          break filter
       of importExcept:
-        if result.name.id notin im.exceptSet:
-          break
+        if result.name.id in im.exceptSet:
+          break filter
+
+      # the semantic filter is okay, so now we consider the set
+      if not containsOrIncl(marked, result.id):
+        return result
 
 proc initIdentIter(ti: var TIdentIter; marked: var IntSet; graph: ModuleGraph;
                    im: ImportedModule; name: PIdent): PSym =
