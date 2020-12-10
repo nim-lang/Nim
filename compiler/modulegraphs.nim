@@ -468,17 +468,15 @@ proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
   else:
     internalError(g.config, "cannot add export for unexported symbol")
 
-proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
-  ## a pcontext version calls this one to record the converter in the
-  ## correct iface ... i guess.
-  assert m.kind == skModule
-  addExport(g, m, s)
-
 proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) =
   ## a pcontext version calls this one to record the pattern in the
   ## correct iface ... i guess.
   assert m.kind == skModule
   addExport(g, m, s)
+
+template addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
+  ## same same but different
+  addPattern(g, m, s)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   ## setup the module's interface
