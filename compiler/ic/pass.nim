@@ -55,6 +55,9 @@ proc opener(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
       template iface: Iface = g.ifaces[m.position]
       toPackedNode(n, iface.tree, iface.encoder[])
 
+    # retain the encoder; this also signifies rodfile write versus read
+    ic.encoder = iface.encoder
+
   result = ic
 
 proc processor(context: PPassContext, n: PNode): PNode =
