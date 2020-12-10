@@ -116,7 +116,7 @@ proc filterMarked(im: ImportedModule; marked: var IntSet; s: PSym): PSym =
     of importSet:
       s.id in im.imported
     of importExcept:
-      s.name.id in im.exceptSet
+      s.name.id notin im.exceptSet
   if boolean:
     # the semantic filter is okay, so now we consider the set
     if not containsOrIncl(marked, s.id):
