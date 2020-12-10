@@ -476,6 +476,7 @@ proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) =
 
 template addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
   ## same same but different
+  assert s.kind == skConverter
   addPattern(g, m, s)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
