@@ -616,9 +616,13 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
           result = result.skipAlias(n, c.config)
           # BUGFIX: o.it.name <-> n.ident
         else:
-          # devolve into scanning the imports
-          o.importIdx = -1
-          result = nextOverloadIterImports(o, c, n)
+          o.importIdx = 0
+          if c.imports.len > 0:
+            result = initIdentIter(o.it, o.marked, c.graph,
+                                   c.imports[o.importIdx], o.it.name)
+            result = result.skipAlias(n, c.config)
+            if result == nil:
+              result = nextOverloadIterImports(o, c, n)
           break
     # we don't have a scope to search,
     elif o.importIdx < c.imports.len:
