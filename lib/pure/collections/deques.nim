@@ -478,9 +478,6 @@ proc rotateLeft[T](deq: var Deque[T], n = 1) =
       a.rotateLeft 4
       assert $a == "[5, 1, 2, 3, 4]"
 
-    if unlikely(n == 0):
-      return
-
     if n > 0:
       for _ in 1..n:
         deq.data[deq.tail] = deq.data[deq.head]
