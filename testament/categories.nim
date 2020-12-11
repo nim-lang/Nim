@@ -34,7 +34,7 @@ const
     "nimble-packages-2",
     "niminaction",
     "threads",
-    "untestable", # see trunner_thirdparty
+    "untestable", # see trunner_special
     "testdata",
     "nimcache",
     "coroutines",

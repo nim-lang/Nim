@@ -4,7 +4,9 @@ discard """
 """
 
 #[
-runs tests that depend on 3rd party code and requires special treatment.
+Runs tests that require special treatment, e.g. because they rely on 3rd party code
+or require external networking.
+
 xxx test all tests/untestable/* here, possibly with adjustments to make running times reasonable
 ]#
 
