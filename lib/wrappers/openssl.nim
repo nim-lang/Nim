@@ -652,28 +652,28 @@ proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_free_strings".
 proc ErrRemoveState*(pid: cint){.cdecl, dynlib: DLLUtilName, importc: "ERR_remove_state".}
 
 proc PEM_read_bio_RSA_PUBKEY*(bp: BIO, x: ptr PRSA, pw: pem_password_cb, u: pointer): PRSA {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 
 proc RSA_verify*(kind: cint, origMsg: pointer, origMsgLen: cuint, signature: pointer,
-    signatureLen: cuint, rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    signatureLen: cuint, rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
 proc PEM_read_RSAPrivateKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: pointer): PRSA {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc PEM_read_RSAPublicKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: pointer): PRSA {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc PEM_read_bio_RSAPublicKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc PEM_read_bio_RSAPrivateKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc RSA_private_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc RSA_public_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
-    dynlib: DLLSSLName, importc.}
-proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLSSLName, importc.}
-proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
+proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLUtilName, importc.}
+proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLUtilName, importc.}
 
 # sha types
 proc EVP_md_null*(): EVP_MD   {.cdecl, importc.}
