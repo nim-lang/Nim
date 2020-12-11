@@ -57,6 +57,7 @@
 
 - `strscans.scanf` now supports parsing single characters.
 
+- Added `rotateLeft` proc to the `deques.nim` module for rotating a Deque.
 
 ## Language changes
 
