@@ -165,9 +165,6 @@ func classify*(x: float): FloatClass =
     doAssert classify(-0.3/0.0) == fcNegInf
     doAssert classify(5.0e-324) == fcSubnormal
 
-  # xxx support `--passc:-ffast-math`; we could use `isNaN` and make sure
-  # it works for all floats.
-
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
     if 1.0/x == Inf:
