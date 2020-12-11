@@ -56,6 +56,20 @@ template onceGlobal*(body: untyped) =
   onceGlobal(false, body)
 
 template onceThread*(body: untyped) =
+  ## Evaluate `body` once per thread
+  runnableExamples:
+    var count = 0
+    proc fn(n: int) =
+      for i in 0..<3:
+        onceThread:
+          count.inc
+      if n > 1: fn(n-1) # re-entrant code
+    fn(3)
+    doAssert count == 1
+    onceThread: # each instance is unique
+      count.inc
+    doAssert count == 2
+
   var witness {.threadvar, global.}: bool
   if not witness:
     body
