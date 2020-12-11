@@ -11,7 +11,7 @@
 ## SSL_CERT_DIR environment variables.
 
 import os, strutils
-from ospaths import existsEnv, getEnv
+from os import existsEnv, getEnv
 import strutils
 
 # SECURITY: this unnecessarily scans through dirs/files regardless of the
@@ -79,9 +79,9 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
     when not defined(haiku):
       for p in certificate_paths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
-          if existsFile(p):
+          if fileExists(p):
             yield p
-        elif existsDir(p):
+        elif dirExists(p):
           for fn in joinPath(p, "*").walkFiles():
             yield fn
     else:

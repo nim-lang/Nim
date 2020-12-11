@@ -56,11 +56,12 @@ proc path*(req: Request): string =
     return u.path
 
 proc reqMethod*(req: Request): HttpMethod =
-  ## Request method, eg. HttpGet, HttpPost
+  ## Request method, e.g. HttpGet, HttpPost
   when useHttpBeast:
     req.req.httpMethod.get()
   else:
     req.req.reqMethod
+
 proc reqMeth*(req: Request): HttpMethod {.deprecated.} =
   req.reqMethod
 

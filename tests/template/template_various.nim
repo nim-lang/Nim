@@ -10,6 +10,28 @@ bar7
 4true
 132
 20
+1
+-1
+4
+11
+26
+57
+-1-1-1
+  4
+4
+  4
+  11
+11
+  4
+  11
+  26
+26
+  4
+  11
+  26
+  57
+57
+-1-1-1
 '''
 """
 
@@ -85,7 +107,7 @@ block tgetast_typeliar:
           error("Assertion failed: " & $(`message`) & "\n" & `line`)
           return
 
-  macro assertOrReturn(condition: bool): typed =
+  macro assertOrReturn(condition: bool) =
     var message : NimNode = newLit(condition.repr)
     # echo message
     result = getAst assertOrReturn2(condition, message)
@@ -245,3 +267,87 @@ template parse9(body: untyped): untyped =
 
 parse9:
   echo val9("1")
+
+
+block gensym1:
+  template x: untyped = -1
+  template t1() =
+    template x: untyped {.gensym.} = 1
+    echo x()  # 1
+  template t2() =
+    template x: untyped = 1  # defaults to {.inject.}
+    echo x()  # -1  injected x not available during template definition
+  t1()
+  t2()
+
+block gensym2:
+  let x,y,z = -1
+  template `!`(xx,yy: typed): untyped =
+    template x: untyped {.gensym.} = xx
+    template y: untyped {.gensym.} = yy
+    let z = x + x + y
+    z
+  var
+    a = 1
+    b = 2
+    c = 3
+    d = 4
+    e = 5
+  echo a ! b
+  echo a ! b ! c
+  echo a ! b ! c ! d
+  echo a ! b ! c ! d ! e
+  echo x,y,z
+
+block gensym3:
+  macro liftStmts(body: untyped): auto =
+    # convert
+    #   template x: untyped {.gensym.} =
+    #     let z = a + a + b
+    #     echo z
+    #     z
+    # to
+    #   let z = a + a + b
+    #   echo z
+    #   template x: untyped {.gensym.} =
+    #     z
+    #echo body.repr
+    body.expectKind nnkStmtList
+    result = newNimNode nnkStmtList
+    for s in body:
+      s.expectKind nnkTemplateDef
+      var sle = s[6]
+      while sle.kind == nnkStmtList:
+        doAssert(sle.len==1)
+        sle = sle[0]
+      if sle.kind == nnkStmtListExpr:
+        let n = sle.len
+        for i in 0..(n-2):
+          result.add sle[i]
+        var td = newNimNode nnkTemplateDef
+        for i in 0..5:
+          td.add s[i]
+        td.add sle[n-1]
+        result.add td
+      else:
+        result.add s
+    #echo result.repr
+  let x,y,z = -1
+  template `!`(xx,yy: typed): untyped =
+    liftStmts:
+      template x: untyped {.gensym.} = xx
+      template y: untyped {.gensym.} = yy
+    let z = x + x + y
+    echo "  ", z
+    z
+  var
+    a = 1
+    b = 2
+    c = 3
+    d = 4
+    e = 5
+  echo a ! b
+  echo a ! b ! c
+  echo a ! b ! c ! d
+  echo a ! b ! c ! d ! e
+  echo x,y,z

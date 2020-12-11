@@ -139,8 +139,7 @@ template quoteStr(s: string): string = "'" & s & "'"
 proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): string =
   result = ""
   for field in directFieldsInRecList(fieldsRecList):
-    let assignment = locateFieldInInitExpr(c, field.sym, initExpr)
-    if assignment != nil:
+    if locateFieldInInitExpr(c, field.sym, initExpr) != nil:
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 
@@ -154,20 +153,20 @@ proc collectMissingFields(c: PContext, fieldsRecList: PNode,
       if assignment == nil:
         constrCtx.missingFields.add r.sym
 
-proc semConstructFields(c: PContext, recNode: PNode,
+proc semConstructFields(c: PContext, n: PNode,
                         constrCtx: var ObjConstrContext,
                         flags: TExprFlags): InitStatus =
   result = initUnknown
 
-  case recNode.kind
+  case n.kind
   of nkRecList:
-    for field in recNode:
+    for field in n:
       let status = semConstructFields(c, field, constrCtx, flags)
       mergeInitStatus(result, status)
 
   of nkRecCase:
     template fieldsPresentInBranch(branchIdx: int): string =
-      let branch = recNode[branchIdx]
+      let branch = n[branchIdx]
       let fields = branch[^1]
       fieldsPresentInInitExpr(c, fields, constrCtx.initExpr)
 
@@ -176,12 +175,12 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let fields = branchNode[^1]
         collectMissingFields(c, fields, constrCtx)
 
-    let discriminator = recNode[0]
+    let discriminator = n[0]
     internalAssert c.config, discriminator.kind == nkSym
     var selectedBranch = -1
 
-    for i in 1..<recNode.len:
-      let innerRecords = recNode[i][^1]
+    for i in 1..<n.len:
+      let innerRecords = n[i][^1]
       let status = semConstructFields(c, innerRecords, constrCtx, flags)
       if status notin {initNone, initUnknown}:
         mergeInitStatus(result, status)
@@ -217,9 +216,9 @@ proc semConstructFields(c: PContext, recNode: PNode,
         localError(c.config, discriminatorVal.info, ("possible values " &
           "$2 are in conflict with discriminator values for " &
           "selected object branch $1.") % [$selectedBranch,
-          valsDiff.renderAsType(recNode[0].typ)])
+          valsDiff.renderAsType(n[0].typ)])
 
-      let branchNode = recNode[selectedBranch]
+      let branchNode = n[selectedBranch]
       let flags = flags*{efAllowDestructor} + {efPreferStatic,
                                                efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags,
@@ -230,7 +229,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         if discriminatorVal.kind notin nkLiterals and (
             not isOrdinalType(discriminatorVal.typ, true) or
             lengthOrd(c.config, discriminatorVal.typ) > MaxSetElements or
-            lengthOrd(c.config, recNode[0].typ) > MaxSetElements):
+            lengthOrd(c.config, n[0].typ) > MaxSetElements):
           localError(c.config, discriminatorVal.info,
             "branch initialization with a runtime discriminator only " &
             "supports ordinal types with 2^16 elements or less.")
@@ -242,14 +241,14 @@ proc semConstructFields(c: PContext, recNode: PNode,
         if ctorCase == nil:
           if discriminatorVal.typ.kind == tyRange:
             let rangeVals = c.getIntSetOfType(discriminatorVal.typ)
-            let recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            let recBranchVals = branchVals(c, n, selectedBranch, false)
             let diff = rangeVals - recBranchVals
             if diff.len != 0:
               valuesInConflictError(diff)
           else:
             badDiscriminatorError()
         elif discriminatorVal.sym.kind notin {skLet, skParam} or
-            discriminatorVal.sym.typ.kind == tyVar:
+            discriminatorVal.sym.typ.kind in {tyVar}:
           localError(c.config, discriminatorVal.info,
             "runtime discriminator must be immutable if branch fields are " &
             "initialized, a 'let' binding is required.")
@@ -260,7 +259,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         else:
           var
             ctorBranchVals = branchVals(c, ctorCase, ctorIdx, true)
-            recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            recBranchVals = branchVals(c, n, selectedBranch, false)
             branchValsDiff = ctorBranchVals - recBranchVals
           if branchValsDiff.len != 0:
             valuesInConflictError(branchValsDiff)
@@ -271,14 +270,14 @@ proc semConstructFields(c: PContext, recNode: PNode,
             failedBranch = selectedBranch
         else:
           # With an else clause, check that all other branches don't match:
-          for i in 1..<recNode.len - 1:
-            if recNode[i].caseBranchMatchesExpr(discriminatorVal):
+          for i in 1..<n.len - 1:
+            if n[i].caseBranchMatchesExpr(discriminatorVal):
               failedBranch = i
               break
         if failedBranch != -1:
           if discriminatorVal.typ.kind == tyRange:
             let rangeVals = c.getIntSetOfType(discriminatorVal.typ)
-            let recBranchVals = branchVals(c, recNode, selectedBranch, false)
+            let recBranchVals = branchVals(c, n, selectedBranch, false)
             let diff = rangeVals - recBranchVals
             if diff.len != 0:
               valuesInConflictError(diff)
@@ -301,22 +300,22 @@ proc semConstructFields(c: PContext, recNode: PNode,
         # initialized to zero and this will select a particular branch as
         # a result:
         let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
-        let matchedBranch = recNode.pickCaseBranch defaultValue
+        let matchedBranch = n.pickCaseBranch defaultValue
         collectMissingFields matchedBranch
       else:
         result = initPartial
         if discriminatorVal.kind == nkIntLit:
           # When the discriminator is a compile-time value, we also know
           # which branch will be selected:
-          let matchedBranch = recNode.pickCaseBranch discriminatorVal
+          let matchedBranch = n.pickCaseBranch discriminatorVal
           if matchedBranch != nil: collectMissingFields matchedBranch
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1..<recNode.len: collectMissingFields recNode[i]
+          for i in 1..<n.len: collectMissingFields n[i]
 
   of nkSym:
-    let field = recNode.sym
+    let field = n.sym
     let e = semConstrField(c, flags, field, constrCtx.initExpr)
     result = if e != nil: initFull else: initNone
 
@@ -356,15 +355,22 @@ proc computeRequiresInit(c: PContext, t: PType): bool =
 
 proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
   var objType = t
-  while objType.kind != tyObject:
+  while objType.kind notin {tyObject, tyDistinct}:
     objType = objType.lastSon
     assert objType != nil
-  var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
-  let initResult = semConstructTypeAux(c, constrCtx, {})
-  assert constrCtx.missingFields.len > 0
-  localError(c.config, info,
-    "The $1 type doesn't have a default value. The following fields must be initialized: $2.",
-    [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+  if objType.kind == tyObject:
+    var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
+    let initResult = semConstructTypeAux(c, constrCtx, {})
+    assert constrCtx.missingFields.len > 0
+    localError(c.config, info,
+      "The $1 type doesn't have a default value. The following fields must " &
+      "be initialized: $2.",
+      [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+  elif objType.kind == tyDistinct:
+    localError(c.config, info,
+      "The $1 distinct type doesn't have a default value.", [typeToString(t)])
+  else:
+    assert false, "Must not enter here."
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)

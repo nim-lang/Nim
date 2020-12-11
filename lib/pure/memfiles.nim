@@ -228,7 +228,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
 
-    var flags = if readonly: O_RDONLY else: O_RDWR
+    var flags = (if readonly: O_RDONLY else: O_RDWR) or O_CLOEXEC
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
@@ -445,7 +445,7 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim = '\l',
   for ms in memSlices(mfile, delim, eat):
     setLen(buf.string, ms.size)
     if ms.size > 0:
-      copyMem(addr buf[0], ms.data, ms.size)
+      copyMem(addr string(buf)[0], ms.data, ms.size)
     yield buf
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): TaintedString {.inline.} =

@@ -50,7 +50,7 @@ proc post*(database: Database, message: Message) =
     raise newException(ValueError, "Message has to be less than 140 characters.")
 
   database.db.exec(sql"INSERT INTO Message VALUES (?, ?, ?);", #<2>
-    message.username, $message.time.toSeconds().int, message.msg) #<3>
+    message.username, $message.time.toUnix().int, message.msg) #<3>
 
 proc follow*(database: Database, follower: User, user: User) =
   database.db.exec(sql"INSERT INTO Following VALUES (?, ?);",#<2>
@@ -90,4 +90,4 @@ proc findMessages*(database: Database, usernames: seq[string],
           "ORDER BY time DESC LIMIT " & $limit),
       usernames)
   for row in messages:
-    result.add(Message(username: row[0], time: fromSeconds(row[1].parseInt), msg: row[2]))
+    result.add(Message(username: row[0], time: fromUnix(row[1].parseInt), msg: row[2]))

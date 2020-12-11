@@ -20,10 +20,11 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples,
+    renderIr
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
-    kind*: TTokType
+    kind*: TokType
     length*: int16
     sym*: PSym
 
@@ -31,6 +32,7 @@ type
   TSrcGen* = object
     indent*: int
     lineLen*: int
+    col: int
     pos*: int              # current position for iteration over the buffer
     idx*: int              # current token index for iteration over the buffer
     tokens*: TRenderTokSeq
@@ -47,10 +49,19 @@ type
       pendingNewlineCount: int
     fid*: FileIndex
     config*: ConfigRef
+    mangler: seq[PSym]
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
+
+proc disamb(g: var TSrcGen; s: PSym): int =
+  # we group by 's.name.s' to compute the stable name ID.
+  result = 0
+  for i in 0 ..< g.mangler.len:
+    if s == g.mangler[i]: return result
+    if s.name.s == g.mangler[i].name.s: inc result
+  g.mangler.add s
 
 proc isKeyword*(i: PIdent): bool =
   if (i.id >= ord(tokKeywordLow) - ord(tkSymbol)) and
@@ -108,12 +119,11 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.inGenericParams = false
   g.config = config
 
-proc addTok(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
-  setLen(g.tokens, g.tokens.len + 1)
-  g.tokens[^1].kind = kind
-  g.tokens[^1].length = int16(s.len)
-  g.tokens[^1].sym = sym
+proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
+  g.tokens.add TRenderTok(kind: kind, length: int16(s.len), sym: sym)
   g.buf.add(s)
+  if kind != tkSpaces:
+    inc g.col, s.len
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
@@ -123,6 +133,7 @@ proc addPendingNL(g: var TSrcGen) =
       const newlines = "\n"
     addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
+    g.col = g.pendingNL
     g.pendingNL = - 1
     g.pendingWhitespace = -1
   elif g.pendingWhitespace >= 0:
@@ -131,7 +142,10 @@ proc addPendingNL(g: var TSrcGen) =
 
 proc putNL(g: var TSrcGen, indent: int) =
   if g.pendingNL >= 0: addPendingNL(g)
-  else: addTok(g, tkSpaces, "\n")
+  else:
+    addTok(g, tkSpaces, "\n")
+    g.col = 0
+
   g.pendingNL = indent
   g.lineLen = indent
   g.pendingWhitespace = -1
@@ -168,21 +182,22 @@ proc dedent(g: var TSrcGen) =
     dec(g.pendingNL, IndentWidth)
     dec(g.lineLen, IndentWidth)
 
-proc put(g: var TSrcGen, kind: TTokType, s: string; sym: PSym = nil) =
+proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
     if s.len > 0:
       addTok(g, kind, s, sym)
-      inc(g.lineLen, s.len)
   else:
     g.pendingWhitespace = s.len
+    inc g.col, s.len
+  inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
   if s.len == 0: return
   var i = 0
   let hi = s.len - 1
-  var isCode = (s.len >= 2) and (s[1] != ' ')
-  var ind = g.lineLen
+  let isCode = (s.len >= 2) and (s[1] != ' ')
+  let ind = g.col
   var com = "## "
   while i <= hi:
     case s[i]
@@ -208,7 +223,7 @@ proc putComment(g: var TSrcGen, s: string) =
       # compute length of the following word:
       var j = i
       while j <= hi and s[j] > ' ': inc(j)
-      if not isCode and (g.lineLen + (j - i) > MaxLineLen):
+      if not isCode and (g.col + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
@@ -240,7 +255,7 @@ proc maxLineLength(s: string): int =
       inc(lineLen)
       inc(i)
 
-proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
+proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var i = 0
   let hi = s.len - 1
   var str = ""
@@ -290,15 +305,18 @@ proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
   if shouldRenderComment(g, n):
+    var oneSpaceAdded = 0
     if (g.pendingNL < 0) and (g.buf.len > 0) and (g.buf[^1] != ' '):
       put(g, tkSpaces, Space)
+      oneSpaceAdded = 1
       # Before long comments we cannot make sure that a newline is generated,
       # because this might be wrong. But it is no problem in practice.
     if (g.pendingNL < 0) and (g.buf.len > 0) and
-        (g.lineLen < LineCommentColumn):
+        (g.col < LineCommentColumn):
       var ml = maxLineLength(n.comment)
       if ml + LineCommentColumn <= MaxLineLen:
-        put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
+        put(g, tkSpaces, spaces(LineCommentColumn - g.col))
+        dec g.col, oneSpaceAdded
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
@@ -309,8 +327,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
-                          tyOrdinal, tyAlias, tySink}:
+    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
+                          tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
 
   let typ = n.typ.skip
@@ -326,7 +344,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags:
-    var y = if size < sizeof(BiggestInt): x and ((1 shl (size*8)) - 1)
+    var y = if size < sizeof(BiggestInt): x and ((1.BiggestInt shl (size*8)) - 1)
             else: x
     result = "0o" & toOct(y, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
@@ -449,8 +467,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkDo: result = lsons(g, n) + len("do__:_")
   of nkConstDef, nkIdentDefs:
     result = lcomma(g, n, 0, - 3)
-    if n[^2].kind != nkEmpty: result = result + lsub(g, n[^2]) + 2
-    if n[^1].kind != nkEmpty: result = result + lsub(g, n[^1]) + 3
+    if n[^2].kind != nkEmpty: result += lsub(g, n[^2]) + 2
+    if n[^1].kind != nkEmpty: result += lsub(g, n[^1]) + 3
   of nkVarTuple:
     if n[^1].kind == nkEmpty:
       result = lcomma(g, n, 0, - 2) + len("()")
@@ -461,8 +479,8 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkChckRange: result = len("chckRange") + 2 + lcomma(g, n)
   of nkObjDownConv, nkObjUpConv:
     result = 2
-    if n.len >= 1: result = result + lsub(g, n[0])
-    result = result + lcomma(g, n, 1)
+    if n.len >= 1: result += lsub(g, n[0])
+    result += lcomma(g, n, 1)
   of nkExprColonExpr: result = lsons(g, n) + 2
   of nkInfix: result = lsons(g, n) + 2
   of nkPrefix:
@@ -526,7 +544,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkGenericParams: result = lcomma(g, n) + 2
   of nkFormalParams:
     result = lcomma(g, n, 1) + 2
-    if n[0].kind != nkEmpty: result = result + lsub(g, n[0]) + 2
+    if n[0].kind != nkEmpty: result += lsub(g, n[0]) + 2
   of nkExceptBranch:
     result = lcomma(g, n, 0, -2) + lsub(g, lastSon(n)) + len("except_:_")
   of nkObjectTy:
@@ -565,7 +583,7 @@ proc hasCom(n: PNode): bool =
     for i in 0..<n.len:
       if hasCom(n[i]): return true
 
-proc putWithSpace(g: var TSrcGen, kind: TTokType, s: string) =
+proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, kind, s)
   put(g, tkSpaces, Space)
 
@@ -579,7 +597,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
-        putWithSpace(g, separator, TokTypeToStr[separator])
+        putWithSpace(g, separator, $separator)
       if hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
@@ -608,7 +626,7 @@ proc gsons(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
            theEnd: int = - 1) =
   for i in start..n.len + theEnd: gsub(g, n[i], c)
 
-proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TTokType,
+proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TokType,
               k: string) =
   if n.len == 0: return # empty var sections are possible
   putWithSpace(g, kind, k)
@@ -837,7 +855,7 @@ proc gident(g: var TSrcGen, n: PNode) =
     if sfAnon in n.sym.flags or
       (n.typ != nil and tfImplicitTypeParam in n.typ.flags): return
 
-  var t: TTokType
+  var t: TokType
   var s = atom(g, n)
   if s.len > 0 and s[0] in lexer.SymChars:
     if n.kind == nkIdent:
@@ -845,12 +863,19 @@ proc gident(g: var TSrcGen, n: PNode) =
           (n.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
         t = tkSymbol
       else:
-        t = TTokType(n.ident.id + ord(tkSymbol))
+        t = TokType(n.ident.id + ord(tkSymbol))
     else:
       t = tkSymbol
   else:
     t = tkOpr
-  if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
+  if renderIr in g.flags and n.kind == nkSym:
+    let localId = disamb(g, n.sym)
+    if localId != 0 and n.sym.magic == mNone:
+      s.add '_'
+      s.addInt localId
+    if sfCursor in n.sym.flags:
+      s.add "_cursor"
+  elif n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags or n.sym.kind == skTemp):
     s.add '_'
     s.addInt n.sym.id
     when defined(debugMagics):
@@ -874,12 +899,23 @@ proc gsub(g: var TSrcGen; n: PNode; i: int) =
   else:
     put(g, tkOpr, "<<" & $i & "th child missing for " & $n.kind & " >>")
 
-proc isBracket*(n: PNode): bool =
-  case n.kind
-  of nkClosedSymChoice, nkOpenSymChoice:
-    if n.len > 0: result = isBracket(n[0])
-  of nkSym: result = n.sym.name.s == "[]"
-  else: result = false
+type
+  BracketKind = enum
+    bkNone, bkBracket, bkBracketAsgn, bkCurly, bkCurlyAsgn
+
+proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
+  if renderIds notin g.flags:
+    case n.kind
+    of nkClosedSymChoice, nkOpenSymChoice:
+      if n.len > 0: result = bracketKind(g, n[0])
+    of nkSym:
+      result = case n.sym.name.s
+        of "[]": bkBracket
+        of "[]=": bkBracketAsgn
+        of "{}": bkCurly
+        of "{}=": bkCurlyAsgn
+        else: bkNone
+    else: result = bkNone
 
 proc skipHiddenNodes(n: PNode): PNode =
   result = n
@@ -892,10 +928,11 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
+  const backticksNeeded = OpChars + {'[', '{'}
   if n == nil: return
   let isOperator =
-    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in OpChars: true
-    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in OpChars: true
+    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
+    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticksNeeded: true
     else: false
 
   if isOperator:
@@ -954,12 +991,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCharLit: put(g, tkCharLit, atom(g, n))
   of nkNilLit: put(g, tkNil, atom(g, n))    # complex expressions
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
-    if renderIds notin g.flags and n.len > 0 and isBracket(n[0]):
-      gsub(g, n, 1)
-      put(g, tkBracketLe, "[")
-      gcomma(g, n, 2)
-      put(g, tkBracketRi, "]")
-    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+    if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
       accentedName(g, n[0])
       if n.len > 2:
         put(g, tkParLe, "(")
@@ -967,10 +999,41 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
+    elif n.len >= 1:
+      case bracketKind(g, n[0])
+      of bkBracket:
+        gsub(g, n, 1)
+        put(g, tkBracketLe, "[")
+        gcomma(g, n, 2)
+        put(g, tkBracketRi, "]")
+      of bkBracketAsgn:
+        gsub(g, n, 1)
+        put(g, tkBracketLe, "[")
+        gcomma(g, n, 2, -2)
+        put(g, tkBracketRi, "]")
+        put(g, tkSpaces, Space)
+        putWithSpace(g, tkEquals, "=")
+        gsub(g, n, n.len - 1)
+      of bkCurly:
+        gsub(g, n, 1)
+        put(g, tkCurlyLe, "{")
+        gcomma(g, n, 2)
+        put(g, tkCurlyRi, "}")
+      of bkCurlyAsgn:
+        gsub(g, n, 1)
+        put(g, tkCurlyLe, "{")
+        gcomma(g, n, 2, -2)
+        put(g, tkCurlyRi, "}")
+        put(g, tkSpaces, Space)
+        putWithSpace(g, tkEquals, "=")
+        gsub(g, n, n.len - 1)
+      of bkNone:
+        accentedName(g, n[0])
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1)
+        put(g, tkParRi, ")")
     else:
-      if n.len >= 1: accentedName(g, n[0])
       put(g, tkParLe, "(")
-      gcomma(g, n, 1)
       put(g, tkParRi, ")")
   of nkCallStrLit:
     if n.len > 0: accentedName(g, n[0])
@@ -978,16 +1041,34 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkRStrLit, '\"' & replace(n[1].strVal, "\"", "\"\"") & '\"')
     else:
       gsub(g, n, 1)
-  of nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv:
+  of nkHiddenStdConv, nkHiddenSubConv:
     if n.len >= 2:
+      when false:
+        # if {renderIds, renderIr} * g.flags != {}:
+        put(g, tkSymbol, "(conv)")
+        put(g, tkParLe, "(")
+        gsub(g, n[1])
+        put(g, tkParRi, ")")
+      else:
+        gsub(g, n[1])
+    else:
+      put(g, tkSymbol, "(wrong conv)")
+  of nkHiddenCallConv:
+    if {renderIds, renderIr} * g.flags != {}:
+      accentedName(g, n[0])
+      put(g, tkParLe, "(")
+      gcomma(g, n, 1)
+      put(g, tkParRi, ")")
+    elif n.len >= 2:
       gsub(g, n[1])
     else:
       put(g, tkSymbol, "(wrong conv)")
   of nkCast:
     put(g, tkCast, "cast")
-    put(g, tkBracketLe, "[")
-    gsub(g, n, 0)
-    put(g, tkBracketRi, "]")
+    if n.len > 0 and n[0].kind != nkEmpty:
+      put(g, tkBracketLe, "[")
+      gsub(g, n, 0)
+      put(g, tkBracketRi, "]")
     put(g, tkParLe, "(")
     gsub(g, n, 1)
     put(g, tkParRi, ")")
@@ -1145,7 +1226,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    # eg: `n1 == n2` decompses as following sum:
+    # e.g.: `n1 == n2` decompses as following sum:
     if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:
@@ -1579,7 +1660,7 @@ proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
   initSrcGen(r, renderFlags, newPartialConfigRef())
   gsub(r, n)
 
-proc getNextTok*(r: var TSrcGen, kind: var TTokType, literal: var string) =
+proc getNextTok*(r: var TSrcGen, kind: var TokType, literal: var string) =
   if r.idx < r.tokens.len:
     kind = r.tokens[r.idx].kind
     let length = r.tokens[r.idx].length.int
@@ -1599,9 +1680,9 @@ proc quoteExpr*(a: string): string {.inline.} =
   ## can be used for quoting expressions in error msgs.
   "'" & a & "'"
 
-proc genFieldError*(field: PSym, disc: PSym): string =
+proc genFieldDefect*(field: PSym, disc: PSym): string =
   ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
-  ## provide this error msg FieldError; msgs would be better but it does not
+  ## provide this error msg FieldDefect; msgs would be better but it does not
   ## import ast
   result = field.name.s.quoteExpr & " is not accessible using discriminant " &
     disc.name.s.quoteExpr & " of type " &

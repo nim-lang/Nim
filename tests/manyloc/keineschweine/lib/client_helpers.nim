@@ -69,7 +69,7 @@ proc updateFileProgress*() =
   downloadProgress.setString($currentFileTransfer.pos & '/' & $currentFileTransfer.fullLen)
 
 ## HFileTransfer
-proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) =
   var
     f = readScFileTransfer(buffer)
   updateFileProgress()
@@ -103,14 +103,14 @@ proc saveCurrentFile() =
   let
     path = expandPath(currentFileTransfer.assetType, currentFileTransfer.fileName)
     parent = parentDir(path)
-  if not existsDir(parent):
+  if not dirExists(parent):
     createDir(parent)
     echo("Created dir")
   writeFile path, currentFIleTransfer.data
   echo "Write file"
 
 ## HChallengeResult
-proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) =
   var res = readScChallengeResult(buffer).status
   echo "got challnege result: ", res
   if res and currentFileTransfer.readyToSave:
@@ -122,12 +122,12 @@ proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) {.procvar.} =
     echo "REsetting current file"
 
 ## HFileCHallenge
-proc handleFileChallenge*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFileChallenge*(serv: PServer; buffer: PBuffer) =
   var
     challenge = readScFileChallenge(buffer)
     path = expandPath(challenge)
     resp: CsFileChallenge
-  if not existsFile(path):
+  if not fileExists(path):
     resp.needFile = true
     echo "Got file challenge, need file."
   else:

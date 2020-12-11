@@ -91,7 +91,10 @@ when defined(posix):
     dlclose(lib)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    result = dlopen(path, RTLD_NOW)
+    let flags =
+      when defined(globalSymbols): RTLD_NOW or RTLD_GLOBAL
+      else: RTLD_NOW
+    result = dlopen(path, flags)
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
@@ -176,7 +179,7 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
     error: "nimGetProcAddr not implemented".}
 
-elif defined(nintendoswitch):
+elif defined(nintendoswitch) or defined(freertos):
   proc nimUnloadLibrary(lib: LibHandle) =
     cstderr.rawWrite("nimUnLoadLibrary not implemented")
     cstderr.rawWrite("\n")

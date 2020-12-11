@@ -42,11 +42,12 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
 proc generateThreadLocalStorage(m: BModule) =
   if m.g.nimtv != nil and (usesThreadVars in m.flags or sfMainModule in m.module.flags):
     for t in items(m.g.nimtvDeps): discard getTypeDesc(m, t)
+    finishTypeDescriptions(m)
     m.s[cfsSeqTypes].addf("typedef struct {$1} NimThreadVars;$n", [m.g.nimtv])
 
 proc generateThreadVarsSize(m: BModule) =
   if m.g.nimtv != nil:
-    let externc = if m.config.cmd == cmdCompileToCpp or
+    let externc = if m.config.backend == backendCpp or
                        sfCompileToCpp in m.module.flags: "extern \"C\" "
                   else: ""
     m.s[cfsProcs].addf(

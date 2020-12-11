@@ -1,6 +1,5 @@
 discard """
   output: "Done"
-  disabled: "freebsd"
   cmd: "nim $target --debuginfo --hints:on --define:useNimRtl $options $file"
 """
 

@@ -1,3 +1,10 @@
+discard """
+  output: '''
+
+[Suite] RST include directive
+'''
+"""
+
 # tests for rst module
 
 import ../../lib/packages/docutils/rstgen

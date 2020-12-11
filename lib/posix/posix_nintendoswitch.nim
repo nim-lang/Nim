@@ -371,7 +371,7 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/socket.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: csize    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr

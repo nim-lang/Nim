@@ -65,8 +65,8 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
-    s.flags = s.flags + {sfUsed, sfFromGeneric}
+    var s = newSym(symKind, q.name, nextId c.idgen, getCurrOwner(c), q.info)
+    s.flags.incl {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
       if tfRetType in q.typ.flags:
@@ -105,7 +105,7 @@ when false:
   proc `$`(x: PSym): string =
     result = x.name.s & " " & " id " & $x.id
 
-proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
+proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
   #  if n.sym.owner != orig:
@@ -118,12 +118,12 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s)
+      x = copySym(s, nextId c.idgen)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0..<n.safeLen: freshGenSyms(n[i], owner, orig, symMap)
+    for i in 0..<n.safeLen: freshGenSyms(c, n[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
@@ -144,7 +144,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
-    freshGenSyms(b, result, orig, symMap)
+    freshGenSyms(c, b, result, orig, symMap)
     b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
     trackProc(c, result, result.ast[bodyPos])
@@ -178,13 +178,13 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   internalAssert c.config, header.kind == tyGenericInvocation
 
   var
-    typeMap: LayeredIdTable
     cl: TReplTypeVars
 
   initIdTable(cl.symMap)
   initIdTable(cl.localCache)
-  initIdTable(typeMap.topLayer)
-  cl.typeMap = addr(typeMap)
+  cl.typeMap = LayeredIdTable()
+  initIdTable(cl.typeMap.topLayer)
+
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
@@ -200,7 +200,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var param: PSym
 
     template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, genericTyp.sym, genParam.sym.info)
+      newSym(kind, genParam.sym.name, nextId c.idgen, genericTyp.sym, genParam.sym.info)
 
     if genParam.kind == tyStatic:
       param = paramSym skConst
@@ -244,7 +244,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #addDecl(c, prc)
   pushInfoContext(c.config, info)
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(c, addr(typeMap), info, nil)
+  var cl = initTypeVars(c, typeMap, info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
@@ -270,7 +270,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
-    let param = copySym(oldParam)
+    let param = copySym(oldParam, nextId c.idgen)
     param.owner = prc
     param.typ = result[i]
 
@@ -314,13 +314,13 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     propagateToOwner(result, result[0])
 
   eraseVoidParams(result)
-  skipIntLiteralParams(result)
+  skipIntLiteralParams(result, c.idgen)
 
   prc.typ = result
   popInfoContext(c.config)
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym =
+                      info: TLineInfo): PSym {.nosinks.} =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.
@@ -339,7 +339,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn)
+  result = copySym(fn, nextId c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n

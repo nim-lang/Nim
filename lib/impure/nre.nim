@@ -6,6 +6,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(js):
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
+
 ## What is NRE?
 ## ============
 ##
@@ -55,11 +58,16 @@ runnableExamples:
     let matchBounds = firstVowel.get().captureBounds[-1]
     doAssert matchBounds.a == 1
 
+  ## as with module `re`, unless specified otherwise, `start` parameter in each
+  ## proc indicates where the scan starts, but outputs are relative to the start
+  ## of the input string, not to `start`:
+  doAssert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
+  doAssert find("uxabc", re"ab", start = 3).isNone
+
 from pcre import nil
 import nre/private/util
 import tables
 from strutils import `%`
-from math import ceil
 import options
 from unicode import runeLenAt
 
@@ -198,7 +206,7 @@ type
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
 
-  RegexError* = ref object of Exception
+  RegexError* = ref object of CatchableError
 
   RegexInternalError* = ref object of RegexError
     ## Internal error in the module, this probably means that there is a bug
@@ -219,15 +227,15 @@ type
     ## code.
 
 runnableExamples:
-    # This MUST be kept in sync with the examples in RegexMatch
-    doAssert "abc".match(re"(\w)").get.captures[0] == "a"
-    doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
-    doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+  # This MUST be kept in sync with the examples in RegexMatch
+  doAssert "abc".match(re"(\w)").get.captures[0] == "a"
+  doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
+  doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
 
-    doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
-    doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
-    doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
-    doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
+  doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+  doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
+  doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+  doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
 
 
 proc destroyRegex(pattern: Regex) =
@@ -240,7 +248,7 @@ proc getinfo[T](pattern: Regex, opt: cint): T =
 
   if retcode < 0:
     # XXX Error message that doesn't expose implementation details
-    raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
+    raise newException(FieldDefect, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
 proc getNameToNumberTable(pattern: Regex): Table[string, int] =
   let entryCount = getinfo[cint](pattern, pcre.INFO_NAMECOUNT)
@@ -331,7 +339,7 @@ func contains*(pattern: Captures, i: int): bool =
 func `[]`*(pattern: CaptureBounds, i: int): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
   if not (i in pattern.captureBounds):
-    raise newException(IndexError, "Group '" & $i & "' was not captured")
+    raise newException(IndexDefect, "Group '" & $i & "' was not captured")
 
   let bounds = pattern.pcreMatchBounds[i + 1]
   int(bounds.a)..int(bounds.b-1)
@@ -358,24 +366,26 @@ func contains*(pattern: CaptureBounds, name: string): bool =
 func contains*(pattern: Captures, name: string): bool =
   name in CaptureBounds(pattern)
 
-func checkNamedCaptured(pattern: RegexMatch, name: string): void =
+func checkNamedCaptured(pattern: RegexMatch, name: string) =
   if not (name in pattern.captureBounds):
     raise newException(KeyError, "Group '" & name & "' was not captured")
 
 func `[]`*(pattern: CaptureBounds, name: string): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  pattern.captureBounds[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captureBounds[pattern.pattern.captureNameToId[name]]
 
 func `[]`*(pattern: Captures, name: string): string =
   let pattern = RegexMatch(pattern)
   checkNamedCaptured(pattern, name)
-  return pattern.captures[pattern.pattern.captureNameToId[name]]
+  {.noSideEffect.}:
+    result = pattern.captures[pattern.pattern.captureNameToId[name]]
 
 template toTableImpl() {.dirty.} =
   for key in RegexMatch(pattern).pattern.captureNameId.keys:
     if key in pattern:
-        result[key] = pattern[key]
+      result[key] = pattern[key]
 
 func toTable*(pattern: Captures): Table[string, string] =
   result = initTable[string, string]()
@@ -489,7 +499,7 @@ proc re*(pattern: string): Regex =
   initRegex(pattern, flags, study)
 
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
-  var myResult = RegexMatch(pattern : pattern, str : str)
+  var myResult = RegexMatch(pattern: pattern, str: str)
   # See PCRE man pages.
   # 2x capture count to make room for start-end pairs
   # 1x capture count as slack space for PCRE
@@ -517,18 +527,18 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
     of pcre.ERROR_NOMATCH:
       return none(RegexMatch)
     of pcre.ERROR_NULL:
-      raise newException(AccessViolationError, "Expected non-null parameters")
+      raise newException(AccessViolationDefect, "Expected non-null parameters")
     of pcre.ERROR_BADOPTION:
-      raise RegexInternalError(msg : "Unknown pattern flag. Either a bug or " &
+      raise RegexInternalError(msg: "Unknown pattern flag. Either a bug or " &
         "outdated PCRE.")
     of pcre.ERROR_BADUTF8, pcre.ERROR_SHORTUTF8, pcre.ERROR_BADUTF8_OFFSET:
-      raise InvalidUnicodeError(msg : "Invalid unicode byte sequence",
-        pos : myResult.pcreMatchBounds[0].a)
+      raise InvalidUnicodeError(msg: "Invalid unicode byte sequence",
+        pos: myResult.pcreMatchBounds[0].a)
     else:
-      raise RegexInternalError(msg : "Unknown internal error: " & $execRet)
+      raise RegexInternalError(msg: "Unknown internal error: " & $execRet)
 
 proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
-  ## Like ` ``find(...)`` <#proc-find>`_, but anchored to the start of the
+  ## Like `find(...)<#find,string,Regex,int>`_, but anchored to the start of the
   ## string.
   ##
   runnableExamples:
@@ -538,11 +548,11 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
 iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): RegexMatch =
-  ## Works the same as ` ``find(...)`` <#proc-find>`_, but finds every
+  ## Works the same as `find(...)<#find,string,Regex,int>`_, but finds every
   ## non-overlapping match. ``"2222".find(re"22")`` is ``"22", "22"``, not
   ## ``"22", "22", "22"``.
   ##
-  ## Arguments are the same as ` ``find(...)`` <#proc-find>`_
+  ## Arguments are the same as `find(...)<#find,string,Regex,int>`_
   ##
   ## Variants:
   ##
@@ -611,9 +621,9 @@ proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool 
   ## This function is equivalent to ``isSome(str.find(pattern, start, endpos))``.
   ##
   runnableExamples:
-    doAssert "abc".contains(re"bc") == true
-    doAssert "abc".contains(re"cd") == false
-    doAssert "abc".contains(re"a", start = 1) == false
+    doAssert "abc".contains(re"bc")
+    doAssert not "abc".contains(re"cd")
+    doAssert not "abc".contains(re"a", start = 1)
 
   return isSome(str.find(pattern, start, endpos))
 
@@ -621,7 +631,7 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ## Splits the string with the given regex. This works according to the
   ## rules that Perl and Javascript use.
   ##
-  ## ``start`` behaves the same as in ` ``find(...)`` <#proc-find>`_.
+  ## ``start`` behaves the same as in `find(...)<#find,string,Regex,int>`_.
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:
@@ -718,7 +728,7 @@ proc replace*(str: string, pattern: Regex,
   ## -  ``$#`` - first capture
   ## -  ``$0`` - full match
   ##
-  ## If a given capture is missing, ``IndexError`` thrown for un-named captures
+  ## If a given capture is missing, ``IndexDefect`` thrown for un-named captures
   ## and ``KeyError`` for named captures.
   replaceImpl(str, pattern, subproc(match))
 
@@ -731,8 +741,25 @@ proc replace*(str: string, pattern: Regex, sub: string): string =
   replaceImpl(str, pattern,
     formatStr(sub, match.captures[name], match.captures[id - 1]))
 
-let SpecialCharMatcher = re"([\\+*?[^\]$(){}=!<>|:-])"
-proc escapeRe*(str: string): string =
-  ## Escapes the string so it doesn’t match any special characters.
+proc escapeRe*(str: string): string {.gcsafe.} =
+  ## Escapes the string so it doesn't match any special characters.
   ## Incompatible with the Extra flag (``X``).
-  str.replace(SpecialCharMatcher, "\\$1")
+  ##
+  ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
+  runnableExamples:
+    doAssert escapeRe("fly+wind") == "fly\\+wind"
+    doAssert escapeRe("!") == "\\!"
+    doAssert escapeRe("nim*") == "nim\\*"
+
+  #([\\+*?[^\]$(){}=!<>|:-])
+  const SpecialCharMatcher = {'\\', '+', '*', '?', '[', '^', ']', '$', '(',
+                              ')', '{', '}', '=', '!', '<', '>', '|', ':',
+                              '-'}
+
+  for c in items(str):
+    case c
+    of SpecialCharMatcher:
+      result.add("\\")
+      result.add(c)
+    else:
+      result.add(c)

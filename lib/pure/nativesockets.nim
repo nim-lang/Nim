@@ -13,6 +13,8 @@
 # TODO: Clean up the exports a bit and everything else in general.
 
 import os, options
+import std/private/since
+
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -68,11 +70,11 @@ type
   Protocol* = enum    ## third argument to `socket` proc
     IPPROTO_TCP = 6,  ## Transmission control protocol.
     IPPROTO_UDP = 17, ## User datagram protocol.
-    IPPROTO_IP,       ## Internet protocol. Unsupported on Windows.
-    IPPROTO_IPV6,     ## Internet Protocol Version 6. Unsupported on Windows.
+    IPPROTO_IP,       ## Internet protocol.
+    IPPROTO_IPV6,     ## Internet Protocol Version 6.
     IPPROTO_RAW,      ## Raw IP Packets Protocol. Unsupported on Windows.
-    IPPROTO_ICMP      ## Control message protocol. Unsupported on Windows.
-    IPPROTO_ICMPV6    ## Control message protocol for IPv6. Unsupported on Windows.
+    IPPROTO_ICMP      ## Internet Control message protocol.
+    IPPROTO_ICMPV6    ## Internet Control message protocol for IPv6.
 
   Servent* = object ## information about a service
     name*: string
@@ -113,7 +115,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
 
 proc `$`*(p: Port): string {.borrow.}
-  ## returns the port number as a string
+  ## Returns the port number as a string
 
 proc toInt*(domain: Domain): cint
   ## Converts the Domain enum to a platform-dependent ``cint``.
@@ -174,7 +176,21 @@ else:
     result = cint(ord(typ))
 
   proc toInt(p: Protocol): cint =
-    result = cint(ord(p))
+    case p
+    of IPPROTO_IP:
+      result = 0.cint
+    of IPPROTO_ICMP:
+      result = 1.cint
+    of IPPROTO_TCP:
+      result = 6.cint
+    of IPPROTO_UDP:
+      result = 17.cint
+    of IPPROTO_IPV6:
+      result = 41.cint
+    of IPPROTO_ICMPV6:
+      result = 58.cint
+    else:
+      result = cint(ord(p))
 
 proc toSockType*(protocol: Protocol): SockType =
   result = case protocol
@@ -185,44 +201,65 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
 
-proc createNativeSocket*(domain: Domain = AF_INET,
-                      sockType: SockType = SOCK_STREAM,
-                      protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  socket(toInt(domain), toInt(sockType), toInt(protocol))
+proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
+  ## Returns a protocol code from the database that matches the protocol ``name``.
+  when useWinVersion:
+    let protoent = winlean.getprotobyname(name.cstring)
+  else:
+    let protoent = posix.getprotobyname(name.cstring)
+  
+  if protoent == nil:
+    raise newException(OsError, "protocol not found")
 
-proc createNativeSocket*(domain: cint, sockType: cint,
-                      protocol: cint): SocketHandle =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## Use this overload if one of the enums specified above does
-  ## not contain what you need.
-  socket(domain, sockType, protocol)
-
-proc newNativeSocket*(domain: Domain = AF_INET,
-                      sockType: SockType = SOCK_STREAM,
-                      protocol: Protocol = IPPROTO_TCP): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  createNativeSocket(domain, sockType, protocol)
-
-proc newNativeSocket*(domain: cint, sockType: cint,
-                      protocol: cint): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## Use this overload if one of the enums specified above does
-  ## not contain what you need.
-  createNativeSocket(domain, sockType, protocol)
+  result = protoent.p_proto.int
 
 proc close*(socket: SocketHandle) =
-  ## closes a socket.
+  ## Closes a socket.
   when useWinVersion:
     discard winlean.closesocket(socket)
   else:
     discard posix.close(socket)
   # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
+
+when declared(setInheritable) or defined(nimdoc):
+  proc setInheritable*(s: SocketHandle, inheritable: bool): bool {.inline.} =
+    ## Set whether a socket is inheritable by child processes. Returns `true`
+    ## on success.
+    ##
+    ## This function is not implemented on all platform, test for availability
+    ## with `declared() <system.html#declared,untyped>`.
+    setInheritable(FileHandle s, inheritable)
+
+proc createNativeSocket*(domain: cint, sockType: cint, protocol: cint,
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited
+  ## by child processes.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  let sockType =
+    when (defined(linux) or defined(bsd)) and not defined(nimdoc):
+      if inheritable: sockType and not SOCK_CLOEXEC else: sockType or SOCK_CLOEXEC
+    else:
+      sockType
+  result = socket(domain, sockType, protocol)
+  when declared(setInheritable) and not (defined(linux) or defined(bsd)):
+    if not setInheritable(result, inheritable):
+      close result
+      return osInvalidSocket
+
+proc createNativeSocket*(domain: Domain = AF_INET,
+                         sockType: SockType = SOCK_STREAM,
+                         protocol: Protocol = IPPROTO_TCP,
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited
+  ## by child processes.
+  createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol), inheritable)
 
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
     namelen: SockLen): cint =
@@ -260,7 +297,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   let socketPort = if sockType == SOCK_RAW: "" else: $port
   var gaiResult = getaddrinfo(address, socketPort, addr(hints), result)
   if gaiResult != 0'i32:
-    when useWinVersion:
+    when useWinVersion or defined(freertos):
       raiseOSError(osLastError())
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
@@ -414,19 +451,20 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   result.setLen(x)
 
 proc getSockDomain*(socket: SocketHandle): Domain =
-  ## returns the socket's domain (AF_INET or AF_INET6).
+  ## Returns the socket's domain (AF_INET or AF_INET6).
   var name: Sockaddr_in6
   var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  try:
-    result = toKnownDomain(name.sin6_family.cint).get()
-  except UnpackError:
+  let knownDomain = toKnownDomain(name.sin6_family.cint)
+  if knownDomain.isSome:
+    result = knownDomain.get()
+  else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
-  ## return the string representation of address within sockAddr
+  ## Returns the string representation of address within sockAddr
   if sockAddr.sa_family.cint == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family.cint == nativeAfInet6:
@@ -451,6 +489,40 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
         return "unix"
     raise newException(IOError, "Unknown socket family in getAddrString")
 
+proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
+  ## Stores in ``strAddress`` the string representation of the address inside
+  ## ``sockAddr``
+  ## 
+  ## **Note**
+  ## * ``strAddress`` must be initialized to 46 in length.
+  assert(46 == len(strAddress),
+         "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
+  if sockAddr.sa_family.cint == nativeAfInet:
+    let addr4 = addr cast[ptr Sockaddr_in](sockAddr).sin_addr
+    when not useWinVersion:
+      if posix.inet_ntop(posix.AF_INET, addr4, addr strAddress[0],
+                         strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+    else:
+      if winlean.inet_ntop(winlean.AF_INET, addr4, addr strAddress[0],
+                           strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+  elif sockAddr.sa_family.cint == nativeAfInet6:
+    let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
+    when not useWinVersion:
+      if posix.inet_ntop(posix.AF_INET6, addr6, addr strAddress[0],
+                         strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+      if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
+        strAddress = strAddress.substr("::ffff:".len)
+    else:
+      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr strAddress[0],
+                           strAddress.len.int32) == nil:
+        raiseOSError(osLastError())
+  else:
+    raise newException(IOError, "Unknown socket family in getAddrString")
+  setLen(strAddress, len(cstring(strAddress)))
+
 when defined(posix) and not defined(nimdoc):
   proc makeUnixAddr*(path: string): Sockaddr_un =
     result.sun_family = AF_UNIX.TSa_Family
@@ -459,7 +531,7 @@ when defined(posix) and not defined(nimdoc):
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
 proc getSockName*(socket: SocketHandle): Port =
-  ## returns the socket's associated port number.
+  ## Returns the socket's associated port number.
   var name: Sockaddr_in
   when useWinVersion:
     name.sin_family = uint16(ord(AF_INET))
@@ -474,7 +546,7 @@ proc getSockName*(socket: SocketHandle): Port =
   result = Port(nativesockets.ntohs(name.sin_port))
 
 proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## returns the socket's local address and port number.
+  ## Returns the socket's local address and port number.
   ##
   ## Similar to POSIX's `getsockname`:idx:.
   case domain
@@ -511,7 +583,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
 proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
-  ## returns the socket's peer address and port number.
+  ## Returns the socket's peer address and port number.
   ##
   ## Similar to POSIX's `getpeername`:idx:
   case domain
@@ -612,7 +684,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
-  ## read from. The sockets which can be read from will also be removed
+  ## read from. The sockets which cannot be read from will also be removed
   ## from ``readfds``.
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
@@ -634,7 +706,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
                   timeout = 500): int {.tags: [ReadIOEffect].} =
   ## When a socket in ``writefds`` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
-  ## written to. The sockets which can be written to will also be removed
+  ## written to. The sockets which cannot be written to will also be removed
   ## from ``writefds``.
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
@@ -652,14 +724,25 @@ proc selectWrite*(writefds: var seq[SocketHandle],
 
   pruneSocketSet(writefds, (wr))
 
-proc accept*(fd: SocketHandle): (SocketHandle, string) =
+proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (SocketHandle, string) =
   ## Accepts a new client connection.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited by
+  ## child processes.
   ##
   ## Returns (osInvalidSocket, "") if an error occurred.
   var sockAddress: Sockaddr_in
   var addrLen = sizeof(sockAddress).SockLen
-  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
-                    addr(addrLen))
+  var sock =
+    when (defined(linux) or defined(bsd)) and not defined(nimdoc):
+      accept4(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen),
+              if inheritable: 0 else: SOCK_CLOEXEC)
+    else:
+      accept(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+  when declared(setInheritable) and not (defined(linux) or defined(bsd)):
+    if not setInheritable(sock, inheritable):
+      close sock
+      sock = osInvalidSocket
   if sock == osInvalidSocket:
     return (osInvalidSocket, "")
   else:

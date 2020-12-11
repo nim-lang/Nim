@@ -11,36 +11,34 @@
 ##
 ## Basic usage
 ## ===========
-##
-## .. code-block::
-##    import algorithm
-##
-##    type People = tuple
-##      year: int
-##      name: string
-##
-##    var a: seq[People]
-##
-##    a.add((2000, "John"))
-##    a.add((2005, "Marie"))
-##    a.add((2010, "Jane"))
-##
-##    # Sorting with default system.cmp
-##    a.sort()
-##    assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
-##                  (year: 2010, name: "Jane")]
-##
-##    proc myCmp(x, y: People): int =
-##      if x.name < y.name: -1
-##      elif x.name == y.name: 0
-##      else: 1
-##
-##    # Sorting with custom proc
-##    a.sort(myCmp)
-##    assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"),
-##                  (year: 2005, name: "Marie")]
-##
-##
+## 
+
+runnableExamples:
+  type People = tuple
+    year: int
+    name: string
+
+  var a: seq[People]
+
+  a.add((2000, "John"))
+  a.add((2005, "Marie"))
+  a.add((2010, "Jane"))
+
+  # Sorting with default system.cmp
+  a.sort()
+  assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
+                (year: 2010, name: "Jane")]
+
+  proc myCmp(x, y: People): int =
+    if x.name < y.name: -1
+    elif x.name == y.name: 0
+    else: 1
+
+  # Sorting with custom proc
+  a.sort(myCmp)
+  assert a == @[(year: 2010, name: "Jane"), (year: 2000, name: "John"),
+                (year: 2005, name: "Marie")]
+
 ## See also
 ## ========
 ## * `sequtils module<sequtils.html>`_ for working with the built-in seq type
@@ -75,14 +73,14 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
 proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   ## Fills the slice ``a[first..last]`` with ``value``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   runnableExamples:
     var a: array[6, int]
     a.fill(1, 3, 9)
     assert a == [0, 9, 9, 9, 0, 0]
     a.fill(3, 5, 7)
     assert a == [0, 9, 9, 7, 7, 7]
-    doAssertRaises(IndexError, a.fill(1, 7, 9))
+    doAssertRaises(IndexDefect, a.fill(1, 7, 9))
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
@@ -99,7 +97,7 @@ proc fill*[T](a: var openArray[T], value: T) =
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## Reverses the slice ``a[first..last]``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## **See also:**
   ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a ``seq[T]``
@@ -110,7 +108,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     assert a == [1, 4, 3, 2, 5, 6]
     a.reverse(1, 3)
     assert a == [1, 2, 3, 4, 5, 6]
-    doAssertRaises(IndexError, a.reverse(1, 7))
+    doAssertRaises(IndexDefect, a.reverse(1, 7))
   var x = first
   var y = last
   while x < y:
@@ -135,7 +133,7 @@ proc reverse*[T](a: var openArray[T]) =
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## Returns the reverse of the slice ``a[first..last]``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
@@ -187,6 +185,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     else:
       return -1
 
+  result = 0
   if (len and (len - 1)) == 0:
     # when `len` is a power of 2, a faster shr can be used.
     var step = len shr 1
@@ -223,10 +222,6 @@ proc binarySearch*[T](a: openArray[T], key: T): int =
     assert binarySearch([0, 1, 4, 2, 3], 4) == 2
   binarySearch(a, key, cmp[T])
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated:
-  "Deprecated since v0.18.1; Use 'binarySearch'".} =
-  binarySearch(a, key, cmp[T])
-
 const
   onlySafeCode = true
 
@@ -238,7 +233,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
   ## ``insert(thing, elm, lowerBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## The version uses ``cmp`` to compare the elements.
   ## The expected return values are the same as that of ``system.cmp``.
@@ -286,7 +281,7 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
   ## ``insert(thing, elm, upperBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## The version uses ``cmp`` to compare the elements. The expected
   ## return values are the same as that of ``system.cmp``.
@@ -504,7 +499,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     # Nested sort
     assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20),
        (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
-  var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
+  var result = sorted(seq1, proc(x, y: typeof(items(seq1), typeOfIter)): int =
     var it {.inject.} = x
     let a = op
     it = y
@@ -668,36 +663,6 @@ proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
 
   result = true
 
-when isMainModule:
-  # Tests for lowerBound
-  var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
-  assert arr.lowerBound(0) == 0
-  assert arr.lowerBound(4) == 3
-  assert arr.lowerBound(5) == 3
-  assert arr.lowerBound(10) == 8
-  arr = @[1, 5, 10]
-  assert arr.lowerBound(4) == 1
-  assert arr.lowerBound(5) == 1
-  assert arr.lowerBound(6) == 2
-  # Tests for isSorted
-  var srt1 = [1, 2, 3, 4, 4, 4, 4, 5]
-  var srt2 = ["iello", "hello"]
-  var srt3 = [1.0, 1.0, 1.0]
-  var srt4: seq[int]
-  assert srt1.isSorted(cmp) == true
-  assert srt2.isSorted(cmp) == false
-  assert srt3.isSorted(cmp) == true
-  assert srt4.isSorted(cmp) == true
-  var srtseq = newSeq[int]()
-  assert srtseq.isSorted(cmp) == true
-  # Tests for reversed
-  var arr1 = @[0, 1, 2, 3, 4]
-  assert arr1.reversed() == @[4, 3, 2, 1, 0]
-  for i in 0 .. high(arr1):
-    assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
-    assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
-
-
 proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
   ## A port of std::rotate from c++. Ported from `this reference <http://www.cplusplus.com/reference/algorithm/rotate/>`_.
   result = first + last - middle
@@ -763,7 +728,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ##
   ## Elements outside of ``slice`` will be left unchanged.
   ## The time complexity is linear to ``slice.b - slice.a + 1``.
-  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexDefect.
   ##
   ## ``slice``
   ##   The indices of the element range that should be rotated.
@@ -783,7 +748,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
     assert a == [0, 3, 4, 1, 2, 5]
     a.rotateLeft(1 .. 4, -3)
     assert a == [0, 4, 1, 2, 3, 5]
-    doAssertRaises(IndexError, a.rotateLeft(1 .. 7, 2))
+    doAssertRaises(IndexDefect, a.rotateLeft(1 .. 7, 2))
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
@@ -813,7 +778,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
   ## Elements outside of ``slice`` will be left unchanged.
-  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexDefect.
   ##
   ## ``slice``
   ##   The indices of the element range that should be rotated.
@@ -855,71 +820,3 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotatedInternal(0, distLeft, arg.len)
-
-when isMainModule:
-  var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  let list2 = list.rotatedLeft(1 ..< 9, 3)
-  let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
-
-  doAssert list.rotateLeft(1 ..< 9, 3) == 6
-  doAssert list == expected
-  doAssert list2 == @expected
-
-  var s0, s1, s2, s3, s4, s5 = "xxxabcdefgxxx"
-
-  doAssert s0.rotateLeft(3 ..< 10, 3) == 7
-  doAssert s0 == "xxxdefgabcxxx"
-  doAssert s1.rotateLeft(3 ..< 10, 2) == 8
-  doAssert s1 == "xxxcdefgabxxx"
-  doAssert s2.rotateLeft(3 ..< 10, 4) == 6
-  doAssert s2 == "xxxefgabcdxxx"
-  doAssert s3.rotateLeft(3 ..< 10, -3) == 6
-  doAssert s3 == "xxxefgabcdxxx"
-  doAssert s4.rotateLeft(3 ..< 10, -10) == 6
-  doAssert s4 == "xxxefgabcdxxx"
-  doAssert s5.rotateLeft(3 ..< 10, 11) == 6
-  doAssert s5 == "xxxefgabcdxxx"
-
-  block product:
-    doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
-    doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
-    doAssert product(@[@[1, 2]]) == @[@[1, 2]], "a simple case of one element"
-    doAssert product(@[@[1, 2], @[3, 4]]) == @[@[2, 4], @[1, 4], @[2, 3], @[1,
-        3]], "two elements"
-    doAssert product(@[@[1, 2], @[3, 4], @[5, 6]]) == @[@[2, 4, 6], @[1, 4, 6],
-        @[2, 3, 6], @[1, 3, 6], @[2, 4, 5], @[1, 4, 5], @[2, 3, 5], @[1, 3, 5]], "three elements"
-    doAssert product(@[@[1, 2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
-
-  block lowerBound:
-    doAssert lowerBound([1, 2, 4], 3, system.cmp[int]) == 2
-    doAssert lowerBound([1, 2, 2, 3], 4, system.cmp[int]) == 4
-    doAssert lowerBound([1, 2, 3, 10], 11) == 4
-
-  block upperBound:
-    doAssert upperBound([1, 2, 4], 3, system.cmp[int]) == 2
-    doAssert upperBound([1, 2, 2, 3], 3, system.cmp[int]) == 4
-    doAssert upperBound([1, 2, 3, 5], 3) == 3
-
-  block fillEmptySeq:
-    var s = newSeq[int]()
-    s.fill(0)
-
-  block testBinarySearch:
-    var noData: seq[int]
-    doAssert binarySearch(noData, 7) == -1
-    let oneData = @[1]
-    doAssert binarySearch(oneData, 1) == 0
-    doAssert binarySearch(onedata, 7) == -1
-    let someData = @[1, 3, 4, 7]
-    doAssert binarySearch(someData, 1) == 0
-    doAssert binarySearch(somedata, 7) == 3
-    doAssert binarySearch(someData, -1) == -1
-    doAssert binarySearch(someData, 5) == -1
-    doAssert binarySearch(someData, 13) == -1
-    let moreData = @[1, 3, 5, 7, 4711]
-    doAssert binarySearch(moreData, -1) == -1
-    doAssert binarySearch(moreData, 1) == 0
-    doAssert binarySearch(moreData, 5) == 2
-    doAssert binarySearch(moreData, 6) == -1
-    doAssert binarySearch(moreData, 4711) == 4
-    doAssert binarySearch(moreData, 4712) == -1

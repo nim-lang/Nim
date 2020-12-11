@@ -1914,7 +1914,8 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   ## ``mimetype`` and ``ext`` are lowercased before registering on ``mimedb``.
   assert ext.strip.len > 0, "ext argument can not be empty string"
   assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
-  mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
+  {.noSideEffect.}:
+    mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
 
 runnableExamples:
   static:

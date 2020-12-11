@@ -35,7 +35,6 @@ type
     inTryStmt*: int           # whether we are in a try statement; works also
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
-    wasForwarded*: bool       # whether the current proc has a separate header
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
@@ -85,6 +84,7 @@ type
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
+    templInstCounter*: ref int # gives every template instantiation a unique id
 
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
@@ -143,6 +143,7 @@ type
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
+    lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -211,7 +212,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
   result.options = conf.options
-  result.defaultCC = ccDefault
+  result.defaultCC = ccNimCall
   result.dynlib = nil
   result.notes = conf.notes
   result.warningAsErrors = conf.warningAsErrors
@@ -276,14 +277,14 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, getCurrOwner(c))
+  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
 
-proc makePtrType*(owner: PSym, baseType: PType): PType =
-  result = newType(tyPtr, owner)
-  addSonSkipIntLit(result, baseType)
+proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
+  result = newType(tyPtr, nextId(idgen), owner)
+  addSonSkipIntLit(result, baseType, idgen)
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
-  makePtrType(getCurrOwner(c), baseType)
+  makePtrType(getCurrOwner(c), baseType, c.idgen)
 
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
@@ -294,21 +295,21 @@ proc makeTypeWithModifier*(c: PContext,
     result = baseType
   else:
     result = newTypeS(modifier, c)
-    addSonSkipIntLit(result, baseType)
+    addSonSkipIntLit(result, baseType, c.idgen)
 
 proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
     result = newTypeS(kind, c)
-    addSonSkipIntLit(result, baseType)
+    addSonSkipIntLit(result, baseType, c.idgen)
 
-proc makeVarType*(owner: PSym, baseType: PType; kind = tyVar): PType =
+proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar): PType =
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, owner)
-    addSonSkipIntLit(result, baseType)
+    result = newType(kind, nextId(idgen), owner)
+    addSonSkipIntLit(result, baseType, idgen)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
   if typ.kind == tyTypeDesc:
@@ -316,13 +317,14 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
   else:
     result = newTypeS(tyTypeDesc, c)
     incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ)
+    result.addSonSkipIntLit(typ, c.idgen)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
   incl typedesc.flags, tfCheckedForDestructor
-  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
-  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
+  internalAssert(c.config, typ != nil)
+  typedesc.addSonSkipIntLit(typ, c.idgen)
+  let sym = newSym(skType, c.cache.idAnon, nextId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)
 
@@ -331,13 +333,14 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   assert n != nil
   result.n = n
 
-proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType]): PType =
-  result = newType(kind, owner)
+proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
+                      idgen: IdGenerator): PType =
+  result = newType(kind, nextId(idgen), owner)
   result.sons = sons
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, getCurrOwner(c))
+  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
@@ -379,8 +382,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
   result.flags.incl tfHasMeta
 
 proc nMinusOne(c: PContext; n: PNode): PNode =
-  result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n])
+  result = newTreeI(nkCall, n.info, newSymNode(getSysMagic(c.graph, n.info, "pred", mPred)), n)
 
 # Remember to fix the procs below this one when you make changes!
 proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
@@ -389,9 +391,8 @@ proc makeRangeWithStaticExpr*(c: PContext, n: PNode): PType =
   result.sons = @[intType]
   if n.typ != nil and n.typ.n == nil:
     result.flags.incl tfUnresolved
-  result.n = newNode(nkRange, n.info, @[
-    newIntTypeNode(0, intType),
-    makeStaticExpr(c, nMinusOne(c, n))])
+  result.n = newTreeI(nkRange, n.info, newIntTypeNode(0, intType),
+    makeStaticExpr(c, nMinusOne(c, n)))
 
 template rangeHasUnresolvedStatic*(t: PType): bool =
   tfUnresolved in t.flags
@@ -418,7 +419,7 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   n.add newIntTypeNode(last, intType)
   result = newTypeS(tyRange, c)
   result.n = n
-  addSonSkipIntLit(result, intType) # basetype of range
+  addSonSkipIntLit(result, intType, c.idgen) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
   if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:

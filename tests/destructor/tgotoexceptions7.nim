@@ -2,7 +2,7 @@ discard """
   cmd: "nim c --gc:arc --exceptions:goto --panics:off $file"
   output: '''prevented!
 caught
-AssertionError
+AssertionDefect
 900'''
 """
 
@@ -30,18 +30,18 @@ proc main(i: int) =
   try:
     var objA = ObjA()
     bplease(ObjB(objA))
-  except ObjectConversionError:
+  except ObjectConversionDefect:
     echo "prevented!"
 
   try:
     takeRange(i)
-  except RangeError:
+  except RangeDefect:
     echo "caught"
 
   try:
     helper()
-  except AssertionError:
-    echo "AssertionError"
+  except AssertionDefect:
+    echo "AssertionDefect"
 
   echo i * i
 

@@ -9,6 +9,7 @@ B
 begin
 end
 prevented
+(ok: true, value: "ok")
 myobj destroyed
 '''
 """
@@ -154,16 +155,16 @@ type
     x1: string
     case kind1: bool
       of false: y1: string
-      of true: 
+      of true:
           y2: seq[string]
           case kind2: bool
               of true: z1: string
-              of false: 
+              of false:
                 z2: seq[string]
                 flag: bool
     x2: string
-        
-proc test_myobject = 
+
+proc test_myobject =
   var x: MyObject
   x.x1 = "x1"
   x.x2 = "x2"
@@ -183,7 +184,7 @@ proc test_myobject =
 
   try:
     x.kind1 = x.flag # flag is not accesible
-  except FieldError:
+  except FieldDefect:
     echo "prevented"
 
   doAssert(x.x1 == "x1")
@@ -193,3 +194,53 @@ proc test_myobject =
 test_myobject()
 
 
+#------------------------------------------------
+# bug #14244
+
+type
+  RocksDBResult*[T] = object
+    case ok*: bool
+    of true:
+      value*: T
+    else:
+      error*: string
+
+proc init(): RocksDBResult[string] =
+  result.ok = true
+  result.value = "ok"
+
+echo init()
+
+
+#------------------------------------------------
+# bug #14312
+
+type MyObj = object
+  case kind: bool
+    of false: x0: int # would work with a type like seq[int]; value would be reset
+    of true: x1: string
+
+var a = MyObj(kind: false, x0: 1234)
+a.kind = true
+doAssert(a.x1 == "")
+
+block:
+  # bug #15532
+  type Kind = enum
+    k0, k1
+
+  type Foo = object
+    y: int
+    case kind: Kind
+    of k0: x0: int
+    of k1: x1: int
+
+  const j0 = Foo(y: 1, kind: k0, x0: 2)
+  const j1 = Foo(y: 1, kind: k1, x1: 2)
+
+  doAssert j0.y == 1
+  doAssert j0.kind == k0
+  doAssert j1.kind == k1
+
+  doAssert j1.x1 == 2
+  doAssert j0.x0 == 2

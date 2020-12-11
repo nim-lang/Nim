@@ -1,6 +1,8 @@
 discard """
 output: ""
+disabled: "freebsd"
 """
+# disabled pending bug #15725
 import threadpool, os
 
 var chan: Channel[int]

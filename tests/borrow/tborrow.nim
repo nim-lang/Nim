@@ -1,5 +1,6 @@
 discard """
-  output: "4887 true"
+  output: '''4887 true
+0.5'''
 """
 
 # test the new borrow feature that works with generics:
@@ -19,3 +20,16 @@ proc `$`(x: DI): string {.borrow.}
 proc `$`(x: DF): string {.borrow.}
 
 echo  4544.DI ++ 343.DI, " ", (4.5.DF ++ 0.5.DF).float == 5.0
+
+# issue #14440
+
+type Radians = distinct float64
+
+func `-=`(a: var Radians, b: Radians) {.borrow.}
+
+var a = Radians(1.5)
+let b = Radians(1.0)
+
+a -= b
+
+echo a.float64

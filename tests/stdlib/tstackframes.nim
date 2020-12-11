@@ -1,5 +1,5 @@
 import std/[strformat,os,osproc]
-import "$nim/compiler/unittest_light" # works even if moved by megatest
+import stdtest/unittest_light
 
 proc main(opt: string, expected: string) =
   const nim = getCurrentCompilerExe()

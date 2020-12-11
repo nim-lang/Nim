@@ -136,7 +136,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
     localError(c.config, n.info, "module alias must be an identifier")
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, n[1].ident, realModule.info,
+    result = createModuleAlias(realModule, nextId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
@@ -187,10 +187,9 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   let it = transformImportAs(c, it)
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
-    var emptySet: IntSet
     # ``addDecl`` needs to be done before ``importAllSymbols``!
     addDecl(c, m, it.info) # add symbol to symbol table of module
-    importAllSymbolsExcept(c, m, emptySet)
+    importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =

@@ -11,3 +11,8 @@ proc a() =
 
   # comment 2
   discard
+
+# bug #15596
+discard ## comment 3
+
+discard # comment 4

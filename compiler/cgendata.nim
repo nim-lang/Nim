@@ -11,7 +11,7 @@
 
 import
   ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs
+  tables, ndi, lineinfos, pathutils, modulegraphs, sets
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -25,7 +25,7 @@ type
                               # this is needed for strange type generation
                               # reasons
     cfsFieldInfo,             # section for field information
-    cfsTypeInfo,              # section for type information
+    cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
     cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
@@ -70,7 +70,8 @@ type
     hasCurFramePointer,
     noSafePoints,
     nimErrorFlagAccessed,
-    nimErrorFlagDeclared
+    nimErrorFlagDeclared,
+    nimErrorFlagDisabled
 
   TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
@@ -96,6 +97,7 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
+    withinBlockLeaveActions*: int # complex to explain
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
@@ -120,6 +122,7 @@ type
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
     generatedHeader*: BModule
     typeInfoMarker*: TypeCacheWithOwner
+    typeInfoMarkerV2*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
     strVersion*, seqVersion*: int # version of the string/seq implementation to use
@@ -144,11 +147,16 @@ type
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
+    typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
+                              # would be ideal but for some reason enums
+                              # don't seem to get cached so it'd generate
+                              # 1 ABI check per occurence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
+    typeInfoMarkerV2*: TypeCache
     initProc*: BProc          # code for init procedure
     preInitProc*: BProc       # code executed before the init proc
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
@@ -184,8 +192,8 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
   result.module = module
-  if prc != nil: result.options = prc.options
-  else: result.options = module.config.options
+  result.options = if prc != nil: prc.options
+                   else: module.config.options
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]

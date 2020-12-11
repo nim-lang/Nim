@@ -126,7 +126,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
+The ``InvalidObjectConversionDefect`` exception is raised if ``x`` is not a
 ``Student``.
 
 
@@ -160,7 +160,7 @@ An example:
         condition, thenPart, elsePart: Node
 
   var n = Node(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
 
@@ -345,10 +345,8 @@ The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
 the ``msg`` field.
 
-A convention is that exceptions should be raised in *exceptional* cases:
-For example, if a file cannot be opened, this should not raise an
-exception since this is quite common (the file may not exist).
-
+A convention is that exceptions should be raised in *exceptional* cases,
+they should not be used as an alternative method of control flow.
 
 Raise statement
 ---------------
@@ -388,7 +386,7 @@ The ``try`` statement handles exceptions:
       let a = readLine(f)
       let b = readLine(f)
       echo "sum: ", parseInt(a) + parseInt(b)
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -443,7 +441,7 @@ instance, if you specify that a proc raises ``IOError``, and at some point it
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [IOError, ArithmeticError].} =
+  proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
   proc simpleProc() {.raises: [].} =
@@ -459,7 +457,7 @@ If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
 also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim ``doc2``
+find out the list of exceptions raised by a proc is to use the Nim ``doc``
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.
@@ -513,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
@@ -535,6 +533,19 @@ used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
+
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc foo[T](i: T) =
+    discard
+
+  var i: int
+
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
+
+  i.foo[:int]() # Success
 
 
 Templates
@@ -651,7 +662,7 @@ Example: Lifting Procs
     ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
     proc fname[T](x: openarray[T]): auto =
       var temp: T
-      type outType = type(fname(temp))
+      type outType = typeof(fname(temp))
       result = newSeq[outType](x.len)
       for i in 0..<x.len:
         result[i] = fname(x[i])

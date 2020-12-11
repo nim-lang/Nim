@@ -16,7 +16,7 @@ iterator myParentDirs(p: string): string =
     yield current
 
 proc getNimbleFile*(conf: ConfigRef; path: string): string =
-  ## returns absolute path to nimble file, eg: /pathto/cligen.nimble
+  ## returns absolute path to nimble file, e.g.: /pathto/cligen.nimble
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -28,8 +28,6 @@ proc getNimbleFile*(conf: ConfigRef; path: string): string =
         result = file
         break packageSearch
   # we also store if we didn't find anything:
-  when not defined(nimNoNilSeqs):
-    if result.isNil: result = ""
   for d in myParentDirs(path):
     #echo "set cache ", d, " |", result, "|", parents
     conf.packageCache[d] = result
@@ -37,7 +35,7 @@ proc getNimbleFile*(conf: ConfigRef; path: string): string =
     if parents <= 0: break
 
 proc getPackageName*(conf: ConfigRef; path: string): string =
-  ## returns nimble package name, eg: `cligen`
+  ## returns nimble package name, e.g.: `cligen`
   let path = getNimbleFile(conf, path)
   result = path.splitFile.name
 

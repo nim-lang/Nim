@@ -1,5 +1,6 @@
 discard """
-  output: '''assign
+  output: '''
+assign
 destroy
 destroy
 5
@@ -22,17 +23,18 @@ joinable: false
 type T = object
 
 proc `=`(lhs: var T, rhs: T) =
-    echo "assign"
+  echo "assign"
 
 proc `=destroy`(v: var T) =
-    echo "destroy"
+  echo "destroy"
 
 proc use(x: T) = discard
 
 proc usedToBeBlock =
-    var v1 : T
-    var v2 : T = v1
-    use v1
+  var v1 = T()
+  var v2: T = v1
+  discard addr(v2) # prevent cursorfication
+  use v1
 
 usedToBeBlock()
 
@@ -104,12 +106,12 @@ test()
 #------------------------------------------------------------
 # Issue #12883
 
-type 
+type
   TopObject = object
     internal: UniquePtr[int]
 
 proc deleteTop(p: ptr TopObject) =
-  if p != nil:    
+  if p != nil:
     `=destroy`(p[]) # !!! this operation used to leak the integer
     deallocshared(p)
 
@@ -117,12 +119,67 @@ proc createTop(): ptr TopObject =
   result = cast[ptr TopObject](allocShared0(sizeof(TopObject)))
   result.internal = newUniquePtr(1)
 
-proc test2() = 
+proc test2() =
   let x = createTop()
   echo $x.internal
   deleteTop(x)
 
-echo "---------------"  
+echo "---------------"
 echo "app begin"
 test2()
 echo "app end"
+
+# bug #14601
+
+when true: # D20200607T202043
+  type Foo2 = object
+    x: int
+    x2: array[10, int]
+
+  type Vec = object
+    vals: seq[Foo2]
+
+  proc `=destroy`*(a: var Foo2) {.inline.} =
+    discard
+
+  proc initFoo2(x: int): Foo2 = Foo2(x: x)
+
+  proc add2(v: var Vec, a: Foo2) = # ditto with `a: sink Foo2`
+    v.vals.add a
+
+  proc add3(v: var Vec, a: Foo2) = # ditto with `a: sink Foo2`
+    v.vals = @[a]
+
+  proc add4(v: var Vec, a: sink Foo2) = # ditto with `a: sink Foo2`
+    v.vals.add a
+
+  proc add5(v: var Vec, a: sink Foo2) = # ditto with `a: sink Foo2`
+    v.vals = @[a]
+
+  proc main2()=
+    var a: Vec
+    var b = Foo2(x: 10)
+    a.add2 b # ok
+    a.vals.add Foo2(x: 10) # ok
+    a.add2 initFoo2(x = 10) # ok
+    a.add2 Foo2(x: 10) # bug
+    a.add3 initFoo2(x = 10) # ok
+    a.add3 Foo2(x: 10) # bug
+    a.add4 initFoo2(x = 10) # ok
+    a.add4 Foo2(x: 10) # bug
+    a.add5 initFoo2(x = 10) # ok
+    a.add5 Foo2(x: 10) # bug
+  main2()
+
+
+
+#------------------------------------------------------------
+# Issue #15825
+
+type
+  Union = string | int | char
+
+proc run(a: sink Union) =
+  discard
+
+run("123")

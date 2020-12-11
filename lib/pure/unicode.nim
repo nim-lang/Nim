@@ -28,6 +28,7 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
+    ## `RuneImpl` is the underlying type used to store Runes, currently `int32`.
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -38,6 +39,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     doAssert a.runeLen == 6
     ## note: a.len == 8
 
+  result = 0
   var i = 0
   while i < len(s):
     if uint(s[i]) <= 127: inc(i)
@@ -469,7 +471,7 @@ proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
     return t
   return -1
 
-proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` into lower case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
@@ -487,7 +489,7 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toLowerSinglets[p+1] - 500)
   return Rune(c)
 
-proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` into upper case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
@@ -505,7 +507,7 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toUpperSinglets[p+1] - 500)
   return Rune(c)
 
-proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` to title case.
   ##
   ## See also:
@@ -518,7 +520,7 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toTitleSinglets[p+1] - 500)
   return Rune(c)
 
-proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a lower case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
@@ -536,7 +538,7 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == toUpperSinglets[p]:
     return true
 
-proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a upper case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
@@ -556,7 +558,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == toLowerSinglets[p]:
     return true
 
-proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is an *alpha* rune (i.e., a letter).
   ##
   ## See also:
@@ -575,7 +577,7 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == alphaSinglets[p]:
     return true
 
-proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode titlecase code point.
   ##
   ## See also:
@@ -586,7 +588,7 @@ proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
   return isUpper(c) and isLower(c)
 
-proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode whitespace code point.
   ##
   ## See also:
@@ -599,7 +601,7 @@ proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
-proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode combining code unit.
   ##
   ## See also:
@@ -626,7 +628,7 @@ template runeCheck(s, runeProc) =
     fastRuneAt(s, i, rune, doInc = true)
     result = runeProc(rune) and result
 
-proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+proc isAlpha*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all alphabetic runes.
   runnableExamples:
@@ -634,7 +636,7 @@ proc isAlpha*(s: string): bool {.noSideEffect, procvar,
     doAssert a.isAlpha
   runeCheck(s, isAlpha)
 
-proc isSpace*(s: string): bool {.noSideEffect, procvar,
+proc isSpace*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all whitespace runes.
   runnableExamples:
@@ -655,21 +657,21 @@ template convertRune(s, runeProc) =
     rune = runeProc(rune)
     fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
-proc toUpper*(s: string): string {.noSideEffect, procvar,
+proc toUpper*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into upper-case runes.
   runnableExamples:
     doAssert toUpper("abγ") == "ABΓ"
   convertRune(s, toUpper)
 
-proc toLower*(s: string): string {.noSideEffect, procvar,
+proc toLower*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into lower-case runes.
   runnableExamples:
     doAssert toLower("ABΓ") == "abγ"
   convertRune(s, toLower)
 
-proc swapCase*(s: string): string {.noSideEffect, procvar,
+proc swapCase*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Swaps the case of runes in ``s``.
   ##
@@ -691,7 +693,7 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
       rune = rune.toUpper()
     fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
-proc capitalize*(s: string): string {.noSideEffect, procvar,
+proc capitalize*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts the first character of ``s`` into an upper-case rune.
   runnableExamples:
@@ -758,7 +760,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
     let word = s[wordStart .. ^1]
     result.add(replacements(word))
 
-proc title*(s: string): string {.noSideEffect, procvar,
+proc title*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts ``s`` to a unicode title.
   ##
@@ -820,7 +822,7 @@ proc toRunes*(s: string): seq[Rune] =
   for r in s.runes:
     result.add(r)
 
-proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
+proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1".} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
   ## | 0 if a == b
@@ -1167,301 +1169,3 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
       result.add padStr
   else:
     result = s
-
-# -----------------------------------------------------------------------------
-# deprecated
-
-template runeCaseCheck(s, runeProc, skipNonAlpha) =
-  ## Common code for rune.isLower and rune.isUpper.
-  if len(s) == 0: return false
-  var
-    i = 0
-    rune: Rune
-    hasAtleastOneAlphaRune = false
-  while i < len(s):
-    fastRuneAt(s, i, rune, doInc = true)
-    if skipNonAlpha:
-      var runeIsAlpha = isAlpha(rune)
-      if not hasAtleastOneAlphaRune:
-        hasAtleastOneAlphaRune = runeIsAlpha
-      if runeIsAlpha and (not runeProc(rune)):
-        return false
-    else:
-      if not runeProc(rune):
-        return false
-  return if skipNonAlpha: hasAtleastOneAlphaRune else: true
-
-proc isLower*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether ``s`` is lower case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are lower case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and lower case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isLower, skipNonAlpha)
-
-proc isUpper*(s: string, skipNonAlpha: bool): bool {.
-  deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether ``s`` is upper case.
-  ##
-  ## If ``skipNonAlpha`` is true, returns true if all alphabetical
-  ## runes in ``s`` are upper case. Returns false if none of the
-  ## runes in ``s`` are alphabetical.
-  ##
-  ## If ``skipNonAlpha`` is false, returns true only if all runes in
-  ## ``s`` are alphabetical and upper case.
-  ##
-  ## For either value of ``skipNonAlpha``, returns false if ``s`` is
-  ## an empty string.
-  runeCaseCheck(s, isUpper, skipNonAlpha)
-
-proc isTitle*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nuc$1Str",
-    deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
-  ## **Deprecated since version 0.20 since its semantics are unclear**
-  ##
-  ## Checks whether or not ``s`` is a unicode title.
-  ##
-  ## Returns true if the first character in each word inside ``s``
-  ## are upper case and there is at least one character in ``s``.
-  if s.len == 0:
-    return false
-  result = true
-  var
-    i = 0
-    rune: Rune
-  var firstRune = true
-
-  while i < len(s) and result:
-    fastRuneAt(s, i, rune, doInc = true)
-    if not rune.isWhiteSpace() and firstRune:
-      result = rune.isUpper() and result
-      firstRune = false
-    elif rune.isWhiteSpace():
-      firstRune = true
-
-
-
-when isMainModule:
-
-  proc asRune(s: static[string]): Rune =
-    ## Compile-time conversion proc for converting string literals to a Rune
-    ## value. Returns the first Rune of the specified string.
-    ##
-    ## Shortcuts code like ``"å".runeAt(0)`` to ``"å".asRune`` and returns a
-    ## compile-time constant.
-    if s.len == 0: Rune(0)
-    else: s.runeAt(0)
-
-  let
-    someString = "öÑ"
-    someRunes = toRunes(someString)
-    compared = (someString == $someRunes)
-  doAssert compared == true
-
-  proc testReplacements(word: string): string =
-    case word
-    of "two":
-      return "2"
-    of "foo":
-      return "BAR"
-    of "βeta":
-      return "beta"
-    of "alpha":
-      return "αlpha"
-    else:
-      return "12345"
-
-  doAssert translate("two not alpha foo βeta", testReplacements) == "2 12345 αlpha BAR beta"
-  doAssert translate("  two not foo βeta  ", testReplacements) == "  2 12345 BAR beta  "
-
-  doAssert title("foo bar") == "Foo Bar"
-  doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
-  doAssert title("") == ""
-
-  doAssert capitalize("βeta") == "Βeta"
-  doAssert capitalize("foo") == "Foo"
-  doAssert capitalize("") == ""
-
-  doAssert swapCase("FooBar") == "fOObAR"
-  doAssert swapCase(" ") == " "
-  doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
-  doAssert swapCase("a✓B") == "A✓b"
-  doAssert swapCase("Јамогујестистаклоитоминештети") == "јАМОГУЈЕСТИСТАКЛОИТОМИНЕШТЕТИ"
-  doAssert swapCase("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") == "ὝΑΛΟΝΦΑΓΕῖΝΔΎΝΑΜΑΙΤΟῦΤΟΟὔΜΕΒΛΆΠΤΕΙ"
-  doAssert swapCase("Կրնամապակիուտեևինծիանհանգիստչըներ") == "կՐՆԱՄԱՊԱԿԻՈՒՏԵևԻՆԾԻԱՆՀԱՆԳԻՍՏՉԸՆԵՐ"
-  doAssert swapCase("") == ""
-
-  doAssert isAlpha("r")
-  doAssert isAlpha("α")
-  doAssert isAlpha("ϙ")
-  doAssert isAlpha("ஶ")
-  doAssert(not isAlpha("$"))
-  doAssert(not isAlpha(""))
-
-  doAssert isAlpha("Βeta")
-  doAssert isAlpha("Args")
-  doAssert isAlpha("𐌼𐌰𐌲𐌲𐌻𐌴𐍃𐍄𐌰𐌽")
-  doAssert isAlpha("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει")
-  doAssert isAlpha("Јамогујестистаклоитоминештети")
-  doAssert isAlpha("Կրնամապակիուտեևինծիանհանգիստչըներ")
-  doAssert(not isAlpha("$Foo✓"))
-  doAssert(not isAlpha("⠙⠕⠑⠎⠝⠞"))
-
-  doAssert isSpace("\t")
-  doAssert isSpace("\l")
-  doAssert(not isSpace("Β"))
-  doAssert(not isSpace("Βeta"))
-
-  doAssert isSpace("\t\l \v\r\f")
-  doAssert isSpace("       ")
-  doAssert(not isSpace(""))
-  doAssert(not isSpace("ΑΓc   \td"))
-
-  doAssert(not isLower(' '.Rune))
-
-  doAssert(not isUpper(' '.Rune))
-
-  doAssert toUpper("Γ") == "Γ"
-  doAssert toUpper("b") == "B"
-  doAssert toUpper("α") == "Α"
-  doAssert toUpper("✓") == "✓"
-  doAssert toUpper("ϙ") == "Ϙ"
-  doAssert toUpper("") == ""
-
-  doAssert toUpper("ΑΒΓ") == "ΑΒΓ"
-  doAssert toUpper("AAccβ") == "AACCΒ"
-  doAssert toUpper("A✓$β") == "A✓$Β"
-
-  doAssert toLower("a") == "a"
-  doAssert toLower("γ") == "γ"
-  doAssert toLower("Γ") == "γ"
-  doAssert toLower("4") == "4"
-  doAssert toLower("Ϙ") == "ϙ"
-  doAssert toLower("") == ""
-
-  doAssert toLower("abcdγ") == "abcdγ"
-  doAssert toLower("abCDΓ") == "abcdγ"
-  doAssert toLower("33aaΓ") == "33aaγ"
-
-  doAssert reversed("Reverse this!") == "!siht esreveR"
-  doAssert reversed("先秦兩漢") == "漢兩秦先"
-  doAssert reversed("as⃝df̅") == "f̅ds⃝a"
-  doAssert reversed("a⃞b⃞c⃞") == "c⃞b⃞a⃞"
-  doAssert reversed("ὕαλονϕαγεῖνδύναμαιτοῦτοοὔμεβλάπτει") == "ιετπάλβεμὔοοτῦοτιαμανύδνῖεγαϕνολαὕ"
-  doAssert reversed("Јамогујестистаклоитоминештети") == "итетшенимотиолкатситсејугомаЈ"
-  doAssert reversed("Կրնամապակիուտեևինծիանհանգիստչըներ") == "րենըչտսիգնահնաիծնիևետւոիկապամանրԿ"
-  doAssert len(toRunes("as⃝df̅")) == runeLen("as⃝df̅")
-  const test = "as⃝"
-  doAssert lastRune(test, test.len-1)[1] == 3
-  doAssert graphemeLen("è", 0) == 2
-
-  # test for rune positioning and runeSubStr()
-  let s = "Hänsel  ««: 10,00€"
-
-  var t = ""
-  for c in s.utf8:
-    t.add c
-
-  doAssert(s == t)
-
-  doAssert(runeReverseOffset(s, 1) == (20, 18))
-  doAssert(runeReverseOffset(s, 19) == (-1, 18))
-
-  doAssert(runeStrAtPos(s, 0) == "H")
-  doAssert(runeSubStr(s, 0, 1) == "H")
-  doAssert(runeStrAtPos(s, 10) == ":")
-  doAssert(runeSubStr(s, 10, 1) == ":")
-  doAssert(runeStrAtPos(s, 9) == "«")
-  doAssert(runeSubStr(s, 9, 1) == "«")
-  doAssert(runeStrAtPos(s, 17) == "€")
-  doAssert(runeSubStr(s, 17, 1) == "€")
-  # echo runeStrAtPos(s, 18) # index error
-
-  doAssert(runeSubStr(s, 0) == "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -18) == "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, 10) == ": 10,00€")
-  doAssert(runeSubStr(s, 18) == "")
-  doAssert(runeSubStr(s, 0, 10) == "Hänsel  ««")
-
-  doAssert(runeSubStr(s, 12) == "10,00€")
-  doAssert(runeSubStr(s, -6) == "10,00€")
-
-  doAssert(runeSubStr(s, 12, 5) == "10,00")
-  doAssert(runeSubStr(s, 12, -1) == "10,00")
-  doAssert(runeSubStr(s, -6, 5) == "10,00")
-  doAssert(runeSubStr(s, -6, -1) == "10,00")
-
-  doAssert(runeSubStr(s, 0, 100) == "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, -100, 100) == "Hänsel  ««: 10,00€")
-  doAssert(runeSubStr(s, 0, -100) == "")
-  doAssert(runeSubStr(s, 100, -100) == "")
-
-  block splitTests:
-    let s = " this is an example  "
-    let s2 = ":this;is;an:example;;"
-    let s3 = ":this×is×an:example××"
-    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an",
-        "example", "", ""]
-    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is",
-        "an", "example", "", ""]
-    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
-    doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
-    doAssert s3.split("×".runeAt(0)) == @[":this", "is", "an:example", "", ""]
-
-  block stripTests:
-    doAssert(strip("") == "")
-    doAssert(strip(" ") == "")
-    doAssert(strip("y") == "y")
-    doAssert(strip("  foofoofoo  ") == "foofoofoo")
-    doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
-
-    block:
-      let stripTestRunes = ['b'.Rune, 'a'.Rune, 'r'.Rune]
-      doAssert(strip("barfoofoofoobar", runes = stripTestRunes) == "foofoofoo")
-    doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
-    doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
-
-    block:
-      let stripTestRunes = ["«".asRune, "»".asRune]
-      doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
-    doAssert(strip("copyright©", leading = false, runes = ["©".asRune]) == "copyright")
-    doAssert(strip("¿Question?", trailing = false, runes = ["¿".asRune]) == "Question?")
-    doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
-    doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
-
-  block repeatTests:
-    doAssert repeat('c'.Rune, 5) == "ccccc"
-    doAssert repeat("×".asRune, 5) == "×××××"
-
-  block alignTests:
-    doAssert align("abc", 4) == " abc"
-    doAssert align("a", 0) == "a"
-    doAssert align("1232", 6) == "  1232"
-    doAssert align("1232", 6, '#'.Rune) == "##1232"
-    doAssert align("1232", 6, "×".asRune) == "××1232"
-    doAssert alignLeft("abc", 4) == "abc "
-    doAssert alignLeft("a", 0) == "a"
-    doAssert alignLeft("1232", 6) == "1232  "
-    doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
-    doAssert alignLeft("1232", 6, "×".asRune) == "1232××"
-
-  block differentSizes:
-    # upper and lower variants have different number of bytes
-    doAssert toLower("AẞC") == "aßc"
-    doAssert toLower("ȺẞCD") == "ⱥßcd"
-    doAssert toUpper("ⱥbc") == "ȺBC"
-    doAssert toUpper("rsⱦuv") == "RSȾUV"
-    doAssert swapCase("ⱥbCd") == "ȺBcD"
-    doAssert swapCase("XyꟆaB") == "xYᶎAb"
-    doAssert swapCase("aᵹcᲈd") == "AꝽCꙊD"

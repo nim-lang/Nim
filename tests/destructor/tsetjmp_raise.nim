@@ -1,5 +1,5 @@
 discard """
-  outputsub: "index 2 not in 0 .. 0 [IndexError]"
+  outputsub: "index 2 not in 0 .. 0 [IndexDefect]"
   exitcode: 1
   cmd: "nim c --gc:arc --exceptions:setjmp $file"
 """

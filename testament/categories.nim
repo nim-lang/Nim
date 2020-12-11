@@ -29,12 +29,11 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-packages",
+    "nimble-packages-1",
+    "nimble-packages-2",
     "niminaction",
-    "rodfiles",
     "threads",
     "untestable",
-    "stdlib",
     "testdata",
     "nimcache",
     "coroutines",
@@ -260,16 +259,20 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
-  t.spec.action = actionCompile
-  testSpec r, t
+  if fileExists("tools/nimgrep.nim"):
+    var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+    t.spec.action = actionCompile
+    # force target to C because of MacOS 10.15 SDK headers bug
+    # https://github.com/nim-lang/Nim/pull/15612#issuecomment-712471879
+    t.spec.targets = { targetC }
+    testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
+    testSpec r, makeTest(filename, options, cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -410,7 +413,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
   proc isValid(file: string): bool =
     for dir in parentDirs(file, inclusive = false):
       if dir.lastPathPart in ["includes", "nimcache"]:
-        # eg: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
+        # e.g.: lib/pure/includes/osenv.nim gives: Error: This is an include file for os.nim!
         return false
     let name = extractFilename(file)
     if name.splitFile.ext != ".nim": return false
@@ -430,7 +433,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     #[
     todo:
     this logic is fragile:
-    false positives (if appears in a comment), or false negatives, eg
+    false positives (if appears in a comment), or false negatives, e.g.
     `when defined(osx) and isMainModule`.
     Instead of fixing this, see https://github.com/nim-lang/Nim/issues/10045
     for a much better way.
@@ -447,11 +450,20 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
+type
+  PkgPart = enum
+    ppOne
+    ppTwo
+
+iterator listPackages(part: PkgPart): tuple[name, cmd, url: string, useHead: bool] =
   let packageList = parseFile(packageIndex)
-  for n, cmd, hasDeps, url in important_packages.packages.items:
+  let importantList =
+    case part
+    of ppOne: important_packages.packages1
+    of ppTwo: important_packages.packages2
+  for n, cmd, url, useHead in importantList.items:
     if url.len != 0:
-      yield (n, url, cmd, hasDeps)
+      yield (n, cmd, url, useHead)
     else:
       var found = false
       for package in packageList.items:
@@ -459,7 +471,7 @@ iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
         if name == n:
           found = true
           let pUrl = package["url"].str
-          yield (name, pUrl, cmd, hasDeps)
+          yield (name, cmd, pUrl, useHead)
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
@@ -470,7 +482,18 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
+const maxRetries = 3
+template retryCommand(call): untyped =
+  var res: typeof(call)
+  var backoff = 1
+  for i in 0..<maxRetries:
+    res = call
+    if res.exitCode == QuitSuccess or i == maxRetries-1: break
+    sleep(backoff * 1000)
+    backoff *= 2
+  res
+
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -480,35 +503,48 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   let packagesDir = "pkgstemp"
+  createDir(packagesDir)
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages():
+    for name, cmd, url, useHead in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
-      var test = makeSupTest(url, "", cat)
+      var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
-      if not existsDir(buildPath):
-        if hasDep:
-          let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
-          if nimbleStatus != QuitSuccess:
-            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
-            r.addResult(test, targetC, "", message, reInstallFailed)
+
+      if not dirExists(buildPath):
+        let (cloneCmd, cloneOutput, cloneStatus) = retryCommand execCmdEx2("git", ["clone", url, buildPath])
+        if cloneStatus != QuitSuccess:
+          r.addResult(test, targetC, "", cloneCmd & "\n" & cloneOutput, reInstallFailed)
+          continue
+
+        if not useHead:
+          let (fetchCmd, fetchOutput, fetchStatus) = retryCommand execCmdEx2("git", ["fetch", "--tags"], workingDir = buildPath)
+          if fetchStatus != QuitSuccess:
+            r.addResult(test, targetC, "", fetchCmd & "\n" & fetchOutput, reInstallFailed)
             continue
 
-        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
-        if installStatus != QuitSuccess:
-          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
-          r.addResult(test, targetC, "", message, reInstallFailed)
+          let (describeCmd, describeOutput, describeStatus) = retryCommand execCmdEx2("git", ["describe", "--tags", "--abbrev=0"], workingDir = buildPath)
+          if describeStatus != QuitSuccess:
+            r.addResult(test, targetC, "", describeCmd & "\n" & describeOutput, reInstallFailed)
+            continue
+
+          let (checkoutCmd, checkoutOutput, checkoutStatus) = retryCommand execCmdEx2("git", ["checkout", describeOutput.strip], workingDir = buildPath)
+          if checkoutStatus != QuitSuccess:
+            r.addResult(test, targetC, "", checkoutCmd & "\n" & checkoutOutput, reInstallFailed)
+            continue
+
+        let (installDepsCmd, installDepsOutput, installDepsStatus) = retryCommand execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
+        if installDepsStatus != QuitSuccess:
+          r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
           continue
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
-      if buildStatus != QuitSuccess:
-        let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
-        r.addResult(test, targetC, "", message, reBuildFailed)
+      let (buildCmd, buildOutput, status) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir = buildPath)
+      if status != QuitSuccess:
+        r.addResult(test, targetC, "", "package test failed\n$ " & buildCmd & "\n" & buildOutput, reBuildFailed)
       else:
         inc r.passed
         r.addResult(test, targetC, "", "", reSuccess)
@@ -538,13 +574,13 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startsWith(a): b else: a & b
 
-proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
-  let test = testsDir &.? cat.string / test
-  let target = if cat.string.normalize == "js": targetJS else: targetC
-  if existsFile(test):
-    testSpec r, makeTest(test, options, cat), {target}
-  else:
-    echo "[Warning] - ", test, " test does not exist"
+proc processSingleTest(r: var TResults, cat: Category, options, test: string, targets: set[TTarget], targetsSet: bool) =
+  var targets = targets
+  if not targetsSet:
+    let target = if cat.string.normalize == "js": targetJS else: targetC
+    targets = {target}
+  doAssert fileExists(test), test & " test does not exist"
+  testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
@@ -562,13 +598,18 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
+  if result:
+    if spec.file.readFile.contains "when isMainModule":
+      result = false
 
-proc norm(s: var string) =
-  while true:
-    let tmp = s.replace("\n\n", "\n")
-    if tmp == s: break
-    s = tmp
-  s = s.strip
+when false:
+  proc norm(s: var string) =
+    ## strip empty newlines
+    while true:
+      let tmp = s.replace("\n\n", "\n")
+      if tmp == s: break
+      s = tmp
+    s = s.strip
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
@@ -598,60 +639,56 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  #[
-  TODO(minor):
-  get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
-  delete upon completion, maybe
-  ]#
+  # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_" & $i & ".nim")
+    let file2 = outDir / ("megatest_$1.nim" % $i)
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
+    let code = "echo \"$1\", $2\n" % [marker, quoted(file)]
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import " & quoted(file2) & "\n"
-    megatest.add "import " & quoted(file) & "\n"
+    megatest.add "import $1\nimport $2\n" % [quoted(file2), quoted(file)]
 
-  writeFile("megatest.nim", megatest)
+  let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
+  writeFile(megatestFile, megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
-              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
-
+  let root = getCurrentDir()
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo "$ ", cmdLine
-    echo buf.string
-    quit("megatest compilation failed")
+    echo "$ " & cmdLine & "\n" & buf.string
+    quit(failString & "megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx("./megatest")
+  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
     echo buf.string
-    quit("megatest execution failed")
+    quit(failString & "megatest execution failed")
 
-  norm buf.string
-  writeFile("outputGotten.txt", buf.string)
+  const outputExceptedFile = "outputExpected.txt"
+  const outputGottenFile = "outputGotten.txt"
+  writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
-    outputExpected.add runSpec.output.strip
-    outputExpected.add '\n'
-  norm outputExpected
+    if runSpec.output.len > 0:
+      outputExpected.add runSpec.output
+      if not runSpec.output.endsWith "\n":
+        outputExpected.add '\n'
 
   if buf.string != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
-    echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
+    writeFile(outputExceptedFile, outputExpected)
+    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
+    echo failString & "megatest output different!"
+    # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:
-    echo "output OK"
-    removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
+    echo "megatest output OK"
+    when false: # no point removing those, always good for debugging
+      removeFile(outputGottenFile)
+      removeFile(megatestFile) # keep it around
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------
@@ -660,10 +697,6 @@ proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
-  of "rodfiles":
-    when false:
-      compileRodFiles(r, cat, options)
-      runRodFiles(r, cat, options)
   of "ic":
     when false:
       icTests(r, testsDir, cat, options)
@@ -699,8 +732,10 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages":
-    testNimblePackages(r, cat, options)
+  of "nimble-packages-1":
+    testNimblePackages(r, cat, options, ppOne)
+  of "nimble-packages-2":
+    testNimblePackages(r, cat, options, ppTwo)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":
@@ -724,7 +759,9 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+      const whiteListedDirs = ["deps"]
+      doAssert cat.string in whiteListedDirs,
+        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0

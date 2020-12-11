@@ -8,7 +8,8 @@ outer finally
 msg1
 msg2
 finally2
-finally1'''
+finally1
+true'''
   cmd: "nim c --gc:arc $file"
 """
 
@@ -67,3 +68,9 @@ when true:
       echo "finally1"
 
   nested_finally()
+
+# bug #14925
+proc test(b: bool) =
+  echo b
+
+test(try: true except: false)
