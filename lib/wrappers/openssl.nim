@@ -475,11 +475,11 @@ proc SSL_accept*(ssl: SslPtr): cint{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_pending*(ssl: SslPtr): cint{.cdecl, dynlib: DLLSSLName, importc.}
 
 proc BIO_new_mem_buf*(data: pointer, len: cint): BIO{.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc BIO_new_ssl_connect*(ctx: SslCtx): BIO{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc BIO_ctrl*(bio: BIO, cmd: cint, larg: int, arg: cstring): int{.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 proc BIO_get_ssl*(bio: BIO, ssl: ptr SslPtr): int =
   return BIO_ctrl(bio, BIO_C_GET_SSL, 0, cast[cstring](ssl))
 proc BIO_set_conn_hostname*(bio: BIO, name: cstring): int =
@@ -497,14 +497,14 @@ when not defined(nimfix):
 
 proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc ERR_print_errors_fp*(fp: File){.cdecl, dynlib: DLLSSLName, importc.}
+proc ERR_print_errors_fp*(fp: File){.cdecl, dynlib: DLLUtilName, importc.}
 
 proc ERR_error_string*(e: culong, buf: cstring): cstring{.cdecl,
     dynlib: DLLUtilName, importc.}
 proc ERR_get_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
+proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: OPENSSL_config, importc.}
 
 proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
 
@@ -512,10 +512,10 @@ proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
     dynlib: DLLSSLName, importc.}
 
 proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 
 proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
-    dynlib: DLLSSLName, importc.}
+    dynlib: DLLUtilName, importc.}
 
 proc d2i_X509*(b: string): PX509 =
   ## decode DER/BER bytestring into X.509 certificate struct
