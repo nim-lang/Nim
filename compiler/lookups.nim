@@ -147,6 +147,14 @@ iterator importedItems*(c: PContext; name: PIdent): PSym =
     for s in symbols(im, marked, name):
       yield s
 
+proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
+  var ti: TIdentIter
+  result = @[]
+  var res = initIdentIter(ti, c.pureEnumFields, name)
+  while res != nil:
+    result.add res
+    res = nextIdentIter(ti, c.pureEnumFields)
+
 iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
@@ -437,8 +445,14 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         amb = candidates.len > 1
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
-    if result == nil and checkPureEnumFields in flags:
-      result = strTableGet(c.pureEnumFields, ident)
+    if result == nil:
+      let candidates = allPureEnumFields(c, ident)
+      if candidates.len > 0:
+        result = candidates[0]
+        amb = candidates.len > 1
+        if amb and checkAmbiguity in flags:
+          errorUseQualifier(c, n.info, candidates)
+
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)

@@ -24,9 +24,11 @@ proc declarePureEnumField*(c: PContext; s: PSym) =
   # XXX Remove the outer 'if' statement and see what breaks.
   var amb = false
   if someSymFromImportTable(c, s.name, amb) == nil:
-    let checkB = strTableGet(c.pureEnumFields, s.name)
-    if checkB == nil:
-      strTableAdd(c.pureEnumFields, s)
+    strTableAdd(c.pureEnumFields, s)
+    when false:
+      let checkB = strTableGet(c.pureEnumFields, s.name)
+      if checkB == nil:
+        strTableAdd(c.pureEnumFields, s)
     when false:
       # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
@@ -35,9 +37,11 @@ proc declarePureEnumField*(c: PContext; s: PSym) =
 proc importPureEnumField*(c: PContext; s: PSym) =
   var amb = false
   if someSymFromImportTable(c, s.name, amb) == nil:
-    let checkB = strTableGet(c.pureEnumFields, s.name)
-    if checkB == nil:
-      strTableAdd(c.pureEnumFields, s)
+    strTableAdd(c.pureEnumFields, s)
+    when false:
+      let checkB = strTableGet(c.pureEnumFields, s.name)
+      if checkB == nil:
+        strTableAdd(c.pureEnumFields, s)
     when false:
       # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
