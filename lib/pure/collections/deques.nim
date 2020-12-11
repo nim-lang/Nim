@@ -495,7 +495,7 @@ proc rotateLeft*[T](deq: var Deque[T], n = 1) {.since: (1, 5, 1).} =
         deq.head = newHead
         deq.tail = newTail
 
-template rotateRight*(deq: var Deque, n = 1): untyped {.since: (1, 5, 1).} =
+template rotateRight*(deq: var Deque, n = 1): untyped =
   ## Rotates the `deq` to the right `n` amount of times.
   runnableExamples:
     var a = toDeque([1, 2, 3, 4, 5])
