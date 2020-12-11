@@ -475,7 +475,7 @@ proc rotateLeft*[T](deq: var Deque[T], n = 1) =
     runnableExamples:
       var a = toDeque([1, 2, 3, 4, 5])
       a.rotateLeft 4
-      assert $a == "[5, 1, 2, 3, 4]"
+      doAssert $a == "[5, 1, 2, 3, 4]"
 
     if n > 0:
       for _ in 1..n:
