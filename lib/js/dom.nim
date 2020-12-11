@@ -1683,6 +1683,7 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+  ## see also `math.isNaN`.
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
