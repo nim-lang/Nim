@@ -504,7 +504,7 @@ proc ERR_error_string*(e: culong, buf: cstring): cstring{.cdecl,
 proc ERR_get_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: OPENSSL_config, importc.}
+proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
 
