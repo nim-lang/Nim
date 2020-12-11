@@ -278,16 +278,14 @@ elif defined(posix) and not defined(lwip) and not defined(nimscript):
   proc c_fcntl(fd: cint, cmd: cint): cint {.
     importc: "fcntl", header: "<fcntl.h>", varargs.}
 elif defined(windows):
-  const HANDLE_FLAG_INHERIT = culong 0x1
+  const HANDLE_FLAG_INHERIT = 0x00000001'i32
+  
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
-
-  type
-    IoHandle = distinct pointer
-      ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
-      ## one. Named like this to avoid collision with other `system` modules.
-  proc setHandleInformation(handle: IoHandle, mask, flags: culong): cint {.
-    importc: "SetHandleInformation", header: "<handleapi.h>".}
+    
+  proc setHandleInformation(hObject: int, dwMask: int32, dwFlags: int32): int32
+                           {.stdcall, dynlib: "kernel32",
+                            importc: "SetHandleInformation".}
 
 const
   BufSize = 4000
@@ -345,8 +343,8 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
-                                    culong inheritable) != 0
+      result = setHandleInformation(f.int, HANDLE_FLAG_INHERIT,
+                                    inheritable.int32) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
