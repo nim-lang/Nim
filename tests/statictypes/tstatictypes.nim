@@ -357,3 +357,12 @@ proc fn(N1: static int, N2: static int, T: typedesc): array[N1 * N2, T] =
   doAssert(len(result) == N1 * N2)
 
 let yy = fn(5, 10, float)
+
+
+block:
+  block:
+    type Foo[N: static int] = array[cint(0) .. cint(N), float]
+    type T = Foo[3]
+  block:
+    type Foo[N: static int] = array[int32(0) .. int32(N), float]
+    type T = Foo[3]

@@ -765,7 +765,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -1122,7 +1122,7 @@ proc safeLen*(n: PNode): int {.inline.} =
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
+  if n.kind in {nkStrLit..nkTripleStrLit}: result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
@@ -1441,6 +1441,7 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex      # BUGFIX
+  result.constraint = s.constraint
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
     result.bitsize = s.bitsize
@@ -1833,6 +1834,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, nextId(idgen), typ.owner)
     rawAddSon(result, typ)

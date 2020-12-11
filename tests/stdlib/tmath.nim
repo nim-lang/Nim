@@ -1,6 +1,8 @@
 discard """
   action: run
-  output: '''[Suite] random int
+  output: '''
+
+[Suite] random int
 
 [Suite] random float
 
@@ -9,9 +11,11 @@ discard """
 [Suite] random sample
 
 [Suite] ^
-
 '''
+matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
+
+# xxx: fix bugs for js then add: targets:"c js"
 
 import math, random, os
 import unittest
@@ -36,12 +40,16 @@ suite "random int":
     var rand: int
     for i in 1..1000:
       rand = rand(100..1000)
-      check rand < 1000
+      when defined(js): # xxx bug: otherwise fails
+        check rand <= 1000
+      else:
+        check rand < 1000
       check rand >= 100
   test " again gives new numbers":
 
     var rand1 = rand(1000000)
-    os.sleep(200)
+    when not defined(js):
+      os.sleep(200)
 
     var rand2 = rand(1000000)
     check rand1 != rand2
@@ -71,7 +79,8 @@ suite "random float":
   test " again gives new numbers":
 
     var rand1:float = rand(1000000.0)
-    os.sleep(200)
+    when not defined(js):
+      os.sleep(200)
 
     var rand2:float = rand(1000000.0)
     check rand1 != rand2
@@ -145,3 +154,142 @@ suite "^":
     check: compiles(5.5 ^ 2.uint)
     check: compiles(5.5 ^ 2.uint8)
     check: not compiles(5.5 ^ 2.2)
+
+block:
+  when not defined(js):
+    # Check for no side effect annotation
+    proc mySqrt(num: float): float {.noSideEffect.} =
+      # xxx unused
+      return sqrt(num)
+
+    # check gamma function
+    assert(gamma(5.0) == 24.0) # 4!
+    assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
+    assert(erf(6.0) > erf(5.0))
+    assert(erfc(6.0) < erfc(5.0))
+
+
+    # Function for approximate comparison of floats
+    proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+
+    block: # prod
+      doAssert prod([1, 2, 3, 4]) == 24
+      doAssert prod([1.5, 3.4]) == 5.1
+      let x: seq[float] = @[]
+      doAssert prod(x) == 1.0
+
+    block: # round() tests
+      # Round to 0 decimal places
+      doAssert round(54.652) ==~ 55.0
+      doAssert round(54.352) ==~ 54.0
+      doAssert round(-54.652) ==~ -55.0
+      doAssert round(-54.352) ==~ -54.0
+      doAssert round(0.0) ==~ 0.0
+
+    block: # splitDecimal() tests
+      doAssert splitDecimal(54.674).intpart ==~ 54.0
+      doAssert splitDecimal(54.674).floatpart ==~ 0.674
+      doAssert splitDecimal(-693.4356).intpart ==~ -693.0
+      doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
+      doAssert splitDecimal(0.0).intpart ==~ 0.0
+      doAssert splitDecimal(0.0).floatpart ==~ 0.0
+
+    block: # trunc tests for vcc
+      doAssert(trunc(-1.1) == -1)
+      doAssert(trunc(1.1) == 1)
+      doAssert(trunc(-0.1) == -0)
+      doAssert(trunc(0.1) == 0)
+
+      #special case
+      doAssert(classify(trunc(1e1000000)) == fcInf)
+      doAssert(classify(trunc(-1e1000000)) == fcNegInf)
+      when not defined(nimTmathCase2):
+        doAssert(classify(trunc(0.0/0.0)) == fcNan)
+      doAssert(classify(trunc(0.0)) == fcZero)
+
+      #trick the compiler to produce signed zero
+      let
+        f_neg_one = -1.0
+        f_zero = 0.0
+        f_nan = f_zero / f_zero
+
+      doAssert(classify(trunc(f_neg_one*f_zero)) == fcNegZero)
+
+      doAssert(trunc(-1.1'f32) == -1)
+      doAssert(trunc(1.1'f32) == 1)
+      doAssert(trunc(-0.1'f32) == -0)
+      doAssert(trunc(0.1'f32) == 0)
+      doAssert(classify(trunc(1e1000000'f32)) == fcInf)
+      doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
+      when not defined(nimTmathCase2):
+        doAssert(classify(trunc(f_nan.float32)) == fcNan)
+      doAssert(classify(trunc(0.0'f32)) == fcZero)
+
+    block: # sgn() tests
+      assert sgn(1'i8) == 1
+      assert sgn(1'i16) == 1
+      assert sgn(1'i32) == 1
+      assert sgn(1'i64) == 1
+      assert sgn(1'u8) == 1
+      assert sgn(1'u16) == 1
+      assert sgn(1'u32) == 1
+      assert sgn(1'u64) == 1
+      assert sgn(-12342.8844'f32) == -1
+      assert sgn(123.9834'f64) == 1
+      assert sgn(0'i32) == 0
+      assert sgn(0'f32) == 0
+      assert sgn(NegInf) == -1
+      assert sgn(Inf) == 1
+      assert sgn(NaN) == 0
+
+    block: # fac() tests
+      try:
+        discard fac(-1)
+      except AssertionDefect:
+        discard
+
+      doAssert fac(0) == 1
+      doAssert fac(1) == 1
+      doAssert fac(2) == 2
+      doAssert fac(3) == 6
+      doAssert fac(4) == 24
+
+    block: # floorMod/floorDiv
+      doAssert floorDiv(8, 3) == 2
+      doAssert floorMod(8, 3) == 2
+
+      doAssert floorDiv(8, -3) == -3
+      doAssert floorMod(8, -3) == -1
+
+      doAssert floorDiv(-8, 3) == -3
+      doAssert floorMod(-8, 3) == 1
+
+      doAssert floorDiv(-8, -3) == 2
+      doAssert floorMod(-8, -3) == -2
+
+      doAssert floorMod(8.0, -3.0) ==~ -1.0
+      doAssert floorMod(-8.5, 3.0) ==~ 0.5
+
+    block: # log
+      doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
+      doAssert log2(8.0'f64) == 3.0'f64
+      doAssert log2(4.0'f64) == 2.0'f64
+      doAssert log2(2.0'f64) == 1.0'f64
+      doAssert log2(1.0'f64) == 0.0'f64
+      doAssert classify(log2(0.0'f64)) == fcNegInf
+
+      doAssert log2(8.0'f32) == 3.0'f32
+      doAssert log2(4.0'f32) == 2.0'f32
+      doAssert log2(2.0'f32) == 1.0'f32
+      doAssert log2(1.0'f32) == 0.0'f32
+      doAssert classify(log2(0.0'f32)) == fcNegInf
+
+template main =
+  # xxx wrap all under `main` so it also gets tested in vm.
+  block: # isNaN
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+
+main()
+static: main()

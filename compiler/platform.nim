@@ -193,7 +193,7 @@ type
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuHppa, cpuIa64, cpuAmd64, cpuMips,
     cpuMipsel, cpuArm, cpuArm64, cpuJS, cpuNimVM, cpuAVR, cpuMSP430,
-    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV64, cpuEsp, cpuWasm32
+    cpuSparc64, cpuMips64, cpuMips64el, cpuRiscV32, cpuRiscV64, cpuEsp, cpuWasm32
 
 type
   TEndian* = enum
@@ -226,6 +226,7 @@ const
     (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
     (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
+    (name: "riscv32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "riscv64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "esp", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "wasm32", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32)]

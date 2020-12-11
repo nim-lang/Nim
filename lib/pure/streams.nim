@@ -346,7 +346,7 @@ proc write*[T](s: Stream, x: T) =
   writeData(s, unsafeAddr(x), sizeof(x))
 
 proc write*(s: Stream, x: string) =
-  ## Writes the string `x` to the the stream `s`. No length field or
+  ## Writes the string `x` to the stream `s`. No length field or
   ## terminating zero is written.
   runnableExamples:
     var strm = newStringStream("")
@@ -1520,17 +1520,3 @@ when false:
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)
-
-when isMainModule and defined(testing):
-  var ss = newStringStream("The quick brown fox jumped over the lazy dog.\nThe lazy dog ran")
-  assert(ss.getPosition == 0)
-  assert(ss.peekStr(5) == "The q")
-  assert(ss.getPosition == 0) # haven't moved
-  assert(ss.readStr(5) == "The q")
-  assert(ss.getPosition == 5) # did move
-  assert(ss.peekLine() == "uick brown fox jumped over the lazy dog.")
-  assert(ss.getPosition == 5) # haven't moved
-  var str = newString(100)
-  assert(ss.peekLine(str))
-  assert(str == "uick brown fox jumped over the lazy dog.")
-  assert(ss.getPosition == 5) # haven't moved

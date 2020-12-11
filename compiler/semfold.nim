@@ -671,6 +671,10 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
     result = foldConv(n, a, g, check=true)
+  of nkDerefExpr, nkHiddenDeref:
+    let a = getConstExpr(m, n[0], idgen, g)
+    if a != nil and a.kind == nkNilLit:
+       localError(g.config, n.info, "nil dereference is not allowed")
   of nkCast:
     var a = getConstExpr(m, n[1], idgen, g)
     if a == nil: return
@@ -681,6 +685,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   of nkBracketExpr: result = foldArrayAccess(m, n, idgen, g)
   of nkDotExpr: result = foldFieldAccess(m, n, idgen, g)
   of nkCheckedFieldExpr:
+    assert n[0].kind == nkDotExpr
     result = foldFieldAccess(m, n[0], idgen, g)
   of nkStmtListExpr:
     var i = 0

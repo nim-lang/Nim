@@ -71,3 +71,16 @@ m:
     echo "yes"
 
 sugarWithPragma() {.m.} => echo "sugarWithPragma called"
+
+typedParamAndPragma(x, y: int) {.used.} -> int => x + y
+doAssert typedParamAndPragma(1, 2) == 3
+
+type
+  Bot = object
+    call: proc (): string {.noSideEffect.}
+
+var myBot = Bot()
+myBot.call = () {.noSideEffect.} => "I'm a bot."
+doAssert myBot.call() == "I'm a bot."
+
+
