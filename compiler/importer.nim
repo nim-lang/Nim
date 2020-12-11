@@ -34,7 +34,7 @@ proc declarePureEnumField*(c: PContext; s: PSym) =
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
 
-proc importPureEnumField*(c: PContext; s: PSym) =
+proc importPureEnumField(c: PContext; s: PSym) =
   var amb = false
   if someSymFromImportTable(c, s.name, amb) == nil:
     strTableAdd(c.pureEnumFields, s)
@@ -46,6 +46,22 @@ proc importPureEnumField*(c: PContext; s: PSym) =
       # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
+
+proc importPureEnumFields(c: PContext; s: PSym; etyp: PType) =
+  assert sfPure in s.flags
+  for j in 0..<etyp.n.len:
+    var e = etyp.n[j].sym
+    if e.kind != skEnumField:
+      internalError(c.config, s.info, "rawImportSymbol")
+      # BUGFIX: because of aliases for enums the symbol may already
+      # have been put into the symbol table
+      # BUGFIX: but only iff they are the same symbols!
+    for check in importedItems(c, e.name):
+      if check.id == e.id:
+        e = nil
+        break
+    if e != nil:
+      importPureEnumField(c, e)
 
 proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   # This does not handle stubs, because otherwise loading on demand would be
@@ -152,6 +168,9 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
   for it in c.graph.ifaces[fromMod.position].patterns:
     if filter:
       addPattern(c, it)
+  for it in c.graph.ifaces[fromMod.position].pureEnums:
+    if filter:
+      importPureEnumFields(c, it, it.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)

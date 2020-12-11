@@ -150,6 +150,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
+  if isPure and sfExported in result.sym.flags:
+    addPureEnum(c, result.sym)
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
 

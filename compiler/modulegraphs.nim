@@ -38,6 +38,7 @@ type
     module*: PSym       ## module this "Iface" belongs to
     converters*: seq[PSym]
     patterns*: seq[PSym]
+    pureEnums*: seq[PSym]
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
