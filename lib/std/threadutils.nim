@@ -3,6 +3,8 @@ import std/locks
 var lock: Lock
 initLock(lock)
 
+# var lockSubs: seq[Lock]
+
 template onceGlobal*(body: untyped) =
   ## evaluate `body` once, even in presence of multiple threads.
   runnableExamples "--threads":
@@ -15,10 +17,19 @@ template onceGlobal*(body: untyped) =
     joinThreads(thr)
 
   var witness {.global.}: bool
-  withLock lock:
-    if not witness:
-      witness = true
-      body
+  # var lockIndex {.global.}: int
+  # TODO is atomic needed?
+  if not witness:
+    # var lockSub {.global.}: Lock
+    # initLock(lock)
+    withLock lock:
+      # lockSubs
+      if not witness:
+        witness = true
+        # this could take a while
+        # lockSubs
+        # lockIndex
+        body
 
 template onceThread*(body: untyped) =
   # var witness {.threadvar.}: bool
