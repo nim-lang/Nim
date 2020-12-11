@@ -63,8 +63,6 @@
 - `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 
-- `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
-
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -90,3 +88,8 @@
 
 ## Tool changes
 
+- The rst parser now supports markdown table syntax.
+  Known limitations:
+  - cell alignment is not supported, i.e. alignment annotations in a delimiter
+    row (`:---`, `:--:`, `---:`) are ignored,
+  - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.
