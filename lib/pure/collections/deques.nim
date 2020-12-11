@@ -502,7 +502,7 @@ template rotateRight*(deq: var Deque, n = 1) =
     a.rotateRight 4
     doAssert $a == "[2, 3, 4, 5, 1]"
     
-  deq.rotateLeft(n * -1)
+  deq.rotateLeft(-n)
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.
