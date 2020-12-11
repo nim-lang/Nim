@@ -465,7 +465,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   else:
     result.add res
 
-macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[untyped]): untyped =
+macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[untyped]): untyped {.since: (1, 5).}=
   ## Works identically as scanf, but instead of predeclaring variables it returns a tuple.
   ## Tuple is started with a bool which indicates if the scan was successful 
   ## followed by the requested data.
