@@ -278,7 +278,7 @@ elif defined(posix) and not defined(lwip) and not defined(nimscript):
   proc c_fcntl(fd: cint, cmd: cint): cint {.
     importc: "fcntl", header: "<fcntl.h>", varargs.}
 elif defined(windows):
-  const HANDLE_FLAG_INHERIT = 0x00000001'i32
+  const HANDLE_FLAG_INHERIT = 1'i32
   
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
