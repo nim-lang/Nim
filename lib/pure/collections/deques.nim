@@ -470,6 +470,35 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   result = deq.data[deq.tail]
   destroy(deq.data[deq.tail])
 
+proc rotateLeft[T](deq: var Deque[T], n = 1) =
+    ## Rotates the `deq` to the left `n` amount of times.
+    ## Make `n` negative for right rotation.
+    runnableExamples:
+      var a = toDeque([1, 2, 3, 4, 5])
+      a.rotateLeft 4
+      assert $a == "[5, 1, 2, 3, 4]"
+
+    if unlikely(n == 0):
+      return
+
+    if n > 0:
+      for _ in 1..n:
+        deq.data[deq.tail] = deq.data[deq.head]
+        destroy deq.data[deq.head]
+
+        deq.tail = (deq.tail + 1) and deq.mask
+        deq.head = (deq.head + 1) and deq.mask
+    else:
+      for _ in n..(-1):
+        let newHead = (deq.head - 1) and deq.mask
+        let newTail = (deq.tail - 1) and deq.mask
+
+        deq.data[newHead] = deq.data[newTail]
+        destroy deq.data[newTail]
+
+        deq.head = newHead
+        deq.tail = newTail
+
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.
   ##
