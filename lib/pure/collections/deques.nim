@@ -500,7 +500,7 @@ template rotateRight*(deq: var Deque, n = 1) =
   runnableExamples:
     var a = toDeque([1, 2, 3, 4, 5])
     a.rotateRight 4
-    assert $a == "[2, 3, 4, 5, 1]"
+    doAssert $a == "[2, 3, 4, 5, 1]"
     
   deq.rotateLeft(n * -1)
 
