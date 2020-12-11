@@ -8,16 +8,63 @@ run with: `-d:nimTthreadutilsNum:10000` for stress testing
 
 when defined nimTthreadutilsSub:
   import std/threadutils
-  var thr: array[10, Thread[int]]
-  var count = 0
-  proc threadFunc(a: int) {.thread.} =
-    onceGlobal: count.inc
-    doAssert count == 1
-  proc main =
-    for i, t in mpairs(thr):
-      t.createThread(threadFunc, i)
+  from std/os import sleep
+
+  block: # tests thread safety: bug #8895
+    var thr: array[10, Thread[int]]
+    var count = 0
+    proc threadFunc(a: int) {.thread.} =
+      onceGlobal: count.inc
+      doAssert count == 1
+    proc main =
+      for i, t in mpairs(thr):
+        t.createThread(threadFunc, i)
+      joinThreads(thr)
+    main()
+
+  block: # tests that each `onceGlobal` has its own lock
+    var thr: array[2, Thread[void]]
+    var count = 0
+    var count2 = 0
+    proc threadFunc() {.thread.} =
+      for j in 0..<3:
+        onceGlobal:
+          while count2 == 0: sleep(10)
+          count.inc
+      doAssert count == 1
+    for t in mitems(thr): t.createThread threadFunc
+    for j in 0..<3:
+      onceGlobal: # no deadlock, this has its own lock
+        sleep(10)
+        count2.inc
+    doAssert count2 == 1
     joinThreads(thr)
-  main()
+
+  block: # tests `retryOnFailure` behavior
+    const N = 10
+    type Input = tuple[tid: int, retryOnFailure: bool]
+    var thr: array[N, Thread[Input]]
+    var count = 0
+    proc threadFunc(input: Input) {.thread.} =
+      let winner = N-1
+      if input.tid == winner:
+        # losers go first and will raise ValueError
+        sleep(1)
+      try:
+        onceGlobal(retryOnFailure = input.retryOnFailure):
+          if input.tid != winner:
+            raise newException(ValueError, "bad")
+          count.inc
+      except:
+        discard
+    for retryOnFailure in [true, false]:
+      count = 0
+      for i, t in mpairs(thr): t.createThread(threadFunc, (i, retryOnFailure))
+      joinThreads(thr)
+      if retryOnFailure:
+        doAssert count == 1
+      else:
+        doAssert count == 0
 
 else:
   from stdtest/specialpaths import buildDir
@@ -43,5 +90,8 @@ else:
     for i in 0..<10:
       onceThread:
         count.inc
-        echo i
     doAssert count == 1
+
+    onceThread:
+      count.inc
+    doAssert count == 2
