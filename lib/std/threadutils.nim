@@ -28,6 +28,17 @@ template onceGlobal*(retryOnFailure: bool, body: untyped) =
         count2.inc
     doAssert count2 == 1
     joinThreads(thr)
+  runnableExamples:
+    # each instantiation is independant:
+    var count = 0
+    proc bar[T](a: T): int =
+      onceGlobal: count.inc
+      result = count
+    doAssert bar(1) == 1
+    doAssert bar(2) == 1
+    doAssert bar(3.1) == 2
+    doAssert bar(4.2) == 2
+    doAssert bar(5.1'f32) == 3
 
   var witness {.global.}: int
   var lock2 {.global.}: Lock
@@ -56,7 +67,8 @@ template onceGlobal*(body: untyped) =
   onceGlobal(false, body)
 
 template onceThread*(body: untyped) =
-  ## Evaluate `body` once per thread
+  ## Evaluate `body` once per thread. Like `onceGlobal`, each instantiation
+  ## is independant.
   runnableExamples:
     var count = 0
     proc fn(n: int) =
