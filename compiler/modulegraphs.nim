@@ -295,6 +295,13 @@ template assertInitialized(g: ModuleGraph; iface: Iface) =
   if not iface.initialized:
     internalError(g.config, "iface uninitialized")
 
+proc contains(ps: seq[PSym]; s: PSym): bool =
+  ## be explicit about finding a sym in a seq
+  for n in ps.items:
+    result = n.id == s.id
+    if result:
+      break
+
 proc makeResolver*(graph: ModuleGraph): Resolver =
   proc resolver(module: int32; name: string): PSym =
     ## this resolver callback serves to add the graph to the scope of
@@ -363,29 +370,25 @@ iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
                          iface.module, name = name):
     yield s
 
-proc symbols(g: ModuleGraph; m: PSym): seq[PSym] {.deprecated.} =
-  ## this seems to be misused for membership; perhaps reimplement
-  ## it as a faster predicate for those applications (only)
-  for s in symbols(g, m):
+proc matches(g: ModuleGraph; m: PSym; name: PIdent): seq[PSym] =
+  ## collect symbols matching the given identifier
+  assert g != nil
+  assert m != nil
+  for s in symbols(g, m, name):
+    assert s != nil
     result.add s
 
 proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
   ## replicate the existing iterator semantics for the iface cache
   template iface: Iface = g.ifaces[m.position]
   g.assertInitialized iface
-  # XXX: this is almost as inefficient as it looks
-  let symbols = symbols(g, m)
-  block done:
-    if symbols.high >= it.h.int:
-      for i in countup(1 + it.h.int, symbols.high):
-        let s = symbols[i]
-        if s.name.s == it.name.s:
-          it.name = s.name
-          it.h = i.Hash        # nominally a Hash
-          result = s
-          break done
-      # advance the iterator past the last index
-      it.h = symbols.len.Hash  # nominally a Hash
+  let found = matches(g, m, it.name)
+  if found.high >= it.h.int:
+    for i in countup(1 + it.h.int, found.high):
+      it.h = i.Hash        # nominally a Hash
+      return found[i]
+    # advance the iterator past the last index
+    it.h = found.len.Hash  # nominally a Hash
 
 proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
                     name: PIdent): PSym =
@@ -449,14 +452,13 @@ proc addSymbol(g: ModuleGraph; m: PSym; s: PSym) =
   ## this is where we pack symbols; called by addExport, addConverter
   assert m.kind == skModule
   assert s != nil
+  # XXX: not sure how we need to handle this, yet...
+  if s.kind == skModule: return
   template iface: Iface = g.ifaces[m.position]
   g.assertInitialized iface
-  # XXX: replace this with membership test instead
-  if s notin symbols(g, m):
-    if s.kind == skModule:
-      raise
-    g.assertInitialized iface
-    discard s.toPackedSym(iface.tree, iface.encoder[])
+  for _ in symbols(g, m, s.name):
+    return
+  discard s.toPackedSym(iface.tree, iface.encoder[])
 
 proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
   ## ensure the converter is in the packed ast; it will
