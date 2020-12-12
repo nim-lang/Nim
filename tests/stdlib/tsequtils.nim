@@ -455,3 +455,14 @@ block:
         yield i
 
   doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+
+block:
+  # Tests for slice iterators
+  var a = [10, 20, 11, 21, 12, 22, 13, 23, 14, 24]
+  for v in a.mRefSlice(3..5):
+    v *= 2
+  doAssert(a == [10, 20, 11, 42, 24, 44, 13, 23, 14, 24])
+  let b = [5, 3, 2, 10, 20, 20]
+  for v in b.refSlice(3..5):
+    doAssert v == 10 or v == 20
+    

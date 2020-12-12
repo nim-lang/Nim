@@ -1105,3 +1105,22 @@ iterator items*[T](xs: iterator: T): T =
   ## templates.
   for x in xs():
     yield x
+
+iterator refSlice*[T](arr: openArray[T], slice: Slice[int]): lent T {.since: (1, 5).} =
+  ## Iterators over a non duplicating slice of the array.
+  runnableExamples:
+    var a = [10, 20, 30]
+    for i in a.refSlice[1..2]:
+      assert a[i] == 20 or a[i] == 30
+  for x in arr.toOpenArray(slice.a, slice.b):
+    yield x
+
+iterator mRefSlice*[T](arr: var openArray[T], slice: Slice[int]): var T {.since: (1, 5).} =
+  ## Iterators over a mutable non duplicating slice of the array.
+  runnableExamples:
+    var a = [10, 20, 30]
+    for i in a.refSlice[1..2]:
+      i *= 2
+    assert a == [10, 40, 60]
+  for x in slice:
+    yield arr[x]
