@@ -60,7 +60,8 @@
 
 - Added `math.isNaN`.
 
-- `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+- Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+- Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
 
 
 ## Language changes
