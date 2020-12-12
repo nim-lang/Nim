@@ -118,3 +118,36 @@ func fetch*(url: cstring): Response {.importjs: "await fetch(#).then(response =>
 
 func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fetch(#, #).then(response => response)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
+
+
+runnableExamples:
+  when defined(nimJsFetchTests):
+
+    block:
+      doAssert hasFetch()
+      var header = newHeaders()
+      header.append(r"key", r"value")
+      doAssert header.has(r"key")
+      doAssert header.keys() == @["key".cstring]
+      doAssert header.values() == @["value".cstring]
+      doAssert header.get(r"key") == "value".cstring
+      header.set(r"other", r"another")
+      doAssert header.get(r"other") == "another".cstring
+      doAssert header.entries() == @[["key".cstring, "value"], ["other".cstring, "another"]]
+      header.delete(r"other")
+
+    block:
+      let options = unsafeNewFetchOption(
+        metod =  "POST".cstring,
+        body = """{"key": "value"}""".cstring,
+        mode = "no-cors".cstring,
+        credentials = "omit".cstring,
+        cache = "no-cache".cstring,
+        referrerPolicy = "no-referrer".cstring,
+        keepalive = false,
+        redirect = "follow".cstring,
+        referrer = "client".cstring,
+        integrity = "".cstring
+      )
+      doAssert options is FetchOptions
+      echo fetchToCstring(r"http://httpbin.org/post", options)
