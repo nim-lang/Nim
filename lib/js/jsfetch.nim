@@ -4,9 +4,6 @@ export HttpMethod
 
 when not defined(js) and not defined(nimdoc):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
-when defined(nodejs):
-  {.warning: "By design Fetch is defined on the web browser, but may not be on NodeJS.".}
-
 
 type
   FetchOptions* = ref object  ## Options for Fetch API.
@@ -93,6 +90,9 @@ template fetchMethodToCstring(metod: HttpMethod): cstring =
   of HttpDelete: "DELETE".cstring
   of HttpPatch:  "PATCH".cstring
   else:          "GET".cstring
+
+func hasFetch*(): bool {.importcpp: "(() => { return !!window.fetch })()".}
+  ## Convenience func to detect Fetch API support, returns `true` if Fetch is supported.
 
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
