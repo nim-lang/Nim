@@ -92,7 +92,8 @@ else:
     memRead* = MemAccessFlags(PROT_READ)
     memReadWrite* = MemAccessFlags(PROT_READ or PROT_WRITE)
 
-  template check(expr) =
+  # template check(expr) =
+  proc check(expr: auto) =
     if not expr:
       raiseOSError(osLastError())
 
@@ -183,7 +184,9 @@ proc setLen*(m: var ReservedMem, newLen: int) =
           check posix_madvise(newCommitEnd, commitSizeShrinkage,
                               POSIX_MADV_DONTNEED) == 0
         else:
-          # xxx figure out what to do here
+          # xxx figure out what to do here; options are doing nothing, and
+          # calling `madvise`; note that `MADV_DONTNEED` can differ from
+          # `POSIX_MADV_DONTNEED`; refs: https://man7.org/linux/man-pages/man3/posix_madvise.3.html
           discard
 
       m.committedMemEnd = newCommitEnd
