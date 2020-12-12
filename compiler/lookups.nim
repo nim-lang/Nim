@@ -232,7 +232,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   incl(result.flags, sfDiscardable)
   # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
-    c.topLevelScope.addSym(result)
+    c.moduleScope.addSym(result)
 
 type
   TOverloadIterMode* = enum
