@@ -208,21 +208,14 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
 
 iterator items*[T](deq: Deque[T]): T =
   ## Yields every element of `deq`.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initDeque[int]()
-  ##   for i in 1 .. 3:
-  ##     a.addLast(10*i)
-  ##
-  ##   for x in a:  # the same as: for x in items(a):
-  ##     echo x
-  ##
-  ##   # 10
-  ##   # 20
-  ##   # 30
-  ##
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 3:
+      a.addLast(10*i)
+    from sugar import collect
+    let b = collect:
+      for x in a: x # `in a` same as: `in items(a)`
+    doAssert b == [10, 20, 30]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -246,21 +239,14 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yields every (position, value) of `deq`.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initDeque[int]()
-  ##   for i in 1 .. 3:
-  ##     a.addLast(10*i)
-  ##
-  ##   for k, v in pairs(a):
-  ##     echo "key: ", k, ", value: ", v
-  ##
-  ##   # key: 0, value: 10
-  ##   # key: 1, value: 20
-  ##   # key: 2, value: 30
-  ##
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 3:
+      a.addLast(10*i)
+    from sugar import collect
+    let b = collect:
+      for k, v in pairs(a): (k, v)
+    assert b == @[(0, 10), (1, 20), (2, 30)]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield (c, deq.data[i])
@@ -271,10 +257,11 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   ##
   ## Usually used via the ``in`` operator.
   ## It is the equivalent of ``deq.find(item) >= 0``.
-  ##
-  ## .. code-block:: Nim
-  ##   if x in q:
-  ##     assert q.contains(x)
+  runnableExamples:
+    var q = [7, 9].toDeque
+    assert 7 in q
+    assert q.contains 7
+    assert 8 notin q
   for e in deq:
     if e == item: return true
   return false
