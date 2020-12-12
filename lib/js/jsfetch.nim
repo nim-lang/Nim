@@ -53,19 +53,19 @@ type
 func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
-func append*(this: Headers; name: cstring; value: cstring) {.importjs: "#.append(#, #)".}
+func append*(this: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
-func delete*(this: Headers; name: cstring) {.importjs: "#.delete(#)".}
+func delete*(this: Headers; key: cstring) {.importjs: "#.delete(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/delete
 
-func get*(this: Headers; name: cstring): cstring {.importjs: "#.get(#)".}
+func get*(this: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/get
 
-func has*(this: Headers; name: cstring): bool {.importjs: "#.has(#)".}
+func has*(this: Headers; key: cstring): bool {.importjs: "#.has(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/has
 
-func set*(this: Headers; name: cstring; value: cstring) {.importjs: "#.set(#, #)".}
+func set*(this: Headers; key: cstring; value: cstring) {.importjs: "#.set(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/set
 
 func keys*(this: Headers): seq[cstring] {.importjs: "Array.from(#.keys())".}
