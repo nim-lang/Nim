@@ -56,6 +56,7 @@
 - `writeStackTrace` is available in JS backend now.
 
 - `strscans.scanf` now supports parsing single characters.
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`. 
 
 
 - Added `math.isNaN`.

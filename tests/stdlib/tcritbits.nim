@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 import std/[sequtils,critbits]
 
 template main =
@@ -64,6 +68,20 @@ template main =
     var strings: CritBitTree[int]
     discard strings.containsOrIncl("foo", 3)
     doAssert strings["foo"] == 3
+
+  block tcritbitsToString:
+    block:
+      var t: CritBitTree[int]
+      t["a"] = 1
+      doAssert $t == """{"a": 1}"""
+    block:
+      var t: CritBitTree[string]
+      t["a"] = "1"
+      doAssert $t == """{"a": "1"}"""
+    block:
+      var t: CritBitTree[char]
+      t["a"] = '1'
+      doAssert $t == """{"a": '1'}"""
 
 main()
 static: main()
