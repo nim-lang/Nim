@@ -137,7 +137,7 @@ runnableExamples:
       header.delete(r"other")
 
     block:
-      let options = unsafeNewFetchOption(
+      let options = unsafeNewFetchOptions(
         metod =  "POST".cstring,
         body = """{"key": "value"}""".cstring,
         mode = "no-cors".cstring,
