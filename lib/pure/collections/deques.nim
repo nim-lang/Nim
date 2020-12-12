@@ -18,35 +18,32 @@
 ##
 ## As such, a check to see if the deque is empty is needed before any
 ## access, unless your program logic guarantees it indirectly.
-##
-## .. code-block:: Nim
-##   import deques
-##
-##   var a = initDeque[int]()
-##
-##   doAssertRaises(IndexDefect, echo a[0])
-##
-##   for i in 1 .. 5:
-##     a.addLast(10*i)
-##   assert $a == "[10, 20, 30, 40, 50]"
-##
-##   assert a.peekFirst == 10
-##   assert a.peekLast == 50
-##   assert len(a) == 5
-##
-##   assert a.popFirst == 10
-##   assert a.popLast == 50
-##   assert len(a) == 3
-##
-##   a.addFirst(11)
-##   a.addFirst(22)
-##   a.addFirst(33)
-##   assert $a == "[33, 22, 11, 20, 30, 40]"
-##
-##   a.shrink(fromFirst = 1, fromLast = 2)
-##   assert $a == "[22, 11, 20]"
-##
-##
+
+runnableExamples:
+  var a = initDeque[int]()
+
+  doAssertRaises(IndexDefect, echo a[0])
+
+  for i in 1 .. 5:
+    a.addLast(10*i)
+  assert $a == "[10, 20, 30, 40, 50]"
+
+  assert a.peekFirst == 10
+  assert a.peekLast == 50
+  assert len(a) == 5
+
+  assert a.popFirst == 10
+  assert a.popLast == 50
+  assert len(a) == 3
+
+  a.addFirst(11)
+  a.addFirst(22)
+  a.addFirst(33)
+  assert $a == "[33, 22, 11, 20, 30, 40]"
+
+  a.shrink(fromFirst = 1, fromLast = 2)
+  assert $a == "[22, 11, 20]"
+
 ## **See also:**
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
