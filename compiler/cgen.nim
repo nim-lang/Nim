@@ -1556,7 +1556,7 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
       # nasty nasty hack to get the command line functionality working with HCR
       # register the 2 variables on behalf of the os module which might not even
       # be loaded (in which case it will get collected but that is not a problem)
-      # EDIT: indeed, this hack, in combination with another un-necessary hack
+      # EDIT: indeed, this hack, in combination with another un-necessary one
       # (`makeCString` was doing line wrap of string litterals) was root cause for
       # bug #16265.
       let osModulePath = ($systemModulePath).replace("stdlib_system", "stdlib_os").rope
