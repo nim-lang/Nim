@@ -9,34 +9,34 @@ when defined(nodejs):
 
 
 type
-  FetchOptions* = ref object    ## Options for Fetch API.
+  FetchOptions* = ref object  ## Options for Fetch API.
     keepalive: bool
     metod {.importc: "method".}: cstring
     body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
 
-  FetchModes* = enum            ## JavaScript Fetch API mode options.
+  FetchModes* = enum  ## JavaScript Fetch API mode options.
     fmCors = "cors".cstring
     fmNoCors = "no-cors".cstring
     fmSameOrigin = "same-origin".cstring
 
-  FetchCredentials* = enum      ## JavaScript Fetch API Credential options.
+  FetchCredentials* = enum  ## JavaScript Fetch API Credential options.
     fcInclude = "include".cstring
     fcSameOrigin = "same-origin".cstring
     fcOmit = "omit".cstring
 
-  FetchCaches* = enum           ## https://developer.mozilla.org/docs/Web/API/Request/cache
+  FetchCaches* = enum  ## https://developer.mozilla.org/docs/Web/API/Request/cache
     fchDefault = "default".cstring
     fchNoStore = "no-store".cstring
     fchReload = "reload".cstring
     fchNoCache = "no-cache".cstring
     fchForceCache = "force-cache".cstring
 
-  FetchRedirects* = enum        ## JavaScript Fetch API Redirects options.
+  FetchRedirects* = enum  ## JavaScript Fetch API Redirects options.
     frFollow = "follow".cstring
     frError = "error".cstring
     frManual = "manual".cstring
 
-  FetchReferrerPolicies* = enum ## JavaScript Fetch API Referrer Policy options.
+  FetchReferrerPolicies* = enum  ## JavaScript Fetch API Referrer Policy options.
     frpNoReferrer = "no-referrer".cstring
     frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade".cstring
     frpOrigin = "origin".cstring
@@ -45,7 +45,7 @@ type
 
   Headers* = ref object   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
-  Response* = ref object  ## Response for Fetch API.
+  Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     myBodyUsed, ok, redirected: bool
     tipe {.importc: "type".}: cstring
     url, statusText: cstring
@@ -97,7 +97,7 @@ template fetchMethodToCstring(metod: HttpMethod): cstring =
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
-  ## **Unsafe** `newfetchOptions`. Low-level proc for optimization.
+  ## **Unsafe** `newfetchOptions`. Low-level func for optimization.
 
 func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
@@ -108,10 +108,10 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
 func fetchToCstring*(url: cstring): cstring {.importcpp: "await fetch(#).then(response => response.text()).then(text => text)".}
-  ## Convenience proc for `fetch()` API that returns a `cstring` directly.
+  ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
 func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importcpp: "await fetch(#, #).then(response => response.text()).then(text => text)".}
-  ## Convenience proc for `fetch()` API that returns a `cstring` directly.
+  ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
 func fetch*(url: cstring): Response {.importcpp: "await fetch(#).then(response => response)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
