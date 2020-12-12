@@ -57,6 +57,7 @@
 
 - `strscans.scanf` now supports parsing single characters.
 
+- Added `min`, `max` and `minMax` to `sequtils`.
 
 - Added `math.isNaN`.
 

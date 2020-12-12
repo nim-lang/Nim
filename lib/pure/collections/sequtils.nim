@@ -209,6 +209,70 @@ func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
+proc min*[T](x: openArray[T], cmp: proc(x, y: T): int {.closure.}): T {.since: (1, 5, 1).} =
+  ## The minimum value of `x`. If `cmp` is nil, `system.cmp[T]` will be used.
+  runnableExamples:
+    let x = [1, 7, 28, 3, 9, 66, 14, 3]
+    assert min(x, system.cmp[int]) == 1
+    assert min(x, nil) == 1
+    assert min(x, proc (x, y: int): int = cmp(x, y)) == 1
+  result = x[0]
+  let compare =
+    if cmp != nil:
+      cmp
+    else:
+      system.cmp[T]
+
+  for i in 1..high(x):
+    if compare(x[i], result) < 0: result = x[i]
+
+proc max*[T](x: openArray[T], cmp: proc(x, y: T): int {.closure.}): T {.since: (1, 5, 1).} =
+  ## The maximum value of `x`. If `cmp` is nil, `system.cmp[T]` will be used.
+  runnableExamples:
+    let x = [1, 7, 28, 3, 9, 66, 14, 3]
+    assert max(x, system.cmp[int]) == 66
+    assert max(x, nil) == 66
+    assert max(x, proc (x, y: int): int = cmp(x, y)) == 66
+  result = x[0]
+  let compare =
+    if cmp != nil:
+      cmp
+    else:
+      system.cmp[T]
+
+  for i in 1..high(x):
+    if compare(x[i], result) > 0: result = x[i]
+
+proc minMax*[T](
+  x: openArray[T], cmp: proc(x, y: T): int {.closure.}
+): tuple[minValue, maxValue: T] {.since: (1, 5, 1).} =
+  ## The (minium, maximum) pair of `x`. If `cmp` is nil, `system.cmp[T]` will be used.
+  runnableExamples:
+    let x = [1, 7, 28, 3, 9, 66, 14, 3]
+    assert minMax(x, system.cmp[int]) == (1, 66)
+    assert minMax(x, nil) == (1, 66)
+    assert minMax(x, proc (x, y: int): int = cmp(x, y)) == (1, 66)
+  let compare =
+    if cmp != nil:
+      cmp
+    else:
+      system.cmp[T]
+
+  let size = x.len
+
+  if size == 1:
+    result = (x[0], x[0])
+    return
+
+  if compare(x[0], x[1]) < 0:
+    result = (x[0], x[1])
+  else:
+    result = (x[1], x[0])
+
+  for i in 2..high(x):
+    if compare(x[i], result.minValue) < 0: result.minValue = x[i]
+    if compare(x[i], result.maxValue) > 0: result.maxValue = x[i]
+
 func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
