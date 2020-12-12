@@ -8,7 +8,7 @@
 ## Compile and run with:
 ## nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimDisableCertificateValidation -d:ssl -p:. tests/untestable/thttpclient_ssl_disabled.nim
 
-from testament/lib/stdtest/testutils import enableRemoteNetworking
+from stdtest/testutils import enableRemoteNetworking
 when enableRemoteNetworking and not defined(openbsd):
   import httpclient, net, unittest
 

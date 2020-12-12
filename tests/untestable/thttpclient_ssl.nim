@@ -12,7 +12,7 @@
 ## See https://github.com/FedericoCeratto/ssl-comparison/blob/master/README.md
 ## for a comparison with other clients.
 
-from testament/lib/stdtest/testutils import enableRemoteNetworking
+from stdtest/testutils import enableRemoteNetworking
 when enableRemoteNetworking and not defined(windows) and not defined(openbsd):
   # Not supported on Windows due to old openssl version
   import
