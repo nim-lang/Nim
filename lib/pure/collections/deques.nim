@@ -471,7 +471,8 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   destroy(deq.data[deq.tail])
 
 proc rotateLeft*[T](deq: var Deque[T], n = 1) {.since: (1, 5, 1).} =
-    ## Rotates the `deq` to the left `n` amount of times.
+    ## Moves first item in the deque to the back `n` number of times.
+    ## Equivalent (but faster) than `deq.addLast(deq.popFirst())` 
     runnableExamples:
       var a = toDeque([1, 2, 3, 4, 5])
       a.rotateLeft 4
@@ -496,7 +497,8 @@ proc rotateLeft*[T](deq: var Deque[T], n = 1) {.since: (1, 5, 1).} =
         deq.tail = newTail
 
 template rotateRight*(deq: var Deque, n = 1): untyped =
-  ## Rotates the `deq` to the right `n` amount of times.
+    ## Moves last item in the deque to the front `n` number of times.
+    ## Equivalent (but faster) than `deq.addFirst(deq.popLast())` 
   runnableExamples:
     var a = toDeque([1, 2, 3, 4, 5])
     a.rotateRight 4
