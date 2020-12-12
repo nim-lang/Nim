@@ -121,7 +121,7 @@ func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fe
 
 
 runnableExamples:
-  when defined(nimJsFetchTests):
+  if defined(nimJsFetchTests):
 
     block:
       doAssert hasFetch()
