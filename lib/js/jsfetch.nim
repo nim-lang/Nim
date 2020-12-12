@@ -8,7 +8,7 @@ when not defined(js) and not defined(nimdoc):
 type
   FetchOptions* = ref object  ## Options for Fetch API.
     keepalive: bool
-    metod {.importc: "method".}: cstring
+    metod {.importjs: "method".}: cstring
     body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
 
   FetchModes* = enum  ## JavaScript Fetch API mode options.
@@ -44,37 +44,37 @@ type
 
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     myBodyUsed, ok, redirected: bool
-    tipe {.importc: "type".}: cstring
+    tipe {.importjs: "type".}: cstring
     url, statusText: cstring
     status: cushort
     headers: Headers
 
 
-func newHeaders*(): Headers {.importcpp: "new Headers()".}
+func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
-func append*(this: Headers; name: cstring; value: cstring) {.importcpp: "#.append(#, #)".}
+func append*(this: Headers; name: cstring; value: cstring) {.importjs: "#.append(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
-func delete*(this: Headers; name: cstring) {.importcpp: "#.delete(#)".}
+func delete*(this: Headers; name: cstring) {.importjs: "#.delete(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/delete
 
-func get*(this: Headers; name: cstring): cstring {.importcpp: "#.get(#)".}
+func get*(this: Headers; name: cstring): cstring {.importjs: "#.get(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/get
 
-func has*(this: Headers; name: cstring): bool {.importcpp: "#.has(#)".}
+func has*(this: Headers; name: cstring): bool {.importjs: "#.has(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/has
 
-func set*(this: Headers; name: cstring; value: cstring) {.importcpp: "#.set(#, #)".}
+func set*(this: Headers; name: cstring; value: cstring) {.importjs: "#.set(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/set
 
-func keys*(this: Headers): seq[cstring] {.importcpp: "Array.from(#.keys())".}
+func keys*(this: Headers): seq[cstring] {.importjs: "Array.from(#.keys())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/keys
 
-func values*(this: Headers): seq[cstring] {.importcpp: "Array.from(#.values())".}
+func values*(this: Headers): seq[cstring] {.importjs: "Array.from(#.values())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/values
 
-func entries*(this: Headers): seq[array[2, cstring]] {.importcpp: "Array.from(#.entries())".}
+func entries*(this: Headers): seq[array[2, cstring]] {.importjs: "Array.from(#.entries())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
 
 template fetchMethodToCstring(metod: HttpMethod): cstring =
@@ -91,11 +91,11 @@ template fetchMethodToCstring(metod: HttpMethod): cstring =
   of HttpPatch:  "PATCH".cstring
   else:          "GET".cstring
 
-func hasFetch*(): bool {.importcpp: "(() => { return !!window.fetch })()".}
+func hasFetch*(): bool {.importjs: "(() => { return !!window.fetch })()".}
   ## Convenience func to detect Fetch API support, returns `true` if Fetch is supported.
 
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
-    keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
+    keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
   ## **Unsafe** `newfetchOptions`. Low-level func for optimization.
 
@@ -107,14 +107,14 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
-func fetchToCstring*(url: cstring): cstring {.importcpp: "await fetch(#).then(response => response.text()).then(text => text)".}
+func fetchToCstring*(url: cstring): cstring {.importjs: "await fetch(#).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importcpp: "await fetch(#, #).then(response => response.text()).then(text => text)".}
+func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importjs: "await fetch(#, #).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetch*(url: cstring): Response {.importcpp: "await fetch(#).then(response => response)".}
+func fetch*(url: cstring): Response {.importjs: "await fetch(#).then(response => response)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
-func fetch*(url: cstring, options: FetchOptions): Response {.importcpp: "await fetch(#, #).then(response => response)".}
+func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fetch(#, #).then(response => response)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
