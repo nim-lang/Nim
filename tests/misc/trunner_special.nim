@@ -10,15 +10,12 @@ or require external networking.
 xxx test all tests/untestable/* here, possibly with adjustments to make running times reasonable
 ]#
 
-import std/[strformat,os,unittest]
+import std/[strformat,os,unittest,compilesettings]
 import stdtest/specialpaths
 
 const
   nim = getCurrentCompilerExe()
-  mode =
-    when defined(c): "c"
-    elif defined(cpp): "cpp"
-    else: static: doAssert false
+  mode = querySetting(backend)
 
 proc runCmd(cmd: string) =
   let ret = execShellCmd(cmd)
@@ -27,10 +24,8 @@ proc runCmd(cmd: string) =
 proc main =
   let options = fmt"-b:{mode} --hints:off"
   block: # SSL nimDisableCertificateValidation integration tests
-    when not defined(openbsd):
-      runCmd fmt"{nim} r {options} -d:nimDisableCertificateValidation -d:ssl {testsDir}/untestable/thttpclient_ssl_disabled.nim"
+    runCmd fmt"{nim} r {options} -d:nimDisableCertificateValidation -d:ssl {testsDir}/untestable/thttpclient_ssl_disabled.nim"
   block: # SSL certificate check integration tests
-    when not defined(windows) and not defined(openbsd): # Not supported on Windows due to old openssl version
-      runCmd fmt"{nim} r {options} -d:ssl --threads:on {testsDir}/untestable/thttpclient_ssl.nim"
+    runCmd fmt"{nim} r {options} -d:ssl --threads:on {testsDir}/untestable/thttpclient_ssl.nim"
 
 main()
