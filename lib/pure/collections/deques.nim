@@ -213,9 +213,9 @@ iterator items*[T](deq: Deque[T]): T =
     for i in 1 .. 3:
       a.addLast(10*i)
     from sugar import collect
-    let b = collect:
-      for x in a: x # `in a` same as: `in items(a)`
-    doAssert b == [10, 20, 30]
+    doAssert collect(for x in a: x) == [10, 20, 30]
+    # same as above:
+    doAssert collect(for x in items(a): x) == [10, 20, 30]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -244,9 +244,7 @@ iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
     for i in 1 .. 3:
       a.addLast(10*i)
     from sugar import collect
-    let b = collect:
-      for k, v in pairs(a): (k, v)
-    assert b == @[(0, 10), (1, 20), (2, 30)]
+    doAssert collect(for k, v in pairs(a): (k, v)) == @[(0, 10), (1, 20), (2, 30)]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield (c, deq.data[i])
