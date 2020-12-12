@@ -179,8 +179,12 @@ proc setLen*(m: var ReservedMem, newLen: int) =
       when defined(windows):
         check virtualFree(newCommitEnd, commitSizeShrinkage, MEM_DECOMMIT)
       else:
-        check posix_madvise(newCommitEnd, commitSizeShrinkage,
-                            POSIX_MADV_DONTNEED) == 0
+        when not defined(openbsd):
+          check posix_madvise(newCommitEnd, commitSizeShrinkage,
+                              POSIX_MADV_DONTNEED) == 0
+        else:
+          # xxx figure out what to do here
+          discard
 
       m.committedMemEnd = newCommitEnd
 
