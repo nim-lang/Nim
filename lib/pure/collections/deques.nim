@@ -497,8 +497,8 @@ proc rotateLeft*[T](deq: var Deque[T], n = 1) {.since: (1, 5, 1).} =
         deq.tail = newTail
 
 template rotateRight*(deq: var Deque, n = 1): untyped =
-    ## Moves last item in the deque to the front `n` number of times.
-    ## Equivalent (but faster) than `deq.addFirst(deq.popLast())` 
+  ## Moves last item in the deque to the front `n` number of times.
+  ## Equivalent (but faster) than `deq.addFirst(deq.popLast())` 
   runnableExamples:
     var a = toDeque([1, 2, 3, 4, 5])
     a.rotateRight 4
