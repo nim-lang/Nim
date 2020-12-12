@@ -59,6 +59,8 @@
 
 - Added `rotateLeft` and `rotateRight` procs to the `deques` module for rotating a Deque.
 
+- Added `math.isNaN`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
