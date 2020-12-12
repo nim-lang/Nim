@@ -18,35 +18,32 @@
 ##
 ## As such, a check to see if the deque is empty is needed before any
 ## access, unless your program logic guarantees it indirectly.
-##
-## .. code-block:: Nim
-##   import deques
-##
-##   var a = initDeque[int]()
-##
-##   doAssertRaises(IndexDefect, echo a[0])
-##
-##   for i in 1 .. 5:
-##     a.addLast(10*i)
-##   assert $a == "[10, 20, 30, 40, 50]"
-##
-##   assert a.peekFirst == 10
-##   assert a.peekLast == 50
-##   assert len(a) == 5
-##
-##   assert a.popFirst == 10
-##   assert a.popLast == 50
-##   assert len(a) == 3
-##
-##   a.addFirst(11)
-##   a.addFirst(22)
-##   a.addFirst(33)
-##   assert $a == "[33, 22, 11, 20, 30, 40]"
-##
-##   a.shrink(fromFirst = 1, fromLast = 2)
-##   assert $a == "[22, 11, 20]"
-##
-##
+
+runnableExamples:
+  var a = initDeque[int]()
+
+  doAssertRaises(IndexDefect, echo a[0])
+
+  for i in 1 .. 5:
+    a.addLast(10*i)
+  assert $a == "[10, 20, 30, 40, 50]"
+
+  assert a.peekFirst == 10
+  assert a.peekLast == 50
+  assert len(a) == 5
+
+  assert a.popFirst == 10
+  assert a.popLast == 50
+  assert len(a) == 3
+
+  a.addFirst(11)
+  a.addFirst(22)
+  a.addFirst(33)
+  assert $a == "[33, 22, 11, 20, 30, 40]"
+
+  a.shrink(fromFirst = 1, fromLast = 2)
+  assert $a == "[22, 11, 20]"
+
 ## **See also:**
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
@@ -211,21 +208,14 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
 
 iterator items*[T](deq: Deque[T]): T =
   ## Yields every element of `deq`.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initDeque[int]()
-  ##   for i in 1 .. 3:
-  ##     a.addLast(10*i)
-  ##
-  ##   for x in a:  # the same as: for x in items(a):
-  ##     echo x
-  ##
-  ##   # 10
-  ##   # 20
-  ##   # 30
-  ##
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 3:
+      a.addLast(10*i)
+    from sugar import collect
+    doAssert collect(for x in a: x) == [10, 20, 30]
+    # same as above:
+    doAssert collect(for x in items(a): x) == [10, 20, 30]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -249,21 +239,12 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yields every (position, value) of `deq`.
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initDeque[int]()
-  ##   for i in 1 .. 3:
-  ##     a.addLast(10*i)
-  ##
-  ##   for k, v in pairs(a):
-  ##     echo "key: ", k, ", value: ", v
-  ##
-  ##   # key: 0, value: 10
-  ##   # key: 1, value: 20
-  ##   # key: 2, value: 30
-  ##
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 3:
+      a.addLast(10*i)
+    from sugar import collect
+    doAssert collect(for k, v in pairs(a): (k, v)) == @[(0, 10), (1, 20), (2, 30)]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield (c, deq.data[i])
@@ -274,10 +255,11 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   ##
   ## Usually used via the ``in`` operator.
   ## It is the equivalent of ``deq.find(item) >= 0``.
-  ##
-  ## .. code-block:: Nim
-  ##   if x in q:
-  ##     assert q.contains(x)
+  runnableExamples:
+    var q = [7, 9].toDeque
+    assert 7 in q
+    assert q.contains 7
+    assert 8 notin q
   for e in deq:
     if e == item: return true
   return false
