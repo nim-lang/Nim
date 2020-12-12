@@ -1119,7 +1119,7 @@ iterator mRefSlice*[T](arr: var openArray[T], slice: Slice[int]): var T {.since:
   ## Iterators over a mutable non duplicating slice of the array.
   runnableExamples:
     var a = [10, 20, 30]
-    for i in a.refSlice[1..2]:
+    for i in a.mrefSlice[1..2]:
       i *= 2
     assert a == [10, 40, 60]
   for x in slice:
