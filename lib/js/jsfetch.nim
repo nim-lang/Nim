@@ -53,7 +53,7 @@ type
     headers: Headers
 
 
-func newHeaders*(): Headers {.importcpp: "(new Headers())".}
+func newHeaders*(): Headers {.importcpp: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
 func append*(this: Headers; name: cstring; value: cstring) {.importcpp: "#.append(#, #)".}
