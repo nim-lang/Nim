@@ -1,4 +1,5 @@
 discard """
+  disabled: "openbsd"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
@@ -52,6 +53,21 @@ main: after
 done
 '''
 """
+
+#[
+xxx disabled: "openbsd" because it would otherwise give:
+/home/build/Nim/lib/nimhcr.nim(532) hcrInit
+/home/build/Nim/lib/nimhcr.nim(503) initModules
+/home/build/Nim/lib/nimhcr.nim(463) initPointerData
+/home/build/Nim/lib/nimhcr.nim(346) hcrRegisterProc
+/home/build/Nim/lib/pure/reservedmem.nim(223) setLen
+/home/build/Nim/lib/pure/reservedmem.nim(97) setLen
+/home/build/Nim/lib/pure/includes/oserr.nim(94) raiseOSError
+Error: unhandled exception: Not supported [OSError]
+
+The stacktrace actually points to either of these failing:
+`check mprotect` or `check posix_madvise`
+]#
 
 ## This is perhaps the most complex test in the nim test suite - calling the
 ## compiler on the file itself with the same set or arguments and reloading
