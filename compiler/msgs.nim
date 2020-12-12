@@ -16,9 +16,9 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr, isstdout) =
+template flushDot(conf, stdorr, isStdout) =
   ## safe to call multiple times
-  if conf.lastMsgWasDot and conf.dotStdout == isstdout:
+  if conf.lastMsgWasDot and conf.dotStdout == isStdout:
     conf.lastMsgWasDot = false
     write(stdorr, "\n")
 
