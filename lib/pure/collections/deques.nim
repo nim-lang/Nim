@@ -496,15 +496,16 @@ proc rotateLeft*[T](deq: var Deque[T], n = 1) {.since: (1, 5, 1).} =
         deq.head = newHead
         deq.tail = newTail
 
-template rotateRight*(deq: var Deque, n = 1): untyped =
-  ## Moves last item in the deque to the front `n` number of times.
-  ## Equivalent (but faster) than `deq.addFirst(deq.popLast())` 
-  runnableExamples:
-    var a = toDeque([1, 2, 3, 4, 5])
-    a.rotateRight 4
-    doAssert $a == "[2, 3, 4, 5, 1]"
-    
-  deq.rotateLeft(-n)
+since: (1, 5, 1):
+  template rotateRight*(deq: var Deque, n = 1): untyped =
+    ## Moves last item in the deque to the front `n` number of times.
+    ## Equivalent (but faster) than `deq.addFirst(deq.popLast())` 
+    runnableExamples:
+      var a = toDeque([1, 2, 3, 4, 5])
+      a.rotateRight 4
+      doAssert $a == "[2, 3, 4, 5, 1]"
+      
+    deq.rotateLeft(-n)
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.
