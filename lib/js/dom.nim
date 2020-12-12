@@ -107,7 +107,7 @@ type
     timing*: PerformanceTiming
 
   Range* {.importc.} = ref object
-    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Range>`_
     collapsed*: bool
     commonAncestorContainer*: Node
     endContainer*: Node

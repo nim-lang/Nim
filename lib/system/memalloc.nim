@@ -77,16 +77,16 @@ when hasAlloc and not defined(js):
   template alloc*(size: Natural): pointer =
     ## Allocates a new memory block with at least ``size`` bytes.
     ##
-    ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
+    ## The block has to be freed with `realloc(block, 0) <#realloc.t,pointer,Natural>`_
     ## or `dealloc(block) <#dealloc,pointer>`_.
     ## The block is not initialized, so reading
     ## from it before writing to it is undefined behaviour!
     ##
     ## The allocated memory belongs to its allocating thread!
-    ## Use `allocShared <#allocShared,Natural>`_ to allocate from a shared heap.
+    ## Use `allocShared <#allocShared.t,Natural>`_ to allocate from a shared heap.
     ##
     ## See also:
-    ## * `alloc0 <#alloc0,Natural>`_
+    ## * `alloc0 <#alloc0.t,Natural>`_
     incStat(allocCount)
     allocImpl(size)
 
@@ -108,13 +108,13 @@ when hasAlloc and not defined(js):
   template alloc0*(size: Natural): pointer =
     ## Allocates a new memory block with at least ``size`` bytes.
     ##
-    ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
+    ## The block has to be freed with `realloc(block, 0) <#realloc.t,pointer,Natural>`_
     ## or `dealloc(block) <#dealloc,pointer>`_.
     ## The block is initialized with all bytes containing zero, so it is
-    ## somewhat safer than  `alloc <#alloc,Natural>`_.
+    ## somewhat safer than  `alloc <#alloc.t,Natural>`_.
     ##
     ## The allocated memory belongs to its allocating thread!
-    ## Use `allocShared0 <#allocShared0,Natural>`_ to allocate from a shared heap.
+    ## Use `allocShared0 <#allocShared0.t,Natural>`_ to allocate from a shared heap.
     incStat(allocCount)
     alloc0Impl(size)
 
@@ -140,7 +140,7 @@ when hasAlloc and not defined(js):
     ## `dealloc(block) <#dealloc,pointer>`_.
     ##
     ## The allocated memory belongs to its allocating thread!
-    ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
+    ## Use `reallocShared <#reallocShared.t,pointer,Natural>`_ to reallocate
     ## from a shared heap.
     reallocImpl(p, newSize)
 
@@ -157,7 +157,7 @@ when hasAlloc and not defined(js):
     ## somewhat safer then realloc
     ##
     ## The allocated memory belongs to its allocating thread!
-    ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
+    ## Use `reallocShared <#reallocShared.t,pointer,Natural>`_ to reallocate
     ## from a shared heap.
     realloc0Impl(p, oldSize, newSize)
 
@@ -193,14 +193,14 @@ when hasAlloc and not defined(js):
     ## least ``size`` bytes.
     ##
     ## The block has to be freed with
-    ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
+    ## `reallocShared(block, 0) <#reallocShared.t,pointer,Natural>`_
     ## or `deallocShared(block) <#deallocShared,pointer>`_.
     ##
     ## The block is not initialized, so reading from it before writing
     ## to it is undefined behaviour!
     ##
     ## See also:
-    ## `allocShared0 <#allocShared0,Natural>`_.
+    ## `allocShared0 <#allocShared0.t,Natural>`_.
     incStat(allocCount)
     allocSharedImpl(size)
 
@@ -225,12 +225,12 @@ when hasAlloc and not defined(js):
     ## least ``size`` bytes.
     ##
     ## The block has to be freed with
-    ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
+    ## `reallocShared(block, 0) <#reallocShared.t,pointer,Natural>`_
     ## or `deallocShared(block) <#deallocShared,pointer>`_.
     ##
     ## The block is initialized with all bytes
     ## containing zero, so it is somewhat safer than
-    ## `allocShared <#allocShared,Natural>`_.
+    ## `allocShared <#allocShared.t,Natural>`_.
     incStat(allocCount)
     allocShared0Impl(size)
 
