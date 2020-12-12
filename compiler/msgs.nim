@@ -16,9 +16,9 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr) =
+template flushDot(conf, stdorr, isstdout) =
   ## safe to call multiple times
-  if conf.lastMsgWasDot:
+  if conf.lastMsgWasDot and conf.dotStdout == isstdout:
     conf.lastMsgWasDot = false
     write(stdorr, "\n")
 
@@ -305,12 +305,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf, stdout, true)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr)
+      flushDot(conf, stderr, false)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -348,8 +348,9 @@ template callWritelnHook(args: varargs[string, `$`]) =
 
 proc msgWrite(conf: ConfigRef; s: string) =
   if conf.m.errorOutputs != {}:
+    conf.dotStdout = optStdout in conf.globalOptions
     let stdOrr =
-      if optStdout in conf.globalOptions:
+      if conf.dotStdout:
         stdout
       else:
         stderr
@@ -362,11 +363,11 @@ template styledMsgWriteln*(args: varargs[typed]) =
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf, stdout, true)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr)
+    flushDot(conf, stderr, false)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:

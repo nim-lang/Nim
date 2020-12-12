@@ -305,6 +305,7 @@ type
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
     lastMsgWasDot*: bool # the last compiler message was a single '.'
+    dotStdout*: bool # if the last message was a '.', whether it was output to stdout
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
     command*: string # the main command (e.g. cc, check, scan, etc)
