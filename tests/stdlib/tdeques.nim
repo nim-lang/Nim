@@ -137,3 +137,10 @@ block t13310:
 
   static:
     main()
+
+block:
+  var d = toDeque([1, 2, 3, 4, 5, 6])
+  d.rotateLeft 3
+  d.shrink 3
+  d.rotateRight 2
+  doAssert $d == "[2, 3, 1]"
