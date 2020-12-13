@@ -7,6 +7,14 @@ type Headers* = ref object ## HTTP Headers
 func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
+func newHeaders*(keyValuePairs: openArray[array[2, cstring]]): Headers {.importjs: """
+(() => {
+  const header = new Headers();
+  #.forEach((item) => header.append(item[0], item[1]));
+  return header;
+})();""".}
+  ## Same as `newHeaders` but initializes `Headers` with `keyValuePairs`.
+
 func append*(this: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
