@@ -92,8 +92,7 @@ else:
     memRead* = MemAccessFlags(PROT_READ)
     memReadWrite* = MemAccessFlags(PROT_READ or PROT_WRITE)
 
-  # template check(expr) =
-  proc check(expr: auto) =
+  template check(expr) =
     if not expr:
       raiseOSError(osLastError())
 
@@ -180,14 +179,8 @@ proc setLen*(m: var ReservedMem, newLen: int) =
       when defined(windows):
         check virtualFree(newCommitEnd, commitSizeShrinkage, MEM_DECOMMIT)
       else:
-        when not defined(openbsd):
-          check posix_madvise(newCommitEnd, commitSizeShrinkage,
-                              POSIX_MADV_DONTNEED) == 0
-        else:
-          # xxx figure out what to do here; options are doing nothing, and
-          # calling `madvise`; note that `MADV_DONTNEED` can differ from
-          # `POSIX_MADV_DONTNEED`; refs: https://man7.org/linux/man-pages/man3/posix_madvise.3.html
-          discard
+        check posix_madvise(newCommitEnd, commitSizeShrinkage,
+                            POSIX_MADV_DONTNEED) == 0
 
       m.committedMemEnd = newCommitEnd
 

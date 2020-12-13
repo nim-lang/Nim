@@ -1,4 +1,5 @@
 discard """
+  disabled: "openbsd"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
@@ -64,8 +65,7 @@ xxx disabled: "openbsd" because it would otherwise give:
 /home/build/Nim/lib/pure/includes/oserr.nim(94) raiseOSError
 Error: unhandled exception: Not supported [OSError]
 
-The stacktrace actually points to either of these failing:
-`check mprotect` or `check posix_madvise`
+After instrumenting code, the stacktrace actually points to the call to `check mprotect`
 ]#
 
 ## This is perhaps the most complex test in the nim test suite - calling the
