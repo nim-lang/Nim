@@ -1,5 +1,5 @@
 discard """
-targets: '''c c++ js'''
+  targets: '''c c++ js'''
 """
 
 import hashes
@@ -17,6 +17,7 @@ block hashes:
   # "VM and runtime should make the same hash value (hashWangYi1)"
   block:
     const wy123 = hashWangYi1(123)
+    doAssert wy123 != 0
     doAssert hashWangYi1(123) == wy123
 
 
