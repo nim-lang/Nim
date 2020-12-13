@@ -1,9 +1,7 @@
-
-import unittest
 import openssl
 
-# bug 16308
-suite "SSL PEM_read_RSAPUBKEY check":
+# bug #16308
+block:
   var rsa: PRSA
   var file: File
 
