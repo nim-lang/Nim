@@ -56,7 +56,10 @@
 - `writeStackTrace` is available in JS backend now.
 
 - `strscans.scanf` now supports parsing single characters.
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`. 
 
+
+- Added `math.isNaN`.
 
 ## Language changes
 
@@ -77,6 +80,8 @@
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
 
 
 ## Tool changes

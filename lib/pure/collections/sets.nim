@@ -16,7 +16,7 @@
 ##
 ## Common usages of sets:
 ## * removing duplicates from a container by converting it with `toHashSet proc
-##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate proc
+##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate func
 ##   <sequtils.html#deduplicate,openArray[T],bool>`_)
 ## * membership testing
 ## * mathematical operations on two sets, such as

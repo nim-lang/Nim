@@ -58,6 +58,10 @@ import std/private/since
 
 import bitops, fenv
 
+when defined(c) or defined(cpp):
+  proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
+    # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
+
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
@@ -133,10 +137,27 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
+func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
+  ## Returns whether `x` is a `NaN`, more efficiently than via `classify(x) == fcNan`.
+  ## Works even with: `--passc:-ffast-math`.
+  runnableExamples:
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+    doAssert not isNan(3.1415926)
+    doAssert not isNan(0'f32)
+
+  template fn: untyped = result = x != x
+  when nimvm: fn()
+  else:
+    when defined(js): fn()
+    else: result = c_isnan(x)
+
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
+  ## Doesn't work with: `--passc:-ffast-math`.
   runnableExamples:
     doAssert classify(0.3) == fcNormal
     doAssert classify(0.0) == fcZero
