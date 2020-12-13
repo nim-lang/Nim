@@ -13,4 +13,4 @@ block:
     raise newException(Exception, "Error reading public key")
   RSA_free(rsa)
   file.close()
-  echo "ok"
+ 
