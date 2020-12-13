@@ -101,7 +101,12 @@ const
 
 type
   TokType = enum
-    tkEof, tkIndent, tkWhite, tkWord, tkAdornment, tkPunct, tkOther
+    tkEof, tkIndent,
+    tkWhite, tkWord,
+    tkAdornment,              # used for chapter adornment, transitions and
+                              # horizontal table borders
+    tkPunct,                  # one or many punctuation characters
+    tkOther
   Token = object              # a RST token
     kind*: TokType            # the type of the token
     ival*: int                # the indentation or parsed integer value
@@ -114,6 +119,7 @@ type
     bufpos*: int
     line*, col*, baseIndent*: int
     skipPounds*: bool
+    adornmentLine*: bool
 
 proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   tok.kind = tkWord
@@ -127,8 +133,26 @@ proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   inc L.col, pos - L.bufpos
   L.bufpos = pos
 
-proc getAdornment(L: var Lexer, tok: var Token) =
-  tok.kind = tkAdornment
+proc isCurrentLineAdornment(L: var Lexer): bool =
+  var pos = L.bufpos
+  let c = L.buf[pos]
+  while true:
+    inc pos
+    if L.buf[pos] in {'\c', '\l', '\0'}:
+      break
+    if c == '+':  # grid table
+      if L.buf[pos] notin {'-', '=', '+'}:
+        return false
+    else:  # section adornment or table horizontal border
+      if L.buf[pos] notin {c, ' ', '\t', '\v', '\f'}:
+        return false
+  result = true
+
+proc getPunctAdornment(L: var Lexer, tok: var Token) =
+  if L.adornmentLine:
+    tok.kind = tkAdornment
+  else:
+    tok.kind = tkPunct
   tok.line = L.line
   tok.col = L.col
   var pos = L.bufpos
@@ -139,6 +163,8 @@ proc getAdornment(L: var Lexer, tok: var Token) =
     if L.buf[pos] != c: break
   inc L.col, pos - L.bufpos
   L.bufpos = pos
+  if tok.symbol == "\\": tok.kind = tkPunct
+    # nim extension: standalone \ can not be adornment
 
 proc getBracket(L: var Lexer, tok: var Token) =
   tok.kind = tkPunct
@@ -189,6 +215,8 @@ proc getIndent(L: var Lexer, tok: var Token) =
 proc rawGetTok(L: var Lexer, tok: var Token) =
   tok.symbol = ""
   tok.ival = 0
+  if L.col == 0:
+    L.adornmentLine = false
   var c = L.buf[L.bufpos]
   case c
   of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '0'..'9':
@@ -200,11 +228,13 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       rawGetTok(L, tok)       # ignore spaces before \n
   of '\x0D', '\x0A':
     getIndent(L, tok)
+    L.adornmentLine = false
   of '!', '\"', '#', '$', '%', '&', '\'',  '*', '+', ',', '-', '.',
      '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
      '|', '~':
-    getAdornment(L, tok)
-    if tok.symbol.len <= 3: tok.kind = tkPunct
+    if L.col == 0:
+      L.adornmentLine = L.isCurrentLineAdornment()
+    getPunctAdornment(L, tok)
   of '(', ')', '[', ']', '{', '}':
     getBracket(L, tok)
   else:
@@ -730,7 +760,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     of tkEof:
       rstMessage(p, meExpected, "```")
       break
-    of tkPunct:
+    of tkPunct, tkAdornment:
       if currentTok(p).symbol == "```":
         inc p.idx
         break
@@ -822,6 +852,10 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         return
     parseUrl(p, father)
   of tkAdornment, tkOther, tkWhite:
+    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+      inc p.idx
+      father.add(parseMarkdownCodeblock(p))
+      return
     if roSupportSmilies in p.s.options:
       let n = parseSmiley(p)
       if n != nil:
@@ -1011,6 +1045,18 @@ proc tokenAfterNewline(p: RstParser): int =
       break
     else: inc result
 
+proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
+  var headlineLen = 0
+  if p.idx < adornmentIdx:  # underline
+    for i in p.idx ..< adornmentIdx-1:  # adornmentIdx-1 is a linebreak
+      headlineLen += p.tok[i].symbol.len
+  else:  # overline
+    var i = p.idx + 2
+    while p.tok[i].kind notin {tkEof, tkIndent}:
+      headlineLen += p.tok[i].symbol.len
+      inc i
+  return p.tok[adornmentIdx].symbol.len >= headlineLen
+
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
   result = currentTok(p).col == p.tok[j].col and p.tok[j].symbol == "|" or
@@ -1052,13 +1098,26 @@ proc findPipe(p: RstParser, start: int): bool =
     inc i
 
 proc whichSection(p: RstParser): RstNodeKind =
+  if currentTok(p).kind in {tkAdornment, tkPunct}:
+    # for punctuation sequences that can be both tkAdornment and tkPunct
+    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+      return rnCodeBlock
+    elif currentTok(p).symbol == "::":
+      return rnLiteralBlock
+    elif currentTok(p).symbol == ".." and predNL(p):
+     return rnDirective
   case currentTok(p).kind
   of tkAdornment:
-    if match(p, p.idx + 1, "ii"): result = rnTransition
+    if match(p, p.idx + 1, "ii") and currentTok(p).symbol.len >= 4:
+      result = rnTransition
+    elif match(p, p.idx, "+a+"):
+      result = rnGridTable
+      rstMessage(p, meGridTableNotImplemented)
     elif match(p, p.idx + 1, " a"): result = rnTable
-    elif match(p, p.idx + 1, "i"): result = rnOverline
-    elif isMarkdownHeadline(p):
-      result = rnHeadline
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
+    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+      result = rnOverline
     else:
       result = rnLeaf
   of tkPunct:
@@ -1067,27 +1126,18 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
-    elif currentTok(p).symbol == "```":
-      result = rnCodeBlock
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
     elif match(p, tokenAfterNewline(p), "ai"):
       result = rnHeadline
-    elif currentTok(p).symbol == "::":
-      result = rnLiteralBlock
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif currentTok(p).symbol == "|" and isLineBlock(p):
-      result = rnLineBlock
-    elif currentTok(p).symbol == ".." and predNL(p):
-      result = rnDirective
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
       result = rnEnumList
-    elif match(p, p.idx, "+a+"):
-      result = rnGridTable
-      rstMessage(p, meGridTableNotImplemented)
     elif isDefList(p):
       result = rnDefList
     elif isOptionList(p):
@@ -1095,7 +1145,10 @@ proc whichSection(p: RstParser): RstNodeKind =
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
-    if match(p, tokenAfterNewline(p), "ai"): result = rnHeadline
+    let tokIdx = tokenAfterNewline(p)
+    if match(p, tokIdx, "ai"):
+      if isAdornmentHeadline(p, tokIdx): result = rnHeadline
+      else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
     elif isDefList(p): result = rnDefList
     else: result = rnParagraph

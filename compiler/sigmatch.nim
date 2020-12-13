@@ -568,9 +568,11 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##..code-block:: nim
+  ## 
+  ## .. code-block:: nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
+  ##
   ## And we want to match: myMap(@[1,2,3], innerProc)
   ## This proc (procParamTypeRel) will do the following steps in
   ## three different calls:
@@ -1240,8 +1242,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result < isGeneric: result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
-    # varargs[expr] is special too but handled earlier. So we only need to
-    # handle varargs[stmt] which is the same as varargs[typed]:
+    # varargs[untyped] is special too but handled earlier. So we only need to
+    # handle varargs[typed]:
     if f.kind == tyVarargs:
       if tfVarargs in a.flags:
         return typeRel(c, f.base, a.lastSon, flags)

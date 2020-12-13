@@ -90,7 +90,7 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
   ## Recursive helper, adds to `found` any types, or keeps diving the AST.
   ##
   ## The normal `doc` generator doesn't include .typ information, so the
-  ## function won't render types for parameters with default values. The `doc2`
+  ## function won't render types for parameters with default values. The `doc`
   ## generator does include the information.
   case n.kind
   of nkFormalParams:

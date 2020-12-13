@@ -323,7 +323,6 @@ block:
     console.log jsarguments[0]
 
 block:
-
   echo jsUndefined == jsNull
   echo jsUndefined == nil
   echo jsNull == nil
@@ -331,3 +330,36 @@ block:
   echo jsNull.isNil
   echo jsNull.isNull
   echo jsUndefined.isUndefined
+
+block: # test **
+  var a = toJs(0)
+  var b = toJs(0)
+  doAssert to(a ** b, int) == 1
+  a = toJs(1)
+  b = toJs(1)
+  doAssert to(a ** b, int) == 1
+  a = toJs(-1)
+  b = toJs(-1)
+  doAssert to(a ** b, int) == -1
+  a = toJs(6)
+  b = toJs(6)
+  doAssert to(a ** b, int) == 46656
+  a = toJs(5.5)
+  b = toJs(3)
+  doAssert to(a ** b, float) == 166.375
+  a = toJs(5)
+  b = toJs(3.0)
+  doAssert to(a ** b, float) == 125.0
+  a = toJs(7.0)
+  b = toJS(6.0)
+  doAssert to(a ** b, float) == 117649.0
+  a = toJs(8)
+  b = toJS(-2)
+  doAssert to(a ** b, float) == 0.015625
+
+  a = toJs(1)
+  b = toJs(1)
+  doAssert to(`**`(a + a, b), int) == 2
+
+  doAssert to(`**`(toJs(1) + toJs(1), toJs(2)), int) == 4
+

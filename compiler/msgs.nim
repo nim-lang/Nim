@@ -237,7 +237,6 @@ type FilenameOption* = enum
   foRelProject # relative to project path, e.g.: ../foo.nim
   foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
   foName # lastPathPart, e.g.: foo.nim
-  foShort # foName without extension, e.g.: foo
   foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
@@ -255,7 +254,6 @@ proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption)
              else:
                relPath
   of foName: result = toProjPath(conf, fileIdx).lastPathPart
-  of foShort: result = toFilename(conf, fileIdx)
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
       result = toFilenameOption(conf, fileIdx, foAbs)

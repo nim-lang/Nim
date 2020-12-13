@@ -4,7 +4,9 @@ discard """
 # codes to differ and be reported as a failure
 
   output:
-    '''[Suite] Test NRE initialization
+    '''
+
+[Suite] Test NRE initialization
 
 [Suite] captures
 

@@ -7,12 +7,6 @@ import times, strutils, unittest
 when not defined(js):
   import os
 
-# Normally testament configures unittest with environment variables,
-# but that doesn't work for the JS target. So instead we must set the correct
-# settings here.
-addOutputFormatter(
-  newConsoleOutputFormatter(PRINT_FAILURES, colorOutput = false))
-
 proc staticTz(hours, minutes, seconds: int = 0): Timezone {.noSideEffect.} =
   let offset = hours * 3600 + minutes * 60 + seconds
 

@@ -1482,7 +1482,7 @@ proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
+proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
     let formalStr = typeToString(formal)
@@ -1491,7 +1491,10 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     let verbose = actualStr == formalStr or optDeclaredLocs in conf.globalOptions
     var msg = "type mismatch:"
     if verbose: msg.add "\n"
-    msg.add  " got <$1>" % actualStr
+    if conf.isDefined("nimLegacyTypeMismatch"):
+      msg.add  " got <$1>" % actualStr
+    else:
+      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]
     if verbose:
       msg.addDeclaredLoc(conf, actual)
       msg.add "\n"

@@ -718,7 +718,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
   else: discard
-  if n.len > paramsPos and n[paramsPos].kind == nkFormalParams:
+  if n.safeLen > paramsPos and n[paramsPos].kind == nkFormalParams:
     let params = renderParamTypes(n[paramsPos])
     if params.len > 0:
       result.add(defaultParamSeparator)
@@ -968,13 +968,17 @@ proc exportSym(d: PDoc; s: PSym) =
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
-      let external = externalDep(d, module)
+      let
+        complexSymbol = complexName(s.kind, s.ast, s.name.s)
+        symbolOrIdRope = rope(d.newUniquePlainSymbol(complexSymbol))
+        external = externalDep(d, module)
       if d.section[k] != nil: d.section[k].add(", ")
       # XXX proper anchor generation here
       dispA(d.conf, d.section[k],
-            "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
+            "<a href=\"$2#$3\"><span class=\"Identifier\">$1</span></a>",
             "$1", [rope esc(d.target, s.name.s),
-            rope changeFileExt(external, "html")])
+            rope changeFileExt(external, "html"),
+            symbolOrIdRope])
 
 proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n[namePos].sym
@@ -1041,12 +1045,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skMethod)
@@ -1077,7 +1078,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
       if it.kind == nkSym:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, kForceExport)
-        else:
+        elif it.sym.ast != nil:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
@@ -1097,12 +1098,9 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       d.add %*{"comment": genComment(d, n)}
     else:
       d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skMethod)

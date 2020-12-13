@@ -1074,8 +1074,13 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
-      lineF(p, "nimCopy($1, $2, $3);$n",
-               [a.res, b.res, genTypeInfo(p, y.typ)])
+      # supports proc getF(): var T
+      if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
+          lineF(p, "nimCopy($1, $2, $3);$n", 
+                [a.res, b.res, genTypeInfo(p, y.typ)])
+      else:
+        lineF(p, "$1 = nimCopy($1, $2, $3);$n",
+              [a.res, b.res, genTypeInfo(p, y.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
@@ -2593,14 +2598,6 @@ proc genHeader(): Rope =
     var framePtr = null;
     var excHandler = 0;
     var lastJSError = null;
-    if (typeof Int8Array === 'undefined') Int8Array = Array;
-    if (typeof Int16Array === 'undefined') Int16Array = Array;
-    if (typeof Int32Array === 'undefined') Int32Array = Array;
-    if (typeof Uint8Array === 'undefined') Uint8Array = Array;
-    if (typeof Uint16Array === 'undefined') Uint16Array = Array;
-    if (typeof Uint32Array === 'undefined') Uint32Array = Array;
-    if (typeof Float32Array === 'undefined') Float32Array = Array;
-    if (typeof Float64Array === 'undefined') Float64Array = Array;
   """.unindent.format(VersionAsString))
 
 proc addHcrInitGuards(p: PProc, n: PNode,

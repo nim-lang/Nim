@@ -216,3 +216,9 @@ mmain.html
     let file = testsDir / "misc/mimportc.nim"
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
+
+  block: # nim --eval
+    let opt = "--hints:off"
+    check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
+    check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
+    check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)

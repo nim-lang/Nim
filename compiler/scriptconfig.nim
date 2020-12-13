@@ -150,7 +150,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cmpIgnoreCase:
     setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
-    conf.command = a.getString 0
+    conf.setCommandEarly(a.getString 0)
+    # xxx move remaining logic to commands.nim or other
     let arg = a.getString 1
     incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:

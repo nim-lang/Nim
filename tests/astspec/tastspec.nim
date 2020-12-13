@@ -929,7 +929,7 @@ static:
         (x & y & z) is string
 
     ast.peelOff({nnkStmtList, nnkTypeSection}).matchAst:
-    of nnkTypeDef(_, _, nnkTypeClassTy(nnkArgList, _, _, nnkStmtList)):
+    of nnkTypeDef(_, _, nnkTypeClassTy(nnkArglist, _, _, nnkStmtList)):
       # note this isn't nnkConceptTy!
       echo "ok"
 

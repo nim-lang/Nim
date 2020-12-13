@@ -22,6 +22,9 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added an overload for the `collect` macro that inferes the container type based
+  on the syntax of the last expression. Works with std seqs, tables and sets.
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
@@ -31,15 +34,40 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
-- nodejs now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`
+- `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
+- Added `asyncdispatch.activeDescriptors` that returns the number of currently
+  active async event handles/file descriptors.
+
+- ``--gc:orc`` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+
+
+- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
+  determining preferred I/O block size for this file object.
+
+- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
+  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
+
+- Added `**` to jsffi.
+
+- `writeStackTrace` is available in JS backend now.
+
+- `strscans.scanf` now supports parsing single characters.
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`. 
+
+
+- Added `math.isNaN`.
+
 ## Language changes
 
-- `nimscript` now handles `except Exception as e`
+- `nimscript` now handles `except Exception as e`.
+
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
+- nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
 
 ## Compiler changes
@@ -51,6 +79,9 @@
 
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
+- VM now supports `addr(mystring[ind])` (index + index assignment)
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
 
 
 ## Tool changes

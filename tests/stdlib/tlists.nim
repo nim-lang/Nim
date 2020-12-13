@@ -1,5 +1,5 @@
 discard """
-  output: '''true'''
+  targets: "c js"
 """
 
 import lists
@@ -62,6 +62,22 @@ block DoublyLinkedRingTest1:
   assert($L == "[]")
   assert(4 notin L)
 
-
-echo "true"
-
+block tlistsToString:
+  block:
+    var l = initDoublyLinkedList[int]()
+    l.append(1)
+    l.append(2)
+    l.append(3)
+    doAssert $l == "[1, 2, 3]"
+  block:
+    var l = initDoublyLinkedList[string]()
+    l.append("1")
+    l.append("2")
+    l.append("3")
+    doAssert $l == """["1", "2", "3"]"""
+  block:
+    var l = initDoublyLinkedList[char]()
+    l.append('1')
+    l.append('2')
+    l.append('3')
+    doAssert $l == """['1', '2', '3']"""

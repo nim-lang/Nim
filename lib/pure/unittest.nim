@@ -139,21 +139,19 @@ type
   ConsoleOutputFormatter* = ref object of OutputFormatter
     colorOutput: bool
       ## Have test results printed in color.
-      ## Default is true for the non-js target,
-      ## for which ``stdout`` is a tty.
-      ## Setting the environment variable
-      ## ``NIMTEST_COLOR`` to ``always`` or
-      ## ``never`` changes the default for the
-      ## non-js target to true or false respectively.
-      ## The deprecated environment variable
-      ## ``NIMTEST_NO_COLOR``, when set,
-      ## changes the default to true, if
-      ## ``NIMTEST_COLOR`` is undefined.
+      ## Default is `auto` depending on `isatty(stdout)`, or override it with
+      ## `-d:nimUnittestColor:auto|on|off`.
+      ##
+      ## Deprecated: Setting the environment variable `NIMTEST_COLOR` to `always`
+      ## or `never` changes the default for the non-js target to true or false respectively.
+      ## Deprecated: the environment variable `NIMTEST_NO_COLOR`, when set, changes the
+      ## default to true, if `NIMTEST_COLOR` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
-      ## Default is ``PRINT_ALL``, unless
-      ## the ``NIMTEST_OUTPUT_LVL`` environment
-      ## variable is set for the non-js target.
+      ## Default is `PRINT_ALL`, or override with:
+      ## `-d:nimUnittestOutputLevel:PRINT_ALL|PRINT_FAILURES|PRINT_NONE`.
+      ##
+      ## Deprecated: the `NIMTEST_OUTPUT_LVL` environment variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
 
@@ -166,17 +164,31 @@ type
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
-                                    ## unless the ``NIMTEST_ABORT_ON_ERROR``
-                                    ## environment variable is set for
-                                    ## the non-js target.
+                                    ## or override with `-d:nimUnittestAbortOnError:on|off`.
+                                    ##
+                                    ## Deprecated: can also override depending on whether
+                                    ## `NIMTEST_ABORT_ON_ERROR` environment variable is set.
 
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
   disabledParamFiltering {.threadvar.}: bool
 
+const
+  outputLevelDefault = PRINT_ALL
+  nimUnittestOutputLevel {.strdefine.} = $outputLevelDefault
+  nimUnittestColor {.strdefine.} = "auto" ## auto|on|off
+  nimUnittestAbortOnError {.booldefine.} = false
+
+template deprecateEnvVarHere() =
+  # xxx issue a runtime warning to deprecate this envvar.
+  discard
+
+abortOnError = nimUnittestAbortOnError
 when declared(stdout):
-  abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+  if existsEnv("NIMTEST_ABORT_ON_ERROR"):
+    deprecateEnvVarHere()
+    abortOnError = true
 
 method suiteStarted*(formatter: OutputFormatter, suiteName: string) {.base, gcsafe.} =
   discard
@@ -202,36 +214,44 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
 proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
-proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
+proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
   )
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc colorOutput(): bool =
+  let color = nimUnittestColor
+  case color
+  of "auto":
+    when declared(stdout): result = isatty(stdout)
+    else: result = false
+  of "on": result = true
+  of "off": result = false
+  else: doAssert false, $color
+
   when declared(stdout):
-    # Reading settings
-    # On a terminal this branch is executed
-    var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-    var colorOutput = isatty(stdout)
     if existsEnv("NIMTEST_COLOR"):
+      deprecateEnvVarHere()
       let colorEnv = getEnv("NIMTEST_COLOR")
       if colorEnv == "never":
-        colorOutput = false
+        result = false
       elif colorEnv == "always":
-        colorOutput = true
+        result = true
     elif existsEnv("NIMTEST_NO_COLOR"):
-      colorOutput = false
-    var outputLevel = OutputLevel.PRINT_ALL
-    if envOutLvl.len > 0:
-      for opt in countup(low(OutputLevel), high(OutputLevel)):
-        if $opt == envOutLvl:
-          outputLevel = opt
-          break
-    result = newConsoleOutputFormatter(outputLevel, colorOutput)
-  else:
-    result = newConsoleOutputFormatter()
+      deprecateEnvVarHere()
+      result = false
+
+proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+  var colorOutput = colorOutput()
+  var outputLevel = nimUnittestOutputLevel.parseEnum[:OutputLevel]
+  when declared(stdout):
+    const a = "NIMTEST_OUTPUT_LVL"
+    if existsEnv(a):
+      # xxx issue a warning to deprecate this envvar.
+      outputLevel = getEnv(a).parseEnum[:OutputLevel]
+  result = newConsoleOutputFormatter(outputLevel, colorOutput)
 
 method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
   template rawPrint() = echo("\n[Suite] ", suiteName)

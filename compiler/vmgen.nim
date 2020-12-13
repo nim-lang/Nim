@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 #
-#..code-block:: nim
+#.. code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
@@ -901,6 +901,11 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
     c.gABx(n, opcSetType, dest, c.genType(dst))
     c.gABC(n, opcCastIntToPtr, dest, tmp)
     c.freeTemp(tmp)
+  elif src.kind == tyNil and dst.kind in NilableTypes:
+    # supports casting nil literals to NilableTypes in VM
+    # see #16024
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    genLit(c, n[1], dest)
   else:
     # todo: support cast from tyInt to tyRef
     globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind)
@@ -1649,8 +1654,8 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   let a = c.genx(n[0], flags)
   let b = c.genIndex(n[1], n[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
-  if opc == opcLdArr and {gfNodeAddr} * flags != {}:
-    c.gABC(n, opcLdArrAddr, dest, a, b)
+  if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
+    c.gABC(n, opc, dest, a, b)
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1744,11 +1749,13 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   if arrayType in {tyString, tyCString}:
-    genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
+    let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
+    genArrAccessOpcode(c, n, dest, opc, flags)
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
-    genArrAccessOpcode(c, n, dest, opcLdArr, flags)
+    let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr
+    genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t[0] != nil:
