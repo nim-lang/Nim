@@ -1,3 +1,6 @@
+discard """
+  matrix: "-d:ssl"
+"""
 import openssl
 
 # bug #16308
