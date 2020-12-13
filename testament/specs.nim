@@ -382,14 +382,14 @@ proc parseSpec*(filename: string): TSpec =
           case v
           of "c":
             result.targets.incl(targetC)
-          of "cpp", "c++":
+          of "cpp":
             result.targets.incl(targetCpp)
           of "objc":
             result.targets.incl(targetObjC)
           of "js":
             result.targets.incl(targetJS)
           else:
-            result.parseErrors.addLine "cannot interpret as a target: ", e.value
+            result.parseErrors.addLine "cannot interpret as a target: '$1'" % v
       of "matrix":
         for v in e.value.split(';'):
           result.matrix.add(v.strip)

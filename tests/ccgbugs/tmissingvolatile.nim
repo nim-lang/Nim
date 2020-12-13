@@ -2,7 +2,7 @@ discard """
   output: "1"
   cmd: r"nim c --hints:on $options -d:release $file"
   ccodecheck: "'NI volatile state;'"
-  target: "C"
+  targets: "C"
 """
 
 # bug #1539

@@ -1,6 +1,6 @@
 discard """
 ccodeCheck: "\\i @'NIM_ALIGN(128) NI mylocal1' .*"
-target: "c cpp"
+targets: "c cpp"
 output: "align ok"
 """
 

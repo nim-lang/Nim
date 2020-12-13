@@ -1,5 +1,5 @@
 discard """
-  target: "c"
+  targets: "c"
 disabled: true
 """
 
