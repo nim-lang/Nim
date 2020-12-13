@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 ## Test with:
-## nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:. --threads:on tests/untestable/thttpclient_ssl.nim
+## nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:. --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
 ##
 ## See https://github.com/FedericoCeratto/ssl-comparison/blob/master/README.md
 ## for a comparison with other clients.
 
 from stdtest/testutils import enableRemoteNetworking
-when enableRemoteNetworking and not defined(windows) and not defined(openbsd):
+when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd) and not defined(i386)):
   # Not supported on Windows due to old openssl version
   import
     httpclient,
