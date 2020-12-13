@@ -12,7 +12,7 @@ func newHeaders*(keyValuePairs: openArray[array[2, cstring]]): Headers {.importj
   const header = new Headers();
   #.forEach((item) => header.append(item[0], item[1]));
   return header;
-})();""".}
+})()""".}
   ## Same as `newHeaders` but initializes `Headers` with `keyValuePairs`.
 
 func append*(this: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
@@ -38,6 +38,9 @@ func values*(this: Headers): seq[cstring] {.importjs: "Array.from(#.values())".}
 
 func entries*(this: Headers): seq[array[2, cstring]] {.importjs: "Array.from(#.entries())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
+
+func clear*(this: Headers) {.importjs: """Array.from(#.keys()).forEach((key) => #.delete(key))""".}
+  ## Convenience func to delete all items from `Headers`.
 
 
 runnableExamples:
