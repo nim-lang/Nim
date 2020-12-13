@@ -1111,7 +1111,7 @@ iterator refSlice*[T](arr: openArray[T], slice: Slice[int]): lent T {.since: (1,
   runnableExamples:
     var a = [10, 20, 30]
     for i in a.refSlice(1..2):
-      assert a[i] == 20 or a[i] == 30
+      assert i == 20 or i == 30
   for x in arr.toOpenArray(slice.a, slice.b):
     yield x
 
