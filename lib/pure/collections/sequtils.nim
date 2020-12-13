@@ -46,7 +46,7 @@ runnableExamples:
   let
     foo = toSeq(1..10).map(x => x*2).filter(x => x mod 6 != 0)
     bar = toSeq(1..10).mapIt(it*2).filterIt(it mod 6 != 0)
-    baz = collect(newSeq):
+    baz = collect:
       for i in 1..10:
         let j = 2*i
         if j mod 6 != 0:
@@ -62,13 +62,13 @@ runnableExamples:
 
 
 runnableExamples:
-  import sequtils
   from strutils import join
 
   let
-    vowels = @"aeiou" # creates a sequence @['a', 'e', 'i', 'o', 'u']
+    vowels = @"aeiou"
     foo = "sequtils is an awesome module"
 
+  doAssert (vowels is seq[char]) and (vowels == @['a', 'e', 'i', 'o', 'u'])
   doAssert foo.filterIt(it notin vowels).join == "sqtls s n wsm mdl"
 
 ## **See also**:
