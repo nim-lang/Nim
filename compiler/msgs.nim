@@ -16,11 +16,15 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr, stdOrrKind) =
+template toStdOrrKind(stdOrr): untyped =
+  if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+template flushDot(conf, stdOrr) =
   ## safe to call multiple times
+  let stdOrrKind = stdOrr.toStdOrrKind()
   if stdOrrKind in conf.lastMsgWasDot:
     conf.lastMsgWasDot.excl stdOrrKind
-    write(stdorr, "\n")
+    write(stdOrr, "\n")
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -305,12 +309,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout, stdOrrStdout)
+      flushDot(conf, stdout)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr, stdOrrStderr)
+      flushDot(conf, stderr)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -348,25 +352,25 @@ template callWritelnHook(args: varargs[string, `$`]) =
 
 proc msgWrite(conf: ConfigRef; s: string) =
   if conf.m.errorOutputs != {}:
-    let (stdOrr, stdOrrKind) =
+    let stdOrr =
       if optStdout in conf.globalOptions:
-        (stdout, stdOrrStdout)
+        stdout
       else:
-        (stderr, stdOrrStderr)
+        stderr
     write(stdOrr, s)
     flushFile(stdOrr)
-    conf.lastMsgWasDot.incl stdOrrKind # subsequent writes need `flushDot`
+    conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout, stdOrrStdout)
+      flushDot(conf, stdout)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr, stdOrrStderr)
+    flushDot(conf, stderr)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:
