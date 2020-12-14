@@ -361,6 +361,144 @@ Test1
     assert "line block\\\\" in output1l
     assert "other line\\\\" in output1l
 
+  test "RST enumerated lists":
+    let input1 = dedent """
+      1. line1
+         1
+      2. line2
+         2
+
+      3. line3
+         3
+
+
+      4. line4
+         4
+
+
+
+      5. line5
+         5
+      """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    for i in 1..5:
+      assert ($i & ". line" & $i) notin output1
+      assert ("<li>line" & $i & " " & $i & "</li>") in output1
+
+    let input2 = dedent """
+      3. line3
+
+      4. line4
+
+
+      5. line5
+
+
+
+      7. line7
+
+
+
+
+      8. line8
+      """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    for i in [3, 4, 5, 7, 8]:
+      assert ($i & ". line" & $i) notin output2
+      assert ("<li>line" & $i & "</li>") in output2
+
+    # check that nested enumerated lists work
+    let input3 = dedent """
+      1.  a) string1
+      2. string2
+      """
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    assert count(output3, "<ol ") == 2
+    assert count(output3, "</ol>") == 2
+    assert "<li>string1</li>" in output3 and "<li>string2</li>" in output3
+
+    let input4 = dedent """
+      Check that enumeration specifiers are respected
+
+      9. string1
+      10. string2
+      12. string3
+
+      b) string4
+      c) string5
+      e) string6
+      """
+    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    assert count(output4, "<ol ") == 4
+    assert count(output4, "</ol>") == 4
+    for enumerator in [9, 12]:
+      assert "start=\"$1\"" % [$enumerator] in output4
+    for enumerator in [2, 5]:  # 2=b, 5=e
+      assert "start=\"$1\"" % [$enumerator] in output4
+
+    let input5 = dedent """
+      Check that auto-numbered enumeration lists work.
+
+      #. string1
+      #. string2
+      #. string3
+      """
+    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    assert count(output5, "<ol ") == 1
+    assert count(output5, "</ol>") == 1
+    assert count(output5, "<li>") == 3
+
+    let input6 = dedent """
+      ... And for alphabetic enumerators too!
+
+      b. string1
+      #. string2
+      #. string3
+      """
+    let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
+    assert count(output6, "<ol ") == 1
+    assert count(output6, "</ol>") == 1
+    assert count(output6, "<li>") == 3
+    assert "start=\"2\"" in output6 and "class=\"loweralpha simple\"" in output6
+
+    let input7 = dedent """
+      ... And for uppercase alphabetic enumerators.
+
+      C. string1
+      #. string2
+      #. string3
+      """
+    let output7 = rstToHtml(input7, {roSupportMarkdown}, defaultConfig())
+    assert count(output7, "<ol ") == 1
+    assert count(output7, "</ol>") == 1
+    assert count(output7, "<li>") == 3
+    assert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
+
+  test "RST bullet lists":
+    let input1 = dedent """
+      * line1
+        1
+      * line2
+        2
+
+      * line3
+        3
+
+
+      * line4
+        4
+
+
+
+      * line5
+        5
+      """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    for i in 1..5:
+      assert ("<li>line" & $i & " " & $i & "</li>") in output1
+    assert count(output1, "<ul ") == 1
+    assert count(output1, "</ul>") == 1
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
