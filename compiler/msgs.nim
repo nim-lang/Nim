@@ -16,11 +16,15 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr) =
+template toStdOrrKind(stdOrr): untyped =
+  if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+template flushDot(conf, stdOrr) =
   ## safe to call multiple times
-  if conf.lastMsgWasDot:
-    conf.lastMsgWasDot = false
-    write(stdorr, "\n")
+  let stdOrrKind = stdOrr.toStdOrrKind()
+  if stdOrrKind in conf.lastMsgWasDot:
+    conf.lastMsgWasDot.excl stdOrrKind
+    write(stdOrr, "\n")
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -357,7 +361,7 @@ proc msgWrite(conf: ConfigRef; s: string) =
         stderr
     write(stdOrr, s)
     flushFile(stdOrr)
-    conf.lastMsgWasDot = true # subsequent writes need `flushDot`
+    conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
