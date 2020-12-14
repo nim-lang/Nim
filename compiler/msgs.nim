@@ -516,7 +516,6 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
-    dbg msg, ignoreMsg, conf.mainPackageNotes, optHints in conf.options, conf.notes
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)

@@ -333,9 +333,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdUnknown, cmdNone, cmdIdeTools, cmdNimfix:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  dbg "D20201116T190133"
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
-    dbg()
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -345,7 +343,6 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    dbg project
 
     var output: string
     if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
@@ -355,7 +352,6 @@ proc mainCommand*(graph: ModuleGraph) =
       output = "unknownOutput"
     else:
       output = $conf.absOutFile
-    dbg output
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
@@ -367,7 +363,6 @@ proc mainCommand*(graph: ModuleGraph) =
       "project", project,
       "output", output,
       ])
-    dbg "af"
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

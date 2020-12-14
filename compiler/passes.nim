@@ -101,13 +101,15 @@ const
 
 proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
   # don't be verbose unless the module belongs to the main package:
-  dbg "here2", graph.config.mainPackageId, module.getnimblePkgId, graph.config.mainPackageNotes, graph.config.foreignPackageNotes
-  if module.getnimblePkgId == graph.config.mainPackageId or graph.config.cmd in {cmdRst2html, cmdRst2tex}: # PRTEMP: more?
+  if module.getnimblePkgId == graph.config.mainPackageId:
     graph.config.notes = graph.config.mainPackageNotes
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
-    graph.config.notes = graph.config.foreignPackageNotes
-  dbg graph.config.notes
+    case graph.config.cmd
+    of cmdRst2html, cmdRst2tex: # PRTEMP
+      graph.config.notes = {hintSuccessX}
+    else:
+      graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
