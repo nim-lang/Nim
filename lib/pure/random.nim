@@ -135,7 +135,8 @@ proc next*(r: var Rand): uint64 =
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer between zero and
   ##   a given upper bound
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
@@ -220,7 +221,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,int>`_ that returns an integer using the default
   ##   random number generator
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T:+Ordinal+or+float+or+float32+or+float64,T:+Ordinal+or+float+or+float32+or+float64]>`_
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
@@ -247,7 +248,8 @@ proc rand*(max: int): int {.benign.} =
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
   ##   provided state
   ## * `rand proc<#rand,float>`_ that returns a float
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(123)
@@ -264,7 +266,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## * `rand proc<#rand,float>`_ that returns a float using the default
   ##   random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
-  ## * `rand proc<#rand,Rand,HSlice[T:+Ordinal+or+float+or+float32+or+float64,T:+Ordinal+or+float+or+float32+or+float64]>`_
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
@@ -291,7 +293,8 @@ proc rand*(max: float): float {.benign.} =
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
   ##   provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
@@ -306,7 +309,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## See also:
-  ## * `rand proc<#rand,HSlice[T:+Ordinal+or+float+or+float32+or+float64,T:+Ordinal+or+float+or+float32+or+float64]>`_
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice and uses the default random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
@@ -335,7 +338,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,Rand,HSlice[T:+Ordinal+or+float+or+float32+or+float64,T:+Ordinal+or+float+or+float32+or+float64]>`_
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice and uses a provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,float>`_ that returns a floating point number
@@ -359,7 +362,7 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## See also:
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,float>`_ that returns a floating point number
-  ## * `rand proc<#rand,HSlice[T:+Ordinal+or+float+or+float32+or+float64,T:+Ordinal+or+float+or+float32+or+float64]>`_
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   runnableExamples:
     randomize(567)
