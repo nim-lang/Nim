@@ -215,7 +215,7 @@ proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
-    of "cpp": result.incl(targetCpp)
+    of "cpp", "c++": result.incl(targetCpp)
     of "objc": result.incl(targetObjC)
     of "js": result.incl(targetJS)
     else: raise newException(ValueError, "invalid target: '$#'" % v)
