@@ -299,7 +299,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
       typ.size = szUncomputedSize
       typ.align = szUncomputedSize
     else:
-      let length = toInt64(lengthOrd(conf, typ[0]))
+      let length = toInt64(lengthOrd(conf, typ[0].skipTypes({tyAlias, tyGenericInst, tyRange, tyDistinct})))
       if length <= 8:
         typ.size = 1
         typ.align = 1

@@ -2027,6 +2027,8 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
     elif etyp.kind == tyBool and srcTyp.kind in IntegralTypes:
       putIntoDest(p, d, e, "(($1) != 0)" % [rdCharLoc(a)], a.storage)
+    elif etyp.kind == tySet and mapSetType(p.config, etyp) == ctArray:
+      putIntoDest(p, d, e, "($1)" % [rdCharLoc(a)], a.storage) # can't cast to array type
     else:
       putIntoDest(p, d, e, "(($1) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)

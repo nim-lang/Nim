@@ -60,7 +60,7 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
 
 proc toBitSet*(conf: ConfigRef; s: PNode): TBitSet =
   var first, j: Int128
-  first = firstOrd(conf, s.typ[0])
+  first = firstOrd(conf, s.typ[0].skipTypes({tyAlias, tyGenericInst, tyRange, tyDistinct}))
   bitSetInit(result, int(getSize(conf, s.typ)))
   for i in 0..<s.len:
     if s[i].kind == nkRange:
@@ -76,7 +76,7 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
     a, b, e, first: BiggestInt # a, b are interval borders
     elemType: PType
     n: PNode
-  elemType = settype[0]
+  elemType = settype[0].skipTypes({tyAlias, tyGenericInst, tyRange, tyDistinct})
   first = firstOrd(conf, elemType).toInt64
   result = newNodeI(nkCurly, info)
   result.typ = settype

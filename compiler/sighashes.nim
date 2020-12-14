@@ -188,6 +188,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c &= ','
     else:
       for i in 0..<t.len: c.hashType t[i], flags+{CoIgnoreRange}
+  of tySet:
+    c &= char(t.kind)
+    c.hashType t[0], flags+{CoIgnoreRange}
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
