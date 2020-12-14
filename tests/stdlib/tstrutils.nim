@@ -484,6 +484,11 @@ template main() =
     doAssert(insertSep($12345, ',') == "12,345")
     doAssert(insertSep($0) == "0")
 
+    block: # bug #11352
+      doAssert insertSep($(-100), ',') == "-100"
+      doAssert insertSep($(-100_000), ',') == "-100,000"
+      doAssert insertSep($(100_000), ',') == "100,000"
+
   block: # repeat, spaces
     doAssert(' '.repeat(8) == "        ")
     doAssert(" ".repeat(8) == "        ")
