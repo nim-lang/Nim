@@ -7,19 +7,19 @@
 #    distribution, for details about the copyright.
 #
 
-## Although this module has ``seq`` in its name, it implements operations
+## Although this module has `seq` in its name, it implements operations
 ## not only for `seq`:idx: type, but for three built-in container types under
-## the ``openArray`` umbrella:
+## the `openArray` umbrella:
 ## * sequences
 ## * strings
 ## * array
 ##
 ## The system module defines several common functions, such as:
-## * ``newSeq[T]`` for creating new sequences of type ``T``
-## * ``@`` for converting arrays and strings to sequences
-## * ``add`` for adding new elements to strings and sequences
-## * ``&`` for string and seq concatenation
-## * ``in`` (alias for ``contains``) and ``notin`` for checking if an item is
+## * `newSeq[T]` for creating new sequences of type `T`
+## * `@` for converting arrays and strings to sequences
+## * `add` for adding new elements to strings and sequences
+## * `&` for string and seq concatenation
+## * `in` (alias for `contains`) and `notin` for checking if an item is
 ##   in a container
 ##
 ## This module builds upon that, providing additional functionality in form of
@@ -37,41 +37,40 @@
 ##
 ## The chaining of functions is possible thanks to the
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_.
-##
-## .. code-block::
-##   import sequtils, sugar
-##
-##   # Creating a sequence from 1 to 10, multiplying each member by 2,
-##   # keeping only the members which are not divisible by 6.
-##   let
-##     foo = toSeq(1..10).map(x => x*2).filter(x => x mod 6 != 0)
-##     bar = toSeq(1..10).mapIt(it*2).filterIt(it mod 6 != 0)
-##     baz = collect(newSeq):
-##       for i in 1..10:
-##         let j = 2*i
-##         if j mod 6 != 0:
-##           j
-##
-##   doAssert foo == bar
-##   doAssert foo == baz
-##   echo foo                  # @[2, 4, 8, 10, 14, 16, 20]
-##
-##   echo foo.any(x => x > 17) # true
-##   echo bar.allIt(it < 20)   # false
-##   echo foo.foldl(a + b)     # 74; sum of all members
-##
-## .. code-block::
-##   import sequtils
-##   from strutils import join
-##
-##   let
-##     vowels = @"aeiou" # creates a sequence @['a', 'e', 'i', 'o', 'u']
-##     foo = "sequtils is an awesome module"
-##
-##   echo foo.filterIt(it notin vowels).join # "sqtls s n wsm mdl"
-##
-## ----
-##
+
+runnableExamples:
+  import sugar
+
+  # Creating a sequence from 1 to 10, multiplying each member by 2,
+  # keeping only the members which are not divisible by 6.
+  let
+    foo = toSeq(1..10).map(x => x*2).filter(x => x mod 6 != 0)
+    bar = toSeq(1..10).mapIt(it*2).filterIt(it mod 6 != 0)
+    baz = collect:
+      for i in 1..10:
+        let j = 2*i
+        if j mod 6 != 0:
+          j
+
+  doAssert foo == bar
+  doAssert foo == baz
+  doAssert foo == @[2, 4, 8, 10, 14, 16, 20]
+
+  doAssert foo.any(x => x > 17)
+  doAssert not bar.allIt(it < 20)
+  doAssert foo.foldl(a + b) == 74 # sum of all members
+
+
+runnableExamples:
+  from strutils import join
+
+  let
+    vowels = @"aeiou"
+    foo = "sequtils is an awesome module"
+
+  doAssert (vowels is seq[char]) and (vowels == @['a', 'e', 'i', 'o', 'u'])
+  doAssert foo.filterIt(it notin vowels).join == "sqtls s n wsm mdl"
+
 ## **See also**:
 ## * `strutils module<strutils.html>`_ for common string functions
 ## * `sugar module<sugar.html>`_ for syntactic sugar macros
@@ -90,12 +89,12 @@ when not defined(nimhygiene):
 
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
-  ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
+  ## Injects `expAlias` in caller scope, to avoid bugs involving multiple
   ##  substitution in macro arguments such as
   ## https://github.com/nim-lang/Nim/issues/7187
-  ## ``evalOnceAs(myAlias, myExp)`` will behave as ``let myAlias = myExp``
-  ## except when ``letAssigneable`` is false (e.g. to handle openArray) where
-  ## it just forwards ``exp`` unchanged
+  ## `evalOnceAs(myAlias, myExp)` will behave as `let myAlias = myExp`
+  ## except when `letAssigneable` is false (e.g. to handle openArray) where
+  ## it just forwards `exp` unchanged
   expectKind(expAlias, nnkIdent)
   var val = exp
 
@@ -428,7 +427,10 @@ func apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
 func apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
   ## Same as `apply` but for proc that do not return and do not mutate `s` directly.
-  runnableExamples: apply([0, 1, 2, 3, 4], proc(item: int) = echo item)
+  runnableExamples:
+    var message: string
+    apply([0, 1, 2, 3, 4], proc(item: int) = message.addInt item)
+    assert message == "01234"
   for i in 0 ..< s.len: op(s[i])
 
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
@@ -576,8 +578,8 @@ template filterIt*(s, pred: untyped): untyped =
   ##
   ## Unlike the `filter func<#filter,openArray[T],proc(T)>`_ and
   ## `filter iterator<#filter.i,openArray[T],proc(T)>`_,
-  ## the predicate needs to be an expression using the ``it`` variable
-  ## for testing, like: ``filterIt("abcxyz", it == 'x')``.
+  ## the predicate needs to be an expression using the `it` variable
+  ## for testing, like: `filterIt("abcxyz", it == 'x')`.
   ##
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
   ## from the `sugar` module.
@@ -601,12 +603,12 @@ template filterIt*(s, pred: untyped): untyped =
   result
 
 template keepItIf*(varSeq: seq, pred: untyped) =
-  ## Keeps the items in the passed sequence (must be declared as a ``var``)
+  ## Keeps the items in the passed sequence (must be declared as a `var`)
   ## if they fulfilled the predicate.
   ##
   ## Unlike the `keepIf func<#keepIf,seq[T],proc(T)>`_,
   ## the predicate needs to be an expression using
-  ## the ``it`` variable for testing, like: ``keepItIf("abcxyz", it == 'x')``.
+  ## the `it` variable for testing, like: `keepItIf("abcxyz", it == 'x')`.
   ##
   ## See also:
   ## * `keepIf func<#keepIf,seq[T],proc(T)>`_
@@ -634,7 +636,7 @@ since (1, 1):
     ## Returns a count of all the items that fulfilled the predicate.
     ##
     ## The predicate needs to be an expression using
-    ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
+    ## the `it` variable for testing, like: `countIt(@[1, 2, 3], it > 2)`.
     ##
     runnableExamples:
       let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
@@ -672,7 +674,7 @@ template allIt*(s, pred: untyped): bool =
   ##
   ## Unlike the `all func<#all,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
-  ## the ``it`` variable for testing, like: ``allIt("abba", it == 'a')``.
+  ## the `it` variable for testing, like: `allIt("abba", it == 'a')`.
   ##
   ## See also:
   ## * `all func<#all,openArray[T],proc(T)>`_
@@ -714,7 +716,7 @@ template anyIt*(s, pred: untyped): bool =
   ##
   ## Unlike the `any func<#any,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
-  ## the ``it`` variable for testing, like: ``anyIt("abba", it == 'a')``.
+  ## the `it` variable for testing, like: `anyIt("abba", it == 'a')`.
   ##
   ## See also:
   ## * `any func<#any,openArray[T],proc(T)>`_
@@ -817,10 +819,10 @@ template foldl*(sequence, operation: untyped): untyped =
   ## The sequence is required to have at least a single element. Debug versions
   ## of your program will assert in this situation but release versions will
   ## happily go ahead. If the sequence has a single element it will be returned
-  ## without applying ``operation``.
+  ## without applying `operation`.
   ##
-  ## The ``operation`` parameter should be an expression which uses the
-  ## variables ``a`` and ``b`` for each step of the fold. Since this is a left
+  ## The `operation` parameter should be an expression which uses the
+  ## variables `a` and `b` for each step of the fold. Since this is a left
   ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
   ## 3).
@@ -863,12 +865,12 @@ template foldl*(sequence, operation: untyped): untyped =
 template foldl*(sequence, operation, first): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
   ##
-  ## This version of ``foldl`` gets a **starting parameter**. This makes it possible
+  ## This version of `foldl` gets a **starting parameter**. This makes it possible
   ## to accumulate the sequence into a different type than the sequence elements.
   ##
-  ## The ``operation`` parameter should be an expression which uses the variables
-  ## ``a`` and ``b`` for each step of the fold. The ``first`` parameter is the
-  ## start value (the first ``a``) and therefor defines the type of the result.
+  ## The `operation` parameter should be an expression which uses the variables
+  ## `a` and `b` for each step of the fold. The `first` parameter is the
+  ## start value (the first `a`) and therefor defines the type of the result.
   ##
   ## See also:
   ## * `foldr template<#foldr.t,untyped,untyped>`_
@@ -893,10 +895,10 @@ template foldr*(sequence, operation: untyped): untyped =
   ## The sequence is required to have at least a single element. Debug versions
   ## of your program will assert in this situation but release versions will
   ## happily go ahead. If the sequence has a single element it will be returned
-  ## without applying ``operation``.
+  ## without applying `operation`.
   ##
-  ## The ``operation`` parameter should be an expression which uses the
-  ## variables ``a`` and ``b`` for each step of the fold. Since this is a right
+  ## The `operation` parameter should be an expression which uses the
+  ## variables `a` and `b` for each step of the fold. Since this is a right
   ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
   ## (3))).
@@ -936,7 +938,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ## Since the input is not modified you can use it to
   ## transform the type of the elements in the input container.
   ##
-  ## The template injects the ``it`` variable which you can use directly in an
+  ## The template injects the `it` variable which you can use directly in an
   ## expression.
   ##
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
@@ -1005,9 +1007,9 @@ template mapIt*(s: typed, op: untyped): untyped =
     map(s, f)
 
 template applyIt*(varSeq, op: untyped) =
-  ## Convenience template around the mutable ``apply`` func to reduce typing.
+  ## Convenience template around the mutable `apply` func to reduce typing.
   ##
-  ## The template injects the ``it`` variable which you can use directly in an
+  ## The template injects the `it` variable which you can use directly in an
   ## expression. The expression has to return the same type as the sequence you
   ## are mutating.
   ##
@@ -1064,42 +1066,32 @@ func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
 
 macro mapLiterals*(constructor, op: untyped;
                    nested = true): untyped =
-  ## Applies ``op`` to each of the **atomic** literals like ``3``
-  ## or ``"abc"`` in the specified ``constructor`` AST. This can
+  ## Applies `op` to each of the **atomic** literals like `3`
+  ## or `"abc"` in the specified `constructor` AST. This can
   ## be used to map every array element to some target type:
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
-  ##   doAssert x is array[4, int]
-  ##
-  ## Short notation for:
-  ##
-  ## .. code-block::
-  ##   let x = [int(0.1), int(1.2), int(2.3), int(3.4)]
-  ##
-  ## If ``nested`` is true (which is the default), the literals are replaced
-  ## everywhere in the ``constructor`` AST, otherwise only the first level
+  runnableExamples:
+    let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
+    doAssert x is array[4, int]
+    doAssert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
+  ## If `nested` is true (which is the default), the literals are replaced
+  ## everywhere in the `constructor` AST, otherwise only the first level
   ## is considered:
-  ##
-  ## .. code-block::
-  ##   let a = mapLiterals((1.2, (2.3, 3.4), 4.8), int)
-  ##   let b = mapLiterals((1.2, (2.3, 3.4), 4.8), int, nested=false)
-  ##   assert a == (1, (2, 3), 4)
-  ##   assert b == (1, (2.3, 3.4), 4)
-  ##
-  ##   let c = mapLiterals((1, (2, 3), 4, (5, 6)), `$`)
-  ##   let d = mapLiterals((1, (2, 3), 4, (5, 6)), `$`, nested=false)
-  ##   assert c == ("1", ("2", "3"), "4", ("5", "6"))
-  ##   assert d == ("1", (2, 3), "4", (5, 6))
-  ##
-  ## There are no constraints for the ``constructor`` AST, it
+  runnableExamples:
+    let a = mapLiterals((1.2, (2.3, 3.4), 4.8), int)
+    let b = mapLiterals((1.2, (2.3, 3.4), 4.8), int, nested=false)
+    assert a == (1, (2, 3), 4)
+    assert b == (1, (2.3, 3.4), 4)
+  
+    let c = mapLiterals((1, (2, 3), 4, (5, 6)), `$`)
+    let d = mapLiterals((1, (2, 3), 4, (5, 6)), `$`, nested=false)
+    assert c == ("1", ("2", "3"), "4", ("5", "6"))
+    assert d == ("1", (2, 3), "4", (5, 6))
+  ## There are no constraints for the `constructor` AST, it
   ## works for nested tuples of arrays of sets etc.
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
 iterator items*[T](xs: iterator: T): T =
-  ## iterates over each element yielded by a closure iterator. This may
+  ## Iterates over each element yielded by a closure iterator. This may
   ## not seem particularly useful on its own, but this allows closure
   ## iterators to be used by the mapIt, filterIt, allIt, anyIt, etc.
   ## templates.
