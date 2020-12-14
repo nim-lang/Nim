@@ -105,11 +105,7 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.mainPackageNotes
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
-    case graph.config.cmd
-    of cmdRst2html, cmdRst2tex: # PRTEMP
-      graph.config.notes = {hintSuccessX}
-    else:
-      graph.config.notes = graph.config.foreignPackageNotes
+    graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
