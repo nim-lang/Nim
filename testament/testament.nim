@@ -144,7 +144,7 @@ proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
   options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
-                      "filedir", filename.getFileDir()])
+                      "filedir", filename.getFileDir(), "nim", compilerPrefix])
 
 proc callCompiler(cmdTemplate, filename, options, nimcache: string,
                   target: TTarget, extraOptions = ""): TSpec =
@@ -682,7 +682,7 @@ proc main() =
       gTargets = parseTargets(targetsStr)
       targetsSet = true
     of "nim":
-      compilerPrefix = addFileExt(p.val.string, ExeExt)
+      compilerPrefix = addFileExt(p.val.string.absolutePath, ExeExt)
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":
