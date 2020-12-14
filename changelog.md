@@ -57,8 +57,8 @@
 
 - `strscans.scanf` now supports parsing single characters.
 
-- Added `setutils.toSet` that can take any iteratable and convert it to a built-in set,
-  if the iteratable yields a built-in settable type.
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+  if the iterable yields a built-in settable type.
 
 ## Language changes
 
