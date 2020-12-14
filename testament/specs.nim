@@ -377,7 +377,7 @@ proc parseSpec*(filename: string): TSpec =
           result.timeout = parseFloat(e.value)
         except ValueError:
           result.parseErrors.addLine "cannot interpret as a float: ", e.value
-      of "targets":
+      of "targets", "target":
         try:
           result.targets.incl parseTargets(e.value)
         except ValueError as e:
