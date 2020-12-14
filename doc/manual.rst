@@ -1778,7 +1778,7 @@ dereferencing operations for reference types:
 
 Automatic dereferencing can be performed for the first argument of a routine
 call, but this is an experimental feature and is described `here
-<manual_experimental.html#type-bound-operations>`_.
+<manual_experimental.html#automatic-dereferencing>`_.
 
 In order to simplify structural type checking, recursive tuples are not valid:
 
@@ -3653,7 +3653,7 @@ Creating closures in loops
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
 <system.html#closureScope.t,untyped>`_ and `capture
-<sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
+<sugar.html#capture.m,varargs[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------

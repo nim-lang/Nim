@@ -64,7 +64,7 @@ type
   HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
+    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet,int>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -76,8 +76,8 @@ type
   OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
-    ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
-    ## <#initOrderedSet,int>`_ before calling other procs on it.
+    ## Use `init proc <#init,OrderedSet[A]>`_ or `initOrderedSet proc
+    ## <#initOrderedSet>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
   SomeSet*[A] = HashSet[A] | OrderedSet[A]
@@ -104,7 +104,7 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a: HashSet[int]
@@ -113,7 +113,7 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
-  ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
   ## hash sets.
   ##
   ## Returns an empty hash set you can assign directly in ``var`` blocks in a
@@ -209,7 +209,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   runnableExamples:
     let
       a = toHashSet([5, 3, 2])
@@ -601,7 +601,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
   ##
   ## **Examples:**
   ##
@@ -640,7 +640,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
     var a: OrderedSet[int]
@@ -649,7 +649,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
-  ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
   ## ordered hash sets.
   ##
   ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
@@ -674,7 +674,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   runnableExamples:
     let
       a = toOrderedSet([5, 3, 2])

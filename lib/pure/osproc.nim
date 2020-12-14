@@ -106,7 +106,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
   ## This operation is also often called `system`:idx:.
   ##
   ## See also:
-  ## * `execCmdEx proc <#execCmdEx,string,set[ProcessOption]>`_
+  ## * `execCmdEx proc <#execCmdEx,string,set[ProcessOption],StringTableRef,string,string>`_
   ## * `startProcess proc
   ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ## * `execProcess proc

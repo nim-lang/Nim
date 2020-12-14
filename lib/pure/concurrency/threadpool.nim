@@ -468,7 +468,7 @@ template spawnX*(call) =
   ## Spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread.
   ##
-  ## Usually it is advised to use `spawn proc <#spawn,typed>`_ in order to
+  ## Usually it is advised to use `spawn proc <#spawn,sinktyped>`_ in order to
   ## not block the producer for an unknown amount of time.
   ##
   ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a

@@ -21,7 +21,7 @@
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
 ## compile your application with the ``-d:ssl`` flag. See the
-## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring%2Cstring>`_
+## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring>`_
 ## procedure for additional details.
 ##
 ## Examples
