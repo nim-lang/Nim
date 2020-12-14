@@ -14,13 +14,10 @@ proc rsaPublicEncrypt*(fr: string): cstring =
   mKey.add "\n-----END PUBLIC KEY-----"
 
   var bio = bioNew(bioSMem())
-  if BIO_write(bio, mKey.cstring, mKey.len.cint) < 0:
-    raise newException(Exception, "ERROR")
+  doAssert not BIO_write(bio, mKey.cstring, mKey.len.cint) < 0
   rsa = PEM_read_bio_RSA_PUBKEY(bio, nil, nil, nil)
-  if rsa == nil:
-    raise newException(Exception, "ERROR")
-  if BIO_free(bio) < 0:
-    raise newException(Exception, "ERROR")
+  doAssert not (rsa == nil)
+  doAssert not BIO_free(bio) < 0
 
   frLen = fr.len.cint
   rsaLen = RSA_size(rsa)
@@ -28,8 +25,7 @@ proc rsaPublicEncrypt*(fr: string): cstring =
   let frdata = cast[ptr cuchar](fr.cstring)
   var todata = cast[ptr cuchar](to)
   let ret = RSA_public_encrypt(frLen, frdata, todata, rsa, RSA_PKCS1_PADDING)
-  if ret == -1:
-    raise newException(Exception, "ERROR")
+  doAssert not (ret == -1)
   RSA_free(rsa)
   return to
 
@@ -43,21 +39,17 @@ proc rasPrivateDecrypt*(fr: cstring): cstring =
   mKey.add "\n-----END RSA PRIVATE KEY-----"
 
   var bio = bioNew(bioSMem())
-  if BIO_write(bio, mKey.cstring, mKey.len.cint) < 0:
-    raise newException(Exception, "ERROR")
+  doAssert not BIO_write(bio, mKey.cstring, mKey.len.cint) < 0
   rsa = PEM_read_bio_RSAPrivateKey(bio, nil, nil, nil)
-  if rsa == nil:
-    raise newException(Exception, "ERROR")
-  if BIO_free(bio) < 0:
-    raise newException(Exception, "ERROR")
+  doAssert not (rsa == nil)
+  doAssert not BIO_free(bio) < 0
 
   rsaLen = RSA_size(rsa)
   to = newString(rsaLen)
   let frdata = cast[ptr cuchar](fr)
   var todata = cast[ptr cuchar](to)
   let ret = RSA_private_decrypt(rsaLen, frdata, todata, rsa, RSA_PKCS1_PADDING)
-  if ret == -1:
-    raise newException(Exception, "ERROR")
+  doAssert not (ret == -1)
   RSA_free(rsa)
   return to
 
