@@ -154,9 +154,9 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importExcept:
           var cut = initIntSet()
           # only exclude what is consistent between the two sets:
-          for i in im.exceptSet:
-            if i in c.imports[i].exceptSet:
-              cut.incl i
+          for j in im.exceptSet:
+            if j in c.imports[i].exceptSet:
+              cut.incl j
           c.imports[i].exceptSet = cut
       return
   c.imports.add im
