@@ -442,7 +442,7 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
   # command early customizations
   # must be handled here to honor subsequent `--hint:x:on|off`
   case conf.cmd
-  of cmdRst2html, cmdRst2tex:
+  of cmdRst2html, cmdRst2tex: # xxx see whether to add others: cmdGendepend, etc.
     conf.foreignPackageNotes = {hintSuccessX}
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
