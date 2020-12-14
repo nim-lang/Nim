@@ -1215,7 +1215,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-when defined(gcDestructors):
+when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
     ## Generic proc for adding a container `y` to a container `x`.
     ##
