@@ -433,6 +433,11 @@ proc `+%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) + cast[u
 proc `+%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) + cast[uint32](y))
 proc `+%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) + cast[uint64](y))
 
+proc `+%`*(x, y: uint64): uint64 {.inline.} = x + y
+proc `+%`*(x, y: uint32): uint32 {.inline.} = x + y
+proc `+%`*(x, y: uint16): uint16 {.inline.} = x + y
+proc `+%`*(x, y: uint8): uint8 {.inline.} = x + y
+
 proc `-%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and subtracts them.
   ##

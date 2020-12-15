@@ -104,10 +104,12 @@ template dotdotImpl(t) {.dirty.} =
     ##
     ## See also:
     ## * [..<](#..<.i,T,T)
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+    if a <= b:
+      var res = a
+      let b2 = b +% 1
+      while res != b2:
+        yield res
+        res = res +% 1
 
 dotdotImpl(int64)
 dotdotImpl(int32)
