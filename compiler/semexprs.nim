@@ -2535,6 +2535,11 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
+  proc specialSyms(c: PContext; s: PSym) {.inline.} =
+    if s.kind == skConverter: addConverter(c, s)
+    elif s.kind == skType and s.typ != nil and s.typ.kind == tyEnum and sfPure in s.flags:
+      addPureEnum(c, s)
+
   result = newNodeI(nkExportStmt, n.info)
   for i in 0..<n.len:
     let a = n[i]
@@ -2551,6 +2556,7 @@ proc semExport(c: PContext, n: PNode): PNode =
         if it.kind in ExportableSymKinds+{skModule}:
           strTableAdd(c.module.tab, it)
           result.add newSymNode(it, a.info)
+          specialSyms(c, it)
         it = nextIter(ti, s.tab)
       markUsed(c, n.info, s)
     else:
@@ -2562,6 +2568,7 @@ proc semExport(c: PContext, n: PNode): PNode =
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
           markUsed(c, n.info, s)
+          specialSyms(c, s)
           if s.kind == skType and sfPure notin s.flags:
             var etyp = s.typ
             if etyp.kind in {tyBool, tyEnum}:
