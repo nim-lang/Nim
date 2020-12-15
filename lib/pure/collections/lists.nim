@@ -178,6 +178,26 @@ proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
   new(result)
   result.value = value
 
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] =
+  ## Creates a new `SinglyLinkedList` with the members of the
+  ## given collection (seq, array, or string) `elems`.
+  runnableExamples:
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
+    assert a.ToSeq == [1, 2, 3, 4, 5]
+  result = initSinglyLinkedList[T]()
+  for elem in elems.items:
+    result.append(elem)
+
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] =
+  ## Creates a new `DoublyLinkedList` with the members of the
+  ## given collection (seq, array, or string) `elems`.
+  runnableExamples:
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
+    assert a.ToSeq == [1, 2, 3, 4, 5]
+  result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.append(elem)
+
 template itemsListImpl() {.dirty.} =
   var it = L.head
   while it != nil:
@@ -435,6 +455,18 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
+proc concat*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) =
+  ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
+  ## Note that the two lists share structure after the operation.
+  runnableExamples:
+    var a = [1, 2, 3].toSinglyLinkedList
+    let b = [4, 5].toSinglyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+  if L1.tail != nil:
+    L1.tail.next = L2.head
+  L1.tail = L2.tail
+  if L1.head == nil:
+    L1.head = L2.head
 
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
@@ -522,6 +554,19 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     a.prepend(8)
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
+
+proc concat*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) =
+  ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
+  ## Note that the two lists share structure after the operation.
+  runnableExamples:
+    var a = [1, 2, 3].toDoublyLinkedList
+    let b = [4, 5].toDoublyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+  if L1.tail != nil:
+    L1.tail.next = L2.head
+  L1.tail = L2.tail
+  if L1.head == nil:
+    L1.head = L2.head
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
