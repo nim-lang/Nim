@@ -464,6 +464,7 @@ proc concat*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) =
     import sequtils
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
+    a.concat(b)
     assert a.toSeq == [1, 2, 3, 4, 5]
   if L1.tail != nil:
     L1.tail.next = L2.head
@@ -565,6 +566,7 @@ proc concat*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) =
     import sequtils
     var a = [1, 2, 3].toDoublyLinkedList
     let b = [4, 5].toDoublyLinkedList
+    a.concat(b)
     assert a.toSeq == [1, 2, 3, 4, 5]
   if L1.tail != nil:
     L1.tail.next = L2.head
