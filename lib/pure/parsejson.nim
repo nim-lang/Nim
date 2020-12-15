@@ -167,7 +167,6 @@ proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
     # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
-    # failed = false
     if not handleHexChar(buf[pos], result):
       inc(pos)
     else:
