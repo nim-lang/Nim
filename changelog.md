@@ -66,7 +66,9 @@
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 - Added `lists.toSinglyLinkedList` and `lists.toDoublyLinkedList` for conversion from
-  `openArray`s, and `lists.concat` for the O(1) concatenation of singly- and doubly
+  `openArray`s.
+
+- `lists.append` is now overloaded also for the O(1) concatenation of singly- and doubly
   linked lists.
 
 ## Language changes
