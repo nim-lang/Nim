@@ -247,11 +247,6 @@ proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   ## Gets the filename of the file that the parser processes.
   result = c.filename
 
-proc handleHexChar(c: var CfgParser, xi: var int) =
-  var incrFlag = false
-  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
-  if not incrFlag: inc(c.bufpos)
-
 proc handleDecChars(c: var CfgParser, xi: var int) =
   while c.buf[c.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
@@ -296,8 +291,10 @@ proc getEscapedChar(c: var CfgParser, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'9':
     var xi = 0

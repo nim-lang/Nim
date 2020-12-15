@@ -1467,12 +1467,6 @@ proc errorStr(L: PegLexer, msg: string, line = -1, col = -1): string =
   var col = if col < 0: getColumn(L) else: col
   result = "$1($2, $3) Error: $4" % [L.filename, $line, $col, msg]
 
-proc handleHexChar(c: var PegLexer, xi: var int) =
-  var incrFlag = false
-  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
-  if not incrFlag:
-    inc(c.bufpos)
-
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
   if c.bufpos >= len(c.buf):
@@ -1509,8 +1503,10 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       return
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
     if xi == 0: tok.kind = tkInvalid
     else: add(tok.literal, chr(xi))
   of '0'..'9':

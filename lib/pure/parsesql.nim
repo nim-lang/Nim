@@ -72,12 +72,6 @@ proc getColumn(L: SqlLexer): int =
 proc getLine(L: SqlLexer): int =
   result = L.lineNumber
 
-proc handleHexChar(c: var SqlLexer, xi: var int) =
-  var incrFlag = false
-  handleHexChar(c.buf[c.bufpos], xi, incrFlag)
-  if not incrFlag:
-    inc(c.bufpos)
-
 proc handleOctChar(c: var SqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:
     xi = (xi shl 3) or (ord(c.buf[c.bufpos]) - ord('0'))
@@ -122,8 +116,10 @@ proc getEscapedChar(c: var SqlLexer, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+    if not handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'7':
     var xi = 0

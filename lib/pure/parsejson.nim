@@ -165,12 +165,10 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
-  var failed = false
   for _ in 0..3:
     # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
     # failed = false
-    handleHexChar(buf[pos], result, failed)
-    if not failed:
+    if not handleHexChar(buf[pos], result):
       inc(pos)
     else:
       return -1
