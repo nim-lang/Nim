@@ -291,9 +291,9 @@ proc getEscapedChar(c: var CfgParser, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    if not handleHexChar(c.buf[c.bufpos], xi):
+    if handleHexChar(c.buf[c.bufpos], xi):
       inc(c.bufpos)
-    if not handleHexChar(c.buf[c.bufpos], xi):
+    if handleHexChar(c.buf[c.bufpos], xi):
       inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'9':

@@ -150,10 +150,10 @@ proc parseString(my: var SexpParser): TTokKind =
       of 'u':
         inc(pos, 2)
         var r: int
-        if not handleHexChar(my.buf[pos], r): inc(pos)
-        if not handleHexChar(my.buf[pos], r): inc(pos)
-        if not handleHexChar(my.buf[pos], r): inc(pos)
-        if not handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
         add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
