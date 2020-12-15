@@ -80,7 +80,9 @@
 - `add` is now overloaded also for the concatenation of singly- and doubly linked lists;
   an O(1) variation that consumes its argument, `addMoved`, is also supplied.
 - Added `lists.toSinglyLinkedList` and `lists.toDoublyLinkedList` for conversion from
-  `openArray`s, and `lists.concat` for the O(1) concatenation of singly- and doubly
+  `openArray`s.
+
+- `lists.append` is now overloaded also for the O(1) concatenation of singly- and doubly
   linked lists.
 
 ## Language changes

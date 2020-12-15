@@ -510,7 +510,6 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
 proc add*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
   ## Appends a shallow copy of `L2` to the end of `L1`.
   runnableExamples:
-    import sequtils
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
     a.add b
