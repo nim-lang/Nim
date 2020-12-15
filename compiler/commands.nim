@@ -724,10 +724,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch(conf, {optTrMacros}, arg, pass, info)
   of "lean":
     processOnOffSwitch(conf, {optLean}, arg, pass, info)
-    conf.globalOptions.excl optListFullPaths
-    excl(conf.options, optStackTrace)
-    excl(conf.options, optOptimizeSpeed)
-    incl(conf.options, optOptimizeSize)
+    if optLean in conf.options:
+      conf.globalOptions.excl optListFullPaths
+      excl(conf.options, optStackTrace)
+      excl(conf.options, optOptimizeSpeed)
+      incl(conf.options, optOptimizeSize)
   of "opt":
     expectArg(conf, switch, arg, pass, info)
     case arg.normalize
