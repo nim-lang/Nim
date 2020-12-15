@@ -240,6 +240,10 @@ type
   ProfileData* = ref object
     data*: TableRef[TLineInfo, ProfileInfo]
 
+  StdOrrKind* = enum
+    stdOrrStdout
+    stdOrrStderr
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -304,7 +308,7 @@ type
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    lastMsgWasDot*: bool # the last compiler message was a single '.'
+    lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
     command*: string # the main command (e.g. cc, check, scan, etc)

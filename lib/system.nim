@@ -96,7 +96,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## defined.
   ##
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimc.html#compiler-usage-compile-time-symbols>`_ to enable
+  ## `-d:x switch <nimc.html#compiler-usage-compileminustime-symbols>`_ to enable
   ## build time conditionals:
   ##
   ## .. code-block:: Nim
@@ -1152,7 +1152,7 @@ when defined(nimdoc):
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc>`_.
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
     ## ``quit`` never returns and ignores any exception that may have been raised
     ## by the quit procedures.  It does *not* call the garbage collector to free
     ## all the memory, unless a quit procedure calls `GC_fullCollect
@@ -1215,7 +1215,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-when defined(gcDestructors):
+when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
     ## Generic proc for adding a container `y` to a container `x`.
     ##
@@ -1225,7 +1225,7 @@ when defined(gcDestructors):
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1250,7 +1250,7 @@ else:
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1274,7 +1274,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(1)` operation.
   ##
   ## See also:
-  ## * `delete <#delete,seq[T][T],Natural>`_ for preserving the order
+  ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1289,7 +1289,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(n)` operation.
   ##
   ## See also:
-  ## * `del <#delete,seq[T][T],Natural>`_ for O(1) operation
+  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1575,7 +1575,7 @@ proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
   ##
   ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
+  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1602,7 +1602,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1618,7 +1618,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -1647,7 +1647,7 @@ else:
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1663,7 +1663,7 @@ else:
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -2950,7 +2950,7 @@ template closureScope*(body: untyped): untyped =
   ## their current iteration values.
   ##
   ## Note: This template may not work in some cases, use
-  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ## `capture <sugar.html#capture.m,varargs[typed],untyped>`_ instead.
   ##
   ## Example:
   ##

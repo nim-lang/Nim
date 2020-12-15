@@ -468,10 +468,11 @@ proc runAllExamples(d: PDoc) =
     writeFile(outp, group.code)
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
-    let cmd = "$nim $backend -r --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", os.getAppFilename(),
       "backend", $d.conf.backend,
       "path", quoteShell(d.conf.projectPath),
+      "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
       "rdoccmd", group.rdoccmd,
@@ -1045,12 +1046,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skMethod)
@@ -1101,12 +1099,9 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       d.add %*{"comment": genComment(d, n)}
     else:
       d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skMethod)

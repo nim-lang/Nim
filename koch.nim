@@ -156,7 +156,13 @@ proc bundleNimsuggest(args: string) =
                  options = "-d:release -d:danger " & args)
 
 proc buildVccTool(args: string) =
-  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)
+  let input = "tools/vccexe/vccexe.nim"
+  if contains(args, "--cc:vcc"):
+    nimCompileFold("Compile Vcc", input, "build", options = args)
+    let fileName = input.splitFile.name
+    moveFile(exe("build" / fileName), exe("bin" / fileName))
+  else:
+    nimCompileFold("Compile Vcc", input, options = args)
 
 proc bundleNimpretty(args: string) =
   nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
