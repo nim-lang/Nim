@@ -81,3 +81,63 @@ block tlistsToString:
     l.append('2')
     l.append('3')
     doAssert $l == """['1', '2', '3']"""
+
+block SinglyLinkedListConversion:
+  let l: seq[int] = @[]
+  doAssert $l.toSinglyLinkedList == "[]"
+  doAssert $[1].toSinglyLinkedList == "[1]"
+  doAssert $[1, 2, 3].toSinglyLinkedList == "[1, 2, 3]"
+
+block DoublyLinkedListConversion:
+  let l: seq[int] = @[]
+  doAssert $l.toDoublyLinkedList == "[]"
+  doAssert $[1].toDoublyLinkedList == "[1]"
+  doAssert $[1, 2, 3].toDoublyLinkedList == "[1, 2, 3]"
+
+block SinglyLinkedListConcat:
+  block:
+    var
+      l0 = initSinglyLinkedList[int]()
+      l1 = [1].toSinglyLinkedList
+      l2 = [2, 3].toSinglyLinkedList
+      l3 = [4, 5, 6].toSinglyLinkedList
+    l0.concat(l3)
+    l1.concat(l3)
+    l2.concat(l3)
+    doAssert $l0 == "[4, 5, 6]"
+    doAssert $l1 == "[1, 4, 5, 6]"
+    doAssert $l2 == "[2, 3, 4, 5, 6]"
+  block:
+    var
+      l0 = initSinglyLinkedList[int]()
+      l1 = [1].toSinglyLinkedList
+      l2 = [2, 3].toSinglyLinkedList
+      l3 = [4, 5, 6].toSinglyLinkedList
+    l3.concat(l0)
+    l2.concat(l1)
+    doAssert $l3 == "[4, 5, 6]"
+    doAssert $l2 == "[2, 3, 1]"
+
+block DoublyLinkedListConcat:
+  block:
+    var
+      l0 = initDoublyLinkedList[int]()
+      l1 = [1].toDoublyLinkedList
+      l2 = [2, 3].toDoublyLinkedList
+      l3 = [4, 5, 6].toDoublyLinkedList
+    l0.concat(l3)
+    l1.concat(l3)
+    l2.concat(l3)
+    doAssert $l0 == "[4, 5, 6]"
+    doAssert $l1 == "[1, 4, 5, 6]"
+    doAssert $l2 == "[2, 3, 4, 5, 6]"
+  block:
+    var
+      l0 = initDoublyLinkedList[int]()
+      l1 = [1].toDoublyLinkedList
+      l2 = [2, 3].toDoublyLinkedList
+      l3 = [4, 5, 6].toDoublyLinkedList
+    l3.concat(l0)
+    l2.concat(l1)
+    doAssert $l3 == "[4, 5, 6]"
+    doAssert $l2 == "[2, 3, 1]"

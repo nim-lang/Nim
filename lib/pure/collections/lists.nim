@@ -72,6 +72,7 @@
 ## * `deques module <deques.html>`_ for double-ended queues
 ## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
+import std/private/since
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -178,7 +179,7 @@ proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] =
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5).} =
   ## Creates a new `SinglyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
@@ -189,7 +190,7 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] =
   for elem in elems.items:
     result.append(elem)
 
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] =
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5).} =
   ## Creates a new `DoublyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
@@ -457,7 +458,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
-proc concat*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) =
+proc concat*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
   ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
@@ -559,7 +560,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
 
-proc concat*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) =
+proc concat*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 5).} =
   ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
