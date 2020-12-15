@@ -1,7 +1,10 @@
-# test the new strutils module
+discard """
+  targets: "c cpp js"
+"""
 
-import
-  strutils
+import std/strutils
+
+# xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
   try:
@@ -16,6 +19,53 @@ template disableVm(body) =
 template main() =
   block: # strip
     doAssert strip("  ha  ") == "ha"
+    doAssert strip("  foofoofoo  ") == "foofoofoo"
+    doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
+    doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
+    doAssert strip("stripme but don't strip this stripme",
+                   chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
+                   " but don't strip this "
+    doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
+    doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
+
+  block: # split
+    var ret: seq[string] # or use `toSeq` or `collect`
+    for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
+    doAssert ret == @["/home/a1", "xyz", "/usr/bin"]
+
+    let s = " this is an example  "
+    let s2 = ":this;is;an:example;;"
+
+    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = {':', ';'}) == @["", "this", "is", "an", "example",
+        "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
+    doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+
+  block: # splitLines
+    let fixture = "a\nb\rc\r\nd"
+    assert len(fixture.splitLines) == 4
+    assert splitLines(fixture) == @["a", "b", "c", "d"]
+    assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
+
+  block: # rsplit
+    doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
+    doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
+    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
+        " foo bar", ""]
+    doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
+    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
+    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
+    doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
+
+  block: # splitWhitespace
+    let s = " this is an example  "
+    doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
+    doAssert s.splitWhitespace(maxsplit = 1) == @["this", "is an example  "]
+    doAssert s.splitWhitespace(maxsplit = 2) == @["this", "is", "an example  "]
+    doAssert s.splitWhitespace(maxsplit = 3) == @["this", "is", "an", "example  "]
+    doAssert s.splitWhitespace(maxsplit = 4) == @["this", "is", "an", "example"]
 
   block: # removeSuffix
     var s = "hello\n\r"
@@ -139,11 +189,6 @@ template main() =
     s.removePrefix("")
     assert s == "\r\n\r\nhello"
 
-  block: # split
-    var ret: seq[string] # or use `toSeq` or `collect`
-    for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
-    doAssert ret == @["/home/a1", "xyz", "/usr/bin"]
-
   block: # delete
     var s = "0123456789ABCDEFGH"
     delete(s, 4, 5)
@@ -224,12 +269,6 @@ template main() =
     x.trimZeros()
     assert x == "1e0"
 
-  block: # splitLines
-    let fixture = "a\nb\rc\r\nd"
-    assert len(fixture.splitLines) == 4
-    assert splitLines(fixture) == @["a", "b", "c", "d"]
-    assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
-
   block: # countLines
     proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
     assertCountLines("")
@@ -302,10 +341,10 @@ template main() =
   block: # toHex
     assert(toHex(100i16, 32) == "00000000000000000000000000000064")
     assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
-
-    assert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
-    assert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
-    assert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
+    when not defined js:
+      assert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
+      assert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
+      assert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
 
   block: # insertSep
     assert(insertSep($1000_000) == "1_000_000")
@@ -322,12 +361,16 @@ template main() =
     assert(" ".repeat(0) == "")
     assert(spaces(0) == "")
 
-  block: # bug #11369
-    var num: int64 = -1
-    assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
-    assert num.toOct(24) == "001777777777777777777777"
+  block: # toBin, toOct
+    block:# bug #11369
+      var num: int64 = -1
+      when not defined js:
+        assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+        assert num.toOct(24) == "001777777777777777777777"
 
-  block: # bug #8911
+  block: # replace
+    doAssert "oo".replace("", "abc") == "oo"
+    # bug #8911
     static:
       let a = ""
       let a2 = a.replace("\n", "\\n")
@@ -339,6 +382,17 @@ template main() =
     block:
       let c = ""
       let c2 = c.replace("\n", "\\n")
+
+  block: # replaceWord
+    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
+    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+    doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
+
+  block: # multiReplace
+    doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
+    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
+        "PEOPLE!")) == "HELLO PEOPLE!"
+    doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
 
   # `parseEnum`, ref issue #14030
   # check enum defined at top level # xxx this is probably irrelevant, and pollutes scope
@@ -425,6 +479,12 @@ template main() =
       doAssert b == f2
       doAssert c == f3
 
+  block: # parseEnum TODO: merge above
+    type MyEnum = enum enA, enB, enC, enuD, enE
+    doAssert parseEnum[MyEnum]("enu_D") == enuD
+
+    doAssert parseEnum("invalid enum value", enC) == enC
+
   block: # indentation
     assert 0 == indentation """
 hey
@@ -447,172 +507,10 @@ hey
     assert 0 == indentation "  \n  \n"
     assert 0 == indentation "    "
 
-  block: # formatBiggestFloat
-    disableVm:
-      doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-      when not defined(js):
-        doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
-      doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-      doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
-                                                      ["1,0e-11", "1,0e-011"]
-  block: # formatFloat
-    disableVm:
-      # bug #6589
-      when not defined(js):
-        doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
-
-  block: # `%`
-    doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-    doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
-
-  block: # formatSize
-    when not defined(js):
-      doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
-    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
-    doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
-    doAssert formatSize(4096, includeSpace = true) == "4 KiB"
-    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
-
-  block: # formatEng
-    doAssert formatEng(0, 2, trim = false) == "0.00"
-    doAssert formatEng(0, 2) == "0"
-    doAssert formatEng(53, 2, trim = false) == "53.00"
-    doAssert formatEng(0.053, 2, trim = false) == "53.00e-3"
-    doAssert formatEng(0.053, 4, trim = false) == "53.0000e-3"
-    doAssert formatEng(0.053, 4, trim = true) == "53e-3"
-    doAssert formatEng(0.053, 0) == "53e-3"
-    doAssert formatEng(52731234) == "52.731234e6"
-    doAssert formatEng(-52731234) == "-52.731234e6"
-    doAssert formatEng(52731234, 1) == "52.7e6"
-    doAssert formatEng(-52731234, 1) == "-52.7e6"
-    doAssert formatEng(52731234, 1, decimalSep = ',') == "52,7e6"
-    doAssert formatEng(-52731234, 1, decimalSep = ',') == "-52,7e6"
-
-    doAssert formatEng(4100, siPrefix = true, unit = "V") == "4.1 kV"
-    doAssert formatEng(4.1, siPrefix = true, unit = "V",
-        useUnitSpace = true) == "4.1 V"
-    doAssert formatEng(4.1, siPrefix = true) == "4.1" # Note lack of space
-    doAssert formatEng(4100, siPrefix = true) == "4.1 k"
-    doAssert formatEng(4.1, siPrefix = true, unit = "",
-        useUnitSpace = true) == "4.1 " # Includes space
-    doAssert formatEng(4100, siPrefix = true, unit = "") == "4.1 k"
-    doAssert formatEng(4100) == "4.1e3"
-    doAssert formatEng(4100, unit = "V", useUnitSpace = true) == "4.1e3 V"
-    doAssert formatEng(4100, unit = "", useUnitSpace = true) == "4.1e3 "
-    # Don't use SI prefix as number is too big
-    doAssert formatEng(3.1e22, siPrefix = true, unit = "a",
-        useUnitSpace = true) == "31e21 a"
-    # Don't use SI prefix as number is too small
-    doAssert formatEng(3.1e-25, siPrefix = true, unit = "A",
-        useUnitSpace = true) == "310e-27 A"
-
-static: main()
-main()
-
-block:
-
-  proc staticTests =
-    doAssert align("abc", 4) == " abc"
-    doAssert align("a", 0) == "a"
-    doAssert align("1232", 6) == "  1232"
-    doAssert align("1232", 6, '#') == "##1232"
-
-    doAssert alignLeft("abc", 4) == "abc "
-    doAssert alignLeft("a", 0) == "a"
-    doAssert alignLeft("1232", 6) == "1232  "
-    doAssert alignLeft("1232", 6, '#') == "1232##"
-
-    doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
-             "The cat eats fish."
-
-    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
-    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-
-    doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
-    doAssert "oo".replace("", "abc") == "oo"
-
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
-
-    doAssert parseEnum("invalid enum value", enC) == enC
-
-    doAssert center("foo", 13) == "     foo     "
-    doAssert center("foo", 0) == "foo"
-    doAssert center("foo", 3, fillChar = 'a') == "foo"
-    doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
-
-    doAssert count("foofoofoo", "foofoo") == 1
-    doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
-    doAssert count("foofoofoo", 'f') == 3
-    doAssert count("foofoofoobar", {'f', 'b'}) == 4
-
-    doAssert strip("  foofoofoo  ") == "foofoofoo"
-    doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
-    doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
-    doAssert strip("stripme but don't strip this stripme",
-                   chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
-                   " but don't strip this "
-    doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
-    doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
-
+  block: # indent
     doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
 
-    doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
-    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
-        "PEOPLE!")) == "HELLO PEOPLE!"
-    doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
-
-    doAssert isAlphaAscii('r')
-    doAssert isAlphaAscii('A')
-    doAssert(not isAlphaAscii('$'))
-
-    doAssert isAlphaNumeric('3')
-    doAssert isAlphaNumeric('R')
-    doAssert(not isAlphaNumeric('!'))
-
-    doAssert isDigit('3')
-    doAssert(not isDigit('a'))
-    doAssert(not isDigit('%'))
-
-    doAssert isSpaceAscii('\t')
-    doAssert isSpaceAscii('\l')
-    doAssert(not isSpaceAscii('A'))
-
-    doAssert(isEmptyOrWhitespace(""))
-    doAssert(isEmptyOrWhitespace("       "))
-    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
-    doAssert(not isEmptyOrWhitespace("ABc   \td"))
-
-    doAssert isLowerAscii('a')
-    doAssert isLowerAscii('z')
-    doAssert(not isLowerAscii('A'))
-    doAssert(not isLowerAscii('5'))
-    doAssert(not isLowerAscii('&'))
-    doAssert(not isLowerAscii(' '))
-
-    doAssert isUpperAscii('A')
-    doAssert(not isUpperAscii('b'))
-    doAssert(not isUpperAscii('5'))
-    doAssert(not isUpperAscii('%'))
-
-    doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
-    doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
-    doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
-    doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
-
-    doAssert(unescape(r"\x013", "", "") == "\x013")
-
-    doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
-    doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
-    doAssert join([1, 2, 3]) == "123"
-    doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
-
+  block: # unindent
     doAssert """~~!!foo
 ~~!!bar
 ~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
@@ -641,31 +539,151 @@ bar
     bar
   """.unindent() == "foo\nfoo\nbar\n"
 
-    let s = " this is an example  "
-    let s2 = ":this;is;an:example;;"
+  block: # formatBiggestFloat
+    disableVm:
+      doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
+      when not defined(js):
+        doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
+      doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
+      doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
+      doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
+                                                      ["1,0e-11", "1,0e-011"]
+  block: # formatFloat
+    disableVm:
+      # bug #6589
+      when not defined(js):
+        doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
 
-    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps = {':', ';'}) == @["", "this", "is", "an", "example",
-        "", ""]
-    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
-    doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
-    doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
+  block: # `%`
+    doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
+    doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
+    doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
+             "The cat eats fish."
 
-    doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
-    doAssert s.splitWhitespace(maxsplit = 1) == @["this", "is an example  "]
-    doAssert s.splitWhitespace(maxsplit = 2) == @["this", "is", "an example  "]
-    doAssert s.splitWhitespace(maxsplit = 3) == @["this", "is", "an", "example  "]
-    doAssert s.splitWhitespace(maxsplit = 4) == @["this", "is", "an", "example"]
+  block: # formatSize
+    disableVm:
+      when not defined(js):
+        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
+      doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+      doAssert formatSize(4096) == "4KiB"
+      doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
+      doAssert formatSize(4096, includeSpace = true) == "4 KiB"
+      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
 
-    block: # startsWith / endsWith char tests
-      var s = "abcdef"
-      doAssert s.startsWith('a')
-      doAssert s.startsWith('b') == false
-      doAssert s.endsWith('f')
-      doAssert s.endsWith('a') == false
-      doAssert s.endsWith('\0') == false
+  block: # formatEng
+    disableVm:
+      doAssert formatEng(0, 2, trim = false) == "0.00"
+      doAssert formatEng(0, 2) == "0"
+      doAssert formatEng(53, 2, trim = false) == "53.00"
+      doAssert formatEng(0.053, 2, trim = false) == "53.00e-3"
+      doAssert formatEng(0.053, 4, trim = false) == "53.0000e-3"
+      doAssert formatEng(0.053, 4, trim = true) == "53e-3"
+      doAssert formatEng(0.053, 0) == "53e-3"
+      doAssert formatEng(52731234) == "52.731234e6"
+      doAssert formatEng(-52731234) == "-52.731234e6"
+      doAssert formatEng(52731234, 1) == "52.7e6"
+      doAssert formatEng(-52731234, 1) == "-52.7e6"
+      doAssert formatEng(52731234, 1, decimalSep = ',') == "52,7e6"
+      doAssert formatEng(-52731234, 1, decimalSep = ',') == "-52,7e6"
 
-    #echo("strutils tests passed")
+      doAssert formatEng(4100, siPrefix = true, unit = "V") == "4.1 kV"
+      doAssert formatEng(4.1, siPrefix = true, unit = "V",
+          useUnitSpace = true) == "4.1 V"
+      doAssert formatEng(4.1, siPrefix = true) == "4.1" # Note lack of space
+      doAssert formatEng(4100, siPrefix = true) == "4.1 k"
+      doAssert formatEng(4.1, siPrefix = true, unit = "",
+          useUnitSpace = true) == "4.1 " # Includes space
+      doAssert formatEng(4100, siPrefix = true, unit = "") == "4.1 k"
+      doAssert formatEng(4100) == "4.1e3"
+      doAssert formatEng(4100, unit = "V", useUnitSpace = true) == "4.1e3 V"
+      doAssert formatEng(4100, unit = "", useUnitSpace = true) == "4.1e3 "
+      # Don't use SI prefix as number is too big
+      doAssert formatEng(3.1e22, siPrefix = true, unit = "a",
+          useUnitSpace = true) == "31e21 a"
+      # Don't use SI prefix as number is too small
+      doAssert formatEng(3.1e-25, siPrefix = true, unit = "A",
+          useUnitSpace = true) == "310e-27 A"
 
-  staticTests()
-  static: staticTests()
+  block: # align
+    doAssert align("abc", 4) == " abc"
+    doAssert align("a", 0) == "a"
+    doAssert align("1232", 6) == "  1232"
+    doAssert align("1232", 6, '#') == "##1232"
+
+  block: # alignLeft
+    doAssert alignLeft("abc", 4) == "abc "
+    doAssert alignLeft("a", 0) == "a"
+    doAssert alignLeft("1232", 6) == "1232  "
+    doAssert alignLeft("1232", 6, '#') == "1232##"
+
+  block: # center
+    doAssert center("foo", 13) == "     foo     "
+    doAssert center("foo", 0) == "foo"
+    doAssert center("foo", 3, fillChar = 'a') == "foo"
+    doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
+
+  block: # count
+    doAssert count("foofoofoo", "foofoo") == 1
+    doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
+    doAssert count("foofoofoo", 'f') == 3
+    doAssert count("foofoofoobar", {'f', 'b'}) == 4
+
+  block: # isAlphaAscii
+    doAssert isAlphaAscii('r')
+    doAssert isAlphaAscii('A')
+    doAssert(not isAlphaAscii('$'))
+
+  block: # isAlphaNumeric
+    doAssert isAlphaNumeric('3')
+    doAssert isAlphaNumeric('R')
+    doAssert(not isAlphaNumeric('!'))
+
+  block: # isDigit
+    doAssert isDigit('3')
+    doAssert(not isDigit('a'))
+    doAssert(not isDigit('%'))
+
+  block: # isSpaceAscii
+    doAssert isSpaceAscii('\t')
+    doAssert isSpaceAscii('\l')
+    doAssert(not isSpaceAscii('A'))
+
+  block: # isEmptyOrWhitespace
+    doAssert(isEmptyOrWhitespace(""))
+    doAssert(isEmptyOrWhitespace("       "))
+    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
+    doAssert(not isEmptyOrWhitespace("ABc   \td"))
+
+  block: # isLowerAscii
+    doAssert isLowerAscii('a')
+    doAssert isLowerAscii('z')
+    doAssert(not isLowerAscii('A'))
+    doAssert(not isLowerAscii('5'))
+    doAssert(not isLowerAscii('&'))
+    doAssert(not isLowerAscii(' '))
+
+  block: # isUpperAscii
+    doAssert isUpperAscii('A')
+    doAssert(not isUpperAscii('b'))
+    doAssert(not isUpperAscii('5'))
+    doAssert(not isUpperAscii('%'))
+
+  block: # unescape
+    doAssert(unescape(r"\x013", "", "") == "\x013")
+
+  block: # join
+    doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
+    doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
+    doAssert join([1, 2, 3]) == "123"
+    doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
+
+  block: # startsWith / endsWith
+    var s = "abcdef"
+    doAssert s.startsWith('a')
+    doAssert s.startsWith('b') == false
+    doAssert s.endsWith('f')
+    doAssert s.endsWith('a') == false
+    doAssert s.endsWith('\0') == false
+
+static: main()
+main()
