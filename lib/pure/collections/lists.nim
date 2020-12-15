@@ -182,8 +182,9 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] =
   ## Creates a new `SinglyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
+    import sequtils
     let a = [1, 2, 3, 4, 5].toSinglyLinkedList
-    assert a.ToSeq == [1, 2, 3, 4, 5]
+    assert a.toSeq == [1, 2, 3, 4, 5]
   result = initSinglyLinkedList[T]()
   for elem in elems.items:
     result.append(elem)
@@ -192,8 +193,9 @@ func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] =
   ## Creates a new `DoublyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
+    import sequtils
     let a = [1, 2, 3, 4, 5].toDoublyLinkedList
-    assert a.ToSeq == [1, 2, 3, 4, 5]
+    assert a.toSeq == [1, 2, 3, 4, 5]
   result = initDoublyLinkedList[T]()
   for elem in elems.items:
     result.append(elem)
@@ -459,6 +461,7 @@ proc concat*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) =
   ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
+    import sequtils
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
@@ -559,6 +562,7 @@ proc concat*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) =
   ## Concatenates (adds to the end) `L2` to `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
+    import sequtils
     var a = [1, 2, 3].toDoublyLinkedList
     let b = [4, 5].toDoublyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
