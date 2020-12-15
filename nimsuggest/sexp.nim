@@ -12,6 +12,8 @@
 import
   hashes, strutils, lexbase, streams, unicode, macros
 
+import std/private/decode_helpers
+
 type
   SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
     sexpError,           ## an error occurred during parsing
