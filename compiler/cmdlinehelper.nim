@@ -12,6 +12,7 @@
 import
   options, idents, nimconf, extccomp, commands, msgs,
   lineinfos, modulegraphs, condsyms, os, pathutils, parseopt
+from strutils import `%`
 
 proc prependCurDir*(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
@@ -37,15 +38,24 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
   condsyms.initDefines(conf.symbols)
   defineSymbol conf.symbols, name
 
+proc appendNimExtMaybe(path: string): string =
+  result = path
+  let s = result.splitFile
+  if s.ext == "" and s.name notin ["", ".", ".."]:
+    result.add ".nim"
+
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
+  conf.projectIsRealFile = false
   if conf.projectIsCmd and conf.projectName in ["-", ""]:
     handleCmdInput(conf)
   elif self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":
+    let fname = conf.projectName.appendNimExtMaybe
     try:
-      conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
+      conf.projectFull = canonicalizePath(conf, AbsoluteFile fname)
+      conf.projectIsRealFile = true
     except OSError:
       conf.projectFull = AbsoluteFile conf.projectName
     let p = splitFile(conf.projectFull)
