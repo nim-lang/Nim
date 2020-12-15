@@ -1,4 +1,18 @@
 proc handleHexChar*(c: char, x: var int): bool {.inline.} =
+  ## Converts `%xx` hexadecimal to the ordinal number and adds the result to `x`.
+  ## Returns `true` if `c` is not hexadecimal.
+  ##
+  ## When `c` is hexadecimal, the proc is equal to `x = x shl 4 + hex2Int(c)`.
+  runnableExamples:
+    var x: int = 0
+    assert not handleHexChar('a', x)
+    assert x == 10
+
+    assert not handleHexChar('B', x)
+    assert x == 171 # 10 << 4 + 11
+
+    # failed
+    assert handleHexChar('?', x)
   case c
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
   of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
