@@ -419,45 +419,51 @@ The standard library supports a growing number of ``useX`` conditional defines
 affecting how some features are implemented. This section tries to give a
 complete list.
 
-======================   =========================================================
-Define                   Effect
-======================   =========================================================
-``release``              Turns on the optimizer.
-                         More aggressive optimizations are possible, e.g.:
-                         ``--passC:-ffast-math`` (but see issue #10305)
-``danger``               Turns off all runtime checks and turns on the optimizer.
-``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
-``useNimRtl``            Compile and link against ``nimrtl.dll``.
-``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, albeit prefixing each allocation with
-                         its size to support clearing memory on reallocation.
-                         This only works with ``gc:none`` and
-                         with ``--newruntime``.
-``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
-                         systems. See the documentation of the `gc <gc.html>`_
-                         for further information.
-``logGC``                Enable GC logging to stdout.
-``nodejs``               The JS target is actually ``node.js``.
-``ssl``                  Enables OpenSSL support for the sockets module.
-``memProfiler``          Enables memory profiling for the native GC.
-``uClibc``               Use uClibc instead of libc. (Relevant for Unix-like OSes)
-``checkAbi``             When using types from C headers, add checks that compare
-                         what's in the Nim file with what's in the C header.
-                         This may become enabled by default in the future.
-``tempDir``              This symbol takes a string as its value, like
-                         ``--define:tempDir:/some/temp/path`` to override the
-                         temporary directory returned by ``os.getTempDir()``.
-                         The value **should** end with a directory separator
-                         character. (Relevant for the Android platform)
-``useShPath``            This symbol takes a string as its value, like
-                         ``--define:useShPath:/opt/sh/bin/sh`` to override the
-                         path for the ``sh`` binary, in cases where it is not
-                         located in the default location ``/bin/sh``.
-``noSignalHandler``      Disable the crash handler from ``system.nim``.
-``globalSymbols``        Load all ``{.dynlib.}`` libraries with the ``RTLD_GLOBAL``
-                         flag on Posix systems to resolve symbols in subsequently
-                         loaded libraries.
-======================   =========================================================
+================================   =========================================================
+Define                             Effect
+================================   =========================================================
+``release``                        Turns on the optimizer.
+                                   More aggressive optimizations are possible, e.g.:
+                                   ``--passC:-ffast-math`` (but see issue #10305)
+``danger``                         Turns off all runtime checks and turns on the optimizer.
+``nimDisableAssertMsgs``           Turns off assert/doAssert messages (see bug #14905) which
+                                   can improve performance.
+``nimDisableAssertComputedMsgs``   Compromises code size in favor of better debugging,
+                                   preserving the parts of the assert/doAssert messages that
+                                   are known at CT. This still allows good inlning as it avoids
+                                   code bloat where the assert is called.
+``useFork``                        Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
+``useNimRtl``                      Compile and link against ``nimrtl.dll``.
+``useMalloc``                      Makes Nim use C's `malloc`:idx: instead of Nim's
+                                   own memory manager, albeit prefixing each allocation with
+                                   its size to support clearing memory on reallocation.
+                                   This only works with ``gc:none`` and
+                                   with ``--newruntime``.
+``useRealtimeGC``                  Enables support of Nim's GC for *soft* realtime
+                                   systems. See the documentation of the `gc <gc.html>`_
+                                   for further information.
+``logGC``                          Enable GC logging to stdout.
+``nodejs``                         The JS target is actually ``node.js``.
+``ssl``                            Enables OpenSSL support for the sockets module.
+``memProfiler``                    Enables memory profiling for the native GC.
+``uClibc``                         Use uClibc instead of libc. (Relevant for Unix-like OSes)
+``checkAbi``                       When using types from C headers, add checks that compare
+                                   what's in the Nim file with what's in the C header.
+                                   This may become enabled by default in the future.
+``tempDir``                        This symbol takes a string as its value, like
+                                   ``--define:tempDir:/some/temp/path`` to override the
+                                   temporary directory returned by ``os.getTempDir()``.
+                                   The value **should** end with a directory separator
+                                   character. (Relevant for the Android platform)
+``useShPath``                      This symbol takes a string as its value, like
+                                   ``--define:useShPath:/opt/sh/bin/sh`` to override the
+                                   path for the ``sh`` binary, in cases where it is not
+                                   located in the default location ``/bin/sh``.
+``noSignalHandler``                Disable the crash handler from ``system.nim``.
+``globalSymbols``                  Load all ``{.dynlib.}`` libraries with the ``RTLD_GLOBAL``
+                                   flag on Posix systems to resolve symbols in subsequently
+                                   loaded libraries.
+================================   =========================================================
 
 
 
