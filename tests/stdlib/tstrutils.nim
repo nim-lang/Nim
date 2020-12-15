@@ -691,7 +691,7 @@ bar
       when not defined(js):
         doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
 
-  block: # `addf`, `%`
+  block: # `%`
     doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
     doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
     doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
@@ -703,6 +703,11 @@ bar
       doAssert e.msg == "invalid char '$' at index: '2' for input: 'a $key2 b'", e.msg
       ok = true
     doAssert ok
+    
+  block: # addf
+    var a = "foo:"
+    a.addf("$# $3 $# $#", "a", "b", "c")
+    doAssert a == "foo:a c b c"
 
   block: # formatSize
     disableVm:
