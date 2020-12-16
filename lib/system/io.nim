@@ -792,8 +792,10 @@ when declared(stdout):
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
+        defer: funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
+        defer: releaseSys echoLock
       for s in args:
         when defined(windows):
           writeWindows(stdout, s)
@@ -805,10 +807,6 @@ when declared(stdout):
         checkErr(stdout)
       if c_fflush(stdout) != 0:
         checkErr(stdout)
-      when stdOutLock:
-        funlockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        releaseSys echoLock
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):
