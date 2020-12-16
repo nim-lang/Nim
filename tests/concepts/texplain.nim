@@ -5,13 +5,13 @@ texplain.nim(162, 10) Hint: Non-matching candidates for e(y)
 proc e(i: int): int
   first type mismatch at position: 1
   required type for i: int
-  but expression 'y' is of type: MatchingType
+  but expression 'y' is of type: 'MatchingType'
 
 texplain.nim(165, 7) Hint: Non-matching candidates for e(10)
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
-  but expression '10' is of type: int literal(10)
+  but expression '10' is of type: 'int literal(10)'
 texplain.nim(128, 6) ExplainedConcept: undeclared field: 'foo'
 texplain.nim(128, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(128, 6) ExplainedConcept: expression '.' cannot be called
@@ -27,7 +27,7 @@ texplain.nim(168, 10) Hint: Non-matching candidates for e(10)
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
-  but expression '10' is of type: int literal(10)
+  but expression '10' is of type: 'int literal(10)'
 texplain.nim(128, 6) ExplainedConcept: undeclared field: 'foo'
 texplain.nim(128, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(128, 6) ExplainedConcept: expression '.' cannot be called
@@ -44,11 +44,11 @@ but expected one of:
 proc e(i: int): int
   first type mismatch at position: 1
   required type for i: int
-  but expression 'n' is of type: NonMatchingType
+  but expression 'n' is of type: 'NonMatchingType'
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
-  but expression 'n' is of type: NonMatchingType
+  but expression 'n' is of type: 'NonMatchingType'
 texplain.nim(172, 9) template/generic instantiation of `assert` from here
 texplain.nim(128, 5) ExplainedConcept: concept predicate failed
 
@@ -58,35 +58,35 @@ but expected one of:
 proc r(i: string): int
   first type mismatch at position: 1
   required type for i: string
-  but expression 'n' is of type: NonMatchingType
+  but expression 'n' is of type: 'NonMatchingType'
 proc r(o: RegularConcept): int
   first type mismatch at position: 1
   required type for o: RegularConcept
-  but expression 'n' is of type: NonMatchingType
+  but expression 'n' is of type: 'NonMatchingType'
 texplain.nim(173, 9) template/generic instantiation of `assert` from here
 texplain.nim(132, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
   first type mismatch at position: 1
   required type for a: SomeNumber
-  but expression 'n' is of type: NonMatchingType
+  but expression 'n' is of type: 'NonMatchingType'
 
 expression: r(n)
 texplain.nim(174, 20) Hint: Non-matching candidates for r(y)
 proc r(i: string): int
   first type mismatch at position: 1
   required type for i: string
-  but expression 'y' is of type: MatchingType
+  but expression 'y' is of type: 'MatchingType'
 proc r[T](a: SomeNumber; b: T; c: auto)
   first type mismatch at position: 1
   required type for a: SomeNumber
-  but expression 'y' is of type: MatchingType
+  but expression 'y' is of type: 'MatchingType'
 
 texplain.nim(182, 2) Error: type mismatch: got <MatchingType>
 but expected one of:
 proc f(o: NestedConcept)
   first type mismatch at position: 1
   required type for o: NestedConcept
-  but expression 'y' is of type: MatchingType
+  but expression 'y' is of type: 'MatchingType'
 texplain.nim(132, 6) RegularConcept: undeclared field: 'foo'
 texplain.nim(132, 6) RegularConcept: undeclared field: '.'
 texplain.nim(132, 6) RegularConcept: expression '.' cannot be called

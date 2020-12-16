@@ -8,7 +8,7 @@
 #
 
 import
-  std/[strutils, os, tables, terminal, macros, times],
+  std/[strutils, os, tables, terminal, macros, times, colors, strformat, parseutils],
   std/private/miscdollars,
   options, ropes, lineinfos, pathutils, strutils2
 
@@ -477,12 +477,68 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
-proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
+proc colorError(s: string, color: ForegroundColor, conf: ConfigRef): string =
+  if optUseColors in conf.globalOptions:
+    template isQuote(val: untyped): untyped = val == '\''
+    template isNotQuote(val: untyped): untyped = val != '\''
+    let parsable = (s.count('"').mod 2) == 0
+    var 
+      pos = 0
+    while pos < s.len:
+      if s[pos].isQuote:
+        if pos < s.high and s[pos + 1].isQuote:
+          result.add s[pos..(pos + 1)]
+        var inDoubleQuote = false
+        inc pos
+        let start = pos
+        while (pos < s.len and s[pos].isNotQuote) or inDoubleQuote:
+          if s[pos] == '"' and parsable:
+            inDoubleQuote = not inDoubleQuote
+          inc pos
+        #Highlight error
+        if pos < s.len and parsable:
+          if (s[pos].isQuote):
+            result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
+          else:
+            result.add s[start..(pos - 1)]
+        else: 
+          result.add s[start..s.high]
+          break
+      else:
+        result.add s[pos]
+      inc pos
+  else:
+    result = s
+
+proc getSurroundingSrc(result: var string, conf: ConfigRef; info: TLineInfo, color: ForegroundColor) =
   if conf.hasHint(hintSource) and info != unknownLineInfo:
     const indent = "  "
-    result = "\n" & indent & $sourceLine(conf, info)
-    if info.col >= 0:
-      result.add "\n" & indent & spaces(info.col) & '^'
+    if optUseColors in conf.globalOptions:
+      var msg = $sourceLine(conf, info)
+      let
+        colorEnd =
+          case msg[info.col]:
+          of IdentStartChars:
+            info.col + 1 + msg.skipUntil({'\0'..'\255'} - IdentChars, info.col)
+          of '[': # + 2 due to wanting to include the sym in the coloring
+            info.col + 2 + msg.skipUntil(']', info.col)
+          of '(': # + 2 due to wanting to include the sym in the coloring
+            info.col + 2 + msg.skipUntil(')', info.col)
+          of '.': # + 2 due to wanting to include the sym in the coloring
+            info.col + 2 + msg.skipUntil({'.', ' ', '(', '['}, info.col)
+          else: msg.high
+
+      msg.insert("'", info.col)
+      msg.insert("'", colorEnd)
+      msg.insert("\n  ", 0)
+
+      if info.col >= 0:
+        msg.add "\n" & indent & spaces(info.col) & "'^'"
+      result.add msg.colorError(color, conf)
+    else:
+      result.add "\n" & indent & $sourceLine(conf, info)
+      if info.col >= 0:
+        result.add "\n" & indent & spaces(info.col) & '^'
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -539,7 +595,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     inc(conf.hintCounter)
 
-  let s = if isRaw: arg else: getMessageStr(msg, arg)
+  let strMsg = if isRaw: arg else: getMessageStr(msg, arg)
+  var s = colorError(strMsg, color, conf)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     # we could also show `conf.cmdInput` here for `projectIsCmd`
@@ -550,8 +607,9 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if msg == hintProcessing and conf.hintProcessingDots:
         msgWrite(conf, ".")
       else:
+        getSurroundingSrc(s, conf, info, color)
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
-                         resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
+                         resetStyle, conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,

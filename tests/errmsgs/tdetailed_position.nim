@@ -7,7 +7,7 @@ but expected one of:
 proc main(a, b, c: string)
   first type mismatch at position: 1
   required type for a: string
-  but expression '1' is of type: int literal(1)
+  but expression '1' is of type: 'int literal(1)'
 
 expression: main(1, 2, 3)
 '''

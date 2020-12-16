@@ -10,7 +10,7 @@ but expected one of:
 proc bar(a: proc ())
   first type mismatch at position: 1
   required type for a: proc (){.closure.}
-  but expression 'fn1' is of type: proc (){.inline, noSideEffect, gcsafe, locks: 0.}
+  but expression 'fn1' is of type: 'proc (){.inline, noSideEffect, gcsafe, locks: 0.}'
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
 
 expression: bar(fn1)
