@@ -256,7 +256,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     candidatesAll.add candidates
   candidatesAll.sort # fix #13538
   if immutParam.len > 0:
-    candidatesAll.insert(("\nAtleast one mismatch is due to " & immutParam & " being immutable\n\n").quoteExpr)
+    candidatesAll.insert(("\nAtleast one mismatch is due to " & immutParam.quoteExpr & " being immutable\n\n"))
   candidates = join(candidatesAll)
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
