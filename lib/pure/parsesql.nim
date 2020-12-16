@@ -118,8 +118,8 @@ proc getEscapedChar(c: var SqlLexer, tok: var Token) =
     var xi = 0
     if handleHexChar(c.buf[c.bufpos], xi):
       inc(c.bufpos)
-    if handleHexChar(c.buf[c.bufpos], xi):
-      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'7':
     var xi = 0

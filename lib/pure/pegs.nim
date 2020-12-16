@@ -1505,8 +1505,8 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
     var xi = 0
     if handleHexChar(c.buf[c.bufpos], xi):
       inc(c.bufpos)
-    if handleHexChar(c.buf[c.bufpos], xi):
-      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     if xi == 0: tok.kind = tkInvalid
     else: add(tok.literal, chr(xi))
   of '0'..'9':

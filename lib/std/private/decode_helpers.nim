@@ -4,15 +4,15 @@ proc handleHexChar*(c: char, x: var int): bool {.inline.} =
   ##
   ## When `c` is hexadecimal, the proc is equal to `x = x shl 4 + hex2Int(c)`.
   runnableExamples:
-    var x: int = 0
+    var x = 0
     assert handleHexChar('a', x)
     assert x == 10
 
     assert handleHexChar('B', x)
-    assert x == 171 # 10 << 4 + 11
+    assert x == 171 # 10 shl 4 + 11
 
-    # failed
     assert not handleHexChar('?', x)
+    assert x == 171 # unchanged
   result = true
   case c
   of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -30,9 +30,7 @@ proc decodePercent*(s: openArray[char], i: var int): char =
   result = '%'
   if i+2 < s.len:
     var x = 0
-    var success = true
-    success = handleHexChar(s[i+1], x)
-    success = handleHexChar(s[i+2], x)
-    if success:
-      result = chr(x)
-      inc(i, 2)
+    if handleHexChar(s[i+1], x):
+      if handleHexChar(s[i+2], x):
+        result = chr(x)
+        inc(i, 2)
