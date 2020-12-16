@@ -232,10 +232,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.add("\n  required type for " & nameParam &  ": ")
         candidates.add typeToString(wanted)
         candidates.addDeclaredLocMaybe(c.config, wanted)
-        candidates.add "\n  but expression '"
+        candidates.add "\n  but expression ''"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
-          candidates.add "' is immutable, not 'var'"
+          candidates.add "'' 'is immutable, not' ''var''"
         else:
           candidates.add renderTree(nArg)
           candidates.add "' is of type: "
