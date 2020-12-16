@@ -246,6 +246,8 @@ type
                       # variable is "pure"; it's an explicit "global"
     sfNoSideEffect,   # proc has no side effects
     sfSideEffect,     # proc may have side effects; cannot prove it has none
+    sfMemSafe,        # proc enforce safety
+    sfMemUnsafe,      # proc may be unsafe
     sfMainModule,     # module is the main module
     sfSystemModule,   # module is the system module
     sfNoReturn,       # proc never returns (an exit proc)
@@ -490,6 +492,7 @@ type
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
+    tfMemSafe,        # procedure type does not allow MemUnsafe 
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
     tfHasOwned,       # type contains an 'owned' type and must be moved

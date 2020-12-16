@@ -69,7 +69,7 @@ type
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
-    gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
+    gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe, memUnsafe, forceMemSafe: bool
     hasDangerousAssign: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
@@ -222,6 +222,16 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
         a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextId a.c.idgen,
                                           a.owner, reason.info, {})
 
+proc markMemUnsafe(a: PEffects) =
+  if not a.forceMemSafe:
+    a.memUnsafe = true
+
+proc markMemUnsafe(a: PEffects; reason: PSym) =
+  markMemUnsafe(a)
+
+proc markMemUnsafe(a: PEffects; reason: PNode) =
+  markMemUnsafe(a)
+
 when true:
   template markSideEffect(a: PEffects; reason: typed) =
     if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
@@ -267,6 +277,8 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
       markSideEffect(a, s)
+    if sfMemUnsafe in s.flags:
+      markMemUnsafe(a, s)
     else:
       markSideEffect(a, s)
 
@@ -747,6 +759,11 @@ proc trackCall(tracked: PEffects; n: PNode) =
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a)
 
+    if tfMemSafe notin op.flags and not importedFromC(a):
+      # and it's not a recursive call:
+      if not (a.kind == nkSym and a.sym == tracked.owner):
+        markMemUnsafe(tracked, a)
+
   # p's effects are ours too:
   var a = n[0]
   #if canRaise(a):
@@ -769,6 +786,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
       # even for recursive calls we need to check the lock levels (!):
       mergeLockLevels(tracked, n, a.sym.getLockLevel)
       if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
+      if sfMemUnsafe in a.sym.flags:  markMemUnsafe(tracked, a)
     else:
       mergeLockLevels(tracked, n, op.lockLevel)
     var effectList = op.n[0]
@@ -843,23 +861,27 @@ type
   PragmaBlockContext = object
     oldLocked: int
     oldLockLevel: TLockLevel
-    enforcedGcSafety, enforceNoSideEffects: bool
+    enforcedGcSafety, enforceNoSideEffects, enforceMemSafe: bool
     oldExc, oldTags: int
     exc, tags: PNode
 
 proc createBlockContext(tracked: PEffects): PragmaBlockContext =
   result = PragmaBlockContext(oldLocked: tracked.locked.len,
     oldLockLevel: tracked.currLockLevel,
-    enforcedGcSafety: false, enforceNoSideEffects: false,
+    enforcedGcSafety: false, enforceNoSideEffects: false, enforceMemSafe: false,
     oldExc: tracked.exc.len, oldTags: tracked.tags.len)
 
 proc applyBlockContext(tracked: PEffects, bc: PragmaBlockContext) =
   if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = true
   if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
+  if bc.enforceMemSafe:
+    tracked.forceMemSafe = true
 
 proc unapplyBlockContext(tracked: PEffects; bc: PragmaBlockContext) =
   if bc.enforcedGcSafety: tracked.inEnforcedGcSafe = false
   if bc.enforceNoSideEffects: tracked.inEnforcedNoSideEffects = false
+  if bc.enforceMemSafe:
+    tracked.forceMemSafe = false
   setLen(tracked.locked, bc.oldLocked)
   tracked.currLockLevel = bc.oldLockLevel
   if bc.exc != nil:
@@ -886,6 +908,8 @@ proc castBlock(tracked: PEffects, pragma: PNode, bc: var PragmaBlockContext) =
     else:
       bc.tags = newNodeI(nkArgList, pragma.info)
       bc.tags.add n
+  of wMemSafe:
+    bc.enforceMemSafe = true
   of wRaises:
     let n = pragma[1]
     if n.kind in {nkCurly, nkBracket}:
@@ -1084,6 +1108,8 @@ proc track(tracked: PEffects, n: PNode) =
         bc.enforcedGcSafety = true
       of wNoSideEffect:
         bc.enforceNoSideEffects = true
+      of wMemSafe:
+        bc.enforceMemSafe = true
       of wCast:
         castBlock(tracked, pragmaList[i][1], bc)
       else:
@@ -1097,6 +1123,7 @@ proc track(tracked: PEffects, n: PNode) =
     discard
   of nkCast:
     if n.len == 2:
+      markMemUnsafe(tracked)
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:
         createTypeBoundOps(tracked, n.typ, n.info)
@@ -1332,6 +1359,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
+  if not(t.forceMemSafe) and (t.memUnsafe and sfMemSafe in s.flags):
+    localError(g.config, s.info, ("'$1' memory safety incompatible" % s.name.s) & (g.config $ mutationInfo))
   if s.typ.lockLevel == UnspecifiedLockLevel:
     s.typ.lockLevel = t.maxLockLevel
   elif t.maxLockLevel > s.typ.lockLevel:

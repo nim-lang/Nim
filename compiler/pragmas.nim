@@ -23,7 +23,7 @@ const
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader, wMemSafe, wMemUnsafe,
     wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
@@ -56,7 +56,7 @@ const
     wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
   lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
-    wThread, wAsmNoStackFrame,
+    wThread, wAsmNoStackFrame, wMemSafe, wMemUnsafe,
     wRaises, wLocks, wTags, wRequires, wEnsures,
     wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
   typePragmas* = declPragmas + {wMagic, wAcyclic,
@@ -77,7 +77,7 @@ const
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe,
-                      wRequires, wEnsures}
+                      wRequires, wEnsures, wMemSafe, wMemUnsafe}
   forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
   enumFieldPragmas* = {wDeprecated}
@@ -827,6 +827,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         cppDefine(c.config, name)
         recordPragma(c, it, "cppdefine", name)
         makeExternImport(c, sym, name, it.info)
+        incl(sym.flags, sfMemUnsafe)
       of wImportCompilerProc:
         let name = getOptionalStr(c, it, "$1")
         cppDefine(c.config, name)
@@ -924,6 +925,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wSideEffect:
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
+      of wMemSafe:
+        if sym != nil:
+          incl(sym.flags, sfMemSafe)
+          if sym.typ != nil: incl(sym.typ.flags, tfMemSafe)
+      of wMemUnsafe:
+        incl(sym.flags, sfMemUnsafe)
       of wNoreturn:
         noVal(c, it)
         # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
