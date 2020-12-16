@@ -198,6 +198,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   var candidatesAll: seq[string]
   var candidates = ""
   var skipped = 0
+  var immutParam = "" #Stores the name of an immutable param that needs to be 'var'
   for err in errors:
     candidates.setLen 0
     if filterOnlyFirst and err.firstMismatch.arg == 1:
@@ -235,6 +236,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
+          immutParam = renderNotLValue(nArg)
           candidates.add "' is immutable, not 'var'"
         else:
           candidates.add renderTree(nArg)
@@ -253,6 +255,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add(diag & "\n")
     candidatesAll.add candidates
   candidatesAll.sort # fix #13538
+  if immutParam.len > 0:
+    candidatesAll.insert(("\nAtleast one mismatch is due to " & immutParam & " being immutable\n\n").quoteExpr)
   candidates = join(candidatesAll)
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
