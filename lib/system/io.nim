@@ -801,7 +801,7 @@ when declared(stdout):
           if c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) != s.len:
             checkErr(stdout)
       const linefeed = "\n"
-      if c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) != 1:
+      if c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) != linefeed.len:
         checkErr(stdout)
       if c_fflush(stdout) != 0:
         checkErr(stdout)
