@@ -559,20 +559,6 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
 
-proc add*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 5).} =
-  ## Adds `L2` to the end of `L1`. Efficiency: O(1).
-  ## Note that the two lists share structure after the operation.
-  runnableExamples:
-    var a = [1, 2, 3].toDoublyLinkedList
-    let b = [4, 5].toDoublyLinkedList
-    a.add(b)
-    assert $a == "[1, 2, 3, 4, 5]"
-  if L1.tail != nil:
-    L1.tail.next = L2.head
-  L1.tail = L2.tail
-  if L1.head == nil:
-    L1.head = L2.head
-
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
   runnableExamples:

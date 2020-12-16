@@ -117,27 +117,3 @@ block AddingSinglyLinkedLists:
     l2.add(l1)
     doAssert $l3 == "[4, 5, 6]"
     doAssert $l2 == "[2, 3, 1]"
-
-block AddingDoublyLinkedLists:
-  block:
-    var
-      l0 = initDoublyLinkedList[int]()
-      l1 = [1].toDoublyLinkedList
-      l2 = [2, 3].toDoublyLinkedList
-      l3 = [4, 5, 6].toDoublyLinkedList
-    l0.add(l3)
-    l1.add(l3)
-    l2.add(l3)
-    doAssert $l0 == "[4, 5, 6]"
-    doAssert $l1 == "[1, 4, 5, 6]"
-    doAssert $l2 == "[2, 3, 4, 5, 6]"
-  block:
-    var
-      l0 = initDoublyLinkedList[int]()
-      l1 = [1].toDoublyLinkedList
-      l2 = [2, 3].toDoublyLinkedList
-      l3 = [4, 5, 6].toDoublyLinkedList
-    l3.add(l0)
-    l2.add(l1)
-    doAssert $l3 == "[4, 5, 6]"
-    doAssert $l2 == "[2, 3, 1]"
