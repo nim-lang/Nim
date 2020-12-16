@@ -33,7 +33,7 @@ type
   RopeObj {.acyclic.} = object
     left, right: Rope
     length: int
-    data: string # != nil if a leaf
+    data: string # not empty if a leaf
 
 # Note that the left and right pointers are not needed for leafs.
 # Leaves have relatively high memory overhead (~30 bytes on a 32
@@ -44,7 +44,7 @@ type
 # pointers.
 
 proc len*(a: Rope): int {.rtl, extern: "nro$1".} =
-  ## the rope's length
+  ## The rope's length.
   if a == nil: result = 0
   else: result = a.length
 
@@ -127,6 +127,9 @@ proc insertInCache(s: string, tree: Rope): Rope =
 
 proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
+  runnableExamples:
+    var r = rope("I'm a rope")
+    doAssert $r == "I'm a rope"
   if s.len == 0:
     result = nil
   else:
@@ -142,10 +145,16 @@ proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
 
 proc rope*(i: BiggestInt): Rope {.rtl, extern: "nro$1BiggestInt".} =
   ## Converts an int to a rope.
+  runnableExamples:
+    var r = rope(429)
+    doAssert $r == "429"
   result = rope($i)
 
 proc rope*(f: BiggestFloat): Rope {.rtl, extern: "nro$1BiggestFloat".} =
   ## Converts a float to a rope.
+  runnableExamples:
+    var r = rope(4.29)
+    doAssert $r == "4.29"
   result = rope($f)
 
 proc enableCache*() {.rtl, extern: "nro$1".} =
@@ -154,12 +163,19 @@ proc enableCache*() {.rtl, extern: "nro$1".} =
   cacheEnabled = true
 
 proc disableCache*() {.rtl, extern: "nro$1".} =
-  ## the cache is discarded and disabled. The GC will reuse its used memory.
+  ## The cache is discarded and disabled. The GC will reuse its used memory.
   cache = nil
   cacheEnabled = false
 
 proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
-  ## the concatenation operator for ropes.
+  ## The concatenation operator for ropes.
+  runnableExamples:
+    var
+      r1 = rope("Hello, ")
+      r2 = rope("Nim!")
+    
+    let r = r1 & r2
+    doAssert $r == "Hello, Nim!"
   if a == nil:
     result = b
   elif b == nil:
@@ -171,28 +187,73 @@ proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
     result.right = b
 
 proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
-  ## the concatenation operator for ropes.
+  ## The concatenation operator for ropes.
+  runnableExamples:
+    var
+      r1 = rope("Hello, ")
+      r2 = "Nim!"
+    
+    let r = r1 & r2
+    doAssert $r == "Hello, Nim!"
   result = a & rope(b)
 
 proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
-  ## the concatenation operator for ropes.
+  ## The concatenation operator for ropes.
+  runnableExamples:
+    var
+      r1 = "Hello, "
+      r2 = rope("Nim!")
+    
+    let r = r1 & r2
+    doAssert $r == "Hello, Nim!"
   result = rope(a) & b
 
 proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
-  ## the concatenation operator for an openarray of ropes.
-  for i in countup(0, high(a)): result = result & a[i]
+  ## The concatenation operator for an openarray of ropes.
+  runnableExamples:
+    let s = @[rope("Hello, "), rope("Nim"), rope("!")]
+    let r = &s
+    doAssert $r == "Hello, Nim!"
+  for item in a: result = result & item
 
 proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
-  ## adds `b` to the rope `a`.
+  ## Adds `b` to the rope `a`.
+  runnableExamples:
+    var
+      r1 = rope("Hello, ")
+      r2 = rope("Nim!")
+
+    r1.add(r2)
+    doAssert $r1 == "Hello, Nim!"
   a = a & b
 
 proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
-  ## adds `b` to the rope `a`.
+  ## Adds `b` to the rope `a`.
+  runnableExamples:
+    var
+      r1 = rope("Hello, ")
+      r2 = "Nim!"
+
+    r1.add(r2)
+    doAssert $r1 == "Hello, Nim!"
   a = a & b
 
 proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
-  ## returns the character at position `i` in the rope `r`. This is quite
+  ## Returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If ``i >= r.len``, ``\0`` is returned.
+  runnableExamples:
+    let r1 = rope("Hello, Nim!")
+
+    doAssert r1[0] == 'H'
+    doAssert r1[7] == 'N'
+    doAssert r1[22] == '\0'
+
+    let r2 = rope("Hello") & rope(", Nim!")
+
+    doAssert r2[0] == 'H'
+    doAssert r2[7] == 'N'
+    doAssert r2[22] == '\0'
+
   var x = r
   var j = i
   if x == nil: return
@@ -204,11 +265,19 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
       if x.left.length > j:
         x = x.left
       else:
+        dec(j, x.left.length)
         x = x.right
-        dec(j, x.len)
 
 iterator leaves*(r: Rope): string =
-  ## iterates over any leaf string in the rope `r`.
+  ## Iterates over any leaf string in the rope `r`.
+  runnableExamples:
+    let r = rope("Hello") & rope(", Nim!")
+    let s = ["Hello", ", Nim!"]
+    var index = 0
+    for leave in r.leaves:
+      doAssert leave == s[index]
+      inc index
+
   if r != nil:
     var stack = @[r]
     while stack.len > 0:
@@ -221,20 +290,20 @@ iterator leaves*(r: Rope): string =
       yield it.data
 
 iterator items*(r: Rope): char =
-  ## iterates over any character in the rope `r`.
+  ## Iterates over any character in the rope `r`.
   for s in leaves(r):
     for c in items(s): yield c
 
 proc write*(f: File, r: Rope) {.rtl, extern: "nro$1".} =
-  ## writes a rope to a file.
+  ## Writes a rope to a file.
   for s in leaves(r): write(f, s)
 
 proc write*(s: Stream, r: Rope) {.rtl, extern: "nroWriteStream".} =
-  ## writes a rope to a stream.
+  ## Writes a rope to a stream.
   for rs in leaves(r): write(s, rs)
 
 proc `$`*(r: Rope): string {.rtl, extern: "nroToString".} =
-  ## converts a rope back to a string.
+  ## Converts a rope back to a string.
   result = newStringOfCap(r.len)
   for s in leaves(r): add(result, s)
 
@@ -242,6 +311,12 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
   rtl, extern: "nroFormat".} =
   ## `%` substitution operator for ropes. Does not support the ``$identifier``
   ## nor ``${identifier}`` notations.
+  runnableExamples:
+    let r1 = "$1 $2 $3" % [rope("Nim"), rope("is"), rope("a great language")]
+    doAssert $r1 == "Nim is a great language"
+
+    let r2 = "$# $# $#" % [rope("Nim"), rope("is"), rope("a great language")]
+    doAssert $r2 == "Nim is a great language"
   var i = 0
   var length = len(frmt)
   result = nil
@@ -262,7 +337,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break
+          if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         add(result, args[j-1])
       of '{':
         inc(i)
@@ -284,7 +359,11 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
 
 proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.
   rtl, extern: "nro$1".} =
-  ## shortcut for ``add(c, frmt % args)``.
+  ## Shortcut for ``add(c, frmt % args)``.
+  runnableExamples:
+    var r = rope("Dash: ")
+    r.addf "$1 $2 $3", [rope("Nim"), rope("is"), rope("a great language")]
+    doAssert $r == "Dash: Nim is a great language"
   add(c, frmt % args)
 
 when not defined(js) and not defined(nimscript):
@@ -292,7 +371,7 @@ when not defined(js) and not defined(nimscript):
     bufSize = 1024 # 1 KB is reasonable
 
   proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
-    ## returns true if the contents of the file `f` equal `r`.
+    ## Returns true if the contents of the file `f` equal `r`.
     var
       buf: array[bufSize, char]
       bpos = buf.len
@@ -321,7 +400,7 @@ when not defined(js) and not defined(nimscript):
     result = readBuffer(f, addr(buf[0]), 1) == 0 # check that we've read all
 
   proc equalsFile*(r: Rope, filename: string): bool {.rtl, extern: "nro$1Str".} =
-    ## returns true if the contents of the file `f` equal `r`. If `f` does not
+    ## Returns true if the contents of the file `f` equal `r`. If `f` does not
     ## exist, false is returned.
     var f: File
     result = open(f, filename)

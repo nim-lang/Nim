@@ -158,7 +158,7 @@ proc mainCommand(graph: ModuleGraph) =
     clearPasses(graph)
     registerPass graph, verbosePass
     registerPass graph, semPass
-    conf.cmd = cmdIdeTools
+    conf.setCmd cmdIdeTools
     wantMainModule(conf)
     setupDb(graph, dbfile)
 
@@ -228,7 +228,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     conf.prefixDir = AbsoluteDir""
 
   var graph = newModuleGraph(cache, conf)
-  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+  if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     mainCommand(graph)
 
 handleCmdLine(newIdentCache(), newConfigRef())

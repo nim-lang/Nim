@@ -20,6 +20,7 @@ import
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
+from magicsys import getSysType
 
 const
   traceCode = defined(nimVMDebug)
@@ -123,7 +124,7 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
     else:
       r.ensureKind(rkind)
       let val = cast[ptr T](address)[]
-      when T is SomeInteger:
+      when T is SomeInteger | char:
         r.field = BiggestInt(val)
       else:
         r.field = val
@@ -131,6 +132,7 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
 
   ## see also typeinfo.getBiggestInt
   case typ.kind
+  of tyChar: fun(intVal, char, rkInt)
   of tyInt: fun(intVal, int, rkInt)
   of tyInt8: fun(intVal, int8, rkInt)
   of tyInt16: fun(intVal, int16, rkInt)
@@ -677,6 +679,23 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = s[idx].ord
       else:
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
+    of opcLdStrIdxAddr:
+      # a = addr(b[c]); similar to opcLdArrAddr
+      decodeBC(rkNode)
+      if regs[rc].intVal > high(int):
+        stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
+      let idx = regs[rc].intVal.int
+      let s = regs[rb].node.strVal.addr # or `byaddr`
+      if idx <% s[].len:
+         # `makePtrType` not accessible from vm.nim
+        let typ = newType(tyPtr, nextId c.idgen, c.module.owner)
+        typ.add getSysType(c.graph, c.debug[pc], tyChar)
+        let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
+        node.intVal = cast[int](s[][idx].addr)
+        node.flags.incl nfIsPtr
+        regs[ra].node = node
+      else:
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, s[].len-1))
     of opcWrArr:
       # a[b] = c
       decodeBC(rkNode)
@@ -746,10 +765,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].regAddr = addr(regs[rb])
     of opcAddrNode:
       decodeB(rkNodeAddr)
-      if regs[rb].kind == rkNode:
+      case regs[rb].kind
+      of rkNode:
         regs[ra].nodeAddr = addr(regs[rb].node)
+      of rkNodeAddr: # bug #14339
+        regs[ra].nodeAddr = regs[rb].nodeAddr
       else:
-        stackTrace(c, tos, pc, "limited VM support for 'addr'")
+        stackTrace(c, tos, pc, "limited VM support for 'addr', got kind: " & $regs[rb].kind)
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA
@@ -765,7 +787,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
         elif not maybeHandlePtr(regs[rb].node, regs[ra], false):
-          ## eg: typ.kind = tyObject
+          ## e.g.: typ.kind = tyObject
           ensureKind(rkNode)
           regs[ra].node = regs[rb].node
       else:
@@ -996,7 +1018,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
         elif sameConstant(nb, nc): ret = true
-          # this also takes care of procvar's, represented as nkTupleConstr, eg (nil, nil)
+          # this also takes care of procvar's, represented as nkTupleConstr, e.g. (nil, nil)
         elif nb.kind == nkIntLit and nc.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
           let tb = nb.getTyp
           let tc = nc.getTyp
@@ -2114,6 +2136,9 @@ proc evalStmt*(c: PCtx, n: PNode) =
     discard execute(c, start)
 
 proc evalExpr*(c: PCtx, n: PNode): PNode =
+  # deadcode
+  # `nim --eval:"expr"` might've used it at some point for idetools; could
+  # be revived for nimsuggest
   let n = transformExpr(c.graph, c.idgen, c.module, n)
   let start = genExpr(c, n)
   assert c.code[start].opcode != opcEof

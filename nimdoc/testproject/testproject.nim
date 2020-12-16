@@ -9,6 +9,9 @@ runnableExamples:
   # bug #11078
   for x in "xx": discard
 
+
+var someVariable*: bool ## This should be visible.
+
 when true:
   ## top2
   runnableExamples:
@@ -49,7 +52,7 @@ proc isValid*[T](x: T): bool = x.len > 0
 
 when true:
   # these cases appear redundant but they're actually (almost) all different at
-  # AST level and needed to ensure docgen keeps working, eg because of issues
+  # AST level and needed to ensure docgen keeps working, e.g. because of issues
   # like D20200526T163511
   type
     Foo* = enum

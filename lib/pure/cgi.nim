@@ -32,7 +32,7 @@
 import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
-include includes/decode_helpers
+import std/private/decode_helpers
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c

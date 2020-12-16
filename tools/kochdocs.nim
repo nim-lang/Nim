@@ -127,7 +127,6 @@ lib/system/channels.nim
 
   withoutIndex = """
 lib/wrappers/mysql.nim
-lib/wrappers/iup.nim
 lib/wrappers/sqlite3.nim
 lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim
@@ -266,7 +265,7 @@ proc buildDoc(nimArgs, destPath: string) =
       [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
-    commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc

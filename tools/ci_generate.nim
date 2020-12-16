@@ -53,7 +53,7 @@ triggers:
 proc main()=
   let num = 3
     # if you reduce this, make sure to remove files that shouldn't be generated,
-    # or better, do the cleanup logic here eg: `rm .builds/openbsd_*`
+    # or better, do the cleanup logic here e.g.: `rm .builds/openbsd_*`
   for i in 0..<num:
     let file = fmt".builds/openbsd_{i}.yml"
     let code = genCIopenbsd(i, num)

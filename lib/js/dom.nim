@@ -107,7 +107,7 @@ type
     timing*: PerformanceTiming
 
   Range* {.importc.} = ref object
-    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Range>`_
     collapsed*: bool
     commonAncestorContainer*: Node
     endContainer*: Node
@@ -154,6 +154,7 @@ type
     performance*: Performance
     onpopstate*: proc (event: Event)
     localStorage*: LocalStorage
+    parent*: Window
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -203,6 +204,7 @@ type
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
     activeElement*: Element
+    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -1681,6 +1683,7 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+  ## see also `math.isNaN`.
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 

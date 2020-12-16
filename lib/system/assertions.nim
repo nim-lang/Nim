@@ -48,7 +48,7 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:danger`` or ``--assertions:off``
-  ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
+  ## `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
   ##
   ## .. code-block:: nim
   ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"
@@ -81,20 +81,23 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     code
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
-  ## Raises ``AssertionDefect`` if specified ``code`` does not raise the
-  ## specified exception. Example:
+  ## Raises ``AssertionDefect`` if specified ``code`` does not raise `exception`.
+  ## Example:
   ##
   ## .. code-block:: nim
   ##  doAssertRaises(ValueError):
   ##    raise newException(ValueError, "Hello World")
   var wrong = false
+  const begin = "expected raising '" & astToStr(exception) & "', instead"
+  const msgEnd = " by: " & astToStr(code)
+  template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
   when Exception is exception:
     try:
       if true:
         code
       wrong = true
-    except Exception:
-      discard
+    except Exception as e: discard
+    except: raisedForeign()
   else:
     try:
       if true:
@@ -102,9 +105,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
       wrong = true
     except exception:
       discard
-    except Exception:
-      raiseAssert(astToStr(exception) &
-                  " wasn't raised, another error was raised instead by:\n"&
-                  astToStr(code))
+    except Exception as e: raiseAssert(begin & " raised '" & $e.name & "'" & msgEnd)
+    except: raisedForeign()
   if wrong:
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+    raiseAssert(begin & " nothing was raised" & msgEnd)

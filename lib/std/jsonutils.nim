@@ -17,7 +17,7 @@ import std/[json,strutils,tables,sets,strtabs,options]
 
 #[
 Future directions:
-add a way to customize serialization, for eg:
+add a way to customize serialization, for e.g.:
 * field renaming
 * allow serializing `enum` and `char` as `string` instead of `int`
   (enum is more compact/efficient, and robust to enum renamings, but string
@@ -278,7 +278,7 @@ proc fromJsonHook*[K, V](t: var (Table[K, V] | OrderedTable[K, V]),
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ## 
   ## See also:
-  ## * `toJsonHook proc<#toJsonHook,(Table[K,V]|OrderedTable[K,V])>`_
+  ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
     import tables, json
     var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
@@ -298,7 +298,7 @@ proc toJsonHook*[K, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
-  ## * `fromJsonHook proc<#fromJsonHook,(Table[K,V]|OrderedTable[K,V]),JsonNode>`_
+  ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
   runnableExamples:
     import tables, json
     let foo = (
@@ -383,7 +383,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
   ## 
   ## See also:
-  ## * `toJsonHook` proc<#toJsonHook,StringTableRef>`_
+  ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
     import strtabs, json
     var t = newStringTable(modeCaseSensitive)
@@ -401,7 +401,7 @@ proc toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
   ## 
   ## See also:
-  ## * `fromJsonHook` proc<#fromJsonHook,StringTableRef,JsonNode>`_
+  ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:
     import strtabs, json
     let t = newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)

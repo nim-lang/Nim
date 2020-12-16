@@ -130,7 +130,6 @@ proc dbQuote*(s: string): string =
     of '\r': result.add "\\r"
     of '\x1a': result.add "\\Z"
     of '"': result.add "\\\""
-    of '%': result.add "\\%"
     of '\'': result.add "\\'"
     of '\\': result.add "\\\\"
     of '_': result.add "\\_"

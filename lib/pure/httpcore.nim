@@ -126,12 +126,14 @@ func newHttpHeaders*(keyValuePairs:
   new result
   result.table = newTable[string, seq[string]]()
   result.isTitleCase = titleCase
+
   for pair in keyValuePairs:
     let key = result.toCaseInsensitive(pair.key)
-    if key in result.table:
-      result.table[key].add(pair.val)
-    else:
-      result.table[key] = @[pair.val]
+    {.cast(noSideEffect).}:
+      if key in result.table:
+        result.table[key].add(pair.val)
+      else:
+        result.table[key] = @[pair.val]
 
 
 func `$`*(headers: HttpHeaders): string {.inline.} =
@@ -148,7 +150,8 @@ func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -157,7 +160,8 @@ func `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  return headers.table[headers.toCaseInsensitive(key)][i]
+  {.cast(noSideEffect).}:
+    return headers.table[headers.toCaseInsensitive(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
@@ -166,9 +170,12 @@ proc `[]=`*(headers: HttpHeaders, key, value: string) =
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
-  ## values.
-  ## Replaces any existing values.
-  headers.table[headers.toCaseInsensitive(key)] = value
+  ## values. Replaces any existing values. If ``value`` is empty,
+  ## deletes the header entries associated with ``key``.
+  if value.len > 0:
+    headers.table[headers.toCaseInsensitive(key)] = value
+  else:
+    headers.table.del(headers.toCaseInsensitive(key))
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
@@ -179,7 +186,7 @@ proc add*(headers: HttpHeaders, key, value: string) =
     headers.table[headers.toCaseInsensitive(key)].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
-  ## Delete the header entries associated with ``key``
+  ## Deletes the header entries associated with ``key``
   headers.table.del(headers.toCaseInsensitive(key))
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
@@ -255,11 +262,8 @@ func contains*(methods: set[HttpMethod], x: string): bool =
 
 func `$`*(code: HttpCode): string =
   ## Converts the specified ``HttpCode`` into a HTTP status.
-  ##
-  ## For example:
-  ##
-  ##   .. code-block:: nim
-  ##       doAssert($Http404 == "404 Not Found")
+  runnableExamples:
+    doAssert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
@@ -341,28 +345,3 @@ func is5xx*(code: HttpCode): bool {.inline.} =
 
 func `$`*(httpMethod: HttpMethod): string =
   return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
-
-when isMainModule:
-  var test = newHttpHeaders()
-  test["Connection"] = @["Upgrade", "Close"]
-  doAssert test["Connection", 0] == "Upgrade"
-  doAssert test["Connection", 1] == "Close"
-  test.add("Connection", "Test")
-  doAssert test["Connection", 2] == "Test"
-  doAssert "upgrade" in test["Connection"]
-
-  # Bug #5344.
-  doAssert parseHeader("foobar: ") == ("foobar", @[""])
-  let (key, value) = parseHeader("foobar: ")
-  test = newHttpHeaders()
-  test[key] = value
-  doAssert test["foobar"] == ""
-
-  doAssert parseHeader("foobar:") == ("foobar", @[""])
-
-  block: # test title case
-    var testTitleCase = newHttpHeaders(titleCase=true)
-    testTitleCase.add("content-length", "1")
-    doAssert testTitleCase.hasKey("Content-Length")
-    for key, val in testTitleCase:
-        doAssert key == "Content-Length"

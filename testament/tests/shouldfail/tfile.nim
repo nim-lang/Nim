@@ -1,5 +1,5 @@
 discard """
-errmsg: "undeclared identifier: 'undefined'"
+errormsg: "undeclared identifier: 'undefined'"
 file: "notthisfile.nim"
 """
 

@@ -1,6 +1,5 @@
 discard """
 cmd: "nim cpp --cppCompileToNamespace:foo $options -r $file"
-target: cpp
 """
 
 # Theoretically nim could just ignore the flag cppCompileToNamespace

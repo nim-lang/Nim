@@ -6,7 +6,7 @@ do
   echo "$file"
   echo "********************"
   echo ""
-  ../bin/nim r "$file"
+  ../../bin/nim r "$file"
   echo ""
   echo "DONE !"
   echo ""

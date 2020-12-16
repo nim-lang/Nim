@@ -527,14 +527,24 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
-      let fin = if n[^1].kind in {nkLambda, nkDo}: n[^1][namePos].sym
-                else: n[^1].sym
-      # check if we converted this finalizer into a destructor already:
-      let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
-      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
-        discard "already turned this one into a finalizer"
-      else:
-        bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
+      let nfin = skipConvCastAndClosure(n[^1])
+      let fin = case nfin.kind 
+        of nkSym: nfin.sym
+        of nkLambda, nkDo: nfin[namePos].sym
+        else: 
+          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+          nil
+      if fin != nil:
+        if fin.kind notin {skProc, skFunc}:
+          # calling convention is checked in codegen
+          localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+
+        # check if we converted this finalizer into a destructor already:
+        let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
+        if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
+          discard "already turned this one into a finalizer"
+        else:
+          bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n

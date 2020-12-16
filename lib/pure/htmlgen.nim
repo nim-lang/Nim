@@ -333,12 +333,12 @@ macro i*(e: varargs[untyped]): untyped =
 
 macro iframe*(e: varargs[untyped]): untyped =
   ## Generates the HTML ``iframe`` element.
-  result = xmlCheckedTag(e, "iframe", "src srcdoc name sandbox width height" &
+  result = xmlCheckedTag(e, "iframe", "src srcdoc name sandbox width height loading" &
     commonAttr)
 
 macro img*(e: varargs[untyped]): untyped =
   ## Generates the HTML ``img`` element.
-  result = xmlCheckedTag(e, "img", "crossorigin usemap ismap height width" &
+  result = xmlCheckedTag(e, "img", "crossorigin usemap ismap height width loading" &
     commonAttr, "src alt", true)
 
 macro input*(e: varargs[untyped]): untyped =

@@ -432,7 +432,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
     res = typeRel(m, t2, t1) >= isSubtype # isNone
-    # `res = sameType(t1, t2)` would be wrong, eg for `int is (int|float)`
+    # `res = sameType(t1, t2)` would be wrong, e.g. for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
   result.typ = n.typ
@@ -1440,6 +1440,11 @@ proc buildOverloadedSubscripts(n: PNode, ident: PIdent): PNode =
 proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n[0] = semExprWithType(c, n[0])
+  let a = getConstExpr(c.module, n[0], c.idgen, c.graph)
+  if a != nil:
+    if a.kind == nkNilLit:
+      localError(c.config, n.info, "nil dereference is not allowed")
+    n[0] = a
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
@@ -1740,7 +1745,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.resultSym.typ = rhsTyp
           c.p.owner.typ[0] = rhsTyp
         else:
-          typeMismatch(c.config, n.info, lhs.typ, rhsTyp)
+          typeMismatch(c.config, n.info, lhs.typ, rhsTyp, rhs)
     borrowCheck(c, n, lhs, rhs)
 
     n[1] = fitNode(c, le, rhs, goodLineInfo(n[1]))
@@ -2275,7 +2280,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
     markUsed(c, n.info, s)
-    if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+    if c.config.cmd in cmdDocLike and n.len >= 2 and n.lastSon.kind == nkStmtList:
       when false:
         # some of this dead code was moved to `prepareExamples`
         if sfMainModule in c.module.flags:
@@ -2719,7 +2724,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      #if c.config.cmd == cmdPretty and n[0].kind == nkDotExpr:
+      #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
       of skMacro, skTemplate:
