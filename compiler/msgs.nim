@@ -487,35 +487,37 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc colorError(s: string, color: ForegroundColor, doColor = false): string =
-  template isQuote(val: untyped): untyped = val == '\''
-  template isNotQuote(val: untyped): untyped = val != '\''
-  let parsable = (s.count('"').mod 2) == 0
-  var 
-    pos = 0
-  while pos < s.len:
-    if s[pos].isQuote:
-      var inDoubleQuote = false
+  if doColor:
+    template isQuote(val: untyped): untyped = val == '\''
+    template isNotQuote(val: untyped): untyped = val != '\''
+    let parsable = (s.count('"').mod 2) == 0
+    var 
+      pos = 0
+    while pos < s.len:
+      if s[pos].isQuote:
+        if pos < s.high and s[pos + 1].isQuote:
+          result.add s[pos..(pos + 1)]
+        var inDoubleQuote = false
+        inc pos
+        let start = pos
+        while (pos < s.len and s[pos].isNotQuote) or inDoubleQuote:
+          if s[pos] == '"' and parsable:
+            inDoubleQuote = not inDoubleQuote
+          inc pos
+        #Highlight error
+        if pos < s.len and parsable:
+          if (s[pos].isQuote):
+            result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
+          else:
+            result.add s[start..(pos - 1)]
+        else: 
+          result.add s[start..s.high]
+          break
+      else:
+        result.add s[pos]
       inc pos
-      let start = pos
-      let nested = pos < s.high and s[pos].isQuote
-      while (pos < s.len and s[pos].isNotQuote and not nested) or (nested and pos < s.high and (s[pos].isNotQuote or s[pos + 1].isNotQuote)) or inDoubleQuote:
-        if s[pos] == '"' and parsable:
-          inDoubleQuote = not inDoubleQuote
-        inc pos
-      if nested:
-        inc pos
-      #Highlight error
-      if pos < s.len and parsable and doColor:
-        if (s[pos].isQuote or s[pos + 1].isQuote):
-          result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
-        else:
-          result.add s[start..(pos - 1)]
-      else: 
-        result.add s[start..s.high]
-        break
-    else:
-      result.add s[pos]
-    inc pos
+  else:
+    result = s
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
@@ -555,7 +557,9 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     inc(conf.hintCounter)
 
-  let s = if isRaw: arg.colorError(color, conf.isDefined("nimColorErrors")) else: getMessageStr(msg, arg).colorError(color, conf.isDefined("nimColorErrors"))
+  let
+    strMsg = if isRaw: arg else: getMessageStr(msg, arg)
+    s = colorError(strMsg, color, conf.isDefined("optUseColors"))
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     # we could also show `conf.cmdInput` here for `projectIsCmd`
