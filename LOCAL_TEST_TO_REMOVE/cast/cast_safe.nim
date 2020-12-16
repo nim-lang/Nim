@@ -1,4 +1,6 @@
-static: echo "\n #################"
+discard """
+action: reject
+"""
 
 proc xx(x: int) : float =
   result = cast[float](x)
