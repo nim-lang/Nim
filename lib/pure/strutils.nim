@@ -17,38 +17,35 @@
 ##
 ## This module builds upon that, providing additional functionality in form of
 ## procedures, iterators and templates for strings.
-##
-## .. code-block::
-##   import strutils
-##
-##   let
-##     numbers = @[867, 5309]
-##     multiLineString = "first line\nsecond line\nthird line"
-##
-##   let jenny = numbers.join("-")
-##   assert jenny == "867-5309"
-##
-##   assert splitLines(multiLineString) ==
-##          @["first line", "second line", "third line"]
-##   assert split(multiLineString) == @["first", "line", "second",
-##                                      "line", "third", "line"]
-##   assert indent(multiLineString, 4) ==
-##          "    first line\n    second line\n    third line"
-##   assert 'z'.repeat(5) == "zzzzz"
-##
+
+runnableExamples:
+  let
+    numbers = @[867, 5309]
+    multiLineString = "first line\nsecond line\nthird line"
+
+  let jenny = numbers.join("-")
+  assert jenny == "867-5309"
+
+  assert splitLines(multiLineString) ==
+         @["first line", "second line", "third line"]
+  assert split(multiLineString) == @["first", "line", "second",
+                                     "line", "third", "line"]
+  assert indent(multiLineString, 4) ==
+         "    first line\n    second line\n    third line"
+  assert 'z'.repeat(5) == "zzzzz"
+
 ## The chaining of functions is possible thanks to the
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
-##
-## .. code-block::
-##   import strutils
-##   from sequtils import map
-##
-##   let jenny = "867-5309"
-##   assert jenny.split('-').map(parseInt) == @[867, 5309]
-##
-##   assert "Beetlejuice".indent(1).repeat(3).strip ==
-##          "Beetlejuice Beetlejuice Beetlejuice"
-##
+
+runnableExamples:
+  from sequtils import map
+
+  let jenny = "867-5309"
+  assert jenny.split('-').map(parseInt) == @[867, 5309]
+
+  assert "Beetlejuice".indent(1).repeat(3).strip ==
+         "Beetlejuice Beetlejuice Beetlejuice"
+
 ## This module is available for the `JavaScript target
 ## <backends.html#backends-the-javascript-target>`_.
 ##
@@ -1185,11 +1182,11 @@ func generateHexCharToValueMap(): string =
   for inp in 0..255:
     let ch = chr(inp)
     let o =
-      case ch:
-        of '0'..'9': inp - ord('0')
-        of 'a'..'f': inp - ord('a') + 10
-        of 'A'..'F': inp - ord('A') + 10
-        else: 17 # indicates an invalid hex char
+      case ch
+      of '0'..'9': inp - ord('0')
+      of 'a'..'f': inp - ord('a') + 10
+      of 'A'..'F': inp - ord('A') + 10
+      else: 17 # indicates an invalid hex char
     result.add chr(o)
 
 const hexCharToValueMap = generateHexCharToValueMap()
