@@ -213,7 +213,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
-      candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+      candidates.add("  'first type mismatch at position: " & $err.firstMismatch.arg & "'")
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
       of kUnknownNamedParam:
@@ -238,14 +238,14 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "'' 'is immutable, not' ''var''"
         else:
           candidates.add renderTree(nArg)
-          candidates.add "' is of type: "
+          candidates.add "'' 'is of type:' ''"
           var got = nArg.typ
-          candidates.add typeToString(got)
+          candidates.add typeToString(got) & "''"
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"
-      candidates.add "\n"
+      candidates.add "\n\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
           n.kind == nkCommand:
         maybeWrongSpace = true

@@ -487,26 +487,29 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc colorError(s: string, color: ForegroundColor): string =
-  when not defined(colorfulError):
-    template isQuote(val: untyped): untyped = val == '\''
-    template isNotQuote(val: untyped): untyped = val != '\''
-    var pos = 0
-    while pos < s.len:
-      if s[pos].isQuote:
-        inc pos
-        let start = pos
-        let nested = pos < s.high and s[pos].isQuote
-        inc pos
-        while (pos < s.len and s[pos].isNotQuote and not nested) or (nested and pos < s.high and (s[pos].isNotQuote or s[pos + 1].isNotQuote)):
-          inc pos
-        if nested:
-          inc pos
-        #Highlight error
-        result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
-      else:
-        result.add s[pos]
+  template isQuote(val: untyped): untyped = val == '\''
+  template isNotQuote(val: untyped): untyped = val != '\''
+  var pos = 0
+  while pos < s.len:
+    if s[pos].isQuote:
       inc pos
-  else: a
+      let start = pos
+      let nested = pos < s.high and s[pos].isQuote
+      inc pos
+      while (pos < s.len and s[pos].isNotQuote and not nested) or (nested and pos < s.high and (s[pos].isNotQuote or s[pos + 1].isNotQuote)):
+        inc pos
+      if nested:
+        inc pos
+
+      #Highlight error
+      when not defined(colorfulError):
+        if s[pos].isQuote or s[pos + 1].isQuote:
+          result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
+      else:
+        result.add s[start..(pos - 1)]
+    else:
+      result.add s[pos]
+    inc pos
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
