@@ -798,10 +798,13 @@ when declared(stdout):
         when defined(windows):
           writeWindows(stdout, s)
         else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
+          if c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) != s.len:
+            checkErr(stdout)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-      discard c_fflush(stdout)
+      if c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) != 1:
+        checkErr(stdout)
+      if c_fflush(stdout) != 0:
+        checkErr(stdout)
       when stdOutLock:
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
