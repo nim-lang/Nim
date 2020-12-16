@@ -38,3 +38,4 @@ let res = "TEST"
 let miwen = rsaPublicEncrypt(res)
 let mingwen = rasPrivateDecrypt(miwen)
 doAssert mingwen == res
+
