@@ -486,27 +486,33 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               else: ErrorTitle
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
-proc colorError(s: string, color: ForegroundColor): string =
+proc colorError(s: string, color: ForegroundColor, doColor = false): string =
   template isQuote(val: untyped): untyped = val == '\''
   template isNotQuote(val: untyped): untyped = val != '\''
-  var pos = 0
+  let parsable = (s.count('"').mod 2) == 0
+  var 
+    pos = 0
   while pos < s.len:
     if s[pos].isQuote:
+      var inDoubleQuote = false
       inc pos
       let start = pos
       let nested = pos < s.high and s[pos].isQuote
-      inc pos
-      while (pos < s.len and s[pos].isNotQuote and not nested) or (nested and pos < s.high and (s[pos].isNotQuote or s[pos + 1].isNotQuote)):
+      while (pos < s.len and s[pos].isNotQuote and not nested) or (nested and pos < s.high and (s[pos].isNotQuote or s[pos + 1].isNotQuote)) or inDoubleQuote:
+        if s[pos] == '"' and parsable:
+          inDoubleQuote = not inDoubleQuote
         inc pos
       if nested:
         inc pos
-
       #Highlight error
-      when not defined(colorfulError):
-        if s[pos].isQuote or s[pos + 1].isQuote:
+      if pos < s.len and parsable and doColor:
+        if (s[pos].isQuote or s[pos + 1].isQuote):
           result.add fmt"""{color.ansiForegroundColorCode}{s[start..(pos - 1)]}{ansiResetCode}"""
-      else:
-        result.add s[start..(pos - 1)]
+        else:
+          result.add s[start..(pos - 1)]
+      else: 
+        result.add s[start..s.high]
+        break
     else:
       result.add s[pos]
     inc pos
@@ -549,7 +555,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     inc(conf.hintCounter)
 
-  let s = if isRaw: arg.colorError(color) else: getMessageStr(msg, arg).colorError(color)
+  let s = if isRaw: arg.colorError(color, conf.isDefined("nimColorErrors")) else: getMessageStr(msg, arg).colorError(color, conf.isDefined("nimColorErrors"))
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     # we could also show `conf.cmdInput` here for `projectIsCmd`

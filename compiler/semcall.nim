@@ -11,7 +11,7 @@
 # included from sem.nim
 
 from algorithm import sort
-
+from renderer import quoteExpr, doubleQuoteExpr
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
@@ -232,15 +232,15 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.add("\n  required type for " & nameParam &  ": ")
         candidates.add typeToString(wanted)
         candidates.addDeclaredLocMaybe(c.config, wanted)
-        candidates.add "\n  but expression ''"
+        candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add renderNotLValue(nArg)
-          candidates.add "'' 'is immutable, not' ''var''"
+          candidates.add renderNotLValue(nArg).doubleQuoteExpr
+          candidates.add " is immutable, not ".quoteExpr & "var".doubleQuoteExpr
         else:
-          candidates.add renderTree(nArg)
-          candidates.add "'' 'is of type:' ''"
+          candidates.add renderTree(nArg).doubleQuoteExpr
+          candidates.add " is of type: ".quoteExpr
           var got = nArg.typ
-          candidates.add typeToString(got) & "''"
+          candidates.add typeToString(got).doubleQuoteExpr
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
@@ -643,8 +643,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if s.ast[genericParamsPos].safeLen != n.len-1:
       let expected = s.ast[genericParamsPos].safeLen
-      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
+      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: " & renderTree(n).doubleQuoteExpr &
+         "; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)

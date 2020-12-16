@@ -1680,6 +1680,10 @@ proc quoteExpr*(a: string): string {.inline.} =
   ## can be used for quoting expressions in error msgs.
   "'" & a & "'"
 
+proc doubleQuoteExpr*(a: string): string {.inline.} =
+  ## can be used for double quotes in error msgs.
+  "''" & a & "''"
+
 proc genFieldDefect*(field: PSym, disc: PSym): string =
   ## this needs to be in a module accessible by jsgen, ccgexprs, and vm to
   ## provide this error msg FieldDefect; msgs would be better but it does not
