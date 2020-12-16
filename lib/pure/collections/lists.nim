@@ -458,13 +458,13 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
-proc append*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
-  ## Appends (adds to the end) `L2` to `L1`. Efficiency: O(1).
+proc add*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
+  ## Adds `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
-    a.append(b)
+    a.add(b)
     assert $a == "[1, 2, 3, 4, 5]"
   if L1.tail != nil:
     L1.tail.next = L2.head
@@ -559,13 +559,13 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
 
-proc append*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 5).} =
-  ## Appends (adds to the end) `L2` to `L1`. Efficiency: O(1).
+proc add*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 5).} =
+  ## Adds `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that the two lists share structure after the operation.
   runnableExamples:
     var a = [1, 2, 3].toDoublyLinkedList
     let b = [4, 5].toDoublyLinkedList
-    a.append(b)
+    a.add(b)
     assert $a == "[1, 2, 3, 4, 5]"
   if L1.tail != nil:
     L1.tail.next = L2.head
