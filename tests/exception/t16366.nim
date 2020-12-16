@@ -1,6 +1,6 @@
 discard """
   action: run
-  exitcode: 1
+  exitcode: 0
   targets: "c cpp"
 """
 
