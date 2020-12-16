@@ -222,6 +222,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
         a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextId a.c.idgen,
                                           a.owner, reason.info, {})
 
+# TODO FIX THIS & USE PROPER REASY
 proc markMemUnsafe(a: PEffects) =
   if not a.forceMemSafe:
     a.memUnsafe = true
@@ -1360,7 +1361,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
   if not(t.forceMemSafe) and (t.memUnsafe and sfMemSafe in s.flags):
-    localError(g.config, s.info, ("'$1' memory safety incompatible" % s.name.s) & (g.config $ mutationInfo))
+    # TODO FORMAT A PROPER ERROR MESSAGE
+    localError(g.config, s.info, ("'$1' is not compatible with memory safety requirements" % s.name.s) & (g.config $ mutationInfo))
   if s.typ.lockLevel == UnspecifiedLockLevel:
     s.typ.lockLevel = t.maxLockLevel
   elif t.maxLockLevel > s.typ.lockLevel:
