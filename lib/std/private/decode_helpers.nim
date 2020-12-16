@@ -30,7 +30,6 @@ proc decodePercent*(s: openArray[char], i: var int): char =
   result = '%'
   if i+2 < s.len:
     var x = 0
-    if handleHexChar(s[i+1], x):
-      if handleHexChar(s[i+2], x):
-        result = chr(x)
-        inc(i, 2)
+    if handleHexChar(s[i+1], x) and handleHexChar(s[i+2], x):
+      result = chr(x)
+      inc(i, 2)
