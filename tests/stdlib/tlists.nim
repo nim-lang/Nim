@@ -94,6 +94,19 @@ block toDoublyLinkedList:
   doAssert [1].toDoublyLinkedList.toSeq == [1]
   doAssert [1, 2, 3].toDoublyLinkedList.toSeq == [1, 2, 3]
 
+block copy:
+  doAssert array[0, int].default.toSinglyLinkedList.copy.toSeq == []
+  doAssert [1].toSinglyLinkedList.copy.toSeq == [1]
+  doAssert [1, 2].toSinglyLinkedList.copy.toSeq == [1, 2]
+  doAssert [1, 2, 3].toSinglyLinkedList.copy.toSeq == [1, 2, 3]
+  type Foo = ref object
+    x: int
+  var f = Foo(x: 1)
+  let a = [f, f].toSinglyLinkedList
+  f.x = 42
+  assert a.head.value == f
+  assert a.head.next.value == f
+
 block add:
   block: # SinglyLinkedList
     block:
@@ -102,11 +115,16 @@ block add:
         l1 = [1].toSinglyLinkedList
         l2 = [2, 3].toSinglyLinkedList
         l3 = [4, 5, 6].toSinglyLinkedList
-      l0.add(l3.copy)
-      l1.add(l3.copy)
-      l2.add(l3)
+        l4 = l3.copy
+        l5 = l3.copy
+      l0.add(l3)
+      l1.add(l4)
+      l2.add(l5)
       doAssert l0.toSeq == [4, 5, 6]
       doAssert l1.toSeq == [1, 4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 4, 5, 6]
+      doAssert l3.toSeq == []
+      l2.add(l3) # re-adding l3 that was destroyed is now a no-op
       doAssert l2.toSeq == [2, 3, 4, 5, 6]
       doAssert l3.toSeq == []
     block:
@@ -126,11 +144,16 @@ block add:
         l1 = [1].toDoublyLinkedList
         l2 = [2, 3].toDoublyLinkedList
         l3 = [4, 5, 6].toDoublyLinkedList
-      l0.add(l3.copy)
-      l1.add(l3.copy)
-      l2.add(l3)
+        l4 = l3.copy
+        l5 = l3.copy
+      l0.add(l3)
+      l1.add(l4)
+      l2.add(l5)
       doAssert l0.toSeq == [4, 5, 6]
       doAssert l1.toSeq == [1, 4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 4, 5, 6]
+      doAssert l3.toSeq == []
+      l2.add(l3) # re-adding l3 that was destroyed is now a no-op
       doAssert l2.toSeq == [2, 3, 4, 5, 6]
       doAssert l3.toSeq == []
     block:

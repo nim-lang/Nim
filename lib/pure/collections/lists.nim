@@ -461,8 +461,18 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 func copy*[T](L: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
   ## Creates a shallow copy of `L`.
   runnableExamples:
-    let a = [1, 2, 3].toSinglyLinkedList
-    assert $a == $a.copy
+    type Foo = ref object
+      x: int
+    var f = Foo(x: 1)
+    let
+      a = [f].toSinglyLinkedList
+      b = a.copy
+    f.x = 42
+    assert a.head.value.x == 42
+    assert b.head.value.x == 42
+
+    let c = [1, 2, 3].toSinglyLinkedList
+    assert $c == $c.copy
   result = initSinglyLinkedList[T]()
   for x in L:
     result.append(x)
@@ -470,6 +480,7 @@ func copy*[T](L: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
 proc add*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
   ## Moves `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that `L2` becomes empty after the operation.
+  ## Self-adding results in an empty list.
   runnableExamples:
     var
       a = [1, 2, 3].toSinglyLinkedList
@@ -477,6 +488,8 @@ proc add*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
     a.add(b)
     assert $a == "[1, 2, 3, 4, 5]"
     assert $b == "[]"
+    a.add(a)
+    assert $a == "[]"
   if L1.tail != nil:
     L1.tail.next = L2.head
   L1.tail = L2.tail
@@ -574,8 +587,18 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
 func copy*[T](L: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
   ## Creates a shallow copy of `L`.
   runnableExamples:
-    let a = [1, 2, 3].toDoublyLinkedList
-    assert $a == $a.copy
+    type Foo = ref object
+      x: int
+    var f = Foo(x: 1)
+    let
+      a = [f].toDoublyLinkedList
+      b = a.copy
+    f.x = 42
+    assert a.head.value.x == 42
+    assert b.head.value.x == 42
+
+    let c = [1, 2, 3].toDoublyLinkedList
+    assert $c == $c.copy
   result = initDoublyLinkedList[T]()
   for x in L:
     result.append(x)
@@ -583,6 +606,7 @@ func copy*[T](L: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
 proc add*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
   ## Moves `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that `L2` becomes empty after the operation.
+  ## Self-adding results in an empty list.
   runnableExamples:
     var
       a = [1, 2, 3].toDoublyLinkedList
@@ -590,6 +614,8 @@ proc add*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
     a.add(b)
     assert $a == "[1, 2, 3, 4, 5]"
     assert $b == "[]"
+    a.add(a)
+    assert $a == "[]"
   if L2.head != nil:
     L2.head.prev = L1.tail
   if L1.tail != nil:
