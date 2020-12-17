@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-import lists
+import lists, sequtils
 
 const
   data = [1, 2, 3, 4, 5, 6]
@@ -82,19 +82,19 @@ block tlistsToString:
     l.append('3')
     doAssert $l == """['1', '2', '3']"""
 
-block SinglyLinkedListConversion:
-  let l: seq[int] = @[]
-  doAssert $l.toSinglyLinkedList == "[]"
-  doAssert $[1].toSinglyLinkedList == "[1]"
-  doAssert $[1, 2, 3].toSinglyLinkedList == "[1, 2, 3]"
+block toSinglyLinkedList:
+  let l = seq[int].default
+  doAssert l.toSinglyLinkedList.toSeq == []
+  doAssert [1].toSinglyLinkedList.toSeq == [1]
+  doAssert [1, 2, 3].toSinglyLinkedList.toSeq == [1, 2, 3]
 
-block DoublyLinkedListConversion:
-  let l: seq[int] = @[]
-  doAssert $l.toDoublyLinkedList == "[]"
-  doAssert $[1].toDoublyLinkedList == "[1]"
-  doAssert $[1, 2, 3].toDoublyLinkedList == "[1, 2, 3]"
+block toDoublyLinkedList:
+  let l = seq[int].default
+  doAssert l.toDoublyLinkedList.toSeq == []
+  doAssert [1].toDoublyLinkedList.toSeq == [1]
+  doAssert [1, 2, 3].toDoublyLinkedList.toSeq == [1, 2, 3]
 
-block AddingSinglyLinkedLists:
+block add:
   block:
     var
       l0 = initSinglyLinkedList[int]()
@@ -104,9 +104,9 @@ block AddingSinglyLinkedLists:
     l0.add(l3)
     l1.add(l3)
     l2.add(l3)
-    doAssert $l0 == "[4, 5, 6]"
-    doAssert $l1 == "[1, 4, 5, 6]"
-    doAssert $l2 == "[2, 3, 4, 5, 6]"
+    doAssert l0.toSeq == [4, 5, 6]
+    doAssert l1.toSeq == [1, 4, 5, 6]
+    doAssert l2.toSeq == [2, 3, 4, 5, 6]
   block:
     var
       l0 = initSinglyLinkedList[int]()
@@ -115,5 +115,5 @@ block AddingSinglyLinkedLists:
       l3 = [4, 5, 6].toSinglyLinkedList
     l3.add(l0)
     l2.add(l1)
-    doAssert $l3 == "[4, 5, 6]"
-    doAssert $l2 == "[2, 3, 1]"
+    doAssert l3.toSeq == [4, 5, 6]
+    doAssert l2.toSeq == [2, 3, 1]
