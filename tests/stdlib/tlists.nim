@@ -82,17 +82,15 @@ block tlistsToString:
     l.append('3')
     doAssert $l == """['1', '2', '3']"""
 
-block: # toSinglyLinkedList, toDoublyLinkedList
-  template testCommon(toList) =
+template testCommon(initList, toList) =
+
+  block: # toSinglyLinkedList, toDoublyLinkedList
     let l = seq[int].default
     doAssert l.toList.toSeq == []
     doAssert [1].toList.toSeq == [1]
     doAssert [1, 2, 3].toList.toSeq == [1, 2, 3]
-  testCommon(toSinglyLinkedList)
-  testCommon(toDoublyLinkedList)
 
-block copy:
-  template testCommon(toList) =
+  block copy:
     doAssert array[0, int].default.toList.copy.toSeq == []
     doAssert [1].toList.copy.toSeq == [1]
     doAssert [1, 2].toList.copy.toSeq == [1, 2]
@@ -104,22 +102,17 @@ block copy:
     f.x = 42
     assert a.head.value == f
     assert a.head.next.value == f
-  testCommon(toSinglyLinkedList)
-  testCommon(toDoublyLinkedList)
 
-block add:
-  template testCommon(initList, toList) =
+  block: # add, addMove
     block:
       var
         l0 = initList[int]()
         l1 = [1].toList
         l2 = [2, 3].toList
         l3 = [4, 5, 6].toList
-        l4 = l3.copy
-        l5 = l3.copy
       l0.add l3
-      l1.add l4
-      l2.add l5
+      l1.add l3
+      l2.addMove l3
       doAssert l0.toSeq == [4, 5, 6]
       doAssert l1.toSeq == [1, 4, 5, 6]
       doAssert l2.toSeq == [2, 3, 4, 5, 6]
@@ -133,9 +126,12 @@ block add:
         l1 = [1].toList
         l2 = [2, 3].toList
         l3 = [4, 5, 6].toList
-      l3.add l0
-      l2.add l1
+      l3.addMove l0
+      l2.addMove l1
       doAssert l3.toSeq == [4, 5, 6]
       doAssert l2.toSeq == [2, 3, 1]
-  testCommon(initSinglyLinkedList, toSinglyLinkedList)
-  testCommon(initDoublyLinkedList, toDoublyLinkedList)
+      l3.add l0
+      doAssert l3.toSeq == [4, 5, 6]
+
+testCommon initSinglyLinkedList, toSinglyLinkedList
+testCommon initDoublyLinkedList, toDoublyLinkedList

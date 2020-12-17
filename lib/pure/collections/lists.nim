@@ -477,19 +477,20 @@ func copy*[T](L: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
   for x in L:
     result.append(x)
 
-proc add*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
+proc addMove*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
   ## Moves `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that `L2` becomes empty after the operation.
   ## Self-adding results in an empty list.
   runnableExamples:
+    import sequtils
     var
       a = [1, 2, 3].toSinglyLinkedList
       b = [4, 5].toSinglyLinkedList
-    a.add(b)
-    assert $a == "[1, 2, 3, 4, 5]"
-    assert $b == "[]"
-    a.add(a)
-    assert $a == "[]"
+    a.addMove b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == []
+    a.addMove a
+    assert a.toSeq == []
   if L1.tail != nil:
     L1.tail.next = L2.head
   L1.tail = L2.tail
@@ -497,6 +498,20 @@ proc add*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
     L1.head = L2.head
   L2.head = nil
   L2.tail = nil
+
+proc add*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
+  ## Appends a shallow copy of `L2` to the end of `L1`.
+  runnableExamples:
+    import sequtils
+    var a = [1, 2, 3].toSinglyLinkedList
+    let b = [4, 5].toSinglyLinkedList
+    a.add b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == [4, 5]
+    a.add a
+    assert a.toSeq == [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+  var tmp = L2.copy
+  L1.addMove tmp
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -603,19 +618,20 @@ func copy*[T](L: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
   for x in L:
     result.append(x)
 
-proc add*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
+proc addMove*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
   ## Moves `L2` to the end of `L1`. Efficiency: O(1).
   ## Note that `L2` becomes empty after the operation.
   ## Self-adding results in an empty list.
   runnableExamples:
+    import sequtils
     var
       a = [1, 2, 3].toDoublyLinkedList
       b = [4, 5].toDoublyLinkedList
-    a.add(b)
-    assert $a == "[1, 2, 3, 4, 5]"
-    assert $b == "[]"
-    a.add(a)
-    assert $a == "[]"
+    a.addMove b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == []
+    a.addMove a
+    assert a.toSeq == []
   if L2.head != nil:
     L2.head.prev = L1.tail
   if L1.tail != nil:
@@ -625,6 +641,20 @@ proc add*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
     L1.head = L2.head
   L2.head = nil
   L2.tail = nil
+
+proc add*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 5).} =
+  ## Appends a shallow copy of `L2` to the end of `L1`.
+  runnableExamples:
+    import sequtils
+    var a = [1, 2, 3].toDoublyLinkedList
+    let b = [4, 5].toDoublyLinkedList
+    a.add b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == [4, 5]
+    a.add a
+    assert a.toSeq == [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+  var tmp = L2.copy
+  L1.addMove tmp
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
