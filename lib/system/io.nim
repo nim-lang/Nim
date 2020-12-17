@@ -223,6 +223,9 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
+    if i < 0:
+      if doRaise: raiseEIO("cannot write string to file")
+      return
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -798,7 +801,7 @@ when declared(stdout):
         defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s)
+          writeWindows(stdout, s, doRaise = true)
         else:
           if c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) != s.len:
             checkErr(stdout)

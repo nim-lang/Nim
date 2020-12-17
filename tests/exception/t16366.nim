@@ -2,6 +2,7 @@ discard """
   action: run
   exitcode: 0
   targets: "c cpp"
+  disabled: openbsd
 """
 
 echo "foo1"
