@@ -68,7 +68,9 @@
 - Added `lists.toSinglyLinkedList` and `lists.toDoublyLinkedList` for conversion from
   `openArray`s.
 
-- `add` is now overloaded also for the O(1) concatenation of `SinglyLinkedList`s.
+- Added `lists.copy` for shallow copying singly- and doubly linked lists.
+
+- `add` is now overloaded also for the O(1) concatenation of singly- and doubly linked lists.
 
 ## Language changes
 

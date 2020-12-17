@@ -95,25 +95,51 @@ block toDoublyLinkedList:
   doAssert [1, 2, 3].toDoublyLinkedList.toSeq == [1, 2, 3]
 
 block add:
-  block:
-    var
-      l0 = initSinglyLinkedList[int]()
-      l1 = [1].toSinglyLinkedList
-      l2 = [2, 3].toSinglyLinkedList
-      l3 = [4, 5, 6].toSinglyLinkedList
-    l0.add(l3)
-    l1.add(l3)
-    l2.add(l3)
-    doAssert l0.toSeq == [4, 5, 6]
-    doAssert l1.toSeq == [1, 4, 5, 6]
-    doAssert l2.toSeq == [2, 3, 4, 5, 6]
-  block:
-    var
-      l0 = initSinglyLinkedList[int]()
-      l1 = [1].toSinglyLinkedList
-      l2 = [2, 3].toSinglyLinkedList
-      l3 = [4, 5, 6].toSinglyLinkedList
-    l3.add(l0)
-    l2.add(l1)
-    doAssert l3.toSeq == [4, 5, 6]
-    doAssert l2.toSeq == [2, 3, 1]
+  block: # SinglyLinkedList
+    block:
+      var
+        l0 = initSinglyLinkedList[int]()
+        l1 = [1].toSinglyLinkedList
+        l2 = [2, 3].toSinglyLinkedList
+        l3 = [4, 5, 6].toSinglyLinkedList
+      l0.add(l3.copy)
+      l1.add(l3.copy)
+      l2.add(l3)
+      doAssert l0.toSeq == [4, 5, 6]
+      doAssert l1.toSeq == [1, 4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 4, 5, 6]
+      doAssert l3.toSeq == []
+    block:
+      var
+        l0 = initSinglyLinkedList[int]()
+        l1 = [1].toSinglyLinkedList
+        l2 = [2, 3].toSinglyLinkedList
+        l3 = [4, 5, 6].toSinglyLinkedList
+      l3.add(l0)
+      l2.add(l1)
+      doAssert l3.toSeq == [4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 1]
+  block: # DoublyLinkedList
+    block:
+      var
+        l0 = initDoublyLinkedList[int]()
+        l1 = [1].toDoublyLinkedList
+        l2 = [2, 3].toDoublyLinkedList
+        l3 = [4, 5, 6].toDoublyLinkedList
+      l0.add(l3.copy)
+      l1.add(l3.copy)
+      l2.add(l3)
+      doAssert l0.toSeq == [4, 5, 6]
+      doAssert l1.toSeq == [1, 4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 4, 5, 6]
+      doAssert l3.toSeq == []
+    block:
+      var
+        l0 = initDoublyLinkedList[int]()
+        l1 = [1].toDoublyLinkedList
+        l2 = [2, 3].toDoublyLinkedList
+        l3 = [4, 5, 6].toDoublyLinkedList
+      l3.add(l0)
+      l2.add(l1)
+      doAssert l3.toSeq == [4, 5, 6]
+      doAssert l2.toSeq == [2, 3, 1]

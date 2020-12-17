@@ -458,20 +458,32 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
-proc add*[T](L1: var SinglyLinkedList[T], L2: SinglyLinkedList[T]) {.since: (1, 5).} =
-  ## Adds `L2` to the end of `L1`. Efficiency: O(1).
-  ## Note that the two lists share structure after the operation.
+func copy*[T](L: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
+  ## Creates a shallow copy of `L`.
   runnableExamples:
-    var a = [1, 2, 3].toSinglyLinkedList
-    let b = [4, 5].toSinglyLinkedList
+    let a = [1, 2, 3].toSinglyLinkedList
+    assert $a == $a.copy
+  result = initSinglyLinkedList[T]()
+  for x in L:
+    result.append(x)
+
+proc add*[T](L1, L2: var SinglyLinkedList[T]) {.since: (1, 5).} =
+  ## Moves `L2` to the end of `L1`. Efficiency: O(1).
+  ## Note that `L2` becomes empty after the operation.
+  runnableExamples:
+    var
+      a = [1, 2, 3].toSinglyLinkedList
+      b = [4, 5].toSinglyLinkedList
     a.add(b)
     assert $a == "[1, 2, 3, 4, 5]"
+    assert $b == "[]"
   if L1.tail != nil:
     L1.tail.next = L2.head
   L1.tail = L2.tail
   if L1.head == nil:
     L1.head = L2.head
-
+  L2.head = nil
+  L2.tail = nil
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -558,6 +570,35 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     a.prepend(8)
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
+
+func copy*[T](L: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
+  ## Creates a shallow copy of `L`.
+  runnableExamples:
+    let a = [1, 2, 3].toDoublyLinkedList
+    assert $a == $a.copy
+  result = initDoublyLinkedList[T]()
+  for x in L:
+    result.append(x)
+
+proc add*[T](L1, L2: var DoublyLinkedList[T]) {.since: (1, 5).} =
+  ## Moves `L2` to the end of `L1`. Efficiency: O(1).
+  ## Note that `L2` becomes empty after the operation.
+  runnableExamples:
+    var
+      a = [1, 2, 3].toDoublyLinkedList
+      b = [4, 5].toDoublyLinkedList
+    a.add(b)
+    assert $a == "[1, 2, 3, 4, 5]"
+    assert $b == "[]"
+  if L2.head != nil:
+    L2.head.prev = L1.tail
+  if L1.tail != nil:
+    L1.tail.next = L2.head
+  L1.tail = L2.tail
+  if L1.head == nil:
+    L1.head = L2.head
+  L2.head = nil
+  L2.tail = nil
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
