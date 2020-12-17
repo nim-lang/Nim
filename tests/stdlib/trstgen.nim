@@ -440,13 +440,18 @@ Test1
       Check that auto-numbered enumeration lists work.
 
       #. string1
+
       #. string2
+
       #. string3
+
+      #) string5
+      #) string6
       """
     let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
-    assert count(output5, "<ol ") == 1
-    assert count(output5, "</ol>") == 1
-    assert count(output5, "<li>") == 3
+    assert count(output5, "<ol ") == 2
+    assert count(output5, "</ol>") == 2
+    assert count(output5, "<li>") == 5
 
     let input6 = dedent """
       ... And for alphabetic enumerators too!

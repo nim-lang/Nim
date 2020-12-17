@@ -1195,7 +1195,8 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
-    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
+    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
+         match(p, p.idx, "e. "):
       result = rnEnumList
     elif isDefList(p):
       result = rnDefList
