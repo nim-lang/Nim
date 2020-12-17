@@ -120,6 +120,9 @@ template testCommon(initList, toList) =
       l2.add l3 # re-adding l3 that was destroyed is now a no-op
       doAssert l2.toSeq == [2, 3, 4, 5, 6]
       doAssert l3.toSeq == []
+      l2.add(l3) # re-adding l3 that was destroyed is now a no-op
+      doAssert l2.toSeq == [2, 3, 4, 5, 6]
+      doAssert l3.toSeq == []
     block:
       var
         l0 = initList[int]()
