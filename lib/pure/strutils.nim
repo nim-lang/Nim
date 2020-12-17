@@ -9,46 +9,43 @@
 
 ## The system module defines several common functions for working with strings,
 ## such as:
-## * ``$`` for converting other data-types to strings
-## * ``&`` for string concatenation
-## * ``add`` for adding a new character or a string to the existing one
-## * ``in`` (alias for ``contains``) and ``notin`` for checking if a character
+## * `$` for converting other data-types to strings
+## * `&` for string concatenation
+## * `add` for adding a new character or a string to the existing one
+## * `in` (alias for `contains`) and `notin` for checking if a character
 ##   is in a string
 ##
 ## This module builds upon that, providing additional functionality in form of
 ## procedures, iterators and templates for strings.
-##
-## .. code-block::
-##   import strutils
-##
-##   let
-##     numbers = @[867, 5309]
-##     multiLineString = "first line\nsecond line\nthird line"
-##
-##   let jenny = numbers.join("-")
-##   assert jenny == "867-5309"
-##
-##   assert splitLines(multiLineString) ==
-##          @["first line", "second line", "third line"]
-##   assert split(multiLineString) == @["first", "line", "second",
-##                                      "line", "third", "line"]
-##   assert indent(multiLineString, 4) ==
-##          "    first line\n    second line\n    third line"
-##   assert 'z'.repeat(5) == "zzzzz"
-##
+
+runnableExamples:
+  let
+    numbers = @[867, 5309]
+    multiLineString = "first line\nsecond line\nthird line"
+
+  let jenny = numbers.join("-")
+  assert jenny == "867-5309"
+
+  assert splitLines(multiLineString) ==
+         @["first line", "second line", "third line"]
+  assert split(multiLineString) == @["first", "line", "second",
+                                     "line", "third", "line"]
+  assert indent(multiLineString, 4) ==
+         "    first line\n    second line\n    third line"
+  assert 'z'.repeat(5) == "zzzzz"
+
 ## The chaining of functions is possible thanks to the
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
-##
-## .. code-block::
-##   import strutils
-##   from sequtils import map
-##
-##   let jenny = "867-5309"
-##   assert jenny.split('-').map(parseInt) == @[867, 5309]
-##
-##   assert "Beetlejuice".indent(1).repeat(3).strip ==
-##          "Beetlejuice Beetlejuice Beetlejuice"
-##
+
+runnableExamples:
+  from sequtils import map
+
+  let jenny = "867-5309"
+  assert jenny.split('-').map(parseInt) == @[867, 5309]
+
+  assert "Beetlejuice".indent(1).repeat(3).strip ==
+         "Beetlejuice Beetlejuice Beetlejuice"
+
 ## This module is available for the `JavaScript target
 ## <backends.html#backends-the-javascript-target>`_.
 ##
@@ -69,7 +66,7 @@
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
-## * `strscans<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+## * `strscans<strscans.html>`_ for `scanf` and `scanp` macros, which offer
 ##   easier substring extraction than regular expressions
 
 
@@ -88,26 +85,26 @@ import std/private/since
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace (space, tab, vertical tab,
-    ## carriage return, new line, form feed)
+    ## carriage return, new line, form feed).
 
   Letters* = {'A'..'Z', 'a'..'z'}
-    ## the set of letters
+    ## The set of letters.
 
   Digits* = {'0'..'9'}
-    ## the set of digits
+    ## The set of digits.
 
   HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
-    ## the set of hexadecimal digits
+    ## The set of hexadecimal digits.
 
   IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
-    ## the set of characters an identifier can consist of
+    ## The set of characters an identifier can consist of.
 
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
-    ## the set of characters an identifier can start with
+    ## The set of characters an identifier can start with.
 
   Newlines* = {'\13', '\10'}
-    ## the set of characters a newline terminator can start with (carriage
-    ## return, line feed)
+    ## The set of characters a newline terminator can start with (carriage
+    ## return, line feed).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
@@ -189,9 +186,9 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
 
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
-  ## Returns the lower case version of character ``c``.
+  ## Returns the lower case version of character `c`.
   ##
-  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## This works only for the letters `A-Z`. See `unicode.toLower
   ## <unicode.html#toLower,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
@@ -214,7 +211,7 @@ template toImpl(call) =
 func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
   ##
-  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## This works only for the letters `A-Z`. See `unicode.toLower
   ## <unicode.html#toLower,string>`_ for a version that works for any Unicode
   ## character.
   ##
@@ -227,7 +224,7 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
 func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts character `c` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## This works only for the letters `A-Z`.  See `unicode.toUpper
   ## <unicode.html#toUpper,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
@@ -246,7 +243,7 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
 func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts string `s` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## This works only for the letters `A-Z`.  See `unicode.toUpper
   ## <unicode.html#toUpper,string>`_ for a version that works for any Unicode
   ## character.
   ##
@@ -259,7 +256,7 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
 func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.
+  ## This works only for the letters `A-Z`.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   ##
   ## See also:
@@ -334,7 +331,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
                                       # thus we compile without checks here
 
 func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
-  ## Semantically the same as ``cmp(normalize(a), normalize(b))``. It
+  ## Semantically the same as `cmp(normalize(a), normalize(b))`. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names.
   ## Use `macros.eqIdent<macros.html#eqIdent,string,string>`_ for that.
@@ -629,8 +626,8 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter ``keepEol``
-  ## is set to ``true``.
+  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## is set to `true`.
   ##
   ## Example:
   ##
@@ -674,9 +671,9 @@ iterator splitLines*(s: string, keepEol = false): string =
     first = last
 
 iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
-  ## Splits the string ``s`` at whitespace stripping leading and trailing
-  ## whitespace if necessary. If ``maxsplit`` is specified and is positive,
-  ## no more than ``maxsplit`` splits is made.
+  ## Splits the string `s` at whitespace stripping leading and trailing
+  ## whitespace if necessary. If `maxsplit` is specified and is positive,
+  ## no more than `maxsplit` splits is made.
   ##
   ## The following code:
   ##
@@ -881,7 +878,7 @@ func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
 func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
   ## Converts `x` into its binary representation.
   ##
-  ## The resulting string is always `len` characters long. No leading ``0b``
+  ## The resulting string is always `len` characters long. No leading `0b`
   ## prefix is generated.
   runnableExamples:
     let
@@ -903,7 +900,7 @@ func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
 func toOct*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToOct".} =
   ## Converts `x` into its octal representation.
   ##
-  ## The resulting string is always `len` characters long. No leading ``0o``
+  ## The resulting string is always `len` characters long. No leading `0o`
   ## prefix is generated.
   ##
   ## Do not confuse it with `toOctal func<#toOctal,char>`_.
@@ -939,7 +936,7 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
   ## Converts `x` to its hexadecimal representation.
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated. `x` is treated as an unsigned value.
+  ## `0x` is generated. `x` is treated as an unsigned value.
   runnableExamples:
     let
       a = 62'u64
@@ -952,7 +949,7 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
-  ## Shortcut for ``toHex(x, T.sizeof * 2)``
+  ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
@@ -962,7 +959,7 @@ func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
   ##
   ## The output is twice the input long. No prefix like
-  ## ``0x`` is generated.
+  ## `0x` is generated.
   ##
   ## See also:
   ## * `parseHexStr func<#parseHexStr,string>`_ for the reverse operation
@@ -1130,7 +1127,7 @@ func parseFloat*(s: string): float {.rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`.
   ##
   ## If `s` is not a valid floating point number, `ValueError` is raised.
-  ##``NAN``, ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  ##`NAN`, `INF`, `-INF` are also supported (case insensitive comparison).
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
@@ -1143,7 +1140,7 @@ func parseBinInt*(s: string): int {.rtl, extern: "nsuParseBinInt".} =
   ## Parses a binary integer value contained in `s`.
   ##
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
-  ## one of the following optional prefixes: ``0b``, ``0B``. Underscores within
+  ## one of the following optional prefixes: `0b`, `0B`. Underscores within
   ## `s` are ignored.
   runnableExamples:
     let
@@ -1161,7 +1158,7 @@ func parseOctInt*(s: string): int {.rtl, extern: "nsuParseOctInt".} =
   ## Parses an octal integer value contained in `s`.
   ##
   ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
+  ## of the following optional prefixes: `0o`, `0O`.  Underscores within
   ## `s` are ignored.
   result = 0
   let L = parseutils.parseOct(s, result, 0)
@@ -1172,7 +1169,7 @@ func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
+  ## of the following optional prefixes: `0x`, `0X`, `#`.  Underscores
   ## within `s` are ignored.
   result = 0
   let L = parseutils.parseHex(s, result, 0)
@@ -1180,24 +1177,24 @@ func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
     raise newException(ValueError, "invalid hex integer: " & s)
 
 func generateHexCharToValueMap(): string =
-  ## Generate a string to map a hex digit to uint value
+  ## Generates a string to map a hex digit to uint value.
   result = ""
   for inp in 0..255:
     let ch = chr(inp)
     let o =
-      case ch:
-        of '0'..'9': inp - ord('0')
-        of 'a'..'f': inp - ord('a') + 10
-        of 'A'..'F': inp - ord('A') + 10
-        else: 17 # indicates an invalid hex char
+      case ch
+      of '0'..'9': inp - ord('0')
+      of 'a'..'f': inp - ord('a') + 10
+      of 'A'..'F': inp - ord('A') + 10
+      else: 17 # indicates an invalid hex char
     result.add chr(o)
 
 const hexCharToValueMap = generateHexCharToValueMap()
 
 func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
-  ## Convert hex-encoded string to byte string, e.g.:
+  ## Converts hex-encoded string to byte string, e.g.:
   ##
-  ## Raises ``ValueError`` for an invalid hex values. The comparison is
+  ## Raises `ValueError` for an invalid hex values. The comparison is
   ## case-insensitive.
   ##
   ## See also:
@@ -1228,10 +1225,10 @@ func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
 func parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
   ##
-  ## If ``s`` is one of the following values: ``y, yes, true, 1, on``, then
-  ## returns `true`. If ``s`` is one of the following values: ``n, no, false,
-  ## 0, off``, then returns `false`.  If ``s`` is something else a
-  ## ``ValueError`` exception is raised.
+  ## If `s` is one of the following values: `y, yes, true, 1, on`, then
+  ## returns `true`. If `s` is one of the following values: `n, no, false,
+  ## 0, off`, then returns `false`.  If `s` is something else a
+  ## `ValueError` exception is raised.
   runnableExamples:
     let a = "n"
     doAssert parseBool(a) == false
@@ -1242,10 +1239,10 @@ func parseBool*(s: string): bool =
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
 func parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## Parses an enum `T`. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
-  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
+  ## Raises `ValueError` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
   runnableExamples:
     type
@@ -1262,7 +1259,7 @@ func parseEnum*[T: enum](s: string): T =
   genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
 func parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## Parses an enum `T`. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
@@ -1322,7 +1319,7 @@ func align*(s: string, count: Natural, padding = ' '): string {.rtl,
   ## Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
-  ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## right alignment. If `s.len >= count`, no spaces are added and `s` is
   ## returned unchanged. If you need to left align a string use the `alignLeft
   ## func<#alignLeft,string,Natural,char>`_.
   ##
@@ -1348,7 +1345,7 @@ func alignLeft*(s: string, count: Natural, padding = ' '): string =
   ## Left-Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added after `s` resulting in
-  ## left alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## left alignment. If `s.len >= count`, no spaces are added and `s` is
   ## returned unchanged. If you need to right align a string use the `align
   ## func<#align,string,Natural,char>`_.
   ##
@@ -1408,9 +1405,9 @@ func center*(s: string, width: int, fillChar: char = ' '): string {.rtl,
 
 func indent*(s: string, count: Natural, padding: string = " "): string {.rtl,
     extern: "nsuIndent".} =
-  ## Indents each line in ``s`` by ``count`` amount of ``padding``.
+  ## Indents each line in `s` by `count` amount of `padding`.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
   ## * `align func<#align,string,Natural,char>`_
@@ -1433,9 +1430,9 @@ func indent*(s: string, count: Natural, padding: string = " "): string {.rtl,
 
 func unindent*(s: string, count: Natural = int.high,
                padding: string = " "): string {.rtl, extern: "nsuUnindent".} =
-  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## Unindents each line in `s` by `count` amount of `padding`.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
   ## * `dedent func<#dedent,string,Natural>`_
@@ -1465,7 +1462,7 @@ func unindent*(s: string, count: Natural = int.high,
     i.inc
 
 func indentation*(s: string): Natural {.since: (1, 3).} =
-  ## Returns the amount of indentation all lines of ``s`` have in common,
+  ## Returns the amount of indentation all lines of `s` have in common,
   ## ignoring lines that consist only of whitespace.
   result = int.high
   for line in s.splitLines:
@@ -1479,13 +1476,13 @@ func indentation*(s: string): Natural {.since: (1, 3).} =
 
 func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
     extern: "nsuDedent", since: (1, 3).} =
-  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+  ## Unindents each line in `s` by `count` amount of `padding`.
   ## The only difference between this and the
   ## `unindent func<#unindent,string,Natural,string>`_ is that this by default
-  ## only cuts off the amount of indentation that all lines of ``s`` share as
+  ## only cuts off the amount of indentation that all lines of `s` share as
   ## opposed to all indentation. It only supports spaces as padding.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
   ## * `unindent func<#unindent,string,Natural,string>`_
@@ -1503,8 +1500,8 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
   unindent(s, count, " ")
 
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` (must be declared as ``var``) the characters at positions
-  ## ``first ..last`` (both ends included).
+  ## Deletes in `s` (must be declared as `var`) the characters at positions
+  ## `first .. last` (both ends included).
   ##
   ## This modifies `s` itself, it does not return a copy.
   runnableExamples:
@@ -1530,7 +1527,7 @@ func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
 
 
 func startsWith*(s: string, prefix: char): bool {.inline.} =
-  ## Returns true if ``s`` starts with character ``prefix``.
+  ## Returns true if `s` starts with character `prefix`.
   ##
   ## See also:
   ## * `endsWith func<#endsWith,string,char>`_
@@ -1543,9 +1540,9 @@ func startsWith*(s: string, prefix: char): bool {.inline.} =
   result = s.len > 0 and s[0] == prefix
 
 func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
-  ## Returns true if ``s`` starts with string ``prefix``.
+  ## Returns true if `s` starts with string `prefix`.
   ##
-  ## If ``prefix == ""`` true is returned.
+  ## If `prefix == ""` true is returned.
   ##
   ## See also:
   ## * `endsWith func<#endsWith,string,string>`_
@@ -1562,7 +1559,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     inc(i)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
-  ## Returns true if ``s`` ends with ``suffix``.
+  ## Returns true if `s` ends with `suffix`.
   ##
   ## See also:
   ## * `startsWith func<#startsWith,string,char>`_
@@ -1575,9 +1572,9 @@ func endsWith*(s: string, suffix: char): bool {.inline.} =
   result = s.len > 0 and s[s.high] == suffix
 
 func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
-  ## Returns true if ``s`` ends with ``suffix``.
+  ## Returns true if `s` ends with `suffix`.
   ##
-  ## If ``suffix == ""`` true is returned.
+  ## If `suffix == ""` true is returned.
   ##
   ## See also:
   ## * `startsWith func<#startsWith,string,string>`_
@@ -1596,9 +1593,9 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     extern: "nsuContinuesWith".} =
-  ## Returns true if ``s`` continues with ``substr`` at position ``start``.
+  ## Returns true if `s` continues with `substr` at position `start`.
   ##
-  ## If ``substr == ""`` true is returned.
+  ## If `substr == ""` true is returned.
   ##
   ## See also:
   ## * `startsWith func<#startsWith,string,string>`_
@@ -1757,8 +1754,8 @@ func allCharsInSet*(s: string, theSet: set[char]): bool =
   return true
 
 func abbrev*(s: string, possibilities: openArray[string]): int =
-  ## Returns the index of the first item in ``possibilities`` which starts
-  ## with ``s``, if not ambiguous.
+  ## Returns the index of the first item in `possibilities` which starts
+  ## with `s`, if not ambiguous.
   ##
   ## Returns -1 if no item has been found and -2 if multiple items match.
   runnableExamples:
@@ -1867,12 +1864,12 @@ else:
 
 func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
     extern: "nsuFindChar".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included).
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,char,Natural>`_
@@ -1895,12 +1892,12 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
 
 func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
     rtl, extern: "nsuFindCharSet".} =
-  ## Searches for `chars` in `s` inside range ``start..last`` (both ends included).
+  ## Searches for `chars` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,set[char],Natural>`_
@@ -1912,12 +1909,12 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
 
 func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
     extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included).
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural>`_
@@ -1930,14 +1927,14 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included)
   ## in reverse -- starting at high indexes and moving lower to the first
-  ## character or ``start``.  If `last` is unspecified, it defaults to `s.high`
+  ## character or `start`.  If `last` is unspecified, it defaults to `s.high`
   ## (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,char,Natural,int>`_
@@ -1948,14 +1945,14 @@ func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
 
 func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
     rtl, extern: "nsuRFindCharSet".} =
-  ## Searches for `chars` in `s` inside range ``start..last`` (both ends
+  ## Searches for `chars` in `s` inside range `start..last` (both ends
   ## included) in reverse -- starting at high indexes and moving lower to the
-  ## first character or ``start``.  If `last` is unspecified, it defaults to
+  ## first character or `start`. If `last` is unspecified, it defaults to
   ## `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,set[char],Natural,int>`_
@@ -1966,14 +1963,14 @@ func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
 
 func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindStr".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included)
   ## included) in reverse -- starting at high indexes and moving lower to the
-  ## first character or ``start``.   If `last` is unspecified, it defaults to
+  ## first character or `start`. If `last` is unspecified, it defaults to
   ## `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -1992,7 +1989,7 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
 
 
 func count*(s: string, sub: char): int {.rtl, extern: "nsuCountChar".} =
-  ## Count the occurrences of the character `sub` in the string `s`.
+  ## Counts the occurrences of the character `sub` in the string `s`.
   ##
   ## See also:
   ## * `countLines func<#countLines,string>`_
@@ -2002,7 +1999,7 @@ func count*(s: string, sub: char): int {.rtl, extern: "nsuCountChar".} =
 
 func count*(s: string, subs: set[char]): int {.rtl,
     extern: "nsuCountCharSet".} =
-  ## Count the occurrences of the group of character `subs` in the string `s`.
+  ## Counts the occurrences of the group of character `subs` in the string `s`.
   ##
   ## See also:
   ## * `countLines func<#countLines,string>`_
@@ -2013,7 +2010,7 @@ func count*(s: string, subs: set[char]): int {.rtl,
 
 func count*(s: string, sub: string, overlapping: bool = false): int {.rtl,
     extern: "nsuCountString".} =
-  ## Count the occurrences of a substring `sub` in the string `s`.
+  ## Counts the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true (default: false).
   ##
@@ -2032,7 +2029,7 @@ func count*(s: string, sub: string, overlapping: bool = false): int {.rtl,
 func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## Returns the number of lines in the string `s`.
   ##
-  ## This is the same as ``len(splitLines(s))``, but much more efficient
+  ## This is the same as `len(splitLines(s))`, but much more efficient
   ## because it doesn't modify the string creating temporal objects. Every
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
@@ -2057,14 +2054,14 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
 
 
 func contains*(s, sub: string): bool =
-  ## Same as ``find(s, sub) >= 0``.
+  ## Same as `find(s, sub) >= 0`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   return find(s, sub) >= 0
 
 func contains*(s: string, chars: set[char]): bool =
-  ## Same as ``find(s, chars) >= 0``.
+  ## Same as `find(s, chars) >= 0`.
   ##
   ## See also:
   ## * `find func<#find,string,set[char],Natural,int>`_
@@ -2135,7 +2132,7 @@ func replaceWord*(s, sub: string, by = ""): string {.rtl,
   ## Replaces `sub` in `s` by the string `by`.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
-  ## (comparable to ``\b`` in regular expressions), otherwise it is not
+  ## (comparable to `\b` in regular expressions), otherwise it is not
   ## replaced.
   if sub.len == 0: return s
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
@@ -2261,7 +2258,7 @@ func unescape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ## This complements `escape func<#escape,string,string,string>`_
   ## as it performs the opposite operations.
   ##
-  ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
+  ## If `s` does not begin with `prefix` and end with `suffix` a
   ## ValueError exception will be raised.
   result = newStringOfCap(s.len)
   var i = prefix.len
@@ -2318,24 +2315,24 @@ when not defined(js):
 
 type
   FloatFormatMode* = enum
-    ## the different modes of floating point formatting
+    ## The different modes of floating point formatting.
     ffDefault,   ## use the shorter floating point notation
     ffDecimal,   ## use decimal floating point notation
-    ffScientific ## use scientific notation (using ``e`` character)
+    ffScientific ## use scientific notation (using `e` character)
 
 func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[-1..32] = 16;
                          decimalSep = '.'): string {.rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to
+  ## If `format == ffDecimal` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number
+  ## If `format == ffScientific` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nim's ``biggestFloat`` type.
+  ## after the decimal point for Nim's `biggestFloat` type.
   ##
-  ## If ``precision == -1``, it tries to format it nicely.
+  ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
     doAssert x.formatBiggestFloat() == "123.4560000000000"
@@ -2407,14 +2404,14 @@ func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to
+  ## If `format == ffDecimal` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number
+  ## If `format == ffScientific` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nim's ``float`` type.
+  ## after the decimal point for Nim's `float` type.
   ##
-  ## If ``precision == -1``, it tries to format it nicely.
+  ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
     doAssert x.formatFloat() == "123.4560000000000"
@@ -2425,7 +2422,7 @@ func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
 
 func trimZeros*(x: var string; decimalSep = '.') =
   ## Trim trailing zeros from a formatted floating point
-  ## value `x` (must be declared as ``var``).
+  ## value `x` (must be declared as `var`).
   ##
   ## This modifies `x` itself, it does not return a copy.
   runnableExamples:
@@ -2443,7 +2440,7 @@ func trimZeros*(x: var string; decimalSep = '.') =
     x.delete(pos, last)
 
 type
-  BinaryPrefixMode* = enum ## the different names for binary prefixes
+  BinaryPrefixMode* = enum ## The different names for binary prefixes.
     bpIEC,                 # use the IEC/ISO standard prefixes such as kibi
     bpColloquial           # use the colloquial kilo, mega etc
 
@@ -2656,7 +2653,7 @@ func invalidFormatString() {.noinline.} =
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
-  ## The same as ``add(s, formatstr % a)``, but more efficient.
+  ## The same as `add(s, formatstr % a)`, but more efficient.
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
   var num = 0
@@ -2735,17 +2732,17 @@ func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
   ## .. code-block:: nim
   ##   "The cat eats fish."
   ##
-  ## The substitution variables (the thing after the ``$``) are enumerated
-  ## from 1 to ``a.len``.
-  ## To produce a verbatim ``$``, use ``$$``.
-  ## The notation ``$#`` can be used to refer to the next substitution
+  ## The substitution variables (the thing after the `$`) are enumerated
+  ## from 1 to `a.len`.
+  ## To produce a verbatim `$`, use `$$`.
+  ## The notation `$#` can be used to refer to the next substitution
   ## variable:
   ##
   ## .. code-block:: nim
   ##   "$# eats $#." % ["The cat", "fish"]
   ##
   ## Substitution variables can also be words (that is
-  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
+  ## `[A-Za-z_]+[A-Za-z0-9_]*`) in which case the arguments in `a` with even
   ## indices are keys and with odd indices are the corresponding values.
   ## An example:
   ##
@@ -2767,14 +2764,14 @@ func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
 
 func `%` *(formatstr, a: string): string {.rtl,
     extern: "nsuFormatSingleElem".} =
-  ## This is the same as ``formatstr % [a]`` (see
+  ## This is the same as `formatstr % [a]` (see
   ## `% func<#%25,string,openArray[string]>`_).
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, [a])
 
 func format*(formatstr: string, a: varargs[string, `$`]): string {.rtl,
     extern: "nsuFormatVarargs".} =
-  ## This is the same as ``formatstr % a`` (see
+  ## This is the same as `formatstr % a` (see
   ## `% func<#%25,string,openArray[string]>`_) except that it supports
   ## auto stringification.
   ##
@@ -2820,9 +2817,9 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns ``s`` stripped from one of these suffixes:
-  ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
-  ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
+  ## Returns `s` stripped from one of these suffixes:
+  ## `\r, \n, \r\n, \f, \v` (at most once instance).
+  ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:
   runnableExamples:
     var s = "foo\n\n"
