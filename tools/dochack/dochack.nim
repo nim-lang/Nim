@@ -271,12 +271,8 @@ proc escapeCString(x: var cstring) =
   var s = ""
   for c in x:
     case c
-    of '&': s.add("&amp;")
     of '<': s.add("&lt;")
     of '>': s.add("&gt;")
-    of '"': s.add("&quot;")
-    of '\'': s.add("&#039;")
-    of '/': s.add("&#x2F;")
     else: s.add(c)
   x = s.cstring
 
