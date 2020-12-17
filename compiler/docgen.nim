@@ -20,8 +20,12 @@ import
 
 from std/private/globs import nativeToUnixPath
 
-# import cgi # xxx bug: UnusedImport would be triggerd with this
-from cgi import encodeUrl
+# when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
+#   # avoids bug #14246
+#   from cgi import encodeUrl
+# else:
+#   from uri import encodeUrl
+from uri import encodeUrl
 
 const
   exportSection = skField
