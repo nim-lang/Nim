@@ -28,7 +28,7 @@
 import ast, intsets, tables, options, lineinfos, hashes, idents,
   incremental, btrees, md5
 
-import ic / packed_ast
+# import ic / packed_ast
 
 type
   SigHash* = distinct MD5Digest
