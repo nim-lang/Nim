@@ -18,14 +18,9 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
+from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 
-# when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
-#   # avoids bug #14246
-#   from cgi import encodeUrl
-# else:
-#   from uri import encodeUrl
-from uri import encodeUrl
 
 const
   exportSection = skField
