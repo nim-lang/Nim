@@ -268,6 +268,8 @@ var
 template normalize(x: cstring): cstring = x.toLower.replace("_", "")
 
 proc escapeCString(x: var cstring) =
+  # Original strings are already esacped except HTML tags, so
+  # we only escape `<` and `>`.
   var s = ""
   for c in x:
     case c
