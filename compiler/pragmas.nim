@@ -559,7 +559,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "":
-        var e = searchInScopes(con, getIdent(con.cache, sub))
+        var amb = false
+        var e = searchInScopes(con, getIdent(con.cache, sub), amb)
+        # XXX what to do here if 'amb' is true?
         if e != nil:
           when false:
             if e.kind == skStub: loadStub(e)

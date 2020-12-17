@@ -495,7 +495,8 @@ proc semOpAux(c: PContext, n: PNode) =
 proc overloadedCallOpr(c: PContext, n: PNode): PNode =
   # quick check if there is *any* () operator overloaded:
   var par = getIdent(c.cache, "()")
-  if searchInScopes(c, par) == nil:
+  var amb = false
+  if searchInScopes(c, par, amb) == nil:
     result = nil
   else:
     result = newNodeI(nkCall, n.info)
@@ -653,7 +654,8 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
     return isUnresolvedSym(n.sym)
   of nkIdent, nkAccQuoted:
     let ident = considerQuotedIdent(c, n)
-    let sym = searchInScopes(c, ident)
+    var amb = false
+    let sym = searchInScopes(c, ident, amb)
     if sym != nil:
       return isUnresolvedSym(sym)
     else:
@@ -1880,10 +1882,12 @@ proc semDefined(c: PContext, n: PNode): PNode =
 proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
+    var amb = false
+    let ident = considerQuotedIdent(c, n)
     result = if onlyCurrentScope:
-               localSearchInScope(c, considerQuotedIdent(c, n))
+               localSearchInScope(c, ident)
              else:
-               searchInScopes(c, considerQuotedIdent(c, n))
+               searchInScopes(c, ident, amb)
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
@@ -2531,6 +2535,11 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
+  proc specialSyms(c: PContext; s: PSym) {.inline.} =
+    if s.kind == skConverter: addConverter(c, s)
+    elif s.kind == skType and s.typ != nil and s.typ.kind == tyEnum and sfPure in s.flags:
+      addPureEnum(c, s)
+
   result = newNodeI(nkExportStmt, n.info)
   for i in 0..<n.len:
     let a = n[i]
@@ -2547,6 +2556,7 @@ proc semExport(c: PContext, n: PNode): PNode =
         if it.kind in ExportableSymKinds+{skModule}:
           strTableAdd(c.module.tab, it)
           result.add newSymNode(it, a.info)
+          specialSyms(c, it)
         it = nextIter(ti, s.tab)
       markUsed(c, n.info, s)
     else:
@@ -2558,6 +2568,16 @@ proc semExport(c: PContext, n: PNode): PNode =
           result.add(newSymNode(s, a.info))
           strTableAdd(c.module.tab, s)
           markUsed(c, n.info, s)
+          specialSyms(c, s)
+          if s.kind == skType and sfPure notin s.flags:
+            var etyp = s.typ
+            if etyp.kind in {tyBool, tyEnum}:
+              for j in 0..<etyp.n.len:
+                var e = etyp.n[j].sym
+                if e.kind != skEnumField:
+                  internalError(c.config, s.info, "rawImportSymbol")
+                strTableAdd(c.module.tab, e)
+
         s = nextOverloadIter(o, c, a)
 
 proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -2722,6 +2742,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #when defined(nimsuggest):
     #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
+    c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
@@ -2731,7 +2752,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result = semDirectOp(c, n, flags)
       of skType:
         # XXX think about this more (``set`` procs)
-        let ambig = contains(c.ambiguousSymbols, s.id)
+        let ambig = c.isAmbiguous
         if not (n[0].kind in {nkClosedSymChoice, nkOpenSymChoice, nkIdent} and ambig) and n.len == 2:
           result = semConv(c, n)
         elif ambig and n.len == 1:

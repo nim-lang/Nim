@@ -70,13 +70,25 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  ImportMode* = enum
+    importAll, importSet, importExcept
+  ImportedModule* = object
+    m*: PSym
+    case mode*: ImportMode
+    of importAll: discard
+    of importSet:
+      imported*: IntSet
+    of importExcept:
+      exceptSet*: IntSet
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    importTable*: PScope       # scope for all imported symbols
+    moduleScope*: PScope       # scope for modules
+    imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
@@ -85,9 +97,6 @@ type
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
     templInstCounter*: ref int # gives every template instantiation a unique id
-
-    ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
-                               # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
     inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
@@ -134,6 +143,7 @@ type
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
     typesWithOps*: seq[(PType, PType)] #\
@@ -238,7 +248,6 @@ proc popOptionEntry*(c: PContext) =
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.enforceVoidContext = PType(kind: tyTyped)
-  result.ambiguousSymbols = initIntSet()
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module
@@ -263,9 +272,14 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
+  inclSym(c.graph.ifaces[c.module.position].converters, conv)
+
+proc addPureEnum*(c: PContext, e: PSym) =
+  inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
+  inclSym(c.graph.ifaces[c.module.position].patterns, p)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)

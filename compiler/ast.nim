@@ -799,6 +799,7 @@ type
     libHeader, libDynamic
 
   TLib* = object              # also misused for headers!
+                              # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
@@ -823,7 +824,7 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj
+  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of skType, skGenericParam:
@@ -904,6 +905,7 @@ type
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
+                              # Keep in sync with PackedType
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type

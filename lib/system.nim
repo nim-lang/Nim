@@ -627,7 +627,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: Nim
-  ##   var inputStrings : seq[string]
+  ##   var inputStrings: seq[string]
   ##   newSeq(inputStrings, 3)
   ##   assert len(inputStrings) == 3
   ##   inputStrings[0] = "The fourth"
