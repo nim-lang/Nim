@@ -9,7 +9,7 @@
 
 import
   options, strutils, os, tables, ropes, terminal, macros,
-  lineinfos, pathutils, strformat
+  lineinfos, pathutils, strformat, colors
 import std/private/miscdollars
 import strutils2
 
@@ -486,8 +486,23 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               else: ErrorTitle
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
-proc colorError(s: string, color: ForegroundColor, doColor = false): string =
-  if doColor:
+proc colorError(s: string, msgKind: TMsgKind, conf: ConfigRef): string =
+  let color = case msgKind: # Replace with user config for each possible msgkind
+    of errUnknown: colCrimson
+    of errInternal: colCoral
+    of errIllFormedAstX: colDeepPink
+    of errCannotOpenFile: colFireBrick
+    of errXExpected: colPowderBlue
+    of errGridTableNotImplemented: colGold
+    of errMarkdownIllformedTable: colTeal
+    of errGeneralParseError: colIndianRed
+    of errNewSectionExpected: colKhaki
+    of errInvalidDirectiveX: colIndigo
+    of errProveInit: colLawnGreen
+    of errGenerated: colSalmon
+    of errUser: colLime
+    else: colLime
+  if optUseColors in conf.globalOptions:
     template isQuote(val: untyped): untyped = val == '\''
     template isNotQuote(val: untyped): untyped = val != '\''
     let parsable = (s.count('"').mod 2) == 0
@@ -559,7 +574,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
 
   let
     strMsg = if isRaw: arg else: getMessageStr(msg, arg)
-    s = colorError(strMsg, color, conf.isDefined("optUseColors"))
+    s = colorError(strMsg, msg, conf)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     # we could also show `conf.cmdInput` here for `projectIsCmd`
