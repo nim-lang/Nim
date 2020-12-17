@@ -414,7 +414,8 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
-        let processHandle = q[rexit].fProcessHandle
+        when defined(windows):
+          let processHandle = q[rexit].fProcessHandle
         result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(idxs[rexit], q[rexit])
         close(q[rexit])
