@@ -375,7 +375,7 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   var list = initHeapQueue[E]()
   let name0 = ident.s.nimIdentNormalize
   var depth = 0
-  for scope in walkScopes(c.currentScope):
+  for scope in allScopes(c.currentScope):
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         let identi = scope.symbols.data[h]
