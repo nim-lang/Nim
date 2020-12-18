@@ -2499,7 +2499,7 @@ matches) is preferred:
   gen(ri) # "ref T"
 
 
-Overloading based on 'var T' / 'out T'
+Overloading based on 'var T'
 --------------------------------------
 
 If the formal parameter ``f`` is of type ``var T``
