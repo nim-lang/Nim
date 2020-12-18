@@ -96,8 +96,6 @@ proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
   assert idx < t.vals.len
   result = t.vals[idx]
 
-<<<<<<< HEAD
-=======
 proc hash*[T](t: BiTable[T]): Hash =
   ## as the keys are hashes of the values, we simply use them instead
   var h: Hash = 0
@@ -105,7 +103,6 @@ proc hash*[T](t: BiTable[T]): Hash =
     h = h !& hash((i, n))
   result = !$h
 
->>>>>>> disruptek/araq-ic4
 when isMainModule:
 
   var t: BiTable[string]
