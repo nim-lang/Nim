@@ -314,7 +314,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var o: TOverloadIter
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
-      result &= "\n  found $1" % [getSymRepr(c.config, sym)]
+      result &= "\n  found $1" % [getSymRepr(c.config, sym).quoteExpr]
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
@@ -332,8 +332,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       typeHint = " for type " & getProcHeader(c.config, sym)
     result = errUndeclaredField % ident & typeHint & " " & result
   else:
-    if result.len == 0: result = errUndeclaredRoutine % ident
-    else: result = errBadRoutine % [ident, result]
+    if result.len == 0: result = errUndeclaredRoutine % ident.quoteExpr
+    else: result = errBadRoutine % [ident.quoteExpr, result.quoteExpr]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
@@ -433,8 +433,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       args.add(")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(c.config, result.calleeSym),
-        getProcHeader(c.config, alt.calleeSym),
+        getProcHeader(c.config, result.calleeSym).quoteExpr,
+        getProcHeader(c.config, alt.calleeSym).quoteExpr,
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
@@ -598,7 +598,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
-  localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
+  localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n).quoteExpr)
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
@@ -640,8 +640,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if s.ast[genericParamsPos].safeLen != n.len-1:
       let expected = s.ast[genericParamsPos].safeLen
-      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
+      localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: " & renderTree(n) &
+         "; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)
