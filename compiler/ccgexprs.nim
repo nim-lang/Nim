@@ -8,6 +8,8 @@
 #
 
 # included from cgen.nim
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       result: var Rope; count: var int;
@@ -2643,6 +2645,8 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
       d.storage = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg p.config$n.info & " " & $n.kind
   p.currLineInfo = n.info
 
   case n.kind
