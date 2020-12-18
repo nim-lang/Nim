@@ -381,6 +381,8 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
+        when defined(windows):
+          let processHandle = q[rexit].fProcessHandle
         result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(idxs[rexit], q[rexit])
         close(q[rexit])
@@ -395,7 +397,7 @@ proc execProcesses*(cmds: openArray[string],
         else:
           when defined(windows):
             for k in 0..wcount - 1:
-              if w[k] == q[rexit].fProcessHandle:
+              if w[k] == processHandle:
                 w[k] = w[wcount - 1]
                 w[wcount - 1] = 0
                 dec(wcount)
@@ -441,10 +443,17 @@ when defined(Windows) and not defined(useNimRtl):
       handle: Handle
       atTheEnd: bool
 
+  proc closeHandleCheck(handle: Handle) {.inline.} =
+    if handle.closeHandle() == 0:
+      raiseOSError(osLastError())
+
+  proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
+    if h > 4:
+      closeHandleCheck(h)
+      h = INVALID_HANDLE_VALUE.T
+
   proc hsClose(s: Stream) =
-    # xxx here + elsewhere: check instead of discard; ignoring errors leads to
-    # hard to track bugs
-    discard FileHandleStream(s).handle.closeHandle
+    FileHandleStream(s).handle.fileClose()
 
   proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
@@ -549,8 +558,8 @@ when defined(Windows) and not defined(useNimRtl):
 
     stdin = myDup(pipeIn, 0)
     stdout = myDup(pipeOut, 0)
-    discard closeHandle(pipeIn)
-    discard closeHandle(pipeOut)
+    closeHandleCheck(pipeIn)
+    closeHandleCheck(pipeOut)
     stderr = stdout
 
   proc createPipeHandles(rdHandle, wrHandle: var Handle) =
@@ -560,9 +569,6 @@ when defined(Windows) and not defined(useNimRtl):
     sa.bInheritHandle = 1
     if createPipe(rdHandle, wrHandle, sa, 0) == 0'i32:
       raiseOSError(osLastError())
-
-  proc fileClose(h: Handle) {.inline.} =
-    if h > 4: discard closeHandle(h)
 
   proc startProcess(command: string, workingDir: string = "",
       args: openArray[string] = [], env: StringTableRef = nil,
@@ -658,13 +664,31 @@ when defined(Windows) and not defined(useNimRtl):
     result.id = procInfo.dwProcessId
     result.exitFlag = false
 
+  proc closeThreadAndProcessHandle(p: Process) =
+    if p.fThreadHandle != 0:
+      closeHandleCheck(p.fThreadHandle)
+      p.fThreadHandle = 0
+
+    if p.fProcessHandle != 0:
+      closeHandleCheck(p.fProcessHandle)
+      p.fProcessHandle = 0
+
   proc close(p: Process) =
     if poParentStreams notin p.options:
-      discard closeHandle(p.inHandle)
-      discard closeHandle(p.outHandle)
-      discard closeHandle(p.errHandle)
-    discard closeHandle(p.fThreadHandle)
-    discard closeHandle(p.fProcessHandle)
+      if p.inStream == nil:
+        p.inHandle.fileClose()
+      else:
+        # p.inHandle can be already closed via inputStream.
+        p.inStream.close
+
+      # You may NOT close outputStream and errorStream.
+      assert p.outStream == nil or FileHandleStream(p.outStream).handle != INVALID_HANDLE_VALUE
+      assert p.errStream == nil or FileHandleStream(p.errStream).handle != INVALID_HANDLE_VALUE
+
+      if p.outHandle != p.errHandle:
+        p.errHandle.fileClose()
+      p.outHandle.fileClose()
+    p.closeThreadAndProcessHandle()
 
   proc suspend(p: Process) =
     discard suspendThread(p.fThreadHandle)
@@ -698,8 +722,7 @@ when defined(Windows) and not defined(useNimRtl):
     if status != STILL_ACTIVE:
       p.exitFlag = true
       p.exitStatus = status
-      discard closeHandle(p.fThreadHandle)
-      discard closeHandle(p.fProcessHandle)
+      p.closeThreadAndProcessHandle()
       result = status
     else:
       result = -1
@@ -715,8 +738,7 @@ when defined(Windows) and not defined(useNimRtl):
       discard getExitCodeProcess(p.fProcessHandle, status)
       p.exitFlag = true
       p.exitStatus = status
-      discard closeHandle(p.fThreadHandle)
-      discard closeHandle(p.fProcessHandle)
+      p.closeThreadAndProcessHandle()
       result = status
 
   proc inputStream(p: Process): Stream =
