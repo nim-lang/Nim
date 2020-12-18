@@ -564,7 +564,7 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
   ## avoids boilerplate
   if not cond:
-    var arg2 = "'$1' failed" % [astToStr(cond)]
+    var arg2 = "'$1' failed" % [astToStr(cond).colorError(mcError, conf)]
     if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
     liMessage(conf, info, errGenerated, arg2, doRaise, instLoc())
 

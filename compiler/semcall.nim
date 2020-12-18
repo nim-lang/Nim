@@ -277,7 +277,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     globalError(c.config, n.info, "type mismatch")
     return
   if errors.len == 0:
-    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
+    localError(c.config, n.info, ("expression '$1' cannot be called" % n[0].renderTree).colorError(mcError, c.config))
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
@@ -409,7 +409,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif result.state != csMatch:
       if nfExprCall in n.flags:
         localError(c.config, n.info, "expression '$1' cannot be called" %
-                   renderTree(n, {renderNoComments}))
+                   renderTree(n, {renderNoComments}).colorError(mcError, c.config))
       else:
         if {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops

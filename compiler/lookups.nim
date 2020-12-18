@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils, colormsg
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -189,8 +189,8 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo) =
   if c.config.cmd != cmdInteractive:
     localError(c.config, info,
-      "redefinition of '$1'; previous declaration here: $2" %
-      [s, c.config $ conflictsWith])
+      ("redefinition of '$1'; previous declaration here: $2" %
+      [s, c.config $ conflictsWith]).colorError(mcError, c.config))
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
   let conflict = c.currentScope.addUniqueSym(sym)

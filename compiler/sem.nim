@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, rod, lineinfos, strtabs, int128,
-  isolation_check, typeallowed
+  isolation_check, typeallowed, colormsg
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -240,7 +240,7 @@ proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
     else:
       err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
               typeToString(typ), toHumanStr(kind)]
-    localError(c.config, info, err)
+    localError(c.config, info, err.colorError(mcError, c.config))
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c, typ.n.info, typ, skProc)
@@ -458,7 +458,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
-    globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
+    globalError(c.config, info, ("recursive dependency: '$1'" % sym.name.s).colorError(mcError, c.config))
 
   let genericParams = sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)

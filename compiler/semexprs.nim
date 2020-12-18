@@ -576,8 +576,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if x.kind == nkExprColonExpr and x.len == 2:
       var idx = semConstExpr(c, x[0])
       if not isOrdinalType(idx.typ):
-        localError(c.config, idx.info, "expected ordinal value for array " &
-                   "index, got '$1'" % renderTree(idx))
+        localError(c.config, idx.info, ("expected ordinal value for array " &
+                   "index, got '$1'" % renderTree(idx)).colorError(mcError, c.config))
       else:
         firstIndex = getOrdValue(idx)
         lastIndex = firstIndex
@@ -593,8 +593,8 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if lastIndex == lastValidIndex:
         let validIndex = makeRangeType(c, toInt64(firstIndex), toInt64(lastValidIndex), n.info,
                                        indexType)
-        localError(c.config, n.info, "size of array exceeds range of index " &
-          "type '$1' by $2 elements" % [typeToString(validIndex), $(n.len-i)])
+        localError(c.config, n.info, ("size of array exceeds range of index " &
+          "type '$1' by $2 elements" % [typeToString(validIndex), $(n.len-i)]).colorError(mcError, c.config))
 
       x = n[i]
       if x.kind == nkExprColonExpr and x.len == 2:
@@ -1921,12 +1921,12 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
       return errorSym(c, n[0])
 
     if expandedSym.kind notin {skMacro, skTemplate}:
-      localError(c.config, n.info, "'$1' is not a macro or template" % expandedSym.name.s)
+      localError(c.config, n.info, ("'$1' is not a macro or template" % expandedSym.name.s).colorError(mcError, c.config))
       return errorSym(c, n[0])
 
     result = expandedSym
   else:
-    localError(c.config, n.info, "'$1' is not a macro or template" % n.renderTree)
+    localError(c.config, n.info, ("'$1' is not a macro or template" % n.renderTree).colorError(mcError, c.config))
     result = errorSym(c, n)
 
 proc expectString(c: PContext, n: PNode): string =
@@ -1934,7 +1934,7 @@ proc expectString(c: PContext, n: PNode): string =
   if n.kind in nkStrKinds:
     return n.strVal
   else:
-    localError(c.config, n.info, errStringLiteralExpected)
+    localError(c.config, n.info, errStringLiteralExpected.colorError(mcError, c.config))
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
   result = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), info)
