@@ -785,6 +785,11 @@ when declared(stdout):
 
   const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
 
+  template checkErrMaybe(succeeded: bool): untyped =
+    if not succeeded:
+      when echoDoRaise:
+        checkErr(stdout)
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -805,16 +810,10 @@ when declared(stdout):
         when defined(windows):
           writeWindows(stdout, s, doRaise = echoDoRaise)
         else:
-          if c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) != s.len:
-            when echoDoRaise:
-              checkErr(stdout)
+          checkErrMaybe(c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) == s.len)
       const linefeed = "\n"
-      if c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) != linefeed.len:
-        when echoDoRaise:
-          checkErr(stdout)
-      if c_fflush(stdout) != 0:
-        when echoDoRaise:
-          checkErr(stdout)
+      checkErrMaybe(c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) == linefeed.len)
+      checkErrMaybe(c_fflush(stdout) == 0)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):
