@@ -23,4 +23,3 @@ jobs:
           dirtyLabel: "needs-rebase"
           removeOnDirtyLabel: "no conflicts"
           commentOnDirty: "conflicts detected, rebase needed"
-          commentOnClean: "conflicts have been resolved"
