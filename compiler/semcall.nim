@@ -199,6 +199,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   var candidatesAll: seq[string]
   var candidates = ""
   var skipped = 0
+
+  template addColorError(a: string) = candidates.add(a.colorError(c.config))
+
   for err in errors:
     candidates.setLen 0
     if filterOnlyFirst and err.firstMismatch.arg == 1:
@@ -219,13 +222,13 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       case err.firstMismatch.kind
       of kUnknownNamedParam:
         if nArg == nil:
-          candidates.add("\n  unknown named parameter")
+          addColorError("\n  unknown named parameter")
         else:
-          candidates.add("\n  unknown named parameter: " & $nArg[0])
-      of kAlreadyGiven: candidates.add("\n  named param already provided: " & $nArg[0])
-      of kPositionalAlreadyGiven: candidates.add("\n  positional param was already given as named param")
-      of kExtraArg: candidates.add("\n  extra argument given")
-      of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
+          addColorError("\n  unknown named parameter: " & $nArg[0])
+      of kAlreadyGiven: addColorError("\n  named param already provided: " & $nArg[0])
+      of kPositionalAlreadyGiven: addColorError("\n  positional param was already given as named param")
+      of kExtraArg: addColorError("\n  extra argument given")
+      of kMissingParam: addColorError("\n  missing parameter: " & nameParam)
       of kTypeMismatch, kVarNeeded:
         doAssert nArg != nil
         var wanted = err.firstMismatch.formal.typ
@@ -235,10 +238,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add ("$1 is immutable, not 'var'" % renderNotLValue(nArg)).colorError(c.config)
+          addColorError("'$1' is immutable, not 'var'" % renderNotLValue(nArg))
         else:
           var got = nArg.typ
-          candidates.add ("$1 is of type: $2" % [renderTree(nArg), typeToString(got)]).colorError(c.config)
+          addColorError("'$1' is of type: '$2'" % [renderTree(nArg), typeToString(got)])
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
@@ -300,7 +303,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
                                 enabled: false))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
-    localError(c.config, n.info, "could not resolve: " & $n)
+    localError(c.config, n.info, "could not resolve: " & colorError($n, c.config))
   else:
     notFoundError(c, n, errors)
 
@@ -433,8 +436,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       args.add(")")
 
       localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(c.config, result.calleeSym).quoteExpr,
-        getProcHeader(c.config, alt.calleeSym).quoteExpr,
+        getProcHeader(c.config, result.calleeSym),
+        getProcHeader(c.config, alt.calleeSym),
         args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
