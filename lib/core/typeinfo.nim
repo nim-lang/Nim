@@ -27,6 +27,8 @@ include "system/hti.nim"
 
 {.pop.}
 
+from cstrutils import cmpIgnoreStyle
+
 type
   AnyKind* = enum      ## what kind of ``any`` it is
     akNone = 0,         ## invalid any
@@ -365,22 +367,6 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
     fieldsAux(p, t.node, ret)
   for name, any in items(ret):
     yield ($name, any)
-
-proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-  proc toLower(c: char): char {.inline.} =
-    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-    else: result = c
-  var i = 0
-  var j = 0
-  while true:
-    while a[i] == '_': inc(i)
-    while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
-    result = ord(aa) - ord(bb)
-    if result != 0 or aa == '\0': break
-    inc(i)
-    inc(j)
 
 proc getFieldNode(p: pointer, n: ptr TNimNode,
                   name: cstring): ptr TNimNode =
