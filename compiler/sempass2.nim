@@ -225,6 +225,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
 # TODO FIX THIS & USE PROPER REASY
 proc markMemUnsafe(a: PEffects) =
   if not a.forceMemSafe:
+    incl(a.owner.flags, sfMemUnsafe)
     a.memUnsafe = true
 
 proc markMemUnsafe(a: PEffects; reason: PSym) =
@@ -278,10 +279,9 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
       markSideEffect(a, s)
-    if sfMemUnsafe in s.flags:
-      markMemUnsafe(a, s)
     else:
       markSideEffect(a, s)
+    if sfMemUnsafe in s.flags: markMemUnsafe(a, s)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -507,6 +507,9 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   let tagSpec = effectSpec(pragma, wTags)
   mergeTags(tracked, tagSpec, n)
 
+  if tfMemUnsafe in s.typ.flags or sfMemUnsafe in s.flags:
+    echo "propagateEffects -> memUnsafe"
+    markMemUnsafe(tracked, s)
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
     markGcUnsafe(tracked, s)
@@ -760,17 +763,19 @@ proc trackCall(tracked: PEffects; n: PNode) =
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a)
 
-    if tfMemSafe notin op.flags and not importedFromC(a):
-      # and it's not a recursive call:
-      if not (a.kind == nkSym and a.sym == tracked.owner):
-        markMemUnsafe(tracked, a)
-
   # p's effects are ours too:
   var a = n[0]
+
   #if canRaise(a):
   #  echo "this can raise ", tracked.config $ n.info
   let op = a.typ
+
   if n.typ != nil:
+
+    if op != nil and op.kind == tyProc and tfMemUnsafe in op.flags:
+      echo "tfMemUnsafe ->", a
+      markMemUnsafe(tracked, a)
+
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
   if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil:
@@ -782,11 +787,14 @@ proc trackCall(tracked: PEffects; n: PNode) =
     # we can detect them only by checking for attached nkEffectList.
     if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
       if a.kind == nkSym:
+        # Is this redundant with the one top ?
+        if sfMemUnsafe in a.sym.flags:
+          echo "sfMemUnsafe ->", a
+          markMemUnsafe(tracked, a)
         if a.sym == tracked.owner: tracked.isRecursive = true
         # even for recursive calls we need to check the lock levels (!):
         mergeLockLevels(tracked, n, a.sym.getLockLevel)
         if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
-        if sfMemUnsafe in a.sym.flags:  markMemUnsafe(tracked, a)
       else:
         mergeLockLevels(tracked, n, op.lockLevel)
       var effectList = op.n[0]
@@ -931,6 +939,7 @@ proc track(tracked: PEffects, n: PNode) =
       # bug #15038: ensure consistency
       if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
+    # Addr / HiddenAddr as unsafe ?
     if n[0].kind == nkSym and isLocalVar(tracked, n[0].sym):
       useVarNoInitCheck(tracked, n[0], n[0].sym)
     else:
@@ -1123,7 +1132,9 @@ proc track(tracked: PEffects, n: PNode) =
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   of nkCast:
+    echo "track -> nkCast -> ", n, " len(n)=", n.len
     if n.len == 2:
+      # add unsafe flag on cast here 
       markMemUnsafe(tracked)
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:
@@ -1360,9 +1371,12 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
+
+  # TODO  is this enough for trackProc ?
+  # TODO FORMAT A PROPER ERROR MESSAGE
   if not(t.forceMemSafe) and (t.memUnsafe and sfMemSafe in s.flags):
-    # TODO FORMAT A PROPER ERROR MESSAGE
     localError(g.config, s.info, ("'$1' is not compatible with memory safety requirements" % s.name.s) & (g.config $ mutationInfo))
+
   if s.typ.lockLevel == UnspecifiedLockLevel:
     s.typ.lockLevel = t.maxLockLevel
   elif t.maxLockLevel > s.typ.lockLevel:

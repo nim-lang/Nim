@@ -839,6 +839,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        incl(sym.flags, sfMemUnsafe)
       of wImportJs:
         if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
@@ -848,8 +849,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.kind in skProcKinds and {'(', '#', '@'} notin name:
           localError(c.config, n.info, "`importjs` for routines requires a pattern")
         setExternName(c, sym, name, it.info)
+        incl(sym.flags, sfMemUnsafe)
       of wImportObjC:
         processImportObjC(c, sym, getOptionalStr(c, it, "$1"), it.info)
+        incl(sym.flags, sfMemUnsafe)
       of wSize:
         if sym.typ == nil: invalidPragma(c, it)
         var size = expectIntLit(c, it)
@@ -930,11 +933,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, sfSideEffect)
       of wMemSafe:
-        if sym != nil:
-          incl(sym.flags, sfMemSafe)
-          if sym.typ != nil: incl(sym.typ.flags, tfMemSafe)
+        incl(sym.flags, sfMemSafe)
+        # if sym.typ != nil: incl(sym.typ.flags, fMemSafe)
       of wMemUnsafe:
-        incl(sym.flags, sfMemUnsafe)
+        if sym != nil:
+          incl(sym.flags, sfMemUnsafe)
+          if sym.typ != nil: incl(sym.typ.flags, tfMemUnsafe)
       of wNoreturn:
         noVal(c, it)
         # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!

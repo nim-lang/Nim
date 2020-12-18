@@ -492,7 +492,8 @@ type
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
-    tfMemSafe,        # procedure type does not allow MemUnsafe 
+    # tfMemSafe,        # procedure type does not allow MemUnsafe
+    tfMemUnsafe,      # procedure type is MemUnsafe
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
     tfHasOwned,       # type contains an 'owned' type and must be moved
