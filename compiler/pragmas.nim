@@ -563,8 +563,6 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(con.cache, sub), amb)
         # XXX what to do here if 'amb' is true?
         if e != nil:
-          when false:
-            if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
           result.add newSymNode(e)
         else:

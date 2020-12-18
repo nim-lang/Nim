@@ -30,7 +30,9 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 const
-  idStart = 256 # Ids do not start with 0 but with this value. The IR needs it.
+  idStart = 256 ##
+  ## Ids do not start with 0 but with this value. The IR needs it.
+  ## TODO: explain why
 
 template idToIdx(x: LitId): int = x.int - idStart
 
@@ -94,6 +96,16 @@ proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
   assert idx < t.vals.len
   result = t.vals[idx]
 
+<<<<<<< HEAD
+=======
+proc hash*[T](t: BiTable[T]): Hash =
+  ## as the keys are hashes of the values, we simply use them instead
+  var h: Hash = 0
+  for i, n in pairs t.keys:
+    h = h !& hash((i, n))
+  result = !$h
+
+>>>>>>> disruptek/araq-ic4
 when isMainModule:
 
   var t: BiTable[string]

@@ -77,9 +77,9 @@ type
     case mode*: ImportMode
     of importAll: discard
     of importSet:
-      imported*: IntSet
+      imported*: IntSet          # of PIdent.id
     of importExcept:
-      exceptSet*: IntSet
+      exceptSet*: IntSet         # of PIdent.id
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -154,6 +154,7 @@ type
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
+    ic*: PPassContext
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -273,6 +274,7 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
   inclSym(c.graph.ifaces[c.module.position].converters, conv)
+  #addConverter(c.graph, c.module, conv) # upcoming
 
 proc addPureEnum*(c: PContext, e: PSym) =
   inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
@@ -280,6 +282,7 @@ proc addPureEnum*(c: PContext, e: PSym) =
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
   inclSym(c.graph.ifaces[c.module.position].patterns, p)
+  #addPattern(c.graph, c.module, p) # upcoming
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -463,3 +466,7 @@ proc popCaseContext*(c: PContext) =
 
 proc setCaseContextIdx*(c: PContext, idx: int) =
   c.p.caseContext[^1].idx = idx
+
+template addExport*(c: PContext; s: PSym) =
+  ## convenience to export a symbol from the current module
+  addExport(c.graph, c.module, s)

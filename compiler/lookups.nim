@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils, modulegraphs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -169,15 +169,14 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   dec scopeN
   isLocal = false
   for im in c.imports.mitems:
-    for s in im.m.tab.data:
-      if s != nil:
-        yield (s, scopeN, isLocal)
+    for s in symbols(c.graph, im.m):
+      yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
   result = nil
   for im in c.imports.mitems:
-    for s in symbols(im, marked, name):
+    for s in symbols(c.graph, im, marked, name):
       if result == nil:
         result = s
       else:
@@ -214,7 +213,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
   if result.len == 0:
     var marked = initIntSet()
     for im in c.imports.mitems:
-      for s in symbols(im, marked, s):
+      for s in symbols(c.graph, im, marked, s):
         if s.kind in filter:
           result.add s
 
@@ -305,8 +304,8 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
-    # add to interface:
-    if c.module != nil: strTableAdd(c.module.tab, sym)
+    if c.module != nil:
+      addExport(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
@@ -423,8 +422,6 @@ proc lookUp*(c: PContext, n: PNode): PSym =
   if amb:
     #contains(c.ambiguousSymbols, result.id):
     errorUseQualifier(c, n.info, result)
-  when false:
-    if result.kind == skStub: loadStub(result)
 
 type
   TLookupFlag* = enum
@@ -473,9 +470,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
-          result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
+          result = strTableGet(c.topLevelScope.symbols, ident)
         else:
-          result = strTableGet(m.tab, ident).skipAlias(n, c.config)
+          result = getExport(c.graph, m, ident)
+        result = result.skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n[1], ident, searchInScopes)
           errorUndeclaredIdentifier(c, n[1].info, ident.s)
@@ -489,8 +487,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         result = errorSym(c, n[1])
   else:
     result = nil
-  when false:
-    if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
@@ -531,11 +527,11 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if ident != nil:
         if o.m == c.module:
           # a module may access its private members:
-          result = initIdentIter(o.it, c.topLevelScope.symbols,
-                                 ident).skipAlias(n, c.config)
+          result = initIdentIter(o.it, c.topLevelScope.symbols, ident)
           o.mode = oimSelfModule
         else:
-          result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n, c.config)
+          result = initIdentIter(o.it, c.graph, o.m, ident)
+        result = result.skipAlias(n, c.config)
       else:
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
@@ -550,8 +546,6 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.marked = initIntSet()
     incl(o.marked, result.id)
   else: discard
-  when false:
-    if result != nil and result.kind == skStub: loadStub(result)
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
@@ -613,9 +607,10 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     else:
       result = nil
   of oimSelfModule:
-    result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
+    result = nextIdentIter(o.it, c.topLevelScope.symbols)
+    result = result.skipAlias(n, c.config)
   of oimOtherModule:
-    result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
+    result = nextIdentIter(o.it, c.graph, o.m).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym
