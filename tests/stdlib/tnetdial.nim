@@ -2,6 +2,7 @@ discard """
   cmd: "nim c --threads:on $file"
   exitcode: 0
   output: "OK"
+  disabled: "drone"
 """
 
 import os, net, nativesockets, asyncdispatch
