@@ -18,7 +18,7 @@
             "export PATH=$PWD/bin:$PATH",
             "make -C csources -j$(nproc)",
             "nim c koch",
-            "./koch runCI || nim c -r tools/ci_testresults"
+            "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
          ],
          "image": "gcc:10.2",
          "name": "runci"
@@ -46,7 +46,7 @@
             "export PATH=$PWD/bin:$PATH",
             "make -C csources -j$(nproc) ucpu=arm",
             "nim c koch",
-            "./koch runCI || nim c -r tools/ci_testresults"
+            "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
          ],
          "image": "gcc:10.2",
          "name": "runci"

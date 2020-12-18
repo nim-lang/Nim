@@ -25,7 +25,12 @@ local Pipeline(arch) = {
         "export PATH=$PWD/bin:$PATH",
         "make -C csources -j$(nproc)" + cpu,
         "nim c koch",
-        "./koch runCI || nim c -r tools/ci_testresults"
+        |||
+          if ! ./koch runCI; then
+            nim c -r tools/ci_testresults
+            exit 1
+          fi
+        |||,
       ]
     }
   ]
