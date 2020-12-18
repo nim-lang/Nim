@@ -1,10 +1,18 @@
 discard """
 action: compile
 """
+static: echo "#####################"
+
+
 proc xx() {.memUnsafe.} =
   echo "xx"
-proc yy() {.memSafe.} =
+
+proc yy() =
   echo "yy"
   xx()
 
-yy()
+proc zz() {.memSafe.} =
+  echo "zz"
+  yy()
+
+zz()

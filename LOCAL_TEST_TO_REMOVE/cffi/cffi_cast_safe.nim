@@ -1,6 +1,7 @@
 discard """
 action: compile
 """
+static: echo "###################################"
 
 {.compile: "cffi.c".}
 

@@ -3,12 +3,11 @@ action: compile
 """
 static: echo "########################"
 
-proc xx() {.memUnsafe.} =
+proc xx() =
   echo "xx"
 
 proc yy() {.memSafe.} =
-  {.cast(memSafe).}:
-    echo "yy"
-    xx()
+  echo "yy"
+  xx()
 
 yy()
