@@ -2524,17 +2524,6 @@ the argument is checked to be an `l-value`:idx:.
               # 13
 
 
-An l-value matches ``var T`` equally well, hence
-the following is ambiguous:
-
-.. code-block:: nim
-
-  proc p(x: out string) = x = ""
-  proc p(x: var string) = x = ""
-  var v: string
-  p(v) # ambiguous
-
-
 Lazy type resolution for untyped
 --------------------------------
 
