@@ -1,5 +1,6 @@
 discard """
-  targets: "c"
+  matrix: "--gc:refc; --gc:arc; --gc:orc"
+  target: "c"
 """
 
 import coro
