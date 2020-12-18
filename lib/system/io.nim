@@ -783,6 +783,8 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -801,15 +803,18 @@ when declared(stdout):
         defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s, doRaise = true)
+          writeWindows(stdout, s, doRaise = echoDoRaise)
         else:
           if c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) != s.len:
-            checkErr(stdout)
+            when echoDoRaise:
+              checkErr(stdout)
       const linefeed = "\n"
       if c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) != linefeed.len:
-        checkErr(stdout)
+        when echoDoRaise:
+          checkErr(stdout)
       if c_fflush(stdout) != 0:
-        checkErr(stdout)
+        when echoDoRaise:
+          checkErr(stdout)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):
