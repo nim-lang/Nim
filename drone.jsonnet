@@ -20,8 +20,8 @@ local Pipeline(arch) = {
       name: "runci",
       image: dockercpu + "gcc:10.2",
       commands: [
-        "apt-get update -yq",
-        "apt-get install --no-install-recommends -yq" + valgrind + " libgc-dev libsdl1.2-dev libsfml-dev",
+        "curl -sL https://deb.nodesource.com/setup_lts.x | bash -",
+        "apt-get install --no-install-recommends -yq" + valgrind + " nodejs libgc-dev libsdl1.2-dev libsfml-dev",
         "git clone --depth 1 https://github.com/nim-lang/csources.git",
         "export PATH=$PWD/bin:$PATH",
         "make -C csources -j$(nproc)" + cpu,
