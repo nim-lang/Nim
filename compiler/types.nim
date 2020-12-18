@@ -1501,7 +1501,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       msg.add "\n"
     msg.add " but expected '$1'" % x
     if verbose: msg.addDeclaredLoc(conf, formal)
-
+    msg = msg.colorError(mcError, conf)
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)
       of efCompat: discard
