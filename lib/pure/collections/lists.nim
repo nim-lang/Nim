@@ -179,7 +179,7 @@ proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
   new(result)
   result.value = value
 
-func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5).} =
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 6).} =
   ## Creates a new `SinglyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
@@ -190,7 +190,7 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (
   for elem in elems.items:
     result.append(elem)
 
-func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5).} =
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 6).} =
   ## Creates a new `DoublyLinkedList` with the members of the
   ## given collection (seq, array, or string) `elems`.
   runnableExamples:
@@ -458,7 +458,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
-func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
+func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 6).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
     import sequtils
@@ -481,7 +481,7 @@ func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
   for x in a:
     result.append(x)
 
-proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5).} =
+proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 6).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
   ## Note that `b` becomes empty after the operation.
   ## Self-adding results in an empty list.
@@ -593,7 +593,7 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
 
-func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
+func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 6).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
     type Foo = ref object
@@ -612,7 +612,7 @@ func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5).} =
   for x in a:
     result.append(x)
 
-proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5).} =
+proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 6).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
   ## Note that `b` becomes empty after the operation.
   ## Self-adding results in an empty list.
@@ -640,7 +640,7 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5).} =
   b.head = nil
   b.tail = nil
 
-proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5).} =
+proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 6).} =
   ## Appends a shallow copy of `b` to the end of `a`.
   ##
   ## See also:
