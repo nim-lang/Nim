@@ -48,7 +48,7 @@
             "nim c koch",
             "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
          ],
-         "image": "gcc:10.2",
+         "image": "arm32v7/gcc:10.2",
          "name": "runci"
       }
    ],

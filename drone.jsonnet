@@ -14,10 +14,11 @@ local Pipeline(arch) = {
 
   local valgrind = if arch == "arm64" then " valgrind libc6-dbg" else "",
   local cpu = if arch == "arm" then " ucpu=arm" else "",
+  local dockercpu = if arch == "arm" then "arm32v7/" else "",
   steps: [
     {
       name: "runci",
-      image: "gcc:10.2",
+      image: dockercpu + "gcc:10.2",
       commands: [
         "apt-get update -yq",
         "apt-get install --no-install-recommends -yq" + valgrind + " libgc-dev libsdl1.2-dev libsfml-dev",
