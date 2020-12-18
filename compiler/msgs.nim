@@ -441,7 +441,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         let message = if context.detail == "":
           instantiationFrom
         else:
-          instantiationOfFrom.format(context.detail.colorError(mcError, conf))
+          instantiationOfFrom.format(context.detail.colorError(conf))
         styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
@@ -478,10 +478,10 @@ proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   let
     msg = $sourceLine(conf, info)
     uncolored = msg[0..<info.col]
-    colored = msg[info.col..^1].colorError(mcError, conf)
+    colored = msg[info.col..^1].colorError(conf)
   msgWriteln(conf, indent & uncolored & colored)
   if info.col >= 0:
-    msgWriteln(conf, (indent & spaces(info.col) & '^').colorError(mcError, conf))
+    msgWriteln(conf, (indent & spaces(info.col) & '^').colorError(conf))
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -564,7 +564,7 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
   ## avoids boilerplate
   if not cond:
-    var arg2 = "'$1' failed" % [astToStr(cond).colorError(mcError, conf)]
+    var arg2 = "'$1' failed" % [astToStr(cond).colorError(conf)]
     if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
     liMessage(conf, info, errGenerated, arg2, doRaise, instLoc())
 

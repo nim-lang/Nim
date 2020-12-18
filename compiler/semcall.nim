@@ -214,7 +214,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
-      candidates.add(("  first type mismatch at position: " & $err.firstMismatch.arg).colorError(mcError, c.config))
+      candidates.add(("  first type mismatch at position: " & $err.firstMismatch.arg).colorError(c.config))
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
       of kUnknownNamedParam:
@@ -231,14 +231,14 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         var wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted).colorError(mcHighlight, c.config)
+        candidates.add typeToString(wanted).colorHighlight(c.config)
         candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add ("$1 is immutable, not 'var'" % renderNotLValue(nArg)).colorError(mcError, c.config)
+          candidates.add ("$1 is immutable, not 'var'" % renderNotLValue(nArg)).colorError(c.config)
         else:
           var got = nArg.typ
-          candidates.add ("$1 is of type: $2" % [renderTree(nArg), typeToString(got)]).colorError(mcError, c.config)
+          candidates.add ("$1 is of type: $2" % [renderTree(nArg), typeToString(got)]).colorError(c.config)
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
@@ -277,12 +277,12 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     globalError(c.config, n.info, "type mismatch")
     return
   if errors.len == 0:
-    localError(c.config, n.info, ("expression '$1' cannot be called" % n[0].renderTree).colorError(mcError, c.config))
+    localError(c.config, n.info, ("expression '$1' cannot be called" % n[0].renderTree).colorError(c.config))
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = errTypeMismatch
-  result.add(fmt"<{describeArgs(c, n, 1, prefer)}>".colorError(mcError, c.config))
+  result.add(fmt"<{describeArgs(c, n, 1, prefer)}>".colorError(c.config))
   if candidates != "":
     result.add("\n" & errButExpected & "\n" & candidates)
   localError(c.config, n.info, result & "\nexpression: " & $n)
@@ -409,7 +409,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     elif result.state != csMatch:
       if nfExprCall in n.flags:
         localError(c.config, n.info, "expression '$1' cannot be called" %
-                   renderTree(n, {renderNoComments}).colorError(mcError, c.config))
+                   renderTree(n, {renderNoComments}).colorError(c.config))
       else:
         if {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops

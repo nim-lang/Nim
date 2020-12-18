@@ -161,7 +161,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
       else:
         result.add renderTree(p)
     result.add(')')
-    result = result.colorError(mcError, conf)
+    result = result.colorError(conf)
     if n[0].typ != nil:
       result.add(": " & typeToString(n[0].typ, prefer))
   if getDeclarationPath: result.addDeclaredLoc(conf, sym)
@@ -1501,7 +1501,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
       msg.add "\n"
     msg.add " but expected '$1'" % x
     if verbose: msg.addDeclaredLoc(conf, formal)
-    msg = msg.colorError(mcError, conf)
+    msg = msg.colorError(conf)
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)
       of efCompat: discard

@@ -190,7 +190,7 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
   if c.config.cmd != cmdInteractive:
     localError(c.config, info,
       ("redefinition of '$1'; previous declaration here: $2" %
-      [s, c.config $ conflictsWith]).colorError(mcError, c.config))
+      [s, c.config $ conflictsWith]).colorError(c.config))
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
   let conflict = c.currentScope.addUniqueSym(sym)
