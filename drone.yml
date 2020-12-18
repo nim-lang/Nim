@@ -8,8 +8,9 @@ platform:
 
 steps:
   - name: runci
-    image: gcc
+    image: gcc:10.2
     commands:
+      - apt-get update -yq
       - |
         apt-get install --no-install-recommends -yq valgrind libc6-dbg \
           libgc-dev libsdl1.2-dev libsfml-dev
@@ -30,8 +31,9 @@ platform:
 
 steps:
   - name: runci
-    image: gcc
+    image: gcc:10.2
     commands:
+      - apt-get update -yq
       - |
         apt-get install --no-install-recommends -yq valgrind libc6-dbg \
           libgc-dev libsdl1.2-dev libsfml-dev
