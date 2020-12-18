@@ -306,6 +306,15 @@ block: # bug #8007
   const d = @[Cost(kind: Fixed, cost: 999), Cost(kind: Dynamic, handler: foo)]
   doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
 
+block: # bug #14340
+  proc opl3EnvelopeCalcSin0() = discard
+  type EnvelopeSinfunc = proc()
+  # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
+  const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
+  const envelopeSin = [EnvelopeCalcSin0]
+  var a = 0
+  envelopeSin[a]()
+
 block: # VM wrong register free causes errors in unrelated code
   block: # bug #15597
     #[
