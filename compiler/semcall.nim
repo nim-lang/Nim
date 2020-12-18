@@ -11,6 +11,7 @@
 # included from sem.nim
 
 from algorithm import sort
+import strformat
 
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
@@ -213,7 +214,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
-      candidates.add("  first type mismatch at position: " & $err.firstMismatch.arg)
+      candidates.add(("  first type mismatch at position: " & $err.firstMismatch.arg).colorError(mcError, c.config))
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
       of kUnknownNamedParam:
@@ -230,17 +231,14 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         var wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted)
+        candidates.add typeToString(wanted).colorError(mcHighlight, c.config)
         candidates.addDeclaredLocMaybe(c.config, wanted)
-        candidates.add "\n  but expression '"
+        candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add renderNotLValue(nArg)
-          candidates.add "' is immutable, not 'var'"
+          candidates.add ("$1 is immutable, not 'var'" % renderNotLValue(nArg)).colorError(mcError, c.config)
         else:
-          candidates.add renderTree(nArg)
-          candidates.add "' is of type: "
           var got = nArg.typ
-          candidates.add typeToString(got)
+          candidates.add ("$1 is of type: $2" % [renderTree(nArg), typeToString(got)]).colorError(mcError, c.config)
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
@@ -263,7 +261,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   result = (prefer, candidates)
 
 const
-  errTypeMismatch = "type mismatch: got <"
+  errTypeMismatch = "type mismatch: got "
   errButExpected = "but expected one of: "
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
@@ -284,8 +282,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = errTypeMismatch
-  result.add(describeArgs(c, n, 1, prefer))
-  result.add('>')
+  result.add(fmt"<{describeArgs(c, n, 1, prefer)}>".colorError(mcError, c.config))
   if candidates != "":
     result.add("\n" & errButExpected & "\n" & candidates)
   localError(c.config, n.info, result & "\nexpression: " & $n)

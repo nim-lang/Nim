@@ -9,6 +9,7 @@
 
 # This module implements the instantiation of generic procs.
 # included from sem.nim
+import colormsg
 
 proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   template rec(n) = addObjFieldsToLocalScope(c, n)
@@ -74,10 +75,10 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
         # later by semAsgn in return type inference scenario
         t = q.typ
       else:
-        localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+        localError(c.config, a.info, errCannotInstantiateX % s.name.s.colorError(mcError,c.config))
         t = errorType(c)
     elif t.kind == tyGenericParam:
-      localError(c.config, a.info, errCannotInstantiateX % q.name.s)
+      localError(c.config, a.info, errCannotInstantiateX % q.name.s.colorError(mcError,c.config))
       t = errorType(c)
     elif t.kind == tyGenericInvocation:
       #t = instGenericContainer(c, a, t)

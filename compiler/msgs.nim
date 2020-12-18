@@ -9,7 +9,7 @@
 
 import
   options, strutils, os, tables, ropes, terminal, macros,
-  lineinfos, pathutils
+  lineinfos, pathutils, colormsg
 import std/private/miscdollars
 import strutils2
 
@@ -429,7 +429,7 @@ proc exactEquals*(a, b: TLineInfo): bool =
 
 proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
-  const instantiationOfFrom = "template/generic instantiation of `$1` from here"
+  const instantiationOfFrom = "template/generic instantiation of '$1' from here"
   var info = lastinfo
   for i in 0..<conf.m.msgContext.len:
     let context = conf.m.msgContext[i]
@@ -441,7 +441,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         let message = if context.detail == "":
           instantiationFrom
         else:
-          instantiationOfFrom.format(context.detail)
+          instantiationOfFrom.format(context.detail.colorError(mcError, conf))
         styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
@@ -475,9 +475,13 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
-  msgWriteln(conf, indent & $sourceLine(conf, info))
+  let
+    msg = $sourceLine(conf, info)
+    uncolored = msg[0..<info.col]
+    colored = msg[info.col..^1].colorError(mcError, conf)
+  msgWriteln(conf, indent & uncolored & colored)
   if info.col >= 0:
-    msgWriteln(conf, indent & spaces(info.col) & '^')
+    msgWriteln(conf, (indent & spaces(info.col) & '^').colorError(mcError, conf))
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
