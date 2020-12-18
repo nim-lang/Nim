@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128
+  lineinfos, int128, colormsg
 
 type
   TPreferedDesc* = enum
@@ -161,6 +161,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
       else:
         result.add renderTree(p)
     result.add(')')
+    result = result.colorError(mcError, conf)
     if n[0].typ != nil:
       result.add(": " & typeToString(n[0].typ, prefer))
   if getDeclarationPath: result.addDeclaredLoc(conf, sym)
