@@ -8,7 +8,7 @@ do
   echo "$file"
   echo "********************"
   echo ""
-  ../../bin/nim r "$file"
+  ../../bin/nim r -f "$file"
   res+=$(echo $?)
   echo ""
   echo "DONE !"
