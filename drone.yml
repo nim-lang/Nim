@@ -1,44 +1,57 @@
-kind: pipeline
-name: nim-on-arm64
-type: docker
-
-platform:
-  os: linux
-  arch: arm64
-
-steps:
-  - name: runci
-    image: gcc:10.2
-    commands:
-      - apt-get update -yq
-      - |
-        apt-get install --no-install-recommends -yq valgrind libc6-dbg \
-          libgc-dev libsdl1.2-dev libsfml-dev
-      - git clone --depth 1 https://github.com/nim-lang/csources.git
-      - export PATH=$PWD/bin:$PATH
-      - make -C csources -j$(nproc)
-      - nim c koch
-      - "./koch runCI"
-
 ---
-kind: pipeline
-name: nim-on-arm
-type: docker
-
-platform:
-  os: linux
-  arch: arm
-
-steps:
-  - name: runci
-    image: gcc:10.2
-    commands:
-      - apt-get update -yq
-      - |
-        apt-get install --no-install-recommends -yq valgrind libc6-dbg \
-          libgc-dev libsdl1.2-dev libsfml-dev
-      - git clone --depth 1 https://github.com/nim-lang/csources.git
-      - export PATH=$PWD/bin:$PATH
-      - make -C csources -j$(nproc)
-      - nim c koch
-      - "./koch runCI"
+{
+   "clone": {
+      "depth": 1
+   },
+   "kind": "pipeline",
+   "name": "nim-on-arm64",
+   "platform": {
+      "arch": "arm64",
+      "os": "linux"
+   },
+   "steps": [
+      {
+         "commands": [
+            "apt-get update -yq",
+            "apt-get install --no-install-recommends -yq valgrind libc6-dbg libgc-dev libsdl1.2-dev libsfml-dev",
+            "git clone --depth 1 https://github.com/nim-lang/csources.git",
+            "export PATH=$PWD/bin:$PATH",
+            "make -C csources -j$(nproc)",
+            "nim c koch",
+            "./koch runCI"
+         ],
+         "image": "gcc:10.2",
+         "name": "runci"
+      }
+   ],
+   "type": "docker"
+}
+---
+{
+   "clone": {
+      "depth": 1
+   },
+   "kind": "pipeline",
+   "name": "nim-on-arm",
+   "platform": {
+      "arch": "arm",
+      "os": "linux"
+   },
+   "steps": [
+      {
+         "commands": [
+            "apt-get update -yq",
+            "apt-get install --no-install-recommends -yq libgc-dev libsdl1.2-dev libsfml-dev",
+            "git clone --depth 1 https://github.com/nim-lang/csources.git",
+            "export PATH=$PWD/bin:$PATH",
+            "make -C csources -j$(nproc)",
+            "nim c koch",
+            "./koch runCI"
+         ],
+         "image": "gcc:10.2",
+         "name": "runci"
+      }
+   ],
+   "type": "docker"
+}
+...

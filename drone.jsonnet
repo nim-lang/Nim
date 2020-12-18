@@ -8,13 +8,18 @@ local Pipeline(arch) = {
     arch: arch
   },
 
+  clone: {
+    depth: 1
+  },
+
+  local valgrind = if arch == "arm64" then " valgrind libc6-dbg" else "",
   steps: [
     {
       name: "runci",
       image: "gcc:10.2",
       commands: [
-        "apt-get update -yq"
-        "apt-get install --no-install-recommends -yq valgrind libc6-dbg libgc-dev libsdl1.2-dev libsfml-dev",
+        "apt-get update -yq",
+        "apt-get install --no-install-recommends -yq" + valgrind + " libgc-dev libsdl1.2-dev libsfml-dev",
         "git clone --depth 1 https://github.com/nim-lang/csources.git",
         "export PATH=$PWD/bin:$PATH",
         "make -C csources -j$(nproc)",
