@@ -22,4 +22,5 @@ jobs:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           dirtyLabel: "needs-rebase"
           removeOnDirtyLabel: "no conflicts"
-          commentOnDirty: "conflicts detected, rebase needed"
+          # xxx enable this if label change isn't triggering a notification to PR author
+          # commentOnDirty: "conflicts detected, rebase needed"
