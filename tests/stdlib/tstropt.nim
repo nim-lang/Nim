@@ -1,8 +1,8 @@
 discard """
-  matrix: "c js"
+  targets: "c cpp js"
 """
 
-import strutils
+import std/stropt
 
 
 proc testStripInplace() =
