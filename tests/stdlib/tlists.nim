@@ -103,7 +103,7 @@ template testCommon(initList, toList) =
     assert a.head.value == f
     assert a.head.next.value == f
 
-  block: # add, addMove
+  block: # add, addMoved
     block:
       var
         l0 = initList[int]()
@@ -112,7 +112,7 @@ template testCommon(initList, toList) =
         l3 = [4, 5, 6].toList
       l0.add l3
       l1.add l3
-      l2.addMove l3
+      l2.addMoved l3
       doAssert l0.toSeq == [4, 5, 6]
       doAssert l1.toSeq == [1, 4, 5, 6]
       doAssert l2.toSeq == [2, 3, 4, 5, 6]
@@ -126,8 +126,8 @@ template testCommon(initList, toList) =
         l1 = [1].toList
         l2 = [2, 3].toList
         l3 = [4, 5, 6].toList
-      l3.addMove l0
-      l2.addMove l1
+      l3.addMoved l0
+      l2.addMoved l1
       doAssert l3.toSeq == [4, 5, 6]
       doAssert l2.toSeq == [2, 3, 1]
       l3.add l0
