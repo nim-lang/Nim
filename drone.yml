@@ -3,8 +3,8 @@ name: nim-on-arm64
 type: docker
 
 platform:
-  arch: arm64
   os: linux
+  arch: arm64
 
 steps:
   - name: runci
@@ -25,8 +25,8 @@ name: nim-on-arm
 type: docker
 
 platform:
-  arch: arm
   os: linux
+  arch: arm
 
 steps:
   - name: runci
