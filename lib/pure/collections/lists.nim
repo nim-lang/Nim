@@ -677,15 +677,15 @@ proc add*[T](L1: var DoublyLinkedList[T], L2: DoublyLinkedList[T]) {.since: (1, 
   ## Appends a shallow copy of `L2` to the end of `L1`.
   runnableExamples:
     import sequtils
-    var a = [1, 2, 3].toDoublyLinkedList
-    let b = [4, 5].toDoublyLinkedList
+    var a = [1, 2, 3].toSinglyLinkedList
+    let b = [4, 5].toSinglyLinkedList
     a.add b
     assert a.toSeq == [1, 2, 3, 4, 5]
     assert b.toSeq == [4, 5]
     a.add a
     assert a.toSeq == [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
-  var tmp = L2.copy
-  L1.addMove tmp
+  var tmp = b.copy
+  a.addMoved tmp
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).

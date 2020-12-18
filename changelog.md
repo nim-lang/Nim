@@ -78,7 +78,7 @@
 - Added `lists.copy` for shallow copying singly- and doubly linked lists.
 
 - `add` is now overloaded also for the concatenation of singly- and doubly linked lists;
-  an O(1) variation that consumes its argument, `addMove`, is also supplied.
+  an O(1) variation that consumes its argument, `addMoved`, is also supplied.
 
 ## Language changes
 
