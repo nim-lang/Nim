@@ -873,9 +873,9 @@ else:
   template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
-  ## Useful for ``disarming`` dangling pointers explicitly for the
-  ## --newruntime. Regardless of whether --newruntime is used or not
-  ## this sets the pointer or callback ``x`` to ``nil``. This is an
+  ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
+  ## Regardless of whether `--newruntime` is used or not
+  ## this sets the pointer or callback `x` to `nil`. This is an
   ## experimental API!
   x = nil
 

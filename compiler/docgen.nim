@@ -7,19 +7,20 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the documentation generator. It is currently pretty simple: No
-# semantic checking is done for the code. Cross-references are generated
+# This is the documentation generator. Cross-references are generated
 # by knowing how the anchors are going to be named.
 
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  json, xmltree, cgi, trees, types,
+  json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
+from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
+
 
 const
   exportSection = skField
