@@ -223,6 +223,9 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
+    if i < 0:
+      if doRaise: raiseEIO("cannot write string to file")
+      return
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -780,6 +783,13 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
+
+  template checkErrMaybe(succeeded: bool): untyped =
+    if not succeeded:
+      when echoDoRaise:
+        checkErr(stdout)
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -792,20 +802,18 @@ when declared(stdout):
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
+        defer: funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
+        defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s)
+          writeWindows(stdout, s, doRaise = echoDoRaise)
         else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
+          checkErrMaybe(c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) == s.len)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-      discard c_fflush(stdout)
-      when stdOutLock:
-        funlockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        releaseSys echoLock
+      checkErrMaybe(c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) == linefeed.len)
+      checkErrMaybe(c_fflush(stdout) == 0)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):

@@ -63,6 +63,9 @@
 
 - Added `math.isNaN`.
 
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
