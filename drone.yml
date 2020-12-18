@@ -16,7 +16,7 @@
             "apt-get install --no-install-recommends -yq valgrind libc6-dbg libgc-dev libsdl1.2-dev libsfml-dev",
             "git clone --depth 1 https://github.com/nim-lang/csources.git",
             "export PATH=$PWD/bin:$PATH",
-            "make -C csources -j$(nproc)",
+            "make -C csources -j$(nproc) ucpu=arm64",
             "nim c koch",
             "./koch runCI"
          ],
@@ -44,7 +44,7 @@
             "apt-get install --no-install-recommends -yq libgc-dev libsdl1.2-dev libsfml-dev",
             "git clone --depth 1 https://github.com/nim-lang/csources.git",
             "export PATH=$PWD/bin:$PATH",
-            "make -C csources -j$(nproc)",
+            "make -C csources -j$(nproc) ucpu=arm",
             "nim c koch",
             "./koch runCI"
          ],
