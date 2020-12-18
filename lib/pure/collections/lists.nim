@@ -461,15 +461,19 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
+    import sequtils
     type Foo = ref object
       x: int
-    var f = Foo(x: 1)
-    let
+    var
+      f = Foo(x: 1)
       a = [f].toSinglyLinkedList
-      b = a.copy
+    let b = a.copy
+    a.add [f].toSinglyLinkedList
+    assert a.toSeq == [f, f]
+    assert b.toSeq == [f] # b isn't modified...
     f.x = 42
     assert a.head.value.x == 42
-    assert b.head.value.x == 42
+    assert b.head.value.x == 42 # ... but the elements are not deep copied
 
     let c = [1, 2, 3].toSinglyLinkedList
     assert $c == $c.copy
