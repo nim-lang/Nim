@@ -190,34 +190,80 @@ type
     of cfgEof: nil
     of cfgSectionStart:
       section*: string          ## `section` contains the name of the
-                                ## parsed section start (syntax: `[section]`)
+                                ## parsed section start (syntax: ``[section]``)
+      sectionRelated*: SectionRelated
+                                ## 'sectionRelated' is the other part of `section`
+                                ## This field is set to keep the original
+                                ## layout of the file from being ignored,
+                                ## such as blank, comments, etc., 
+                                ## after modification.
     of cfgKeyValuePair, cfgOption:
       key*, value*: string      ## contains the (key, value) pair if an option
-                                ## of the form `--key: value` or an ordinary
-                                ## `key= value` pair has been parsed.
-                                ## `value==""` if it was not specified in the
+                                ## of the form ``--key: value`` or an ordinary
+                                ## ``key= value`` pair has been parsed.
+                                ## ``value==""`` if it was not specified in the
                                 ## configuration file.
+      keyValueRelated*: KeyValueRelated
+                                ## 'keyValueRelated' is the other part of `key` and
+                                ## `value`. This field is set to keep the
+                                ## original layout of the file from being
+                                ## ignored, such as blank, comments, etc.,
+                                ## after modification.
+
     of cfgError:                ## the parser encountered an error: `msg`
       msg*: string              ## contains the error message. No exceptions
                                 ## are thrown if a parse error occurs.
 
   TokKind = enum
-    tkInvalid, tkEof,
-    tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
+    tkInvalid, tkEof, tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi,
+    tkDashDash, tkDash, tkBlankAndComment
+
   Token = object    # a token
     kind: TokKind   # the type of the token
     literal: string # the parsed (string) literal
 
+  SectionRelated = tuple
+    sectionStringKind: StringKind # The kind of the current 'section' string.
+    tokenFrontBlank: string     # Blank in front of the `[`
+    tokenLeft: string           # `[`
+    sectionFrontBlank: string   # Blank in front of the `section`
+    sectionRearBlank: string    # Blank after `section`
+    tokenRight: string          # `]`
+    tokenRearBlank: string      # Blank after `]`
+    comment: string
+
+  KeyValueRelated = tuple
+    keyStringKind: StringKind   # The kind of the current `key` string.
+    valueStringKind: StringKind # The kind of the current `value` string.
+    keyFrontBlank: string       # Blank in front of the `key`
+    keyRearBlank: string        # Blank after `key`
+    token: string               # `=` or `:`
+    valFrontBlank: string       # Blank in front of the `value`
+    valRearBlank: string        # Blank after `value`
+    comment: string
+
+  StringKind = enum             # The kind of the string.
+    skSymbol,                   # not enclosed in double quotes
+    skString,                   # enclosed in double quotes
+    skRawString,                # string of original literals
+    skLongString                # long string enclosed in three quotes
+ 
   CfgParser* = object of BaseLexer ## the parser object.
     tok: Token
     filename: string
+    commentSymbol: string       # This field is set to allow the user to
+                                # customize the comment symbol.
+    blankAndComment: tuple[blank: string, comment: string]
+                                # Blank and comments currently read
+                                # by the parser
 
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\t', '\x80'..'\xFF',
+              '.', '/', '\\', '-'}
 
-proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
+proc rawGetTok(c: var CfgParser) {.gcsafe.}
 
 proc open*(c: var CfgParser, input: Stream, filename: string,
            lineOffset = 0) {.rtl, extern: "npc$1".} =
@@ -228,8 +274,9 @@ proc open*(c: var CfgParser, input: Stream, filename: string,
   c.filename = filename
   c.tok.kind = tkInvalid
   c.tok.literal = ""
+  c.commentSymbol = "#;" # Default comment symbol.
   inc(c.lineNumber, lineOffset)
-  rawGetTok(c, c.tok)
+  rawGetTok(c)
 
 proc close*(c: var CfgParser) {.rtl, extern: "npc$1".} =
   ## Closes the parser `c` and its associated input stream.
@@ -246,181 +293,6 @@ proc getLine*(c: CfgParser): int {.rtl, extern: "npc$1".} =
 proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   ## Gets the filename of the file that the parser processes.
   result = c.filename
-
-proc handleDecChars(c: var CfgParser, xi: var int) =
-  while c.buf[c.bufpos] in {'0'..'9'}:
-    xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-
-proc getEscapedChar(c: var CfgParser, tok: var Token) =
-  inc(c.bufpos) # skip '\'
-  case c.buf[c.bufpos]
-  of 'n', 'N':
-    add(tok.literal, "\n")
-    inc(c.bufpos)
-  of 'r', 'R', 'c', 'C':
-    add(tok.literal, '\c')
-    inc(c.bufpos)
-  of 'l', 'L':
-    add(tok.literal, '\L')
-    inc(c.bufpos)
-  of 'f', 'F':
-    add(tok.literal, '\f')
-    inc(c.bufpos)
-  of 'e', 'E':
-    add(tok.literal, '\e')
-    inc(c.bufpos)
-  of 'a', 'A':
-    add(tok.literal, '\a')
-    inc(c.bufpos)
-  of 'b', 'B':
-    add(tok.literal, '\b')
-    inc(c.bufpos)
-  of 'v', 'V':
-    add(tok.literal, '\v')
-    inc(c.bufpos)
-  of 't', 'T':
-    add(tok.literal, '\t')
-    inc(c.bufpos)
-  of '\'', '"':
-    add(tok.literal, c.buf[c.bufpos])
-    inc(c.bufpos)
-  of '\\':
-    add(tok.literal, '\\')
-    inc(c.bufpos)
-  of 'x', 'X':
-    inc(c.bufpos)
-    var xi = 0
-    if handleHexChar(c.buf[c.bufpos], xi):
-      inc(c.bufpos)
-      if handleHexChar(c.buf[c.bufpos], xi):
-        inc(c.bufpos)
-    add(tok.literal, chr(xi))
-  of '0'..'9':
-    var xi = 0
-    handleDecChars(c, xi)
-    if (xi <= 255): add(tok.literal, chr(xi))
-    else: tok.kind = tkInvalid
-  else: tok.kind = tkInvalid
-
-proc handleCRLF(c: var CfgParser, pos: int): int =
-  case c.buf[pos]
-  of '\c': result = lexbase.handleCR(c, pos)
-  of '\L': result = lexbase.handleLF(c, pos)
-  else: result = pos
-
-proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
-  var pos = c.bufpos + 1 # skip "
-  tok.kind = tkSymbol
-  if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
-    # long string literal:
-    inc(pos, 2) # skip ""
-                              # skip leading newline:
-    pos = handleCRLF(c, pos)
-    while true:
-      case c.buf[pos]
-      of '"':
-        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
-        add(tok.literal, '"')
-        inc(pos)
-      of '\c', '\L':
-        pos = handleCRLF(c, pos)
-        add(tok.literal, "\n")
-      of lexbase.EndOfFile:
-        tok.kind = tkInvalid
-        break
-      else:
-        add(tok.literal, c.buf[pos])
-        inc(pos)
-    c.bufpos = pos + 3 # skip the three """
-  else:
-    # ordinary string literal
-    while true:
-      var ch = c.buf[pos]
-      if ch == '"':
-        inc(pos) # skip '"'
-        break
-      if ch in {'\c', '\L', lexbase.EndOfFile}:
-        tok.kind = tkInvalid
-        break
-      if (ch == '\\') and not rawMode:
-        c.bufpos = pos
-        getEscapedChar(c, tok)
-        pos = c.bufpos
-      else:
-        add(tok.literal, ch)
-        inc(pos)
-    c.bufpos = pos
-
-proc getSymbol(c: var CfgParser, tok: var Token) =
-  var pos = c.bufpos
-  while true:
-    add(tok.literal, c.buf[pos])
-    inc(pos)
-    if not (c.buf[pos] in SymChars): break
-
-  while tok.literal.len > 0 and tok.literal[^1] == ' ':
-    tok.literal.setLen(tok.literal.len - 1)
-
-  c.bufpos = pos
-  tok.kind = tkSymbol
-
-proc skip(c: var CfgParser) =
-  var pos = c.bufpos
-  while true:
-    case c.buf[pos]
-    of ' ', '\t':
-      inc(pos)
-    of '#', ';':
-      while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
-    of '\c', '\L':
-      pos = handleCRLF(c, pos)
-    else:
-      break # EndOfFile also leaves the loop
-  c.bufpos = pos
-
-proc rawGetTok(c: var CfgParser, tok: var Token) =
-  tok.kind = tkInvalid
-  setLen(tok.literal, 0)
-  skip(c)
-  case c.buf[c.bufpos]
-  of '=':
-    tok.kind = tkEquals
-    inc(c.bufpos)
-    tok.literal = "="
-  of '-':
-    inc(c.bufpos)
-    if c.buf[c.bufpos] == '-':
-      inc(c.bufpos)
-      tok.kind = tkDashDash
-      tok.literal = "--"
-    else:
-      dec(c.bufpos)
-      getSymbol(c, tok)
-  of ':':
-    tok.kind = tkColon
-    inc(c.bufpos)
-    tok.literal = ":"
-  of 'r', 'R':
-    if c.buf[c.bufpos + 1] == '\"':
-      inc(c.bufpos)
-      getString(c, tok, true)
-    else:
-      getSymbol(c, tok)
-  of '[':
-    tok.kind = tkBracketLe
-    inc(c.bufpos)
-    tok.literal = "["
-  of ']':
-    tok.kind = tkBracketRi
-    inc(c.bufpos)
-    tok.literal = "]"
-  of '"':
-    getString(c, tok, false)
-  of lexbase.EndOfFile:
-    tok.kind = tkEof
-    tok.literal = "[EOF]"
-  else: getSymbol(c, tok)
 
 proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted error message containing current line and
@@ -445,102 +317,488 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   of cfgError: result = e.msg
   of cfgEof: result = ""
 
-proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
+proc handleDecChars(c: var CfgParser, xi: var int) =
+  while c.buf[c.bufpos] in {'0'..'9'}:
+    xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
+    inc(c.bufpos)
+
+proc handleCRLF(c: var CfgParser, pos: int): int =
+  case c.buf[pos]
+  of '\c': result = lexbase.handleCR(c, pos)
+  of '\L': result = lexbase.handleLF(c, pos)
+  else: result = pos
+
+proc getEscapedChar(c: var CfgParser) =
+  inc(c.bufpos) # skip '\'
+  case c.buf[c.bufpos]
+  of 'n', 'N':
+    add(c.tok.literal, "\n")
+    inc(c.bufpos)
+  of 'r', 'R', 'c', 'C':
+    add(c.tok.literal, '\c')
+    inc(c.bufpos)
+  of 'l', 'L':
+    add(c.tok.literal, '\L')
+    inc(c.bufpos)
+  of 'f', 'F':
+    add(c.tok.literal, '\f')
+    inc(c.bufpos)
+  of 'e', 'E':
+    add(c.tok.literal, '\e')
+    inc(c.bufpos)
+  of 'a', 'A':
+    add(c.tok.literal, '\a')
+    inc(c.bufpos)
+  of 'b', 'B':
+    add(c.tok.literal, '\b')
+    inc(c.bufpos)
+  of 'v', 'V':
+    add(c.tok.literal, '\v')
+    inc(c.bufpos)
+  of 't', 'T':
+    add(c.tok.literal, '\t')
+    inc(c.bufpos)
+  of '\'', '"':
+    add(c.tok.literal, c.buf[c.bufpos])
+    inc(c.bufpos)
+  of '\\':
+    add(c.tok.literal, '\\')
+    inc(c.bufpos)
+  of 'x', 'X':
+    inc(c.bufpos)
+    var xi = 0
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
+    add(c.tok.literal, chr(xi))
+  of '0'..'9':
+    var xi = 0
+    handleDecChars(c, xi)
+    if (xi <= 255): add(c.tok.literal, chr(xi))
+    else: c.tok.kind = tkInvalid
+  else: c.tok.kind = tkInvalid
+
+# =========================================================================
+proc skip(c: var CfgParser) =
+  ## Save the currently read blank and comment.
+  var pos = c.bufpos
+  var blank = ""
+  var comment = ""
+  while true:
+    if c.buf[pos] == ' ' or c.buf[pos] == '\t':
+      blank.add(c.buf[pos])
+      inc(pos)
+    elif c.commentSymbol.contains($c.buf[pos]):
+      while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}):
+        comment.add(c.buf[pos])
+        inc(pos)
+    else:
+      break
+  c.bufpos = pos
+  c.blankAndComment = (blank, comment) 
+
+proc rawGetTok(c: var CfgParser) =
+  ## When the token is read, it stops and saves the blank and comments
+  ## that are currently read for use.
+  setLen(c.tok.literal, 0)
+  skip(c)
+  case c.buf[c.bufpos]
+  of '\c', '\L':
+    if c.tok.kind == tkInvalid: # Reads blank and comment lines
+      c.tok.kind = tkBlankAndComment
+    var pos = c.bufpos
+    pos = handleCRLF(c, c.bufpos)
+    c.bufpos = pos
+    c.tok.literal = "\n"
+  of '=':
+    c.tok.kind = tkEquals
+    inc(c.bufpos)
+    c.tok.literal = "="
+  of '-':
+    inc(c.bufpos)
+    if c.buf[c.bufpos] == '-':
+      inc(c.bufpos)
+      c.tok.kind = tkDashDash
+      c.tok.literal = "--"
+    else:
+      c.tok.kind = tkDash
+      c.tok.literal = "-"
+  of ':':
+    c.tok.kind = tkColon
+    inc(c.bufpos)
+    c.tok.literal = ":"
+  of '[':
+    c.tok.kind = tkBracketLe
+    inc(c.bufpos)
+    c.tok.literal = "["
+  of ']':
+    c.tok.kind = tkBracketRi
+    inc(c.bufpos)
+    c.tok.literal = "]"
+  of '"', 'r', 'R':
+    c.tok.kind = tkSymbol
+  of lexbase.EndOfFile:
+    c.tok.kind = tkEof
+    c.tok.literal = "[EOF]"
+  else:
+    c.tok.kind = tkSymbol
+
+proc getSymbol(c: var CfgParser, contentType: string) =
+  ## Gets a string and discards any whitespace after a valid character.
+  var pos = c.bufpos
+  while true:
+    case contentType
+    of "value":
+      if c.commentSymbol.contains(c.buf[pos]):
+        break
+      elif c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}:
+        break
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+    of "key":
+      if c.buf[pos] == '=' or c.buf[pos] == ':':
+        break
+      elif c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}:
+        break
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+    of "section":
+      if c.buf[pos] == ']':
+        break
+      elif c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}:
+        break
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+
+  while c.tok.literal.len > 0 and (c.tok.literal[^1] == ' ' or
+                                   c.tok.literal[^1] == '\t'):
+    c.tok.literal.setLen(c.tok.literal.len - 1)
+    dec(pos)
+  c.bufpos = pos
+  c.tok.kind = tkSymbol
+
+proc getString(c: var CfgParser, stringKind: StringKind) =
+  ## Gets the contents of `section` or `key` or `value`.
+  var pos = c.bufpos
+  c.tok.kind = tkSymbol
+  case stringKind
+  of skLongString:
+    # long string literal
+    inc(pos, 3) # skip ""
+    pos = handleCRLF(c, pos) # skip leading newline
+    while true:
+      case c.buf[pos]
+      of '"':
+        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
+        add(c.tok.literal, '"')
+        inc(pos)
+      of '\c', '\L':
+        pos = handleCRLF(c, pos)
+        add(c.tok.literal, "\n")
+      of lexbase.EndOfFile:
+        c.tok.kind = tkInvalid
+        break
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+    c.bufpos = pos + 3 # skip the three """
+  of skRawString:
+    # raw string literal
+    inc(pos, 2) # skip r"
+    while true:
+      case c.buf[pos]
+      of '"':
+        break
+      of '\c', '\L', lexbase.EndOfFile:
+        c.tok.kind = tkInvalid
+        break
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+    c.bufpos = pos + 1 # skip the three "
+  of skString:
+    # enclosed in double quotes
+    inc(pos, 1) # skip "
+    while true:
+      case c.buf[pos]
+      of '"':
+        break
+      of '\c', '\L', lexbase.EndOfFile:
+        c.tok.kind = tkInvalid
+        break
+      of '\\':
+        c.bufpos = pos
+        getEscapedChar(c)
+        pos = c.bufpos
+      else:
+        add(c.tok.literal, c.buf[pos])
+        inc(pos)
+    c.bufpos = pos + 1 # skip the three "
+  else: discard
+
+proc getContent(c: var CfgParser, cfgEvent: var CfgEvent,
+                contentType: string) =
+  ## Gets the contents of `section` or `key` or `value`.
+  var stringKind: StringKind
+  # long string literal
+  if (c.buf[c.bufpos] == '"') and (c.buf[c.bufpos + 1] == '"') and
+     (c.buf[c.bufpos + 2] == '"'):
+    stringKind = skLongString
+    if contentType == "key":
+      cfgEvent.keyValueRelated.keyStringKind = stringKind
+    elif contentType == "value":
+      cfgEvent.keyValueRelated.valueStringKind = stringKind
+    else:
+      cfgEvent.sectionRelated.sectionStringKind = stringKind
+    getString(c, stringKind)
+    if c.tok.kind == tkInvalid:
+      cfgEvent = CfgEvent(kind: cfgError, msg:
+                          errorStr(c, "\"\"\" expected, but not found"))
+      return
+    if contentType == "key":
+      cfgEvent.key = c.tok.literal
+    elif contentType == "value":
+      cfgEvent.value = c.tok.literal
+    else:
+      cfgEvent.section = c.tok.literal
+  # raw string literal
+  elif (c.buf[c.bufpos] == 'r') and (c.buf[c.bufpos + 1] == '"'):
+    stringKind = skRawString
+    if contentType == "key":
+      cfgEvent.keyValueRelated.keyStringKind = stringKind
+    elif contentType == "value":
+      cfgEvent.keyValueRelated.valueStringKind = stringKind
+    else:
+      cfgEvent.sectionRelated.sectionStringKind = stringKind
+    getString(c, stringKind)
+    if c.tok.kind == tkInvalid:
+      cfgEvent = CfgEvent(kind: cfgError, msg:
+                          errorStr(c, "r\" expected, but not found"))
+      return
+    if contentType == "key":
+      cfgEvent.key = c.tok.literal
+    elif contentType == "value":
+      cfgEvent.value = c.tok.literal
+    else:
+      cfgEvent.section = c.tok.literal
+  # enclosed in double quotes
+  elif (c.buf[c.bufpos] == '"'):
+    stringKind = skString
+    if contentType == "key":
+      cfgEvent.keyValueRelated.keyStringKind = stringKind
+    elif contentType == "value":
+      cfgEvent.keyValueRelated.valueStringKind = stringKind
+    else:
+      cfgEvent.sectionRelated.sectionStringKind = stringKind
+    getString(c, stringKind)
+    if c.tok.kind == tkInvalid:
+      cfgEvent = CfgEvent(kind: cfgError, msg:
+                          errorStr(c, "\" expected, but not found"))
+      return
+    if contentType == "key":
+      cfgEvent.key = c.tok.literal
+    elif contentType == "value":
+      cfgEvent.value = c.tok.literal
+    else:
+      cfgEvent.section = c.tok.literal
+  else: # not enclosed in double quotes
+    stringKind = skSymbol
+    if contentType == "key":
+      cfgEvent.keyValueRelated.keyStringKind = stringKind
+    elif contentType == "value":
+      cfgEvent.keyValueRelated.valueStringKind = stringKind
+    else:
+      cfgEvent.sectionRelated.sectionStringKind = stringKind
+    getSymbol(c, contentType)
+    if contentType == "key":
+      cfgEvent.key = c.tok.literal
+    elif contentType == "value":
+      cfgEvent.value = c.tok.literal
+    else:
+      cfgEvent.section = c.tok.literal
+
+proc getSection(c: var CfgParser, kind: CfgEventKind): CfgEvent =
+  ## Gets the entire contents of the current section.
+  ## include blank and comment.
+  result = CfgEvent(kind: cfgSectionStart)
+  result.sectionRelated.sectionStringKind = skSymbol
+  result.sectionRelated.tokenFrontBlank = c.blankAndComment.blank
+  result.sectionRelated.tokenLeft = c.tok.literal # Get `[`
+  rawGetTok(c) # Get the blank and comment in front of section
+  result.sectionRelated.sectionFrontBlank = c.blankAndComment.blank
   if c.tok.kind == tkSymbol:
-    case kind
-    of cfgOption, cfgKeyValuePair:
-      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
-    else: discard
-    rawGetTok(c, c.tok)
-    if c.tok.kind in {tkEquals, tkColon}:
-      rawGetTok(c, c.tok)
-      if c.tok.kind == tkSymbol:
-        result.value = c.tok.literal
+    getContent(c, result, "section") # Get the contents of `section`
+    if result.kind == cfgError: # Error parsing, return
+      return
+    result.section = c.tok.literal
+    rawGetTok(c) # Get the blank after section
+    result.sectionRelated.sectionRearBlank = c.blankAndComment.blank
+    if c.tok.kind == tkBracketRi:
+      result.sectionRelated.tokenRight = c.tok.literal
+      rawGetTok(c) # Gets blank and comment after `]`
+      if c.tok.literal == "\n":
+        result.sectionRelated.tokenRearBlank = c.blankAndComment.blank
+        result.sectionRelated.comment = c.blankAndComment.comment
       else:
         result = CfgEvent(kind: cfgError,
-          msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
-      rawGetTok(c, c.tok)
+          msg: errorStr(c, "not expected character:" & c.buf[c.bufpos]))
+    else:
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "] expected, but found:" & c.tok.literal))
   else:
     result = CfgEvent(kind: cfgError,
-      msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
-    rawGetTok(c, c.tok)
+      msg: errorStr(c, "symbol expected, but found:" & c.tok.literal))
+  c.tok.kind = tkInvalid
+
+proc getKeyValuePair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
+  ## Gets the entire contents of 'key' or 'value'.
+  ## include blank and comment.
+  if c.tok.kind == tkSymbol:
+    result = CfgEvent(kind: kind)
+    result.keyValueRelated.keyFrontBlank = c.blankAndComment.blank
+    getContent(c, result, "key") # Gets the contents of 'key'
+    if result.kind == cfgError: # Error parsing, return
+      return
+    rawGetTok(c) # Get the blank and comment after key
+    if c.tok.literal == "=" or c.tok.literal == ":": # Get token `=` or `:`
+      result.keyValueRelated.keyRearBlank = c.blankAndComment.blank
+      result.keyValueRelated.token = c.tok.literal
+      rawGetTok(c) # Get the blank before value
+      if c.tok.literal != "\n":
+        result.keyValueRelated.valFrontBlank = c.blankAndComment.blank
+        getContent(c, result, "value") # Gets the contents of 'value'
+        if result.kind == cfgError: # Error parsing, return
+          return
+        rawGetTok(c) # Get the blank and comment after value
+      result.keyValueRelated.valRearBlank = c.blankAndComment.blank
+      result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
+    elif c.tok.literal == "\n":
+      result.keyValueRelated.valRearBlank = c.blankAndComment.blank
+      result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
+    elif c.tok.literal == "":
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "not expected character:" & c.buf[c.bufpos]))
+    elif c.commentSymbol.contains(c.tok.literal):
+      result.keyValueRelated.valRearBlank = c.blankAndComment.blank
+      result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
+    else:
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "not expected character:" & c.buf[c.bufpos]))
+  else:
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "symbol expected, but found:" & c.tok.literal))
 
 proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   ## Retrieves the first/next event. This controls the parser.
   case c.tok.kind
+  of tkBlankAndComment:
+    result = CfgEvent(kind: cfgKeyValuePair)
+    # Generates `key` for blank and comment lines.
+    result.keyValueRelated.keyStringKind = skSymbol
+    result.keyValueRelated.valueStringKind = skSymbol
+    result.key = "Nim parsecfg blank and comment line_" & $c.getLine()
+    result.value = ""
+    result.keyValueRelated.valRearBlank = c.blankAndComment.blank
+    result.keyValueRelated.comment = c.blankAndComment.comment
+    c.tok.kind = tkInvalid
+    rawGetTok(c)
   of tkEof:
     result = CfgEvent(kind: cfgEof)
-  of tkDashDash:
-    rawGetTok(c, c.tok)
-    result = getKeyValPair(c, cfgOption)
+  of tkDash, tkDashDash:
+    c.tok.kind = tkSymbol
+    result = getKeyValuePair(c, cfgOption)
+    c.tok.kind = tkInvalid
+    rawGetTok(c)
   of tkSymbol:
-    result = getKeyValPair(c, cfgKeyValuePair)
+    result = getKeyValuePair(c, cfgKeyValuePair)
+    c.tok.kind = tkInvalid
+    rawGetTok(c)
   of tkBracketLe:
-    rawGetTok(c, c.tok)
-    if c.tok.kind == tkSymbol:
-      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal)
-    else:
-      result = CfgEvent(kind: cfgError,
-        msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
-    rawGetTok(c, c.tok)
-    if c.tok.kind == tkBracketRi:
-      rawGetTok(c, c.tok)
-    else:
-      result = CfgEvent(kind: cfgError,
-        msg: errorStr(c, "']' expected, but found: " & c.tok.literal))
+    result = getSection(c, cfgSectionStart)
+    c.tok.kind = tkInvalid
+    rawGetTok(c)
   of tkInvalid, tkEquals, tkColon, tkBracketRi:
     result = CfgEvent(kind: cfgError,
       msg: errorStr(c, "invalid token: " & c.tok.literal))
-    rawGetTok(c, c.tok)
+    c.tok.kind = tkInvalid
+    rawGetTok(c)
 
 # ---------------- Configuration file related operations ----------------
 type
-  Config* = OrderedTableRef[string, <//>OrderedTableRef[string, string]]
+  Config* = OrderedTableRef[string, SectionItem]
 
-proc newConfig*(): Config =
+  SectionItem = tuple
+    sectionRelated: SectionRelated
+    keyValue: <//>OrderedTableRef[string, KeyValueItem]
+
+  KeyValueItem = tuple
+    value: string
+    keyValueRelated: KeyValueRelated
+
+proc newConfig*(): <//>Config =
   ## Creates a new configuration table.
   ## Useful when wanting to create a configuration file.
-  result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
+  result = newOrderedTable[string, SectionItem]()
 
-proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
+proc loadConfig*(stream: Stream, filename: string = "[stream]",
+                 commentSymbol = "#;"): <//>Config =
   ## Loads the specified configuration from stream into a new Config instance.
   ## `filename` parameter is only used for nicer error messages.
-  var dict = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
+  ## `commentSymbol` default value is `"#;"`
+  var dict = newOrderedTable[string, SectionItem]()
   var curSection = "" ## Current section,
                       ## the default value of the current section is "",
                       ## which means that the current section is a common
   var p: CfgParser
   open(p, stream, filename)
+  p.commentSymbol = commentSymbol
   while true:
     var e = next(p)
     case e.kind
     of cfgEof:
       break
     of cfgSectionStart: # Only look for the first time the Section
+      var tp: SectionItem
+      var t = <//>OrderedTableRef[string, KeyValueItem]()
       curSection = e.section
+      tp.sectionRelated = e.sectionRelated
+      tp.keyValue = t
+      dict[curSection] = tp
     of cfgKeyValuePair:
-      var t = newOrderedTable[string, string]()
+      var tp: SectionItem
+      var t = <//>OrderedTableRef[string, KeyValueItem]()
       if dict.hasKey(curSection):
-        t = dict[curSection]
-      t[e.key] = e.value
-      dict[curSection] = t
+        tp = dict[curSection]
+        t = tp.keyValue
+      t[e.key] = (e.value, e.keyValueRelated)
+      tp.keyValue = t
+      dict[curSection] = tp
     of cfgOption:
-      var c = newOrderedTable[string, string]()
+      var tp: SectionItem
+      var t = <//>OrderedTableRef[string, KeyValueItem]()
       if dict.hasKey(curSection):
-        c = dict[curSection]
-      c["--" & e.key] = e.value
-      dict[curSection] = c
+        tp = dict[curSection]
+        t = tp.keyValue
+      t[e.key] = (e.value, e.keyValueRelated)
+      tp.keyValue = t
+      dict[curSection] = tp
     of cfgError:
-      break
+      close(p)
+      raise newException(Exception, e.msg)
   close(p)
   result = dict
 
-proc loadConfig*(filename: string): <//>Config =
+proc loadConfig*(filename: string, commentSymbol = "#;"): <//>Config =
   ## Loads the specified configuration file into a new Config instance.
+  ## `commentSymbol` default value is `"#;"`
   let file = open(filename, fmRead)
   let fileStream = newFileStream(file)
   defer: fileStream.close()
-  result = fileStream.loadConfig(filename)
+  result = fileStream.loadConfig(filename, commentSymbol)
 
 proc replace(s: string): string =
   var d = ""
@@ -562,48 +820,70 @@ proc replace(s: string): string =
 
 proc writeConfig*(dict: Config, stream: Stream) =
   ## Writes the contents of the table to the specified stream.
-  ##
-  ## **Note:** Comment statement will be ignored.
-  for section, sectionData in dict.pairs():
+  for section, tp in dict.pairs():
+    var sectionRelated = tp.sectionRelated
+    var keyValue = tp.keyValue
+    var s = ""
     if section != "": ## Not general section
-      if not allCharsInSet(section, SymChars): ## Non system character
-        stream.writeLine("[\"" & section & "\"]")
+      s.add(sectionRelated.tokenFrontBlank & sectionRelated.tokenLeft &
+        sectionRelated.sectionFrontBlank)
+      if sectionRelated.sectionStringKind == skLongString:
+        s.add("\"\"\"" & section & "\"\"\"")
+      elif sectionRelated.sectionStringKind == skRawString:
+        s.add("r\"" & section & "\"")
+      elif sectionRelated.sectionStringKind == skString:
+        s.add("\"" & section & "\"")
       else:
-        stream.writeLine("[" & section & "]")
-    for key, value in sectionData.pairs():
-      var kv, segmentChar: string
-      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
-        segmentChar = ":"
-        if not allCharsInSet(key[2..key.len()-1], SymChars):
-          kv.add("--\"")
-          kv.add(key[2..key.len()-1])
-          kv.add("\"")
+        s.add(section)
+      s.add(sectionRelated.sectionRearBlank & sectionRelated.tokenRight &
+            sectionRelated.tokenRearBlank & sectionRelated.comment)
+      stream.writeLine(s)
+    for key, kv in keyValue.pairs():
+      var newKey = ""
+      s = ""
+      s.add(kv.keyValueRelated.keyFrontBlank)
+      if not key.startsWith("Nim parsecfg blank and comment line_"): # blank and comment line
+        newKey = key
+      if kv.keyValueRelated.keyStringKind == skLongString:
+        if newKey.startsWith("--"):
+          s.add("--" & "\"\"\"" & newKey[2..^1] & "\"\"\"")
+        elif newKey.startsWith("-"):
+          s.add("-" & "\"\"\"" & newKey[1..^1] & "\"\"\"")
         else:
-          kv = key
+          s.add("\"\"\"" & newKey & "\"\"\"")
+      elif kv.keyValueRelated.keyStringKind == skRawString:
+        if newKey.startsWith("--"):
+          s.add("--" & "r\"" & newKey[2..^1] & "\"")
+        elif newKey.startsWith("-"):
+          s.add("-" & "r\"" & newKey[1..^1] & "\"")
+        else:
+          s.add("r\"" & newKey & "\"")
+      elif kv.keyValueRelated.keyStringKind == skString:
+        if newKey.startsWith("--"):
+          s.add("--" & "\"" & replace(newKey[2..^1]) & "\"")
+        elif newKey.startsWith("-"):
+          s.add("-" & "\"" & replace(newKey[1..^1]) & "\"")
+        else:
+          s.add("\"" & replace(newKey) & "\"")
       else:
-        segmentChar = "="
-        kv = key
-      if value != "": ## If the key is not empty
-        if not allCharsInSet(value, SymChars):
-          if find(value, '"') == -1:
-            kv.add(segmentChar)
-            kv.add("\"")
-            kv.add(replace(value))
-            kv.add("\"")
-          else:
-            kv.add(segmentChar)
-            kv.add("\"\"\"")
-            kv.add(replace(value))
-            kv.add("\"\"\"")
-        else:
-          kv.add(segmentChar)
-          kv.add(value)
-      stream.writeLine(kv)
+        s.add(newKey)
+      s.add(kv.keyValueRelated.keyRearBlank)
+      s.add(kv.keyValueRelated.token)
+      s.add(kv.keyValueRelated.valFrontBlank)
+      if kv.keyValueRelated.valueStringKind == skLongString:
+        s.add("\"\"\"" & kv.value & "\"\"\"")
+      elif kv.keyValueRelated.valueStringKind == skRawString:
+        s.add("r\"" & kv.value & "\"")
+      elif kv.keyValueRelated.valueStringKind == skString:
+        s.add("\"" & replace(kv.value) & "\"")
+      else:
+        s.add(kv.value)
+      s.add(kv.keyValueRelated.valRearBlank)
+      s.add(kv.keyValueRelated.comment)
+      stream.writeLine(s)
 
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
-  ## 
-  ## **Note:** Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
   dict.writeConfig(stream)
@@ -611,8 +891,6 @@ proc `$`*(dict: Config): string =
 
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
-  ## 
-  ## **Note:** Comment statement will be ignored.
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
@@ -621,9 +899,10 @@ proc writeConfig*(dict: Config, filename: string) =
 proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the key value of the specified Section.
   ## Returns the specified default value if the specified key does not exist.
-  if dict.hasKey(section):
-    if dict[section].hasKey(key):
-      result = dict[section][key]
+  if dict.haskey(section):
+    let kv = dict[section].keyValue
+    if kv.hasKey(key):
+      result = kv[key].value
     else:
       result = defaultVal
   else:
@@ -631,11 +910,43 @@ proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): stri
 
 proc setSectionKey*(dict: var Config, section, key, value: string) =
   ## Sets the Key value of the specified Section.
-  var t = newOrderedTable[string, string]()
-  if dict.hasKey(section):
-    t = dict[section]
-  t[key] = value
-  dict[section] = t
+  var tp: SectionItem
+  var kv = <//>OrderedTableRef[string, KeyValueItem]()
+  var kvi: KeyValueItem
+  if dict.hasKey(section): # modify section
+    tp = dict[section]
+    kv = tp.keyValue
+    if kv.hasKey(key): # modify key
+      kvi = kv[key]
+      kvi.value = value
+    else: # add key
+      if key.startsWith("--") or key.startsWith("-"):
+        kvi.keyValueRelated.token = ":"
+      else:
+        kvi.keyValueRelated.token = "="
+      kvi.value = value
+      if not allCharsInSet(value, SymChars): ## Non system character
+        kvi.keyValueRelated.valueStringKind = skString
+      else:
+        kvi.keyValueRelated.valueStringKind = skSymbol
+    kv[key] = kvi
+    tp.keyValue = kv
+    dict[section] = tp
+  else: # add section
+    if key.startsWith("--") or key.startsWith("-"):
+      kvi.keyValueRelated.token = ":"
+    else:
+      kvi.keyValueRelated.token = "="
+    if not allCharsInSet(value, SymChars): ## Non system character
+      kvi.keyValueRelated.valueStringKind = skString
+    else:
+      kvi.keyValueRelated.valueStringKind = skSymbol
+    kvi.value = value
+    kv[key] = kvi
+    tp.keyValue = kv
+    tp.sectionRelated.tokenLeft = "["
+    tp.sectionRelated.tokenRight = "]"
+    dict[section] = tp
 
 proc delSection*(dict: var Config, section: string) =
   ## Deletes the specified section and all of its sub keys.
@@ -643,9 +954,9 @@ proc delSection*(dict: var Config, section: string) =
 
 proc delSectionKey*(dict: var Config, section, key: string) =
   ## Deletes the key of the specified section.
-  if dict.hasKey(section):
-    if dict[section].hasKey(key):
-      if dict[section].len == 1:
+  if dict.haskey(section):
+    if dict[section].keyValue.hasKey(key):
+      if dict[section].keyValue.len() == 1:
         dict.del(section)
       else:
-        dict[section].del(key)
+        dict[section].keyValue.del(key)
