@@ -84,6 +84,8 @@ when defined(nimVmExportFixed):
 
 include "system/inclrtl"
 import std/private/since
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -335,13 +337,7 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
-  var i = 0
-  var m = min(a.len, b.len)
-  while i < m:
-    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
-    if result != 0: return
-    inc(i)
-  result = a.len - b.len
+  cmpIgnoreCaseImpl()
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
@@ -361,25 +357,7 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  var i = 0
-  var j = 0
-  while true:
-    while i < a.len and a[i] == '_': inc i
-    while j < b.len and b[j] == '_': inc j
-    var aa = if i < a.len: toLowerAscii(a[i]) else: '\0'
-    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
-    result = ord(aa) - ord(bb)
-    if result != 0: return result
-    # the characters are identical:
-    if i >= a.len:
-      # both cursors at the end:
-      if j >= b.len: return 0
-      # not yet at the end of 'b':
-      return -1
-    elif j >= b.len:
-      return 1
-    inc i
-    inc j
+  cmpIgnoreStyleImpl()
 {.pop.}
 
 # --------- Private templates for different split separators -----------
