@@ -307,13 +307,21 @@ block: # bug #8007
   doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
 
 block: # bug #14340
-  proc opl3EnvelopeCalcSin0() = discard
-  type EnvelopeSinfunc = proc()
-  # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
-  const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
-  const envelopeSin = [EnvelopeCalcSin0]
-  var a = 0
-  envelopeSin[a]()
+  block:
+    proc opl3EnvelopeCalcSin0() = discard
+    type EnvelopeSinfunc = proc()
+    # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
+    const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
+    const envelopeSin = [EnvelopeCalcSin0]
+    var a = 0
+    envelopeSin[a]()
+
+  block:
+    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    proc mutator0() = discard
+    const mTable = [Mutator(mutator0)]
+    var i=0
+    mTable[i]()
 
 block: # VM wrong register free causes errors in unrelated code
   block: # bug #15597

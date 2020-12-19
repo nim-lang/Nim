@@ -3093,8 +3093,9 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
       else:
         result = genConstSeq(p, n, typ, isConst)
     of tyProc:
-      if typ.callConv == ccClosure and n.kind == nkClosure and n.len > 1 and n[1].kind == nkNilLit:
-        # refs bug #14340
+      if typ.callConv == ccClosure and n.safeLen > 1 and n[1].kind == nkNilLit:
+        # n.kind could be: nkClosure, nkTupleConstr and maybe others; `n.safeLen`
+        # guards against the case of `nkSym`, refs bug #14340.
         # Conversion: nimcall -> closure.
         # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
         # this behaviour is needed since closure_var = nil must be
