@@ -4,11 +4,11 @@ func toLowerAscii*(c: char): char {.inline.} =
   else:
     result = c
 
-template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
+template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = false) =
   # a, b are string or cstring
   let aLen = a.len
   let bLen = b.len
-  when caseSensitive:
+  when firstCharCaseSensitive:
     if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var j = 0
@@ -30,11 +30,11 @@ template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
     inc i
     inc j
 
-template cmpIgnoreCaseImpl*(a, b: typed, caseSensitive: static bool = false) =
+template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = false) =
   # a, b are string or cstring
   let aLen = a.len
   let bLen = b.len
-  when caseSensitive:
+  when firstCharCaseSensitive:
     if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var m = min(aLen, bLen)
