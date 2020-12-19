@@ -6,36 +6,40 @@ func toLowerAscii*(c: char): char {.inline.} =
 
 template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
+  var aLen = a.len
+  var bLen = b.len
   when caseSensitive:
     if a[0] != b[0]: return 1
   var i = 0
   var j = 0
   while true:
-    while i < a.len and a[i] == '_': inc i
-    while j < b.len and b[j] == '_': inc j
-    let aa = if i < a.len: toLowerAscii(a[i]) else: '\0'
-    let bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
+    while i < aLen and a[i] == '_': inc i
+    while j < bLen and b[j] == '_': inc j
+    let aa = if i < aLen: toLowerAscii(a[i]) else: '\0'
+    let bb = if j < bLen: toLowerAscii(b[j]) else: '\0'
     result = ord(aa) - ord(bb)
     if result != 0: return result
     # the characters are identical:
-    if i >= a.len:
+    if i >= aLen:
       # both cursors at the end:
-      if j >= b.len: return 0
+      if j >= bLen: return 0
       # not yet at the end of 'b':
       return -1
-    elif j >= b.len:
+    elif j >= bLen:
       return 1
     inc i
     inc j
 
 template cmpIgnoreCaseImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
+  var aLen = a.len
+  var bLen = b.len
   when caseSensitive:
     if a[0] != b[0]: return 1
   var i = 0
-  var m = min(a.len, b.len)
+  var m = min(aLen, bLen)
   while i < m:
     result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
     if result != 0: return
     inc(i)
-  result = a.len - b.len
+  result = aLen - bLen
