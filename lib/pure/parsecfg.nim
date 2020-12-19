@@ -706,7 +706,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     # Generates `key` for blank and comment lines.
     result.keyValueRelated.keyStringKind = skSymbol
     result.keyValueRelated.valueStringKind = skSymbol
-    result.key = "BlankAndCommentLine" & $c.getLine()
+    result.key = ""
     result.value = ""
     result.keyValueRelated.valRearBlank = c.blankAndComment.blank
     result.keyValueRelated.comment = c.blankAndComment.comment
@@ -780,7 +780,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]",
       if dict.hasKey(curSection):
         tp = dict[curSection]
         t = tp.keyValue
-      t[e.key] = (e.value, e.keyValueRelated)
+      t.add(e.key, (e.value, e.keyValueRelated))
       tp.keyValue = t
       dict[curSection] = tp
     of cfgOption:
@@ -848,8 +848,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       var newKey = ""
       s = ""
       s.add(kv.keyValueRelated.keyFrontBlank)
-      if not key.startsWith("BlankAndCommentLine"): # blank and comment line
-        newKey = key
+      newKey = key
       if kv.keyValueRelated.keyStringKind == skLongString:
         if newKey.startsWith("--"):
           s.add("--" & "\"\"\"" & newKey[2..^1] & "\"\"\"")
@@ -935,7 +934,7 @@ proc setSectionKey*(dict: var Config, section, key, value: string) =
         kvi.keyValueRelated.valueStringKind = skString
       else:
         kvi.keyValueRelated.valueStringKind = skSymbol
-    kv[key] = kvi
+      kv.add(key, kvi)
     tp.keyValue = kv
     dict[section] = tp
   else: # add section
@@ -948,7 +947,7 @@ proc setSectionKey*(dict: var Config, section, key, value: string) =
     else:
       kvi.keyValueRelated.valueStringKind = skSymbol
     kvi.value = value
-    kv[key] = kvi
+    kv.add(key, kvi)
     tp.keyValue = kv
     tp.sectionRelated.tokenLeft = "["
     tp.sectionRelated.tokenRight = "]"
