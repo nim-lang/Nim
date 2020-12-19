@@ -49,5 +49,5 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
   while i < m:
     result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
     if result != 0: return
-    inc(i)
+    inc i
   result = aLen - bLen
