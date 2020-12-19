@@ -4,14 +4,17 @@ func toLowerAscii*(c: char): char {.inline.} =
   else:
     result = c
 
+template firstCharCaseSensitiveImpl(a, b: typed, aLen, bLen: int) =
+  if aLen == 0 or bLen == 0:
+    return aLen - bLen
+  if a[0] != b[0]: return ord(a[0]) - ord(b[0])
+
 template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = false) =
   # a, b are string or cstring
   let aLen = a.len
   let bLen = b.len
   when firstCharCaseSensitive:
-    if aLen == 0 or bLen == 0:
-      return aLen - bLen
-    if a[0] != b[0]: return ord(a[0]) - ord(b[0])
+    firstCharCaseSensitiveImpl(a, b, aLen, bLen)
   var i = 0
   var j = 0
   while true:
@@ -37,9 +40,7 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
   let aLen = a.len
   let bLen = b.len
   when firstCharCaseSensitive:
-    if aLen == 0 or bLen == 0:
-      return aLen - bLen
-    if a[0] != b[0]: return ord(a[0]) - ord(b[0])
+    firstCharCaseSensitiveImpl(a, b, aLen, bLen)
   var i = 0
   var m = min(aLen, bLen)
   while i < m:
