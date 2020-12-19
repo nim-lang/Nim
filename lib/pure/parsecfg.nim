@@ -706,7 +706,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     # Generates `key` for blank and comment lines.
     result.keyValueRelated.keyStringKind = skSymbol
     result.keyValueRelated.valueStringKind = skSymbol
-    result.key = "BlankAndCommentLine" & $c.getLine()
+    result.key = "cfgBlankAndCommentLine" & $c.getLine()
     result.value = ""
     result.keyValueRelated.valRearBlank = c.blankAndComment.blank
     result.keyValueRelated.comment = c.blankAndComment.comment
@@ -848,7 +848,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       var newKey = ""
       s = ""
       s.add(kv.keyValueRelated.keyFrontBlank)
-      if not key.startsWith("BlankAndCommentLine"): # blank and comment line
+      if not key.startsWith("cfgBlankAndCommentLine"): # blank and comment line
         newKey = key
       if kv.keyValueRelated.keyStringKind == skLongString:
         if newKey.startsWith("--"):
