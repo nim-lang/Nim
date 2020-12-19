@@ -723,7 +723,6 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     result = getKeyValuePair(c, cfgKeyValuePair)
     c.tok.kind = tkInvalid
     rawGetTok(c)
-    echo "键值对：",result,"\n"
   of tkBracketLe:
     result = getSection(c, cfgSectionStart)
     c.tok.kind = tkInvalid
