@@ -420,7 +420,7 @@ proc rawGetTok(c: var CfgParser) =
     if c.buf[c.bufpos] == '-':
       inc(c.bufpos)
       c.tok.kind = tkDashDash
-      c.tok.literal = "--"
+      c.tok.literal = ""
     else:
       c.tok.kind = tkDash
       c.tok.literal = "-"
@@ -789,7 +789,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]",
       if dict.hasKey(curSection):
         tp = dict[curSection]
         t = tp.keyValue
-      t[e.key] = (e.value, e.keyValueRelated)
+      t["--" & e.key] = (e.value, e.keyValueRelated)
       tp.keyValue = t
       dict[curSection] = tp
     of cfgError:
@@ -851,23 +851,24 @@ proc writeConfig*(dict: Config, stream: Stream) =
       if not key.startsWith("cfgBlankAndCommentLine"): # blank and comment line
         newKey = key
       if kv.keyValueRelated.keyStringKind == skLongString:
-        if newKey.startsWith("--"):
+        # If it is a command key
+        if newKey.len > 1 and newKey[0] == '-' and newKey[1] == '-':
           s.add("--" & "\"\"\"" & newKey[2..^1] & "\"\"\"")
-        elif newKey.startsWith("-"):
+        elif newKey.len > 1 and newKey[0] == '-':
           s.add("-" & "\"\"\"" & newKey[1..^1] & "\"\"\"")
         else:
           s.add("\"\"\"" & newKey & "\"\"\"")
       elif kv.keyValueRelated.keyStringKind == skRawString:
-        if newKey.startsWith("--"):
+        if newKey.len > 1 and newKey[0] == '-' and newKey[1] == '-':
           s.add("--" & "r\"" & newKey[2..^1] & "\"")
-        elif newKey.startsWith("-"):
+        elif newKey.len > 1 and newKey[0] == '-':
           s.add("-" & "r\"" & newKey[1..^1] & "\"")
         else:
           s.add("r\"" & newKey & "\"")
       elif kv.keyValueRelated.keyStringKind == skString:
-        if newKey.startsWith("--"):
+        if newKey.len > 1 and newKey[0] == '-' and newKey[1] == '-':
           s.add("--" & "\"" & replace(newKey[2..^1]) & "\"")
-        elif newKey.startsWith("-"):
+        elif newKey.len > 1 and newKey[0] == '-':
           s.add("-" & "\"" & replace(newKey[1..^1]) & "\"")
         else:
           s.add("\"" & replace(newKey) & "\"")
