@@ -899,7 +899,7 @@ proc writeConfig*(dict: Config, filename: string) =
 proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the key value of the specified Section.
   ## Returns the specified default value if the specified key does not exist.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     let kv = dict[section].keyValue
     if kv.hasKey(key):
       result = kv[key].value
@@ -954,7 +954,7 @@ proc delSection*(dict: var Config, section: string) =
 
 proc delSectionKey*(dict: var Config, section, key: string) =
   ## Deletes the key of the specified section.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     if dict[section].keyValue.hasKey(key):
       if dict[section].keyValue.len() == 1:
         dict.del(section)
