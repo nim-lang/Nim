@@ -63,7 +63,7 @@ pkg "nimsvg"
 # pkg "nimx", "nim c --threads:on test/main.nim", true
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
-# pkg "parsetoml"
+pkg "parsetoml"
 pkg "patty"
 # pkg "plotly", "nim c --oldgensym:on examples/all.nim", true
 pkg "pnm"
