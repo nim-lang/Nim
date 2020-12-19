@@ -9,10 +9,8 @@ template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = 
   let aLen = a.len
   let bLen = b.len
   when firstCharCaseSensitive:
-    if aLen == 0:
-      return -bLen
-    if bLen == 0:
-      return aLen
+    if aLen == 0 or bLen == 0:
+      return aLen - bLen
     if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var j = 0
@@ -39,10 +37,8 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
   let aLen = a.len
   let bLen = b.len
   when firstCharCaseSensitive:
-    if aLen == 0:
-      return -bLen
-    if bLen == 0:
-      return aLen
+    if aLen == 0 or bLen == 0:
+      return aLen - bLen
     if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var m = min(aLen, bLen)
