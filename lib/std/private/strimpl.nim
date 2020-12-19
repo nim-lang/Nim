@@ -6,8 +6,8 @@ func toLowerAscii*(c: char): char {.inline.} =
 
 template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
-  var aLen = a.len
-  var bLen = b.len
+  let aLen = a.len
+  let bLen = b.len
   when caseSensitive:
     if a[0] != b[0]: return 1
   var i = 0
@@ -32,8 +32,8 @@ template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
 
 template cmpIgnoreCaseImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
-  var aLen = a.len
-  var bLen = b.len
+  let aLen = a.len
+  let bLen = b.len
   when caseSensitive:
     if a[0] != b[0]: return 1
   var i = 0
