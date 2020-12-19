@@ -619,7 +619,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
     if sfUsed notin c.unusedImports[i][0].flags:
-      message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
+      message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s.colorWarn(c.config))
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)

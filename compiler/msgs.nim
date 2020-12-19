@@ -473,15 +473,15 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
-proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
+proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo, col = mcDefault) =
   const indent = "  "
   let
     msg = $sourceLine(conf, info)
     uncolored = msg[0..<info.col]
-    colored = msg[info.col..^1].colorError(conf)
+    colored = msg[info.col..^1].colorMsg(col, conf)
   msgWriteln(conf, indent & uncolored & colored)
   if info.col >= 0:
-    msgWriteln(conf, (indent & spaces(info.col) & '^').colorError(conf))
+    msgWriteln(conf, (indent & spaces(info.col) & '^').colorMsg(col, conf))
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -497,10 +497,12 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
+    mColor = mcDefault # This variable is used incase we want to add 256 palette colours
   let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
+    mColor = mcError
     writeContext(conf, info)
     title = ErrorTitle
     color = ErrorColor
@@ -520,12 +522,14 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       title = WarningTitle
     if not ignoreMsg: writeContext(conf, info)
     color = WarningColor
+    mColor = mcWarn
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
+    mColor = mcHint
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)
@@ -541,7 +545,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       else:
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
-          conf.writeSurroundingSrc(info)
+          conf.writeSurroundingSrc(info, mColor)
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,

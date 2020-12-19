@@ -148,6 +148,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
   assert sym != nil
   # consider using `skipGenericOwner` to avoid fun2.fun2 when fun2 is generic
   result = sym.owner.name.s & '.' & sym.name.s
+  result = result.colorError(conf)
   if sym.kind in routineKinds:
     result.add '('
     var n = sym.typ.n

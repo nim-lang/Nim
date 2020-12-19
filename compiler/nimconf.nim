@@ -11,7 +11,8 @@
 
 import
   llstream, commands, os, strutils, msgs, lexer, ast,
-  options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
+  options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig,
+  colormsg
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
@@ -297,7 +298,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   template showHintConf =
     for filename in configFiles:
       # delayed to here so that `hintConf` is honored
-      rawMessage(conf, hintConf, filename.string)
+      rawMessage(conf, hintConf, filename.string.colorHint(conf))
   if scriptIsProj:
     showHintConf()
     configFiles.setLen 0

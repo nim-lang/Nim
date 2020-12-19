@@ -11,6 +11,7 @@
 # included from sem.nim
 
 from algorithm import sort
+import colormsg
 import strformat
 
 proc sameMethodDispatcher(a, b: PSym): bool =
@@ -126,32 +127,34 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       break
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
+  template addColorError(a: string) = result.add a.colorError(c.config)
+  template addColorHint(a: string) = result.add a.colorHint(c.config)
   if f.kind == tyProc and a.kind == tyProc:
     if tfThread in f.flags and tfThread notin a.flags:
-      result.add "\n  This expression is not GC-safe. Annotate the " &
+      addColorHint "\n  This expression is not GC-safe. Annotate the " &
           "proc with {.gcsafe.} to get extended error information."
     elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
-      result.add "\n  This expression can have side effects. Annotate the " &
+      addColorError "\n  This expression can have side effects. Annotate the " &
           "proc with {.noSideEffect.} to get extended error information."
     else:
       case compatibleEffects(f, a)
       of efCompat: discard
       of efRaisesDiffer:
-        result.add "\n  The `.raises` requirements differ."
+        addColorError "\n  The `.raises` requirements differ."
       of efRaisesUnknown:
-        result.add "\n  The `.raises` requirements differ. Annotate the " &
+        addColorError "\n  The `.raises` requirements differ. Annotate the " &
             "proc with {.raises: [].} to get extended error information."
       of efTagsDiffer:
-        result.add "\n  The `.tags` requirements differ."
+        addColorError "\n  The `.tags` requirements differ."
       of efTagsUnknown:
-        result.add "\n  The `.tags` requirements differ. Annotate the " &
+        addColorError "\n  The `.tags` requirements differ. Annotate the " &
             "proc with {.tags: [].} to get extended error information."
       of efLockLevelsDiffer:
-        result.add "\n  The `.locks` requirements differ. Annotate the " &
+        addColorError "\n  The `.locks` requirements differ. Annotate the " &
             "proc with {.locks: 0.} to get extended error information."
       when defined(drnim):
         if not c.graph.compatibleProps(c.graph, f, a):
-          result.add "\n  The `.requires` or `.ensures` properties are incompatible."
+          addColorError "\n  The `.requires` or `.ensures` properties are incompatible."
 
 proc renderNotLValue(n: PNode): string =
   result = $n
@@ -201,6 +204,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   var skipped = 0
 
   template addColorError(a: string) = candidates.add(a.colorError(c.config))
+  template addColorHl(a: string) = candidates.add(a.colorHighlight(c.config))
 
   for err in errors:
     candidates.setLen 0
@@ -217,7 +221,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
     if n.len > 1:
-      candidates.add(("  first type mismatch at position: " & $err.firstMismatch.arg).colorError(c.config))
+      addColorError("  first type mismatch at position: " & $err.firstMismatch.arg)
       # candidates.add "\n  reason: " & $err.firstMismatch.kind # for debugging
       case err.firstMismatch.kind
       of kUnknownNamedParam:
@@ -234,7 +238,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         var wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted).colorHighlight(c.config)
+        addColorHl(typeToString(wanted))
         candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
@@ -256,10 +260,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   candidatesAll.sort # fix #13538
   candidates = join(candidatesAll)
   if skipped > 0:
-    candidates.add($skipped & " other mismatching symbols have been " &
+    addColorHl($skipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
   if maybeWrongSpace:
-    candidates.add("maybe misplaced space between " & renderTree(n[0]) & " and '(' \n")
+    addColorHl("maybe misplaced space between " & renderTree(n[0]).quoteExpr & " and '(' \n")
 
   result = (prefer, candidates)
 
@@ -332,11 +336,11 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       # We could use: `(c.config $ n[1].info)` to get more context.
       discard
     else:
-      typeHint = " for type " & getProcHeader(c.config, sym)
-    result = errUndeclaredField % ident & typeHint & " " & result
+      typeHint = " for type " & getProcHeader(c.config, sym).colorError(c.config)
+    result = errUndeclaredField % ident.colorError(c.config) & typeHint & " " & result
   else:
-    if result.len == 0: result = errUndeclaredRoutine % ident.quoteExpr
-    else: result = errBadRoutine % [ident.quoteExpr, result.quoteExpr]
+    if result.len == 0: result = errUndeclaredRoutine % ident.colorError(c.config)
+    else: result = errBadRoutine % [ident.quoteExpr.colorError(c.config), result.quoteExpr.colorError(c.config)]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
