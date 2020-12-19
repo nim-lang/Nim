@@ -13,10 +13,12 @@ template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = 
   # a, b are string or cstring
   let aLen = a.len
   let bLen = b.len
-  when firstCharCaseSensitive:
-    firstCharCaseSensitiveImpl(a, b, aLen, bLen)
   var i = 0
   var j = 0
+  when firstCharCaseSensitive:
+    firstCharCaseSensitiveImpl(a, b, aLen, bLen)
+    inc i
+    inc j
   while true:
     while i < aLen and a[i] == '_': inc i
     while j < bLen and b[j] == '_': inc j
@@ -39,9 +41,10 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
   # a, b are string or cstring
   let aLen = a.len
   let bLen = b.len
+  var i = 0
   when firstCharCaseSensitive:
     firstCharCaseSensitiveImpl(a, b, aLen, bLen)
-  var i = 0
+    inc i
   var m = min(aLen, bLen)
   while i < m:
     result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
