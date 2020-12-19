@@ -440,13 +440,30 @@ Test1
       Check that auto-numbered enumeration lists work.
 
       #. string1
+
+      #. string2
+
+      #. string3
+
+      #) string5
+      #) string6
+      """
+    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    assert count(output5, "<ol ") == 2
+    assert count(output5, "</ol>") == 2
+    assert count(output5, "<li>") == 5
+
+    let input5a = dedent """
+      Auto-numbered RST list can start with 1 even when Markdown support is on.
+
+      1. string1
       #. string2
       #. string3
       """
-    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
-    assert count(output5, "<ol ") == 1
-    assert count(output5, "</ol>") == 1
-    assert count(output5, "<li>") == 3
+    let output5a = rstToHtml(input5a, {roSupportMarkdown}, defaultConfig())
+    assert count(output5a, "<ol ") == 1
+    assert count(output5a, "</ol>") == 1
+    assert count(output5a, "<li>") == 3
 
     let input6 = dedent """
       ... And for alphabetic enumerators too!
@@ -473,6 +490,25 @@ Test1
     assert count(output7, "</ol>") == 1
     assert count(output7, "<li>") == 3
     assert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
+
+  test "Markdown enumerated lists":
+    let input1 = dedent """
+      Below are 2 enumerated lists: Markdown-style (5 items) and RST (1 item)
+      1. line1
+      1. line2
+      1. line3
+      1. line4
+
+      1. line5
+
+      #. lineA
+      """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    for i in 1..5:
+      assert ($i & ". line" & $i) notin output1
+      assert ("<li>line" & $i & "</li>") in output1
+    assert count(output1, "<ol ") == 2
+    assert count(output1, "</ol>") == 2
 
   test "RST bullet lists":
     let input1 = dedent """

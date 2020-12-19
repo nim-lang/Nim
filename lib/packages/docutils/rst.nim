@@ -48,6 +48,10 @@
 ## * markdown code blocks
 ## * markdown links
 ## * markdown headlines
+## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
+##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
+##
+## **Note:** By default nim has ``roSupportMarkdown`` turned **on**.
 ##
 ## Limitations:
 ##
@@ -1195,7 +1199,8 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
-    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
+    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
+         match(p, p.idx, "e. "):
       result = rnEnumList
     elif isDefList(p):
       result = rnDefList
@@ -1537,8 +1542,12 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
+  let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
+  var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
+  var curEnum = 1
   for i in 0 ..< wildToken[w]-1:  # add first enumerator with (, ), and .
     if p.tok[p.idx + i].symbol == "#":
+      prevAE = "#"
       result.text.add "1"
     else:
       result.text.add p.tok[p.idx + i].symbol
@@ -1556,17 +1565,19 @@ proc parseEnumList(p: var RstParser): PRstNode =
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
         let prevEnumI = try: parseInt(prevEnum) except: 1
-        let curEnum =
-          if enumerator == "#": prevEnumI + 1
-          else: (try: parseInt(enumerator) except: 1)
+        if enumerator in autoEnums:
+          if prevAE != "" and enumerator != prevAE:
+            break
+          prevAE = enumerator
+          curEnum = prevEnumI + 1
+        else: curEnum = (try: parseInt(enumerator) except: 1)
         if curEnum - prevEnumI != 1:
           break
         prevEnum = enumerator
       else:  # a..z
         let prevEnumI = ord(prevEnum[0])
-        let curEnum =
-          if enumerator == "#": prevEnumI + 1
-          else: ord(enumerator[0])
+        if enumerator == "#": curEnum = prevEnumI + 1
+        else: curEnum = ord(enumerator[0])
         if curEnum - prevEnumI != 1:
           break
         prevEnum = $chr(curEnum)
