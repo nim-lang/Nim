@@ -298,8 +298,6 @@ when not defined(js):
   proc testGen() =
     template impl(num) =
       doAssert fromBits(toBits(float64(num))) == float64(num)
-      echo fromBits(toBits(float32(num)))
-      echo float32(num)
       doAssert fromBits(toBits(float32(num))) == float32(num)
 
     impl(0)
