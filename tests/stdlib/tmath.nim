@@ -293,3 +293,24 @@ template main =
 
 main()
 static: main()
+
+when not defined(js):
+  proc testGen() =
+    template impl(num) =
+      doAssert fromBits(toBits(float64(num))) == float64(num)
+      echo fromBits(toBits(float32(num)))
+      echo float32(num)
+      doAssert fromBits(toBits(float32(num))) == float32(num)
+
+    impl(0)
+    impl(1)
+    impl(1000)
+    impl(-100)
+    impl(0.0)
+    impl(-0.0)
+    impl(3.1415926'f32)
+    impl(-3.1415926'f32)
+    impl(Inf)
+    impl(-Inf)
+
+  testGen()

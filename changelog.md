@@ -66,6 +66,8 @@
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 
+- Added `toBits` and `fromBits` to math.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

@@ -1131,3 +1131,23 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
+
+
+when not defined(js) and not defined(nimscript):
+  func toBits*(x: float64): uint64 {.since: (1, 5, 1).} =
+    ## Returns the IEEE 754 binary representation of float64.
+    cast[uint64](x)
+
+  func toBits*(x: float32): uint32 {.since: (1, 5, 1).} =
+    ## Returns the IEEE 754 binary representation of float32.
+    cast[uint32](x)
+
+  func fromBits*(x: uint64): float64 {.since: (1, 5, 1).} =
+    ## Returns the floating-point number corresponding
+    ## to the IEEE 754 binary representation.
+    cast[float64](x)
+
+  func fromBits*(x: uint32): float32 {.since: (1, 5, 1).} =
+    ## Returns the floating-point number corresponding
+    ## to the IEEE 754 binary representation.
+    cast[float32](x)
