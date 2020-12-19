@@ -12,6 +12,8 @@
 import
   hashes, strutils, lexbase, streams, unicode, macros
 
+import std/private/decode_helpers
+
 type
   SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
     sexpError,           ## an error occurred during parsing
@@ -112,14 +114,6 @@ proc errorMsgExpected*(my: SexpParser, e: string): string =
   ## returns an error message "`e` expected" in the same format as the
   ## other error messages
   result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), e & " expected"]
-
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
 
 proc parseString(my: var SexpParser): TTokKind =
   result = tkString

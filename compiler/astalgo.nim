@@ -222,9 +222,9 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
   ##
-  ##..code-block:: nim
+  ## .. code-block:: nim
   ##
-  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
+  ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   for i in 1..<list.len:
     let it = list[i].sym

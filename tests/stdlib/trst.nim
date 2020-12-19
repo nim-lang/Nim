@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 [Suite] RST include directive
 '''
 """

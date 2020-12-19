@@ -96,7 +96,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## defined.
   ##
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimc.html#compiler-usage-compile-time-symbols>`_ to enable
+  ## `-d:x switch <nimc.html#compiler-usage-compileminustime-symbols>`_ to enable
   ## build time conditionals:
   ##
   ## .. code-block:: Nim
@@ -627,7 +627,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: Nim
-  ##   var inputStrings : seq[string]
+  ##   var inputStrings: seq[string]
   ##   newSeq(inputStrings, 3)
   ##   assert len(inputStrings) == 3
   ##   inputStrings[0] = "The fourth"
@@ -873,9 +873,9 @@ else:
   template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
-  ## Useful for ``disarming`` dangling pointers explicitly for the
-  ## --newruntime. Regardless of whether --newruntime is used or not
-  ## this sets the pointer or callback ``x`` to ``nil``. This is an
+  ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
+  ## Regardless of whether `--newruntime` is used or not
+  ## this sets the pointer or callback `x` to `nil`. This is an
   ## experimental API!
   x = nil
 
@@ -1068,7 +1068,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1152,7 +1152,7 @@ when defined(nimdoc):
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc>`_.
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
     ## ``quit`` never returns and ignores any exception that may have been raised
     ## by the quit procedures.  It does *not* call the garbage collector to free
     ## all the memory, unless a quit procedure calls `GC_fullCollect
@@ -1215,7 +1215,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-when defined(gcDestructors):
+when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
     ## Generic proc for adding a container `y` to a container `x`.
     ##
@@ -1225,7 +1225,7 @@ when defined(gcDestructors):
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1250,7 +1250,7 @@ else:
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1274,7 +1274,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(1)` operation.
   ##
   ## See also:
-  ## * `delete <#delete,seq[T][T],Natural>`_ for preserving the order
+  ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1289,7 +1289,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(n)` operation.
   ##
   ## See also:
-  ## * `del <#delete,seq[T][T],Natural>`_ for O(1) operation
+  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1575,7 +1575,7 @@ proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
   ##
   ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
+  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1602,7 +1602,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1618,7 +1618,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -1647,7 +1647,7 @@ else:
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1663,7 +1663,7 @@ else:
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -1765,7 +1765,7 @@ when notJSnotNims and defined(nimSeqsV2):
 
 {.pop.}
 
-when notJSnotNims:
+when not defined(nimscript):
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
     ## Writes the current stack trace to ``stderr``. This is only works
     ## for debug builds. Since it's usually used for debugging, this
@@ -1774,7 +1774,7 @@ when notJSnotNims:
 when not declared(sysFatal):
   include "system/fatal"
 
-when notJSnotNims:
+when not defined(nimscript):
   {.push stackTrace: off, profiler: off.}
 
   proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
@@ -1897,53 +1897,54 @@ else:
 # however, stack-traces are available for most parts
 # of the code
 
-var
-  globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
-    ## With this hook you can influence exception handling on a global level.
-    ## If not nil, every 'raise' statement ends up calling this hook.
-    ##
-    ## **Warning**: Ordinary application code should never set this hook!
-    ## You better know what you do when setting this.
-    ##
-    ## If ``globalRaiseHook`` returns false, the exception is caught and does
-    ## not propagate further through the call stack.
+when notJSnotNims:
+  var
+    globalRaiseHook*: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a global level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## **Warning**: Ordinary application code should never set this hook!
+      ## You better know what you do when setting this.
+      ##
+      ## If ``globalRaiseHook`` returns false, the exception is caught and does
+      ## not propagate further through the call stack.
 
-  localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
-    ## With this hook you can influence exception handling on a
-    ## thread local level.
-    ## If not nil, every 'raise' statement ends up calling this hook.
-    ##
-    ## **Warning**: Ordinary application code should never set this hook!
-    ## You better know what you do when setting this.
-    ##
-    ## If ``localRaiseHook`` returns false, the exception
-    ## is caught and does not propagate further through the call stack.
+    localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
+      ## With this hook you can influence exception handling on a
+      ## thread local level.
+      ## If not nil, every 'raise' statement ends up calling this hook.
+      ##
+      ## **Warning**: Ordinary application code should never set this hook!
+      ## You better know what you do when setting this.
+      ##
+      ## If ``localRaiseHook`` returns false, the exception
+      ## is caught and does not propagate further through the call stack.
 
-  outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
-    ## Set this variable to provide a procedure that should be called
-    ## in case of an `out of memory`:idx: event. The standard handler
-    ## writes an error message and terminates the program.
-    ##
-    ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
-    ##
-    ## .. code-block:: Nim
-    ##
-    ##   var gOutOfMem: ref EOutOfMemory
-    ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
-    ##   gOutOfMem.msg = "out of memory"
-    ##
-    ##   proc handleOOM() =
-    ##     raise gOutOfMem
-    ##
-    ##   system.outOfMemHook = handleOOM
-    ##
-    ## If the handler does not raise an exception, ordinary control flow
-    ## continues and the program is terminated.
-  unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
-    ## Set this variable to provide a procedure that should be called
-    ## in case of an `unhandle exception` event. The standard handler
-    ## writes an error message and terminates the program, except when
-    ## using `--os:any`
+    outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `out of memory`:idx: event. The standard handler
+      ## writes an error message and terminates the program.
+      ##
+      ## `outOfMemHook` can be used to raise an exception in case of OOM like so:
+      ##
+      ## .. code-block:: Nim
+      ##
+      ##   var gOutOfMem: ref EOutOfMemory
+      ##   new(gOutOfMem) # need to be allocated *before* OOM really happened!
+      ##   gOutOfMem.msg = "out of memory"
+      ##
+      ##   proc handleOOM() =
+      ##     raise gOutOfMem
+      ##
+      ##   system.outOfMemHook = handleOOM
+      ##
+      ## If the handler does not raise an exception, ordinary control flow
+      ## continues and the program is terminated.
+    unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+      ## Set this variable to provide a procedure that should be called
+      ## in case of an `unhandle exception` event. The standard handler
+      ## writes an error message and terminates the program, except when
+      ## using `--os:any`
 
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
@@ -2949,7 +2950,7 @@ template closureScope*(body: untyped): untyped =
   ## their current iteration values.
   ##
   ## Note: This template may not work in some cases, use
-  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ## `capture <sugar.html#capture.m,varargs[typed],untyped>`_ instead.
   ##
   ## Example:
   ##

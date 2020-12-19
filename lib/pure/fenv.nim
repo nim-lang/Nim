@@ -178,11 +178,3 @@ template maximumPositiveValue*(T: typedesc[float64]): float64 = DBL_MAX
 template epsilon*(T: typedesc[float64]): float64 = DBL_EPSILON
   ## The difference between 1.0 and the smallest number greater than
   ## 1.0 that can be represented in a 64-bit floating-point type.
-
-
-when isMainModule:
-  func is_significant(x: float): bool =
-    if x > minimumPositiveValue(float) and x < maximumPositiveValue(float): true
-    else: false
-
-  doAssert is_significant(10.0)

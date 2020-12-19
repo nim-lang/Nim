@@ -398,6 +398,48 @@ proc handleCmdInput*(conf: ConfigRef) =
   conf.projectName = "cmdfile"
   handleStdinOrCmdInput()
 
+proc parseCommand*(command: string): Command =
+  case command.normalize
+  of "c", "cc", "compile", "compiletoc": cmdCompileToC
+  of "cpp", "compiletocpp": cmdCompileToCpp
+  of "objc", "compiletooc": cmdCompileToOC
+  of "js", "compiletojs": cmdCompileToJS
+  of "r": cmdCrun
+  of "run": cmdTcc
+  of "check": cmdCheck
+  of "e": cmdNimscript
+  of "doc0": cmdDoc0
+  of "doc2", "doc": cmdDoc2
+  of "rst2html": cmdRst2html
+  of "rst2tex": cmdRst2tex
+  of "jsondoc0": cmdJsondoc0
+  of "jsondoc2", "jsondoc": cmdJsondoc
+  of "ctags": cmdCtags
+  of "buildindex": cmdBuildindex
+  of "gendepend": cmdGendepend
+  of "dump": cmdDump
+  of "parse": cmdParse
+  of "scan": cmdScan
+  of "secret": cmdInteractive
+  of "nop", "help": cmdNop
+  of "jsonscript": cmdJsonscript
+  else: cmdUnknown
+
+proc setCmd*(conf: ConfigRef, cmd: Command) =
+  ## sets cmd, backend so subsequent flags can query it (e.g. so --gc:arc can be ignored for backendJs)
+  # Note that `--backend` can override the backend, so the logic here must remain reversible.
+  conf.cmd = cmd
+  case cmd
+  of cmdCompileToC, cmdCrun, cmdTcc: conf.backend = backendC
+  of cmdCompileToCpp: conf.backend = backendCpp
+  of cmdCompileToOC: conf.backend = backendObjc
+  of cmdCompileToJS: conf.backend = backendJs
+  else: discard
+
+proc setCommandEarly*(conf: ConfigRef, command: string) =
+  conf.command = command
+  setCmd(conf, command.parseCommand)
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -407,8 +449,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.projectIsCmd = true
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
-    if conf.command == "":
-      conf.command = "e" # better than "r" as a default
+    if conf.cmd == cmdNone:
+      conf.command = "e"
+      conf.setCmd cmdNimscript # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -499,11 +542,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "project":
     processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
-    if conf.backend == backendJs or conf.command == "js":
-      # for: bug #16033
-      # This might still be imperfect, in rarse corner cases
-      # (where command is reset in nimscript, maybe).
-      return
+    if conf.backend == backendJs: return # for: bug #16033
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       case arg.normalize
@@ -955,13 +994,12 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      config.command = "e"
+      config.setCmd cmdNimscript
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
-    elif pass != passCmd2:
-      config.command = p.key
+    elif pass != passCmd2: setCommandEarly(config, p.key)
   else:
     if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:

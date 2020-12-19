@@ -249,13 +249,15 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
-  if needsTmp and a.lode.typ != nil:
-    var tmp: TLoc
-    getTemp(p, a.lode.typ, tmp, needsInit=false)
-    genAssignment(p, tmp, a, {})
-    tmp
+  # Bug https://github.com/status-im/nimbus-eth2/issues/1549
+  # Aliasing is preferred over stack overflows.
+  # Also don't regress for non ARC-builds, too risky.
+  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcOrc} and
+      getSize(p.config, a.lode.typ) < 1024:
+    getTemp(p, a.lode.typ, result, needsInit=false)
+    genAssignment(p, result, a, {})
   else:
-    a
+    result = a
 
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc

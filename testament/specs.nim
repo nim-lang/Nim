@@ -8,7 +8,7 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
-  tables, hashes
+  tables, hashes, sets
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -57,10 +57,10 @@ type
     reInvalidSpec       # test had problems to parse the spec
 
   TTarget* = enum
-    targetC = "C"
-    targetCpp = "C++"
-    targetObjC = "ObjC"
-    targetJS = "JS"
+    targetC = "c"
+    targetCpp = "cpp"
+    targetObjC = "objc"
+    targetJS = "js"
 
   InlineError* = object
     kind*: string
@@ -82,7 +82,7 @@ type
     tline*, tcolumn*: int
     exitCode*: int
     msg*: string
-    ccodeCheck*: string
+    ccodeCheck*: seq[string]
     maxCodeSize*: int
     err*: TResultEnum
     inCurrentBatch*: bool
@@ -218,7 +218,7 @@ proc parseTargets*(value: string): set[TTarget] =
     of "cpp", "c++": result.incl(targetCpp)
     of "objc": result.incl(targetObjC)
     of "js": result.incl(targetJS)
-    else: echo "target ignored: " & v
+    else: raise newException(ValueError, "invalid target: '$#'" % v)
 
 proc addLine*(self: var string; a: string) =
   self.add a
@@ -244,11 +244,19 @@ proc parseSpec*(filename: string): TSpec =
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)
+  var flags: HashSet[string]
   while true:
     var e = next(p)
     case e.kind
     of cfgKeyValuePair:
-      case normalize(e.key)
+      let key = e.key.normalize
+      const whiteListMulti = ["disabled", "ccodecheck"]
+        ## list of flags that are correctly handled when passed multiple times
+        ## (instead of being overwritten)
+      if key notin whiteListMulti:
+        doAssert key notin flags, $(key, filename)
+      flags.incl key
+      case key
       of "action":
         case e.value.normalize
         of "compile":
@@ -280,7 +288,7 @@ proc parseSpec*(filename: string): TSpec =
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
-        result.output = strip(e.value)
+        result.output = e.value
       of "input":
         result.input = e.value
       of "outputsub":
@@ -298,7 +306,7 @@ proc parseSpec*(filename: string): TSpec =
         result.msg = e.value
         if result.action != actionRun:
           result.action = actionCompile
-      of "errormsg", "errmsg":
+      of "errormsg":
         result.msg = e.value
         result.action = actionReject
       of "nimout":
@@ -361,7 +369,7 @@ proc parseSpec*(filename: string): TSpec =
         else:
           result.cmd = e.value
       of "ccodecheck":
-        result.ccodeCheck = e.value
+        result.ccodeCheck.add e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
       of "timeout":
@@ -369,19 +377,11 @@ proc parseSpec*(filename: string): TSpec =
           result.timeout = parseFloat(e.value)
         except ValueError:
           result.parseErrors.addLine "cannot interpret as a float: ", e.value
-      of "target", "targets":
-        for v in e.value.normalize.splitWhitespace:
-          case v
-          of "c":
-            result.targets.incl(targetC)
-          of "cpp", "c++":
-            result.targets.incl(targetCpp)
-          of "objc":
-            result.targets.incl(targetObjC)
-          of "js":
-            result.targets.incl(targetJS)
-          else:
-            result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "targets", "target":
+        try:
+          result.targets.incl parseTargets(e.value)
+        except ValueError as e:
+          result.parseErrors.addLine e.msg
       of "matrix":
         for v in e.value.split(';'):
           result.matrix.add(v.strip)

@@ -1434,10 +1434,10 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
-  for i in 1 ..< params.len:
-    template node: untyped = params[i]
-    if name.eqIdent( $ node[0]):
-      return true
+  for i in 1..<params.len:
+    for j in 0..<params[i].len-2:
+      if name.eqIdent($params[i][j]):
+        return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
   ## Add ``ident`` to ``dest`` if it is not present. This is intended for use

@@ -223,6 +223,9 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
+    if i < 0:
+      if doRaise: raiseEIO("cannot write string to file")
+      return
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -278,7 +281,12 @@ elif defined(posix) and not defined(lwip) and not defined(nimscript):
   proc c_fcntl(fd: cint, cmd: cint): cint {.
     importc: "fcntl", header: "<fcntl.h>", varargs.}
 elif defined(windows):
-  const HANDLE_FLAG_INHERIT = culong 0x1
+  type
+    WinDWORD = culong
+    WinBOOL = cint
+
+  const HANDLE_FLAG_INHERIT = 1.WinDWORD
+
   proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
@@ -286,8 +294,10 @@ elif defined(windows):
     IoHandle = distinct pointer
       ## Windows' HANDLE type. Defined as an untyped pointer but is **not**
       ## one. Named like this to avoid collision with other `system` modules.
-  proc setHandleInformation(handle: IoHandle, mask, flags: culong): cint {.
-    importc: "SetHandleInformation", header: "<handleapi.h>".}
+
+  proc setHandleInformation(hObject: IoHandle, dwMask, dwFlags: WinDWORD):
+                           WinBOOL {.stdcall, dynlib: "kernel32",
+                                  importc: "SetHandleInformation".}
 
 const
   BufSize = 4000
@@ -346,7 +356,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
-                                    culong inheritable) != 0
+                                    inheritable.WinDWORD) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -773,6 +783,13 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
+
+  template checkErrMaybe(succeeded: bool): untyped =
+    if not succeeded:
+      when echoDoRaise:
+        checkErr(stdout)
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -785,20 +802,18 @@ when declared(stdout):
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
+        defer: funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
+        defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s)
+          writeWindows(stdout, s, doRaise = echoDoRaise)
         else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
+          checkErrMaybe(c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) == s.len)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-      discard c_fflush(stdout)
-      when stdOutLock:
-        funlockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        releaseSys echoLock
+      checkErrMaybe(c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) == linefeed.len)
+      checkErrMaybe(c_fflush(stdout) == 0)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):

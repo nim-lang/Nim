@@ -99,7 +99,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
   ##
-  ## See `checkReply(reply)<#checkReply,,string>`_.
+  ## See `checkReply(reply)<#checkReply,AsyncSmtp,string>`_.
 
   result = await smtp.sock.recvLine()
   if smtp.debug:
@@ -211,7 +211,7 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   return retFuture
 
 proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
-  ## Calls `debugRecv<#debugRecv>`_ and checks that the received
+  ## Calls `debugRecv<#debugRecv,AsyncSmtp>`_ and checks that the received
   ## data starts with ``reply``. If the received data does not start
   ## with ``reply``, then a ``QUIT`` command will be sent to the SMTP
   ## server and a ``ReplyError`` exception will be raised.

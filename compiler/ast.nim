@@ -765,7 +765,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdNimfix': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -799,6 +799,7 @@ type
     libHeader, libDynamic
 
   TLib* = object              # also misused for headers!
+                              # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
@@ -823,7 +824,7 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj
+  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of skType, skGenericParam:
@@ -904,6 +905,7 @@ type
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
+                              # Keep in sync with PackedType
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
@@ -1122,7 +1124,7 @@ proc safeLen*(n: PNode): int {.inline.} =
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
+  if n.kind in {nkStrLit..nkTripleStrLit}: result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
 
@@ -1834,6 +1836,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
     result = newType(tyRef, nextId(idgen), typ.owner)
     rawAddSon(result, typ)

@@ -11,8 +11,8 @@
 ## and exported by the ``json`` standard library
 ## module, but can also be used in its own right.
 
-import
-  strutils, lexbase, streams, unicode
+import strutils, lexbase, streams, unicode
+import std/private/decode_helpers
 
 type
   JsonEventKind* = enum ## enumeration of all events that may occur when parsing
@@ -162,18 +162,11 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
-
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
+    # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
     if handleHexChar(buf[pos], result):
       inc(pos)
     else:
