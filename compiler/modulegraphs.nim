@@ -46,6 +46,7 @@ type
     module*: PSym       ## module this "Iface" belongs to
     pureEnums*: seq[PSym]
     patterns*: seq[PSym]
+    converters*: seq[PSym]
     tree: PackedTree
 
   ModuleGraph* = ref object
@@ -192,13 +193,14 @@ proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
   result.magic = m
   result.flags = {sfNeverRaises}
 
-proc registerModule*(g: ModuleGraph; m: PSym) =
-  assert m != nil
-  assert m.kind == skModule
+when false:
+  proc registerModule*(g: ModuleGraph; m: PSym) =
+    assert m != nil
+    assert m.kind == skModule
 
-  if m.position >= g.ifaces.len:
-    setLen(g.ifaces, m.position + 1)
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+    if m.position >= g.ifaces.len:
+      setLen(g.ifaces, m.position + 1)
+    g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()

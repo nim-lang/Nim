@@ -176,7 +176,7 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
   var marked = initIntSet()
   result = nil
   for im in c.imports.mitems:
-    for s in symbols(c.graph, im, marked, name):
+    for s in symbols(im, marked, name):
       if result == nil:
         result = s
       else:
@@ -213,7 +213,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
   if result.len == 0:
     var marked = initIntSet()
     for im in c.imports.mitems:
-      for s in symbols(c.graph, im, marked, s):
+      for s in symbols(im, marked, s):
         if s.kind in filter:
           result.add s
 
