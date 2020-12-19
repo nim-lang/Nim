@@ -24,3 +24,7 @@ block tcstrutils:
 
   doAssert cmpIgnoreStyle(cstring "foo_bar", "FooBar") == 0
   doAssert cmpIgnoreStyle(cstring "foo_bar_5", "FooBar4") > 0
+
+  doAssert cmpIgnoreCase(cstring "", cstring "") == 0
+  doAssert cmpIgnoreCase(cstring "", cstring "Hello") < 0
+  doAssert cmpIgnoreCase(cstring "wind", cstring "") > 0
