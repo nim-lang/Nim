@@ -640,6 +640,8 @@ proc getSection(c: var CfgParser, kind: CfgEventKind): CfgEvent =
     if c.tok.kind == tkBracketRi:
       result.sectionRelated.tokenRight = c.tok.literal
       rawGetTok(c) # Gets blank and comment after `]`
+      if c.tok.kind == tkEof:
+        return
       if c.tok.literal == "\n":
         result.sectionRelated.tokenRearBlank = c.blankAndComment.blank
         result.sectionRelated.comment = c.blankAndComment.comment
@@ -670,6 +672,8 @@ proc getKeyValuePair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
       result.keyValueRelated.keyRearBlank = c.blankAndComment.blank
       result.keyValueRelated.token = c.tok.literal
       rawGetTok(c) # Get the blank before value
+      if c.tok.kind == tkEof:
+        return
       if c.tok.literal != "\n":
         result.keyValueRelated.valFrontBlank = c.blankAndComment.blank
         getContent(c, result, "value") # Gets the contents of 'value'
@@ -702,7 +706,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
     # Generates `key` for blank and comment lines.
     result.keyValueRelated.keyStringKind = skSymbol
     result.keyValueRelated.valueStringKind = skSymbol
-    result.key = "Nim_parsecfg_blank_and_comment_line_" & $c.getLine()
+    result.key = "BlankAndCommentLine" & $c.getLine()
     result.value = ""
     result.keyValueRelated.valRearBlank = c.blankAndComment.blank
     result.keyValueRelated.comment = c.blankAndComment.comment
@@ -844,7 +848,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
       var newKey = ""
       s = ""
       s.add(kv.keyValueRelated.keyFrontBlank)
-      if not key.startsWith("Nim_parsecfg_blank_and_comment_line_"): # blank and comment line
+      if not key.startsWith("BlankAndCommentLine"): # blank and comment line
         newKey = key
       if kv.keyValueRelated.keyStringKind == skLongString:
         if newKey.startsWith("--"):
