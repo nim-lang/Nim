@@ -321,7 +321,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
-  cmpIgnoreCaseImpl()
+  cmpIgnoreCaseImpl(a, b)
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
@@ -340,7 +340,7 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  cmpIgnoreStyleImpl()
+  cmpIgnoreStyleImpl(a, b)
 {.pop.}
 
 # --------- Private templates for different split separators -----------

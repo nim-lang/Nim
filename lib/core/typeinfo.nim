@@ -369,7 +369,7 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
     yield ($name, any)
 
 proc cmpNimIdentifier(a, b: cstring): int {.noSideEffect.} =
-  cmpIgnoreStyleImpl(true)
+  cmpIgnoreStyleImpl(a, b, true)
 
 proc getFieldNode(p: pointer, n: ptr TNimNode,
                   name: cstring): ptr TNimNode =

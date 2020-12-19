@@ -4,7 +4,7 @@ func toLowerAscii*(c: char): char {.inline.} =
   else:
     result = c
 
-template cmpIgnoreStyleImpl*(caseSensitive: static bool = false) =
+template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
   when caseSensitive:
     if a[0] != b[0]: return 1
@@ -28,7 +28,7 @@ template cmpIgnoreStyleImpl*(caseSensitive: static bool = false) =
     inc i
     inc j
 
-template cmpIgnoreCaseImpl*(caseSensitive: static bool = false) =
+template cmpIgnoreCaseImpl*(a, b: typed, caseSensitive: static bool = false) =
   # a, b are string or cstring
   when caseSensitive:
     if a[0] != b[0]: return 1

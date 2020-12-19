@@ -23,10 +23,10 @@ when defined(js):
     importjs: "#.endsWith(#)".}
 
   proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect.} =
-    cmpIgnoreStyleImpl()
+    cmpIgnoreStyleImpl(a, b)
 
   proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect.} =
-    cmpIgnoreCaseImpl()
+    cmpIgnoreCaseImpl(a, b)
 
   # JS string has more operations that might warrant its own module:
   # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
