@@ -9,7 +9,7 @@ template cmpIgnoreStyleImpl*(a, b: typed, caseSensitive: static bool = false) =
   let aLen = a.len
   let bLen = b.len
   when caseSensitive:
-    if a[0] != b[0]: return 1
+    if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var j = 0
   while true:
@@ -35,7 +35,7 @@ template cmpIgnoreCaseImpl*(a, b: typed, caseSensitive: static bool = false) =
   let aLen = a.len
   let bLen = b.len
   when caseSensitive:
-    if a[0] != b[0]: return 1
+    if a[0] != b[0]: return ord(a[0]) - ord(b[0])
   var i = 0
   var m = min(aLen, bLen)
   while i < m:
