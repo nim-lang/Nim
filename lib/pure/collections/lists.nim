@@ -476,34 +476,40 @@ func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} 
     let c = [1, 2, 3].toSinglyLinkedList
     assert $c == $c.copy
   result = initSinglyLinkedList[T]()
-  for x in a:
+  for x in a.items:
     result.append(x)
 
 proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
-  ## Note that `b` becomes empty after the operation.
-  ## Self-adding results in an empty list.
+  ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
+  ## Self-adding results in a cycle.
   ##
   ## See also:
   ## * `add proc <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
-    import sequtils
+    import sequtils, std/enumerate, std/sugar
     var
       a = [1, 2, 3].toSinglyLinkedList
       b = [4, 5].toSinglyLinkedList
+      c = [0, 1].toSinglyLinkedList
     a.addMoved b
     assert a.toSeq == [1, 2, 3, 4, 5]
     assert b.toSeq == []
-    a.addMoved a
-    assert a.toSeq == []
+    c.addMoved c
+    let s = collect:
+      for i, ci in enumerate(c):
+        if i == 6: break
+        ci
+    assert s == [0, 1, 0, 1, 0, 1]
   if a.tail != nil:
     a.tail.next = b.head
   a.tail = b.tail
   if a.head == nil:
     a.head = b.head
-  b.head = nil
-  b.tail = nil
+  if a.addr != b.addr:
+    b.head = nil
+    b.tail = nil
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -607,27 +613,32 @@ func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} 
     let c = [1, 2, 3].toDoublyLinkedList
     assert $c == $c.copy
   result = initDoublyLinkedList[T]()
-  for x in a:
+  for x in a.items:
     result.append(x)
 
 proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
-  ## Note that `b` becomes empty after the operation.
-  ## Self-adding results in an empty list.
+  ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
+  ## Self-adding results in a cycle.
   ##
   ## See also:
   ## * `add proc <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
-    import sequtils
+    import sequtils, std/enumerate, std/sugar
     var
       a = [1, 2, 3].toDoublyLinkedList
       b = [4, 5].toDoublyLinkedList
+      c = [0, 1].toDoublyLinkedList
     a.addMoved b
     assert a.toSeq == [1, 2, 3, 4, 5]
     assert b.toSeq == []
-    a.addMoved a
-    assert a.toSeq == []
+    c.addMoved c
+    let s = collect:
+      for i, ci in enumerate(c):
+        if i == 6: break
+        ci
+    assert s == [0, 1, 0, 1, 0, 1]
   if b.head != nil:
     b.head.prev = a.tail
   if a.tail != nil:
@@ -635,8 +646,9 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
   a.tail = b.tail
   if a.head == nil:
     a.head = b.head
-  b.head = nil
-  b.tail = nil
+  if a.addr != b.addr:
+    b.head = nil
+    b.tail = nil
 
 proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Appends a shallow copy of `b` to the end of `a`.

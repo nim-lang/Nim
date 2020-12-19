@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-import lists, sequtils
+import lists, sequtils, std/enumerate, std/sugar
 
 const
   data = [1, 2, 3, 4, 5, 6]
@@ -97,11 +97,16 @@ template testCommon(initList, toList) =
     doAssert [1, 2, 3].toList.copy.toSeq == [1, 2, 3]
     type Foo = ref object
       x: int
-    var f = Foo(x: 1)
-    let a = [f, f].toList
-    f.x = 42
-    assert a.head.value == f
-    assert a.head.next.value == f
+    var f0 = Foo(x: 0)
+    let f1 = Foo(x: 1)
+    var a = [f0].toList
+    var b = a.copy
+    b.append f1
+    doAssert a.toSeq == [f0]
+    doAssert b.toSeq == [f0, f1]
+    f0.x = 42
+    assert a.head.value.x == 42
+    assert b.head.value.x == 42
 
   block: # add, addMoved
     block:
@@ -132,6 +137,14 @@ template testCommon(initList, toList) =
       doAssert l2.toSeq == [2, 3, 1]
       l3.add l0
       doAssert l3.toSeq == [4, 5, 6]
+    block:
+      var c = [0, 1].toList
+      c.addMoved c
+      let s = collect:
+        for i, ci in enumerate(c):
+          if i == 6: break
+          ci
+      doAssert s == [0, 1, 0, 1, 0, 1]
 
 testCommon initSinglyLinkedList, toSinglyLinkedList
 testCommon initDoublyLinkedList, toDoublyLinkedList
