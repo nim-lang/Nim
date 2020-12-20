@@ -57,7 +57,7 @@
 
 - `strscans.scanf` now supports parsing single characters.
 
-- Added `strutils.stripInplace`.
+- Added `stropt.strip`.
 
 
 ## Language changes
