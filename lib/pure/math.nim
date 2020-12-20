@@ -880,7 +880,7 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
-proc euclDiv*[T: SomeInteger](x, y: T): T =
+func euclDiv*[T: SomeInteger](x, y: T): T {.since: (1, 5, 1).} =
   ## Returns euclidean division of `x` by `y`.
   runnableExamples:
     assert euclDiv(13, 3) == 4
@@ -895,14 +895,14 @@ proc euclDiv*[T: SomeInteger](x, y: T): T =
     else:
       inc result
 
-proc euclMod*[T: SomeNumber](x, y: T): T =
+func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   ## Returns euclidean modulo of `x` by `y`.
   ## `euclMod(x, y)` is non-negative.
   runnableExamples:
     assert euclMod(13, 3) == 1
-    assert euclDiv(-13, 3) == 2
-    assert euclDiv(13, -3) == 1
-    assert euclDiv(-13, -3) == 2
+    assert euclMod(-13, 3) == 2
+    assert euclMod(13, -3) == 1
+    assert euclMod(-13, -3) == 2
   result = x mod y
   if result < 0:
     # increase by abs(y)
