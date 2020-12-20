@@ -1,36 +1,38 @@
-import std/strutils
-import std/private/since
+#
+#
+#           The Nim Compiler
+#        (c) Copyright 2020 Nim Contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
 
-
-proc stripInplace*(s: var string, leading = true, trailing = true,
-                   chars: set[char] = Whitespace) {.since: (1, 5, 1).} =
+proc strip*(s: var string, leading = true, trailing = true,
+                   chars: set[char] = {' ', '\t', '\v', '\r', '\l', '\f'}) =
   ## Inplace version of `strip`. Strips leading or 
   ## trailing `chars` (default: whitespace characters).
   ##
   ## If `leading` is true (default), leading `chars` are stripped.
   ## If `trailing` is true (default), trailing `chars` are stripped.
   ## If both are false, the string is unchanged.
-  ##
-  ## See also:
-  ## * `strip proc<#strip,string,set[char]>`_
   runnableExamples:
     var a = "  vhellov   "
-    stripInplace(a)
+    strip(a)
     doAssert a == "vhellov"
 
     a = "  vhellov   "
-    a.stripInplace(leading = false)
+    a.strip(leading = false)
     doAssert a == "  vhellov"
 
     a = "  vhellov   "
-    a.stripInplace(trailing = false)
+    a.strip(trailing = false)
     doAssert a == "vhellov   "
 
     var c = "blaXbla"
-    c.stripInplace(chars = {'b', 'a'})
+    c.strip(chars = {'b', 'a'})
     doAssert c == "laXbl"
     c = "blaXbla"
-    c.stripInplace(chars = {'b', 'a', 'l'})
+    c.strip(chars = {'b', 'a', 'l'})
     doAssert c == "X"
 
   template impl = 

@@ -5,34 +5,34 @@ discard """
 import std/stropt
 
 
-proc testStripInplace() =
+proc teststrip() =
   var a = "  vhellov   "
-  stripInplace(a)
+  strip(a)
   doAssert a == "vhellov"
 
   a = "  vhellov   "
-  a.stripInplace(leading = false)
+  a.strip(leading = false)
   doAssert a == "  vhellov"
 
   a = "  vhellov   "
-  a.stripInplace(trailing = false)
+  a.strip(trailing = false)
   doAssert a == "vhellov   "
 
-  a.stripInplace()
-  a.stripInplace(chars = {'v'})
+  a.strip()
+  a.strip(chars = {'v'})
   doAssert a == "hello"
 
   a = "  vhellov   "
-  a.stripInplace()
-  a.stripInplace(leading = false, chars = {'v'})
+  a.strip()
+  a.strip(leading = false, chars = {'v'})
   doAssert a == "vhello"
 
   var c = "blaXbla"
-  c.stripInplace(chars = {'b', 'a'})
+  c.strip(chars = {'b', 'a'})
   doAssert c == "laXbl"
   c = "blaXbla"
-  c.stripInplace(chars = {'b', 'a', 'l'})
+  c.strip(chars = {'b', 'a', 'l'})
   doAssert c == "X"
 
-static: testStripInplace()
-testStripInplace()
+static: teststrip()
+teststrip()
