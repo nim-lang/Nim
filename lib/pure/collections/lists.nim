@@ -72,6 +72,7 @@
 ## * `deques module <deques.html>`_ for double-ended queues
 ## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
+import std/private/since
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
@@ -177,6 +178,26 @@ proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
 
   new(result)
   result.value = value
+
+func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `SinglyLinkedList` from members of `elems`.
+  runnableExamples:
+    import sequtils
+    let a = [1, 2, 3, 4, 5].toSinglyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+  result = initSinglyLinkedList[T]()
+  for elem in elems.items:
+    result.append(elem)
+
+func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a new `DoublyLinkedList` from members of `elems`.
+  runnableExamples:
+    import sequtils
+    let a = [1, 2, 3, 4, 5].toDoublyLinkedList
+    assert a.toSeq == [1, 2, 3, 4, 5]
+  result = initDoublyLinkedList[T]()
+  for elem in elems.items:
+    result.append(elem)
 
 template itemsListImpl() {.dirty.} =
   var it = L.head
@@ -435,7 +456,60 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
     assert a.contains(9)
   prepend(L, newSinglyLinkedNode(value))
 
+func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a shallow copy of `a`.
+  runnableExamples:
+    import sequtils
+    type Foo = ref object
+      x: int
+    var
+      f = Foo(x: 1)
+      a = [f].toSinglyLinkedList
+    let b = a.copy
+    a.add [f].toSinglyLinkedList
+    assert a.toSeq == [f, f]
+    assert b.toSeq == [f] # b isn't modified...
+    f.x = 42
+    assert a.head.value.x == 42
+    assert b.head.value.x == 42 # ... but the elements are not deep copied
 
+    let c = [1, 2, 3].toSinglyLinkedList
+    assert $c == $c.copy
+  result = initSinglyLinkedList[T]()
+  for x in a.items:
+    result.append(x)
+
+proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
+  ## Moves `b` to the end of `a`. Efficiency: O(1).
+  ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
+  ## Self-adding results in a cycle.
+  ##
+  ## See also:
+  ## * `add proc <#add,T,T>`_
+  ##   for adding a copy of a list
+  runnableExamples:
+    import sequtils, std/enumerate, std/sugar
+    var
+      a = [1, 2, 3].toSinglyLinkedList
+      b = [4, 5].toSinglyLinkedList
+      c = [0, 1].toSinglyLinkedList
+    a.addMoved b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == []
+    c.addMoved c
+    let s = collect:
+      for i, ci in enumerate(c):
+        if i == 6: break
+        ci
+    assert s == [0, 1, 0, 1, 0, 1]
+  if a.tail != nil:
+    a.tail.next = b.head
+  a.tail = b.tail
+  if a.head == nil:
+    a.head = b.head
+  if a.addr != b.addr:
+    b.head = nil
+    b.tail = nil
 
 proc append*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `L`. Efficiency: O(1).
@@ -522,6 +596,78 @@ proc prepend*[T](L: var DoublyLinkedList[T], value: T) =
     a.prepend(8)
     assert a.contains(9)
   prepend(L, newDoublyLinkedNode(value))
+
+func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
+  ## Creates a shallow copy of `a`.
+  runnableExamples:
+    type Foo = ref object
+      x: int
+    var f = Foo(x: 1)
+    let
+      a = [f].toDoublyLinkedList
+      b = a.copy
+    f.x = 42
+    assert a.head.value.x == 42
+    assert b.head.value.x == 42
+
+    let c = [1, 2, 3].toDoublyLinkedList
+    assert $c == $c.copy
+  result = initDoublyLinkedList[T]()
+  for x in a.items:
+    result.append(x)
+
+proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
+  ## Moves `b` to the end of `a`. Efficiency: O(1).
+  ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
+  ## Self-adding results in a cycle.
+  ##
+  ## See also:
+  ## * `add proc <#add,T,T>`_
+  ##   for adding a copy of a list
+  runnableExamples:
+    import sequtils, std/enumerate, std/sugar
+    var
+      a = [1, 2, 3].toDoublyLinkedList
+      b = [4, 5].toDoublyLinkedList
+      c = [0, 1].toDoublyLinkedList
+    a.addMoved b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == []
+    c.addMoved c
+    let s = collect:
+      for i, ci in enumerate(c):
+        if i == 6: break
+        ci
+    assert s == [0, 1, 0, 1, 0, 1]
+  if b.head != nil:
+    b.head.prev = a.tail
+  if a.tail != nil:
+    a.tail.next = b.head
+  a.tail = b.tail
+  if a.head == nil:
+    a.head = b.head
+  if a.addr != b.addr:
+    b.head = nil
+    b.tail = nil
+
+proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
+  ## Appends a shallow copy of `b` to the end of `a`.
+  ##
+  ## See also:
+  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
+  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
+  ##   for moving the second list instead of copying
+  runnableExamples:
+    import sequtils
+    var a = [1, 2, 3].toSinglyLinkedList
+    let b = [4, 5].toSinglyLinkedList
+    a.add b
+    assert a.toSeq == [1, 2, 3, 4, 5]
+    assert b.toSeq == [4, 5]
+    a.add a
+    assert a.toSeq == [1, 2, 3, 4, 5, 1, 2, 3, 4, 5]
+  var tmp = b.copy
+  a.addMoved tmp
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
