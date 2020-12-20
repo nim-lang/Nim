@@ -56,7 +56,7 @@
 - `writeStackTrace` is available in JS backend now.
 
 - `strscans.scanf` now supports parsing single characters.
-- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`. 
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
 
 - Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
   if the iterable yields a built-in settable type.
@@ -65,6 +65,9 @@
 
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- Add `jsbigint` module, arbitrary precision integers for JavaScript target.
+
 
 ## Language changes
 
