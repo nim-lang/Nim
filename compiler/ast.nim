@@ -584,7 +584,7 @@ type
     skEnumField,          # an identifier in an enum
     skForVar,             # a for loop variable
     skLabel,              # a label (for block statement)
-    skStubIsUnused,       # -- unused symbol kind preserved just in case --
+    skStub,               # symbol is a stub and not yet loaded from the ROD
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
@@ -844,7 +844,7 @@ type
       # No need, just leave it as skModule but set the owner accordingly and
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
-      pkgTab*: TStrTable         # interface table for packages
+      tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -925,7 +925,7 @@ type
     attachedOps*: array[TTypeAttachedOp, PSym] # destructors, etc.
     methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
-                              # -1 means that the size is unknown
+                              # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
@@ -1008,7 +1008,7 @@ const
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skAlias}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
@@ -1050,12 +1050,6 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
-proc tab*(s: PSym): TStrTable =
-  ## read-only accessor for now
-  if s.kind == skPackage:
-    result = s.pkgTab
-  else:
-    assert false, "use getExport"
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
@@ -1081,6 +1075,11 @@ template id*(a: PIdObj): int =
 
 type
   IdGenerator* = ref ItemId # unfortunately, we really need the 'shared mutable' aspect here.
+
+proc hash*(x: ItemId): Hash =
+  var h: Hash = hash(x.module)
+  h = h !& hash(x.item)
+  result = !$h
 
 const
   PackageModuleId* = -3'i32
@@ -1388,6 +1387,10 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  align: defaultAlignment, itemId: id,
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
+  when false:
+    if result.id == 76426:
+      echo "KNID ", kind
+      writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
@@ -1439,8 +1442,8 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.typ = s.typ
   result.flags = s.flags
   result.magic = s.magic
-  if s.kind == skPackage:
-    copyStrTable(result.pkgTab, s.pkgTab)
+  if s.kind == skModule:
+    copyStrTable(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1458,8 +1461,7 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
-  if s.kind == skPackage:
-    system.shallowCopy(result.pkgTab, s.pkgTab)
+  system.shallowCopy(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1974,9 +1976,3 @@ proc toHumanStr*(kind: TTypeKind): string =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
-
-proc hash*(id: ItemId): Hash =
-  var h: Hash = 0
-  h = h !& hash(id.module)
-  h = h !& hash(id.item)
-  result = !$h

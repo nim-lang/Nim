@@ -26,28 +26,19 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees, md5, astalgo, msgs
+  incremental, btrees, md5
 
 # import ic / packed_ast
 
 type
   SigHash* = distinct MD5Digest
 
-import ic/[packed_ast, contexts, store]
-# to_packed_ast and from_packed_ast are imported later in the file
-
-import std/options as stdoptions
-
-type
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
-    encoder*: ref PackedEncoder
-    decoder*: ref PackedDecoder
     module*: PSym       ## module this "Iface" belongs to
-    pureEnums*: seq[PSym]
-    patterns*: seq[PSym]
     converters*: seq[PSym]
-    tree: PackedTree
+    patterns*: seq[PSym]
+    pureEnums*: seq[PSym]
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -107,11 +98,6 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
-proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
-
-
-#proc addExport*(g: ModuleGraph; m: PSym; s: PSym)
-#proc addSymbol(g: ModuleGraph; m: PSym; s: PSym)
 
 const
   cb64 = [
@@ -190,19 +176,17 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen),
-                  nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
-when false:
-  proc registerModule*(g: ModuleGraph; m: PSym) =
-    assert m != nil
-    assert m.kind == skModule
+proc registerModule*(g: ModuleGraph; m: PSym) =
+  assert m != nil
+  assert m.kind == skModule
 
-    if m.position >= g.ifaces.len:
-      setLen(g.ifaces, m.position + 1)
-    g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+  if m.position >= g.ifaces.len:
+    setLen(g.ifaces, m.position + 1)
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
@@ -300,197 +284,3 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
-
-when false:
-  import ic/[to_packed_ast, from_packed_ast]
-
-  template initialized(iface: Iface): bool = iface.decoder != nil
-
-  template assertInitialized(g: ModuleGraph; iface: Iface) =
-    if not iface.initialized:
-      internalError(g.config, "iface uninitialized")
-
-  proc contains(ps: seq[PSym]; s: PSym): bool =
-    ## be explicit about finding a sym in a seq
-    for n in ps.items:
-      result = n.id == s.id
-      if result:
-        break
-
-  proc makeResolver*(graph: ModuleGraph): Resolver =
-    proc resolver(module: int32; name: string): PSym =
-      ## this resolver callback serves to add the graph to the scope of
-      ## the packed ast decoder without requiring the graph itself
-      let ident = getIdent(graph.cache, name)
-      echo "resolve ", name
-      if module == PackageModuleId:
-        result = strTableGet(graph.packageSyms, ident)
-      else:
-        block found:
-          # we'll just do this stupidly for now
-          for i in countup(0, graph.ifaces.high):
-            template iface: Iface = graph.ifaces[i]
-            if iface.module != nil:
-              if iface.module.itemId.module == module:
-                result = getExport(graph, iface.module, ident)
-                break found
-          internalError(graph.config, "unable to resolve module " & $module)
-      if result == nil:
-        internalError(graph.config, "unable to retrieve " & name)
-      echo "ok"
-    result = resolver
-
-  proc initIface*(iface: var Iface; graph: ModuleGraph; s: PSym) =
-    ## try to initialize the iface with an available rodfile
-    template conf: ConfigRef = graph.config
-    # we'll need the decoder in any event
-    iface.decoder = new (ref PackedDecoder)
-    initDecoder(iface.decoder[], graph.cache, makeResolver graph)
-    let m = tryReadModule(conf, rodFile(conf, s))
-    if m.isNone:
-      iface.encoder = new (ref PackedEncoder)
-      initEncoder(iface.encoder[], s)
-    else:
-      iface.tree = (get m).ast
-      assert iface.tree[0].kind != nkNone, "unexpectedly none ast"
-
-  proc initExports*(g: ModuleGraph; m: PSym) =
-    ## prepare module to addExport
-    template iface: Iface = g.ifaces[m.position]
-    if m.kind == skModule:
-      if not iface.initialized:
-        initIface(iface, g, m)
-    else:
-      # implicit assertion that `m` is skPackage
-      initStrTable m.pkgTab
-
-  template clearExports*(g: ModuleGraph; m: PSym) = initExports(g, m)
-
-  iterator symbols*(g: ModuleGraph; m: PSym): PSym =
-    ## lazily unpack symbols
-    assert m != nil
-    assert g != nil
-    template iface: Iface = g.ifaces[m.position]
-    assert iface.decoder != nil
-    g.assertInitialized iface
-    for s in unpackSymbols(iface.tree, iface.decoder[], iface.module):
-      yield s
-
-  iterator symbols*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
-    ## lazily unpack symbols with the given name
-    assert m != nil
-    assert g != nil
-    template iface: Iface = g.ifaces[m.position]
-    assert iface.decoder != nil
-    g.assertInitialized iface
-    for s in unpackSymbols(iface.tree, iface.decoder[],
-                          iface.module, name = name):
-      yield s
-
-  proc matches(g: ModuleGraph; m: PSym; name: PIdent): seq[PSym] =
-    ## collect symbols matching the given identifier
-    assert g != nil
-    assert m != nil
-    for s in symbols(g, m, name):
-      assert s != nil
-      result.add s
-
-  proc nextIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym): PSym =
-    ## replicate the existing iterator semantics for the iface cache
-    template iface: Iface = g.ifaces[m.position]
-    g.assertInitialized iface
-    let found = matches(g, m, it.name)
-    if found.high >= it.h.int:
-      for i in countup(1 + it.h.int, found.high):
-        it.h = i.Hash        # nominally a Hash
-        return found[i]
-      # advance the iterator past the last index
-      it.h = found.len.Hash  # nominally a Hash
-
-  proc initIdentIter*(it: var TIdentIter; g: ModuleGraph; m: PSym;
-                      name: PIdent): PSym =
-    ## replicate the existing iterator semantics for the iface cache
-    template iface: Iface = g.ifaces[m.position]
-    g.assertInitialized iface
-    it.name = name
-    it.h = -1.Hash
-    result = nextIdentIter(it, g, m)
-
-  proc patterns*(g: ModuleGraph; m: PSym): seq[PSym] =
-    ## expose the patterns we've accumulated for the module
-    template iface: Iface = g.ifaces[m.position]
-    result = iface.patterns
-
-  proc converters*(g: ModuleGraph; m: PSym): seq[PSym] =
-    ## return converters from the given module
-    for s in symbols(g, m):
-      # XXX: do we need to check that they are sfExported?
-      if s.kind == skConverter:
-        result.add s
-
-  proc getExport*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
-    ## fetch an exported symbol for the module by ident
-    template iface: Iface = g.ifaces[m.position]
-    if m.kind == skModule:
-      g.assertInitialized iface
-      for s in symbols(g, m, name = name):
-        if sfExported in s.flags:
-          result = s
-          break
-    else:
-      # implicit assertion that `m` is skPackage
-      result = strTableGet(m.pkgTab, name)
-
-  proc addExport*(g: ModuleGraph; m: PSym; s: PSym) =
-    ## add a symbol to a module's exported interface
-    template iface: Iface = g.ifaces[m.position]
-    assert s != nil
-    assert m != nil
-    if s.kind in {skModule, skPackage}:
-      s.flags.incl sfExported
-    if sfExported in s.flags:
-      if m.kind == skModule:
-        g.assertInitialized iface
-        echo "addSymbol ", m.name.s, " ", s.name.s
-        addSymbol(g, m, s)
-      else:
-        # implicit assertion that `m` is skPackage
-        strTableAdd(m.pkgTab, s)
-    else:
-      internalError(g.config, "cannot add export for unexported symbol")
-
-  proc addPattern*(g: ModuleGraph; m: PSym; s: PSym) =
-    ## patterns are currently a mutable artifact of compilation
-    ## and not stored directly in the packed ast
-    assert m.kind == skModule
-    template iface: Iface = g.ifaces[m.position]
-    iface.patterns.add s
-
-  proc addSymbol(g: ModuleGraph; m: PSym; s: PSym) =
-    ## this is where we pack symbols; called by addExport, addConverter
-    assert m.kind == skModule
-    assert s != nil
-    # XXX: not sure how we need to handle this, yet...
-    if s.kind == skModule: return
-    template iface: Iface = g.ifaces[m.position]
-    g.assertInitialized iface
-    for _ in symbols(g, m, s.name):
-      return
-    discard s.toPackedSym(iface.tree, iface.encoder[])
-
-  proc addConverter*(g: ModuleGraph; m: PSym; s: PSym) =
-    ## ensure the converter is in the packed ast; it will
-    ## be deserialized on demand via converters()
-    assert s.kind == skConverter
-    addSymbol(g, m, s)
-
-  proc registerModule*(g: ModuleGraph; m: PSym) =
-    ## setup the module's interface
-    assert m != nil
-    assert m.kind == skModule
-
-    if m.position >= g.ifaces.len:
-      setLen(g.ifaces, m.position + 1)
-    g.ifaces[m.position] = Iface(module: m)
-    initExports(g, m)
-    addExport(g, m, m)       # a module always exports itself

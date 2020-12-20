@@ -140,7 +140,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
       incl(e.flags, sfExported)
-      if not isPure: addExport(c, e)
+      if not isPure: strTableAdd(c.module.tab, e)
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -1979,10 +1979,6 @@ proc setMagicIntegral(conf: ConfigRef; m: PSym, kind: TTypeKind, size: int) =
   incl m.typ.flags, tfCheckedForDestructor
 
 proc processMagicType(c: PContext, m: PSym) =
-  # ensure magic types are exported, early and often
-  m.flags.incl sfExported
-  addExport(c, m)
-
   case m.magic
   of mInt: setMagicIntegral(c.config, m, tyInt, c.config.target.intSize)
   of mInt8: setMagicIntegral(c.config, m, tyInt8, 1)

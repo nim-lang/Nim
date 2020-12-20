@@ -154,7 +154,6 @@ type
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
-    ic*: PPassContext
 
 template config*(c: PContext): ConfigRef = c.graph.config
 

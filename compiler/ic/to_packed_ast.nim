@@ -8,20 +8,32 @@
 #
 
 import std / [hashes, tables, md5, sequtils]
-import packed_ast, bitabs, contexts
+import packed_ast, bitabs
 import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes]
 
 when not defined(release): import ".." / astalgo # debug()
 
 type
-  Context = PackedEncoder  # legacy name
+  PackedEncoder* = object
+    thisModule*: int32
+    lastFile*: FileIndex # remember the last lookup entry.
+    lastLit*: LitId
+    filenames*: Table[FileIndex, LitId]
+    pendingTypes*: seq[PType]
+    pendingSyms*: seq[PSym]
+    typeMap*: Table[ItemId, TypeId]  # ItemId.item -> TypeId
+    symMap*: Table[ItemId, SymId]    # ItemId.item -> SymId
 
-proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context)
-proc toPackedSym*(s: PSym; ir: var PackedTree; c: var Context): SymId
-proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId
-proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib
+proc initEncoder*(c: var PackedEncoder; m: PSym) =
+  ## setup a context for serializing to packed ast
+  c.thisModule = m.itemId.module
 
-proc safeItemId(s: PSym; ir: var PackedTree; c: var Context): ItemId =
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
+proc toPackedSym*(s: PSym; ir: var PackedTree; c: var PackedEncoder): SymId
+proc toPackedType(t: PType; ir: var PackedTree; c: var PackedEncoder): TypeId
+proc toPackedLib(l: PLib; ir: var PackedTree; c: var PackedEncoder): PackedLib
+
+proc safeItemId(s: PSym; ir: var PackedTree; c: var PackedEncoder): ItemId =
   ## given a symbol, produce an ItemId with the correct properties
   ## for local or remote symbols, packing the symbol as necessary
   var id = if s.isNil: nilItemId else: s.itemId
@@ -33,7 +45,7 @@ proc safeItemId(s: PSym; ir: var PackedTree; c: var Context): ItemId =
     id.item = int32 getOrIncl(ir.sh.strings, s.name.s)
   result = id
 
-proc flush(ir: var PackedTree; c: var Context) =
+proc flush(ir: var PackedTree; c: var PackedEncoder) =
   ## serialize any pending types or symbols from the context
   while true:
     if c.pendingTypes.len > 0:
@@ -43,17 +55,17 @@ proc flush(ir: var PackedTree; c: var Context) =
     else:
       break
 
-proc toLitId(x: string; ir: var PackedTree; c: var Context): LitId =
+proc toLitId(x: string; ir: var PackedTree; c: var PackedEncoder): LitId =
   ## store a string as a literal
   result = getOrIncl(ir.sh.strings, x)
 
-proc toLitId(x: BiggestInt; ir: var PackedTree; c: var Context): LitId =
+proc toLitId(x: BiggestInt; ir: var PackedTree; c: var PackedEncoder): LitId =
   ## store an integer as a literal
   # i think smaller integers aren't worth putting into a table
   # because there they become 32bit hash values on the heap...
   result = getOrIncl(ir.sh.integers, x)
 
-proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
+proc toLitId(x: FileIndex; ir: var PackedTree; c: var PackedEncoder): LitId =
   ## store a file index as a literal
   if x == c.lastFile:
     result = c.lastLit
@@ -67,10 +79,10 @@ proc toLitId(x: FileIndex; ir: var PackedTree; c: var Context): LitId =
     c.lastLit = result
 
 proc toPackedInfo(x: TLineInfo; ir: var PackedTree;
-                  c: var Context): PackedLineInfo =
+                  c: var PackedEncoder): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, ir, c))
 
-proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
+proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(ir, c)
   ir.nodes.add PackedNode(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
@@ -80,7 +92,7 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var Context) =
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
                           operand: int32 toLitId(n.sym.name.s, ir, c))
 
-proc addMissing(c: var Context; p: PSym) =
+proc addMissing(c: var PackedEncoder; p: PSym) =
   ## consider queuing a symbol for later addition to the packed tree
   if not p.isNil:
     # we do not pack foreign symbols
@@ -88,7 +100,7 @@ proc addMissing(c: var Context; p: PSym) =
       if p.itemId notin c.symMap:
         c.pendingSyms.add p
 
-proc addMissing(c: var Context; p: PType) =
+proc addMissing(c: var PackedEncoder; p: PType) =
   ## consider queuing a type for later addition to the packed tree
   if not p.isNil:
     # XXX: we DO pack foreign types (for now?), essentially copying them
@@ -97,7 +109,7 @@ proc addMissing(c: var Context; p: PType) =
     if p.uniqueId notin c.typeMap:
       c.pendingTypes.add p
 
-proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
+proc toPackedType(t: PType; ir: var PackedTree; c: var PackedEncoder): TypeId =
   ## serialize a ptype
   if t.isNil: return TypeId(-1)
   template info: PackedLineInfo =
@@ -137,7 +149,7 @@ proc toPackedType(t: PType; ir: var PackedTree; c: var Context): TypeId =
 
   ir.flush c   # flush any pending types and symbols
 
-proc toPackedSym*(s: PSym; ir: var PackedTree; c: var Context): SymId =
+proc toPackedSym*(s: PSym; ir: var PackedTree; c: var PackedEncoder): SymId =
   ## serialize a psym
   if s.isNil: return SymId(-1)
   template info: PackedLineInfo = s.info.toPackedInfo(ir, c)
@@ -173,7 +185,7 @@ proc toPackedSym*(s: PSym; ir: var PackedTree; c: var Context): SymId =
 
   ir.flush c   # flush any pending types and symbols
 
-proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
+proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## store a local or remote psym reference in the tree
   assert n.kind == nkSym
   template s: PSym = n.sym
@@ -190,7 +202,7 @@ proc toSymNode(n: PNode; ir: var PackedTree; c: var Context) =
   # we'll cache it in the local module in any event
   c.symMap[s.itemId] = id
 
-proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
+proc toPackedLib(l: PLib; ir: var PackedTree; c: var PackedEncoder): PackedLib =
   ## the plib hangs off the psym via the .annex field
   if l.isNil: return
   result.kind = l.kind
@@ -200,7 +212,7 @@ proc toPackedLib(l: PLib; ir: var PackedTree; c: var Context): PackedLib =
   result.path = newTreeFrom(ir)
   l.path.toPackedNode(result.path, c)
 
-proc toPackedNode*(n: PNode; ir: var PackedTree; c: var Context) =
+proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## serialize a node into the tree
   if n.isNil: return
   let info = toPackedInfo(n.info, ir, c)
@@ -244,7 +256,7 @@ proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
   result.name = s.name.s
   result.types = mapIt types: hashType(it, {CoType, CoDistinct}).MD5Digest
 
-proc addGeneric*(m: var Module; c: var Context; key: GenericKey; s: PSym) =
+proc addGeneric*(m: var Module; c: var PackedEncoder; key: GenericKey; s: PSym) =
   ## add a generic to the module
   if key notin m.generics:
     m.generics[key] = toPackedSym(s, m.ast, c)
@@ -258,7 +270,7 @@ proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
 
   when not defined(release):
     var local: int
-    template countLocal(c: Context; tab: typed): int =
+    template countLocal(c: PackedEncoder; tab: typed): int =
       var local = 0
       for item, sym in pairs tab:
         if item.module == c.thisModule:
