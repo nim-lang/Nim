@@ -448,6 +448,18 @@ proc getSymbol(c: var CfgParser, contentType: string) =
   ## Gets a string and discards any whitespace after a valid character.
   var pos = c.bufpos
   while true:
+    add(c.tok.literal, c.buf[pos])
+    inc(pos)
+    if not (c.buf[pos] in SymChars): break
+
+  while c.tok.literal.len > 0 and c.tok.literal[^1] == ' ':
+    c.tok.literal.setLen(c.tok.literal.len - 1)
+
+  c.bufpos = pos
+  c.tok.kind = tkSymbol
+  #[
+  var pos = c.bufpos
+  while true:
     case contentType
     of "value":
       if c.commentSymbol.contains(c.buf[pos]):
@@ -479,7 +491,7 @@ proc getSymbol(c: var CfgParser, contentType: string) =
     c.tok.literal.setLen(c.tok.literal.len - 1)
     dec(pos)
   c.bufpos = pos
-  c.tok.kind = tkSymbol
+  c.tok.kind = tkSymbol]#
 
 proc getString(c: var CfgParser, stringKind: StringKind) =
   ## Gets the contents of `section` or `key` or `value`.
@@ -682,7 +694,7 @@ proc getKeyValuePair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
         rawGetTok(c) # Get the blank and comment after value
       result.keyValueRelated.valRearBlank = c.blankAndComment.blank
       result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
-    elif c.tok.literal == "\n":
+    #[elif c.tok.literal == "\n":
       result.keyValueRelated.valRearBlank = c.blankAndComment.blank
       result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
     elif c.tok.literal == "":
@@ -693,7 +705,7 @@ proc getKeyValuePair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
       result.keyValueRelated.comment = c.blankAndComment.comment # End-of-line comments
     else:
       result = CfgEvent(kind: cfgError,
-        msg: errorStr(c, "not expected character:" & c.buf[c.bufpos]))
+        msg: errorStr(c, "not expected character:" & c.buf[c.bufpos]))]#
   else:
     result = CfgEvent(kind: cfgError,
       msg: errorStr(c, "symbol expected, but found:" & c.tok.literal))
