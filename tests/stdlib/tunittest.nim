@@ -19,6 +19,7 @@ discard """
 
 [Suite] test name filtering
 '''
+targets: "c js"
 """
 
 import unittest, sequtils

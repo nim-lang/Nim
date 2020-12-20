@@ -20,30 +20,67 @@ proc readExceptSet*(c: PContext, n: PNode): IntSet =
     let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
 
-proc importPureEnumField*(c: PContext; s: PSym) =
-  let check = strTableGet(c.importTable.symbols, s.name)
-  if check == nil:
-    let checkB = strTableGet(c.pureEnumFields, s.name)
-    if checkB == nil:
-      strTableAdd(c.pureEnumFields, s)
-    else:
+proc declarePureEnumField*(c: PContext; s: PSym) =
+  # XXX Remove the outer 'if' statement and see what breaks.
+  var amb = false
+  if someSymFromImportTable(c, s.name, amb) == nil:
+    strTableAdd(c.pureEnumFields, s)
+    when false:
+      let checkB = strTableGet(c.pureEnumFields, s.name)
+      if checkB == nil:
+        strTableAdd(c.pureEnumFields, s)
+    when false:
       # mark as ambiguous:
       incl(c.ambiguousSymbols, checkB.id)
       incl(c.ambiguousSymbols, s.id)
 
-proc rawImportSymbol(c: PContext, s, origin: PSym) =
+proc importPureEnumField(c: PContext; s: PSym) =
+  var amb = false
+  if someSymFromImportTable(c, s.name, amb) == nil:
+    strTableAdd(c.pureEnumFields, s)
+    when false:
+      let checkB = strTableGet(c.pureEnumFields, s.name)
+      if checkB == nil:
+        strTableAdd(c.pureEnumFields, s)
+    when false:
+      # mark as ambiguous:
+      incl(c.ambiguousSymbols, checkB.id)
+      incl(c.ambiguousSymbols, s.id)
+
+proc importPureEnumFields(c: PContext; s: PSym; etyp: PType) =
+  assert sfPure in s.flags
+  for j in 0..<etyp.n.len:
+    var e = etyp.n[j].sym
+    if e.kind != skEnumField:
+      internalError(c.config, s.info, "rawImportSymbol")
+      # BUGFIX: because of aliases for enums the symbol may already
+      # have been put into the symbol table
+      # BUGFIX: but only iff they are the same symbols!
+    for check in importedItems(c, e.name):
+      if check.id == e.id:
+        e = nil
+        break
+    if e != nil:
+      importPureEnumField(c, e)
+
+proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
-  var check = strTableGet(c.importTable.symbols, s.name)
-  if check != nil and check.id != s.id:
-    if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
-      # s and check need to be qualified:
-      incl(c.ambiguousSymbols, s.id)
-      incl(c.ambiguousSymbols, check.id)
+  when false:
+    var check = someSymFromImportTable(c, s.name)
+    if check != nil and check.id != s.id:
+      if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
+        # s and check need to be qualified:
+        incl(c.ambiguousSymbols, s.id)
+        incl(c.ambiguousSymbols, check.id)
   # thanks to 'export' feature, it could be we import the same symbol from
-  # multiple sources, so we need to call 'StrTableAdd' here:
-  strTableAdd(c.importTable.symbols, s)
+  # multiple sources, so we need to call 'strTableAdd' here:
+  when false:
+    # now lazy. Speeds up the compiler and is a prerequisite for IC.
+    strTableAdd(c.importTable.symbols, s)
+  else:
+    importSet.incl s.id
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
@@ -54,16 +91,13 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
           # BUGFIX: because of aliases for enums the symbol may already
           # have been put into the symbol table
           # BUGFIX: but only iff they are the same symbols!
-        var it: TIdentIter
-        check = initIdentIter(it, c.importTable.symbols, e.name)
-        while check != nil:
+        for check in importedItems(c, e.name):
           if check.id == e.id:
             e = nil
             break
-          check = nextIdentIter(it, c.importTable.symbols)
         if e != nil:
           if sfPure notin s.flags:
-            rawImportSymbol(c, e, origin)
+            rawImportSymbol(c, e, origin, importSet)
           else:
             importPureEnumField(c, e)
   else:
@@ -72,7 +106,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
-proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
+proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
   let s = strTableGet(fromMod.tab, ident)
   if s == nil:
@@ -89,29 +123,79 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym) =
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
-          rawImportSymbol(c, e, fromMod)
+          rawImportSymbol(c, e, fromMod, importSet)
         e = nextIdentIter(it, fromMod.tab)
     else:
-      rawImportSymbol(c, s, fromMod)
+      rawImportSymbol(c, s, fromMod, importSet)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
 
+proc addImport(c: PContext; im: sink ImportedModule) =
+  for i in 0..high(c.imports):
+    if c.imports[i].m == im.m:
+      # we have already imported the module: Check which import
+      # is more "powerful":
+      case c.imports[i].mode
+      of importAll: discard "already imported all symbols"
+      of importSet:
+        case im.mode
+        of importAll, importExcept:
+          # XXX: slightly wrong semantics for 'importExcept'...
+          # But we should probably change the spec and disallow this case.
+          c.imports[i] = im
+        of importSet:
+          # merge the import sets:
+          c.imports[i].imported.incl im.imported
+      of importExcept:
+        case im.mode
+        of importAll:
+          c.imports[i] = im
+        of importSet:
+          discard
+        of importExcept:
+          var cut = initIntSet()
+          # only exclude what is consistent between the two sets:
+          for j in im.exceptSet:
+            if j in c.imports[i].exceptSet:
+              cut.incl j
+          c.imports[i].exceptSet = cut
+      return
+  c.imports.add im
+
+template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
+  for it in c.graph.ifaces[fromMod.position].converters:
+    if filter:
+      addConverter(c, it)
+  for it in c.graph.ifaces[fromMod.position].patterns:
+    if filter:
+      addPattern(c, it)
+  for it in c.graph.ifaces[fromMod.position].pureEnums:
+    if filter:
+      importPureEnumFields(c, it, it.typ)
+
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
-  var i: TTabIter
-  var s = initTabIter(i, fromMod.tab)
-  while s != nil:
-    if s.kind != skModule:
-      if s.kind != skEnumField:
-        if s.kind notin ExportableSymKinds:
-          internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
-        if exceptSet.isNil or s.name.id notin exceptSet:
-          rawImportSymbol(c, s, fromMod)
-    s = nextIter(i, fromMod.tab)
+  c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
+  addUnnamedIt(c, fromMod, it.id notin exceptSet)
+
+  when false:
+    var i: TTabIter
+    var s = initTabIter(i, fromMod.tab)
+    while s != nil:
+      if s.kind != skModule:
+        if s.kind != skEnumField:
+          if s.kind notin ExportableSymKinds:
+            internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
+          if exceptSet.isNil or s.name.id notin exceptSet:
+            rawImportSymbol(c, s, fromMod)
+      s = nextIter(i, fromMod.tab)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  var exceptSet: IntSet
-  importAllSymbolsExcept(c, fromMod, exceptSet)
+  c.addImport ImportedModule(m: fromMod, mode: importAll)
+  addUnnamedIt(c, fromMod, true)
+  when false:
+    var exceptSet: IntSet
+    importAllSymbolsExcept(c, fromMod, exceptSet)
 
-proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
+proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; importSet: var IntSet) =
   if n.isNil: return
   case n.kind
   of nkExportStmt:
@@ -121,12 +205,12 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym) =
       if s.kind == skModule:
         importAllSymbolsExcept(c, s, exceptSet)
       elif exceptSet.isNil or s.name.id notin exceptSet:
-        rawImportSymbol(c, s, fromMod)
+        rawImportSymbol(c, s, fromMod, importSet)
   of nkExportExceptStmt:
     localError(c.config, n.info, "'export except' not implemented")
   else:
     for i in 0..n.safeLen-1:
-      importForwarded(c, n[i], exceptSet, fromMod)
+      importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
   result = realModule
@@ -224,9 +308,12 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
+
+    var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
-        importSymbol(c, n[i], m)
+        importSymbol(c, n[i], m, im.imported)
+    c.addImport im
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
