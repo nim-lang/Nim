@@ -62,6 +62,8 @@ when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
+  proc c_copysign[T: SomeFloat](x, y: T): T {.importc: "copysign", header: "math.h".}
+
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
@@ -1131,3 +1133,24 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
+
+
+when not defined(js) and not defined(nimscript):
+  func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
+    ## Returns a value with the magnitude of `x` and the sign of `y`.
+    runnableExamples:
+      doAssert copysign(10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, -1.0) == -10.0
+      doAssert copysign(-10.0, 1.0) == 10.0
+      doAssert copySign(10'f32, -1.0) == -10.0
+
+      doAssert copySign(Inf, -1.0) == -Inf
+      doAssert copySign(-Inf, 1.0) == Inf
+      doAssert copySign(1.0, -0.0) == -1.0
+      doAssert copySign(0.0, -0.0) == -0.0
+      doAssert copySign(-1.0, 0.0) == 1.0
+      doAssert copySign(10.0, 0.0) == 10.0
+
+      doAssert copySign(NaN, 0.0).isNaN
+      doAssert copySign(NaN, -0.0).isNaN
+    result = c_copysign(x, y)
