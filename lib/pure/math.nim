@@ -880,6 +880,37 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
+proc euclDiv*[T: SomeInteger](x, y: T): T =
+  ## Returns euclidean division of `x` by `y`.
+  runnableExamples:
+    assert euclDiv(13, 3) == 4
+    assert euclDiv(-13, 3) == -5
+    assert euclDiv(13, -3) == -4
+    assert euclDiv(-13, -3) == 5
+  result = x div y
+  let r = x mod y
+  if r < 0:
+    if y > 0:
+      dec result
+    else:
+      inc result
+
+proc euclMod*[T: SomeNumber](x, y: T): T =
+  ## Returns euclidean modulo of `x` by `y`.
+  ## `euclMod(x, y)` is non-negative.
+  runnableExamples:
+    assert euclMod(13, 3) == 1
+    assert euclDiv(-13, 3) == 2
+    assert euclDiv(13, -3) == 1
+    assert euclDiv(-13, -3) == 2
+  result = x mod y
+  if result < 0:
+    # increase by abs(y)
+    if y >= 0:
+      result += y
+    else:
+      result += -y
+
 when not defined(js):
   func c_frexp*(x: float32, exponent: var int32): float32 {.
       importc: "frexp", header: "<math.h>".}

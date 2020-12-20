@@ -270,6 +270,22 @@ block:
       doAssert floorMod(8.0, -3.0) ==~ -1.0
       doAssert floorMod(-8.5, 3.0) ==~ 0.5
 
+    block: # euclDiv/euclMod
+      doAssert euclDiv(8, 3) == 2
+      doAssert euclMod(8, 3) == 2
+
+      doAssert euclDiv(8, -3) == -2
+      doAssert euclMod(8, -3) == 2
+
+      doAssert euclDiv(-8, 3) == -3
+      doAssert euclMod(-8, 3) == 1
+
+      doAssert euclDiv(-8, -3) == 3
+      doAssert euclMod(-8, -3) == 1
+
+      doAssert euclMod(8.0, -3.0) ==~ 2.0
+      doAssert euclMod(-8.5, 3.0) ==~ 0.5
+
     block: # log
       doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
       doAssert log2(8.0'f64) == 3.0'f64
