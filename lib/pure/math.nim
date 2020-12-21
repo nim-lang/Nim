@@ -144,8 +144,8 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
-    doAssert not isNan(3.1415926)
-    doAssert not isNan(0'f32)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
 
   template fn: untyped = result = x != x
   when nimvm: fn()
