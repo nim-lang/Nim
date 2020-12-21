@@ -281,7 +281,6 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       markSideEffect(a, s)
     else:
       markSideEffect(a, s)
-    if sfMemUnsafe in s.flags: markMemUnsafe(a, s)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -785,7 +784,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     # we can detect them only by checking for attached nkEffectList.
     if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
       if a.kind == nkSym:
-        # Is this redundant with the one top ?
+        # TODO Precise if tfMemUnsafe is enough.
         if sfMemUnsafe in a.sym.flags:
           markMemUnsafe(tracked, a)
         if a.sym == tracked.owner: tracked.isRecursive = true
@@ -936,7 +935,6 @@ proc track(tracked: PEffects, n: PNode) =
       # bug #15038: ensure consistency
       if not hasDestructor(n.typ) and sameType(n.typ, n.sym.typ): n.typ = n.sym.typ
   of nkHiddenAddr, nkAddr:
-    # Addr / HiddenAddr as unsafe ?
     if n[0].kind == nkSym and isLocalVar(tracked, n[0].sym):
       useVarNoInitCheck(tracked, n[0], n[0].sym)
     else:
@@ -1130,7 +1128,7 @@ proc track(tracked: PEffects, n: PNode) =
     discard
   of nkCast:
     if n.len == 2:
-      # add unsafe flag on cast here 
+      # Cast is unsafe
       markMemUnsafe(tracked)
       track(tracked, n[1])
       if tracked.owner.kind != skMacro:
@@ -1368,7 +1366,6 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
 
-  # TODO  is this enough for trackProc ?
   # TODO FORMAT A PROPER ERROR MESSAGE
   if not(t.forceMemSafe) and (t.memUnsafe and sfMemSafe in s.flags):
     localError(g.config, s.info, ("'$1' is not compatible with memory safety requirements" % s.name.s) & (g.config $ mutationInfo))
