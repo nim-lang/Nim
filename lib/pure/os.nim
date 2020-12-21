@@ -2585,9 +2585,8 @@ proc parseCmdLine*(c: string): seq[string] {.
 
   result = @[]
   var i = 0
-  var a = ""
   while true:
-    setLen(a, 0)
+    var a = ""
     # eat all delimiting whitespace
     while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
     if i >= c.len: break
