@@ -508,7 +508,6 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   mergeTags(tracked, tagSpec, n)
 
   if tfMemUnsafe in s.typ.flags or sfMemUnsafe in s.flags:
-    echo "propagateEffects -> memUnsafe"
     markMemUnsafe(tracked, s)
   if notGcSafe(s.typ) and sfImportc notin s.flags:
     if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
@@ -773,7 +772,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
 
     if op != nil and op.kind == tyProc and tfMemUnsafe in op.flags:
-      echo "tfMemUnsafe ->", a
       markMemUnsafe(tracked, a)
 
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
@@ -789,7 +787,6 @@ proc trackCall(tracked: PEffects; n: PNode) =
       if a.kind == nkSym:
         # Is this redundant with the one top ?
         if sfMemUnsafe in a.sym.flags:
-          echo "sfMemUnsafe ->", a
           markMemUnsafe(tracked, a)
         if a.sym == tracked.owner: tracked.isRecursive = true
         # even for recursive calls we need to check the lock levels (!):
@@ -1132,7 +1129,6 @@ proc track(tracked: PEffects, n: PNode) =
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   of nkCast:
-    echo "track -> nkCast -> ", n, " len(n)=", n.len
     if n.len == 2:
       # add unsafe flag on cast here 
       markMemUnsafe(tracked)
