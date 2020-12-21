@@ -99,7 +99,7 @@ pkg2 "optionsutils"
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"
-pkg2 "plotly", "nim c examples/all.nim"
+# pkg2 "plotly", "nim c examples/all.nim" # pending bug #16419
 pkg2 "pnm"
 pkg2 "polypbren"
 pkg2 "prologue", "nimble tcompile"
