@@ -68,6 +68,10 @@
 
 - Add `jsbigint` module, arbitrary precision integers for JavaScript target.
 
+- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
+  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
+  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
+  its argument, `addMoved`, is also supplied.
 
 ## Language changes
 
