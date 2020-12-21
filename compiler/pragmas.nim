@@ -1104,7 +1104,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           sym.typ.callConv = wordToCallConv(k)
           sym.typ.flags.incl tfExplicitCallConv
-      of wEmit: pragmaEmit(c, it)
+      of wEmit:
+        incl(sym.flags, sfMemUnsafe)
+        pragmaEmit(c, it)
       of wUnroll: pragmaUnroll(c, it)
       of wLinearScanEnd, wComputedGoto: noVal(c, it)
       of wEffects:

@@ -1448,12 +1448,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   result = n
   var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
-  of tyRef: n.typ = t.lastSon
-  of tyPtr:
-    n.typ = t.lastSon
-    # Is it possible to create a ptr T without cast / addr /unsafeaddr / importc ?
-    # In theory, the danger of derefencing should be covered by pointer creation
-    incl(a.sym.flags, sfMemUnsafe)
+  of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
   #GlobalError(n[0].info, errCircumNeedsPointer)
 
