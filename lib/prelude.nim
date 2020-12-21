@@ -19,5 +19,5 @@
 ##   import os, strutils, times, parseutils, hashes, tables, sets
 ##   when not defined(js): import parseopt
 
-import os, strutils, times, parseutils, hashes, tables, sets
+import os, strutils, times, parseutils, hashes, tables, sets, sequtils
 when not defined(js): import parseopt
