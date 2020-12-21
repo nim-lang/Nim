@@ -20,7 +20,7 @@ func toLocaleString*(this: JsBigInt; locales: openArray[cstring]): cstring {.imp
 func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
-func toString*(this: JsBigInt): cstring {.importjs: "#.$1()".}
+func `$`*(this: JsBigInt): cstring {.importjs: "#.toString()".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".}
@@ -118,7 +118,7 @@ runnableExamples:
   doAssert big1 * big2 == newBigInt("1430224108902".cstring)
   doAssert big1.toLocaleString("EN".cstring) == "2,147,483,647".cstring
   doAssert big1.toLocaleString(["EN".cstring, "ES".cstring]) == "2,147,483,647".cstring
-  doAssert big1.toString() == "2147483647".cstring
+  doAssert $big1 == "2147483647".cstring
   doAssert big1.toString(10) == "2147483647".cstring
   doAssert big1.toString(2) == "1111111111111111111111111111111".cstring
   doAssert big2 ** big3 == newBigInt(443556)
