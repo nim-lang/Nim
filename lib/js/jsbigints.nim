@@ -49,7 +49,7 @@ func `*=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
 func `/=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
-func `%=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `mod=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
 func `inc`*(x: JsBigInt): JsBigInt {.importjs: "(++#)", discardable.}
   ## Same as `inc` but for `JsBigInt` (uses JavaScript `++BigInt()`).
@@ -57,15 +57,11 @@ func `inc`*(x: JsBigInt): JsBigInt {.importjs: "(++#)", discardable.}
 func `dec`*(x: JsBigInt): JsBigInt {.importjs: "(--#)", discardable.}
   ## Same as `dec` but for `JsBigInt` (uses JavaScript `--BigInt()`).
 
-func `>`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
-
 func `<`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
-
-func `>=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
 
 func `<=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
 
-func `==`*(x, y: JsBigInt): bool {.importjs: "(# $1= #)".}
+func `==`*(x, y: JsBigInt): bool {.importjs: "(# === #)".}
 
 func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".}
 
