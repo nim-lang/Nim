@@ -47,6 +47,10 @@ proc strip*(s: var string, leading = true, trailing = true,
   if trailing:
     while last >= 0 and s[last] in chars: dec(last)
 
+  if first > last:
+    s.setLen(0)
+    return
+
   if first > 0:
     when nimvm: impl()
     else:

@@ -34,5 +34,31 @@ proc teststrip() =
   c.strip(chars = {'b', 'a', 'l'})
   doAssert c == "X"
 
+  block:
+    var a = "xxxxxx"
+    a.strip(chars={'x'})
+    doAssert a.len == 0
+
+  block:
+    var a = ""
+    a.strip(chars={'x'})
+    doAssert a.len == 0
+
+  block:
+    var a = "xxx xxx"
+    a.strip(chars={'x'})
+    doAssert a == " "
+
+  block:
+    var a = "xxx  wind"
+    a.strip(chars={'x'})
+    doAssert a == "  wind"
+
+  block:
+    var a = "xxx  iii"
+    a.strip(chars={'i'})
+    doAssert a == "xxx  "
+
+
 static: teststrip()
 teststrip()
