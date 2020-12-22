@@ -18,9 +18,14 @@ func toLocaleString*(this: JsBigInt): cstring {.importjs: "#.$1()".}
 
 func toLocaleString*(this: JsBigInt; locales: cstring): cstring {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
+  # TODO: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString#Using_options
 
 func toLocaleString*(this: JsBigInt; locales: openArray[cstring]): cstring {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
+  ## When requesting a language that may not be supported, include a fallback language. Example:
+  ##
+  ## .. code-block::nim
+  ##   bigint.toLocaleString(["ban".cstring, "id".cstring])
 
 func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
@@ -44,26 +49,10 @@ func `-`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".}
 func `*`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".}
 
 func `div`*(x, y: JsBigInt): JsBigInt {.importjs: "(# / #)".}
-   ## Same as `div` but for `JsBigInt`.
+  ## Same as `div` but for `JsBigInt`(uses JavaScript `BigInt() / BigInt()`).
 
 func `mod`*(x, y: JsBigInt): JsBigInt {.importjs: "(# % #)".}
   ## Same as `mod` but for `JsBigInt` (uses JavaScript `BigInt() % BigInt()`).
-
-func `+=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
-
-func `-=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
-
-func `*=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
-
-func `div=`*(x, y: JsBigInt) {.importjs: "(# /= #)".}
-
-func `mod=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
-
-func `inc`*(x: JsBigInt) {.importjs: "(++#)".}
-  ## Same as `inc` but for `JsBigInt` (uses JavaScript `++BigInt()`).
-
-func `dec`*(x: JsBigInt) {.importjs: "(--#)".}
-  ## Same as `dec` but for `JsBigInt` (uses JavaScript `--BigInt()`).
 
 func `<`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
 
@@ -71,7 +60,9 @@ func `<=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
 
 func `==`*(x, y: JsBigInt): bool {.importjs: "(# === #)".}
 
-func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".}
+func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
+  runnableExamples:
+    doAssert (big"9" ** big"5") == big"59049"
 
 func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# && #)".}
 
@@ -81,20 +72,71 @@ func `not`*(x: JsBigInt): JsBigInt {.importjs: "(!#)".}
 
 func `in`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".}
 
-func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".}
+func `xor`*(x, y: JsBigInt): JsBigInt {.importjs: "(# ^ #)".} =
+  runnableExamples:
+    doAssert (big"555" xor big"2") == big"553"
 
-func `xor`*(x, y: JsBigInt): JsBigInt {.importjs: "(# ^ #)".}
+func `shl`*(a, b: JsBigInt): JsBigInt {.importjs: "(# << #)".} =
+  runnableExamples:
+    doAssert (big"999" shl big"2") == big"3996"
 
-func `shl`*(a, b: JsBigInt): JsBigInt {.importjs: "(# << #)".}
+func `shr`*(a, b: JsBigInt): JsBigInt {.importjs: "(# >> #)".} =
+  runnableExamples:
+    doAssert (big"999" shr big"2") == big"249"
 
-func `shr`*(a, b: JsBigInt): JsBigInt {.importjs: "(# >> #)".}
-
-func inc*(a, b: JsBigInt) {.importjs: "(# += #)".}
-
-func dec*(a, b: JsBigInt) {.importjs: "(# -= #)".}
+func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
+  runnableExamples:
+    doAssert -(big"10101010101") == big"-10101010101"
 
 func `+`*(a: JsBigInt): JsBigInt {.error.} # Can not be used by design.
-  ## https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
+  ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
+
+func inc*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] += #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"1"
+    let big2: JsBigInt = big"2"
+    inc big1, big2
+    doAssert big1 == big"3"
+
+func dec*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] -= #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"1"
+    let big2: JsBigInt = big"2"
+    dec big1, big2
+    doAssert big1 == big"-1"
+
+func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"1"
+    let big2: JsBigInt = big"2"
+    inc big1, big2
+    doAssert big1 == big"3"
+
+func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"1"
+    let big2: JsBigInt = big"2"
+    dec big1, big2
+    doAssert big1 == big"-1"
+
+func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"2"
+    let big2: JsBigInt = big"4"
+    big1 *= big2
+    doAssert big1 == big"8"
+
+func inc*(x: var JsBigInt) {.importjs: "(++[#][0][0])".} =
+  runnableExamples:
+    var big1: JsBigInt = big"1"
+    inc big1
+    doAssert big1 == big"2"
+
+func dec*(x: var JsBigInt;) {.importjs: "(--[#][0][0])".} =
+  runnableExamples:
+    var big1: JsBigInt = big"3"
+    dec big1
+    doAssert big1 == big"2"
 
 
 runnableExamples:
@@ -107,13 +149,6 @@ runnableExamples:
   doAssert big2 < big1
   doAssert big2 <= big1
   doAssert not(big1 == big2)
-  inc big3
-  doAssert big3 == big"3"
-  dec big3
-  doAssert big3 == big"2"
-  inc big3, big"420"
-  doAssert big3 == big"422"
-  dec big3, big"420"
   doAssert big3 == big"2"
   doAssert (big3 xor big2) == big"664"
   doAssert (big1 mod big2) == big"613"
@@ -130,8 +165,7 @@ runnableExamples:
   doAssert big1.toString(10) == "2147483647".cstring
   doAssert big1.toString(2) == "1111111111111111111111111111111".cstring
   doAssert big2 ** big3 == newBigInt(443556)
-  big2 += big2
-  big2 -= big2
-  discard big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
-  discard big"0"
-  discard big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+  var huge = big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+  huge.inc
+  huge += big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+  doAssert huge == big"1"
