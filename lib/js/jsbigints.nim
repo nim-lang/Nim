@@ -114,9 +114,6 @@ func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(big"10101010101") == big"-10101010101"
 
-func `+`*(a: JsBigInt): JsBigInt {.error.} # Can not be used by design.
-  ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
-
 func inc*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] += #)".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
@@ -175,6 +172,13 @@ func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
     var big1: JsBigInt = big"10"
     big1 /= big"2"
     doAssert big1 == big"5"
+
+func `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
+  ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
+
+func low*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
+
+func high*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
 
 
 runnableExamples:
