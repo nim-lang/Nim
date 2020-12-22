@@ -208,3 +208,13 @@ runnableExamples:
   huge.inc
   huge += big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
   doAssert huge == big"1"
+  var list: seq[JsBigInt]
+  for i in big"0" .. big"5":
+    doAssert i is JsBigInt
+    list.add i
+  doAssert list == @[big"0", big"1", big"2", big"3", big"4", big"5"]
+  list = @[]
+  for i in big"0" ..< big"5":
+    doAssert i is JsBigInt
+    list.add i
+  doAssert list == @[big"0", big"1", big"2", big"3", big"4"]
