@@ -8,8 +8,10 @@ type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScr
 func newBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".}
   ## Constructor for `JsBigInt`.
 
-func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".}
+func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
+  runnableExamples:
+    doAssert big"-1" == big"1" - big"2"
 
 func toLocaleString*(this: JsBigInt): cstring {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
