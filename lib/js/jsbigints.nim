@@ -35,7 +35,7 @@ func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".} =
   runnableExamples:
     doAssert big"2147483647".toString(2) == "1111111111111111111111111111111".cstring
 
-func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".}
+func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted on $
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
@@ -43,11 +43,15 @@ func `$`*(this: JsBigInt): string =
   runnableExamples: doAssert $big"1024" == "1024"
   $toString(this)
 
-func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".}
+func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
+  runnableExamples:
+    doAssert asIntN(32, big"2147483647") == 2147483647.int32
 
-func asUintN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".}
+func asUintN*(width: int; bigInteger: JsBigInt): uint {.importjs: "BigInt.$1(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
+  runnableExamples:
+    doAssert asUintN(32, big"2147483647") == 2147483647.uint32
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
@@ -65,11 +69,18 @@ func `div`*(x, y: JsBigInt): JsBigInt {.importjs: "(# / #)".} =
   ## Same as `div` but for `JsBigInt`(uses JavaScript `BigInt() / BigInt()`).
   runnableExamples:
     doAssert (big"512" div big"2") == big"256"
+    doAssert (big"4" div big"2") == big"2"
+    doAssert (big"42" div big"10") == big"4"
+    doAssert (big"420" div big"5") == big"84"
+    doAssert (big"100" div big"4") == big"25"
 
 func `mod`*(x, y: JsBigInt): JsBigInt {.importjs: "(# % #)".} =
   ## Same as `mod` but for `JsBigInt` (uses JavaScript `BigInt() % BigInt()`).
   runnableExamples:
-    doAssert (big"4" div big"2") == big"2"
+    doAssert (big"5" mod big"2") == big"1"
+    doAssert (big"421" mod big"5") == big"1"
+    doAssert (big"420" mod big"5") == big"0"
+    doAssert (big"100" mod big"4") == big"0"
 
 func `<`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".} =
   runnableExamples:
@@ -81,19 +92,11 @@ func `<=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".} =
 
 func `==`*(x, y: JsBigInt): bool {.importjs: "(# === #)".} =
   runnableExamples:
-    doAssert big"42" <= big"42"
+    doAssert big"42" == big"42"
 
 func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
   runnableExamples:
     doAssert (big"9" ** big"5") == big"59049"
-
-func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# && #)".}
-
-func `or`*(x, y: JsBigInt): JsBigInt {.importjs: "(# || #)".}
-
-func `not`*(x: JsBigInt): JsBigInt {.importjs: "(!#)".}
-
-func `in`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".}
 
 func `xor`*(x, y: JsBigInt): JsBigInt {.importjs: "(# ^ #)".} =
   runnableExamples:
@@ -132,14 +135,14 @@ func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
     let big2: JsBigInt = big"2"
-    inc big1, big2
+    big1 += big2
     doAssert big1 == big"3"
 
 func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
     let big2: JsBigInt = big"2"
-    dec big1, big2
+    big1 -= big2
     doAssert big1 == big"-1"
 
 func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
@@ -155,7 +158,7 @@ func inc*(x: var JsBigInt) {.importjs: "(++[#][0][0])".} =
     inc big1
     doAssert big1 == big"2"
 
-func dec*(x: var JsBigInt;) {.importjs: "(--[#][0][0])".} =
+func dec*(x: var JsBigInt) {.importjs: "(--[#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = big"3"
     dec big1
