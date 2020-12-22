@@ -1016,6 +1016,13 @@ proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
 
 proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new var stmt.
+  runnableExamples:
+    let 
+      expr = newNimNode(nnkInfix).add(
+        ident("+"), newLit(5), newLit(5))
+      varStmt = newVarStmt("x", expr)
+    doAssert varStmt == newVarStmt(ident("x"), expr)
+  
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
@@ -1027,6 +1034,13 @@ proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
 
 proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new let stmt.
+  runnableExamples:
+    let 
+      expr = newNimNode(nnkInfix).add(
+        ident("+"), newLit(5), newLit(5))
+      letStmt = newLetStmt("x", expr)
+    doAssert letStmt == newLetStmt(ident("x"), expr)
+
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
@@ -1037,7 +1051,14 @@ proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
     newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
 
 proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
-  ## Creates a new const stmt.
+    ## Creates a new const stmt.
+  runnableExamples:
+    let 
+      expr = newNimNode(nnkInfix).add(
+        ident("+"), newLit(5), newLit(5))
+      constStmt = newConstStmt("x", expr)
+    doAssert constStmt == newConstStmt(ident("x"), expr)
+
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
