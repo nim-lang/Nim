@@ -47,7 +47,7 @@ func `-=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
 func `*=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
-func `/=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `div=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# /= #)", discardable.}
 
 func `mod=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
 
