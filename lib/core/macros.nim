@@ -1025,7 +1025,7 @@ proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
-proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
+proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new let stmt.
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(
