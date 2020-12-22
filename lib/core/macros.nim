@@ -1051,9 +1051,9 @@ proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
     newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
 
 proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
-    ## Creates a new const stmt.
+  ## Creates a new const stmt.
   runnableExamples:
-    let 
+    let
       expr = newNimNode(nnkInfix).add(
         ident("+"), newLit(5), newLit(5))
       constStmt = newConstStmt("x", expr)
