@@ -5,7 +5,10 @@ when not defined(js) and not defined(nimdoc):
 
 type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
 
-func newBigInt*(integer: cstring or SomeInteger): JsBigInt {.importjs: "BigInt(#)".}
+func newBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".}
+  ## Constructor for `JsBigInt`.
+
+func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".}
   ## Constructor for `JsBigInt`.
 
 func toLocaleString*(this: JsBigInt): cstring {.importjs: "#.$1()".}
@@ -90,9 +93,9 @@ func `+`*(a: JsBigInt): JsBigInt {.error.} # Can not be used by design.
 
 
 runnableExamples:
-  let big1: JsBigInt = newBigInt(2147483647)
-  let big2: JsBigInt = newBigInt("666".cstring)
-  var big3: JsBigInt = newBigInt("2".cstring)
+  let big1: JsBigInt = big"2147483647"
+  let big2: JsBigInt = big"666"
+  var big3: JsBigInt = big"2"
   doAssert big1 != big2
   doAssert big1 > big2
   doAssert big1 >= big2
@@ -100,28 +103,28 @@ runnableExamples:
   doAssert big2 <= big1
   doAssert not(big1 == big2)
   inc big3
-  doAssert big3 == newBigInt(3)
+  doAssert big3 == big"3"
   dec big3
-  doAssert big3 == newBigInt(2)
-  inc big3, newBigInt(420)
-  doAssert big3 == newBigInt(422)
-  dec big3, newBigInt(420)
-  doAssert big3 == newBigInt(2)
-  doAssert (big3 xor big2) == newBigInt(664)
-  doAssert (big1 mod big2) == newBigInt("613".cstring)
-  doAssert -big1 == newBigInt("-2147483647".cstring)
-  doAssert big1 div big2 == newBigInt("3224449".cstring)
-  doAssert big1 + big2 == newBigInt("2147484313".cstring)
-  doAssert big1 - big2 == newBigInt("2147482981".cstring)
-  doAssert big1 shl big3 == newBigInt("8589934588".cstring)
-  doAssert big1 shr big3 == newBigInt("536870911".cstring)
-  doAssert big1 * big2 == newBigInt("1430224108902".cstring)
+  doAssert big3 == big"2"
+  inc big3, big"420"
+  doAssert big3 == big"422"
+  dec big3, big"420"
+  doAssert big3 == big"2"
+  doAssert (big3 xor big2) == big"664"
+  doAssert (big1 mod big2) == big"613"
+  doAssert -big1 == big"-2147483647"
+  doAssert big1 div big2 == big"3224449"
+  doAssert big1 + big2 == big"2147484313"
+  doAssert big1 - big2 == big"2147482981"
+  doAssert big1 shl big3 == big"8589934588"
+  doAssert big1 shr big3 == big"536870911"
+  doAssert big1 * big2 == big"1430224108902"
   doAssert big1.toLocaleString("EN".cstring) == "2,147,483,647".cstring
   doAssert big1.toLocaleString(["EN".cstring, "ES".cstring]) == "2,147,483,647".cstring
   doAssert $big1 == "2147483647".cstring
   doAssert big1.toString(10) == "2147483647".cstring
   doAssert big1.toString(2) == "1111111111111111111111111111111".cstring
   doAssert big2 ** big3 == newBigInt(443556)
-  discard newBigInt("999999999999999999999999999999999999999999999999999999999999999999999999999999999999999".cstring)
-  discard newBigInt("0".cstring)
-  discard newBigInt("-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999".cstring)
+  discard big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+  discard big"0"
+  discard big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
