@@ -43,15 +43,16 @@ func `$`*(this: JsBigInt): string =
   runnableExamples: doAssert $big"1024" == "1024"
   $toString(this)
 
-func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".} =
+func asIntN*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
+  ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
-    doAssert asIntN(32, big"2147483647") == 2147483647.int32
+    doAssert asIntN(32, big"2147483647") == big"2147483647"
 
-func asUintN*(width: int; bigInteger: JsBigInt): uint {.importjs: "BigInt.$1(#, #)".} =
+func asUintN*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
-    doAssert asUintN(32, big"2147483647") == 2147483647.uint32
+    doAssert asUintN(32, big"2147483647") == big"2147483647"
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
