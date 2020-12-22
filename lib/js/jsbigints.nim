@@ -27,6 +27,7 @@ func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string = $toString(this)
+  ## Return a string representation of `JsBigInt`.
 
 func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
