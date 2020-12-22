@@ -23,8 +23,10 @@ func toLocaleString*(this: JsBigInt; locales: openArray[cstring]): cstring {.imp
 func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
-func `$`*(this: JsBigInt): cstring {.importjs: "#.toString()".}
+func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
+
+func `$`*(this: JsBigInt): string = $toString(this)
 
 func asIntN*(width: int; bigInteger: JsBigInt): int {.importjs: "BigInt.$1(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
