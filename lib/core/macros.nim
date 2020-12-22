@@ -1017,11 +1017,12 @@ proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new var stmt.
   runnableExamples:
-    let 
-      expr = newNimNode(nnkInfix).add(
-        ident("+"), newLit(5), newLit(5))
-      varStmt = newVarStmt("x", expr)
-    doAssert varStmt == newVarStmt(ident("x"), expr)
+    macro define(name: string, value: untyped): untyped =
+      newVarStmt(name, value)
+
+    define("x", 5)
+    define("y", 10)
+    doAssert x + y == 15
   
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(
@@ -1035,11 +1036,12 @@ proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new let stmt.
   runnableExamples:
-    let 
-      expr = newNimNode(nnkInfix).add(
-        ident("+"), newLit(5), newLit(5))
-      letStmt = newLetStmt("x", expr)
-    doAssert letStmt == newLetStmt(ident("x"), expr)
+    macro define(name: string, value: untyped): untyped =
+      newLetStmt(name, value)
+
+    define("x", 5)
+    define("y", 10)
+    doAssert x + y == 15
 
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(
@@ -1053,11 +1055,12 @@ proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new const stmt.
   runnableExamples:
-    let
-      expr = newNimNode(nnkInfix).add(
-        ident("+"), newLit(5), newLit(5))
-      constStmt = newConstStmt("x", expr)
-    doAssert constStmt == newConstStmt(ident("x"), expr)
+    macro define(name: string, value: untyped): untyped =
+      newConstStmt(name, value)
+
+    define("x", 5)
+    define("y", 10)
+    doAssert x + y == 15
 
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(
