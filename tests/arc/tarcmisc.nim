@@ -394,10 +394,10 @@ discard newPixelBuffer()
 ############################################################
 # bug #16246, bug #16310
 
-proc test() =
+proc test16246() =
   var values = newSeq[cuint](8)
   # var values: seq[cuint] does not produce codegen error
   var drawCb = proc(): seq[uint32] =
     result = newSeq[uint32](10)
 
-test()
+test16246()
