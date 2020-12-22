@@ -81,10 +81,10 @@ func `div`*(x, y: JsBigInt): JsBigInt {.importjs: "(# / #)".} =
 func `mod`*(x, y: JsBigInt): JsBigInt {.importjs: "(# % #)".} =
   ## Same as `mod` but for `JsBigInt` (uses JavaScript `BigInt() % BigInt()`).
   runnableExamples:
-    doAssert (big"5" mod big"2") == big"1"
-    doAssert (big"421" mod big"5") == big"1"
-    doAssert (big"420" mod big"5") == big"0"
-    doAssert (big"100" mod big"4") == big"0"
+    doAssert big"13" mod big"3" == big"1"
+    doAssert big"-13" mod big"3" == big"-1"
+    doAssert big"13" mod big"-3" == big"1"
+    doAssert big"-13" mod big"-3" == big"-1"
 
 func `<`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".} =
   runnableExamples:
