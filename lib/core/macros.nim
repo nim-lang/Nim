@@ -1036,7 +1036,7 @@ proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
 
-proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
+proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new const stmt.
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(
