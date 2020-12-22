@@ -1014,7 +1014,7 @@ proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
-proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
+proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new var stmt.
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(
