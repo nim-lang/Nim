@@ -888,8 +888,7 @@ func euclDiv*[T: SomeInteger](x, y: T): T {.since: (1, 5, 1).} =
     assert euclDiv(13, -3) == -4
     assert euclDiv(-13, -3) == 5
   result = x div y
-  let r = x mod y
-  if r < 0:
+  if x mod y < 0:
     if y > 0:
       dec result
     else:
