@@ -162,14 +162,16 @@ func dec*(x: var JsBigInt) {.importjs: "(--[#][0][0])".} =
     doAssert big1 == big"2"
 
 func `%=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] %= #)".} =
+  ## Same as `x = x mod y`.
   runnableExamples:
     var big1: JsBigInt = big"10"
     big1 %= big"2"
     doAssert big1 == big"0"
 
 func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
+  ## Same as `x = x div y`.
   runnableExamples:
-    var big1: JsBigInt = big"10"
+    var big1: JsBigInt = big"11"
     big1 /= big"2"
     doAssert big1 == big"5"
 
@@ -185,9 +187,9 @@ proc addInt*(result: var string; integer: JsBigInt) =
 proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
-proc low*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
+proc low*(_: typedesc[JsBigInt]): JsBigInt {.error.} ## **Do NOT use.**
 
-proc high*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
+proc high*(_: typedesc[JsBigInt]): JsBigInt {.error.} ## **Do NOT use.**
 
 
 runnableExamples:
