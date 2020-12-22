@@ -69,11 +69,10 @@ func `*`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
 func `div`*(x, y: JsBigInt): JsBigInt {.importjs: "(# / #)".} =
   ## Same as `div` but for `JsBigInt`(uses JavaScript `BigInt() / BigInt()`).
   runnableExamples:
-    doAssert (big"512" div big"2") == big"256"
-    doAssert (big"4" div big"2") == big"2"
-    doAssert (big"42" div big"10") == big"4"
-    doAssert (big"420" div big"5") == big"84"
-    doAssert (big"100" div big"4") == big"25"
+    doAssert big"13" div big"3" == big"4"
+    doAssert big"-13" div big"3" == big"-4"
+    doAssert big"13" div big"-3" == big"-4"
+    doAssert big"-13" div big"-3" == big"4"
 
 func `mod`*(x, y: JsBigInt): JsBigInt {.importjs: "(# % #)".} =
   ## Same as `mod` but for `JsBigInt` (uses JavaScript `BigInt() % BigInt()`).
