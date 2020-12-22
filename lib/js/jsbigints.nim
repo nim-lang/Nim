@@ -49,20 +49,20 @@ func `div`*(x, y: JsBigInt): JsBigInt {.importjs: "(# / #)".}
 func `mod`*(x, y: JsBigInt): JsBigInt {.importjs: "(# % #)".}
   ## Same as `mod` but for `JsBigInt` (uses JavaScript `BigInt() % BigInt()`).
 
-func `+=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `+=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
 
-func `-=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `-=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
 
-func `*=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `*=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
 
-func `div=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# /= #)", discardable.}
+func `div=`*(x, y: JsBigInt) {.importjs: "(# /= #)".}
 
-func `mod=`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)", discardable.}
+func `mod=`*(x, y: JsBigInt) {.importjs: "(# $1 #)".}
 
-func `inc`*(x: JsBigInt): JsBigInt {.importjs: "(++#)", discardable.}
+func `inc`*(x: JsBigInt) {.importjs: "(++#)".}
   ## Same as `inc` but for `JsBigInt` (uses JavaScript `++BigInt()`).
 
-func `dec`*(x: JsBigInt): JsBigInt {.importjs: "(--#)", discardable.}
+func `dec`*(x: JsBigInt) {.importjs: "(--#)".}
   ## Same as `dec` but for `JsBigInt` (uses JavaScript `--BigInt()`).
 
 func `<`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
@@ -89,9 +89,9 @@ func `shl`*(a, b: JsBigInt): JsBigInt {.importjs: "(# << #)".}
 
 func `shr`*(a, b: JsBigInt): JsBigInt {.importjs: "(# >> #)".}
 
-func inc*(a, b: JsBigInt): JsBigInt {.importjs: "(# += #)", discardable.}
+func inc*(a, b: JsBigInt) {.importjs: "(# += #)".}
 
-func dec*(a, b: JsBigInt): JsBigInt {.importjs: "(# -= #)", discardable.}
+func dec*(a, b: JsBigInt) {.importjs: "(# -= #)".}
 
 func `+`*(a: JsBigInt): JsBigInt {.error.} # Can not be used by design.
   ## https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
@@ -130,6 +130,8 @@ runnableExamples:
   doAssert big1.toString(10) == "2147483647".cstring
   doAssert big1.toString(2) == "1111111111111111111111111111111".cstring
   doAssert big2 ** big3 == newBigInt(443556)
+  big2 += big2
+  big2 -= big2
   discard big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
   discard big"0"
   discard big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
