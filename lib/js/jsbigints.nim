@@ -54,6 +54,10 @@ func asUintN*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} 
   runnableExamples:
     doAssert asUintN(32, big"2147483647") == big"2147483647"
 
+func int*(a: JsBigInt): int {.importjs: "Number(#)".} =
+  runnableExamples:
+    doAssert int(big"2147483647") == 2147483647
+
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
     doAssert (big"9" + big"1") == big"10"
