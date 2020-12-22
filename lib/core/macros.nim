@@ -1010,34 +1010,34 @@ proc newBlockStmt*(body: NimNode): NimNode {.compileTime.} =
   return newNimNode(nnkBlockStmt).add(newEmptyNode(), body)
 
 proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
-  ## Create a new var stmt.
+  ## Creates a new var stmt.
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
 proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
-  ## Create a new var stmt.
+  ## Creates a new var stmt.
   return newNimNode(nnkVarSection).add(
     newNimNode(nnkIdentDefs).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
 
 proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
-  ## Create a new let stmt.
+  ## Creates a new let stmt.
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(name, newNimNode(nnkEmpty), value))
 
 proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
-  ## Create a new let stmt.
+  ## Creates a new let stmt.
   return newNimNode(nnkLetSection).add(
     newNimNode(nnkIdentDefs).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
 
 proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
-  ## Create a new const stmt.
+  ## Creates a new const stmt.
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(name, newNimNode(nnkEmpty), value))
 
 proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 6).} =
-  ## Create a new const stmt.
+  ## Creates a new const stmt.
   newNimNode(nnkConstSection).add(
     newNimNode(nnkConstDef).add(
       newIdentNode(name), newNimNode(nnkEmpty), value))
