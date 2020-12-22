@@ -1962,16 +1962,6 @@ proc matches(s: PSym; x: string): bool =
   while L >= 0:
     if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
       return false
-    s = s.owner
-    dec L
-  result = true
-
-proc matches(s: PSym; y: varargs[string]): bool =
-  var s = s
-  var L = y.len-1
-  while L >= 0:
-    if s == nil or (y[L].cmpIgnoreStyle(s.name.s) != 0 and y[L] != "*"):
-      return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
     dec L
   result = true
@@ -2029,11 +2019,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif s.kind == skMethod:
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
-      elif matches(s, "stdlib", "marshal", "to"):
+      elif matches(s, "stdlib.marshal.to"):
         # XXX marshal load&store should not be opcodes, but use the
         # general callback mechanisms.
         genMarshalLoad(c, n, dest)
-      elif matches(s, "stdlib", "marshal", "$$"):
+      elif matches(s, "stdlib.marshal.$$"):
         genMarshalStore(c, n, dest)
       else:
         genCall(c, n, dest)
