@@ -71,6 +71,8 @@
   shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
   its argument, `addMoved`, is also supplied.
 
+- Added new overloads to `macros` for `newVarStmt`, `newLetStmt`, and `newConstStmt` where `name` is a string.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
