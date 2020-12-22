@@ -164,6 +164,18 @@ func dec*(x: var JsBigInt) {.importjs: "(--[#][0][0])".} =
     dec big1
     doAssert big1 == big"2"
 
+func `%=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] %= #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"10"
+    big1 %= big"2"
+    doAssert big1 == big"0"
+
+func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
+  runnableExamples:
+    var big1: JsBigInt = big"10"
+    big1 /= big"2"
+    doAssert big1 == big"5"
+
 
 runnableExamples:
   let big1: JsBigInt = big"2147483647"
