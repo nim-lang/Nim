@@ -7,11 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a `reStructuredText`:idx: parser. A large
-## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
-## also supported.
+## This module implements a `reStructuredText`:idx: (RST) parser. A large
+## subset is implemented. Some features of the `markdown`:idx: syntax are
+## also supported. Nim can output the result to HTML (command ``rst2html``)
+## or Latex (command ``rst2tex``).
 ##
-## Supported RST features:
+## If you are new to RST please consider reading the following:
+##
+## 1) a short `quick introduction`_
+## 2) an `RST reference`_: a comprehensive cheatsheet for RST
+## 3) a more formal 50-page `RST specification`_.
+##
+## Supported standard RST features:
 ##
 ## * body elements
 ##   + sections
@@ -25,20 +32,29 @@
 ##   + option lists
 ##   + indented literal blocks
 ##   + simple tables
-##   + directives
-##     - image, figure
-##     - code-block
-##     - substitution definitions: replace and image
-##     - ... a few more
+##   + directives (see official documentation in `RST directives list`_):
+##     - ``image``, ``figure`` for including images and videos
+##     - ``code``
+##     - ``contents`` (table of contents), ``container``, ``raw``
+##     - ``include``
+##     - admonitions: "attention", "caution", "danger", "error", "hint",
+##       "important", "note", "tip", "warning", "admonition"
+##     - substitution definitions: `replace` and `image`
 ##   + comments
 ## * inline markup
-##   + *emphasis*, **strong emphasis**, `interpreted text`,
+##   + *emphasis*, **strong emphasis**,
 ##     ``inline literals``, hyperlink references, substitution references,
 ##     standalone hyperlinks
+##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
+##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##     (see `RST roles list`_ for description).
 ##
 ## Additional features:
 ##
+## * directives: ``code-block``, ``title``, ``index``
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
+## * ``:idx:`` role for \`interpreted text\` to include the link to this
+##   text into an index (example: `Nim index`_).
 ##
 ## Optional additional features, turned on by ``options: RstParseOption`` in
 ## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
@@ -51,7 +67,10 @@
 ## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
 ##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
 ##
-## **Note:** By default nim has ``roSupportMarkdown`` turned **on**.
+## .. Note:: By default nim has ``roSupportMarkdown`` turned **on**.
+##
+## .. warning:: Using Nim-specific features can cause other RST implementations
+##   to fail on your document.
 ##
 ## Limitations:
 ##
@@ -61,17 +80,35 @@
 ##   - no quoted literal blocks
 ##   - no doctest blocks
 ##   - no grid tables
-##   - directives: no support for admonitions (notes, caution)
+##   - some directives are missing (check official `RST directives list`_):
+##     ``parsed-literal``, ``sidebar``, ``topic``, ``math``, ``rubric``,
+##     ``epigraph``, ``highlights``, ``pull-quote``, ``compound``,
+##     ``table``, ``csv-table``, ``list-table``, ``section-numbering``,
+##     ``header``, ``footer``, ``meta``, ``class``
+##     - no ``role`` directives and no custom interpreted text roles
+##     - some standard roles are not supported (check `RST roles list`_)
 ##   - no footnotes & citations support
 ##   - no inline internal targets
 ## * inline markup
 ##   - no simple-inline-markup
 ##   - no embedded URI and aliases
 ##
-## **Note:** Import ``packages/docutils/rst`` to use this module
+## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
+## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
+## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
+## .. _RST directives list: https://docutils.sourceforge.io/docs/ref/rst/directives.html
+## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
+## .. _Nim index: https://nim-lang.org/docs/theindex.html
+##
+## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
+## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+##
+## .. note:: Import ``packages/docutils/rst`` to use this module.
+##
+## See also `packages/docutils/rstgen module <rstgen.html>`_.
 
 import
-  os, strutils, rstast
+  os, strutils, rstast, tables
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -947,6 +984,7 @@ proc getDirective(p: var RstParser): string =
       result = ""             # error
   else:
     result = ""
+  result = result.toLowerAscii()
 
 proc parseComment(p: var RstParser): PRstNode =
   case currentTok(p).kind
@@ -967,21 +1005,6 @@ proc parseComment(p: var RstParser): PRstNode =
   else:
     while currentTok(p).kind notin {tkIndent, tkEof}: inc p.idx
   result = nil
-
-type
-  DirKind = enum             # must be ordered alphabetically!
-    dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
-    dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
-
-const
-  DirIds: array[0..12, string] = ["", "author", "authors", "code",
-    "code-block", "container", "contents", "figure", "image", "include",
-    "index", "raw", "title"]
-
-proc getDirKind(s: string): DirKind =
-  let i = find(DirIds, s)
-  if i >= 0: result = DirKind(i)
-  else: result = dkNone
 
 proc parseLine(p: var RstParser, father: PRstNode) =
   while true:
@@ -1191,7 +1214,8 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnMarkdownTable
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
-    elif match(p, tokenAfterNewline(p), "ai"):
+    elif match(p, tokenAfterNewline(p), "ai") and
+        isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
@@ -1664,8 +1688,8 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
   ##
   ## A directive block will always have three sons: the arguments for the
-  ## directive (rnDirArg), the options (rnFieldList) and the block
-  ## (rnLineBlock). This proc parses the two first nodes, the block is left to
+  ## directive (rnDirArg), the options (rnFieldList) and the directive
+  ## content block. This proc parses the two first nodes, the 3rd is left to
   ## the outer `parseDirective` call.
   ##
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
@@ -1703,12 +1727,19 @@ proc indFollows(p: RstParser): bool =
 
 proc parseDirective(p: var RstParser, flags: DirFlags,
                     contentParser: SectionParser): PRstNode =
-  ## Returns a generic rnDirective tree.
+  ## Always returns a generic rnDirective tree with these 3 children:
   ##
-  ## The children are rnDirArg, rnFieldList and rnLineBlock. Any might be nil.
+  ## 1) rnDirArg
+  ## 2) rnFieldList
+  ## 3) a node returned by `contentParser`.
+  ##
+  ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, flags)
-  if not isNil(contentParser) and indFollows(p):
-    pushInd(p, currentTok(p).ival)
+  if not isNil(contentParser):
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    if nextIndent <= currInd(p):  # parse only this line
+      nextIndent = currentTok(p).col
+    pushInd(p, nextIndent)
     var content = contentParser(p)
     popInd(p)
     result.add(content)
@@ -1721,7 +1752,7 @@ proc parseDirBody(p: var RstParser, contentParser: SectionParser): PRstNode =
     result = contentParser(p)
     popInd(p)
 
-proc dirInclude(p: var RstParser): PRstNode =
+proc dirInclude(p: var RstParser, _: string): PRstNode =
   ##
   ## The following options are recognized:
   ##
@@ -1788,7 +1819,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
 
-proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
+proc dirCodeBlock(p: var RstParser, d: string): PRstNode =
   ## Parses a code block.
   ##
   ## Code blocks are rnDirective trees with a `kind` of rnCodeBlock. See the
@@ -1814,8 +1845,8 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     n.add(newRstNode(rnLeaf, readFile(path)))
     result.sons[2] = n
 
-  # Extend the field block if we are using our custom extension.
-  if nimExtension:
+  # Extend the field block if we are using our custom Nim extension.
+  if d == "code-block":
     # Create a field block if the input block didn't have any.
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
@@ -1829,32 +1860,37 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
 
   result.kind = rnCodeBlock
 
-proc dirContainer(p: var RstParser): PRstNode =
+proc dirContainer(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {hasArg}, parseSectionWrapper)
   assert(result.kind == rnDirective)
   assert(result.len == 3)
   result.kind = rnContainer
 
-proc dirImage(p: var RstParser): PRstNode =
+proc dirImage(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {hasOptions, hasArg, argIsFile}, nil)
   result.kind = rnImage
 
-proc dirFigure(p: var RstParser): PRstNode =
+proc dirFigure(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {hasOptions, hasArg, argIsFile},
                           parseSectionWrapper)
   result.kind = rnFigure
 
-proc dirTitle(p: var RstParser): PRstNode =
+proc dirTitle(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {hasArg}, nil)
   result.kind = rnTitle
 
-proc dirContents(p: var RstParser): PRstNode =
+proc dirContents(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {hasArg}, nil)
   result.kind = rnContents
 
-proc dirIndex(p: var RstParser): PRstNode =
+proc dirIndex(p: var RstParser, _: string): PRstNode =
   result = parseDirective(p, {}, parseSectionWrapper)
   result.kind = rnIndex
+
+proc dirAdmonition(p: var RstParser, d: string): PRstNode =
+  result = parseDirective(p, {}, parseSectionWrapper)
+  result.kind = rnAdmonition
+  result.text = d
 
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
@@ -1871,7 +1907,7 @@ proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
     result.kind = kind
     result.add(parseDirBody(p, contentParser))
 
-proc dirRaw(p: var RstParser): PRstNode =
+proc dirRaw(p: var RstParser, d: string): PRstNode =
   #
   #The following options are recognized:
   #
@@ -1880,6 +1916,9 @@ proc dirRaw(p: var RstParser): PRstNode =
   #
   # html
   # latex
+  if roSupportRawDirective notin p.s.options:
+    rstMessage(p, meInvalidDirective, d)
+    return nil
   result = parseDirective(p, {hasOptions, hasArg, argIsWord})
   if result.sons[0] != nil:
     if cmpIgnoreCase(result.sons[0].sons[0].text, "html") == 0:
@@ -1891,6 +1930,28 @@ proc dirRaw(p: var RstParser): PRstNode =
   else:
     dirRawAux(p, result, rnRaw, parseSectionWrapper)
 
+proc dirUnimpl(p: var RstParser, d: string): PRstNode =
+  rstMessage(p, meInvalidDirective, d)
+  result = nil
+
+var directives = {
+  "": dirUnimpl,
+  "code": dirCodeBlock,
+  "code-block": dirCodeBlock,
+  "container": dirContainer,
+  "contents": dirContents,
+  "figure": dirFigure,
+  "image": dirImage,
+  "include": dirInclude,
+  "index": dirIndex,
+  "raw": dirRaw,
+  "title": dirTitle
+}.toTable
+# RST admonitions
+for a in ["admonition", "attention", "caution", "danger", "error", "hint",
+    "important", "note", "tip", "warning" ]:
+  directives[a] = dirAdmonition
+
 proc parseDotDot(p: var RstParser): PRstNode =
   result = nil
   var col = currentTok(p).col
@@ -1898,21 +1959,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
   var d = getDirective(p)
   if d != "":
     pushInd(p, col)
-    case getDirKind(d)
-    of dkInclude: result = dirInclude(p)
-    of dkImage: result = dirImage(p)
-    of dkFigure: result = dirFigure(p)
-    of dkTitle: result = dirTitle(p)
-    of dkContainer: result = dirContainer(p)
-    of dkContents: result = dirContents(p)
-    of dkRaw:
-      if roSupportRawDirective in p.s.options:
-        result = dirRaw(p)
-      else:
-        rstMessage(p, meInvalidDirective, d)
-    of dkCode: result = dirCodeBlock(p)
-    of dkCodeBlock: result = dirCodeBlock(p, nimExtension = true)
-    of dkIndex: result = dirIndex(p)
+    if d in directives: result = directives[d](p, d)
     else: rstMessage(p, meInvalidDirective, d)
     popInd(p)
   elif match(p, p.idx, " _"):
@@ -1934,7 +1981,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
       b = untilEol(p)
     elif cmpIgnoreStyle(currentTok(p).symbol, "image") == 0:
       inc p.idx
-      b = dirImage(p)
+      b = dirImage(p, "image")
     else:
       rstMessage(p, meInvalidDirective, currentTok(p).symbol)
     setSub(p, addNodes(a), b)

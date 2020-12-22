@@ -41,8 +41,11 @@ type
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
     rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnDirective, # a directive
-    rnDirArg, rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock,
+    rnStandaloneHyperlink, rnHyperlink, rnRef,
+    rnDirective,              # a general directive
+    rnDirArg,                 # a directive argument (for some directives).
+                              # here are directives that are not rnDirective:
+    rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock, rnAdmonition,
     rnRawHtml, rnRawLatex,
     rnContainer,              # ``container`` directive
     rnIndex,                  # index directve:
@@ -70,6 +73,7 @@ type
     kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section; and rnEnumList
+                              ## and rnAdmonition
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
 
@@ -316,3 +320,13 @@ proc renderRstToJson*(node: PRstNode): string =
   ##     "sons":optional node array
   ##   }
   renderRstToJsonNode(node).pretty
+
+proc dumpRstTree*(node: PRstNode, indent=0) =
+  ## print parsed RST tree (for debugging)
+  if node == nil:
+    echo " ".repeat(indent), "[nil]"
+    return
+  echo " ".repeat(indent), node.kind, "\t", (
+      if node.text=="": "" else: "'" & node.text & "'")
+  for son in node.sons:
+    dumpRstTree(son, indent=indent+2)

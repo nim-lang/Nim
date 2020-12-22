@@ -1079,6 +1079,26 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
             "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
             result)
 
+proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
+  var htmlCls = "admonition_warning"
+  var texSz = "\\large"
+  case n.text
+  of "hint", "note", "tip":
+    htmlCls = "admonition_info"; texSz = "\\normalsize"
+  of "attention", "admonition", "important", "warning":
+    htmlCls = "admonition_warning"; texSz = "\\large"
+  of "danger", "error":
+    htmlCls = "admonition_error"; texSz = "\\Large"
+  else: discard
+  let txt = n.text.capitalizeAscii()
+  let htmlTab = "<table width=\"95%\" class=\"" & htmlCls & "\">\n"
+  renderAux(d, n,
+      htmlTab & "<tr><th>" & txt & ":</th></tr>\n" &
+        "<tr><td>$1</td></tr></table>\n",
+      "\\\\\\fbox{\\parbox{0.9\\linewidth}{" & texSz & "\\textbf{" &
+        txt & ":}\\\\$1}}\n\n",
+      result)
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
@@ -1143,6 +1163,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
+  of rnAdmonition: renderAdmonition(d, n, result)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
