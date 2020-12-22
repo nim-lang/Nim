@@ -222,10 +222,7 @@ when defined(windows):
     # machine. We also enable `setConsoleOutputCP(65001)` now by default.
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
-    var i = c_fprintf(f, "%s", s)
-    if i < 0:
-      if doRaise: raiseEIO("cannot write string to file")
-      return
+    var i = 0
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
