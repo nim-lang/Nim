@@ -5,8 +5,10 @@ when not defined(js) and not defined(nimdoc):
 
 type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
 
-func newBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".}
+func newBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
+  runnableExamples:
+    doAssert newBigInt(1234567890) == big"1234567890"
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
@@ -28,8 +30,10 @@ func toLocaleString*(this: JsBigInt; locales: openArray[cstring]): cstring {.imp
   runnableExamples:
     doAssert big"2147483647".toLocaleString(["EN".cstring, "ES".cstring]) == "2,147,483,647".cstring
 
-func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".}
+func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
+  runnableExamples:
+    doAssert big"2147483647".toString(2) == "1111111111111111111111111111111".cstring
 
 func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".}
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
@@ -180,7 +184,6 @@ runnableExamples:
   doAssert big1 * big2 == big"1430224108902"
   doAssert $big1 == "2147483647".cstring
   doAssert big1.toString(10) == "2147483647".cstring
-  doAssert big1.toString(2) == "1111111111111111111111111111111".cstring
   doAssert big2 ** big3 == newBigInt(443556)
   var huge = big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
   huge.inc
