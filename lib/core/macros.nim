@@ -1017,7 +1017,7 @@ proc newVarStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newVarStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new var stmt.
   runnableExamples:
-    macro define(name: string, value: untyped): untyped =
+    macro define(name: static[string], value: untyped): untyped =
       newVarStmt(name, value)
 
     define("x", 5)
@@ -1036,7 +1036,7 @@ proc newLetStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newLetStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new let stmt.
   runnableExamples:
-    macro define(name: string, value: untyped): untyped =
+    macro define(name: static[string], value: untyped): untyped =
       newLetStmt(name, value)
 
     define("x", 5)
@@ -1055,7 +1055,7 @@ proc newConstStmt*(name, value: NimNode): NimNode {.compileTime.} =
 proc newConstStmt*(name: string, value: NimNode): NimNode {.compileTime, since: (1, 5, 1).} =
   ## Creates a new const stmt.
   runnableExamples:
-    macro define(name: string, value: untyped): untyped =
+    macro define(name: static[string], value: untyped): untyped =
       newConstStmt(name, value)
 
     define("x", 5)

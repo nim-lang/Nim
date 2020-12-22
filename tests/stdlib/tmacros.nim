@@ -9,7 +9,7 @@ block: # hasArgOfName
   proc p(s: string; i,j,k: int; b: bool; xs,ys: seq[int] = @[]) {.m.} = discard
 
 block: # newVarStmt
-  macro define(name: string, value: untyped): untyped =
+  macro define(name: static[string], value: untyped): untyped =
     newVarStmt(name, value)
   
   define("x", 5 + 5)
