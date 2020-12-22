@@ -173,6 +173,15 @@ func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
     big1 /= big"2"
     doAssert big1 == big"5"
 
+proc addInt*(result: var string; integer: JsBigInt) =
+  ## Converts `integer` to its string representation and appends it to `result`.
+  runnableExamples:
+    var a = "12345678"
+    let b = big"99999999999999999999999999999999999999"
+    a.addInt b
+    doAssert a == "1234567899999999999999999999999999999999999999"
+  result.add integer.toString
+
 proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
