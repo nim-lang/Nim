@@ -905,11 +905,7 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
     assert euclMod(-13, -3) == 2
   result = x mod y
   if result < 0:
-    # increase by abs(y)
-    if y >= 0:
-      result += y
-    else:
-      result += -y
+    result += abs(y)
 
 when not defined(js):
   func c_frexp*(x: float32, exponent: var int32): float32 {.
