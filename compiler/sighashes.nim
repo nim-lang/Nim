@@ -124,11 +124,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       c &= char(t.kind)
     c.hashType t.lastSon, flags
   of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``:
+    # canonicalization for integral types, so that e.g. ``NI`` is
+    # produced instead of ``pid_t``:
     c &= char(t.kind)
-    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
-      c.hashSym(t.sym)
   of tyObject, tyEnum:
     if t.typeInst != nil:
       # prevent against infinite recursions here, see bug #8883:
