@@ -5,10 +5,10 @@ when not defined(js) and not defined(nimdoc):
 
 type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
 
-func newBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
+func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
-    doAssert newBigInt(1234567890) == big"1234567890"
+    doAssert big(1234567890) == big"1234567890"
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
@@ -203,7 +203,7 @@ runnableExamples:
   doAssert big1 * big2 == big"1430224108902"
   doAssert $big1 == "2147483647".cstring
   doAssert big1.toString(10) == "2147483647".cstring
-  doAssert big2 ** big3 == newBigInt(443556)
+  doAssert big2 ** big3 == big(443556)
   var huge = big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
   huge.inc
   huge += big"-999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
