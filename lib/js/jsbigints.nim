@@ -173,12 +173,12 @@ func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
     big1 /= big"2"
     doAssert big1 == big"5"
 
-func `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
+proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
-func low*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
+proc low*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
 
-func high*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
+proc high*(_: JsBigInt): JsBigInt {.error.} ## **Do NOT use.**
 
 
 runnableExamples:
