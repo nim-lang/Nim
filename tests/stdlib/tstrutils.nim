@@ -29,7 +29,7 @@ template main() =
     doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
     block:
-      var a = "xxxxxx"
+      let a = "xxxxxx"
       doAssert a.strip(chars={'x'}).len == 0
 
     doAssert "".strip(chars={'x'}).len == 0
