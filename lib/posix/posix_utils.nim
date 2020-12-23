@@ -11,7 +11,9 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-import posix
+import posix, parsecfg, os
+import std/private/since
+export Config
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
@@ -107,3 +109,17 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
+
+proc osReleaseFile*(): Config {.since: (1, 5).} =
+  ## Get system identification from `os-release` file and return it as a `Config`.
+  ## The `os-release` file is an official Freedesktop.org open standard.
+  ## Available in Linux distributions, except Android and Android-based.
+  ## `os-release` file is not available on Windows and OS X by design.
+  ## * https://www.freedesktop.org/software/systemd/man/os-release.html
+  when not defined(linux):
+    {.fatal: "Freedesktop.org os-release file not available for this operating system".}
+  # We do not use a {.strdefine.} because Standard says it *must* be that path.
+  for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:
+    if fileExists(osReleaseFile):
+      return loadConfig(osReleaseFile)
+  raise newException(IOError, "File not found: /etc/os-release, /usr/lib/os-release")

@@ -75,6 +75,11 @@
 
 - Added `euclDiv` and `euclMod` to `math`.
 
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
