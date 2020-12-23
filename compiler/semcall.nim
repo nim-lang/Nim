@@ -341,7 +341,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     result = errUndeclaredField % ident.colorError(c.config) & typeHint & " " & result
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident.colorError(c.config)
-    else: result = errBadRoutine % [ident.quoteExpr.colorError(c.config), result.quoteExpr.colorError(c.config)]
+    else: result = errBadRoutine % [ident.colorError(c.config), result.colorError(c.config)]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
