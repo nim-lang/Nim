@@ -117,9 +117,10 @@ proc osReleaseFile*(): Config {.since: (1, 5).} =
   ## `os-release` file is not available on Windows and OS X by design.
   ## * https://www.freedesktop.org/software/systemd/man/os-release.html
   runnableExamples:
+    import parsecfg
     when defined(linux):
       let data = osReleaseFile()
-      echo data["NAME"] ## the data is up to each distro.
+      echo data.getSectionValue("","NAME")  ## the data is up to each distro.
 
   when not defined(linux):
     {.fatal: "Freedesktop.org os-release file not available for this operating system".}
