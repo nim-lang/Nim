@@ -111,7 +111,7 @@ proc mkdtemp*(prefix: string): string =
   return $tmpl
 
 proc osReleaseFile*(): Config {.since: (1, 5).} =
-  ## Gets system identification from `os-release` file and return it as a `Config`.
+  ## Gets system identification from `os-release` file and returns it as a `Config`.
   ## The `os-release` file is an official Freedesktop.org open standard.
   ## Available in Linux distributions, except Android and Android-based.
   ## `os-release` file is not available on Windows and OS X by design.
