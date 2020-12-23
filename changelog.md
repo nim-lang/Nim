@@ -73,6 +73,8 @@
   
 - Added `sequtils` import to `prelude`.
 
+- Added `euclDiv` and `euclMod` to `math`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
