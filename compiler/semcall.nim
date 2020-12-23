@@ -607,7 +607,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
-  localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n).quoteExpr)
+  localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))
   result = n
 
 proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =

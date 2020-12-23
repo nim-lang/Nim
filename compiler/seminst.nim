@@ -56,7 +56,7 @@ proc pushProcCon*(c: PContext; owner: PSym) =
   rawHandleSelf(c, owner)
 
 const
-  errCannotInstantiateX = "cannot instantiate: $1"
+  errCannotInstantiateX = "cannot instantiate: '$1'"
 
 iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym =
   internalAssert c.config, n.kind == nkGenericParams
