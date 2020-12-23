@@ -242,7 +242,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:
-          addColorError("'$1' is immutable, not 'var'" % renderNotLValue(nArg))
+          let symbol = renderNotLValue(nArg).quoteExpr.colorError(c.config)
+          candidates.add("$1 is $2" % [symbol, "immutable, not 'var'".colorError(c.config)])
+          #addColorError("'$1' is immutable, not 'var'" % renderNotLValue(nArg))
         else:
           var got = nArg.typ
           addColorError("'$1' is of type: $2" % [renderTree(nArg), typeToString(got)])

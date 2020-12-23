@@ -49,7 +49,7 @@ proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
   but expression 'n' is of type: NonMatchingType
-texplain.nim(174, 9) template/generic instantiation of `assert` from here
+texplain.nim(174, 9) template/generic instantiation of 'assert' from here
 texplain.nim(130, 5) ExplainedConcept: concept predicate failed
 
 expression: e(n)
@@ -63,7 +63,7 @@ proc r(o: RegularConcept): int
   first type mismatch at position: 1
   required type for o: RegularConcept
   but expression 'n' is of type: NonMatchingType
-texplain.nim(175, 9) template/generic instantiation of `assert` from here
+texplain.nim(175, 9) template/generic instantiation of 'assert' from here
 texplain.nim(134, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
   first type mismatch at position: 1
