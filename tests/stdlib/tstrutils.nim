@@ -37,6 +37,9 @@ template main() =
     doAssert "xxx xxx".strip(chars={'x'}) == " "
     doAssert "xxx  wind".strip(chars={'x'}) == "  wind"
     doAssert "xxx  iii".strip(chars={'i'}) == "xxx  "
+    doAssert "x".strip(leading = false, chars={'x'}).len == 0
+    doAssert "x".strip(trailing = false, chars={'x'}).len == 0
+    doAssert "x".strip(leading = false, trailing = false, chars={'x'}) == "x"
 
   block: # split
     var ret: seq[string] # or use `toSeq` or `collect`
