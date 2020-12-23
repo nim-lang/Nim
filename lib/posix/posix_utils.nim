@@ -120,7 +120,7 @@ proc osReleaseFile*(): Config {.since: (1, 5).} =
     import parsecfg
     when defined(linux):
       let data = osReleaseFile()
-      echo data.getSectionValue("","NAME")  ## the data is up to each distro.
+      doAssert data.getSectionValue("", "NAME").len > 0 ## the data is up to each distro.
 
   when not defined(linux):
     {.fatal: "Freedesktop.org os-release file not available for this operating system".}
