@@ -32,21 +32,11 @@ template main() =
       var a = "xxxxxx"
       doAssert a.strip(chars={'x'}).len == 0
 
-    block:
-      var a = ""
-      doAssert a.strip(chars={'x'}).len == 0
-
-    block:
-      var a = "xxx xxx"
-      doAssert a.strip(chars={'x'}) == " "
-
-    block:
-      var a = "xxx  wind"
-      doAssert a.strip(chars={'x'}) == "  wind"
-
-    block:
-      var a = "xxx  iii"
-      doAssert a.strip(chars={'i'}) == "xxx  "
+    doAssert "".strip(chars={'x'}).len == 0
+    doAssert "         ".strip(chars={'x'}) == "         "
+    doAssert "xxx xxx".strip(chars={'x'}) == " "
+    doAssert "xxx  wind".strip(chars={'x'}) == "  wind"
+    doAssert "xxx  iii".strip(chars={'i'}) == "xxx  "
 
   block: # split
     var ret: seq[string] # or use `toSeq` or `collect`
