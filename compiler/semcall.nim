@@ -11,8 +11,7 @@
 # included from sem.nim
 
 from algorithm import sort
-import colormsg
-import strformat
+import colormsg, strformat
 
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
