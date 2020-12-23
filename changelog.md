@@ -74,6 +74,8 @@
 - Added `sequtils` import to `prelude`.
 
 - Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+
 
 ## Language changes
 
