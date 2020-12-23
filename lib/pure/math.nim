@@ -845,6 +845,18 @@ func round*[T: float32|float64](x: T, places: int): T =
     var mult = pow(10.0, places.T)
     result = round(x*mult)/mult
 
+func `div`*[T: float32|float64](x, y: T): T =
+  ## Computes the truncated division operation for float values.
+  runnableExamples:
+    assert 0.5 div 0.1 == 4.0
+    assert 0.4 div 0.1 == 4.0
+    assert 0.1 div 0.5 == 0.0
+    assert almostEqual(12.5 div 3.7, 3.0)
+    assert almostEqual(-19.6 div 5.2, -3.0)
+    assert almostEqual(19.6 div -5.2, -3.0)
+    assert almostEqual(-19.6 div -5.2, 3.0)
+  result = (x - x mod y) / y
+
 func floorDiv*[T: SomeInteger](x, y: T): T =
   ## Floor division is conceptually defined as ``floor(x / y)``.
   ##
@@ -864,18 +876,6 @@ func floorDiv*[T: SomeInteger](x, y: T): T =
   result = x div y
   let r = x mod y
   if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
-
-func `div`*[T: float32|float64](x, y: T): T =
-  ## Computes the division operation for float values.
-  runnableExamples:
-    assert 0.5 div 0.1 == 4.0
-    assert 0.4 div 0.1 == 4.0
-    assert 0.1 div 0.5 == 0.0
-    assert almostEqual(12.5 div 3.7, 3.0)
-    assert almostEqual(-19.6 div 5.2, -3.0)
-    assert almostEqual(19.6 div -5.2, -3.0)
-    assert almostEqual(-19.6 div -5.2, 3.0)
-  result = (x - x mod y) / y
 
 func floorMod*[T: SomeNumber](x, y: T): T =
   ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y)``.
