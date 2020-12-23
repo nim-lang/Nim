@@ -1084,19 +1084,20 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   var texSz = "\\large"
   case n.text
   of "hint", "note", "tip":
-    htmlCls = "admonition_info"; texSz = "\\normalsize"
+    htmlCls = "admonition-info"; texSz = "\\normalsize"
   of "attention", "admonition", "important", "warning":
-    htmlCls = "admonition_warning"; texSz = "\\large"
+    htmlCls = "admonition-warning"; texSz = "\\large"
   of "danger", "error":
-    htmlCls = "admonition_error"; texSz = "\\Large"
+    htmlCls = "admonition-error"; texSz = "\\Large"
   else: discard
   let txt = n.text.capitalizeAscii()
-  let htmlTab = "<table width=\"95%\" class=\"" & htmlCls & "\">\n"
+  let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
   renderAux(d, n,
-      htmlTab & "<tr><th>" & txt & ":</th></tr>\n" &
-        "<tr><td>$1</td></tr></table>\n",
-      "\\\\\\fbox{\\parbox{0.9\\linewidth}{" & texSz & "\\textbf{" &
-        txt & ":}\\\\$1}}\n\n",
+      htmlHead & "<span class=\"" & htmlCls & "-text\"><b>" & txt &
+        ":</b></span>\n" & "$1</div>\n",
+      "\n\n\\vspace{0.4em}\\fbox{\\parbox{0.95\\linewidth}{" &
+        "\\vspace{0.3em}{" & texSz & "\\textbf{" & txt & ":}} " &
+        "$1\\vspace{0.3em}}}\n\n\\vspace{0.4em}\n",
       result)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =

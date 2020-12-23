@@ -552,7 +552,7 @@ Test1
     let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
     for a in ["admonition", "attention", "caution", "danger", "error", "hint",
         "important", "note", "tip", "warning" ]:
-      assert "endOf " & a & "</td></tr></table>" in output0
+      assert "endOf " & a & "</div>" in output0
 
     # Test that admonition does not swallow up the next paragraph.
     let input1 = dedent """
@@ -561,9 +561,9 @@ Test1
       Test paragraph.
     """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "endOfError</td></tr></table>" in output1
+    assert "endOfError</div>" in output1
     assert "<p>Test paragraph. </p>" in output1
-    assert "class=\"admonition_error\"" in output1
+    assert "class=\"admonition admonition-error\"" in output1
 
     # Test that second line is parsed as continuation of the first line.
     let input2 = dedent """
@@ -573,16 +573,16 @@ Test1
       Test paragraph.
     """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    assert "endOfError Test2p.</td></tr></table>" in output2
+    assert "endOfError Test2p.</div>" in output2
     assert "<p>Test paragraph. </p>" in output2
-    assert "class=\"admonition_error\"" in output2
+    assert "class=\"admonition admonition-error\"" in output2
 
     let input3 = dedent """
       .. note:: endOfNote
     """
     let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
-    assert "endOfNote</td></tr></table>" in output3
-    assert "class=\"admonition_info\"" in output3
+    assert "endOfNote</div>" in output3
+    assert "class=\"admonition admonition-info\"" in output3
 
 suite "RST/Code highlight":
   test "Basic Python code highlight":

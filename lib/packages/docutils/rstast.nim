@@ -321,12 +321,16 @@ proc renderRstToJson*(node: PRstNode): string =
   ##   }
   renderRstToJsonNode(node).pretty
 
-proc dumpRstTree*(node: PRstNode, indent=0) =
-  ## print parsed RST tree (for debugging)
+proc renderRstToStr*(node: PRstNode, indent=0): string =
+  ## Writes the parsed RST `node` into a compact string
+  ## representation in the format (one line per every sub-node):
+  ## ``indent - kind - text - level (if non-zero)``
+  ## (suitable for debugging of RST parsing).
   if node == nil:
-    echo " ".repeat(indent), "[nil]"
+    result.add " ".repeat(indent) & "[nil]\n"
     return
-  echo " ".repeat(indent), node.kind, "\t", (
-      if node.text=="": "" else: "'" & node.text & "'")
+  result.add " ".repeat(indent) & $node.kind & "\t" &
+      (if node.text == "": "" else: "'" & node.text & "'") &
+      (if node.level == 0: "" else: "\tlevel=" & $node.level) & "\n"
   for son in node.sons:
-    dumpRstTree(son, indent=indent+2)
+    result.add renderRstToStr(son, indent=indent+2)

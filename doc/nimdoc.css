@@ -14,9 +14,9 @@ Modified by Boyd Greenfield and narimiran
   --primary-background: #fff;
   --secondary-background: ghostwhite;
   --third-background: #e8e8e8;
-  --info-background: #88ff88;
-  --warning-background: #eeee00;
-  --error-background: #ffbbaa;
+  --info-background: #50c050;
+  --warning-background: #c0a000;
+  --error-background: #e04040;
   --border: #dde;
   --text: #222;
   --anchor: #07b;
@@ -42,9 +42,9 @@ Modified by Boyd Greenfield and narimiran
   --primary-background: #171921;
   --secondary-background: #1e202a;
   --third-background: #2b2e3b;
-  --info-background: #006000;
-  --warning-background: #606000;
-  --error-background: #702000;
+  --info-background: #008000;
+  --warning-background: #807000;
+  --error-background: #c03000;
   --border: #0e1014;
   --text: #fff;
   --anchor: #8be9fd;
@@ -615,38 +615,32 @@ table.borderless td, table.borderless th {
      The right padding separates the table cells. */
   padding: 0 0.5em 0 0 !important; }
 
-.admonition_info {
-  border: 0.15em solid var(--info-background);
+.admonition {
+    padding: 0.3em;
+    background-color: var(--secondary-background);
+    border-left: 0.4em solid #7f7f84;
+    margin-bottom: 0.5em;
+    -webkit-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+       -moz-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+            box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
 }
-.admonition_info th {
-  background-color: var(--info-background);
-  text-align: left;
+.admonition-info {
+    border-color: var(--info-background);
 }
-.admonition_info td {
-  padding: 0.3em;
-  padding-left: 2em;
+.admonition-info-text {
+    color: var(--info-background);
 }
-.admonition_warning {
-  border: 0.15em solid var(--warning-background);
+.admonition-warning {
+    border-color: var(--warning-background);
 }
-.admonition_warning th {
-  background-color: var(--warning-background);
-  text-align: left;
+.admonition-warning-text {
+    color: var(--warning-background);
 }
-.admonition_warning td {
-  padding: 0.3em;
-  padding-left: 2em;
+.admonition-error {
+    border-color: var(--error-background);
 }
-.admonition_error {
-  border: 0.15em solid var(--error-background);
-}
-.admonition_error th {
-  background-color: var(--error-background);
-  text-align: left;
-}
-.admonition_error td {
-  padding: 0.3em;
-  padding-left: 2em;
+.admonition-error-text {
+    color: var(--error-background);
 }
 
 .first {
