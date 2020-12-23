@@ -40,8 +40,7 @@ const
 
 const
   nkModuleRef* = nkNone # pair of (ModuleId, SymId)
-  nilItemId* = ItemId(module: -1.int32, item: -1.int32) ##
-  ## XXX: a way to represent a nil PSym or PType
+  nilItemId* = ItemId(module: -1.int32, item: -1.int32)
 
 type
   SymId* = distinct int32
@@ -51,6 +50,10 @@ type
 
   NodeId* = distinct int32
 
+const
+  emptyNodeId* = NodeId(-1)
+
+type
   PackedLineInfo* = object
     line*: uint16
     col*: int16
@@ -61,16 +64,16 @@ type
     generated*: bool
     isOverriden*: bool
     name*: LitId
-    path*: PackedTree
+    path*: NodeId
 
   PackedSym* = object
     kind*: TSymKind
     name*: LitId
-    typeId*: TypeId
+    typ*: TypeId
     flags*: TSymFlags
     magic*: TMagic
     info*: PackedLineInfo
-    ast*: PackedTree
+    ast*: NodeId
     owner*: ItemId
     guard*: ItemId
     bitsize*: int
@@ -82,18 +85,17 @@ type
     annex*: PackedLib
     when hasFFI:
       cname*: LitId
-    constraint*: PackedTree
+    constraint*: NodeId
 
   PackedType* = object
     kind*: TTypeKind
     callConv*: TCallingConvention
-    nodekind*: TNodeKind
+    #nodekind*: TNodeKind
     flags*: TTypeFlags
     types*: seq[TypeId]
-    node*: PackedTree
+    n*: NodeId
     methods*: seq[(int, ItemId)]
-    nodeflags*: TNodeFlags
-    info*: PackedLineInfo
+    #nodeflags*: TNodeFlags
     sym*: ItemId
     owner*: ItemId
     attachedOps*: array[TTypeAttachedOp, ItemId]
@@ -103,7 +105,7 @@ type
     lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: TypeId
-    nonUniqueId*: ItemId
+    uniqueId*: ItemId
 
   PackedNode* = object     # 20 bytes
     kind*: TNodeKind
@@ -118,13 +120,14 @@ type
   ModulePhase* = enum
     preLookup, lookedUpTopLevelStmts
 
-  Module* = object
+  GenericKey* = object
+    module*: int32
     name*: string
-    ast*: PackedTree
-    generics*: Table[GenericKey, SymId]
+    types*: seq[MD5Digest] # is this a joke?
 
-  Program* = ref object
-    modules*: seq[Module]
+  PackedTree* = object ## usually represents a full Nim module
+    nodes*: seq[PackedNode]
+    sh*: Shared
 
   Shared* = ref object # shared between different versions of 'Module'.
                        # (though there is always exactly one valid
@@ -134,16 +137,7 @@ type
     strings*: BiTable[string] # we could share these between modules.
     integers*: BiTable[BiggestInt]
     floats*: BiTable[BiggestFloat]
-    config*: ConfigRef
-
-  PackedTree* = object ## usually represents a full Nim module
-    nodes*: seq[PackedNode]
-    sh*: Shared
-
-  GenericKey* = object
-    module*: int32
-    name*: string
-    types*: seq[MD5Digest]
+    #config*: ConfigRef
 
 proc hash*(key: GenericKey): Hash =
   var h: Hash = 0
@@ -472,6 +466,8 @@ proc hasPragma*(tree: PackedTree; n: NodePos; pragma: string): bool =
         return true
     elif ch0.identId == litId:
       return true
+
+proc getNodeId*(tree: PackedTree): NodeId {.inline.} = NodeId tree.nodes.len
 
 when false:
   proc produceError*(dest: var PackedTree; tree: PackedTree; n: NodePos; msg: string) =

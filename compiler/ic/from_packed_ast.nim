@@ -21,13 +21,13 @@ proc fromTree(ir: PackedTree; c: var Context; pos = 0.NodePos): PNode
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym
 proc fromType(t: PackedType; ir: PackedTree; c: var Context): PType
 
-proc fromSym(s: SymId or int32; id: ItemId; ir: PackedTree;
+proc fromSym(s: SymId; id: ItemId; ir: PackedTree;
              c: var Context): PSym =
   ## guard unpack of a symbol via index
   if s.int >= 0:
     result = fromSym(ir.sh.syms[int s], id, ir, c)
 
-proc fromType(t: TypeId or int32; ir: PackedTree; c: var Context): PType =
+proc fromType(t: TypeId; ir: PackedTree; c: var Context): PType =
   ## guard unpack of a type via index
   if t.int >= 0:
     result = fromType(ir.sh.types[int t], ir, c)
@@ -94,7 +94,6 @@ proc loadSymbol(id: ItemId; c: var Context; ir: PackedTree): PSym =
     c.symMap[id] = result
 
 proc fromSym(s: PackedSym; id: ItemId; ir: PackedTree; c: var Context): PSym =
-  ## unpack a symbol, what else?
   result = getOrDefault(c.symMap, id, nil)
   if result != nil: return nil
 

@@ -616,7 +616,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  rod.storeNode(c.graph, c.module, result)
+  storeRodNode(c, result)
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):

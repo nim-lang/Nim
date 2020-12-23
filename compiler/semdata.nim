@@ -13,6 +13,8 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets
 
+import ic / to_packed_ast
+
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
@@ -140,6 +142,7 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
+    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
@@ -264,6 +267,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   initStrTable(result.signatures)
   result.typesWithOps = @[]
   result.features = graph.config.features
+  initEncoder result.encoder, module, graph.config
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
@@ -469,3 +473,6 @@ proc setCaseContextIdx*(c: PContext, idx: int) =
 template addExport*(c: PContext; s: PSym) =
   ## convenience to export a symbol from the current module
   addExport(c.graph, c.module, s)
+
+proc storeRodNode*(c: PContext, n: PNode) =
+  toPackedNodeTopLevel(n, c.encoder)
