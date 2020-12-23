@@ -46,9 +46,8 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
 proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId
 proc toPackedType(t: PType; c: var PackedEncoder): TypeId
-proc toPackedLib(l: PLib; c: var PackedEncoder): PackedLib
 
-proc safeItemId(s: PSym; c: var PackedEncoder): ItemId =
+proc safeItemId(s: PSym): ItemId {.inline.} =
   ## given a symbol, produce an ItemId with the correct properties
   ## for local or remote symbols, packing the symbol as necessary
   if s == nil:
@@ -148,21 +147,30 @@ proc toPackedType(t: PType; c: var PackedEncoder): TypeId =
 
   for op, s in pairs t.attachedOps:
     c.addMissing s
-    p.attachedOps[op] = s.safeItemId(c)
+    p.attachedOps[op] = s.safeItemId
 
   p.typeInst = t.typeInst.toPackedType(c)
   for kid in items t.sons:
     p.types.add kid.toPackedType(c)
   for i, s in items t.methods:
     c.addMissing s
-    p.methods.add (i, s.safeItemId(c))
+    p.methods.add (i, s.safeItemId)
   c.addMissing t.sym
-  p.sym = t.sym.safeItemId(c)
+  p.sym = t.sym.safeItemId
   c.addMissing t.owner
-  p.owner = t.owner.safeItemId(c)
+  p.owner = t.owner.safeItemId
 
   # fill the reserved slot, nothing else:
   c.sh.types[int result] = p
+
+proc toPackedLib(l: PLib; c: var PackedEncoder): PackedLib =
+  ## the plib hangs off the psym via the .annex field
+  if l.isNil: return
+  result.kind = l.kind
+  result.generated = l.generated
+  result.isOverriden = l.isOverriden
+  result.name = toLitId($l.name, c)
+  storeNode(result, l, path)
 
 proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId =
   ## serialize a psym
@@ -172,7 +180,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId =
   result = getOrDefault(c.symMap, s.itemId, SymId(-1))
   if result != SymId(-1): return result
 
-  result = SymId(c.sh.syms.high)
+  result = SymId(c.sh.syms.len)
   c.symMap[s.itemId] = result
   # reserve the slot already:
   setLen c.sh.syms, result.int+1
@@ -186,7 +194,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId =
 
   if s.kind in {skLet, skVar, skField, skForVar}:
     c.addMissing s.guard
-    p.guard = s.guard.safeItemId(c)
+    p.guard = s.guard.safeItemId
     p.bitsize = s.bitsize
     p.alignment = s.alignment
 
@@ -194,7 +202,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId =
   c.addMissing s.typ
   p.typ = s.typ.toPackedType(c)
   c.addMissing s.owner
-  p.owner = s.owner.safeItemId(c)
+  p.owner = s.owner.safeItemId
   p.annex = toPackedLib(s.annex, c)
   when hasFFI:
     p.cname = toLitId(s.cname, c)
@@ -216,21 +224,12 @@ proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
     # store it as an external module reference:
     addModuleRef(n, ir, c)
 
-proc toPackedLib(l: PLib; c: var PackedEncoder): PackedLib =
-  ## the plib hangs off the psym via the .annex field
-  if l.isNil: return
-  result.kind = l.kind
-  result.generated = l.generated
-  result.isOverriden = l.isOverriden
-  result.name = toLitId($l.name, c)
-  storeNode(result, l, path)
-
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## serialize a node into the tree
   if n.isNil: return
   let info = toPackedInfo(n.info, c)
   case n.kind
-  of nkNone, nkEmpty, nkNilLit:
+  of nkNone, nkEmpty, nkNilLit, nkType:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags, operand: 0,
                             typeId: toPackedType(n.typ, c), info: info)
   of nkIdent:
@@ -269,7 +268,7 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
   toPackedNode(n, encoder.m.topLevel, encoder)
   flush encoder
 
-proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
+proc saveRodFile*(filename: string; encoder: var PackedEncoder) =
   discard
 
 when false:
