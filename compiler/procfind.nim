@@ -11,7 +11,7 @@
 # This is needed for proper handling of forward declarations.
 
 import
-  ast, astalgo, msgs, semdata, types, trees, strutils, lookups
+  ast, astalgo, msgs, semdata, types, trees, strutils, lookups, colormsg
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if procA.len != procB.len: return false
@@ -44,7 +44,7 @@ proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
           localError(c.config, fn.info, message)
         return
       of paramsIncompatible:
-        localError(c.config, fn.info, "overloaded '$1' leads to ambiguous calls" % fn.name.s)
+        localError(c.config, fn.info, colorError("overloaded '$1' leads to ambiguous calls" % fn.name.s, c.config))
         return
       of paramsNotEqual:
         discard

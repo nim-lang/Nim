@@ -204,6 +204,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   var skipped = 0
 
   template addColorError(a: string) = candidates.add(a.colorError(c.config))
+  template addColorExpect(a: string) = candidates.add(a.colorExpect(c.config))
   template addColorHl(a: string) = candidates.add(a.colorHighlight(c.config))
 
   for err in errors:
@@ -238,7 +239,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         var wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        addColorHl(typeToString(wanted))
+        addColorExpect(typeToString(wanted))
         candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression "
         if err.firstMismatch.kind == kVarNeeded:

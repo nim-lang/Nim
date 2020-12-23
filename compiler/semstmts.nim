@@ -190,10 +190,10 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if isImportedException(typ, c.config):
       isImported = true
     elif not isException(typ):
-      localError(c.config, typeNode.info, errExprCannotBeRaised)
+      localError(c.config, typeNode.info, errExprCannotBeRaised.colorError(c.config))
 
     if containsOrIncl(check, typ.id):
-      localError(c.config, typeNode.info, errExceptionAlreadyHandled)
+      localError(c.config, typeNode.info, errExceptionAlreadyHandled.colorError(c.config))
     typeNode = newNodeIT(nkType, typeNode.info, typ)
     isImported
 
@@ -245,11 +245,11 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
           else: isNative = true
 
         if isNative and isImported:
-          localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
+          localError(c.config, a[0].info, "Mix of imported and native exception types is not allowed in one except branch".colorError(c.config))
 
     elif a.kind == nkFinally:
       if i != n.len-1:
-        localError(c.config, a.info, "Only one finally is allowed after all other branches")
+        localError(c.config, a.info, "Only one finally is allowed after all other branches".colorError(c.config))
 
     else:
       illFormedAst(n, c.config)
@@ -257,7 +257,7 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if catchAllExcepts > 1:
       # if number of ``except: body`` blocks is greater than 1
       # or more specific exception follows a general except block, it is invalid
-      localError(c.config, a.info, "Only one general except clause is allowed after more specific exceptions")
+      localError(c.config, a.info, "Only one general except clause is allowed after more specific exceptions".colorError(c.config))
 
     # last child of an nkExcept/nkFinally branch is a statement:
     a[^1] = semExprBranchScope(c, a[^1])
