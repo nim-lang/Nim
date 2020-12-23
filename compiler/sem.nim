@@ -639,6 +639,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popOwner(c)
   popProcCon(c)
   storeRemaining(c.graph, c.module)
+  saveRodFile(c)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

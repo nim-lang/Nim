@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, sets
+  magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
 import ic / to_packed_ast
 
@@ -476,3 +476,8 @@ template addExport*(c: PContext; s: PSym) =
 
 proc storeRodNode*(c: PContext, n: PNode) =
   toPackedNodeTopLevel(n, c.encoder)
+
+proc saveRodFile*(c: PContext) =
+  let filename = changeFileExt(completeGeneratedFilePath(c.config,
+    withPackageName(c.config, c.filename.AbsoluteFile)), RodExt)
+  saveRodFile(filename, c.encoder)

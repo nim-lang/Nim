@@ -9,7 +9,7 @@
 
 import std / [hashes, tables, md5, sequtils]
 import packed_ast, bitabs
-import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes]
+import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes, pathutils]
 
 when not defined(release): import ".." / astalgo # debug()
 
@@ -268,8 +268,30 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
   toPackedNode(n, encoder.m.topLevel, encoder)
   flush encoder
 
-proc saveRodFile*(filename: string; encoder: var PackedEncoder) =
-  discard
+proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
+  when false:
+    var local: int
+    template countLocal(encoder: PackedEncoder; tab: typed): int =
+      var local = 0
+      for item, sym in pairs tab:
+        if item.module == encoder.thisModule:
+          inc local
+      local
+
+    echo "     module id: ", encoder.thisModule
+    echo "       symbols: ", encoder.sh.syms.len
+    local = encoder.countLocal encoder.symMap
+    echo "                local: ", local
+    echo "               remote: ", encoder.sh.syms.len - local
+    echo "         types: ", encoder.sh.types.len
+    local = encoder.countLocal encoder.typeMap
+    echo "                local: ", local
+    echo "               remote: ", encoder.sh.types.len - local
+    echo "         nodes: ", encoder.m.topLevel.nodes.len
+    echo "float literals: ", encoder.sh.floats.len
+    echo "  int literals: ", encoder.sh.integers.len
+    echo "  str literals: ", encoder.sh.strings.len
+    echo ""
 
 when false:
   proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
@@ -288,30 +310,3 @@ when false:
     var c: PackedEncoder
     initEncoder(c, module)
     toPackedNode(n, ir, c)
-
-    when not defined(release):
-      var local: int
-      template countLocal(c: PackedEncoder; tab: typed): int =
-        var local = 0
-        for item, sym in pairs tab:
-          if item.module == c.thisModule:
-            inc local
-        local
-
-      echo "     module id: ", c.thisModule
-      echo "       symbols: ", ir.sh.syms.len
-      local = c.countLocal c.symMap
-      echo "                local: ", local
-      echo "               remote: ", ir.sh.syms.len - local
-      echo "         types: ", ir.sh.types.len
-      local = c.countLocal c.typeMap
-      echo "                local: ", local
-      echo "               remote: ", ir.sh.types.len - local
-      echo "         nodes: ", ir.nodes.len
-      echo "float literals: ", ir.sh.floats.len
-      echo "  int literals: ", ir.sh.integers.len
-      echo "  str literals: ", ir.sh.strings.len
-      debug ir
-      echo ""
-    assert c.pendingTypes.len == 0
-    assert c.pendingSyms.len == 0
