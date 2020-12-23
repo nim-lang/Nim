@@ -497,12 +497,18 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-    mColor = mcDefault # This variable is used incase we want to add 256 palette colours
+  
+  template sevColor(a: Severity): MsgColor =
+    # Converter for the severity to the colormsg MsgColor
+    case a:
+    of Severity.Error: mcError
+    of Severity.Warning: mcWarn
+    of Severity.Hint: mcHint
+
   let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
-    mColor = mcError
     writeContext(conf, info)
     title = ErrorTitle
     color = ErrorColor
@@ -522,14 +528,12 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       title = WarningTitle
     if not ignoreMsg: writeContext(conf, info)
     color = WarningColor
-    mColor = mcWarn
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
-    mColor = mcHint
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)
@@ -545,7 +549,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       else:
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
-          conf.writeSurroundingSrc(info, mColor)
+          conf.writeSurroundingSrc(info, sevColor(sev))
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,

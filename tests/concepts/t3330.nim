@@ -29,9 +29,9 @@ proc add[T](x: var seq[T]; y: sink T)
   required type for x: var seq[T]
   but expression 'k' is of type: Alias
 
-t3330.nim(55, 8) template/generic instantiation of `add` from here
+t3330.nim(55, 8) template/generic instantiation of 'add' from here
 t3330.nim(62, 6) Foo: 'bar.value' cannot be assigned to
-t3330.nim(55, 8) template/generic instantiation of `add` from here
+t3330.nim(55, 8) template/generic instantiation of 'add' from here
 t3330.nim(63, 6) Foo: 'bar.x' cannot be assigned to
 
 expression: test(bar)'''

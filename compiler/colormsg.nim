@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-## This module is for adding colour to error messages from the compiler,
+## This module is for adding color to error messages from the compiler,
 ## using strformat and terminal.
 
 import terminal, strutils, strformat, options
@@ -14,7 +14,14 @@ type MsgColor* = enum
   mcError, mcWarn, mcHint, mcExpected, mcDefault, mcHighlight
 
 # May want to also add styling for each of these
-const defaultColors: array[MsgColor, ForegroundColor] = [fgRed, fgYellow, fgGreen, fgBlue, fgDefault, fgMagenta] 
+const defaultColors: array[MsgColor, ForegroundColor] = [
+  mcError: fgRed,
+  mcWarn: fgYellow,
+  mcHint: fgGreen,
+  mcExpected: fgBlue,
+  mcDefault: fgDefault,
+  mcHighlight: fgMagenta
+  ]
 
 proc colorMsg*(msg: string, col: MsgColor, c: ConfigRef): string =
   if optUseColors in c.globalOptions:
