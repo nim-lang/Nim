@@ -31,7 +31,7 @@ pkg1 "cligen", "nim c --path:. -r cligen.nim"
 pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
 pkg1 "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
-pkg1 "criterion"
+# pkg1 "criterion" # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg1 "dashing", "nim c tests/functional.nim"
 pkg1 "delaunay"
 pkg1 "docopt"
