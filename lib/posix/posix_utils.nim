@@ -122,8 +122,6 @@ proc osReleaseFile*(): Config {.since: (1, 5).} =
       let data = osReleaseFile()
       doAssert data.getSectionValue("", "NAME").len > 0 ## the data is up to each distro.
 
-  when not defined(linux):
-    {.fatal: "Freedesktop.org os-release file not available for this operating system".}
   # We do not use a {.strdefine.} because Standard says it *must* be that path.
   for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:
     if fileExists(osReleaseFile):
