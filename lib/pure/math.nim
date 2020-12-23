@@ -144,8 +144,8 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
-    doAssert not isNan(3.1415926)
-    doAssert not isNan(0'f32)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
 
   template fn: untyped = result = x != x
   when nimvm: fn()
@@ -567,6 +567,8 @@ else: # JS
   func tanh*[T: float32|float64](x: T): T {.importc: "Math.tanh", nodecl.}
 
   func arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
+    # keep this as generic or update test in `tvmops.nim` to make sure we
+    # keep testing that generic importc procs work
   func arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
   func arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
   func arctan2*[T: float32|float64](y, x: T): T {.importc: "Math.atan2", nodecl.}
