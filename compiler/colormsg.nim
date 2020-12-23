@@ -6,8 +6,8 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-# This module is for adding colour to error messages from the compiler,
-# using strformat and terminal.
+## This module is for adding colour to error messages from the compiler,
+## using strformat and terminal.
 
 import terminal, strutils, strformat, options
 type MsgColor* = enum
