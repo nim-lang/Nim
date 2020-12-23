@@ -723,10 +723,10 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
       handleHexChar(L, xi, 3)
       handleHexChar(L, xi, 4)
       if c == 'U': 
-        handleHexChar(L, xi, 5)
-        handleHexChar(L, xi, 6)
-        handleHexChar(L, xi, 7)
-        handleHexChar(L, xi, 8)
+        handleHexChar(L, xi, 1)
+        handleHexChar(L, xi, 2)
+        handleHexChar(L, xi, 3)
+        handleHexChar(L, xi, 4)
     addUnicodeCodePoint(tok.literal, xi)
   of '0'..'9':
     if matchTwoChars(L, '0', {'0'..'9'}):
