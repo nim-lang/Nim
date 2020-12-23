@@ -1,10 +1,3 @@
-discard """
-  action: run
-  output: '''
-
-[Suite] parseutils
-'''
-"""
 import unittest, strutils
 
 block: # parseutils
