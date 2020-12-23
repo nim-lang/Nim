@@ -1,3 +1,14 @@
+#
+#
+#           The Nim Compiler
+#        (c) Copyright 2020 Nim Contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+# This module is for adding colour to error messages from the compiler,
+# using strformat and terminal.
+
 import terminal, strutils, strformat, options
 type MsgColor* = enum
   mcError, mcWarn, mcHint, mcExpected, mcDefault, mcHighlight
