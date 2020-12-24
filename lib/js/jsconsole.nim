@@ -75,7 +75,7 @@ since (1, 5):
   # importjs nor importcpp can not be used with template.
 
   template jsAssert*(console: Console; assertion) =
-    ## JavaScript `console.assert`,
+    ## JavaScript `console.assert`, for NodeJS this prints to stderr,
     ## assert failure just prints to console and do not quit the program.
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
     runnableExamples: 
