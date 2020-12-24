@@ -76,7 +76,10 @@ since (1, 5):
 
   template jsAssert*(console: Console; assertion) =
     ## JavaScript `console.assert`, for NodeJS this prints to stderr,
-    ## assert failure just prints to console and do not quit the program.
+    ## assert failure just prints to console and do not quit the program,
+    ## this is not meant to be better or even equal than normal assertions,
+    ## is just for when you need faster performance *and* assertions,
+    ## otherwise use the normal assertions for better user experience.
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
     runnableExamples: 
       console.jsAssert(42 == 42) # OK
