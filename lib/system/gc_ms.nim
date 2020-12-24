@@ -507,7 +507,7 @@ when not defined(useNimRtl):
     gch.cycleThreshold = InitialThreshold
 
   proc GC_disableMarkAndSweep() =
-    gch.cycleThreshold = high(gch.cycleThreshold)-1
+    gch.cycleThreshold = high(typeof(gch.cycleThreshold))-1
     # set to the max value to suppress the cycle detector
 
   when defined(nimTracing):

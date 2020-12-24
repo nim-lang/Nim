@@ -4,7 +4,12 @@ discard """
 res: yes
 yes
 running someProc(false)
+<<<<<<< HEAD
 res:
+=======
+res: 
+
+>>>>>>> upstream/devel
 '''
 """
 
@@ -20,4 +25,8 @@ echo "running someProc(true)"
 echo someProc(true)
 
 echo "running someProc(false)"
+<<<<<<< HEAD
 echo someProc(false)
+=======
+echo someProc(false)
+>>>>>>> upstream/devel

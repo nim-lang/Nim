@@ -37,7 +37,7 @@ type
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # sons of the | thing
     rnBlockQuote,             # text just indented
-    rnTable, rnGridTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
+    rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
     rnCitation,               # similar to footnote
@@ -69,7 +69,7 @@ type
   RstNode* {.acyclic, final.} = object ## an RST node's description
     kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
-                              ## the document or the section
+                              ## the document or the section; and rnEnumList
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
 

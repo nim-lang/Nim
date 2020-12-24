@@ -1,23 +1,16 @@
 import macros
-from strutils import IdentStartChars
 import parseutils
 import unicode
 import math
-import fenv
 import pegs
 import streams
 
 type
-  FormatError = object of Exception ## Error in the format string.
+  FormatError = object of CatchableError ## Error in the format string.
 
   Writer = concept W
     ## Writer to output a character `c`.
-    when (NimMajor, NimMinor, NimPatch) > (0, 10, 2):
-      write(W, 'c')
-    else:
-      block:
-        var x: W
-        write(x, char)
+    write(W, 'c')
 
   FmtAlign = enum ## Format alignment
     faDefault  ## default for given format type

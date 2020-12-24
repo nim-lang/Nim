@@ -214,3 +214,10 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
 
 proc `$`*(s: WideCString): string =
   result = s $ 80
+
+when defined(nimv2):
+  proc `$`*(s: WideCStringObj, estimate: int, replacement: int = 0xFFFD): string =
+    `$`(s.data, estimate, replacement)
+
+  proc `$`*(s: WideCStringObj): string =
+    $(s.data)

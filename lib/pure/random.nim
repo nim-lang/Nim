@@ -11,7 +11,7 @@
 ##
 ## Its implementation is based on the ``xoroshiro128+``
 ## (xor/rotate/shift/rotate) library.
-## * More information: http://xoroshiro.di.unimi.it/
+## * More information: http://xoroshiro.di.unimi.it
 ## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 ##
 ## **Do not use this module for cryptographic purposes!**
@@ -135,7 +135,8 @@ proc next*(r: var Rand): uint64 =
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer between zero and
   ##   a given upper bound
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
@@ -220,7 +221,8 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,int>`_ that returns an integer using the default
   ##   random number generator
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(123)
@@ -246,7 +248,8 @@ proc rand*(max: int): int {.benign.} =
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
   ##   provided state
   ## * `rand proc<#rand,float>`_ that returns a float
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(123)
@@ -263,7 +266,8 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## * `rand proc<#rand,float>`_ that returns a float using the default
   ##   random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(234)
@@ -289,7 +293,8 @@ proc rand*(max: float): float {.benign.} =
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
   ##   provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
@@ -304,8 +309,8 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## See also:
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
-  ##   default random number generator
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice and uses the default random number generator
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -333,8 +338,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## thread-safe.
   ##
   ## See also:
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice and uses
-  ##   a provided state
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice and uses a provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -357,7 +362,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## See also:
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,float>`_ that returns a floating point number
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
   runnableExamples:
     randomize(567)
     doAssert rand(int8) == 55
@@ -651,57 +657,3 @@ when not defined(nimscript) and not defined(standalone):
       randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
 {.pop.}
-
-when isMainModule:
-  import stats
-
-  proc main =
-    var occur: array[1000, int]
-
-    var x = 8234
-    for i in 0..100_000:
-      x = rand(high(occur))
-      inc occur[x]
-    for i, oc in occur:
-      if oc < 69:
-        doAssert false, "too few occurrences of " & $i
-      elif oc > 150:
-        doAssert false, "too many occurrences of " & $i
-
-    when false:
-      var rs: RunningStat
-      for j in 1..5:
-        for i in 1 .. 1_000:
-          rs.push(gauss())
-        echo("mean: ", rs.mean,
-          " stdDev: ", rs.standardDeviation(),
-          " min: ", rs.min,
-          " max: ", rs.max)
-        rs.clear()
-
-    var a = [0, 1]
-    shuffle(a)
-    doAssert a[0] == 1
-    doAssert a[1] == 0
-
-    doAssert rand(0) == 0
-    doAssert sample("a") == 'a'
-
-    when compileOption("rangeChecks"):
-      try:
-        discard rand(-1)
-        doAssert false
-      except RangeDefect:
-        discard
-
-      try:
-        discard rand(-1.0)
-        doAssert false
-      except RangeDefect:
-        discard
-
-
-    # don't use causes integer overflow
-    doAssert compiles(rand[int](low(int) .. high(int)))
-
-  main()

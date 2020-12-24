@@ -472,13 +472,15 @@ innermost construct, unless a label of a block is given:
       echo "looping"
       break # leaves the loop, but not the block
     echo "still in block"
+  echo "outside the block"
 
   block myblock2:
     echo "entering block"
     while true:
       echo "looping"
       break myblock2 # leaves the block (and the loop)
-    echo "still in block"
+    echo "still in block" # it won't be printed
+  echo "outside the block"
 
 
 Continue statement
@@ -1313,11 +1315,11 @@ Sequence variables are initialized with ``@[]``.
 The ``for`` statement can be used with one or two variables when used with a
 sequence. When you use the one variable form, the variable will hold the value
 provided by the sequence. The ``for`` statement is looping over the results
-from the `items() <system.html#items.i,seq[T]>`_ iterator from the `system
+from the `items() <iterators.html#items.i,seq[T]>`_ iterator from the `system
 <system.html>`_ module.  But if you use the two-variable form, the first
 variable will hold the index position and the second variable will hold the
 value. Here the ``for`` statement is looping over the results from the
-`pairs() <system.html#pairs.i,seq[T]>`_ iterator from the `system
+`pairs() <iterators.html#pairs.i,seq[T]>`_ iterator from the `system
 <system.html>`_ module.  Examples:
 
 .. code-block:: nim

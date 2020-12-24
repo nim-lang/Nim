@@ -12,8 +12,8 @@
 ##
 ## Unstable API.
 
-import
-  strutils, lexbase
+import strutils, lexbase
+import std/private/decode_helpers
 
 # ------------------- scanner -------------------------------------------------
 
@@ -72,20 +72,6 @@ proc getColumn(L: SqlLexer): int =
 proc getLine(L: SqlLexer): int =
   result = L.lineNumber
 
-proc handleHexChar(c: var SqlLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
-
 proc handleOctChar(c: var SqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:
     xi = (xi shl 3) or (ord(c.buf[c.bufpos]) - ord('0'))
@@ -130,8 +116,10 @@ proc getEscapedChar(c: var SqlLexer, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'7':
     var xi = 0
@@ -679,8 +667,8 @@ proc getPrecedence(p: SqlParser): int =
   else:
     result = - 1
 
-proc parseExpr(p: var SqlParser): SqlNode
-proc parseSelect(p: var SqlParser): SqlNode
+proc parseExpr(p: var SqlParser): SqlNode {.gcsafe.}
+proc parseSelect(p: var SqlParser): SqlNode {.gcsafe.}
 
 proc identOrLiteral(p: var SqlParser): SqlNode =
   case p.tok.kind
@@ -1208,7 +1196,7 @@ proc addIden(s: var SqlWriter, thing: string) =
     iden = '"' & iden & '"'
   s.add(iden)
 
-proc ra(n: SqlNode, s: var SqlWriter)
+proc ra(n: SqlNode, s: var SqlWriter) {.gcsafe.}
 
 proc rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
   if n.len > 0:

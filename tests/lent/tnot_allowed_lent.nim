@@ -1,5 +1,5 @@
 discard """
-  errmsg: "expression has no address"
+  errormsg: "expression has no address"
 """
 type
   MyObject = object

@@ -12,26 +12,25 @@
 ## and ``JsAssoc`` together with the provided macros allows for smoother
 ## interfacing with JavaScript, allowing for example quick and easy imports of
 ## JavaScript variables:
-##
-## .. code-block:: nim
-##
-##  # Here, we are using jQuery for just a few calls and do not want to wrap the
-##  # whole library:
-##
-##  # import the document object and the console
-##  var document {.importc, nodecl.}: JsObject
-##  var console {.importc, nodecl.}: JsObject
-##  # import the "$" function
-##  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
-##
-##  # Use jQuery to make the following code run, after the document is ready.
-##  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
-##  # JavaScript calls, when no corresponding proc exists for ``JsObject``.
-##  proc main =
-##    jq(document).ready(proc() =
-##      console.log("Hello JavaScript!")
-##    )
-##
+
+runnableExamples:
+  # Here, we are using jQuery for just a few calls and do not want to wrap the
+  # whole library:
+
+  # import the document object and the console
+  var document {.importc, nodecl.}: JsObject
+  var console {.importc, nodecl.}: JsObject
+  # import the "$" function
+  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
+
+  # Use jQuery to make the following code run, after the document is ready.
+  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
+  # JavaScript calls, when no corresponding proc exists for ``JsObject``.
+  proc main =
+    jq(document).ready(proc() =
+      console.log("Hello JavaScript!")
+    )
+
 
 when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
   {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
@@ -180,6 +179,7 @@ proc `>`  *(x, y: JsObject): JsObject {.importcpp: "(# > #)".}
 proc `<`  *(x, y: JsObject): JsObject {.importcpp: "(# < #)".}
 proc `>=` *(x, y: JsObject): JsObject {.importcpp: "(# >= #)".}
 proc `<=` *(x, y: JsObject): JsObject {.importcpp: "(# <= #)".}
+proc `**` *(x, y: JsObject): JsObject {.importcpp: "((#) ** #)".}
 proc `and`*(x, y: JsObject): JsObject {.importcpp: "(# && #)".}
 proc `or` *(x, y: JsObject): JsObject {.importcpp: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importcpp: "(!#)".}
@@ -220,14 +220,10 @@ proc `==`*(x, y: JsRoot): bool {.importcpp: "(# === #)".}
 macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  let obj = newJsObject()
-  ##  obj.a = 20
-  ##  console.log(obj.a) # puts 20 onto the console.
+  runnableExamples:
+    let obj = newJsObject()
+    obj.a = 20
+    assert obj.a.to(int) == 20
   if validJsName($field):
     let importString = "#." & $field
     result = quote do:
@@ -384,7 +380,7 @@ iterator pairs*[K: JsKey, V](assoc: JsAssoc[K, V]): (K,V) =
   yield (k.toJsKey(K), v)
   {.emit: "}".}
 
-iterator items*[K, V](assoc: JSAssoc[K, V]): V =
+iterator items*[K, V](assoc: JsAssoc[K, V]): V =
   ## Yields the `values` in a JsAssoc.
   var v: V
   {.emit: "for (var k in `assoc`) {".}
@@ -393,7 +389,7 @@ iterator items*[K, V](assoc: JSAssoc[K, V]): V =
   yield v
   {.emit: "}".}
 
-iterator keys*[K: JsKey, V](assoc: JSAssoc[K, V]): K =
+iterator keys*[K: JsKey, V](assoc: JsAssoc[K, V]): K =
   ## Yields the `keys` in a JsAssoc.
   var k: cstring
   {.emit: "for (var `k` in `assoc`) {".}

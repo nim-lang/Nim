@@ -184,8 +184,14 @@ The general pattern in ``=copy`` looks like:
 
 
 The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
-that otherwise would lead to a copy is prevented at compile-time.
+that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
+.. code-block:: nim
+
+  proc `=copy`(dest: var T; source: T) {.error.}
+
+but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
+by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
 
 Move semantics
 ==============
@@ -522,7 +528,7 @@ a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
 do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
-afterward. If `dest` is a local variable that is simple to analyze. And if `src` is a
+afterwards. If `dest` is a local variable that is simple to analyze. And if `src` is a
 location derived from a formal parameter, we also know it is not mutated! In other
 words, we do a compile-time copy-on-write analysis.
 

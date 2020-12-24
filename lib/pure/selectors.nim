@@ -47,6 +47,9 @@ when defined(nimdoc):
     Selector*[T] = ref object
       ## An object which holds descriptors to be checked for read/write status
 
+    IOSelectorsException* = object of CatchableError
+      ## Exception that is raised if an IOSelectors error occurs.
+
     Event* {.pure.} = enum
       ## An enum which hold event types
       Read,        ## Descriptor is available for read
@@ -159,7 +162,7 @@ when defined(nimdoc):
     ## Unregisters file/socket descriptor ``fd`` from selector ``s``.
 
   proc selectInto*[T](s: Selector[T], timeout: int,
-                      results: var openarray[ReadyKey]): int =
+                      results: var openArray[ReadyKey]): int =
     ## Waits for events registered in selector ``s``.
     ##
     ## The ``timeout`` argument specifies the maximum number of milliseconds

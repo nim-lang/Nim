@@ -107,7 +107,7 @@ type
     timing*: PerformanceTiming
 
   Range* {.importc.} = ref object
-    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Range>`_
     collapsed*: bool
     commonAncestorContainer*: Node
     endContainer*: Node
@@ -154,6 +154,7 @@ type
     performance*: Performance
     onpopstate*: proc (event: Event)
     localStorage*: LocalStorage
+    parent*: Window
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -203,6 +204,7 @@ type
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
     activeElement*: Element
+    documentElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -1458,8 +1460,8 @@ else:
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
   proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
-proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
-proc clearTimeout*(t: Timeout) {.importc, nodecl.}
+proc setTimeout*(action: proc(); ms: int): TimeOut {.importc, nodecl.}
+proc clearTimeout*(t: TimeOut) {.importc, nodecl.}
 
 {.push importcpp.}
 
@@ -1681,6 +1683,7 @@ proc decodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc encodeURIComponent*(uri: cstring): cstring {.importc, nodecl.}
 proc isFinite*(x: BiggestFloat): bool {.importc, nodecl.}
 proc isNaN*(x: BiggestFloat): bool {.importc, nodecl.}
+  ## see also `math.isNaN`.
 
 proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
@@ -1716,9 +1719,9 @@ proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
 since (1, 3):
-  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+  func newDomParser*(): DomParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+  func parseFromString*(this: DomParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
 
   proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
@@ -1730,7 +1733,7 @@ since (1, 3):
 
   proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
     ## File Reader constructor
-  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+  proc error*(f: FileReader): DomException {.importcpp: "#.error", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
   proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState

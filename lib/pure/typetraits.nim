@@ -107,6 +107,19 @@ since (1, 3, 5):
 
 import std/macros
 
+macro enumLen*(T: typedesc[enum]): int =
+  ## Returns the number of items in the enum `T`.
+
+  runnableExamples:
+    type Foo = enum fooItem1 fooItem2
+    doAssert Foo.enumLen == 2
+
+  let bracketExpr = getType(T)
+  expectKind(bracketExpr, nnkBracketExpr)
+  let enumTy = bracketExpr[1]
+  expectKind(enumTy, nnkEnumTy)
+  result = newLit(enumTy.len - 1)
+
 macro genericParamsImpl(T: typedesc): untyped =
   # auxiliary macro needed, can't do it directly in `genericParams`
   result = newNimNode(nnkTupleConstr)

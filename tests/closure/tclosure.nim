@@ -1,5 +1,5 @@
 discard """
-  target: "c"
+  targets: "c"
   output: '''
 1 3 6 11 20 foo
 foo88
