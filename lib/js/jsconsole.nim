@@ -74,10 +74,16 @@ since (1, 5):
   # writing directly false or true to the JavaScript instead of the expression.
   # importjs nor importcpp can not be used with template.
 
-  template doAssert*(console: Console; assertion) =
+  template jsAssert*(console: Console; assertion) =
+    ## JavaScript `console.assert`,
+    ## assert failure just prints to console and do not quit the program.
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
-    runnableExamples: console.doAssert(42 == 42)
-    {.emit: "console.assert(" & astToStr(assertion) & ");".}
+    runnableExamples: 
+      console.jsAssert(42 == 42) # OK
+      console.jsAssert(42 != 42) # Fail, prints "Assertion failed" and continues
+    var message = ""
+    message.addQuoted(astToStr(assertion))
+    {.emit: ["console.assert(", astToStr(assertion), ", ", message.cstring, ");"].}
 
 
 var console* {.importc, nodecl.}: Console
