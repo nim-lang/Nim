@@ -10,7 +10,7 @@
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 
-import std/private/since, std/private/miscdollars
+import std/private/since, std/private/miscdollars  # toLocation
 
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
