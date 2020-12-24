@@ -75,10 +75,12 @@ since (1, 5):
   # importjs nor importcpp can not be used with template.
   type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
-  proc `$`(info: InstantiationInfo): string =
+  func getMsg(info: InstantiationInfo; msg: string): string =
     var temp = ""
     temp.toLocation(info.filename, info.line, info.column + 1)
     result.addQuoted(temp)
+    result.add ','
+    result.addQuoted(msg)
 
   template jsAssert*(console: Console; assertion) =
     ## JavaScript `console.assert`, for NodeJS this prints to stderr,
@@ -87,7 +89,7 @@ since (1, 5):
     ## is just for when you need faster performance *and* assertions,
     ## otherwise use the normal assertions for better user experience.
     ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
-    runnableExamples: 
+    runnableExamples:
       console.jsAssert(42 == 42) # OK
       console.jsAssert(42 != 42) # Fail, prints "Assertion failed" and continues
       console.jsAssert('`' == '\n' and '\t' == '\0') # Message correctly formatted
@@ -95,11 +97,9 @@ since (1, 5):
 
     const
       loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
-      ploc = cstring($loc)
-    var msg = ""
-    msg.addQuoted(astToStr(assertion))
+      msg = getMsg(loc, astToStr(assertion)).cstring
     {.line: loc.}:
-      {.emit: ["console.assert(", assertion, ", ", ploc, ", ", msg.cstring, ");"].}
+      {.emit: ["console.assert(", assertion, ", ", msg, ");"].}
 
 
 var console* {.importc, nodecl.}: Console
