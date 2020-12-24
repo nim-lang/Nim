@@ -1080,24 +1080,26 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
             result)
 
 proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
-  var htmlCls = "admonition_warning"
-  var texSz = "\\large"
+  var
+    htmlCls = "admonition_warning"
+    texSz = "\\large"
+    texColor = "orange"
   case n.text
   of "hint", "note", "tip":
-    htmlCls = "admonition-info"; texSz = "\\normalsize"
+    htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
   of "attention", "admonition", "important", "warning":
-    htmlCls = "admonition-warning"; texSz = "\\large"
+    htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
   of "danger", "error":
-    htmlCls = "admonition-error"; texSz = "\\Large"
+    htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
   else: discard
   let txt = n.text.capitalizeAscii()
   let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
   renderAux(d, n,
       htmlHead & "<span class=\"" & htmlCls & "-text\"><b>" & txt &
         ":</b></span>\n" & "$1</div>\n",
-      "\n\n\\vspace{0.4em}\\fbox{\\parbox{0.95\\linewidth}{" &
-        "\\vspace{0.3em}{" & texSz & "\\textbf{" & txt & ":}} " &
-        "$1\\vspace{0.3em}}}\n\n\\vspace{0.4em}\n",
+      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]\n" &
+        "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
+        "$1\n\\end{mdframed}\n",
       result)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
