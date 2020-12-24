@@ -905,50 +905,51 @@ proc newTerminal(): owned(PTerminal) =
   when defined(windows):
     initTerminal(result)
 
-when not defined(testing) and isMainModule:
-  assert ansiStyleCode(styleBright) == "\e[1m"
-  assert ansiStyleCode(styleStrikethrough) == "\e[9m"
-  #system.addQuitProc(resetAttributes)
-  write(stdout, "never mind")
-  stdout.eraseLine()
-  stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
-  stdout.styledWriteLine("italic text ", {styleItalic})
-  stdout.setBackGroundColor(bgCyan, true)
-  stdout.setForeGroundColor(fgBlue)
-  stdout.write("blue text in cyan background")
-  stdout.resetAttributes()
-  echo ""
-  stdout.writeLine("ordinary text")
-  echo "more ordinary text"
-  styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
-  echo "ordinary text again"
-  styledEcho styleBright, fgRed, "[FAIL]", resetStyle, fgRed, " Nay :("
-  echo "ordinary text again"
-  setForeGroundColor(fgGreen)
-  echo "green text"
-  echo "more green text"
-  setForeGroundColor(fgBlue)
-  echo "blue text"
-  resetAttributes()
-  echo "ordinary text"
+runnableExamples:
+  when false:
+    assert ansiStyleCode(styleBright) == "\e[1m"
+    assert ansiStyleCode(styleStrikethrough) == "\e[9m"
+    #system.addQuitProc(resetAttributes)
+    write(stdout, "never mind")
+    stdout.eraseLine()
+    stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
+    stdout.styledWriteLine("italic text ", {styleItalic})
+    stdout.setBackGroundColor(bgCyan, true)
+    stdout.setForeGroundColor(fgBlue)
+    stdout.write("blue text in cyan background")
+    stdout.resetAttributes()
+    echo ""
+    stdout.writeLine("ordinary text")
+    echo "more ordinary text"
+    styledEcho styleBright, fgGreen, "[PASS]", resetStyle, fgGreen, " Yay!"
+    echo "ordinary text again"
+    styledEcho styleBright, fgRed, "[FAIL]", resetStyle, fgRed, " Nay :("
+    echo "ordinary text again"
+    setForeGroundColor(fgGreen)
+    echo "green text"
+    echo "more green text"
+    setForeGroundColor(fgBlue)
+    echo "blue text"
+    resetAttributes()
+    echo "ordinary text"
 
-  stdout.styledWriteLine(fgRed, "red text ")
-  stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
-  stdout.styledWriteLine(" ordinary text ")
-  stdout.styledWriteLine(fgGreen, "green text")
+    stdout.styledWriteLine(fgRed, "red text ")
+    stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
+    stdout.styledWriteLine(" ordinary text ")
+    stdout.styledWriteLine(fgGreen, "green text")
 
-  writeStyled("underscored text", {styleUnderscore})
-  stdout.styledWrite(fgRed, " red text ")
-  writeStyled("bright text ", {styleBright})
-  echo "ordinary text"
+    writeStyled("underscored text", {styleUnderscore})
+    stdout.styledWrite(fgRed, " red text ")
+    writeStyled("bright text ", {styleBright})
+    echo "ordinary text"
 
-  stdout.styledWrite(fgRed, "red text ")
-  stdout.styledWrite(fgWhite, bgRed, "white text in red background")
-  stdout.styledWrite(" ordinary text ")
-  stdout.styledWrite(fgGreen, "green text")
-  echo ""
-  echo "ordinary text"
-  stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
-  stdout.styledWriteLine(bgYellow, "text in yellow bg", styleBright,
-      " bold text in yellow bg", bgDefault, " bold text")
-  echo "ordinary text"
+    stdout.styledWrite(fgRed, "red text ")
+    stdout.styledWrite(fgWhite, bgRed, "white text in red background")
+    stdout.styledWrite(" ordinary text ")
+    stdout.styledWrite(fgGreen, "green text")
+    echo ""
+    echo "ordinary text"
+    stdout.styledWriteLine(fgRed, "red text ", styleBright, "bold red", fgDefault, " bold text")
+    stdout.styledWriteLine(bgYellow, "text in yellow bg", styleBright,
+        " bold text in yellow bg", bgDefault, " bold text")
+    echo "ordinary text"
