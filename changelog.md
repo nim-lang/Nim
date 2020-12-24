@@ -70,6 +70,12 @@
   and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
   shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
   its argument, `addMoved`, is also supplied.
+  
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+
 
 ## Language changes
 
