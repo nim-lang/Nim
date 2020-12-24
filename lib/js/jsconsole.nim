@@ -10,10 +10,12 @@
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 
+import std/private/since
+
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
-type Console* = ref object of RootObj
+type Console* = ref object of JsRoot
 
 proc log*(console: Console) {.importcpp, varargs.}
   ## https://developer.mozilla.org/docs/Web/API/Console/log
@@ -66,5 +68,16 @@ proc timeLog*(console: Console, label = "".cstring) {.importcpp.}
 
 proc table*(console: Console) {.importcpp, varargs.}
   ## https://developer.mozilla.org/docs/Web/API/Console/table
+
+since (1, 5):
+  # proc nor func can not be used here, because may eval assertion at compile-time,
+  # writing directly false or true to the JavaScript instead of the expression.
+  # importjs nor importcpp can not be used with template.
+
+  template doAssert*(console: Console; assertion) =
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
+    runnableExamples: console.doAssert(42 == 42)
+    {.emit: "console.assert(" & astToStr(assertion) & ");".}
+
 
 var console* {.importc, nodecl.}: Console

@@ -75,6 +75,7 @@
 
 - Added `euclDiv` and `euclMod` to `math`.
 - Added `httpcore.is1xx` and missing HTTP codes.
+- Added `jsconsole.doAssert` for JavaScript target.
 
 
 ## Language changes
