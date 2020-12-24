@@ -70,9 +70,6 @@ proc table*(console: Console) {.importcpp, varargs.}
   ## https://developer.mozilla.org/docs/Web/API/Console/table
 
 since (1, 5):
-  # proc nor func can not be used here, because may eval assertion at compile-time,
-  # writing directly false or true to the JavaScript instead of the expression.
-  # importjs nor importcpp can not be used with template.
   type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
   func getMsg(info: InstantiationInfo; msg: string): string =
