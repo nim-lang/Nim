@@ -10,7 +10,7 @@
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 
-import std/private/since
+import std/private/since, std/private/miscdollars
 
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
@@ -73,6 +73,12 @@ since (1, 5):
   # proc nor func can not be used here, because may eval assertion at compile-time,
   # writing directly false or true to the JavaScript instead of the expression.
   # importjs nor importcpp can not be used with template.
+  type InstantiationInfo = tuple[filename: string, line: int, column: int]
+
+  proc `$`(info: InstantiationInfo): string =
+    var temp = ""
+    temp.toLocation(info.filename, info.line, info.column + 1)
+    result.addQuoted(temp)
 
   template jsAssert*(console: Console; assertion) =
     ## JavaScript `console.assert`, for NodeJS this prints to stderr,
@@ -84,9 +90,16 @@ since (1, 5):
     runnableExamples: 
       console.jsAssert(42 == 42) # OK
       console.jsAssert(42 != 42) # Fail, prints "Assertion failed" and continues
-    var message = ""
-    message.addQuoted(astToStr(assertion))
-    {.emit: ["console.assert(", astToStr(assertion), ", ", message.cstring, ");"].}
+      console.jsAssert('`' == '\n' and '\t' == '\0') # Message correctly formatted
+      assert 42 == 42  # Normal assertions keep working
+
+    const
+      loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+      ploc = cstring($loc)
+    var msg = ""
+    msg.addQuoted(astToStr(assertion))
+    {.line: loc.}:
+      {.emit: ["console.assert(", assertion, ", ", ploc, ", ", msg.cstring, ");"].}
 
 
 var console* {.importc, nodecl.}: Console
