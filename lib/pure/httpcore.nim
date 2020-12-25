@@ -275,10 +275,7 @@ func `==`*(protocol: tuple[orig: string, major, minor: int],
 func contains*(methods: set[HttpMethod], x: string): bool =
   return parseEnum[HttpMethod](x) in methods
 
-func `$`*(code: HttpCode): string =
-  ## Converts the specified ``HttpCode`` into a HTTP status.
-  runnableExamples:
-    doAssert($Http404 == "404 Not Found")
+template httpCodeDollarImpl(code: HttpCode; strict: static[bool]): string =
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
@@ -342,7 +339,27 @@ func `$`*(code: HttpCode): string =
   of 508: "508 Loop Detected"
   of 510: "510 Not Extended"
   of 511: "511 Network Authentication Required"
-  else: $(int(code))
+  else:
+    when strict:
+      raise newException(ValueError, "Invalid HttpCode: " & $code)
+    else:
+      $(int(code))
+
+func `$`*(code: HttpCode): string =
+  ## Converts the specified `HttpCode` into a HTTP status.
+  runnableExamples:
+    doAssert($Http404 == "404 Not Found")
+  httpCodeDollarImpl(code, strict = false)
+
+func toString*(code: HttpCode): string {.since: (1, 5).} =
+  ## Same as `$` but only accepts valid `HttpCode` as standarized by IANA for correctness and safety.
+  ## * https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+  runnableExamples:
+    doAssert toString(Http404) == "404 Not Found"
+    doAssertRaises(ValueError): discard toString(HttpCode(0))
+    doAssertRaises(ValueError): discard toString(HttpCode(50))
+    doAssertRaises(ValueError): discard toString(HttpCode(99))
+  httpCodeDollarImpl(code, strict = true)
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
 
