@@ -28,6 +28,19 @@ template main() =
     doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
     doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
+    block:
+      let a = "xxxxxx"
+      doAssert a.strip(chars={'x'}).len == 0
+
+    doAssert "".strip(chars={'x'}).len == 0
+    doAssert "         ".strip(chars={'x'}) == "         "
+    doAssert "xxx xxx".strip(chars={'x'}) == " "
+    doAssert "xxx  wind".strip(chars={'x'}) == "  wind"
+    doAssert "xxx  iii".strip(chars={'i'}) == "xxx  "
+    doAssert "x".strip(leading = false, chars={'x'}).len == 0
+    doAssert "x".strip(trailing = false, chars={'x'}).len == 0
+    doAssert "x".strip(leading = false, trailing = false, chars={'x'}) == "x"
+
   block: # split
     var ret: seq[string] # or use `toSeq` or `collect`
     for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p

@@ -71,7 +71,12 @@
   shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
   its argument, `addMoved`, is also supplied.
   
-- Added `stropt.strip`.
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+
+- Added `strip`, `setSlice` and `stripSlice` to `std/stropt`.
 
 
 ## Language changes
