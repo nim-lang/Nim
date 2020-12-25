@@ -161,13 +161,13 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add(encodeUrl(val, usePlus))
 
 iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
-  ## Reads and decodes query string ``data`` and yields the (name, value) pairs the
+  ## Reads and decodes query string ``data`` and yields the (key, value) pairs the
   ## data consists of.
   runnableExamples:
-    var queryData: seq[(string, string)]
-    for (key, value) in decodeQuery("foo=1&bar=2"):
-      queryData.add((key, value))
-    doAssert queryData == @[("foo", "1"), ("bar", "2")]
+    import std/sugar
+    let s = collect(newSeq):
+      for k, v in decodeQuery("foo=1&bar=2"): (k, v)
+    doAssert s == @[("foo", "1"), ("bar", "2")]
 
   proc parseData(data: string, i: int, field: var string): int =
     result = i
@@ -194,7 +194,7 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
     if i < data.len:
       if data[i] == '&': inc(i)
       else:
-        uriParseError("'&' expected at " & $i)
+        uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
