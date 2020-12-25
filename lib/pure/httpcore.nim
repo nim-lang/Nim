@@ -357,8 +357,8 @@ func toString*(code: HttpCode): string {.since: (1, 5).} =
   runnableExamples:
     doAssert toString(Http404) == "404 Not Found"
     doAssertRaises(ValueError): discard toString(HttpCode(0))
-    doAssertRaises(ValueError): discard toString(HttpCode(50))
     doAssertRaises(ValueError): discard toString(HttpCode(99))
+    doAssertRaises(ValueError): discard toString(HttpCode(599))
   httpCodeDollarImpl(code, strict = true)
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
