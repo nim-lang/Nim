@@ -40,6 +40,16 @@ proc teststrip() =
     doAssert a.len == 0
 
   block:
+    var a = "x"
+    a.strip(chars={'x'})
+    doAssert a.len == 0
+  
+  block:
+    var a = "x"
+    a.strip(chars={'1'})
+    doAssert a.len == 1
+
+  block:
     var a = ""
     a.strip(chars={'x'})
     doAssert a.len == 0

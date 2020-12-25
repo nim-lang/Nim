@@ -68,4 +68,4 @@ func strip*(a: var string, leading = true, trailing = true, chars: set[char] = w
     c.strip(chars = {'b', 'a', 'l'})
     doAssert c == "X"
 
-  setSlice(a, stripSlice(a))
+  setSlice(a, stripSlice(a, leading, trailing, chars))
