@@ -478,8 +478,35 @@ proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo, col = mcDefault) =
   let
     msg = $sourceLine(conf, info)
     uncolored = msg[0..<info.col]
-    colored = msg[info.col..^1].colorMsg(col, conf)
-  msgWriteln(conf, indent & uncolored & colored)
+    colorEnd = block: 
+    # Selects only what we need when possible to prevent full line being colored
+      var colEnd = msg.high
+      if msg[info.col - 1] in {' ', '[', '(', '.'}:
+        let prevSym = msg[info.col - 1]
+        var i = info.col
+        while i < msg.high:
+          template matchChar(match: set[char]) =
+            if msg[i + 1] in match:
+              colEnd = i
+              break
+          case prevSym:
+          of ' ':
+            matchChar({' ', ','})
+          of '[':
+            matchChar({']'})
+          of '(':
+            matchChar({')'})
+          of '.':
+            matchChar({'.'})
+          else: discard
+          inc i
+      colEnd
+    colored = msg[info.col..colorEnd].colorMsg(col, conf)
+    endMsg = if colorEnd < msg.len:
+      msg[(colorEnd + 1)..^1]
+      else:
+        ""
+  msgWriteln(conf, indent & uncolored & colored & endMsg)
   if info.col >= 0:
     msgWriteln(conf, (indent & spaces(info.col) & '^').colorMsg(col, conf))
 

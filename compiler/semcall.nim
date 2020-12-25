@@ -246,7 +246,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           #addColorError("'$1' is immutable, not 'var'" % renderNotLValue(nArg))
         else:
           var got = nArg.typ
-          addColorError("'$1' is of type: $2" % [renderTree(nArg), typeToString(got)])
+          candidates.add("'$1' is of type: $2" % [renderTree(nArg).colorError(c.config), typeToString(got).colorError(c.config)])
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
