@@ -193,6 +193,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
+  result = newStringOfCap(encodeSize(s.len))
   for i, c in encode(s):
     if i != 0 and (i mod lineLen == 0):
       result.add(newLine)
