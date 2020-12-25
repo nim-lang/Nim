@@ -127,10 +127,9 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
 
 proc effectProblem(f, a: PType; result: var string; c: PContext) =
   template addColorError(a: string) = result.add a.colorError(c.config)
-  template addColorHint(a: string) = result.add a.colorHint(c.config)
   if f.kind == tyProc and a.kind == tyProc:
     if tfThread in f.flags and tfThread notin a.flags:
-      addColorHint "\n  This expression is not GC-safe. Annotate the " &
+      addColorError "\n  This expression is not GC-safe. Annotate the " &
           "proc with {.gcsafe.} to get extended error information."
     elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       addColorError "\n  This expression can have side effects. Annotate the " &
