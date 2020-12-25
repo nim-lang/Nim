@@ -84,7 +84,7 @@
 - VM now supports `addr(mystring[ind])` (index + index assignment)
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
-
+- Added colored compiler output. Errors, hints, and warnings have highlighted messages.
 
 ## Tool changes
 
