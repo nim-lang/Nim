@@ -209,7 +209,7 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
     let protoent = posix.getprotobyname(name.cstring)
   
   if protoent == nil:
-    raise newException(OsError, "protocol not found")
+    raise newException(OSError, "protocol not found")
 
   result = protoent.p_proto.int
 

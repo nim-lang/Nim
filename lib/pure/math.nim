@@ -147,8 +147,8 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
-    doAssert not isNan(3.1415926)
-    doAssert not isNan(0'f32)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
 
   template fn: untyped = result = x != x
   when nimvm: fn()
@@ -595,6 +595,8 @@ else: # JS
   func tanh*[T: float32|float64](x: T): T {.importc: "Math.tanh", nodecl.}
 
   func arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
+    # keep this as generic or update test in `tvmops.nim` to make sure we
+    # keep testing that generic importc procs work
   func arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
   func arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
   func arctan2*[T: float32|float64](y, x: T): T {.importc: "Math.atan2", nodecl.}
@@ -907,6 +909,32 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   ##  echo floorMod(-13, -3) # -1
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
+
+func euclDiv*[T: SomeInteger](x, y: T): T {.since: (1, 5, 1).} =
+  ## Returns euclidean division of `x` by `y`.
+  runnableExamples:
+    assert euclDiv(13, 3) == 4
+    assert euclDiv(-13, 3) == -5
+    assert euclDiv(13, -3) == -4
+    assert euclDiv(-13, -3) == 5
+  result = x div y
+  if x mod y < 0:
+    if y > 0:
+      dec result
+    else:
+      inc result
+
+func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
+  ## Returns euclidean modulo of `x` by `y`.
+  ## `euclMod(x, y)` is non-negative.
+  runnableExamples:
+    assert euclMod(13, 3) == 1
+    assert euclMod(-13, 3) == 2
+    assert euclMod(13, -3) == 1
+    assert euclMod(-13, -3) == 2
+  result = x mod y
+  if result < 0:
+    result += abs(y)
 
 when not defined(js):
   func c_frexp*(x: float32, exponent: var int32): float32 {.
