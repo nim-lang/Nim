@@ -75,9 +75,9 @@ proc `$`*(oid: Oid): string =
 var
   t = getTime().toUnix.int32
   seed = initRand(t)
-  incr: int = seed.rand(0x7fff)
+  incr: int = seed.rand(int.high)
 
-let fuzz = int32(seed.rand(high(int32)))
+let fuzz = cast[int32](seed.rand(high(int)))
 
 proc genOid*(): Oid =
   ## Generates a new OID.
@@ -85,7 +85,7 @@ proc genOid*(): Oid =
     doAssert ($genOid()).len == 24
     if false: doAssert $genOid() == "5fc7f546ddbbc84800006aaf"
   t = getTime().toUnix.int32
-  var i = int32(atomicInc(incr))
+  var i = cast[int32](atomicInc(incr))
 
   bigEndian32(addr result.time, addr(t))
   result.fuzz = fuzz
