@@ -11,7 +11,7 @@
 ##
 ## A Uniform Resource Identifier (URI) provides a simple and extensible
 ## means for identifying a resource. A URI can be further classified
-## as a locator, a name, or both. The term “Uniform Resource Locator”
+## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
 ## Basic usage

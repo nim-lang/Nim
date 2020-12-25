@@ -2,7 +2,10 @@ discard """
   valgrind: true
   cmd: '''nim c -d:nimAllocStats --newruntime -d:useMalloc $file'''
   output: '''
-@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]'''
+@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]
+14
+First tasks completed.
+Second tasks completed.'''
 """
 
 import strutils, os, std / wordwrap
@@ -211,3 +214,30 @@ staticTests()
 # bug #12965
 let xaa = @[""].join()
 let xbb = @["", ""].join()
+
+# bug #16365
+
+# Task 1:
+when true:
+  # Task 1_a:
+  var test_string_a = "name_something"
+  echo test_string_a.len()
+  let new_len_a = test_string_a.len - "_something".len()
+  test_string_a.setLen new_len_a
+
+  echo "First tasks completed."
+
+# Task 2:
+when true:
+  # Task 2_a
+  var test_string: string
+  let some_string = "something"
+  for i in some_string.items:
+    test_string.add $i
+
+  # Task 2_b
+  var test_string_b = "name_something"
+  let new_len_b = test_string_b.len - "_something".len()
+  test_string_b.setLen new_len_b
+
+  echo "Second tasks completed."

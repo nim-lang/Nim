@@ -52,15 +52,9 @@ proc loadUnidecodeTable*(datafile = "unidecode.dat") =
 proc unidecode*(s: string): string =
   ## Finds the sequence of ASCII characters that is the closest approximation
   ## to the UTF-8 string `s`.
-  ##
-  ## Example:
-  ##
-  ## ..code-block:: nim
-  ##
-  ##   unidecode("北京")
-  ##
-  ## Results in: "Bei Jing"
-  ##
+  runnableExamples:
+    assert unidecode("北京") == "Bei Jing "
+
   result = ""
   for r in runes(s):
     var c = int(r)

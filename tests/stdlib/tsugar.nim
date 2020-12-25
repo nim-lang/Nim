@@ -40,7 +40,8 @@ import random
 
 const b = @[0, 1, 2]
 let c = b.dup shuffle()
-doAssert c.len == 3
+doAssert b[0] == 0
+doAssert b[1] == 1
 
 #test collect
 import sets, tables
@@ -83,12 +84,27 @@ let z = collect(newSeq):
     else: d
 assert z == @["word", "word"]
 
-
 proc tforum =
   let ans = collect(newSeq):
     for y in 0..10:
       if y mod 5 == 2:
         for x in 0..y:
           x
-
 tforum()
+
+block:
+  let x = collect:
+    for d in data.items:
+      when d is int: "word"
+      else: d
+  assert x == @["bird", "word"]
+assert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
+assert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
+assert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
+    0: "bird"}.toTable
+assert collect(for d in data.items: {d}) == data.toHashSet
+
+# bug #14332
+template foo =
+  discard collect(newSeq, for i in 1..3: i)
+foo()

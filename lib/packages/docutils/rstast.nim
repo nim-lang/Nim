@@ -69,7 +69,7 @@ type
   RstNode* {.acyclic, final.} = object ## an RST node's description
     kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
-                              ## the document or the section
+                              ## the document or the section; and rnEnumList
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
 

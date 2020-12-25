@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp js"
+"""
+
 import hashes
 
 block hashes:
@@ -13,7 +17,9 @@ block hashes:
   # "VM and runtime should make the same hash value (hashWangYi1)"
   block:
     const wy123 = hashWangYi1(123)
+    doAssert wy123 != 0
     doAssert hashWangYi1(123) == wy123
+
 
   # "hashIdentity value incorrect at 456"
   block:

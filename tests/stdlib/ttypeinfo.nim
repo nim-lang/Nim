@@ -58,3 +58,14 @@ block:
   for i in 0 .. m.len-1:
     for j in 0 .. m[i].len-1:
       doAssert getString(m[i][j]) == myArr[i][j]
+
+block:
+  type
+    Test = enum
+      Hello, he_llo
+
+  var x = hello
+  var y = x.toAny
+
+  doAssert getEnumOrdinal(y, "Hello") == 0
+  doAssert getEnumOrdinal(y, "hello") == 1

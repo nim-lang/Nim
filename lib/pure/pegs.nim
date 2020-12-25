@@ -21,6 +21,7 @@ const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
 import strutils, macros
+import std/private/decode_helpers
 
 when useUnicode:
   import unicode
@@ -1466,19 +1467,6 @@ proc errorStr(L: PegLexer, msg: string, line = -1, col = -1): string =
   var col = if col < 0: getColumn(L) else: col
   result = "$1($2, $3) Error: $4" % [L.filename, $line, $col, msg]
 
-proc handleHexChar(c: var PegLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else: discard
-
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
   if c.bufpos >= len(c.buf):
@@ -1515,8 +1503,10 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       return
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     if xi == 0: tok.kind = tkInvalid
     else: add(tok.literal, chr(xi))
   of '0'..'9':

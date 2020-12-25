@@ -9,7 +9,7 @@ var packages2*: seq[tuple[name, cmd: string; url: string, useHead: bool]] = @[]
 
 # packages A-M
 # pkg1 "alea"
-# pkg1 "argparse"
+pkg1 "argparse"
 pkg1 "arraymancer", "nim c tests/tests_cpu.nim"
 # pkg1 "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "awk"
@@ -31,7 +31,7 @@ pkg1 "cligen", "nim c --path:. -r cligen.nim"
 pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
 pkg1 "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
-pkg1 "criterion"
+# pkg1 "criterion" # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg1 "dashing", "nim c tests/functional.nim"
 pkg1 "delaunay"
 pkg1 "docopt"
@@ -76,7 +76,9 @@ pkg2 "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg2 "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg2 "nimes", "nim c src/nimes.nim"
 pkg2 "nimfp", "nim c -o:nfp -r src/fp.nim"
-pkg2 "nimgame2", "nim c nimgame2/nimgame.nim"
+when false:
+  pkg2 "nimgame2", "nim c nimgame2/nimgame.nim"
+  # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg2 "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg2 "nimlsp"
 pkg2 "nimly", "nim c -r tests/test_readme_example.nim"
@@ -134,3 +136,4 @@ pkg2 "with"
 pkg2 "ws"
 pkg2 "yaml", "nim build"
 pkg2 "zero_functional", "nim c -r -d:nimWorkaround14447 test.nim"
+pkg2 "zippy"

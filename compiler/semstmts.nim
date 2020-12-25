@@ -298,8 +298,7 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
     changeType(c, result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
-  for scope in walkScopes(c.currentScope.parent):
-    if scope == c.topLevelScope: break
+  for scope in localScopesFrom(c, c.currentScope.parent):
     let shadowed = strTableGet(scope.symbols, v.name)
     if shadowed != nil and shadowed.kind in skLocalVars:
       return shadowed
@@ -451,7 +450,9 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       n.kind == nkConstSection and w in constPragmas:
       return nil
 
-    let sym = searchInScopes(c, ident)
+    var amb = false
+    let sym = searchInScopes(c, ident, amb)
+    # XXX what if amb is true?
     if sym == nil or sfCustomPragma in sym.flags: return nil
       # skip if not in scope; skip `template myAttr() {.pragma.}`
     let lhs = b[0]
@@ -1476,7 +1477,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       if strTableGet(c.userPragmas, ident) != nil:
         continue # User defined pragma
       else:
-        let sym = searchInScopes(c, ident)
+        var amb = false
+        let sym = searchInScopes(c, ident, amb)
         if sym != nil and sfCustomPragma in sym.flags:
           continue # User custom pragma
 

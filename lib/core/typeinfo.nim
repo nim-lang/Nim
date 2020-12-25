@@ -372,6 +372,7 @@ proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
     else: result = c
   var i = 0
   var j = 0
+  if a[0] != b[0]: return 1
   while true:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j) # BUGFIX: typo

@@ -1,5 +1,5 @@
 discard """
-  target: "c cpp js"
+  targets: "c cpp js"
 """
 
 var x = 10
