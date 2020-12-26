@@ -174,12 +174,12 @@ iterator unroll*[S, T](a: S, b: T, annotation: static string): T {.
   inline, magic: "OmpParFor", sideEffect.} =
   discard
 
-template unroll*(a, b: SomeInteger; num: static Natural): untyped =
+template unroll*(a, b: SomeInteger; factor: static Natural): untyped =
   ## Compile-time unrolled for loop iterator.
   ##
-  ## * If `num` is 0 or 1, unrolling is disabled (ignored).
-  ## * If `num` is more than `1`, unrolling is enabled.
-  ## * If `num` is bigger than the total loop iterations,
+  ## * If `factor` is 0 or 1, unrolling is disabled (ignored).
+  ## * If `factor` is more than `1`, unrolling is enabled.
+  ## * If `factor` is bigger than the total loop iterations,
   ##   no error is produced and the loop is completely unrolled.
   ##
   ## Example:
@@ -204,9 +204,12 @@ template unroll*(a, b: SomeInteger; num: static Natural): untyped =
       for i in unroll(-9, 9, 5):
         echo i ## Check the generated C or Assembly.
 
-  when defined(gcc):
-    unroll(a, b, "GCC unroll " & $num)
-  elif defined(clang) or defined(icc):
-    unroll(a, b, "unroll " & $num)
+  when not defined(js):
+    when defined(gcc):
+      system.unroll(a, b, "GCC unroll " & $factor)
+    elif defined(clang) or defined(icc):
+      system.unroll(a, b, "unroll " & $factor)
+    else:
+      system.`..`(a, b)
   else:
     system.`..`(a, b)
