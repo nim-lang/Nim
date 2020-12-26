@@ -187,6 +187,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `kill proc <#kill,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`.
@@ -198,6 +199,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `terminate proc <#terminate,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true if the process `p` is still running. Returns immediately.
