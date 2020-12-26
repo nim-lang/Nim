@@ -481,25 +481,27 @@ proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo, col = mcDefault) =
     colorEnd = block: 
     # Selects only what we need when possible to prevent full line being colored
       var colEnd = msg.high
-      if msg[info.col - 1] in {' ', '[', '(', '.'}:
-        let prevSym = msg[info.col - 1]
-        var i = info.col
-        while i < msg.high:
-          template matchChar(match: set[char]) =
-            if msg[i + 1] in match:
-              colEnd = i
-              break
-          case prevSym:
-          of ' ':
-            matchChar({' ', ','})
-          of '[':
-            matchChar({']'})
-          of '(':
-            matchChar({')'})
-          of '.':
-            matchChar({'.'})
-          else: discard
-          inc i
+      let thisSym = msg[info.col]
+      var i = info.col + 1
+      while i < msg.high:
+        template matchChar(match, nextMatch: set[char] = {}, invertNext = false) =
+          # If we hit a end character we found the end of highlighting
+          # nextMatch compares to the right of the current character
+          # invertNext is used to flip the next match
+          if msg[i] in match or (msg[i + 1] in nextMatch and not invertNext):
+            colEnd = i
+            break
+        case thisSym:
+        of IdentStartChars:
+          matchChar({' ', ',', '.', '[', '('}, IdentChars, true)
+        of '[':
+          matchChar({']'})
+        of '(':
+          matchChar({')'})
+        of '.':
+          matchChar({'.', ' ', '(', '['}, {'.', ' ', '(', '['})
+        else: discard
+        inc i
       colEnd
     colored = msg[info.col..colorEnd].colorMsg(col, conf)
     endMsg = if colorEnd < msg.len:
