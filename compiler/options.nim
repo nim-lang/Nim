@@ -424,6 +424,8 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
+const foreignPackageNotesDefault* = {hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting}
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -435,8 +437,7 @@ proc newConfigRef*(): ConfigRef =
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -490,8 +491,7 @@ proc newPartialConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
-    foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
+    foreignPackageNotes: foreignPackageNotesDefault,
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
 proc cppDefine*(c: ConfigRef; define: string) =
