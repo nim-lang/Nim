@@ -169,3 +169,47 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   ## versions of `||` will get proper support by Nim's code generator
   ## and GC.
   discard
+
+iterator unroll*[S, T](a: S, b: T, annotation: static string): T {.
+  inline, magic: "OmpParFor", sideEffect.} =
+  discard
+
+template unroll*(a, b: SomeInteger; unroll: static Positive = 4): untyped =
+  ## Compile-time unrolled for loop iterator.
+  ##
+  ## * If `unroll = 1`, unrolling is disabled (ignored).
+  ## * If `unroll` is > `1`, unrolling is enabled.
+  ## * If `unroll` is bigger than the total loop iterations,
+  ##   no error is produced and the loop is completely unrolled.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   for i in staticFor(0, 99, 99): discard
+  ##
+  ## Compiles to approximately:
+  ##
+  ## .. code-block:: c
+  ##   #pragma unroll 99
+  ##   for (i = 0; i <= 99; ++i) {  };
+  ##
+  ## Nim emits `#pragma unroll` delegating the for loop unrolling to C, see also:
+  ## * https://en.wikipedia.org/wiki/Loop_unrolling
+  ## * http://gcc.gnu.org/onlinedocs/gcc/Loop-Specific-Pragmas.html#index-pragma-GCC-unroll-n
+  ## * http://clang.llvm.org/docs/AttributeReference.html#pragma-unroll-pragma-nounroll
+  ## * https://software.intel.com/content/www/us/en/develop/documentation/cpp-compiler-developer-guide-and-reference/top/compiler-reference/pragmas/intel-specific-pragma-reference/unroll-nounroll.html
+  ## * Only GCC, ICC and Clang are supported, otherwise a normal `..` iterator is used.
+  runnableExamples:
+    if false:
+      for i in unroll(-9, 9, 5):
+        echo i ## Check the generated C or Assembly.
+
+  when not defined(js):
+    when defined(gcc):
+      system.unroll(a, b, "GCC unroll " & $unroll)
+    elif defined(clang) or defined(icc):
+      system.unroll(a, b, "unroll " & $unroll)
+    else:
+      system.`..`(a, b)
+  else:
+    system.`..`(a, b) # MSVC wont have pragma.
