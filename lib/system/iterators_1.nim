@@ -212,4 +212,4 @@ template unroll*(a, b: SomeInteger; unroll: static Positive = 4): untyped =
     else:
       system.`..`(a, b)
   else:
-    system.`..`(a, b) # MSVC wont have pragma.
+    system.`..`(a, b)
