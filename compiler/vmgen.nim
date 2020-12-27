@@ -454,10 +454,10 @@ proc sameConstant*(a, b: PNode): bool =
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit:
-      result = cast[int](a.floatVal) == cast[int](b.floatVal)
+      result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
       # refs bug #16469
       # if we wanted to only distinguish 0.0 vs -0.0:
-      # if a.floatVal == 0.0: result = cast[int](a.floatVal) == cast[int](b.floatVal)
+      # if a.floatVal == 0.0: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
       # else: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
