@@ -2587,7 +2587,6 @@ proc parseCmdLine*(c: string): seq[string] {.
   var i = 0
   var a = ""
   while true:
-    setLen(a, 0)
     # eat all delimiting whitespace
     while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
     if i >= c.len: break
@@ -2638,7 +2637,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
-    add(result, a)
+    add(result, move(a))
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
@@ -2733,7 +2732,9 @@ elif defined(windows):
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
-    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0:
+      shallowCopy(result, ownArgv[i])
+      return
     raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
