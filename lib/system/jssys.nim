@@ -189,9 +189,8 @@ proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 
 proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
-  var ln = `c`.length;
-  var result = new Array(ln);
-  for (var i = 0; i < ln; ++i) {
+  var result = [];
+  for (var i = 0; i < `c`.length; ++i) {
     result[i] = `c`.charCodeAt(i);
   }
   return result;
