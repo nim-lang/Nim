@@ -1,16 +1,14 @@
 discard """
-  output: '''OK
-@[@[], @[], @[], @[], @[]]
-'''
+  targets: "c cpp js"
 """
+
 const characters = "abcdefghijklmnopqrstuvwxyz"
 const numbers = "1234567890"
-
-var s: string
 
 proc test_string_slice() =
   # test "slice of length == len(characters)":
   # replace characters completely by numbers
+  var s: string
   s = characters
   s[0..^1] = numbers
   doAssert s == numbers
@@ -51,11 +49,13 @@ proc test_string_slice() =
   s[2..0] = numbers
   doAssert s == "ab1234567890cdefghijklmnopqrstuvwxyz"
 
-  # bug #6223
-  doAssertRaises(IndexDefect):
-    discard s[0..999]
+  when nimvm:
+    discard
+  else:
+    # bug #6223
+    doAssertRaises(IndexDefect):
+      discard s[0..999]
 
-  echo("OK")
 
 proc test_string_cmp() =
   let world = "hello\0world"
@@ -76,9 +76,6 @@ proc test_string_cmp() =
   doAssert cmp(world, hello) > 0
   doAssert cmp(world, goodbye) > 0
 
-test_string_slice()
-test_string_cmp()
-
 
 #--------------------------
 # bug #7816
@@ -87,9 +84,9 @@ import sequtils
 
 proc tester[T](x: T) =
   let test = toSeq(0..4).map(i => newSeq[int]())
-  echo test
+  doAssert $test == "@[@[], @[], @[], @[], @[]]"
 
-tester(1)
+
 
 # #14497 
 func reverse*(a: string): string =
@@ -97,4 +94,13 @@ func reverse*(a: string): string =
   for i in 0 ..< a.len div 2:
     swap(result[i], result[^(i + 1)])
 
-doAssert reverse("hello") == "olleh"
+
+proc main() =
+  test_string_slice()
+  test_string_cmp()
+
+  tester(1)
+  doAssert reverse("hello") == "olleh"
+
+static: main()
+main()

@@ -2394,14 +2394,8 @@ when notJSnotNims:
     """.}
 
 when defined(js):
-  when not defined(nimscript):
-    include "system/jssys"
-    include "system/reprjs"
-  else:
-    proc cmp(x, y: string): int =
-      if x == y: return 0
-      if x < y: return -1
-      return 1
+  include "system/jssys"
+  include "system/reprjs"
 
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
