@@ -670,7 +670,7 @@ macro check*(conditions: untyped): untyped =
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
           if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar} and
-                  exp[i].typeKind notin {ntyTypeDesc}:
+                  (exp[i].typeKind notin {ntyTypeDesc} or $exp[0] notin ["is", "isnot"]):
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar
