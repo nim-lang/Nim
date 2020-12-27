@@ -3,11 +3,11 @@ import unittest
 template t(a: int): string = "int"
 template t(a: string): string = "string"
 
-test "templates can be overloaded":
+block: # templates can be overloaded
   check t(10) == "int"
   check t("test") == "string"
 
-test "previous definitions can be further overloaded or hidden in local scopes":
+block: # previous definitions can be further overloaded or hidden in local scopes
   template t(a: bool): string = "bool"
 
   check t(true) == "bool"
@@ -17,7 +17,7 @@ test "previous definitions can be further overloaded or hidden in local scopes":
   check t(10) == "inner int"
   check t("test") == "string"
 
-test "templates can be redefined multiple times":
+block: # templates can be redefined multiple times
   template customAssert(cond: bool, msg: string): typed {.dirty.} =
     if not cond: fail(msg)
 
