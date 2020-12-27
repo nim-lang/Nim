@@ -33,6 +33,19 @@ when notJSnotNims:
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
+  proc cmpMem*(a, b: pointer, size: Natural): int {.inline, noSideEffect,
+    tags: [], locks: 0, raises: [].}
+    ## Compares the memory blocks ``a`` and ``b``. ``size`` bytes will
+    ## be compared.
+    ##
+    ## Returns:
+    ## * a value less than zero, if `a < b`
+    ## * a value greater than zero, if `a > b`
+    ## * zero, if `a == b`
+    ##
+    ## Like any procedure dealing with raw memory this is
+    ## **unsafe**.
+
 when hasAlloc and not defined(js):
 
   proc allocImpl*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
@@ -304,7 +317,7 @@ when hasAlloc and not defined(js):
     ## or other memory may be corrupted.
     deallocShared(p)
 
-  include bitmasks  
+  include bitmasks
 
   template `+!`(p: pointer, s: SomeInteger): pointer =
     cast[pointer](cast[int](p) +% int(s))
@@ -318,7 +331,7 @@ when hasAlloc and not defined(js):
         result = allocShared(size)
       else:
         result = alloc(size)
-    else: 
+    else:
       # allocate (size + align - 1) necessary for alignment,
       # plus 2 bytes to store offset
       when compileOption("threads"):
@@ -326,7 +339,7 @@ when hasAlloc and not defined(js):
       else:
         let base = alloc(size + align - 1 + sizeof(uint16))
       # memory layout: padding + offset (2 bytes) + user_data
-      # in order to deallocate: read offset at user_data - 2 bytes, 
+      # in order to deallocate: read offset at user_data - 2 bytes,
       # then deallocate user_data - offset
       let offset = align - (cast[int](base) and (align - 1))
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
@@ -338,7 +351,7 @@ when hasAlloc and not defined(js):
         result = allocShared0(size)
       else:
         result = alloc0(size)
-    else: 
+    else:
       # see comments for alignedAlloc
       when compileOption("threads"):
         let base = allocShared0(size + align - 1 + sizeof(uint16))
@@ -348,13 +361,13 @@ when hasAlloc and not defined(js):
       cast[ptr uint16](base +! (offset - sizeof(uint16)))[] = uint16(offset)
       result = base +! offset
 
-  proc alignedDealloc(p: pointer, align: int) {.compilerproc.} = 
+  proc alignedDealloc(p: pointer, align: int) {.compilerproc.} =
     if align <= MemAlign:
       when compileOption("threads"):
         deallocShared(p)
       else:
         dealloc(p)
-    else:      
+    else:
       # read offset at p - 2 bytes, then deallocate (p - offset) pointer
       let offset = cast[ptr uint16](p -! sizeof(uint16))[]
       when compileOption("threads"):
