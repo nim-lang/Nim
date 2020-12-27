@@ -191,7 +191,7 @@ proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
   var result = [];
   for (var i = 0; i < `c`.length; ++i) {
-    result.push(`c`.charCodeAt(i));
+    result[i] = `c`.charCodeAt(i);
   }
   return result;
   """.}
