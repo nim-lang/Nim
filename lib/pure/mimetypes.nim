@@ -1918,7 +1918,7 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
     mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
 
 func mimesLongest*(): tuple[ext: int, mime: int] {.since: (1, 5).} =
-  ## Return the length of the longest "ext" and "mime" from `mimes`,
+  ## Returns the length of the longest "ext" and "mime" from `mimes`,
   ## this is useful for optimizations with `newStringOfCap` and `newString`.
   ##
   ## See also:
