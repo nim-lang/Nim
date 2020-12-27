@@ -566,34 +566,65 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
   ## for any interpolated expression.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   macro check(ex: untyped) =
-  ##     # this is a simplified version of the check macro from the
-  ##     # unittest module.
-  ##
-  ##     # If there is a failed check, we want to make it easy for
-  ##     # the user to jump to the faulty line in the code, so we
-  ##     # get the line info here:
-  ##     var info = ex.lineinfo
-  ##
-  ##     # We will also display the code string of the failed check:
-  ##     var expString = ex.toStrLit
-  ##
-  ##     # Finally we compose the code to implement the check:
-  ##     result = quote do:
-  ##       if not `ex`:
-  ##         echo `info` & ": Check failed: " & `expString`
+  runnableExamples:
+    macro check(ex: untyped) =
+      # this is a simplified version of the check macro from the
+      # unittest module.
+
+      # If there is a failed check, we want to make it easy for
+      # the user to jump to the faulty line in the code, so we
+      # get the line info here:
+      var info = ex.lineinfo
+
+      # We will also display the code string of the failed check:
+      var expString = ex.toStrLit
+
+      # Finally we compose the code to implement the check:
+      result = quote do:
+        if not `ex`:
+          echo `info` & ": Check failed: " & `expString`
+    check 1+1 == 2
+
+  runnableExamples:
+    var destroyCalled = false
+    macro bar() =
+      let s = newTree(nnkAccQuoted, ident"=destroy")
+      # let s = ident"`=destroy`" # this would not work
+      result = quote do:
+        type Foo = object
+        # proc `=destroy`(a: var Foo) = destroyCalled = true # this would not work
+        proc `s`(a: var Foo) = destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
+
+  runnableExamples:
+    # custom `op`
+    var destroyCalled = false
+    macro bar() =
+      var x = 1.5
+      result = quote("@") do:
+        type Foo = object
+        proc `=destroy`(a: var Foo) =
+          doAssert @x == 1.5
+          doAssert compiles(@x == 1.5)
+          let b1 = @[1,2]
+          let b2 = @@[1,2]
+          doAssert $b1 == "[1, 2]"
+          doAssert $b2 == "@[1, 2]"
+          destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
 
 proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## Checks that `n` is of kind `k`. If this is not the case,
