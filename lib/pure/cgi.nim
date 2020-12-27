@@ -32,7 +32,9 @@
 import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
+
 import std/private/decode_helpers
+
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -53,18 +55,15 @@ proc xmlEncode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  CgiError* = object of IOError ## exception that is raised if a CGI error occurs
+  CgiError* = object of IOError ## Exception that is raised if a CGI error occurs
   RequestMethod* = enum ## the used request method
     methodNone,         ## no REQUEST_METHOD environment variable
     methodPost,         ## query uses the POST method
     methodGet           ## query uses the GET method
 
 proc cgiError*(msg: string) {.noreturn.} =
-  ## raises an ECgi exception with message `msg`.
-  var e: ref CgiError
-  new(e)
-  e.msg = msg
-  raise e
+  ## Raises a ``CgiError`` exception with message `msg`.
+  raise newException(CgiError, msg)
 
 proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   case getEnv("REQUEST_METHOD").string
@@ -88,40 +87,23 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
-  proc parseData(data: string, i: int, field: var string): int =
-    result = i
-    while result < data.len:
-      case data[result]
-      of '%': add(field, decodePercent(data, result))
-      of '+': add(field, ' ')
-      of '=', '&': break
-      else: add(field, data[result])
-      inc(result)
-
-  var i = 0
-  var name = ""
-  var value = ""
-  # decode everything in one pass:
-  while i < data.len:
-    setLen(name, 0) # reuse memory
-    i = parseData(data, i, name)
-    setLen(value, 0) # reuse memory
-    if i < data.len and data[i] == '=':
-      inc(i) # skip '='
-      i = parseData(data, i, value)
-    yield (name.TaintedString, value.TaintedString)
-    if i < data.len:
-      if data[i] == '&': inc(i)
-      else: cgiError("'&' expected")
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
+  ## `allowedMethods` set, a ``CgiError`` exception is raised.
   let data = getEncodedData(allowedMethods)
-  for key, value in decodeData(data):
-    yield (key, value)
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 proc readData*(allowedMethods: set[RequestMethod] =
                {methodNone, methodPost, methodGet}): StringTableRef =
