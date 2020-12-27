@@ -76,7 +76,7 @@
 - Added `euclDiv` and `euclMod` to `math`.
 - Added `httpcore.is1xx` and missing HTTP codes.
 
-- Added `mimetypes.mimesLongest` that returns the lenght of the longest "ext" and "mime" from `mimes`.
+- Added `mimetypes.mimesLongest` that returns the length of the longest "ext" and "mime" from `mimes`.
 
 
 ## Language changes
