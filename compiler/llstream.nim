@@ -110,7 +110,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
-  while readLineFromStdin(if s.s.len == 0: "\n>>> " else: "... ", line):
+  while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
     s.s.add(line)
     s.s.add("\n")
     inc triples, countTriples(line)
