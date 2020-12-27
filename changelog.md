@@ -55,6 +55,7 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+- Added `decodeQuery` to `std/uri`.
 - `strscans.scanf` now supports parsing single characters.
 - `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
 
@@ -72,6 +73,12 @@
   and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
   shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
   its argument, `addMoved`, is also supplied.
+  
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+
 
 ## Language changes
 

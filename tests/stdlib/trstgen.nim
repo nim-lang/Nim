@@ -535,6 +535,55 @@ Test1
     assert count(output1, "<ul ") == 1
     assert count(output1, "</ul>") == 1
 
+  test "RST admonitions":
+    # check that all admonitions are implemented
+    let input0 = dedent """
+      .. admonition:: endOf admonition
+      .. attention:: endOf attention
+      .. caution:: endOf caution
+      .. danger:: endOf danger
+      .. error:: endOf error
+      .. hint:: endOf hint
+      .. important:: endOf important
+      .. note:: endOf note
+      .. tip:: endOf tip
+      .. warning:: endOf warning
+    """
+    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    for a in ["admonition", "attention", "caution", "danger", "error", "hint",
+        "important", "note", "tip", "warning" ]:
+      assert "endOf " & a & "</div>" in output0
+
+    # Test that admonition does not swallow up the next paragraph.
+    let input1 = dedent """
+      .. error:: endOfError
+
+      Test paragraph.
+    """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    assert "endOfError</div>" in output1
+    assert "<p>Test paragraph. </p>" in output1
+    assert "class=\"admonition admonition-error\"" in output1
+
+    # Test that second line is parsed as continuation of the first line.
+    let input2 = dedent """
+      .. error:: endOfError
+        Test2p.
+
+      Test paragraph.
+    """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    assert "endOfError Test2p.</div>" in output2
+    assert "<p>Test paragraph. </p>" in output2
+    assert "class=\"admonition admonition-error\"" in output2
+
+    let input3 = dedent """
+      .. note:: endOfNote
+    """
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    assert "endOfNote</div>" in output3
+    assert "class=\"admonition admonition-info\"" in output3
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """

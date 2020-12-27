@@ -2029,15 +2029,15 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## <typeinfo.html>`_ instead.
 
 {.push stackTrace: off.}
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int): int {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int8): int8 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int16): int16 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int32): int32 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int64): int64 {.magic: "AbsI", inline.} =
   ## Returns the absolute value of `x`.
   ##
   ## If `x` is ``low(x)`` (that is -MININT for its type),
@@ -2394,14 +2394,8 @@ when notJSnotNims:
     """.}
 
 when defined(js):
-  when not defined(nimscript):
-    include "system/jssys"
-    include "system/reprjs"
-  else:
-    proc cmp(x, y: string): int =
-      if x == y: return 0
-      if x < y: return -1
-      return 1
+  include "system/jssys"
+  include "system/reprjs"
 
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =

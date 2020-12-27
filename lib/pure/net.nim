@@ -551,7 +551,7 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
-                   caDir = "", caFile = ""): SSLContext =
+                   caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
@@ -644,7 +644,7 @@ when defineSsl:
           if not found:
             raise newException(IOError, "No SSL/TLS CA certificates found.")
 
-    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
+    result = SslContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
@@ -750,7 +750,7 @@ when defineSsl:
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
     when not defined(nimDisableCertificateValidation) and not defined(windows):
-      assert socket.isSSL
+      assert socket.isSsl
       let certificate = socket.sslHandle.SSL_get_peer_certificate()
       if certificate.isNil:
         raiseSSLError("No SSL certificate found.")
@@ -763,7 +763,7 @@ when defineSsl:
       if match != 1:
         raiseSSLError("SSL Certificate check failed.")
 
-  proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
+  proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
