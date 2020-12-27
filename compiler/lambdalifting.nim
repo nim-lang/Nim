@@ -238,10 +238,11 @@ proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   result = conf.backend == backendJs and not isCompileTime
 
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; owner: PSym) =
-  createTypeBoundOps(g, nil, refType.lastSon, info)
-  createTypeBoundOps(g, nil, refType, info)
-  if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
-    owner.flags.incl sfInjectDestructors
+  if owner.kind != skMacro:
+    createTypeBoundOps(g, nil, refType.lastSon, info)
+    createTypeBoundOps(g, nil, refType, info)
+    if tfHasAsgn in refType.flags or optSeqDestructors in g.config.globalOptions:
+      owner.flags.incl sfInjectDestructors
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
@@ -611,7 +612,8 @@ proc rawClosureCreation(owner: PSym;
         let fieldAccess = indirectAccess(env, local, env.info)
         # add ``env.param = param``
         result.add(newAsgnStmt(fieldAccess, newSymNode(local), env.info))
-        createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
+        if owner.kind != skMacro:
+          createTypeBoundOps(d.graph, nil, fieldAccess.typ, env.info)
         if tfHasAsgn in fieldAccess.typ.flags or optSeqDestructors in d.graph.config.globalOptions:
           owner.flags.incl sfInjectDestructors
 
