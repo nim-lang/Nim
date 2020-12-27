@@ -16,7 +16,7 @@ template sortedItems(t: untyped): untyped = sorted(toSeq(t))
 block tableDollar:
   # other tests should use `sortedPairs` to be robust to future table/hash
   # implementation changes
-  dodoAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
+  doAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
 
 # test should not be joined because it takes too long.
 block tableadds:
@@ -130,12 +130,12 @@ block thashes:
 
 
 block tindexby:
-  dodoAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
+  doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
 
   var tbl1 = initTable[int, int]()
   tbl1[1] = 1
   tbl1[2] = 2
-  dodoAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
+  doAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
 
   type
     TElem = object
@@ -149,7 +149,7 @@ block tindexby:
   var tbl2 = initTable[string, TElem]()
   tbl2["bar"] = elem1
   tbl2["baz"] = elem2
-  dodoAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
+  doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
 
 
 block tableconstr:
@@ -311,10 +311,10 @@ block tablesref:
     const a = [7, 8, 8]
 
     proc testNamedFields(t: CountTable | CountTableRef) =
-      dodoAssert t.smallest.key == 7
-      dodoAssert t.smallest.val == 1
-      dodoAssert t.largest.key == 8
-      dodoAssert t.largest.val == 2
+      doAssert t.smallest.key == 7
+      doAssert t.smallest.val == 1
+      doAssert t.largest.key == 8
+      doAssert t.largest.val == 2
 
     let t1 = toCountTable(a)
     testNamedFields(t1)
@@ -343,26 +343,26 @@ block tablesref:
     var i = 0
     # `pairs` needs to yield in sorted order:
     for key, val in pairs(t):
-      dodoAssert key == sorteddata[i][0]
-      dodoAssert val == sorteddata[i][1]
+      doAssert key == sorteddata[i][0]
+      doAssert val == sorteddata[i][1]
       inc(i)
     t.sort(cmper, order=SortOrder.Descending)
     i = 0
     for key, val in pairs(t):
-      dodoAssert key == sorteddata[high(data)-i][0]
-      dodoAssert val == sorteddata[high(data)-i][1]
+      doAssert key == sorteddata[high(data)-i][0]
+      doAssert val == sorteddata[high(data)-i][1]
       inc(i)
 
     # check that lookup still works:
     for key, val in pairs(t):
-      dodoAssert val == t[key]
+      doAssert val == t[key]
     # check that insert still works:
     t["newKeyHere"] = 80
 
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    dodoAssert zip(keys, values).toTable.sortedPairs == @[('a', 1), ('b', 2), ('c', 3)]
+    doAssert zip(keys, values).toTable.sortedPairs == @[('a', 1), ('b', 2), ('c', 3)]
 
   block clearTableTest:
     var t = newTable[string, float]()
@@ -409,18 +409,18 @@ block: # https://github.com/nim-lang/Nim/issues/13496
         t[17] = 3
         t[150] = 4
         t.del(150)
-      dodoAssert t.len == 3
-      dodoAssert sortedItems(t.values) == @[1, 2, 3]
-      dodoAssert sortedItems(t.keys) == @[15, 17, 19]
-      dodoAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
+      doAssert t.len == 3
+      doAssert sortedItems(t.values) == @[1, 2, 3]
+      doAssert sortedItems(t.keys) == @[15, 17, 19]
+      doAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
       var s = newSeq[int]()
       for v in t.values: s.add(v)
       doAssert s.len == 3
-      dodoAssert sortedItems(s) == @[1, 2, 3]
+      doAssert sortedItems(s) == @[1, 2, 3]
       when t is OrderedTable|OrderedTableRef:
-        dodoAssert toSeq(t.keys) == @[15, 19, 17]
-        dodoAssert toSeq(t.values) == @[1,2,3]
-        dodoAssert toSeq(t.pairs) == @[(15, 1), (19, 2), (17, 3)]
+        doAssert toSeq(t.keys) == @[15, 19, 17]
+        doAssert toSeq(t.values) == @[1,2,3]
+        doAssert toSeq(t.pairs) == @[(15, 1), (19, 2), (17, 3)]
 
   testDel(): (var t: Table[int, int])
   testDel(): (let t = newTable[int, int]())
