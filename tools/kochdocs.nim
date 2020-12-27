@@ -15,7 +15,8 @@ const
 
 var nimExe*: string
 
-template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
+template isJsOnly(file: string): bool =
+  file.isRelativeTo("lib/js") or file.extractFilename.startsWith"js"
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
