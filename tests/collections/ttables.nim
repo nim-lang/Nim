@@ -16,7 +16,7 @@ template sortedItems(t: untyped): untyped = sorted(toSeq(t))
 block tableDollar:
   # other tests should use `sortedPairs` to be robust to future table/hash
   # implementation changes
-  doAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
+  dodoAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
 
 # test should not be joined because it takes too long.
 block tableadds:
@@ -50,20 +50,20 @@ block thashes:
     var t = initTable[int,int]()
     t[0] = 42
     t[1] = t[0] + 1
-    assert(t[0] == 42)
-    assert(t[1] == 43)
+    doAssert(t[0] == 42)
+    doAssert(t[1] == 43)
     let t2 = {1: 1, 2: 2}.toTable
-    assert(t2[2] == 2)
+    doAssert(t2[2] == 2)
 
   # Test with char
   block:
     var t = initTable[char,int]()
     t['0'] = 42
     t['1'] = t['0'] + 1
-    assert(t['0'] == 42)
-    assert(t['1'] == 43)
+    doAssert(t['0'] == 42)
+    doAssert(t['1'] == 43)
     let t2 = {'1': 1, '2': 2}.toTable
-    assert(t2['2'] == 2)
+    doAssert(t2['2'] == 2)
 
   # Test with enum
   block:
@@ -72,10 +72,10 @@ block thashes:
     var t = initTable[E,int]()
     t[eA] = 42
     t[eB] = t[eA] + 1
-    assert(t[eA] == 42)
-    assert(t[eB] == 43)
+    doAssert(t[eA] == 42)
+    doAssert(t[eB] == 43)
     let t2 = {eA: 1, eB: 2}.toTable
-    assert(t2[eB] == 2)
+    doAssert(t2[eB] == 2)
 
   # Test with range
   block:
@@ -84,10 +84,10 @@ block thashes:
     var t = initTable[R,int]() # causes warning, why?
     t[1] = 42 # causes warning, why?
     t[2] = t[1] + 1
-    assert(t[1] == 42)
-    assert(t[2] == 43)
+    doAssert(t[1] == 42)
+    doAssert(t[2] == 43)
     let t2 = {1.R: 1, 2.R: 2}.toTable
-    assert(t2[2.R] == 2)
+    doAssert(t2[2.R] == 2)
 
   # Test which combines the generics for tuples + ordinals
   block:
@@ -96,10 +96,10 @@ block thashes:
     var t = initTable[(string, E, int, char), int]()
     t[("a", eA, 0, '0')] = 42
     t[("b", eB, 1, '1')] = t[("a", eA, 0, '0')] + 1
-    assert(t[("a", eA, 0, '0')] == 42)
-    assert(t[("b", eB, 1, '1')] == 43)
+    doAssert(t[("a", eA, 0, '0')] == 42)
+    doAssert(t[("b", eB, 1, '1')] == 43)
     let t2 = {("a", eA, 0, '0'): 1, ("b", eB, 1, '1'): 2}.toTable
-    assert(t2[("b", eB, 1, '1')] == 2)
+    doAssert(t2[("b", eB, 1, '1')] == 2)
 
   # Test to check if overloading is possible
   # Unfortunately, this does not seem to work for int
@@ -130,12 +130,12 @@ block thashes:
 
 
 block tindexby:
-  doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
+  dodoAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
 
   var tbl1 = initTable[int, int]()
   tbl1[1] = 1
   tbl1[2] = 2
-  doAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
+  dodoAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
 
   type
     TElem = object
@@ -149,7 +149,7 @@ block tindexby:
   var tbl2 = initTable[string, TElem]()
   tbl2["bar"] = elem1
   tbl2["baz"] = elem2
-  doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
+  dodoAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
 
 
 block tableconstr:
@@ -165,9 +165,9 @@ block tableconstr:
   ignoreExpr({2: 3, "key": "value"})
 
   # NEW:
-  assert 56 in 50..100
+  doAssert 56 in 50..100
 
-  assert 56 in ..60
+  doAssert 56 in ..60
 
 
 block ttables2:
@@ -239,8 +239,8 @@ block tablesref:
     t[(1,1)] = "11"
     for x in 0..1:
       for y in 0..1:
-        assert t[(x,y)] == $x & $y
-    assert t.sortedPairs ==
+        doAssert t[(x,y)] == $x & $y
+    doAssert t.sortedPairs ==
       @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
   block tableTest2:
@@ -253,31 +253,31 @@ block tablesref:
     t["012"] = 67.9
     t["123"] = 1.5 # test overwriting
 
-    assert t["123"] == 1.5
+    doAssert t["123"] == 1.5
     try:
       echo t["111"] # deleted
     except KeyError:
       discard
-    assert(not hasKey(t, "111"))
-    assert "111" notin t
+    doAssert(not hasKey(t, "111"))
+    doAssert "111" notin t
 
     for key, val in items(data): t[key] = val.toFloat
-    for key, val in items(data): assert t[key] == val.toFloat
+    for key, val in items(data): doAssert t[key] == val.toFloat
 
 
   block orderedTableTest1:
     var t = newOrderedTable[string, int](2)
     for key, val in items(data): t[key] = val
-    for key, val in items(data): assert t[key] == val
+    for key, val in items(data): doAssert t[key] == val
     var i = 0
     # `pairs` needs to yield in insertion order:
     for key, val in pairs(t):
-      assert key == data[i][0]
-      assert val == data[i][1]
+      doAssert key == data[i][0]
+      doAssert val == data[i][1]
       inc(i)
 
     for key, val in mpairs(t): val = 99
-    for val in mvalues(t): assert val == 99
+    for val in mvalues(t): doAssert val == 99
 
   block countTableTest1:
     var s = data.toTable
@@ -286,11 +286,11 @@ block tablesref:
     for x in [t, r]:
       for k in s.keys:
         x.inc(k)
-        assert x[k] == 1
+        doAssert x[k] == 1
       x.inc("90", 3)
       x.inc("12", 2)
       x.inc("34", 1)
-    assert t.largest()[0] == "90"
+    doAssert t.largest()[0] == "90"
 
     t.sort()
     r.sort(SortOrder.Ascending)
@@ -301,9 +301,9 @@ block tablesref:
       var i = 0
       for (k, v) in ps:
         case i
-        of 0: assert k == "90" and v == 4
-        of 1: assert k == "12" and v == 3
-        of 2: assert k == "34" and v == 2
+        of 0: doAssert k == "90" and v == 4
+        of 1: doAssert k == "12" and v == 3
+        of 2: doAssert k == "34" and v == 2
         else: break
         inc i
 
@@ -311,10 +311,10 @@ block tablesref:
     const a = [7, 8, 8]
 
     proc testNamedFields(t: CountTable | CountTableRef) =
-      doAssert t.smallest.key == 7
-      doAssert t.smallest.val == 1
-      doAssert t.largest.key == 8
-      doAssert t.largest.val == 2
+      dodoAssert t.smallest.key == 7
+      dodoAssert t.smallest.val == 1
+      dodoAssert t.largest.key == 8
+      dodoAssert t.largest.val == 2
 
     let t1 = toCountTable(a)
     testNamedFields(t1)
@@ -327,67 +327,67 @@ block tablesref:
 
   block nilTest:
     var i, j: TableRef[int, int] = nil
-    assert i == j
+    doAssert i == j
     j = newTable[int, int]()
-    assert i != j
-    assert j != i
+    doAssert i != j
+    doAssert j != i
     i = newTable[int, int]()
-    assert i == j
+    doAssert i == j
 
   proc orderedTableSortTest() =
     var t = newOrderedTable[string, int](2)
     for key, val in items(data): t[key] = val
-    for key, val in items(data): assert t[key] == val
+    for key, val in items(data): doAssert t[key] == val
     proc cmper(x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key)
     t.sort(cmper)
     var i = 0
     # `pairs` needs to yield in sorted order:
     for key, val in pairs(t):
-      doAssert key == sorteddata[i][0]
-      doAssert val == sorteddata[i][1]
+      dodoAssert key == sorteddata[i][0]
+      dodoAssert val == sorteddata[i][1]
       inc(i)
     t.sort(cmper, order=SortOrder.Descending)
     i = 0
     for key, val in pairs(t):
-      doAssert key == sorteddata[high(data)-i][0]
-      doAssert val == sorteddata[high(data)-i][1]
+      dodoAssert key == sorteddata[high(data)-i][0]
+      dodoAssert val == sorteddata[high(data)-i][1]
       inc(i)
 
     # check that lookup still works:
     for key, val in pairs(t):
-      doAssert val == t[key]
+      dodoAssert val == t[key]
     # check that insert still works:
     t["newKeyHere"] = 80
 
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    doAssert zip(keys, values).toTable.sortedPairs == @[('a', 1), ('b', 2), ('c', 3)]
+    dodoAssert zip(keys, values).toTable.sortedPairs == @[('a', 1), ('b', 2), ('c', 3)]
 
   block clearTableTest:
     var t = newTable[string, float]()
     t["test"] = 1.2345
     t["111"] = 1.000043
     t["123"] = 1.23
-    assert t.len() != 0
+    doAssert t.len() != 0
     t.clear()
-    assert t.len() == 0
+    doAssert t.len() == 0
 
   block clearOrderedTableTest:
     var t = newOrderedTable[string, int](2)
     for key, val in items(data): t[key] = val
-    assert t.len() != 0
+    doAssert t.len() != 0
     t.clear()
-    assert t.len() == 0
+    doAssert t.len() == 0
 
   block clearCountTableTest:
     var t = newCountTable[string]()
     t.inc("90", 3)
     t.inc("12", 2)
     t.inc("34", 1)
-    assert t.len() != 0
+    doAssert t.len() != 0
     t.clear()
-    assert t.len() == 0
+    doAssert t.len() == 0
 
   orderedTableSortTest()
   echo "3"
@@ -409,18 +409,18 @@ block: # https://github.com/nim-lang/Nim/issues/13496
         t[17] = 3
         t[150] = 4
         t.del(150)
-      doAssert t.len == 3
-      doAssert sortedItems(t.values) == @[1, 2, 3]
-      doAssert sortedItems(t.keys) == @[15, 17, 19]
-      doAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
+      dodoAssert t.len == 3
+      dodoAssert sortedItems(t.values) == @[1, 2, 3]
+      dodoAssert sortedItems(t.keys) == @[15, 17, 19]
+      dodoAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
       var s = newSeq[int]()
       for v in t.values: s.add(v)
-      assert s.len == 3
-      doAssert sortedItems(s) == @[1, 2, 3]
+      doAssert s.len == 3
+      dodoAssert sortedItems(s) == @[1, 2, 3]
       when t is OrderedTable|OrderedTableRef:
-        doAssert toSeq(t.keys) == @[15, 19, 17]
-        doAssert toSeq(t.values) == @[1,2,3]
-        doAssert toSeq(t.pairs) == @[(15, 1), (19, 2), (17, 3)]
+        dodoAssert toSeq(t.keys) == @[15, 19, 17]
+        dodoAssert toSeq(t.values) == @[1,2,3]
+        dodoAssert toSeq(t.pairs) == @[(15, 1), (19, 2), (17, 3)]
 
   testDel(): (var t: Table[int, int])
   testDel(): (let t = newTable[int, int]())
@@ -433,14 +433,14 @@ block: # https://github.com/nim-lang/Nim/issues/13496
 block testNonPowerOf2:
   var a = initTable[int, int](7)
   a[1] = 10
-  assert a[1] == 10
+  doAssert a[1] == 10
 
   var b = initTable[int, int](9)
   b[1] = 10
-  assert b[1] == 10
+  doAssert b[1] == 10
 
 block emptyOrdered:
   var t1: OrderedTable[int, string]
   var t2: OrderedTable[int, string]
-  assert t1 == t2
+  doAssert t1 == t2
 
