@@ -170,16 +170,28 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(0.0, -0.0) == -0.0
     doAssert copySign(-1.0, 0.0) == 1.0
     doAssert copySign(10.0, 0.0) == 10.0
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
 
     doAssert copySign(NaN, 0.0).isNaN
     doAssert copySign(NaN, -0.0).isNaN
-  when not defined(js):
-    result = c_copysign(x, y)
-  else:
-    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+  template impl() =
+    if y.isNaN:
       result = abs(x)
     else:
-      result = -abs(x)
+      if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+        result = abs(x)
+      else:
+        result = -abs(x)
+
+  when nimvm:
+    impl()
+  else:
+    when not defined(js):
+      result = c_copysign(x, y)
+    else:
+      impl()
+
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
