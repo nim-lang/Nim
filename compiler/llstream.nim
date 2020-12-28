@@ -20,6 +20,7 @@ when hasRstdin: import rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
+  OnPrompt* = proc() {.closure.}
   TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
@@ -32,7 +33,7 @@ type
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
     repl*: TLLRepl            # gives stdin control to clients
-    onPrompt*: proc() {.closure.}
+    onPrompt*: OnPrompt
 
   PLLStream* = ref TLLStream
 
@@ -56,12 +57,13 @@ proc llStreamOpen*(): PLLStream =
   result.kind = llsNone
 
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
-proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin): PLLStream =
+proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin, onPrompt: OnPrompt = nil): PLLStream =
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
   result.repl = r
+  result.onPrompt = onPrompt
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -111,8 +113,6 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
-  # write(stdout, "\n")
-  # doAssert false
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
     s.s.add(line)
     s.s.add("\n")
