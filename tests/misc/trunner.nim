@@ -12,8 +12,7 @@ from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
-# from strutils import startsWith, strip
-from strutils import startsWith, strip, indent
+from strutils import startsWith, strip
 import "$lib/../compiler/nimpaths"
 
 proc isDots(a: string): bool =
