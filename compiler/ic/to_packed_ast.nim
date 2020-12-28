@@ -264,8 +264,19 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   when false:
     ir.flush c   # flush any pending types and symbols
 
+proc toPackedNodeIgnoreProcDefs*(n: PNode, encoder: var PackedEncoder) =
+  case n.kind
+  of routineDefs:
+    # we serialize n[namePos].sym instead
+    if n[namePos].kind == nkSym:
+      discard toPackedSym(n[namePos].sym, encoder)
+    else:
+      toPackedNode(n, encoder.m.topLevel, encoder)
+  else:
+    toPackedNode(n, encoder.m.topLevel, encoder)
+
 proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
-  toPackedNode(n, encoder.m.topLevel, encoder)
+  toPackedNodeIgnoreProcDefs(n, encoder)
   flush encoder
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
