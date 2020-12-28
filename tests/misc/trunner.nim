@@ -12,8 +12,13 @@ from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
-
+# from strutils import startsWith, strip
+from strutils import startsWith, strip, indent
 import "$lib/../compiler/nimpaths"
+
+proc isDots(a: string): bool =
+  ## test for `hintProcessing` dots
+  a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
   nim = getCurrentCompilerExe()
@@ -223,7 +228,37 @@ mmain.html
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
+  block: # `hintProcessing` dots should not interfere with echo + friends
+    # import osproc,strformat, os, strutils
+    # pending https://github.com/timotheecour/Nim/issues/453, simplify to:
+    # `--hints:off --hint:processing`
+    let cmd = fmt"""{nim} r --hint:successx:off --hint:Exec:off --hint:Link:off --hint:CC:off --hint:Conf:off --hint:processing -f --eval:"static: echo 1+1""""
+    let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    doAssert exitCode == 0
+    let lines = outp.splitLines
+    doAssert lines.len == 3, outp.indent(2)
+    # doAssert lines.len == 3, $(outp,)
+    doAssert lines[0].isDots
+    doAssert lines[1] == "2"
+    doAssert lines[2] == ""
+
   block: # nim secret
-    let opt = "--hints:off"
-    let (out, status) = fmt"""{nim} {opt} secret""".execCmdEx(input = "echo 1+2")
-    echo (out, status)
+    let opt = "--hint:processing:on --hint:QuitCalled:off --hint:Conf:off"
+    let cmd = fmt"""{nim} secret {opt}"""
+    # xxx minor bug: `nim --hint:QuitCalled:off secret` ignores the hint cmdline flag
+    template run(input2): untyped =
+      execCmdEx(cmd, options = {poStdErrToStdOut}, input = input2)
+    block:
+      let (outp, exitCode) = run "echo 1+2; import strutils; echo strip(\" ab \"); quit()"
+      let lines = outp.splitLines
+      doAssert lines.len == 5, $outp
+      doAssert lines[0].isDots
+      doAssert lines[1] == "3"
+      doAssert lines[2].isDots
+      doAssert lines[3] == "ab"
+      doAssert lines[4] == ""
+      doAssert exitCode == 0
+    block:
+      let (outp, exitCode) = run "echo 1+2; quit(2)"
+      doAssert "3" in outp
+      doAssert exitCode == 2
