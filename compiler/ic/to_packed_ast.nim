@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables, md5, sequtils]
+import std / [hashes, tables, md5, sequtils, intsets]
 import packed_ast, bitabs
 import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes, pathutils]
 
@@ -29,8 +29,8 @@ type
     filenames*: Table[FileIndex, LitId]
     pendingTypes*: seq[PType]
     pendingSyms*: seq[PSym]
-    typeMap*: Table[ItemId, TypeId]  # ItemId.item -> TypeId
-    symMap*: Table[ItemId, SymId]    # ItemId.item -> SymId
+    typeMarker*: IntSet #Table[ItemId, TypeId]  # ItemId.item -> TypeId
+    symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     sh: Shared
     config*: ConfigRef
 
@@ -43,17 +43,8 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.m.hidden = newTreeFrom(c.m.topLevel)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
-proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId
-proc toPackedType(t: PType; c: var PackedEncoder): TypeId
-
-proc safeItemId(s: PSym): ItemId {.inline.} =
-  ## given a symbol, produce an ItemId with the correct properties
-  ## for local or remote symbols, packing the symbol as necessary
-  if s == nil:
-    result = nilItemId
-  else:
-    # XXX translate module IDs?
-    result = s.itemId
+proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId
+proc toPackedType(t: PType; c: var PackedEncoder): PackedItemId
 
 proc flush(c: var PackedEncoder) =
   ## serialize any pending types or symbols from the context
@@ -89,31 +80,37 @@ proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
 proc toPackedInfo(x: TLineInfo; c: var PackedEncoder): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c))
 
+proc safeItemId(s: PSym; c: var PackedEncoder): PackedItemId {.inline.} =
+  ## given a symbol, produce an ItemId with the correct properties
+  ## for local or remote symbols, packing the symbol as necessary
+  if s == nil:
+    result = nilItemId
+  elif s.itemId.module == c.thisModule:
+    result = PackedItemId(module: LitId(0), item: s.itemId.item)
+  else:
+    result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c),
+                          item: s.itemId.item)
+
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c)
   ir.nodes.add PackedNode(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
                           typeId: toPackedType(n.typ, c), info: info)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
-                          operand: n.sym.itemId.module)
+                          operand: toLitId(n.sym.itemId.module.FileIndex, c).int32)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
                           operand: n.sym.itemId.item)
 
 proc addMissing(c: var PackedEncoder; p: PSym) =
   ## consider queuing a symbol for later addition to the packed tree
-  if not p.isNil:
-    # we do not pack foreign symbols
-    if p.itemId.module == c.thisModule:
-      if p.itemId notin c.symMap:
-        c.pendingSyms.add p
+  if p != nil and p.itemId.module == c.thisModule:
+    if p.itemId.item notin c.symMarker:
+      c.pendingSyms.add p
 
 proc addMissing(c: var PackedEncoder; p: PType) =
   ## consider queuing a type for later addition to the packed tree
-  if not p.isNil:
-    # XXX: we DO pack foreign types (for now?), essentially copying them
-    #      to make evaluation (much) easier
-    #if p.uniqueId.module == c.thisModule:
-    if p.uniqueId notin c.typeMap:
+  if p != nil and p.uniqueId.module == c.thisModule:
+    if p.uniqueId.item notin c.typeMarker:
       c.pendingTypes.add p
 
 template storeNode(dest, src, field) =
@@ -125,42 +122,43 @@ template storeNode(dest, src, field) =
     nodeId = emptyNodeId
   dest.field = nodeId
 
-proc toPackedType(t: PType; c: var PackedEncoder): TypeId =
+proc toPackedType(t: PType; c: var PackedEncoder): PackedItemId =
   ## serialize a ptype
   if t.isNil: return nilTypeId
 
-  # short-circuit if we already have the TypeId
-  result = getOrDefault(c.typeMap, t.uniqueId, TypeId(-1))
-  if result != TypeId(-1): return result
+  if t.uniqueId.module != c.thisModule:
+    # XXX Assert here that it already was serialized in the foreign module!
+    # it is a foreign type:
+    return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c), item: t.uniqueId.item)
 
-  result = TypeId(c.sh.types.len)
-  c.typeMap[t.uniqueId] = result
-  # reserve the slot already:
-  setLen c.sh.types, result.int+1
+  if not c.typeMarker.containsOrIncl(t.uniqueId.item):
+    if t.uniqueId.item >= c.sh.types.len:
+      setLen c.sh.types, t.uniqueId.item+1
 
-  var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
-    size: t.size, align: t.align, uniqueId: t.uniqueId,
-    paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
-  # XXX if p.itemId.module == c.thisModule:
-  storeNode(p, t, n)
+    var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
+      size: t.size, align: t.align, nonUniqueId: t.itemId.item,
+      paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
+    storeNode(p, t, n)
 
-  for op, s in pairs t.attachedOps:
-    c.addMissing s
-    p.attachedOps[op] = s.safeItemId
+    for op, s in pairs t.attachedOps:
+      c.addMissing s
+      p.attachedOps[op] = s.safeItemId(c)
 
-  p.typeInst = t.typeInst.toPackedType(c)
-  for kid in items t.sons:
-    p.types.add kid.toPackedType(c)
-  for i, s in items t.methods:
-    c.addMissing s
-    p.methods.add (i, s.safeItemId)
-  c.addMissing t.sym
-  p.sym = t.sym.safeItemId
-  c.addMissing t.owner
-  p.owner = t.owner.safeItemId
+    p.typeInst = t.typeInst.toPackedType(c)
+    for kid in items t.sons:
+      p.types.add kid.toPackedType(c)
+    for i, s in items t.methods:
+      c.addMissing s
+      p.methods.add (i, s.safeItemId(c))
+    c.addMissing t.sym
+    p.sym = t.sym.safeItemId(c)
+    c.addMissing t.owner
+    p.owner = t.owner.safeItemId(c)
 
-  # fill the reserved slot, nothing else:
-  c.sh.types[int result] = p
+    # fill the reserved slot, nothing else:
+    c.sh.types[t.uniqueId.item] = p
+
+  result = PackedItemId(module: LitId(0), item: t.uniqueId.item)
 
 proc toPackedLib(l: PLib; c: var PackedEncoder): PackedLib =
   ## the plib hangs off the psym via the .annex field
@@ -171,50 +169,51 @@ proc toPackedLib(l: PLib; c: var PackedEncoder): PackedLib =
   result.name = toLitId($l.name, c)
   storeNode(result, l, path)
 
-proc toPackedSym*(s: PSym; c: var PackedEncoder): SymId =
+proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId =
   ## serialize a psym
-  if s.isNil: return SymId(-1)
+  if s.isNil: return nilItemId
 
-  # short-circuit if we already have the SymId
-  result = getOrDefault(c.symMap, s.itemId, SymId(-1))
-  if result != SymId(-1): return result
+  if s.itemId.module != c.thisModule:
+    # XXX Assert here that it already was serialized in the foreign module!
+    # it is a foreign symbol:
+    return PackedItemId(module: toLitId(s.itemId.module.FileIndex, c), item: s.itemId.item)
 
-  result = SymId(c.sh.syms.len)
-  c.symMap[s.itemId] = result
-  # reserve the slot already:
-  setLen c.sh.syms, result.int+1
+  if not c.symMarker.containsOrIncl(s.itemId.item):
+    if s.itemId.item >= c.sh.syms.len:
+      setLen c.sh.syms, s.itemId.item+1
 
-  var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c), magic: s.magic,
-    position: s.position, offset: s.offset, options: s.options,
-    name: s.name.s.toLitId(c))
+    var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c), magic: s.magic,
+      position: s.position, offset: s.offset, options: s.options,
+      name: s.name.s.toLitId(c))
 
-  storeNode(p, s, ast)
-  storeNode(p, s, constraint)
+    storeNode(p, s, ast)
+    storeNode(p, s, constraint)
 
-  if s.kind in {skLet, skVar, skField, skForVar}:
-    c.addMissing s.guard
-    p.guard = s.guard.safeItemId
-    p.bitsize = s.bitsize
-    p.alignment = s.alignment
+    if s.kind in {skLet, skVar, skField, skForVar}:
+      c.addMissing s.guard
+      p.guard = s.guard.safeItemId(c)
+      p.bitsize = s.bitsize
+      p.alignment = s.alignment
 
-  p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, c)
-  c.addMissing s.typ
-  p.typ = s.typ.toPackedType(c)
-  c.addMissing s.owner
-  p.owner = s.owner.safeItemId
-  p.annex = toPackedLib(s.annex, c)
-  when hasFFI:
-    p.cname = toLitId(s.cname, c)
+    p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, c)
+    c.addMissing s.typ
+    p.typ = s.typ.toPackedType(c)
+    c.addMissing s.owner
+    p.owner = s.owner.safeItemId(c)
+    p.annex = toPackedLib(s.annex, c)
+    when hasFFI:
+      p.cname = toLitId(s.cname, c)
 
-  # fill the reserved slot, nothing else:
-  c.sh.syms[int result] = p
+    # fill the reserved slot, nothing else:
+    c.sh.syms[s.itemId.item] = p
+
+  result = PackedItemId(module: LitId(0), item: s.itemId.item)
 
 proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ## store a local or remote psym reference in the tree
   assert n.kind == nkSym
   template s: PSym = n.sym
-  var id = s.toPackedSym(c)
-  assert id != SymId(-1)
+  let id = s.toPackedSym(c).item
   if s.itemId.module == c.thisModule:
     # it is a symbol that belongs to the module we're currently
     # packing:

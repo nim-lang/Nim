@@ -1576,7 +1576,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert c.config, dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, nexSymId c.idgen, owner, param.info)
+                            dummyName.ident, nextSymId c.idgen, owner, param.info)
     dummyParam.typ = dummyType
     incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)

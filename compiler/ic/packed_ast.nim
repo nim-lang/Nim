@@ -40,7 +40,6 @@ const
 
 const
   nkModuleRef* = nkNone # pair of (ModuleId, SymId)
-  nilItemId* = ItemId(module: -1.int32, item: -1.int32)
 
 type
   SymId* = distinct int32
@@ -57,6 +56,7 @@ type
 
 const
   nilTypeId* = PackedItemId(module: LitId(0), item: -1.int32)
+  nilItemId* = PackedItemId(module: LitId(0), item: -1.int32)
 
 const
   emptyNodeId* = NodeId(-1)
@@ -82,8 +82,8 @@ type
     magic*: TMagic
     info*: PackedLineInfo
     ast*: NodeId
-    owner*: ItemId
-    guard*: ItemId
+    owner*: PackedItemId
+    guard*: PackedItemId
     bitsize*: int
     alignment*: int # for alignment
     options*: TOptions
@@ -102,18 +102,18 @@ type
     flags*: TTypeFlags
     types*: seq[TypeId]
     n*: NodeId
-    methods*: seq[(int, ItemId)]
+    methods*: seq[(int, PackedItemId)]
     #nodeflags*: TNodeFlags
-    sym*: ItemId
-    owner*: ItemId
-    attachedOps*: array[TTypeAttachedOp, ItemId]
+    sym*: PackedItemId
+    owner*: PackedItemId
+    attachedOps*: array[TTypeAttachedOp, PackedItemId]
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
     lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
     typeInst*: TypeId
-    uniqueId*: ItemId
+    nonUniqueId*: int32
 
   PackedNode* = object     # 20 bytes
     kind*: TNodeKind
@@ -187,8 +187,8 @@ proc throwAwayLastNode*(tree: var PackedTree) =
 proc addIdent*(tree: var PackedTree; s: LitId; info: PackedLineInfo) =
   tree.nodes.add PackedNode(kind: nkIdent, operand: int32(s), info: info)
 
-proc addSym*(tree: var PackedTree; s: SymId; info: PackedLineInfo) =
-  tree.nodes.add PackedNode(kind: nkSym, operand: int32(s), info: info)
+proc addSym*(tree: var PackedTree; s: int32; info: PackedLineInfo) =
+  tree.nodes.add PackedNode(kind: nkSym, operand: s, info: info)
 
 proc addModuleId*(tree: var PackedTree; s: ModuleId; info: PackedLineInfo) =
   tree.nodes.add PackedNode(kind: nkInt32Lit, operand: int32(s), info: info)
