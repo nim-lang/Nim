@@ -14,9 +14,10 @@ const
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+const allowList = ["jsbigints.nim"] # Nim for JavaScript target outside of lib/js/
 
 template isJsOnly(file: string): bool =
-  file.isRelativeTo("lib/js") or file.extractFilename.startsWith"js"
+  file.isRelativeTo("lib/js") or file.extractFilename in allowList
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
