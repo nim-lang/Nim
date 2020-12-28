@@ -24,8 +24,8 @@ when not defined(js):
     var config2 = loadConfig(file)
     let bar = config2.getSectionValue("foo", "bar")
     let foo = config2.getSectionValue("foo", "foo")
-    assert(bar == "-1")
-    assert(foo == "abc")
+    doAssert(bar == "-1")
+    doAssert(foo == "abc")
 
 ## Creating a configuration file.
 var dict1 = newConfig()
