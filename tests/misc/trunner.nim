@@ -227,20 +227,23 @@ sub/mmain.idx""", context
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
-  block: # `hintProcessing` dots should not interfere with `static: echo` + friends
+  # const defaultHintsOff = "--hint:successx:off --hint:Exec:off --hint:Link:off --hint:CC:off --hint:Conf:off --hint:processing"
     # pending https://github.com/timotheecour/Nim/issues/453, simplify to:
     # `--hints:off --hint:processing`
+  block: # `hintProcessing` dots should not interfere with `static: echo` + friends
     let cmd = fmt"""{nim} r --hint:successx:off --hint:Exec:off --hint:Link:off --hint:CC:off --hint:Conf:off --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
     let lines = outp.splitLines
-    doAssert lines.len == 3, $(outp,)
-    doAssert lines[0].isDots
-    doAssert lines[1] == "2"
-    doAssert lines[2] == ""
+    check3 lines.len == 3
+    check3 lines[0].isDots
+    check3 lines[1] == "2"
+    check3 lines[2] == ""
 
   block: # nim secret
     let opt = "--hint:processing:on --hint:QuitCalled:off --hint:Conf:off"
+    template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""
       # xxx minor bug: `nim --hint:QuitCalled:off secret` ignores the hint cmdline flag
@@ -249,14 +252,14 @@ sub/mmain.idx""", context
       block:
         let (outp, exitCode) = run """echo 1+2; import strutils; echo strip(" ab "); quit()"""
         let lines = outp.splitLines
-        doAssert lines.len == 5, $(outp,)
-        doAssert lines[0].isDots
-        doAssert lines[1] == "3"
-        doAssert lines[2].isDots
-        doAssert lines[3] == "ab"
-        doAssert lines[4] == ""
+        check3 lines.len == 5
+        check3 lines[0].isDots
+        check3 lines[1] == "3"
+        check3 lines[2].isDots
+        check3 lines[3] == "ab"
+        check3 lines[4] == ""
         doAssert exitCode == 0
       block:
         let (outp, exitCode) = run "echo 1+2; quit(2)"
-        doAssert "3" in outp
+        check3 "3" in outp
         doAssert exitCode == 2
