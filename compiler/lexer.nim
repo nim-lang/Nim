@@ -191,6 +191,8 @@ proc fillToken(L: var Token) =
 
 proc openLexer*(lex: var Lexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
+  # flushDot(config, stderr)
+  # s.onPrompt()
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileIdx
   lex.indentAhead = -1

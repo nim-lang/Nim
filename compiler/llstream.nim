@@ -32,6 +32,7 @@ type
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
     repl*: TLLRepl            # gives stdin control to clients
+    onPrompt*: proc() {.closure.}
 
   PLLStream* = ref TLLStream
 
@@ -110,6 +111,8 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
+  # write(stdout, "\n")
+  # doAssert false
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
     s.s.add(line)
     s.s.add("\n")
@@ -133,6 +136,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn:
+    if s.onPrompt!=nil: s.onPrompt()
     result = s.repl(s, buf, bufLen)
 
 proc llStreamReadLine*(s: PLLStream, line: var string): bool =
