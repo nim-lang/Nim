@@ -592,7 +592,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
       result = quote do:
         if not `ex`:
           echo `info` & ": Check failed: " & `expString`
-    check 1+1 == 2
+    check 1 + 1 == 2
 
   runnableExamples:
     var destroyCalled = false
