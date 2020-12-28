@@ -98,7 +98,7 @@ proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
                           operand: n.sym.itemId.module)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
-                          operand: int32 toLitId(n.sym.name.s, c))
+                          operand: n.sym.itemId.item)
 
 proc addMissing(c: var PackedEncoder; p: PSym) =
   ## consider queuing a symbol for later addition to the packed tree

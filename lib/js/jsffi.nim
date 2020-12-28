@@ -455,9 +455,9 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
 # from a proc, `this` being the first argument.
 
 proc replaceSyms(n: NimNode): NimNode =
-  if n.kind == nnkSym: 
+  if n.kind == nnkSym:
     result = newIdentNode($n)
-  else: 
+  else:
     result = n
     for i in 0..<n.len:
       result[i] = replaceSyms(n[i])
