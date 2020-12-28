@@ -1153,9 +1153,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
-      template fn(s) =
-        flushDot(c.config, stderr)
-        msgWriteln(c.config, s, {msgStdout})
+      template fn(s) = msgWriteln(c.config, s, {msgStdout})
       if rb == 1: fn(regs[ra].node.strVal)
       else:
         var outp = ""

@@ -222,3 +222,8 @@ mmain.html
     check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
+
+  block: # nim secret
+    let opt = "--hints:off"
+    let (out, status) = fmt"""{nim} {opt} secret""".execCmdEx(input = "echo 1+2")
+    echo (out, status)
