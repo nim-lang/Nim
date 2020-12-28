@@ -20,7 +20,7 @@ doAssert big1 shl big3 == big"8589934588"
 doAssert big1 shr big3 == big"536870911"
 doAssert big1 * big2 == big"1430224108902"
 doAssert $big1 == "2147483647".cstring
-doAssert big1.toString(10) == "2147483647".cstring
+doAssert big1.toCstring(10) == "2147483647".cstring
 doAssert big2 ** big3 == big(443556)
 var huge = big"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
 huge.inc

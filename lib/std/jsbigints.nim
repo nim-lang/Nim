@@ -15,48 +15,33 @@ func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
 
-func toLocaleString*(this: JsBigInt): cstring {.importjs: "#.$1()".}
-  ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
-
-func toLocaleString*(this: JsBigInt; locales: cstring): cstring {.importjs: "#.$1(#)".} =
-  ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
-  # TODO: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString#Using_options
-  runnableExamples:
-    doAssert big"2147483647".toLocaleString("EN".cstring) == "2,147,483,647".cstring
-
-func toLocaleString*(this: JsBigInt; locales: openArray[cstring]): cstring {.importjs: "#.$1(#)".} =
-  ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
-  ## When requesting a language that may not be supported, include a fallback language.
-  runnableExamples:
-    doAssert big"2147483647".toLocaleString(["EN".cstring, "ES".cstring]) == "2,147,483,647".cstring
-
-func toString*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".} =
+func toCstring*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
   runnableExamples:
-    doAssert big"2147483647".toString(2) == "1111111111111111111111111111111".cstring
+    doAssert big"2147483647".toCstring(2) == "1111111111111111111111111111111".cstring
 
-func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted on $
+func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted on $
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
   ## Return a string representation of `JsBigInt`.
   runnableExamples: doAssert $big"1024" == "1024"
-  $toString(this)
+  $toCstring(this)
 
-func asIntN*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
+func toInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
   ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
-    doAssert asIntN(32, big"2147483647") == big"2147483647"
+    doAssert toInt(32, big"2147483647") == big"2147483647"
 
-func asUintN*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
+func toUint*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
-    doAssert asUintN(32, big"2147483647") == big"2147483647"
+    doAssert toUint(32, big"2147483647") == big"2147483647"
 
-func int*(a: JsBigInt): int {.importjs: "Number(#)".} =
+func toInt*(a: JsBigInt): int {.importjs: "Number(#)".} =
   runnableExamples:
-    doAssert int(big"2147483647") == 2147483647
+    doAssert toInt(big"2147483647") == 2147483647
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
@@ -118,14 +103,14 @@ func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(big"10101010101") == big"-10101010101"
 
-func inc*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] += #)".} =
+func inc*(a: var JsBigInt; b = big"1") {.importjs: "([#][0][0] += #)".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
     let big2: JsBigInt = big"2"
     inc big1, big2
     doAssert big1 == big"3"
 
-func dec*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] -= #)".} =
+func dec*(a: var JsBigInt; b = big"1") {.importjs: "([#][0][0] -= #)".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
     let big2: JsBigInt = big"2"
@@ -153,40 +138,12 @@ func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
     big1 *= big2
     doAssert big1 == big"8"
 
-func inc*(x: var JsBigInt) {.importjs: "(++[#][0][0])".} =
-  runnableExamples:
-    var big1: JsBigInt = big"1"
-    inc big1
-    doAssert big1 == big"2"
-
-func dec*(x: var JsBigInt) {.importjs: "(--[#][0][0])".} =
-  runnableExamples:
-    var big1: JsBigInt = big"3"
-    dec big1
-    doAssert big1 == big"2"
-
-func `%=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] %= #)".} =
-  ## Same as `x = x mod y`.
-  runnableExamples:
-    var big1: JsBigInt = big"10"
-    big1 %= big"2"
-    doAssert big1 == big"0"
-
 func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = big"11"
     big1 /= big"2"
     doAssert big1 == big"5"
-
-proc addInt*(result: var string; integer: JsBigInt) =
-  ## Converts `integer` to its string representation and appends it to `result`.
-  runnableExamples:
-    var a = "12345678"
-    let b = big"99999999999999999999999999999999999999"
-    a.addInt b
-    doAssert a == "1234567899999999999999999999999999999999999999"
-  result.add integer.toString
 
 proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
