@@ -19,9 +19,9 @@ template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
 
-template flushDot(conf, stdOrr) =
+template flushDot*(conf, stdOrr) =
   ## safe to call multiple times
-  let stdOrrKind = stdOrr.toStdOrrKind()
+  let stdOrrKind = toStdOrrKind(stdOrr)
   if stdOrrKind in conf.lastMsgWasDot:
     conf.lastMsgWasDot.excl stdOrrKind
     write(stdOrr, "\n")

@@ -59,6 +59,13 @@ type
     opaque*: bool
     isIpv6: bool # not expose it for compatibility.
 
+  UriParseError* = object of ValueError
+
+
+proc uriParseError*(msg: string) {.noreturn.} =
+  ## Raises a ``UriParseError`` exception with message `msg`.
+  raise newException(UriParseError, msg)
+
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
@@ -152,6 +159,42 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     if not omitEq or val.len > 0:
       result.add('=')
       result.add(encodeUrl(val, usePlus))
+
+iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
+  ## Reads and decodes query string ``data`` and yields the (key, value) pairs the
+  ## data consists of.
+  runnableExamples:
+    import std/sugar
+    let s = collect(newSeq):
+      for k, v in decodeQuery("foo=1&bar=2"): (k, v)
+    doAssert s == @[("foo", "1"), ("bar", "2")]
+
+  proc parseData(data: string, i: int, field: var string): int =
+    result = i
+    while result < data.len:
+      case data[result]
+      of '%': add(field, decodePercent(data, result))
+      of '+': add(field, ' ')
+      of '=', '&': break
+      else: add(field, data[result])
+      inc(result)
+
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while i < data.len:
+    setLen(name, 0) # reuse memory
+    i = parseData(data, i, name)
+    setLen(value, 0) # reuse memory
+    if i < data.len and data[i] == '=':
+      inc(i) # skip '='
+      i = parseData(data, i, value)
+    yield (name.TaintedString, value.TaintedString)
+    if i < data.len:
+      if data[i] == '&': inc(i)
+      else:
+        uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0

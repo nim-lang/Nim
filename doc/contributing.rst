@@ -47,7 +47,7 @@ which only gets executed when the tester is building the file.
 Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
 testing by itself, don't rely on echo statements or similar; in particular, avoid
-things like `echo "done"`.
+things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 

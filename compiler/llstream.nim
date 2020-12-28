@@ -20,6 +20,7 @@ when hasRstdin: import rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
+  OnPrompt* = proc() {.closure.}
   TLLStreamKind* = enum       # enum of different stream implementations
     llsNone,                  # null stream: reading and writing has no effect
     llsString,                # stream encapsulates a string
@@ -32,6 +33,7 @@ type
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
     repl*: TLLRepl            # gives stdin control to clients
+    onPrompt*: OnPrompt
 
   PLLStream* = ref TLLStream
 
@@ -55,12 +57,13 @@ proc llStreamOpen*(): PLLStream =
   result.kind = llsNone
 
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int
-proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin): PLLStream =
+proc llStreamOpenStdIn*(r: TLLRepl = llReadFromStdin, onPrompt: OnPrompt = nil): PLLStream =
   new(result)
   result.kind = llsStdIn
   result.s = ""
   result.lineOffset = -1
   result.repl = r
+  result.onPrompt = onPrompt
 
 proc llStreamClose*(s: PLLStream) =
   case s.kind
@@ -133,6 +136,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsFile:
     result = readBuffer(s.f, buf, bufLen)
   of llsStdIn:
+    if s.onPrompt!=nil: s.onPrompt()
     result = s.repl(s, buf, bufLen)
 
 proc llStreamReadLine*(s: PLLStream, line: var string): bool =
