@@ -127,7 +127,7 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
-    sh*: Shared
+    #sh*: Shared
 
   Shared* = ref object # shared between different versions of 'Module'.
                        # (though there is always exactly one valid
@@ -153,24 +153,25 @@ proc `==`*(a, b: NodePos): bool {.borrow.}
 proc `==`*(a, b: TypeId): bool {.borrow.}
 proc `==`*(a, b: ModuleId): bool {.borrow.}
 
-proc declareSym*(tree: var PackedTree; kind: TSymKind;
-                 name: LitId; info: PackedLineInfo): SymId =
-  result = SymId(tree.sh.syms.len)
-  tree.sh.syms.add PackedSym(kind: kind, name: name, flags: {}, magic: mNone, info: info)
-
 proc newTreeFrom*(old: PackedTree): PackedTree =
   result.nodes = @[]
-  result.sh = old.sh
+  when false: result.sh = old.sh
 
-proc litIdFromName*(tree: PackedTree; name: string): LitId =
-  result = tree.sh.strings.getOrIncl(name)
+when false:
+  proc declareSym*(tree: var PackedTree; kind: TSymKind;
+                  name: LitId; info: PackedLineInfo): SymId =
+    result = SymId(tree.sh.syms.len)
+    tree.sh.syms.add PackedSym(kind: kind, name: name, flags: {}, magic: mNone, info: info)
 
-proc add*(tree: var PackedTree; kind: TNodeKind; token: string; info: PackedLineInfo) =
-  tree.nodes.add PackedNode(kind: kind, info: info,
-                            operand: int32 getOrIncl(tree.sh.strings, token))
+  proc litIdFromName*(tree: PackedTree; name: string): LitId =
+    result = tree.sh.strings.getOrIncl(name)
 
-proc add*(tree: var PackedTree; kind: TNodeKind; info: PackedLineInfo) =
-  tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
+  proc add*(tree: var PackedTree; kind: TNodeKind; token: string; info: PackedLineInfo) =
+    tree.nodes.add PackedNode(kind: kind, info: info,
+                              operand: int32 getOrIncl(tree.sh.strings, token))
+
+  proc add*(tree: var PackedTree; kind: TNodeKind; info: PackedLineInfo) =
+    tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
 
 proc throwAwayLastNode*(tree: var PackedTree) =
   tree.nodes.setLen(tree.nodes.len-1)
@@ -199,11 +200,12 @@ proc copyTree*(dest: var PackedTree; tree: PackedTree; n: NodePos) =
   for i in 0..<L:
     dest.nodes[d+i] = tree.nodes[pos+i]
 
-proc copySym*(dest: var PackedTree; tree: PackedTree; s: SymId): SymId =
-  result = SymId(dest.sh.syms.len)
-  assert int(s) < tree.sh.syms.len
-  let oldSym = tree.sh.syms[s.int]
-  dest.sh.syms.add oldSym
+when false:
+  proc copySym*(dest: var PackedTree; tree: PackedTree; s: SymId): SymId =
+    result = SymId(dest.sh.syms.len)
+    assert int(s) < tree.sh.syms.len
+    let oldSym = tree.sh.syms[s.int]
+    dest.sh.syms.add oldSym
 
 type
   PatchPos = distinct int
@@ -342,8 +344,9 @@ proc ithSon*(tree: PackedTree; n: NodePos; i: int): NodePos =
       inc count
   assert false, "node has no i-th child"
 
-proc `@`*(tree: PackedTree; lit: LitId): lent string {.inline.} =
-  tree.sh.strings[lit]
+when false:
+  proc `@`*(tree: PackedTree; lit: LitId): lent string {.inline.} =
+    tree.sh.strings[lit]
 
 template kind*(n: NodePos): TNodeKind = tree.nodes[n.int].kind
 template info*(n: NodePos): PackedLineInfo = tree.nodes[n.int].info
@@ -353,29 +356,30 @@ template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 
-proc strLit*(tree: PackedTree; n: NodePos): lent string =
-  assert n.kind == nkStrLit
-  result = tree.sh.strings[LitId tree.nodes[n.int].operand]
+when false:
+  proc strLit*(tree: PackedTree; n: NodePos): lent string =
+    assert n.kind == nkStrLit
+    result = tree.sh.strings[LitId tree.nodes[n.int].operand]
 
-proc strVal*(tree: PackedTree; n: NodePos): string =
-  assert n.kind == nkStrLit
-  result = tree.sh.strings[LitId tree.nodes[n.int].operand]
-  #result = cookedStrLit(raw)
+  proc strVal*(tree: PackedTree; n: NodePos): string =
+    assert n.kind == nkStrLit
+    result = tree.sh.strings[LitId tree.nodes[n.int].operand]
+    #result = cookedStrLit(raw)
 
-proc filenameVal*(tree: PackedTree; n: NodePos): string =
-  case n.kind
-  of nkStrLit:
-    result = strVal(tree, n)
-  of nkIdent:
-    result = tree.sh.strings[n.litId]
-  of nkSym:
-    result = tree.sh.strings[tree.sh.syms[int n.symId].name]
-  else:
-    result = ""
+  proc filenameVal*(tree: PackedTree; n: NodePos): string =
+    case n.kind
+    of nkStrLit:
+      result = strVal(tree, n)
+    of nkIdent:
+      result = tree.sh.strings[n.litId]
+    of nkSym:
+      result = tree.sh.strings[tree.sh.syms[int n.symId].name]
+    else:
+      result = ""
 
-proc identAsStr*(tree: PackedTree; n: NodePos): lent string =
-  assert n.kind == nkIdent
-  result = tree.sh.strings[LitId tree.nodes[n.int].operand]
+  proc identAsStr*(tree: PackedTree; n: NodePos): lent string =
+    assert n.kind == nkIdent
+    result = tree.sh.strings[LitId tree.nodes[n.int].operand]
 
 const
   externIntLit* = {nkCharLit,
@@ -393,7 +397,7 @@ const
   externUIntLit* = {nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit}
   directIntLit* = nkInt32Lit
 
-proc toString*(tree: PackedTree; n: NodePos; nesting: int;
+proc toString*(tree: PackedTree; n: NodePos; sh: Shared; nesting: int;
                result: var string) =
   let pos = n.int
   if result.len > 0 and result[^1] notin {' ', '\n'}:
@@ -404,46 +408,47 @@ proc toString*(tree: PackedTree; n: NodePos; nesting: int;
   of nkNone, nkEmpty, nkNilLit, nkType: discard
   of nkIdent, nkStrLit..nkTripleStrLit:
     result.add " "
-    result.add tree.sh.strings[LitId tree.nodes[pos].operand]
+    result.add sh.strings[LitId tree.nodes[pos].operand]
   of nkSym:
     result.add " "
-    result.add tree.sh.strings[tree.sh.syms[tree.nodes[pos].operand].name]
+    result.add sh.strings[sh.syms[tree.nodes[pos].operand].name]
   of directIntLit:
     result.add " "
     result.addInt tree.nodes[pos].operand
   of externSIntLit:
     result.add " "
-    result.addInt tree.sh.integers[LitId tree.nodes[pos].operand]
+    result.addInt sh.integers[LitId tree.nodes[pos].operand]
   of externUIntLit:
     result.add " "
-    result.add $cast[uint64](tree.sh.integers[LitId tree.nodes[pos].operand])
+    result.add $cast[uint64](sh.integers[LitId tree.nodes[pos].operand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '
     for child in sonsReadonly(tree, n):
-      toString(tree, child, nesting + 1, result)
+      toString(tree, child, sh, nesting + 1, result)
     result.add "\n"
     for i in 1..nesting*2: result.add ' '
     result.add ")"
     #for i in 1..nesting*2: result.add ' '
 
 
-proc toString*(tree: PackedTree; n: NodePos): string =
+proc toString*(tree: PackedTree; n: NodePos; sh: Shared): string =
   result = ""
-  toString(tree, n, 0, result)
+  toString(tree, n, sh, 0, result)
 
-proc debug*(tree: PackedTree) =
-  stdout.write toString(tree, NodePos 0)
+proc debug*(tree: PackedTree; sh: Shared) =
+  stdout.write toString(tree, NodePos 0, sh)
 
-proc identIdImpl(tree: PackedTree; n: NodePos): LitId =
-  if n.kind == nkIdent:
-    result = n.litId
-  elif n.kind == nkSym:
-    result = tree.sh.syms[int n.symId].name
-  else:
-    result = LitId(0)
+when false:
+  proc identIdImpl(tree: PackedTree; n: NodePos): LitId =
+    if n.kind == nkIdent:
+      result = n.litId
+    elif n.kind == nkSym:
+      result = tree.sh.syms[int n.symId].name
+    else:
+      result = LitId(0)
 
-template identId*(n: NodePos): LitId = identIdImpl(tree, n)
+  template identId*(n: NodePos): LitId = identIdImpl(tree, n)
 
 template copyInto*(dest, n, body) =
   let patchPos = prepare(dest, tree, n)
@@ -455,17 +460,18 @@ template copyIntoKind*(dest, kind, info, body) =
   body
   patch dest, patchPos
 
-proc hasPragma*(tree: PackedTree; n: NodePos; pragma: string): bool =
-  let litId = tree.sh.strings.getKeyId(pragma)
-  if litId == LitId(0):
-    return false
-  assert n.kind == nkPragma
-  for ch0 in sonsReadonly(tree, n):
-    if ch0.kind == nkExprColonExpr:
-      if ch0.firstSon.identId == litId:
+when false:
+  proc hasPragma*(tree: PackedTree; n: NodePos; pragma: string): bool =
+    let litId = tree.sh.strings.getKeyId(pragma)
+    if litId == LitId(0):
+      return false
+    assert n.kind == nkPragma
+    for ch0 in sonsReadonly(tree, n):
+      if ch0.kind == nkExprColonExpr:
+        if ch0.firstSon.identId == litId:
+          return true
+      elif ch0.identId == litId:
         return true
-    elif ch0.identId == litId:
-      return true
 
 proc getNodeId*(tree: PackedTree): NodeId {.inline.} = NodeId tree.nodes.len
 

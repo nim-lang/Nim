@@ -39,7 +39,6 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.sh = Shared()
   c.thisModule = m.itemId.module
   c.config = config
-  c.m.topLevel.sh = c.sh
   c.m.bodies = newTreeFrom(c.m.topLevel)
   c.m.hidden = newTreeFrom(c.m.topLevel)
 
