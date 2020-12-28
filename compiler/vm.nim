@@ -1153,14 +1153,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
-      if rb == 1:
-        msgWriteln(c.config, regs[ra].node.strVal, {msgStdout})
+      template fn(s) =
+        flushDot(c.config, stderr)
+        msgWriteln(c.config, s, {msgStdout})
+      if rb == 1: fn(regs[ra].node.strVal)
       else:
         var outp = ""
         for i in ra..ra+rb-1:
           #if regs[i].kind != rkNode: debug regs[i]
           outp.add(regs[i].node.strVal)
-        msgWriteln(c.config, outp, {msgStdout})
+        fn(outp)
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
