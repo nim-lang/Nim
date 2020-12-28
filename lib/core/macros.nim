@@ -595,6 +595,8 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
     check 1 + 1 == 2
 
   runnableExamples:
+    # example showing how to define a symbol that requires backtick without
+    # quoting it.
     var destroyCalled = false
     macro bar() =
       let s = newTree(nnkAccQuoted, ident"=destroy")
