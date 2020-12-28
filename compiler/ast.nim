@@ -1074,7 +1074,10 @@ template id*(a: PIdObj): int =
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
 type
-  IdGenerator* = ref ItemId # unfortunately, we really need the 'shared mutable' aspect here.
+  IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
+    module*: int32
+    symId*: int32
+    typeId*: int32
 
 proc hash*(x: ItemId): Hash =
   var h: Hash = hash(x.module)
@@ -1086,11 +1089,20 @@ const
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, item: m.itemId.item)
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
 
-proc nextId*(x: IdGenerator): ItemId {.inline.} =
-  inc x.item
-  result = x[]
+proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+  inc x.symId
+  result = ItemId(module: x.module, item: x.symId)
+
+proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
+  inc x.typeId
+  result = ItemId(module: x.module, item: x.typeId)
+
+when false:
+  proc nextId*(x: IdGenerator): ItemId {.inline.} =
+    inc x.item
+    result = x[]
 
 when false:
   proc storeBack*(dest: var IdGenerator; src: IdGenerator) {.inline.} =
@@ -1835,7 +1847,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, nextId(idgen), typ.owner)
+    result = newType(kind, nextTypeId(idgen), typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
@@ -1843,7 +1855,7 @@ proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, nextId(idgen), typ.owner)
+    result = newType(tyRef, nextTypeId(idgen), typ.owner)
     rawAddSon(result, typ)
 
 proc toObject*(typ: PType): PType =

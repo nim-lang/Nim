@@ -124,8 +124,8 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
     else:
-      result = newType(tyTypeDesc, nextId(c.idgen), a.owner)
-      rawAddSon(result, newType(tyNone, nextId(c.idgen), a.owner))
+      result = newType(tyTypeDesc, nextTypeId(c.idgen), a.owner)
+      rawAddSon(result, newType(tyNone, nextTypeId(c.idgen), a.owner))
   elif b.kind in {tyArray, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
@@ -137,7 +137,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
       let aEmpty = isEmptyContainer(a[i])
       let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
-        if nt.isNil: nt = copyType(a, nextId(c.idgen), a.owner)
+        if nt.isNil: nt = copyType(a, nextTypeId(c.idgen), a.owner)
         nt[i] = if aEmpty: b[i] else: a[i]
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x
@@ -176,7 +176,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
       # ill-formed AST, no need for additional tyRef/tyPtr
       if k != tyNone and x.kind != tyGenericInst:
         let r = result
-        result = newType(k, nextId(c.idgen), r.owner)
+        result = newType(k, nextTypeId(c.idgen), r.owner)
         result.addSonSkipIntLit(r, c.idgen)
 
 proc endsInNoReturn(n: PNode): bool =
@@ -193,7 +193,7 @@ proc commonType*(c: PContext; x: PType, y: PNode): PType =
   commonType(c, x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(c, n), nextId c.idgen, getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -216,7 +216,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(c, n), nextId c.idgen, getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c, n), nextSymId c.idgen, getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -255,7 +255,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
 proc symFromType(c: PContext; t: PType, info: TLineInfo): PSym =
   if t.sym != nil: return t.sym
-  result = newSym(skType, getIdent(c.cache, "AnonType"), nextId c.idgen, t.owner, info)
+  result = newSym(skType, getIdent(c.cache, "AnonType"), nextSymId c.idgen, t.owner, info)
   result.flags.incl sfAnon
   result.typ = t
 

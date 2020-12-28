@@ -127,7 +127,7 @@ template storeNode(dest, src, field) =
 
 proc toPackedType(t: PType; c: var PackedEncoder): TypeId =
   ## serialize a ptype
-  if t.isNil: return TypeId(-1)
+  if t.isNil: return nilTypeId
 
   # short-circuit if we already have the TypeId
   result = getOrDefault(c.typeMap, t.uniqueId, TypeId(-1))

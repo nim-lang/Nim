@@ -219,7 +219,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextId a.c.idgen,
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
                                           a.owner, reason.info, {})
 
 when true:

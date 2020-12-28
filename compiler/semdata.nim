@@ -297,10 +297,10 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextId(idgen), owner)
+  result = newType(tyPtr, nextTypeId(idgen), owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
@@ -328,7 +328,7 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, nextId(idgen), owner)
+    result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
@@ -344,7 +344,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)
 
@@ -355,12 +355,12 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
                       idgen: IdGenerator): PType =
-  result = newType(kind, nextId(idgen), owner)
+  result = newType(kind, nextTypeId(idgen), owner)
   result.sons = sons
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =

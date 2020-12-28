@@ -176,7 +176,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), nextSymId(g.idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
@@ -190,7 +190,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
-  result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
+  result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()

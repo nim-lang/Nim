@@ -44,11 +44,19 @@ const
 
 type
   SymId* = distinct int32
-  TypeId* = distinct int32
   ModuleId* = distinct int32
   NodePos* = distinct int
 
   NodeId* = distinct int32
+
+  PackedItemId* = object
+    module*: LitId       # 0 if it's this module
+    item*: int32         # same as the in-memory representation
+
+  TypeId* = PackedItemId
+
+const
+  nilTypeId* = PackedItemId(module: LitId(0), item: -1.int32)
 
 const
   emptyNodeId* = NodeId(-1)
@@ -150,7 +158,7 @@ proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}
 
 proc `==`*(a, b: NodePos): bool {.borrow.}
-proc `==`*(a, b: TypeId): bool {.borrow.}
+#proc `==`*(a, b: TypeId): bool {.borrow.}
 proc `==`*(a, b: ModuleId): bool {.borrow.}
 
 proc newTreeFrom*(old: PackedTree): PackedTree =
