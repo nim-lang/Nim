@@ -15,7 +15,7 @@ func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
 
-func toCstring*(this: JsBigInt; radix: int): cstring {.importjs: "#.$1(#)".} =
+func toCstring*(this: JsBigInt; radix: int): cstring {.importjs: "#.toString(#)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
   runnableExamples:
     doAssert big"2147483647".toCstring(2) == "1111111111111111111111111111111".cstring
@@ -28,13 +28,13 @@ func `$`*(this: JsBigInt): string =
   runnableExamples: doAssert $big"1024" == "1024"
   $toCstring(this)
 
-func toInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
+func toInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asIntN(#, #)".} =
   ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
     doAssert toInt(32, big"2147483647") == big"2147483647"
 
-func toUint*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.$1(#, #)".} =
+func toUint*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asUintN(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
     doAssert toUint(32, big"2147483647") == big"2147483647"
@@ -103,46 +103,41 @@ func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(big"10101010101") == big"-10101010101"
 
-func inc*(a: var JsBigInt; b = big"1") {.importjs: "([#][0][0] += #)".} =
+func inc*(a: var JsBigInt; b = 1) {.importjs: "([#][0][0] += BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
-    let big2: JsBigInt = big"2"
-    inc big1, big2
+    inc big1, 2
     doAssert big1 == big"3"
 
-func dec*(a: var JsBigInt; b = big"1") {.importjs: "([#][0][0] -= #)".} =
+func dec*(a: var JsBigInt; b = 1) {.importjs: "([#][0][0] -= BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
-    let big2: JsBigInt = big"2"
-    dec big1, big2
+    dec big1, 2
     doAssert big1 == big"-1"
 
-func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `+=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
-    let big2: JsBigInt = big"2"
-    big1 += big2
+    big1 += 2
     doAssert big1 == big"3"
 
-func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `-=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = big"1"
-    let big2: JsBigInt = big"2"
-    big1 -= big2
+    big1 -= 2
     doAssert big1 == big"-1"
 
-func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `*=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = big"2"
-    let big2: JsBigInt = big"4"
-    big1 *= big2
+    big1 *= 4
     doAssert big1 == big"8"
 
-func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
+func `/=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] /= BigInt(#))".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = big"11"
-    big1 /= big"2"
+    big1 /= 2
     doAssert big1 == big"5"
 
 proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
