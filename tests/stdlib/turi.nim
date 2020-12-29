@@ -10,24 +10,23 @@ discard """
 # import std/uri # pending https://github.com/nim-lang/Nim/pull/11865
 include uri # because of `removeDotSegments`
 from std/sequtils import toSeq
-# template main() =
-proc main() =
-  block:
-    let org = "udp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
-    let url = parseUri(org)
-    doAssert url.hostname == "2001:0db8:85a3:0000:0000:8a2e:0370:7334" # true
-    let newUrl = parseUri($url)
-    doAssert newUrl.hostname == "2001:0db8:85a3:0000:0000:8a2e:0370:7334" # true
 
+template main() =
+  block: # encodeUrl, decodeUrl
+    const test1 = "abc\L+def xyz"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+    doAssert decodeUrl(encodeUrl(test1)) == test1
+    doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
+    doAssert decodeUrl(encodeUrl(test1, false), false) == test1
+    doAssert decodeUrl(encodeUrl(test1)) == test1
 
-  block:
+  block: # parseUri
     block:
-      const test1 = "abc\L+def xyz"
-      doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
-      doAssert decodeUrl(encodeUrl(test1)) == test1
-      doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
-      doAssert decodeUrl(encodeUrl(test1, false), false) == test1
-      doAssert decodeUrl(encodeUrl(test1)) == test1
+      let org = "udp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
+      let url = parseUri(org)
+      doAssert url.hostname == "2001:0db8:85a3:0000:0000:8a2e:0370:7334" # true
+      let newUrl = parseUri($url)
+      doAssert newUrl.hostname == "2001:0db8:85a3:0000:0000:8a2e:0370:7334" # true
 
     block:
       let str = "http://localhost"
@@ -129,7 +128,7 @@ proc main() =
       doAssert test.port == ""
       doAssert test.path == "/foo/bar/baz.txt"
 
-    # Combine tests
+  block: # combine
     block:
       let concat = combine(parseUri("http://google.com/foo/bar/"), parseUri("baz"))
       doAssert concat.path == "/foo/bar/baz"
@@ -167,7 +166,7 @@ proc main() =
                            parseUri("baz"))
       doAssert concat.path == "/foo/test/bar/baz"
 
-    # `/` tests
+  block: # `/`
     block:
       let test = parseUri("http://example.com/foo") / "bar/asd"
       doAssert test.path == "/foo/bar/asd"
@@ -176,130 +175,127 @@ proc main() =
       let test = parseUri("http://example.com/foo/") / "/bar/asd"
       doAssert test.path == "/foo/bar/asd"
 
-    # block: # removeDotSegments
-    #   doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-    #   doAssert removeDotSegments("") == "" # empty test
+  block: # removeDotSegments
+    when false: # PRTEMP
+      doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
+      doAssert removeDotSegments("") == "" # empty test
 
-    # bug #3207
+  block: # bug #3207
+    doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
+
+  block: # bug #4959
+    let foo = parseUri("http://example.com") / "/baz"
+    doAssert foo.path == "/baz"
+
+  block: # bug found on stream 13/10/17
+    let foo = parseUri("http://localhost:9515") / "status"
+    doAssert $foo == "http://localhost:9515/status"
+
+  block: # bug #6649 #6652
+    var foo = parseUri("http://example.com")
+    foo.hostname = "example.com"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.port = "8000"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com:8000/baz"
+
+    foo = parseUri("file:/dir/file")
+    foo.path = "relative"
+    doAssert $foo == "file:relative"
+
+  block: # isAbsolute tests
+    doAssert "www.google.com".parseUri().isAbsolute() == false
+    doAssert "http://www.google.com".parseUri().isAbsolute() == true
+    doAssert "file:/dir/file".parseUri().isAbsolute() == true
+    doAssert "file://localhost/dir/file".parseUri().isAbsolute() == true
+    doAssert "urn:ISSN:1535-3613".parseUri().isAbsolute() == true
+
+    # path-relative URL *relative
+    doAssert "about".parseUri().isAbsolute == false
+    doAssert "about/staff.html".parseUri().isAbsolute == false
+    doAssert "about/staff.html?".parseUri().isAbsolute == false
+    doAssert "about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # absolute-path-relative URL *relative
+    doAssert "/".parseUri().isAbsolute == false
+    doAssert "/about".parseUri().isAbsolute == false
+    doAssert "/about/staff.html".parseUri().isAbsolute == false
+    doAssert "/about/staff.html?".parseUri().isAbsolute == false
+    doAssert "/about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # scheme-relative URL *relative
+    doAssert "//username:password@example.com:8888".parseUri().isAbsolute == false
+    doAssert "//username@example.com".parseUri().isAbsolute == false
+    doAssert "//example.com".parseUri().isAbsolute == false
+    doAssert "//example.com/".parseUri().isAbsolute == false
+    doAssert "//example.com/about".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html?".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # absolute URL *absolute
+    doAssert "https://username:password@example.com:8888".parseUri().isAbsolute == true
+    doAssert "https://username@example.com".parseUri().isAbsolute == true
+    doAssert "https://example.com".parseUri().isAbsolute == true
+    doAssert "https://example.com/".parseUri().isAbsolute == true
+    doAssert "https://example.com/about".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  block: # encodeQuery tests
+    doAssert encodeQuery({:}) == ""
+    doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
+    doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus = false) == "foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": ""}) == "foo"
+    doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
+
     block:
-      doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
+      var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
+      var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
+      doAssert foo == foo1
 
-    # bug #4959
     block:
-      let foo = parseUri("http://example.com") / "/baz"
-      doAssert foo.path == "/baz"
+      var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
+      var foo1 = parseUri("http://example.com/foo?do=do&bar")
+      doAssert foo == foo1
 
-    # bug found on stream 13/10/17
-    block:
-      let foo = parseUri("http://localhost:9515") / "status"
-      doAssert $foo == "http://localhost:9515/status"
-
-    # bug #6649 #6652
-    block:
-      var foo = parseUri("http://example.com")
-      foo.hostname = "example.com"
-      foo.path = "baz"
-      doAssert $foo == "http://example.com/baz"
-
-      foo.hostname = "example.com/"
-      foo.path = "baz"
-      doAssert $foo == "http://example.com/baz"
-
-      foo.hostname = "example.com"
-      foo.path = "/baz"
-      doAssert $foo == "http://example.com/baz"
-
-      foo.hostname = "example.com/"
-      foo.path = "/baz"
-      doAssert $foo == "http://example.com/baz"
-
-      foo.hostname = "example.com/"
-      foo.port = "8000"
-      foo.path = "baz"
-      doAssert $foo == "http://example.com:8000/baz"
-
-      foo = parseUri("file:/dir/file")
-      foo.path = "relative"
-      doAssert $foo == "file:relative"
-
-    # isAbsolute tests
-    block:
-      doAssert "www.google.com".parseUri().isAbsolute() == false
-      doAssert "http://www.google.com".parseUri().isAbsolute() == true
-      doAssert "file:/dir/file".parseUri().isAbsolute() == true
-      doAssert "file://localhost/dir/file".parseUri().isAbsolute() == true
-      doAssert "urn:ISSN:1535-3613".parseUri().isAbsolute() == true
-
-      # path-relative URL *relative
-      doAssert "about".parseUri().isAbsolute == false
-      doAssert "about/staff.html".parseUri().isAbsolute == false
-      doAssert "about/staff.html?".parseUri().isAbsolute == false
-      doAssert "about/staff.html?parameters".parseUri().isAbsolute == false
-
-      # absolute-path-relative URL *relative
-      doAssert "/".parseUri().isAbsolute == false
-      doAssert "/about".parseUri().isAbsolute == false
-      doAssert "/about/staff.html".parseUri().isAbsolute == false
-      doAssert "/about/staff.html?".parseUri().isAbsolute == false
-      doAssert "/about/staff.html?parameters".parseUri().isAbsolute == false
-
-      # scheme-relative URL *relative
-      doAssert "//username:password@example.com:8888".parseUri().isAbsolute == false
-      doAssert "//username@example.com".parseUri().isAbsolute == false
-      doAssert "//example.com".parseUri().isAbsolute == false
-      doAssert "//example.com/".parseUri().isAbsolute == false
-      doAssert "//example.com/about".parseUri().isAbsolute == false
-      doAssert "//example.com/about/staff.html".parseUri().isAbsolute == false
-      doAssert "//example.com/about/staff.html?".parseUri().isAbsolute == false
-      doAssert "//example.com/about/staff.html?parameters".parseUri().isAbsolute == false
-
-      # absolute URL *absolute
-      doAssert "https://username:password@example.com:8888".parseUri().isAbsolute == true
-      doAssert "https://username@example.com".parseUri().isAbsolute == true
-      doAssert "https://example.com".parseUri().isAbsolute == true
-      doAssert "https://example.com/".parseUri().isAbsolute == true
-      doAssert "https://example.com/about".parseUri().isAbsolute == true
-      doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
-      doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
-      doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
-
-    # encodeQuery tests
-    block:
-      doAssert encodeQuery({:}) == ""
-      doAssert encodeQuery({"foo": "bar"}) == "foo=bar"
-      doAssert encodeQuery({"foo": "bar & baz"}) == "foo=bar+%26+baz"
-      doAssert encodeQuery({"foo": "bar & baz"}, usePlus = false) == "foo=bar%20%26%20baz"
-      doAssert encodeQuery({"foo": ""}) == "foo"
-      doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
-      doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
-      doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
-
-      block:
-        var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
-        var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
-        doAssert foo == foo1
-
-      block:
-        var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
-        var foo1 = parseUri("http://example.com/foo?do=do&bar")
-        doAssert foo == foo1
-
-    block dataUriBase64:
-      doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
-      doAssert getDataUri(" ", "text/plain") == "data:text/plain;charset=utf-8;base64,IA=="
-      doAssert getDataUri("c\xf7>", "text/plain") == "data:text/plain;charset=utf-8;base64,Y/c+"
-      doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-      doAssert getDataUri("leasure.", "text/plain") == "data:text/plain;charset=utf-8;base64,bGVhc3VyZS4="
-      doAssert getDataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
-      doAssert(getDataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
-        "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
+  block: # getDataUri, dataUriBase64
+    doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
+    doAssert getDataUri(" ", "text/plain") == "data:text/plain;charset=utf-8;base64,IA=="
+    doAssert getDataUri("c\xf7>", "text/plain") == "data:text/plain;charset=utf-8;base64,Y/c+"
+    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+    doAssert getDataUri("leasure.", "text/plain") == "data:text/plain;charset=utf-8;base64,bGVhc3VyZS4="
+    doAssert getDataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
+    doAssert(getDataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
+  block: # getDataUri, dataUriBase64
       doAssert(getDataUri("""The present is theirs
-        The future, for which I really worked, is mine.""", "text/plain") ==
-        "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
+      The future, for which I really worked, is mine.""", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
 
-    block decodeQuery:
-      doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
-      doAssertRaises(UriParseError):
-        discard toSeq(decodeQuery("a=1&b=2c=6"))
+  block: # decodeQuery
+    doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
+    doAssertRaises(UriParseError):
+      discard toSeq(decodeQuery("a=1&b=2c=6"))
 
+static: main()
 main()
