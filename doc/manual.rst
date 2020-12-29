@@ -7065,7 +7065,7 @@ language for object types:
   :test: "nim cpp $1"
 
   type
-    StdMap [K, V] {.importcpp: "std::map", header: "<map>".} = object
+    StdMap[K, V] {.importcpp: "std::map", header: "<map>".} = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
     importcpp: "#[#] = #", header: "<map>".}
 
