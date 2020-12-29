@@ -475,9 +475,11 @@ template addExport*(c: PContext; s: PSym) =
   addExport(c.graph, c.module, s)
 
 proc storeRodNode*(c: PContext, n: PNode) =
-  toPackedNodeTopLevel(n, c.encoder)
+  when true:
+    toPackedNodeTopLevel(n, c.encoder)
 
 proc saveRodFile*(c: PContext) =
-  let filename = changeFileExt(completeGeneratedFilePath(c.config,
-    withPackageName(c.config, c.filename.AbsoluteFile)), RodExt)
-  saveRodFile(filename, c.encoder)
+  when true:
+    let filename = changeFileExt(completeGeneratedFilePath(c.config,
+      withPackageName(c.config, c.filename.AbsoluteFile)), RodExt)
+    saveRodFile(filename, c.encoder)

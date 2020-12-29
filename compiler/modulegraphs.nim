@@ -9,7 +9,7 @@
 
 ## This module implements the module graph data structure. The module graph
 ## represents a complete Nim project. Single modules can either be kept in RAM
-## or stored in a Sqlite database.
+## or stored in a rod-file.
 ##
 ## The caching of modules is critical for 'nimsuggest' and is tricky to get
 ## right. If module E is being edited, we need autocompletion (and type
