@@ -36,7 +36,7 @@
 
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
-- Added `cmpMem` in system
+- Added `cmpMem` to `system`
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
