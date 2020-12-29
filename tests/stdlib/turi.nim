@@ -1,6 +1,5 @@
 discard """
   targets:  "c js"
-  timeout:  60.0
   joinable: false # because of `include uri`
 """
 
