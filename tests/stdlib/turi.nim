@@ -1,7 +1,6 @@
 discard """
   targets:  "c js"
   timeout:  60.0
-  matrix: "--styleCheck:hint --panics:on"
   joinable: false # because of `include uri`
 """
 
