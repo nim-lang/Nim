@@ -496,6 +496,9 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   assert(node.kind == JArray)
   return node.elems[index]
 
+proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline.} =
+  `[]`(node, node.len - int(index))
+
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
