@@ -173,10 +173,8 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(NaN, 0.0).isNaN
     doAssert copySign(NaN, -0.0).isNaN
 
-    when nimvm: # fails in VM
-      discard
-    else:
-      doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+    # fails in VM and JS backend
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
 
   # TODO use signbit for examples
   template impl() =

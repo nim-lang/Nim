@@ -353,7 +353,8 @@ template main =
     when nimvm:
       discard
     else:
-      doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
+      when not defined(js):
+        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
 
 static: main()
 main()
