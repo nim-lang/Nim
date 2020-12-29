@@ -1737,7 +1737,8 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
   ##
   ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, flags)
-  if not isNil(contentParser):
+  if not isNil(contentParser) and
+      (currentTok(p).kind != tkIndent or indFollows(p)):
     var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
     if nextIndent <= currInd(p):  # parse only this line
       nextIndent = currentTok(p).col

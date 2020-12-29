@@ -535,6 +535,17 @@ Test1
     doAssert count(output1, "<ul ") == 1
     doAssert count(output1, "</ul>") == 1
 
+  test "Nim (RST extension) code-block":
+    # check that presence of fields doesn't consume the following text as
+    # its code (which is a literal block)
+    let input0 = dedent """
+      .. code-block:: nim
+         :number-lines: 0
+
+      Paragraph1"""
+    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    doAssert "<p>Paragraph1</p>" in output0
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
