@@ -497,6 +497,16 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   return node.elems[index]
 
 proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
+  ## Gets the node at `array.len-i` in an array through the `^` operator.
+  ##
+  ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
+  runnableExamples:
+    let
+      j = parseJson("[1,2,3,4,5]")
+
+    doAssert j[^1].getInt == 5
+    doAssert j[^2].getInt == 4
+
   `[]`(node, node.len - int(index))
 
 proc hasKey*(node: JsonNode, key: string): bool =

@@ -77,6 +77,8 @@
 - Added `euclDiv` and `euclMod` to `math`.
 - Added `httpcore.is1xx` and missing HTTP codes.
 
+- Added `BackwardsIndex` overload for `JsonNode`.
+
 
 ## Language changes
 
