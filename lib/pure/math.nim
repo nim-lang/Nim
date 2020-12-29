@@ -160,17 +160,13 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Returns a value with the magnitude of `x` and the sign of `y`;
   ## this works even if x or y are NaN or zero, both of which can carry a sign.
   runnableExamples:
-    doAssert copySign(10.0, -1.0) == -10.0
-    doAssert copySign(-10.0, -1.0) == -10.0
-    doAssert copySign(-10.0, 1.0) == 10.0
-    doAssert copySign(10'f32, -1.0) == -10.0
-
-    doAssert copySign(Inf, -1.0) == -Inf
-    doAssert copySign(-Inf, 1.0) == Inf
     doAssert copySign(1.0, -0.0) == -1.0
     doAssert copySign(0.0, -0.0) == -0.0
     doAssert copySign(-1.0, 0.0) == 1.0
     doAssert copySign(10.0, 0.0) == 10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
     doAssert copySign(-1.0, NaN) == 1.0
     doAssert copySign(10.0, NaN) == 10.0
 
