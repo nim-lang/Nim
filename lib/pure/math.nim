@@ -62,8 +62,8 @@ when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
-  proc c_copysign(x, y: float32): float32 {.importc: "copysignf", header: "math.h".}
-  proc c_copysign(x, y: float64): float64 {.importc: "copysign", header: "math.h".}
+  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
 
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -176,22 +176,17 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(NaN, 0.0).isNaN
     doAssert copySign(NaN, -0.0).isNaN
   template impl() =
-    if y.isNaN:
+    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
       result = abs(x)
-    else:
-      if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
-        result = abs(x)
-      else:
-        result = -abs(x)
+    elif y <= 0.0:
+      result = -abs(x)
+    else: # must be NaN
+      result = abs(x)
 
-  when nimvm:
-    impl()
+  when defined(js): impl()
   else:
-    when not defined(js):
-      result = c_copysign(x, y)
-    else:
-      impl()
-
+    when nimvm: impl()
+    else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
