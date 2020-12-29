@@ -537,7 +537,7 @@ Test1
 
   test "Nim (RST extension) code-block":
     # check that presence of fields doesn't consume the following text as
-    # its code (whic is a literal block)
+    # its code (which is a literal block)
     let input0 = dedent """
       .. code-block:: nim
          :number-lines: 0
