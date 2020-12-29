@@ -157,7 +157,8 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     else: result = c_isnan(x)
 
 func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
-  ## Returns a value with the magnitude of `x` and the sign of `y`.
+  ## Returns a value with the magnitude of `x` and the sign of `y`;
+  ## this works even if x or y are NaN or zero, both of which can carry a sign.
   runnableExamples:
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-10.0, -1.0) == -10.0
