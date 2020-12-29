@@ -7,9 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables, md5, sequtils, intsets]
+import std / [hashes, tables, intsets]
 import packed_ast, bitabs
 import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes, pathutils]
+
+from std / os import removeFile
 
 when not defined(release): import ".." / astalgo # debug()
 
@@ -20,6 +22,7 @@ type
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
     #producedGenerics*: Table[GenericKey, SymId]
+    sh*: Shared
 
   PackedEncoder* = object
     m: PackedModule
@@ -31,12 +34,11 @@ type
     pendingSyms*: seq[PSym]
     typeMarker*: IntSet #Table[ItemId, TypeId]  # ItemId.item -> TypeId
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
-    sh: Shared
     config*: ConfigRef
 
 proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   ## setup a context for serializing to packed ast
-  c.sh = Shared()
+  c.m.sh = Shared()
   c.thisModule = m.itemId.module
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
@@ -58,11 +60,11 @@ proc flush(c: var PackedEncoder) =
 
 proc toLitId(x: string; c: var PackedEncoder): LitId =
   ## store a string as a literal
-  result = getOrIncl(c.sh.strings, x)
+  result = getOrIncl(c.m.sh.strings, x)
 
 proc toLitId(x: BiggestInt; c: var PackedEncoder): LitId =
   ## store an integer as a literal
-  result = getOrIncl(c.sh.integers, x)
+  result = getOrIncl(c.m.sh.integers, x)
 
 proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
   ## store a file index as a literal
@@ -72,7 +74,7 @@ proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
     result = c.filenames.getOrDefault(x)
     if result == LitId(0):
       let p = msgs.toFullPath(c.config, x)
-      result = getOrIncl(c.sh.strings, p)
+      result = getOrIncl(c.m.sh.strings, p)
       c.filenames[x] = result
     c.lastFile = x
     c.lastLit = result
@@ -132,8 +134,8 @@ proc toPackedType(t: PType; c: var PackedEncoder): PackedItemId =
     return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c), item: t.uniqueId.item)
 
   if not c.typeMarker.containsOrIncl(t.uniqueId.item):
-    if t.uniqueId.item >= c.sh.types.len:
-      setLen c.sh.types, t.uniqueId.item+1
+    if t.uniqueId.item >= c.m.sh.types.len:
+      setLen c.m.sh.types, t.uniqueId.item+1
 
     var p = PackedType(kind: t.kind, flags: t.flags, callConv: t.callConv,
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
@@ -156,7 +158,7 @@ proc toPackedType(t: PType; c: var PackedEncoder): PackedItemId =
     p.owner = t.owner.safeItemId(c)
 
     # fill the reserved slot, nothing else:
-    c.sh.types[t.uniqueId.item] = p
+    c.m.sh.types[t.uniqueId.item] = p
 
   result = PackedItemId(module: LitId(0), item: t.uniqueId.item)
 
@@ -179,8 +181,8 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId =
     return PackedItemId(module: toLitId(s.itemId.module.FileIndex, c), item: s.itemId.item)
 
   if not c.symMarker.containsOrIncl(s.itemId.item):
-    if s.itemId.item >= c.sh.syms.len:
-      setLen c.sh.syms, s.itemId.item+1
+    if s.itemId.item >= c.m.sh.syms.len:
+      setLen c.m.sh.syms, s.itemId.item+1
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c), magic: s.magic,
       position: s.position, offset: s.offset, options: s.options,
@@ -205,7 +207,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId =
       p.cname = toLitId(s.cname, c)
 
     # fill the reserved slot, nothing else:
-    c.sh.syms[s.itemId.item] = p
+    c.m.sh.syms[s.itemId.item] = p
 
   result = PackedItemId(module: LitId(0), item: s.itemId.item)
 
@@ -232,7 +234,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
                             typeId: toPackedType(n.typ, c), info: info)
   of nkIdent:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(c.sh.strings, n.ident.s),
+                            operand: int32 getOrIncl(c.m.sh.strings, n.ident.s),
                             typeId: toPackedType(n.typ, c), info: info)
   of nkSym:
     toSymNode(n, ir, c)
@@ -242,15 +244,15 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
                             typeId: toPackedType(n.typ, c), info: info)
   of externIntLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(c.sh.integers, n.intVal),
+                            operand: int32 getOrIncl(c.m.sh.integers, n.intVal),
                             typeId: toPackedType(n.typ, c), info: info)
   of nkStrLit..nkTripleStrLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(c.sh.strings, n.strVal),
+                            operand: int32 getOrIncl(c.m.sh.strings, n.strVal),
                             typeId: toPackedType(n.typ, c), info: info)
   of nkFloatLit..nkFloat128Lit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(c.sh.floats, n.floatVal),
+                            operand: int32 getOrIncl(c.m.sh.floats, n.floatVal),
                             typeId: toPackedType(n.typ, c), info: info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
@@ -277,7 +279,66 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
   toPackedNodeIgnoreProcDefs(n, encoder)
   flush encoder
 
+const
+  RodVersion = 1
+  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
+            byte(0), byte(0), byte(0), byte(RodVersion)]
+
+type
+  RodSection = enum
+    versionSection = 0
+    stringsSection = 1
+    integersSection = 2
+    floatsSection = 3
+
+
+proc loadError(msg: string; filename: AbsoluteFile) =
+  echo "Error: ", msg, "\nloading file: ", filename.string
+
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule) =
+  m.sh = Shared()
+  var f = open(filename.string, fmRead)
+  try:
+    var thisCookie: array[cookie.len, byte]
+    if f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
+      loadError("cookie len mismatch", filename)
+    elif thisCookie != cookie:
+      loadError("cookie mismatch", filename)
+    else:
+      if f.load(m.sh.strings) and f.load(m.sh.integers) and f.store(m.sh.floats) and
+         f.loadSeq(m.topLevel.nodes) and f.loadSeq(m.bodies.nodes):
+        echo "success ", filename.string
+      else:
+        loadError("data section", filename)
+  finally:
+    close(f)
+
+proc storeError(f: File; filename: AbsoluteFile) {.noinline.} =
+  echo "Error: couldn't write to ", filename.string
+  close(f)
+  removeFile(filename.string)
+
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
+  var f = open(filename.string, fmWrite)
+  try:
+    if f.writeBytes(cookie, 0, cookie.len) != cookie.len:
+      storeError(f, filename)
+    else:
+      if f.store(encoder.m.sh.strings) and f.store(encoder.m.sh.integers) and f.store(encoder.m.sh.floats) and
+         f.storeSeq(encoder.m.topLevel.nodes) and f.storeSeq(encoder.m.bodies.nodes):
+        discard "success"
+      else:
+        storeError(f, filename)
+  except IOError:
+    storeError(f, filename)
+  # no 'finally' here is correct:
+  close(f)
+
+  when false:
+    # basic loader testing:
+    var m2: PackedModule
+    loadRodFile(filename, m2)
+
   when false:
     var local: int
     template countLocal(encoder: PackedEncoder; tab: typed): int =
@@ -301,6 +362,25 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
     echo "  int literals: ", encoder.sh.integers.len
     echo "  str literals: ", encoder.sh.strings.len
     echo ""
+
+# ----------------------------------------------------------------------------
+
+type
+  PackedDecoder* = object
+    m: PackedModule
+    thisModule*: int32
+    lastFile*: FileIndex # remember the last lookup entry.
+    lastLit*: LitId
+    filenames*: Table[FileIndex, LitId]
+    pendingTypes*: seq[PType]
+    pendingSyms*: seq[PSym]
+    typeMap*: Table[int32, PType]
+    symMap*: Table[int32, PSym]
+    sh: Shared
+    config*: ConfigRef
+
+
+
 
 when false:
   proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
