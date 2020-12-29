@@ -78,7 +78,7 @@ when not declared(readLineFromStdin):
     stdout.write(prompt)
     result = readLine(stdin, line)
     if not result:
-      stderr.write("\n")
+      stdout.write("\n")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
