@@ -2182,6 +2182,8 @@ when notJSnotNims:
       memTrackerOp("moveMem", dest, size)
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
+  proc cmpMem(a, b: pointer, size: Natural): int =
+    nimCmpMem(a, b, size)
 
 when not defined(js):
   proc cmp(x, y: string): int =
