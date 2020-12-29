@@ -1,10 +1,8 @@
 discard """
-  cmd:      "nim c -r --styleCheck:hint --panics:on $options $file"
-  targets:  "c"
-  nimout:   ""
-  action:   "run"
-  exitcode: 0
+  targets:  "c js"
   timeout:  60.0
+  matrix: "--styleCheck:hint --panics:on"
+  joinable: false # because of `include uri`
 """
 
 # import std/uri # pending https://github.com/nim-lang/Nim/pull/11865
@@ -176,9 +174,8 @@ template main() =
       doAssert test.path == "/foo/bar/asd"
 
   block: # removeDotSegments
-    when false: # PRTEMP
-      doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-      doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
+    doAssert removeDotSegments("") == "" # empty test
 
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
@@ -268,11 +265,11 @@ template main() =
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
 
+  block: # `?`
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}
       var foo1 = parseUri("http://example.com/foo?bar=1&baz=qux")
       doAssert foo == foo1
-
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
@@ -287,9 +284,7 @@ template main() =
     doAssert getDataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
     doAssert(getDataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
       "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
-  block: # getDataUri, dataUriBase64
-      doAssert(getDataUri("""The present is theirs
-      The future, for which I really worked, is mine.""", "text/plain") ==
+    doAssert(getDataUri("The present is theirs\n      The future, for which I really worked, is mine.", "text/plain") ==
       "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
 
   block: # decodeQuery
