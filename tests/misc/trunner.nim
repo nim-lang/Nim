@@ -12,7 +12,8 @@ from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
-from strutils import startsWith, strip
+from strutils import startsWith, strip, removePrefix
+from std/sugar import dup
 import "$lib/../compiler/nimpaths"
 
 proc isDots(a: string): bool =
@@ -20,6 +21,9 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
+  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
+    # useful when you want to turn only some hints on, and some common ones off.
+    # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
   mode =
     when defined(c): "c"
@@ -226,11 +230,8 @@ sub/mmain.idx""", context
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
-  # const defaultHintsOff = "--hint:successx:off --hint:Exec:off --hint:Link:off --hint:CC:off --hint:Conf:off --hint:processing"
-    # pending https://github.com/timotheecour/Nim/issues/453, simplify to:
-    # `--hints:off --hint:processing`
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
-    let cmd = fmt"""{nim} r --hint:successx:off --hint:Exec:off --hint:Link:off --hint:CC:off --hint:Conf:off --hint:processing -f --eval:"static: echo 1+1""""
+    let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
@@ -241,7 +242,7 @@ sub/mmain.idx""", context
     check3 lines[2] == ""
 
   block: # nim secret
-    let opt = "--hint:processing:on --hint:QuitCalled:off --hint:Conf:off"
+    let opt = fmt"{defaultHintsOff} --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""
@@ -253,7 +254,7 @@ sub/mmain.idx""", context
         let lines = outp.splitLines
         check3 lines.len == 5
         check3 lines[0].isDots
-        check3 lines[1] == "3"
+        check3 lines[1].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
         check3 lines[2].isDots
         check3 lines[3] == "ab"
         check3 lines[4] == ""
