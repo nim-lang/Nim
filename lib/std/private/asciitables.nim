@@ -1,6 +1,6 @@
 #[
-move to std/asciitables.nim once stable, or to a nimble paackage
-once compiler can depend on nimble
+move to std/asciitables.nim once stable, or to a fusion package
+once compiler can depend on fusion
 ]#
 
 type Cell* = object
