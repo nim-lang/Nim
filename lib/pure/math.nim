@@ -170,8 +170,15 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(-1.0, NaN) == 1.0
     doAssert copySign(10.0, NaN) == 10.0
 
-    doAssert copySign(NaN, 0.0).isNaN # TODO use signbit
+    doAssert copySign(NaN, 0.0).isNaN
     doAssert copySign(NaN, -0.0).isNaN
+
+    when nimvm: # fails in VM
+      discard
+    else:
+      doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
+  # TODO use signbit for examples
   template impl() =
     if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
       result = abs(x)

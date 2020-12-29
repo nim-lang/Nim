@@ -340,7 +340,7 @@ template main =
     doAssert copySign(10.0, NaN) == 10.0
     doAssert copySign(-1.0, -NaN) == 1.0
     doAssert copySign(10.0, -NaN) == 10.0
-  
+
     doAssert copySign(NaN, NaN).isNaN
     doAssert copySign(-NaN, NaN).isNaN
     doAssert copySign(NaN, -NaN).isNaN
@@ -349,6 +349,11 @@ template main =
     doAssert copySign(NaN, -0.0).isNaN
     doAssert copySign(-NaN, 0.0).isNaN
     doAssert copySign(-NaN, -0.0).isNaN
+
+    when nimvm:
+      discard
+    else:
+      doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
 
 static: main()
 main()
