@@ -182,7 +182,35 @@ when isMainModule:
 
   for i in 0 ..< 100_000:
     assert t.getOrIncl($i & "___" & $i).idToIdx == i + 4
+  echo "begin"
   echo t.vals.len
 
   echo t.vals[0]
   echo t.vals[1004]
+
+  echo "middle"
+
+  var tf: BiTable[float]
+
+  discard tf.getOrIncl(0.4)
+  discard tf.getOrIncl(16.4)
+  discard tf.getOrIncl(32.4)
+  echo getKeyId(tf, 32.4)
+
+  var f2 = open("testblah.bin", fmWrite)
+  echo store(f2, tf)
+  f2.close
+
+  var f1 = open("testblah.bin", fmRead)
+
+  var t2: BiTable[float]
+
+  echo f1.load(t2)
+  echo t2.vals.len
+
+  echo getKeyId(t2, 32.4)
+
+  echo "end"
+
+
+  f1.close

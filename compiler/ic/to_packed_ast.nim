@@ -279,18 +279,33 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
   toPackedNodeIgnoreProcDefs(n, encoder)
   flush encoder
 
+proc storePrim*(f: File; x: PackedType): bool =
+  for y in fields(x):
+    when y is seq:
+      result = storeSeq(f, y)
+    else:
+      result = storePrim(f, y)
+    if not result: break
+
+proc loadPrim*(f: File; x: var PackedType): bool =
+  for y in fields(x):
+    when y is seq:
+      result = loadSeq(f, y)
+    else:
+      result = loadPrim(f, y)
+    if not result: break
+
 const
   RodVersion = 1
   cookie = [byte(0), byte('R'), byte('O'), byte('D'),
             byte(0), byte(0), byte(0), byte(RodVersion)]
 
 type
-  RodSection = enum
+  RodSection = enum # XXX Use this. It's a good idea.
     versionSection = 0
     stringsSection = 1
     integersSection = 2
     floatsSection = 3
-
 
 proc loadError(msg: string; filename: AbsoluteFile) =
   echo "Error: ", msg, "\nloading file: ", filename.string
@@ -305,9 +320,11 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule) =
     elif thisCookie != cookie:
       loadError("cookie mismatch", filename)
     else:
-      if f.load(m.sh.strings) and f.load(m.sh.integers) and f.store(m.sh.floats) and
-         f.loadSeq(m.topLevel.nodes) and f.loadSeq(m.bodies.nodes):
-        echo "success ", filename.string
+      if f.load(m.sh.strings) and f.load(m.sh.integers) and f.load(m.sh.floats) and
+         f.loadSeq(m.topLevel.nodes) and f.loadSeq(m.bodies.nodes) and
+         f.loadSeq(m.sh.syms) and f.loadSeq(m.sh.types):
+        when false:
+          echo "success ", filename.string
       else:
         loadError("data section", filename)
   finally:
@@ -325,7 +342,8 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
       storeError(f, filename)
     else:
       if f.store(encoder.m.sh.strings) and f.store(encoder.m.sh.integers) and f.store(encoder.m.sh.floats) and
-         f.storeSeq(encoder.m.topLevel.nodes) and f.storeSeq(encoder.m.bodies.nodes):
+         f.storeSeq(encoder.m.topLevel.nodes) and f.storeSeq(encoder.m.bodies.nodes) and
+         f.storeSeq(encoder.m.sh.syms) and f.storeSeq(encoder.m.sh.types):
         discard "success"
       else:
         storeError(f, filename)
