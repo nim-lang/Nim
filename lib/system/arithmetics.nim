@@ -1,6 +1,5 @@
 proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.} =
   ## Returns the `y`-th successor (default: 1) of the value `x`.
-  ## `T` has to be an `ordinal type <#Ordinal>`_.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
@@ -11,7 +10,6 @@ proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.} =
 
 proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.} =
   ## Returns the `y`-th predecessor (default: 1) of the value `x`.
-  ## `T` has to be an `ordinal type <#Ordinal>`_.
   ##
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
