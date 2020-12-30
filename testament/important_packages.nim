@@ -57,6 +57,9 @@ pkg1 "illwill", "nimble examples"
 pkg1 "inim"
 pkg1 "itertools", "nim doc src/itertools.nim"
 pkg1 "iterutils"
+# pending https://github.com/nim-lang/Nim/issues/16447
+# pending https://github.com/nim-lang/Nim/issues/16389 (also)
+#pkg1 "jason", "nimble test", "https://github.com/disruptek/jason"
 pkg1 "jstin"
 pkg1 "karax", "nim c -r tests/tester.nim"
 pkg1 "kdtree", "nimble test", "https://github.com/jblindsay/kdtree"
