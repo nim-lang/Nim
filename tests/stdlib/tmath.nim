@@ -315,5 +315,8 @@ template main =
     doAssert -1.0 / abs(-0.0) == -Inf
     doAssert -1.0 / abs(0.0) == -Inf
 
+    doAssert abs(NaN).isNaN
+    doAssert abs(-NaN).isNaN
+
 main()
 static: main()
