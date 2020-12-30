@@ -44,7 +44,6 @@ runnableExamples:
 
 runnableExamples:
   let result = none(int)
-  assert(result == none(int))
   # It has no value:
   assert(result.isNone)
 
