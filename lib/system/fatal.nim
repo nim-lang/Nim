@@ -30,16 +30,19 @@ elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
   proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
-    writeStackTrace()
-    var buf = newStringOfCap(200)
-    add(buf, "Error: unhandled exception: ")
-    add(buf, message)
-    add(buf, arg)
-    add(buf, " [")
-    add(buf, name exceptn)
-    add(buf, "]\n")
-    cstderr.rawWrite buf
-    quit 1
+    when nimvm:
+      raise (ref exceptn)(msg: message & arg)
+    else:
+      writeStackTrace()
+      var buf = newStringOfCap(200)
+      add(buf, "Error: unhandled exception: ")
+      add(buf, message)
+      add(buf, arg)
+      add(buf, " [")
+      add(buf, name exceptn)
+      add(buf, "]\n")
+      cstderr.rawWrite buf
+      quit 1
 
   proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
     sysFatal(exceptn, message, "")
