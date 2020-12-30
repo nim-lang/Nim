@@ -31,6 +31,7 @@ elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
 
   proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
     when nimvm:
+      # TODO when doAssertRaises works in CT, add a test for it
       raise (ref exceptn)(msg: message & arg)
     else:
       writeStackTrace()
