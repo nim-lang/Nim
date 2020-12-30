@@ -4,7 +4,6 @@ proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
   runnableExamples:
-    let x = 5
     assert succ(5) == 6
     assert succ(5, 3) == 8
 
@@ -14,7 +13,6 @@ proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.} =
   ## If such a value does not exist, `OverflowDefect` is raised
   ## or a compile time error occurs.
   runnableExamples:
-    let x = 5
     assert pred(5) == 4
     assert pred(5, 3) == 2
 
@@ -201,7 +199,7 @@ proc `*`*(x, y: int64): int64 {.magic: "MulI", noSideEffect.}
 proc `div`*(x, y: int): int {.magic: "DivI", noSideEffect.} = 
   ## Computes the integer division.
   ##
-  ## This is roughly the same as `trunc(x/y)`.
+  ## This is roughly the same as `math.trunc(x/y).int`.
   runnableExamples:
     assert (1 div 2) == 0
     assert (2 div 2) == 1
