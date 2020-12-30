@@ -1524,6 +1524,7 @@ include "system/iterators_1"
 
 proc abs*[T: float64 | float32](x: T): T {.noSideEffect, inline.} =
   if x < 0.0: -x
+  elif x > 0.0: x
   elif x == 0.0: 0.0
   else: x
 
