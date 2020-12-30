@@ -1917,22 +1917,31 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   {.noSideEffect.}:
     mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
 
-func mimesLongest*(): tuple[ext: int, mime: int] {.compiletime, since: (1, 5).} =
-  ## Returns the length of the longest "ext" and "mime" from `mimes`,
-  ## this is useful for optimizations with `newStringOfCap` and `newString`.
-  ##
-  ## See also:
-  ## * `newStringOfCap <system.html#newStringOfCap>`_
-  ## * `newString <system.html#newString>`_
-  runnableExamples:
-    static:
-      doAssert mimesLongest() >= (ext: 24, mime: 73)
-  var currentKeyLength, currentValLength: int
-  for item in mimes:
-    currentKeyLength = item[0].len
-    currentValLength = item[1].len
-    if currentKeyLength > result[0]: result[0] = currentKeyLength
-    if currentValLength > result[1]: result[1] = currentValLength
+
+since (1, 5):
+  func mimesLongest(): array[2, int] {.compiletime.} =
+    runnableExamples:
+      static:
+        doAssert mimesLongest() >= (ext: 24, mime: 73)
+    var currentKeyLength, currentValLength: int
+    for item in mimes:
+      currentKeyLength = item[0].len
+      currentValLength = item[1].len
+      if currentKeyLength > result[0]: result[0] = currentKeyLength
+      if currentValLength > result[1]: result[1] = currentValLength
+
+  const
+    ctValue = mimesLongest() # Use 2 const instead of func, save tuple unpack.
+    extLongest*: int = ctValue[0] ## \
+      ## The length of the longest "ext" from `mimes`,
+      ## this is useful for optimizations with `newStringOfCap` and `newString`.
+    mimeLongest*: int = ctValue[1] ## \
+      ## The length of the longest "mime" from `mimes`,
+      ## this is useful for optimizations with `newStringOfCap` and `newString`.
+      ##
+      ## See also:
+      ## * `newStringOfCap <system.html#newStringOfCap>`_
+      ## * `newString <system.html#newString>`_
 
 
 runnableExamples:
