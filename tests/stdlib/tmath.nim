@@ -308,5 +308,53 @@ template main =
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
 
-main()
+  block: # copySign
+    doAssert copySign(10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, 1.0) == 10.0
+    doAssert copySign(float(10), -1.0) == -10.0
+
+    doAssert copySign(10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, 1.0) == 10.0
+    doAssert copySign(10'f64, -1.0) == -10.0
+
+    doAssert copySign(10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, 1.0) == 10.0
+    doAssert copySign(10'f32, -1.0) == -10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(Inf, 1.0) == Inf
+    doAssert copySign(-Inf, -1.0) == -Inf
+    doAssert copySign(Inf, 0.0) == Inf
+    doAssert copySign(Inf, -0.0) == -Inf
+    doAssert copySign(-Inf, 0.0) == Inf
+    doAssert copySign(-Inf, -0.0) == -Inf
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, NaN).isNaN
+    doAssert copySign(-NaN, NaN).isNaN
+    doAssert copySign(NaN, -NaN).isNaN
+    doAssert copySign(-NaN, -NaN).isNaN
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+    doAssert copySign(-NaN, 0.0).isNaN
+    doAssert copySign(-NaN, -0.0).isNaN
+
+    when nimvm:
+      discard
+    else:
+      when not defined(js):
+        doAssert copySign(-1.0, -NaN) == 1.0
+        doAssert copySign(10.0, -NaN) == 10.0
+        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
+
 static: main()
+main()
