@@ -7,11 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables, intsets]
-import packed_ast, bitabs
+import std / [hashes, tables, intsets, sha1]
+import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes, pathutils]
 
-from std / os import removeFile
+from std / os import removeFile, isAbsolute
 
 when not defined(release): import ".." / astalgo # debug()
 
@@ -279,78 +279,124 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder) =
   toPackedNodeIgnoreProcDefs(n, encoder)
   flush encoder
 
-proc storePrim*(f: File; x: PackedType): bool =
+proc storePrim*(f: var RodFile; x: PackedType) =
   for y in fields(x):
     when y is seq:
-      result = storeSeq(f, y)
+      storeSeq(f, y)
     else:
-      result = storePrim(f, y)
-    if not result: break
+      storePrim(f, y)
 
-proc loadPrim*(f: File; x: var PackedType): bool =
+proc loadPrim*(f: var RodFile; x: var PackedType) =
   for y in fields(x):
     when y is seq:
-      result = loadSeq(f, y)
+      loadSeq(f, y)
     else:
-      result = loadPrim(f, y)
-    if not result: break
+      loadPrim(f, y)
 
-const
-  RodVersion = 1
-  cookie = [byte(0), byte('R'), byte('O'), byte('D'),
-            byte(0), byte(0), byte(0), byte(RodVersion)]
+proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile): string =
+  result = msgs.getHash(conf, fileIdx)
+  if result.len == 0 and isAbsolute(string fullpath):
+    result = $secureHashFile(string fullpath)
+    msgs.setHash(conf, fileIdx, result)
 
-type
-  RodSection = enum # XXX Use this. It's a good idea.
-    versionSection = 0
-    stringsSection = 1
-    integersSection = 2
-    floatsSection = 3
+when false:
+  proc needsRecompile(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile;
+                      cycleCheck: var IntSet): bool =
+    let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
+      fullpath.string)
+    if root[0].len == 0: return true
+    if root[1] != hashFileCached(g.config, fileIdx, fullpath):
+      return true
+    # cycle detection: assume "not changed" is correct.
+    if cycleCheck.containsOrIncl(int fileIdx):
+      return false
+    # check dependencies (recursively):
+    for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
+                          root[0]):
+      let dep = AbsoluteFile row[0]
+      if needsRecompile(g, g.config.fileInfoIdx(dep), dep, cycleCheck):
+        return true
+    return false
 
-proc loadError(msg: string; filename: AbsoluteFile) =
-  echo "Error: ", msg, "\nloading file: ", filename.string
+when false:
+  proc encodeConfig(config: ConfigRef): string =
+    result = newStringOfCap(100)
+    result.add "config"
+    for d in definedSymbolNames(config.symbols):
+      result.add ' '
+      result.add d
+
+    fn backend
+    fn(target)
+    fn(options)
+    fn(globalOptions)
+    fn(selectedGC)
+
+proc loadError(err: RodFileError; filename: AbsoluteFile) =
+  echo "Error: ", $err, "\nloading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule) =
   m.sh = Shared()
-  var f = open(filename.string, fmRead)
-  try:
-    var thisCookie: array[cookie.len, byte]
-    if f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
-      loadError("cookie len mismatch", filename)
-    elif thisCookie != cookie:
-      loadError("cookie mismatch", filename)
-    else:
-      if f.load(m.sh.strings) and f.load(m.sh.integers) and f.load(m.sh.floats) and
-         f.loadSeq(m.topLevel.nodes) and f.loadSeq(m.bodies.nodes) and
-         f.loadSeq(m.sh.syms) and f.loadSeq(m.sh.types):
-        when false:
-          echo "success ", filename.string
-      else:
-        loadError("data section", filename)
-  finally:
-    close(f)
+  var f = rodfiles.open(filename.string)
+  f.loadHeader()
+  f.loadSection configSection # currently empty
+  f.loadSection filesSection
+  f.loadSection stringsSection
+  f.load m.sh.strings
 
-proc storeError(f: File; filename: AbsoluteFile) {.noinline.} =
-  echo "Error: couldn't write to ", filename.string
+  f.loadSection integersSection
+  f.load m.sh.integers
+  f.loadSection floatsSection
+  f.load m.sh.floats
+
+  f.loadSection topLevelSection
+  f.loadSeq m.topLevel.nodes
+
+  f.loadSection bodiesSection
+  f.loadSeq m.bodies.nodes
+
+  f.loadSection symsSection
+  f.loadSeq m.sh.syms
+
+  f.loadSection typesSection
+  f.loadSeq m.sh.types
+
   close(f)
+  if f.err != ok:
+    loadError(f.err, filename)
+
+proc storeError(err: RodFileError; filename: AbsoluteFile) =
+  echo "Error: ", $err, "; couldn't write to ", filename.string
   removeFile(filename.string)
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
-  var f = open(filename.string, fmWrite)
-  try:
-    if f.writeBytes(cookie, 0, cookie.len) != cookie.len:
-      storeError(f, filename)
-    else:
-      if f.store(encoder.m.sh.strings) and f.store(encoder.m.sh.integers) and f.store(encoder.m.sh.floats) and
-         f.storeSeq(encoder.m.topLevel.nodes) and f.storeSeq(encoder.m.bodies.nodes) and
-         f.storeSeq(encoder.m.sh.syms) and f.storeSeq(encoder.m.sh.types):
-        discard "success"
-      else:
-        storeError(f, filename)
-  except IOError:
-    storeError(f, filename)
-  # no 'finally' here is correct:
+  var f = rodfiles.create(filename.string)
+  f.storeHeader()
+  f.storeSection configSection # currently empty
+  f.storeSection filesSection
+  f.storeSection stringsSection
+  f.store encoder.m.sh.strings
+
+  f.storeSection integersSection
+  f.store encoder.m.sh.integers
+
+  f.storeSection floatsSection
+  f.store encoder.m.sh.floats
+
+  f.storeSection topLevelSection
+  f.storeSeq encoder.m.topLevel.nodes
+
+  f.storeSection bodiesSection
+  f.storeSeq encoder.m.bodies.nodes
+
+  f.storeSection symsSection
+  f.storeSeq encoder.m.sh.syms
+
+  f.storeSection typesSection
+  f.storeSeq encoder.m.sh.types
   close(f)
+  if f.err != ok:
+    loadError(f.err, filename)
 
   when false:
     # basic loader testing:

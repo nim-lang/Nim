@@ -1,7 +1,7 @@
 ## A BiTable is a table that can be seen as an optimized pair
 ## of (Table[LitId, Val], Table[Val, LitId]).
 
-import hashes
+import hashes, rodfiles
 
 type
   LitId* = distinct uint32
@@ -103,65 +103,13 @@ proc hash*[T](t: BiTable[T]): Hash =
     h = h !& hash((i, n))
   result = !$h
 
-proc storePrim*(f: File; s: string): bool =
-  if s.len >= high(int32): return false
-  var lenPrefix = int32(s.len)
-  if writeBuffer(f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    result = false
-  else:
-    if s.len != 0:
-      result = writeBuffer(f, unsafeAddr(s[0]), s.len) == s.len
-    else:
-      result = true
+proc store*[T](f: var RodFile; t: BiTable[T]) =
+  storeSeq(f, t.vals)
+  storeSeq(f, t.keys)
 
-proc storePrim*[T](f: File; x: T): bool =
-  result = writeBuffer(f, unsafeAddr(x), sizeof(x)) == sizeof(x)
-
-proc storeSeq*[T](f: File; s: seq[T]): bool =
-  if s.len >= high(int32): return false
-  var lenPrefix = int32(s.len)
-  if writeBuffer(f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    result = false
-  else:
-    result = true
-    for i in 0..<s.len:
-      result = storePrim(f, s[i])
-      if not result: break
-
-proc store*[T](f: File; t: BiTable[T]): bool =
-  result = storeSeq(f, t.vals)
-  if result:
-    result = storeSeq(f, t.keys)
-
-proc loadPrim*(f: File; s: var string): bool =
-  var lenPrefix = int32(0)
-  if readBuffer(f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    result = false
-  else:
-    s = newString(lenPrefix)
-    if lenPrefix > 0:
-      result = readBuffer(f, unsafeAddr(s[0]), s.len) == s.len
-    else:
-      result = true
-
-proc loadPrim*[T](f: File; x: var T): bool =
-  result = readBuffer(f, unsafeAddr(x), sizeof(x)) == sizeof(x)
-
-proc loadSeq*[T](f: File; s: var seq[T]): bool =
-  var lenPrefix = int32(0)
-  if readBuffer(f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    result = false
-  else:
-    s = newSeq[T](lenPrefix)
-    result = true
-    for i in 0..<lenPrefix:
-      result = loadPrim(f, s[i])
-      if not result: break
-
-proc load*[T](f: File; t: var BiTable[T]): bool =
-  result = loadSeq(f, t.vals)
-  if result:
-    result = loadSeq(f, t.keys)
+proc load*[T](f: var RodFile; t: var BiTable[T]) =
+  loadSeq(f, t.vals)
+  loadSeq(f, t.keys)
 
 when isMainModule:
 
