@@ -43,15 +43,7 @@ runnableExamples:
 ## How to deal with an absence of a value:
 
 runnableExamples:
-  proc find(haystack: string, needle: char): Option[int] =
-    for i, c in haystack:
-      if c == needle:
-        return some(i)
-    return none(int)  # This line is actually optional,
-                      # because the default is empty
-  let result = "team".find('i')
-
-  # Nothing was found, so the result is `none`.
+  let result = none(int)
   assert(result == none(int))
   # It has no value:
   assert(result.isNone)
