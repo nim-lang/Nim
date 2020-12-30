@@ -783,7 +783,7 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
-  const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) and not defined(guiapp) # see PR #16366
 
   template checkErrMaybe(succeeded: bool): untyped =
     if not succeeded:
