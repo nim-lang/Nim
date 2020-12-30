@@ -19,7 +19,8 @@ pkg1 "BipBuffer"
 # pkg1 "blscurve" # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg1 "bncurve"
 pkg1 "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg1 "bump", "nim c --gc:arc -r tests/tbump.nim", "https://github.com/disruptek/bump"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "bump", "nimble test", "https://github.com/disruptek/bump"
 pkg1 "c2nim", "nim c testsuite/tester.nim"
 pkg1 "cascade"
 pkg1 "cello"
@@ -31,7 +32,8 @@ pkg1 "cligen", "nim c --path:. -r cligen.nim"
 pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
 pkg1 "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
-# pkg1 "criterion" # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "criterion", "nimble test", "https://github.com/disruptek/criterion"
 pkg1 "dashing", "nim c tests/functional.nim"
 pkg1 "delaunay"
 pkg1 "docopt"
@@ -39,13 +41,16 @@ pkg1 "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/ea
 pkg1 "elvis"
 pkg1 "fidget"
 pkg1 "fragments", "nim c -r fragments/dsl.nim"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "frosty", "nimble test", "https://github.com/disruptek/frosty"
 pkg1 "gara"
 pkg1 "glob"
 pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
-# pkg1 "gittyup", "nimble test", "https://github.com/disruptek/gittyup"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "gittyup", "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "gnuplot", "nim c gnuplot.nim"
-# pkg1 "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
-  # pending https://github.com/nim-lang/Nim/issues/16509
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "gram", "nimble test", "https://github.com/disruptek/gram"
 pkg1 "hts", "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth"
 pkg1 "illwill", "nimble examples"
@@ -125,6 +130,8 @@ pkg2 "templates"
 pkg2 "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg2 "terminaltables", "nim c src/terminaltables.nim"
 pkg2 "termstyle", "nim c -r termstyle.nim"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg2 "testes", "nimble test", "https://github.com/disruptek/testes"
 pkg2 "timeit"
 pkg2 "timezones"
 pkg2 "tiny_sqlite"
