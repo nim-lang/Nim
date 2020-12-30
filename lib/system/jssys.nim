@@ -495,11 +495,13 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
   ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  # print `-0.0` properly
   asm """
     function nimOnlyDigitsOrMinus(n) {
       return n.toString().match(/^-?\d+$/);
     }
-    if (Number.isSafeInteger(`a`)) `result` =  `a`+".0"
+    if (Number.isSafeInteger(`a`))
+      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
     else {
       `result` = `a`+""
       if(nimOnlyDigitsOrMinus(`result`)){
