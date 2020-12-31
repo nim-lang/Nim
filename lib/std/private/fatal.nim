@@ -9,22 +9,14 @@
 
 {.push profiler: off.}
 
-# xxx move to excpt.nim where it's used
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions* = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions* = false
-
 when hostOS == "standalone":
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
   type PanicCallback* = proc(exceptionName: string, message: string, arg: string)
-    # xxx: {.noconv.} ?
 
   var panicCallback: PanicCallback
 
   when not declared(setPanicCallback):
-    # because fatal.nim is included twice; xxx: replace include with import
     proc setPanicCallback*(a: PanicCallback) =
       ## this must be called at least once and is used by `sysFatal`; not thread safe.
       panicCallback = a

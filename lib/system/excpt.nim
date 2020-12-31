@@ -15,6 +15,11 @@ import stacktraces
 
 const noStacktraceAvailable = "No stack traceback available\n"
 
+when defined(nimHasExceptionsQuery):
+  const gotoBasedExceptions = compileOption("exceptions", "goto")
+else:
+  const gotoBasedExceptions = false
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
