@@ -16,7 +16,7 @@ proc `==`(a, b: RefPerson): bool =
   a.name == b.name
 
 
-template disableJSVM(body) =
+template disableJsVm(body) =
   # something doesn't work in JS VM
   when defined(js):
     when nimvm: discard
@@ -85,7 +85,7 @@ proc main() =
       doAssert($(some("Correct")) == "Some(\"Correct\")")
       doAssert($(stringNone) == "None[string]")
 
-    disableJSVM:
+    disableJsVm:
       block map_with_a_void_result:
         var procRan = 0
         # TODO closure anonymous functions doesn't work in VM with JS
