@@ -239,7 +239,7 @@ not guaranteed to stay in sync, so ``runnableExamples`` is usually preferred:
 .. code-block:: nim
 
   proc someproc*(): string =
-    ## Return "something"
+    ## Returns "something"
     ##
     ## .. code-block::
     ##  echo someproc() # "something"
@@ -255,19 +255,19 @@ first appearance of the proc.
 .. code-block:: nim
 
   proc hello*(): string
-    ## Put documentation here
+    ## Puts documentation here
   proc nothing() = discard
   proc hello*(): string =
-    ## ignore this
+    ## Ignores this
     echo "hello"
 
 The preferred documentation style is to begin with a capital letter and use
-the imperative (command) form. That is, between:
+the third-person singular. That is, between:
 
 .. code-block:: nim
 
   proc hello*(): string =
-    ## Return "hello"
+    ## Returns "hello"
     result = "hello"
 
 or
@@ -275,7 +275,7 @@ or
 .. code-block:: nim
 
   proc hello*(): string =
-    ## says hello
+    ## say hello
     result = "hello"
 
 the first is preferred.
