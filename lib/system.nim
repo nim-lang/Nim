@@ -1522,11 +1522,26 @@ include "system/iterators_1"
 
 {.push stackTrace: off.}
 
+
+when defined(js):
+  proc fabs(x: float64): float64 {.importc: "Math.abs".}
+  proc fabsf(x: float32): float32 {.importc: "Math.abs".}
+else:
+  proc fabs(x: cdouble): cdouble {.importc: "fabs", header: "math.h".}
+  proc fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "math.h".}
+
 proc abs*[T: float64 | float32](x: T): T {.noSideEffect, inline.} =
-  if x < 0.0: -x
-  elif x > 0.0: x
-  elif x == 0.0: 0.0 # handle 0.0, -0.0
-  else: x # handle NaN
+  when nimvm:
+    # TODO register VM ops
+    if x < 0.0: result = -x
+    elif x > 0.0: result = x
+    elif x == 0.0: result = 0.0 # handle 0.0, -0.0
+    else: result = x # handle NaN
+  else:
+    when T is float64:
+      result = fabs(x)
+    else:
+      result = fabsf(x)
 
 proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
   if x <= y or y != y: x else: y
