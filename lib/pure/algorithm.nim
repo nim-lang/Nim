@@ -126,7 +126,8 @@ proc reverse*[T](a: var openArray[T]) =
     assert a == [6, 5, 4, 3, 2, 1]
     a.reverse()
     assert a == [1, 2, 3, 4, 5, 6]
-  reverse(a, 0, a.high)
+  # the max is needed, since a.high is -1 if a is empty
+  reverse(a, 0, max(0, a.high))
 
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## Return the reverse of the slice `a[first..last]`.
