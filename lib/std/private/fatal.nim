@@ -16,10 +16,9 @@ when hostOS == "standalone":
 
   var panicCallback: PanicCallback
 
-  when not declared(setPanicCallback):
-    proc setPanicCallback*(a: PanicCallback) =
-      ## this must be called at least once and is used by `sysFatal`; not thread safe.
-      panicCallback = a
+  proc setPanicCallback*(a: PanicCallback) =
+    ## this must be called at least once and is used by `sysFatal`; not thread safe.
+    panicCallback = a
 
   proc sysFatal*(exceptn: typedesc, message: string) {.inline.} =
     # assumes `panicCallback != nil`
