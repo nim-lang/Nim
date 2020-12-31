@@ -1,11 +1,18 @@
 discard """
-ccodecheck: "\\i !@('systemInit')"
-ccodecheck: "\\i !@('systemDatInit')"
-matrix: "--os:standalone --gc:none"
-output: "hi 4778"
+  ccodecheck: "\\i !@('systemInit')"
+  ccodecheck: "\\i !@('systemDatInit')"
+  exitcode: 1
+  output: '''
+hi 4778
+panic: exception: AssertionDefect, message: tstandalone.nim(36, 10) `false` foo, arg: 
+'''
+  matrix: "--os:standalone --gc:none"
 """
-# bug  #2041: Macros need to be available for os:standalone!
+
+# issue  #2041: Macros need to be available for os:standalone!
 import macros
+
+from std/private/fatal import setPanicCallback
 
 proc printf(frmt: cstring) {.varargs, importc, header: "<stdio.h>", cdecl.}
 proc exit(code: int) {.importc, header: "<stdlib.h>", cdecl.}
@@ -24,4 +31,6 @@ printf("hi %ld\n", x+4777)
 
 proc substr(a: string): string = a[0 .. 3] # This should compile. See #9762
 const a = substr("foobar")
-# doAssert false
+
+## line 35
+doAssert false, "foo"
