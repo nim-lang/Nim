@@ -477,11 +477,11 @@ when useGCC_builtins:
 elif useVCC_builtins:
   # Counts the number of one bits (population count) in a 16-, 32-, or 64-byte unsigned integer.
   proc builtin_popcnt16(a2: uint16): uint16 {.
-      importc: "__popcnt16"header: "<intrin.h>", noSideEffect.}
+      importc: "__popcnt16", header: "<intrin.h>", noSideEffect.}
   proc builtin_popcnt32(a2: uint32): uint32 {.
-      importc: "__popcnt"header: "<intrin.h>", noSideEffect.}
+      importc: "__popcnt", header: "<intrin.h>", noSideEffect.}
   proc builtin_popcnt64(a2: uint64): uint64 {.
-      importc: "__popcnt64"header: "<intrin.h>", noSideEffect.}
+      importc: "__popcnt64", header: "<intrin.h>", noSideEffect.}
 
   # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).
   proc bitScanReverse(index: ptr culong, mask: culong): cuchar {.
@@ -506,9 +506,9 @@ elif useICC_builtins:
   # see also: https://software.intel.com/en-us/node/523362
   # Count the number of bits set to 1 in an integer a, and return that count in dst.
   proc builtin_popcnt32(a: cint): cint {.
-      importc: "_popcnt"header: "<immintrin.h>", noSideEffect.}
+      importc: "_popcnt", header: "<immintrin.h>", noSideEffect.}
   proc builtin_popcnt64(a: uint64): cint {.
-      importc: "_popcnt64"header: "<immintrin.h>", noSideEffect.}
+      importc: "_popcnt64", header: "<immintrin.h>", noSideEffect.}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
   proc bitScanForward(p: ptr uint32, b: uint32): cuchar {.
