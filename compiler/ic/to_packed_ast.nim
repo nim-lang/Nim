@@ -27,7 +27,7 @@ type
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     #name*: string
     definedSymbols: string
-    deps: seq[(string, string)]
+    deps: seq[(LitId, string)]
     topLevel*: PackedTree  # top level statements
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
@@ -105,6 +105,12 @@ proc toLitId(x: BiggestInt; c: var PackedEncoder): LitId =
   ## store an integer as a literal
   result = getOrIncl(c.m.sh.integers, x)
 
+proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex; fullpath: string): string =
+  result = msgs.getHash(conf, fileIdx)
+  if result.len == 0:
+    result = $secureHashFile(fullpath)
+    msgs.setHash(conf, fileIdx, result)
+
 proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
   ## store a file index as a literal
   if x == c.lastFile:
@@ -115,6 +121,8 @@ proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
       let p = msgs.toFullPath(c.config, x)
       result = getOrIncl(c.m.sh.strings, p)
       c.filenames[x] = result
+      if isAbsolute(p):
+        c.m.deps.add((result, hashFileCached(c.config, x, p)))
     c.lastFile = x
     c.lastLit = result
 
@@ -332,12 +340,6 @@ proc loadPrim*(f: var RodFile; x: var PackedType) =
     else:
       loadPrim(f, y)
 
-proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile): string =
-  result = msgs.getHash(conf, fileIdx)
-  if result.len == 0 and isAbsolute(string fullpath):
-    result = $secureHashFile(string fullpath)
-    msgs.setHash(conf, fileIdx, result)
-
 when false:
   proc needsRecompile(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile;
                       cycleCheck: var IntSet): bool =
@@ -373,6 +375,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
     f.err = configMismatch
 
   f.loadSection filesSection
+  f.loadSeq m.deps
   f.loadSection stringsSection
   f.load m.sh.strings
 
@@ -409,6 +412,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   f.storePrim encoder.m.cfg
 
   f.storeSection filesSection
+  f.storeSeq encoder.m.deps
   f.storeSection stringsSection
   f.store encoder.m.sh.strings
 
