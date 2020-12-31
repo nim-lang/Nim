@@ -47,7 +47,7 @@ type
     Descending, Ascending
 
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
-  ## Flip `x` if `order == Descending`.
+  ## Flips the sign of `x` if `order == Descending`.
   ## If `order == Ascending` then `x` is returned.
   ##
   ## `x` is supposed to be the result of a comparator, i.e.
@@ -69,9 +69,9 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
     inc(x)
 
 proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## Fill the slice `a[first..last]` with `value`.
+  ## Assigns `value` to all elements of the slice `a[first..last]`.
   ##
-  ## If an invalid range is passed, it raises IndexDefect.
+  ## If an invalid range is passed, it raises `IndexDefect`.
   runnableExamples:
     var a: array[6, int]
     a.fill(1, 3, 9)
@@ -82,7 +82,7 @@ proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
-  ## Fill the container `a` with `value`.
+  ## Assigns `value` to all elements of the container `a`.
   runnableExamples:
     var a: array[6, int]
     a.fill(9)
@@ -93,13 +93,13 @@ proc fill*[T](a: var openArray[T], value: T) =
 
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
-  ## Reverse the slice `a[first..last]`.
+  ## Reverses the slice `a[first..last]`.
   ##
-  ## If an invalid range is passed, it raises IndexDefect.
+  ## If an invalid range is passed, it raises `IndexDefect`.
   ##
   ## **See also:**
-  ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and return a `seq[T]`
-  ## * `reversed proc<#reversed,openArray[T]>`_ reverse and return a `seq[T]`
+  ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a `seq[T]`
+  ## * `reversed proc<#reversed,openArray[T]>`_ reverse and returns a `seq[T]`
   runnableExamples:
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse(1, 3)
@@ -115,11 +115,11 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     inc(x)
 
 proc reverse*[T](a: var openArray[T]) =
-  ## Reverse the contents of the container `a`.
+  ## Reverses the contents of the container `a`.
   ##
   ## **See also:**
-  ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and return a `seq[T]`
-  ## * `reversed proc<#reversed,openArray[T]>`_ reverse and return a `seq[T]`
+  ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a `seq[T]`
+  ## * `reversed proc<#reversed,openArray[T]>`_ reverse and returns a `seq[T]`
   runnableExamples:
     var a = [1, 2, 3, 4, 5, 6]
     a.reverse()
@@ -130,9 +130,9 @@ proc reverse*[T](a: var openArray[T]) =
   reverse(a, 0, max(0, a.high))
 
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
-  ## Return the reverse of the slice `a[first..last]`.
+  ## Returns the reverse of the slice `a[first..last]`.
   ##
-  ## If an invalid range is passed, it raises IndexDefect.
+  ## If an invalid range is passed, it raises `IndexDefect`.
   ##
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
@@ -152,7 +152,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
     inc(x)
 
 proc reversed*[T](a: openArray[T]): seq[T] =
-  ## Return the reverse of the container `a`.
+  ## Returns the reverse of the container `a`.
   ##
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
@@ -228,14 +228,14 @@ const
 
 proc lowerBound*[T, K](a: openArray[T], key: K,
                        cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## Return the index of the first element in `a` that is not less than
+  ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
   ## the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
-  ## If an invalid range is passed, it raises IndexDefect.
+  ## If an invalid range is passed, it raises `IndexDefect`.
   ##
   ## This version uses `cmp` to compare the elements.
   ## The expected return values are the same as those of `system.cmp`.
@@ -263,7 +263,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K,
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
-  ## Return the index of the first element in `a` that is not less than
+  ## Returns the index of the first element in `a` that is not less than
   ## (i.e. greater or equal to) `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## `insert(thing, elm, lowerBound(thing, elm))`
@@ -278,14 +278,14 @@ proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
 
 proc upperBound*[T, K](a: openArray[T], key: K,
                        cmp: proc(x: T, k: K): int {.closure.}): int =
-  ## Return the index of the first element in `a` that is greater than
+  ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
   ## the sequence will still be sorted.
   ## Assumes that `a` is sorted according to `cmp`.
   ##
-  ## If an invalid range is passed, it raises IndexDefect.
+  ## If an invalid range is passed, it raises `IndexDefect`.
   ##
   ## This version uses `cmp` to compare the elements. The expected
   ## return values are the same as those of `system.cmp`.
@@ -313,7 +313,7 @@ proc upperBound*[T, K](a: openArray[T], key: K,
       count = step
 
 proc upperBound*[T](a: openArray[T], key: T): int = upperBound(a, key, cmp[T])
-  ## Return the index of the first element in `a` that is greater than
+  ## Returns the index of the first element in `a` that is greater than
   ## `key`, or last if no such element is found.
   ## In other words if you have a sorted sequence and you call
   ## `insert(thing, elm, upperBound(thing, elm))`
@@ -377,8 +377,9 @@ func sort*[T](a: var openArray[T],
               cmp: proc (x, y: T): int {.closure.},
               order = SortOrder.Ascending) =
   ## Default Nim sort (an implementation of merge sort). The sorting
-  ## is guaranteed to be stable and the worst case is guaranteed to
-  ## be O(n log n).
+  ## is guaranteed to be stable (that is, equal elements stay in the same order)
+  ## and the worst case is guaranteed to be O(n log n).
+  ## Sorts by `cmp` in the specified `order`.
   ##
   ## The current implementation uses an iterative
   ## mergesort to achieve this. It uses a temporary sequence of
@@ -437,7 +438,7 @@ proc sort*[T](a: var openArray[T], order = SortOrder.Ascending) = sort[T](a,
 
 proc sorted*[T](a: openArray[T], cmp: proc(x, y: T): int {.closure.},
                 order = SortOrder.Ascending): seq[T] =
-  ## Return `a` sorted by `cmp` in the specified `order`.
+  ## Returns `a` sorted by `cmp` in the specified `order`.
   ##
   ## **See also:**
   ## * `sort func<#sort,openArray[T],proc(T,T)>`_
@@ -481,7 +482,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
   ## The template injects the `it` variable which you can use directly in an
   ## expression.
   ##
-  ## Because the underlying `cmp()` is defined for tuples you can do
+  ## Because the underlying `cmp()` is defined for tuples you can also do
   ## a nested sort.
   ##
   ## **See also:**
@@ -514,7 +515,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
 func isSorted*[T](a: openArray[T],
                  cmp: proc(x, y: T): int {.closure.},
                  order = SortOrder.Ascending): bool =
-  ## Check to see whether `a` is already sorted in `order`
+  ## Checks to see whether `a` is already sorted in `order`
   ## using `cmp` for the comparison. The parameters are identical
   ## to `sort`. Requires O(n) time.
   ##
@@ -559,7 +560,9 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
   isSorted(a, system.cmp[T], order)
 
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
-  ## Produce the Cartesian product of the array.
+  ## Produces the Cartesian product of the array.
+  ## Every element of the result is a combination of one element from each seq in `x`,
+  ## with the ith element coming from `x[i]`.
   ## Warning: complexity may explode.
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
@@ -592,7 +595,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     indices[index] -= 1
 
 proc nextPermutation*[T](x: var openArray[T]): bool {.discardable.} =
-  ## Calculate the next lexicographic permutation, directly modifying `x`.
+  ## Calculates the next lexicographic permutation, directly modifying `x`.
   ## The result is whether a permutation happened, otherwise we have reached
   ## the last-ordered permutation.
   ##
@@ -632,7 +635,7 @@ proc nextPermutation*[T](x: var openArray[T]): bool {.discardable.} =
   result = true
 
 proc prevPermutation*[T](x: var openArray[T]): bool {.discardable.} =
-  ## Calculate the previous lexicographic permutation, directly modifying
+  ## Calculates the previous lexicographic permutation, directly modifying
   ## `x`. The result is whether a permutation happened, otherwise we have
   ## reached the first-ordered permutation.
   ##
@@ -721,7 +724,7 @@ proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
 
 proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
                     dist: int): int {.discardable.} =
-  ## Perform a left rotation on a range of elements. If you want to rotate
+  ## Performs a left rotation on a range of elements. If you want to rotate
   ## right, use a negative `dist`. Specifically, `rotateLeft` rotates
   ## the elements at `slice` by `dist` positions.
   ##
@@ -732,7 +735,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ##
   ## Elements outside of `slice` will be left unchanged.
   ## The time complexity is linear to `slice.b - slice.a + 1`.
-  ## If an invalid range (`HSlice`) is passed, it raises IndexDefect.
+  ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
   ##   The indices of the element range that should be rotated.
@@ -783,7 +786,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## not modify the argument. It creates a new `seq` instead.
   ##
   ## Elements outside of `slice` will be left unchanged.
-  ## If an invalid range (`HSlice`) is passed, it raises IndexDefect.
+  ## If an invalid range (`HSlice`) is passed, it raises `IndexDefect`.
   ##
   ## `slice`
   ##   The indices of the element range that should be rotated.
