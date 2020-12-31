@@ -355,11 +355,41 @@ Test1
     rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
     doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'
-    doAssert "line block<br />" in output1
-    doAssert "other line<br />" in output1
+    doAssert output1 == "<p><br/><br/>line block<br/>other line<br/></p>"
     let output1l = rstToLatex(input1, {})
-    doAssert "line block\\\\" in output1l
-    doAssert "other line\\\\" in output1l
+    doAssert "line block\n\n" in output1l
+    doAssert "other line\n\n" in output1l
+    doAssert output1l.count("\\vspace") == 2 + 2  # +2 surrounding paddings
+
+    let input2 = dedent"""
+      Paragraph1
+      
+      |
+
+      Paragraph2"""
+
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
+
+    let input3 = dedent"""
+      | xxx
+      |   yyy
+      |     zzz"""
+
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    doAssert "xxx<br/>" in output3
+    doAssert "<span style=\"margin-left: 1.0em\">yyy</span><br/>" in output3
+    doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output3
+
+    # check that '|   ' with a few spaces is still parsed as new line
+    let input4 = dedent"""
+      | xxx
+      |      
+      |     zzz"""
+
+    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    doAssert "xxx<br/><br/>" in output4
+    doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output4
 
   test "RST enumerated lists":
     let input1 = dedent """

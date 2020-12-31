@@ -35,7 +35,8 @@ type
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
     rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
     rnLineBlock,              # the | thingie
-    rnLineBlockItem,          # sons of the | thing
+    rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
+                              # When `RstNode` text="\n" the line's empty
     rnBlockQuote,             # text just indented
     rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
     rnLabel,                  # used for footnotes and other things
@@ -73,7 +74,7 @@ type
     kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section; and rnEnumList
-                              ## and rnAdmonition
+                              ## and rnAdmonition; and rnLineBlockItem
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
 
