@@ -1,10 +1,12 @@
 discard """
   ccodecheck: "\\i !@('systemInit')"
   ccodecheck: "\\i !@('systemDatInit')"
+  ccodecheck: "\\i @('baz')"
+  ccodecheck: "\\i !@('bazwrong')"
   exitcode: 1
   output: '''
 hi 4778
-panic: exception: AssertionDefect, message: tstandalone.nim(37, 10) `false` foo, arg: 
+panic: exception: AssertionDefect, message: tstandalone.nim(42, 10) `false` foo, arg: 
 '''
   matrix: "--os:standalone --gc:none"
 """
@@ -33,5 +35,8 @@ proc substr(a: string): string = a[0 .. 3] # This should compile. See: bug #9762
 const a = substr("foobar")
 doAssert a == "foob"
 
-## line 36
+proc baz(): int = 2
+doAssert baz() == 2
+
+## line 41
 doAssert false, "foo"
