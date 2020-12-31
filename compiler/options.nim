@@ -368,8 +368,11 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  # ternary states instead of binary states would simplify logic
   if optHints notin conf.options: false
-  elif note in {hintConf}: # could add here other special notes like hintSource
+  elif note in {hintConf, hintProcessing}:
+    # could add here other special notes like hintSource
+    # these notes apply globally.
     note in conf.mainPackageNotes
   else: note in conf.notes
 

@@ -75,10 +75,10 @@ proc llStreamClose*(s: PLLStream) =
 when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
-    stderr.write(prompt)
+    stdout.write(prompt)
     result = readLine(stdin, line)
     if not result:
-      stderr.write("\n")
+      stdout.write("\n")
       quit(0)
 
 proc endsWith*(x: string, s: set[char]): bool =
