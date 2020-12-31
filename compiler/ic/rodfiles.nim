@@ -23,7 +23,7 @@ type
     typesSection
 
   RodFileError* = enum
-    ok, tooBig, ioFailure, wrongHeader, wrongSection
+    ok, tooBig, ioFailure, wrongHeader, wrongSection, configMismatch
 
   RodFile* = object
     f*: File

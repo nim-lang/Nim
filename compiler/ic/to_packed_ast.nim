@@ -9,20 +9,31 @@
 
 import std / [hashes, tables, intsets, sha1]
 import packed_ast, bitabs, rodfiles
-import ".." / [ast, idents, lineinfos, msgs, ropes, options, sighashes, pathutils]
+import ".." / [ast, idents, lineinfos, msgs, ropes, options,
+  sighashes, pathutils, condsyms]
 
 from std / os import removeFile, isAbsolute
 
 when not defined(release): import ".." / astalgo # debug()
 
 type
+  PackedConfig* = object
+    backend: TBackend
+    selectedGC: TGCMode
+    cCompiler: TSystemCC
+    options: TOptions
+    globalOptions: TGlobalOptions
+
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     #name*: string
+    definedSymbols: string
+    deps: seq[(string, string)]
     topLevel*: PackedTree  # top level statements
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
     #producedGenerics*: Table[GenericKey, SymId]
     sh*: Shared
+    cfg: PackedConfig
 
   PackedEncoder* = object
     m: PackedModule
@@ -36,6 +47,33 @@ type
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
 
+template primConfigFields(fn: untyped) {.dirty.} =
+  fn backend
+  fn selectedGC
+  fn cCompiler
+  fn options
+  fn globalOptions
+
+proc definedSymbolsAsString(config: ConfigRef): string =
+  result = newStringOfCap(200)
+  result.add "config"
+  for d in definedSymbolNames(config.symbols):
+    result.add ' '
+    result.add d
+
+proc rememberConfig(c: var PackedEncoder; config: ConfigRef) =
+  c.m.definedSymbols = definedSymbolsAsString(config)
+
+  template rem(x) =
+    c.m.cfg.x = config.x
+  primConfigFields rem
+
+proc configIdentical(m: PackedModule; config: ConfigRef): bool =
+  result = m.definedSymbols == definedSymbolsAsString(config)
+  template eq(x) =
+    result = result and m.cfg.x == config.x
+  primConfigFields eq
+
 proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   ## setup a context for serializing to packed ast
   c.m.sh = Shared()
@@ -43,6 +81,7 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
   c.m.hidden = newTreeFrom(c.m.topLevel)
+  rememberConfig(c, config)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
 proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId
@@ -318,28 +357,21 @@ when false:
         return true
     return false
 
-when false:
-  proc encodeConfig(config: ConfigRef): string =
-    result = newStringOfCap(100)
-    result.add "config"
-    for d in definedSymbolNames(config.symbols):
-      result.add ' '
-      result.add d
-
-    fn backend
-    fn(target)
-    fn(options)
-    fn(globalOptions)
-    fn(selectedGC)
-
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "\nloading file: ", filename.string
 
-proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule) =
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef) =
   m.sh = Shared()
   var f = rodfiles.open(filename.string)
   f.loadHeader()
-  f.loadSection configSection # currently empty
+  f.loadSection configSection
+
+  f.loadPrim m.definedSymbols
+  f.loadPrim m.cfg
+
+  if not configIdentical(m, config):
+    f.err = configMismatch
+
   f.loadSection filesSection
   f.loadSection stringsSection
   f.load m.sh.strings
@@ -372,7 +404,10 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   var f = rodfiles.create(filename.string)
   f.storeHeader()
-  f.storeSection configSection # currently empty
+  f.storeSection configSection
+  f.storePrim encoder.m.definedSymbols
+  f.storePrim encoder.m.cfg
+
   f.storeSection filesSection
   f.storeSection stringsSection
   f.store encoder.m.sh.strings
@@ -398,10 +433,10 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   if f.err != ok:
     loadError(f.err, filename)
 
-  when false:
+  when true:
     # basic loader testing:
     var m2: PackedModule
-    loadRodFile(filename, m2)
+    loadRodFile(filename, m2, encoder.config)
 
   when false:
     var local: int
