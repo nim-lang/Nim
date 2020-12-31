@@ -486,6 +486,4 @@ proc storeRodNode*(c: PContext, n: PNode) =
 
 proc saveRodFile*(c: PContext) =
   when true:
-    let filename = changeFileExt(completeGeneratedFilePath(c.config,
-      withPackageName(c.config, c.filename.AbsoluteFile)), RodExt)
-    saveRodFile(filename, c.encoder)
+    saveRodFile(toRodFile(c.config, c.filename.AbsoluteFile), c.encoder)

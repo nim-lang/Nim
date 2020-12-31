@@ -24,8 +24,14 @@ type
     options: TOptions
     globalOptions: TGlobalOptions
 
+  ModuleStatus* = enum
+    undefined,
+    loading,
+    loaded,
+    outdated
+
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
-    #name*: string
+    status: ModuleStatus
     definedSymbols: string
     includes: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
@@ -357,29 +363,10 @@ proc loadPrim*(f: var RodFile; x: var PackedType) =
     else:
       loadPrim(f, y)
 
-when false:
-  proc needsRecompile(conf: ConfigRef; fileIdx: FileIndex; fullpath: AbsoluteFile;
-                      cycleCheck: var IntSet): bool =
-    let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
-      fullpath.string)
-    if root[0].len == 0: return true
-    if root[1] != hashFileCached(g.config, fileIdx, fullpath):
-      return true
-    # cycle detection: assume "not changed" is correct.
-    if cycleCheck.containsOrIncl(int fileIdx):
-      return false
-    # check dependencies (recursively):
-    for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
-                          root[0]):
-      let dep = AbsoluteFile row[0]
-      if needsRecompile(g, g.config.fileInfoIdx(dep), dep, cycleCheck):
-        return true
-    return false
-
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "\nloading file: ", filename.string
 
-proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef) =
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef): RodFileError =
   m.sh = Shared()
   var f = rodfiles.open(filename.string)
   f.loadHeader()
@@ -420,8 +407,44 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadSeq m.sh.types
 
   close(f)
-  if f.err != ok:
-    loadError(f.err, filename)
+  result = f.err
+
+type
+  PackedModuleGraph* = seq[PackedModule] # indexed by FileIndex
+
+proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef;
+                    fileIdx: FileIndex): bool =
+  let m = int(fileIdx)
+  if m >= g.len:
+    g.setLen(m+1)
+
+  case g[m].status
+  of undefined:
+    g[m].status = loading
+    let fullpath = msgs.toFullPath(conf, fileIdx)
+    let rod = toRodFile(conf, AbsoluteFile fullpath)
+    let err = loadRodFile(rod, g[m], conf)
+    if err == ok:
+      result = false
+      # check its dependencies:
+      for dep in g[m].imports:
+        let fid = toFileIndex(dep, g[m], conf)
+        # Warning: we need to traverse the full graph, so
+        # do **not use break here**!
+        if needsRecompile(g, conf, fid):
+          result = true
+
+      g[m].status = if result: outdated else: loaded
+    else:
+      loadError(err, rod)
+      g[m].status = outdated
+      result = true
+  of loading, loaded:
+    result = false
+  of outdated:
+    result = true
+
+# -------------------------------------------------------------------------
 
 proc storeError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "; couldn't write to ", filename.string
@@ -469,31 +492,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   when true:
     # basic loader testing:
     var m2: PackedModule
-    loadRodFile(filename, m2, encoder.config)
-
-  when false:
-    var local: int
-    template countLocal(encoder: PackedEncoder; tab: typed): int =
-      var local = 0
-      for item, sym in pairs tab:
-        if item.module == encoder.thisModule:
-          inc local
-      local
-
-    echo "     module id: ", encoder.thisModule
-    echo "       symbols: ", encoder.sh.syms.len
-    local = encoder.countLocal encoder.symMap
-    echo "                local: ", local
-    echo "               remote: ", encoder.sh.syms.len - local
-    echo "         types: ", encoder.sh.types.len
-    local = encoder.countLocal encoder.typeMap
-    echo "                local: ", local
-    echo "               remote: ", encoder.sh.types.len - local
-    echo "         nodes: ", encoder.m.topLevel.nodes.len
-    echo "float literals: ", encoder.sh.floats.len
-    echo "  int literals: ", encoder.sh.integers.len
-    echo "  str literals: ", encoder.sh.strings.len
-    echo ""
+    discard loadRodFile(filename, m2, encoder.config)
 
 # ----------------------------------------------------------------------------
 
