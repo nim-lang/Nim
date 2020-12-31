@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+from typetraits import supportsCopyMem
+
 type
   RodSection* = enum
     versionSection
@@ -49,8 +51,14 @@ proc storePrim*(f: var RodFile; s: string) =
 
 proc storePrim*[T](f: var RodFile; x: T) =
   if f.err != ok: return
-  if writeBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
-    f.err = ioFailure
+  when supportsCopyMem(T):
+    if writeBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
+      f.err = ioFailure
+  elif T is tuple:
+    for y in fields(x):
+      storePrim(f, y)
+  else:
+    {.error: "unsupported type for 'storePrim'".}
 
 proc storeSeq*[T](f: var RodFile; s: seq[T]) =
   if f.err != ok: return
@@ -77,8 +85,14 @@ proc loadPrim*(f: var RodFile; s: var string) =
 
 proc loadPrim*[T](f: var RodFile; x: var T) =
   if f.err != ok: return
-  if readBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
-    f.err = ioFailure
+  when supportsCopyMem(T):
+    if readBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
+      f.err = ioFailure
+  elif T is tuple:
+    for y in fields(x):
+      loadPrim(f, y)
+  else:
+    {.error: "unsupported type for 'loadPrim'".}
 
 proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
   if f.err != ok: return
