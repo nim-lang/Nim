@@ -29,7 +29,7 @@ when hostOS == "standalone":
     panicCallback(name(exceptn), message, arg)
 
 elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
-  import ansi_c
+  import system/ansi_c
 
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
