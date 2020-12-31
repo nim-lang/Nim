@@ -2149,6 +2149,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
   if f != InvalidFileIdx:
+    addIncludeFileDep(c, f)
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:

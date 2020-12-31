@@ -13,8 +13,9 @@ type
   RodSection* = enum
     versionSection
     configSection
-    filesSection
     stringsSection
+    checkSumsSection
+    depsSection
     integersSection
     floatsSection
     topLevelSection
@@ -23,7 +24,8 @@ type
     typesSection
 
   RodFileError* = enum
-    ok, tooBig, ioFailure, wrongHeader, wrongSection, configMismatch
+    ok, tooBig, ioFailure, wrongHeader, wrongSection, configMismatch,
+    includeFileChanged
 
   RodFile* = object
     f*: File

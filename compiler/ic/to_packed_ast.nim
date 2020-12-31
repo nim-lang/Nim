@@ -27,7 +27,8 @@ type
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     #name*: string
     definedSymbols: string
-    deps: seq[(LitId, string)]
+    includes: seq[(LitId, string)] # first entry is the module filename itself
+    imports: seq[LitId] # the modules this module depends on
     topLevel*: PackedTree  # top level statements
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
@@ -74,6 +75,36 @@ proc configIdentical(m: PackedModule; config: ConfigRef): bool =
     result = result and m.cfg.x == config.x
   primConfigFields eq
 
+proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
+  result = msgs.getHash(conf, fileIdx)
+  if result.len == 0:
+    let fullpath = msgs.toFullPath(conf, fileIdx)
+    result = $secureHashFile(fullpath)
+    msgs.setHash(conf, fileIdx, result)
+
+proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
+  ## store a file index as a literal
+  if x == c.lastFile:
+    result = c.lastLit
+  else:
+    result = c.filenames.getOrDefault(x)
+    if result == LitId(0):
+      let p = msgs.toFullPath(c.config, x)
+      result = getOrIncl(c.m.sh.strings, p)
+      c.filenames[x] = result
+    c.lastFile = x
+    c.lastLit = result
+    assert result != LitId(0)
+
+proc toFileIndex(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
+  result = msgs.fileInfoIdx(config, AbsoluteFile m.sh.strings[x])
+
+proc includesIdentical(m: var PackedModule; config: ConfigRef): bool =
+  for it in mitems(m.includes):
+    if hashFileCached(config, toFileIndex(it[0], m, config)) != it[1]:
+      return false
+  result = true
+
 proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   ## setup a context for serializing to packed ast
   c.m.sh = Shared()
@@ -81,6 +112,14 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
   c.m.hidden = newTreeFrom(c.m.topLevel)
+  let thisNimFile = FileIndex c.thisModule
+  c.m.includes.add((toLitId(thisNimFile, c), hashFileCached(config, thisNimFile))) # the module itself
+
+proc addIncludeFileDep*(c: var PackedEncoder; f: FileIndex) =
+  c.m.includes.add((toLitId(f, c), hashFileCached(c.config, f)))
+
+proc addImportFileDep*(c: var PackedEncoder; f: FileIndex) =
+  c.m.imports.add toLitId(f, c)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
 proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId
@@ -103,27 +142,6 @@ proc toLitId(x: string; c: var PackedEncoder): LitId =
 proc toLitId(x: BiggestInt; c: var PackedEncoder): LitId =
   ## store an integer as a literal
   result = getOrIncl(c.m.sh.integers, x)
-
-proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex; fullpath: string): string =
-  result = msgs.getHash(conf, fileIdx)
-  if result.len == 0:
-    result = $secureHashFile(fullpath)
-    msgs.setHash(conf, fileIdx, result)
-
-proc toLitId(x: FileIndex; c: var PackedEncoder): LitId =
-  ## store a file index as a literal
-  if x == c.lastFile:
-    result = c.lastLit
-  else:
-    result = c.filenames.getOrDefault(x)
-    if result == LitId(0):
-      let p = msgs.toFullPath(c.config, x)
-      result = getOrIncl(c.m.sh.strings, p)
-      c.filenames[x] = result
-      if isAbsolute(p):
-        c.m.deps.add((result, hashFileCached(c.config, x, p)))
-    c.lastFile = x
-    c.lastLit = result
 
 proc toPackedInfo(x: TLineInfo; c: var PackedEncoder): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c))
@@ -373,10 +391,16 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   if not configIdentical(m, config):
     f.err = configMismatch
 
-  f.loadSection filesSection
-  f.loadSeq m.deps
   f.loadSection stringsSection
   f.load m.sh.strings
+
+  f.loadSection checkSumsSection
+  f.loadSeq m.includes
+  if not includesIdentical(m, config):
+    f.err = includeFileChanged
+
+  f.loadSection depsSection
+  f.loadSeq m.imports
 
   f.loadSection integersSection
   f.load m.sh.integers
@@ -412,10 +436,14 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   f.storePrim encoder.m.definedSymbols
   f.storePrim encoder.m.cfg
 
-  f.storeSection filesSection
-  f.storeSeq encoder.m.deps
   f.storeSection stringsSection
   f.store encoder.m.sh.strings
+
+  f.storeSection checkSumsSection
+  f.storeSeq encoder.m.includes
+
+  f.storeSection depsSection
+  f.storeSeq encoder.m.imports
 
   f.storeSection integersSection
   f.store encoder.m.sh.integers

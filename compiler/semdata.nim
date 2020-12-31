@@ -269,6 +269,12 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
   initEncoder result.encoder, module, graph.config
 
+proc addIncludeFileDep*(c: PContext; f: FileIndex) =
+  addIncludeFileDep(c.encoder, f)
+
+proc addImportFileDep*(c: PContext; f: FileIndex) =
+  addImportFileDep(c.encoder, f)
+
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
     if sq[i].id == s.id: return
