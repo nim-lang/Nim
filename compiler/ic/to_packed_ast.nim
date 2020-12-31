@@ -81,7 +81,6 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
   c.m.hidden = newTreeFrom(c.m.topLevel)
-  rememberConfig(c, config)
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
 proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId
@@ -405,6 +404,8 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
   removeFile(filename.string)
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
+  rememberConfig(encoder, encoder.config)
+
   var f = rodfiles.create(filename.string)
   f.storeHeader()
   f.storeSection configSection
