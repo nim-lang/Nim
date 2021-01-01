@@ -258,7 +258,7 @@ first appearance of the proc.
     ## Put documentation here
   proc nothing() = discard
   proc hello*(): string =
-    ## Ignore this
+    ## ignore this
     echo "hello"
 
 The preferred documentation style is to begin with a capital letter and use
