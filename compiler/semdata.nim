@@ -267,13 +267,16 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   initStrTable(result.signatures)
   result.typesWithOps = @[]
   result.features = graph.config.features
-  initEncoder result.encoder, module, graph.config
+  if graph.config.symbolFiles != disabledSf:
+    initEncoder result.encoder, module, graph.config
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
-  addIncludeFileDep(c.encoder, f)
+  if c.config.symbolFiles != disabledSf:
+    addIncludeFileDep(c.encoder, f)
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
-  addImportFileDep(c.encoder, f)
+  if c.config.symbolFiles != disabledSf:
+    addImportFileDep(c.encoder, f)
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
