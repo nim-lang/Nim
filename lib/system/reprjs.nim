@@ -95,7 +95,10 @@ proc reprSetAux(result: var string, s: int, typ: PNimType) =
   add(result, "}")
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
-  reprSetAux(result, e, typ)
+  if typ.base.kind == tyChar:
+    result.add $cast[set[char]](e)
+  else:
+    reprSetAux(result, e, typ)
 
 type
   ReprClosure {.final.} = object

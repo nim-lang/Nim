@@ -117,9 +117,15 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   add result, "}"
 
+proc reprSetChar(result: var string, p: pointer) =
+  result = $cast[ptr set[char]](p)[]
+
 proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
   result = ""
-  reprSetAux(result, p, typ)
+  if typ.base.kind == tyChar:
+    reprSetChar(result, p)
+  else:
+    reprSetAux(result, p, typ)
 
 type
   ReprClosure {.final.} = object # we cannot use a global variable here

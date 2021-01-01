@@ -133,6 +133,27 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(",") # $(1,) should print as the semantically legal (1,)
   result.add(")")
 
+proc collectionToString[T:char](cs: set[T], prefix, separator, suffix: string): string =
+  var firstElement = true
+  result = prefix
+  var c = low(T).int
+  while c <= high(T).int:
+    let first = c
+    while c <= high(T).int and c.T in cs:
+      inc c
+    if c >= first+1:
+      if firstElement:
+        firstElement = false
+      else:
+        result.add separator
+      if c == first+1:
+        result.add first.T.repr
+      elif c > first+1:
+        result.add first.T.repr
+        result.add if c == first+2: ", " else: ".."
+        result.add (c-1).T.repr
+    inc c
+  result.add(suffix)
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix

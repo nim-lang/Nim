@@ -133,6 +133,9 @@ proc repr*[T](x: ref T | ptr T): string =
     result = when typeof(x) is ref: "ref " else: "ptr "
     result.add repr(x[])
 
+proc collectionToRepr[T:char](cs: set[T], prefix, separator, suffix: string): string =
+  $cs
+
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
   var firstElement = true

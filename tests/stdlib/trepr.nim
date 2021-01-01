@@ -22,7 +22,8 @@ template main() =
       ]#
     else:
       doAssert repr(val) == "{a, b}"
-      doAssert repr({'a'..'c', 'A'..'C'}) == "{'A', 'B', 'C', 'a', 'b', 'c'}"
+      echo repr({'a'..'c', 'A'..'C'})
+      doAssert repr({'a'..'c', 'A'..'C'}) == "{'A'..'C', 'a'..'c'}"
 
     type
       TObj {.pure, inheritable.} = object

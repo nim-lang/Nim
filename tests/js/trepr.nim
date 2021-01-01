@@ -410,4 +410,4 @@ s = ["abc", "xyz"],
 e = en6]]""")
   doAssert(repr(en4) == "en4")
 
-  doAssert(repr({'a'..'p'}) == "{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'}")
+  doAssert(repr({'a'..'p'}) == "{'a'..'p'}")
