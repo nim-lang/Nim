@@ -481,9 +481,9 @@ template addExport*(c: PContext; s: PSym) =
   addExport(c.graph, c.module, s)
 
 proc storeRodNode*(c: PContext, n: PNode) =
-  when true:
+  if c.config.symbolFiles != disabledSf:
     toPackedNodeTopLevel(n, c.encoder)
 
 proc saveRodFile*(c: PContext) =
-  when true:
+  if c.config.symbolFiles != disabledSf:
     saveRodFile(toRodFile(c.config, c.filename.AbsoluteFile), c.encoder)

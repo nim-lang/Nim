@@ -10,7 +10,7 @@
 import std / [hashes, tables, intsets, sha1]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
-  sighashes, pathutils, condsyms]
+  pathutils, condsyms]
 
 from std / os import removeFile, isAbsolute
 
