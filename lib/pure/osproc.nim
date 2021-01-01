@@ -981,7 +981,7 @@ elif not defined(useNimRtl):
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
       data.sysCommand = useShPath
-      sysArgsRaw = @[data.sysCommand, "-c", command]
+      sysArgsRaw = @[useShPath, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       data.sysCommand = command
