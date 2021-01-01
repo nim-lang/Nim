@@ -53,9 +53,9 @@ Proc                                               Usage
                                                    and a given capacity
 `setLen<#setLen,seq[T],Natural>`_                  Set the length of a sequence
 `len<#len,seq[T]>`_                                Return the length of a sequence
-`@<#@>`_                                           Turn an array into a sequence
-`add<#add,seq[T],>`_                               Add an item to the sequence
-`insert<#insert,seq[T],>`_                         Insert an item at a specific position
+`@<#@,openArray[T]>`_                              Turn an array into a sequence
+`add<#add,seq[T],sinkT>`_                          Add an item to the sequence
+`insert<#insert,seq[T],sinkT>`_                    Insert an item at a specific position
 `delete<#delete,seq[T],Natural>`_                  Delete an item while preserving the
                                                    order of elements (`O(n)` operation)
 `del<#del,seq[T],Natural>`_                        `O(1)` removal, doesn't preserve the order
@@ -152,21 +152,21 @@ Proc                      Usage
 Misc
 ----
 
-=============================================  ============================================
-Proc                                           Usage
-=============================================  ============================================
-`is<#is,T,S>`_                                 Check if two arguments are of the same type
-`isnot<#isnot.t,untyped,untyped>`_             Negated version of `is`
-`!=<#!%3D.t,untyped,untyped>`_                 Not equals
-`addr<#addr,T>`_                               Take the address of a memory location
-`T and F<#and,bool,bool>`_                     Boolean `and`
-`T or F<#or,bool,bool>`_                       Boolean `or`
-`T xor F<#xor,bool,bool>`_                     Boolean `xor` (exclusive or)
-`not T<#not,bool>`_                            Boolean `not`
-`a[^x]<#^.t,int>`_                             Take the element at the reversed index `x`
-`a .. b<#..,T,U>`_                             Binary slice that constructs an interval
-                                               `[a, b]`
-`a ..^ b<#..^.t,untyped,untyped>`_             Interval `[a, b]` but `b` as reversed index
-[a ..< b](#..<.t,untyped,untyped)              Interval `[a, b)` (excluded upper bound)
-[runnableExamples](#runnableExamples,untyped)  Create testable documentation
-=============================================  ============================================
+====================================================  ============================================
+Proc                                                  Usage
+====================================================  ============================================
+`is<#is,T,S>`_                                        Check if two arguments are of the same type
+`isnot<#isnot.t,untyped,untyped>`_                    Negated version of `is`
+`!=<#!%3D.t,untyped,untyped>`_                        Not equals
+`addr<#addr,T>`_                                      Take the address of a memory location
+`T and F<#and,bool,bool>`_                            Boolean `and`
+`T or F<#or,bool,bool>`_                              Boolean `or`
+`T xor F<#xor,bool,bool>`_                            Boolean `xor` (exclusive or)
+`not T<#not,bool>`_                                   Boolean `not`
+`a[^x]<#^.t,int>`_                                    Take the element at the reversed index `x`
+`a .. b<#..,sinkT,sinkU>`_                            Binary slice that constructs an interval
+                                                      `[a, b]`
+`a ..^ b<#..^.t,untyped,untyped>`_                    Interval `[a, b]` but `b` as reversed index
+[a ..< b](#..<.t,untyped,untyped)                     Interval `[a, b)` (excluded upper bound)
+[runnableExamples](#runnableExamples,string,untyped)  Create testable documentation
+====================================================  ============================================

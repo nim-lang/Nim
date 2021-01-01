@@ -16,7 +16,7 @@
 #   types that use the 'node' field; the reason is that slots are
 #   re-used in a register based VM. Example:
 #
-#..code-block:: nim
+#.. code-block:: nim
 #   let s = a & b  # no matter what, create fresh node
 #   s = a & b  # no matter what, keep the node
 #
@@ -35,7 +35,7 @@ const
   debugEchoCode* = defined(nimVMDebug)
 
 when debugEchoCode:
-  import asciitables
+  import std/private/asciitables
 when hasFFI:
   import evalffi
 
@@ -453,7 +453,12 @@ proc sameConstant*(a, b: PNode): bool =
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit:
+      result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # refs bug #16469
+      # if we wanted to only distinguish 0.0 vs -0.0:
+      # if a.floatVal == 0.0: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # else: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
@@ -1654,8 +1659,8 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
   let a = c.genx(n[0], flags)
   let b = c.genIndex(n[1], n[0].typ)
   if dest < 0: dest = c.getTemp(n.typ)
-  if opc == opcLdArr and {gfNodeAddr} * flags != {}:
-    c.gABC(n, opcLdArrAddr, dest, a, b)
+  if opc in {opcLdArrAddr, opcLdStrIdxAddr} and gfNodeAddr in flags:
+    c.gABC(n, opc, dest, a, b)
   elif needsRegLoad():
     var cc = c.getTemp(n.typ)
     c.gABC(n, opc, cc, a, b)
@@ -1749,11 +1754,13 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
   if arrayType in {tyString, tyCString}:
-    genArrAccessOpcode(c, n, dest, opcLdStrIdx, {})
+    let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
+    genArrAccessOpcode(c, n, dest, opc, flags)
   elif arrayType == tyTypeDesc:
     c.genTypeLit(n.typ, dest)
   else:
-    genArrAccessOpcode(c, n, dest, opcLdArr, flags)
+    let opc = if gfNodeAddr in flags: opcLdArrAddr else: opcLdArr
+    genArrAccessOpcode(c, n, dest, opc, flags)
 
 proc getNullValueAux(t: PType; obj: PNode, result: PNode; conf: ConfigRef; currPosition: var int) =
   if t != nil and t.len > 0 and t[0] != nil:
@@ -1956,14 +1963,6 @@ proc matches(s: PSym; x: string): bool =
   for i in 1..y.len:
     if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
-    s = s.owner
-  result = true
-
-proc matches(s: PSym; y: varargs[string]): bool =
-  var s = s
-  for i in 1..y.len:
-    if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
-      return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
   result = true
 
@@ -2022,11 +2021,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif s.kind == skMethod:
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
-      elif matches(s, "stdlib", "marshal", "to"):
+      elif matches(s, "stdlib.marshal.to"):
         # XXX marshal load&store should not be opcodes, but use the
         # general callback mechanisms.
         genMarshalLoad(c, n, dest)
-      elif matches(s, "stdlib", "marshal", "$$"):
+      elif matches(s, "stdlib.marshal.$$"):
         genMarshalStore(c, n, dest)
       else:
         genCall(c, n, dest)

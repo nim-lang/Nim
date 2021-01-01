@@ -78,6 +78,7 @@ type
     opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
+    opcLdStrIdxAddr,  # a = addr(b[c])
 
     opcAddInt,
     opcAddImmInt,

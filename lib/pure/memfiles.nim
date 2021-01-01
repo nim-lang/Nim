@@ -232,8 +232,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
-      var permissions_mode = S_IRUSR or S_IWUSR
-      result.handle = open(filename, flags, permissions_mode)
+      var permissionsMode = S_IRUSR or S_IWUSR
+      result.handle = open(filename, flags, permissionsMode)
     else:
       result.handle = open(filename, flags)
 

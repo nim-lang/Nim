@@ -135,7 +135,7 @@
 ##
 ## The same could have been achieved by manually iterating over a container
 ## and increasing each key's value with `inc proc
-## <#inc,CountTable[A],A,Positive>`_:
+## <#inc,CountTable[A],A,int>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -230,13 +230,13 @@ type
     ## `data` and `counter` are internal implementation details which
     ## can't be accessed.
     ##
-    ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
+    ## For creating an empty Table, use `initTable proc<#initTable>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
-    ## <#newTable,int>`_.
+    ## <#newTable>`_.
 
 const
   defaultInitialSize* = 32
@@ -293,7 +293,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ##
   ## See also:
   ## * `toTable proc<#toTable,openArray[]>`_
-  ## * `newTable proc<#newTable,int>`_ for creating a `TableRef`
+  ## * `newTable proc<#newTable>`_ for creating a `TableRef`
   runnableExamples:
     let
       a = initTable[int, string]()
@@ -322,7 +322,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `initTable proc<#initTable,int>`_
+  ## * `initTable proc<#initTable>`_
   ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -771,7 +771,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
   ##
   ## Used if you have a table with duplicate keys (as a result of using
-  ## `add proc<#add,Table[A,B],A,B>`_).
+  ## `add proc<#add,Table[A,B],A,sinkB>`_).
   ##
   runnableExamples:
     import sequtils, algorithm
@@ -801,7 +801,7 @@ proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
   ##   from a collection of `(key, value)` pairs
-  ## * `initTable proc<#initTable,int>`_ for creating a `Table`
+  ## * `initTable proc<#initTable>`_ for creating a `Table`
   runnableExamples:
     let
       a = newTable[int, string]()
@@ -816,7 +816,7 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `newTable proc<#newTable,int>`_
+  ## * `newTable proc<#newTable>`_
   ## * `toTable proc<#toTable,openArray[]>`_ for a `Table` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -845,7 +845,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,TableRef[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -1008,7 +1008,7 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,TableRef[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
@@ -1228,14 +1228,14 @@ type
     ## Hash table that remembers insertion order.
     ##
     ## For creating an empty OrderedTable, use `initOrderedTable proc
-    ## <#initOrderedTable,int>`_.
+    ## <#initOrderedTable>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
     ## For creating a new empty OrderedTableRef, use `newOrderedTable proc
-    ## <#newOrderedTable,int>`_.
+    ## <#newOrderedTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
@@ -1294,7 +1294,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
   ##
   ## See also:
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_
-  ## * `newOrderedTable proc<#newOrderedTable,int>`_ for creating an
+  ## * `newOrderedTable proc<#newOrderedTable>`_ for creating an
   ##   `OrderedTableRef`
   runnableExamples:
     let
@@ -1324,7 +1324,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `initOrderedTable proc<#initOrderedTable,int>`_
+  ## * `initOrderedTable proc<#initOrderedTable>`_
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for an
   ##   `OrderedTableRef` version
   runnableExamples:
@@ -1347,7 +1347,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
@@ -1369,7 +1369,7 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
@@ -1495,7 +1495,7 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
@@ -1796,7 +1796,7 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableR
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
   ##   an `OrderedTableRef` from a collection of `(key, value)` pairs
-  ## * `initOrderedTable proc<#initOrderedTable,int>`_ for creating an
+  ## * `initOrderedTable proc<#initOrderedTable>`_ for creating an
   ##   `OrderedTable`
   runnableExamples:
     let
@@ -1811,7 +1811,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `newOrderedTable proc<#newOrderedTable,int>`_
+  ## * `newOrderedTable proc<#newOrderedTable>`_
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_ for an
   ##   `OrderedTable` version
   runnableExamples:
@@ -1835,7 +1835,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTableRef[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for checking if
   ##   a key is in the table
@@ -1981,7 +1981,7 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTableRef[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
@@ -2208,7 +2208,7 @@ type
     ## Hash table that counts the number of each key.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
-    ## <#initCountTable,int>`_.
+    ## <#initCountTable>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
     isSorted: bool
@@ -2216,7 +2216,7 @@ type
     ## `CountTable<#CountTable>`_.
     ##
     ## For creating a new empty CountTableRef, use `newCountTable proc
-    ## <#newCountTable,int>`_.
+    ## <#newCountTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
@@ -2260,7 +2260,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ##
   ## See also:
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
-  ## * `newCountTable proc<#newCountTable,int>`_ for creating a
+  ## * `newCountTable proc<#newCountTable>`_ for creating a
   ##   `CountTableRef`
   initImpl(result, initialSize)
 
@@ -2294,7 +2294,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
@@ -2617,7 +2617,7 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
-  ## * `initCountTable proc<#initCountTable,int>`_ for creating a
+  ## * `initCountTable proc<#initCountTable>`_ for creating a
   ##   `CountTable`
   new(result)
   result[] = initCountTable[A](initialSize)
@@ -2635,7 +2635,7 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `inc proc<#inc,CountTableRef[A],A>`_ to inc even if missing
+  ## * `inc proc<#inc,CountTableRef[A],A,int>`_ to inc even if missing
   ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
@@ -2873,317 +2873,3 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     if t.data[h].val != 0:
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
-
-
-
-
-when isMainModule:
-  type
-    Person = object
-      firstName, lastName: string
-
-  proc hash(x: Person): Hash =
-    ## Piggyback on the already available string hash proc.
-    ##
-    ## Without this proc nothing works!
-    result = x.firstName.hash !& x.lastName.hash
-    result = !$result
-
-  var
-    salaries = initTable[Person, int]()
-    p1, p2: Person
-  p1.firstName = "Jon"
-  p1.lastName = "Ross"
-  salaries[p1] = 30_000
-  p2.firstName = "소진"
-  p2.lastName = "박"
-  salaries[p2] = 45_000
-  var
-    s2 = initOrderedTable[Person, int]()
-    s3 = initCountTable[Person]()
-  s2[p1] = 30_000
-  s2[p2] = 45_000
-  s3[p1] = 30_000
-  s3[p2] = 45_000
-
-  block: # Ordered table should preserve order after deletion
-    var
-      s4 = initOrderedTable[int, int]()
-    s4[1] = 1
-    s4[2] = 2
-    s4[3] = 3
-
-    var prev = 0
-    for i in s4.values:
-      doAssert(prev < i)
-      prev = i
-
-    s4.del(2)
-    doAssert(2 notin s4)
-    doAssert(s4.len == 2)
-    prev = 0
-    for i in s4.values:
-      doAssert(prev < i)
-      prev = i
-
-  block: # Deletion from OrderedTable should account for collision groups. See issue #5057.
-    # The bug is reproducible only with exact keys
-    const key1 = "boy_jackpot.inGamma"
-    const key2 = "boy_jackpot.outBlack"
-
-    var t = {
-        key1: 0,
-        key2: 0
-    }.toOrderedTable()
-
-    t.del(key1)
-    assert(t.len == 1)
-    assert(key2 in t)
-
-  var
-    t1 = initCountTable[string]()
-    t2 = initCountTable[string]()
-  t1.inc("foo")
-  t1.inc("bar", 2)
-  t1.inc("baz", 3)
-  t2.inc("foo", 4)
-  t2.inc("bar")
-  t2.inc("baz", 11)
-  merge(t1, t2)
-  assert(t1["foo"] == 5)
-  assert(t1["bar"] == 3)
-  assert(t1["baz"] == 14)
-
-  let
-    t1r = newCountTable[string]()
-    t2r = newCountTable[string]()
-  t1r.inc("foo")
-  t1r.inc("bar", 2)
-  t1r.inc("baz", 3)
-  t2r.inc("foo", 4)
-  t2r.inc("bar")
-  t2r.inc("baz", 11)
-  merge(t1r, t2r)
-  assert(t1r["foo"] == 5)
-  assert(t1r["bar"] == 3)
-  assert(t1r["baz"] == 14)
-
-  var
-    t1l = initCountTable[string]()
-    t2l = initCountTable[string]()
-  t1l.inc("foo")
-  t1l.inc("bar", 2)
-  t1l.inc("baz", 3)
-  t2l.inc("foo", 4)
-  t2l.inc("bar")
-  t2l.inc("baz", 11)
-
-  block:
-    const testKey = "TESTKEY"
-    let t: CountTableRef[string] = newCountTable[string]()
-
-    # Before, does not compile with error message:
-    #test_counttable.nim(7, 43) template/generic instantiation from here
-    #lib/pure/collections/tables.nim(117, 21) template/generic instantiation from here
-    #lib/pure/collections/tableimpl.nim(32, 27) Error: undeclared field: 'hcode
-    doAssert 0 == t[testKey]
-    t.inc(testKey, 3)
-    doAssert 3 == t[testKey]
-
-  block:
-    # Clear tests
-    var clearTable = newTable[int, string]()
-    clearTable[42] = "asd"
-    clearTable[123123] = "piuyqwb "
-    doAssert clearTable[42] == "asd"
-    clearTable.clear()
-    doAssert(not clearTable.hasKey(123123))
-    doAssert clearTable.getOrDefault(42) == ""
-
-  block: #5482
-    var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
-    var b = newOrderedTable[string, string](initialSize = 2)
-    b["wrong?"] = "foo"
-    b["wrong?"] = "foo2"
-    assert a == b
-
-  block: #5482
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = newOrderedTable[string, string](initialSize = 2)
-    b["wrong?"] = "foo"
-    b["wrong?"] = "foo2"
-    assert a == b
-
-  block: #5487
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = newOrderedTable[string, string]()         # notice, default size!
-    b["wrong?"] = "foo"
-    b["wrong?"] = "foo2"
-    assert a == b
-
-  block: #5487
-    var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
-    var b = newOrderedTable[string, string]()         # notice, default size!
-    b["wrong?"] = "foo"
-    b["wrong?"] = "foo2"
-    assert a == b
-
-  block:
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
-    var b = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
-    var c = newOrderedTable[string, string]()         # notice, default size!
-    c["wrong?"] = "foo"
-    c["wrong?"] = "foo2"
-    assert a == b
-    assert a == c
-
-  block: #6250
-    let
-      a = {3: 1}.toOrderedTable
-      b = {3: 2}.toOrderedTable
-    assert((a == b) == false)
-    assert((b == a) == false)
-
-  block: #6250
-    let
-      a = {3: 2}.toOrderedTable
-      b = {3: 2}.toOrderedTable
-    assert((a == b) == true)
-    assert((b == a) == true)
-
-  block: # CountTable.smallest
-    let t = toCountTable([0, 0, 5, 5, 5])
-    doAssert t.smallest == (0, 2)
-
-  block: #10065
-    let t = toCountTable("abracadabra")
-    doAssert t['z'] == 0
-
-    var t_mut = toCountTable("abracadabra")
-    doAssert t_mut['z'] == 0
-    # the previous read may not have modified the table.
-    doAssert t_mut.hasKey('z') == false
-    t_mut['z'] = 1
-    doAssert t_mut['z'] == 1
-    doAssert t_mut.hasKey('z') == true
-
-  block: #12813 #13079
-    var t = toCountTable("abracadabra")
-    doAssert len(t) == 5
-
-    t['a'] = 0 # remove a key
-    doAssert len(t) == 4
-
-  block:
-    var tp: Table[string, string] = initTable[string, string]()
-    doAssert "test1" == tp.getOrDefault("test1", "test1")
-    tp["test2"] = "test2"
-    doAssert "test2" == tp.getOrDefault("test2", "test1")
-    var tr: TableRef[string, string] = newTable[string, string]()
-    doAssert "test1" == tr.getOrDefault("test1", "test1")
-    tr["test2"] = "test2"
-    doAssert "test2" == tr.getOrDefault("test2", "test1")
-    var op: OrderedTable[string, string] = initOrderedTable[string, string]()
-    doAssert "test1" == op.getOrDefault("test1", "test1")
-    op["test2"] = "test2"
-    doAssert "test2" == op.getOrDefault("test2", "test1")
-    var orf: OrderedTableRef[string, string] = newOrderedTable[string, string]()
-    doAssert "test1" == orf.getOrDefault("test1", "test1")
-    orf["test2"] = "test2"
-    doAssert "test2" == orf.getOrDefault("test2", "test1")
-
-  block tableWithoutInit:
-    var
-      a: Table[string, int]
-      b: Table[string, int]
-      c: Table[string, int]
-      d: Table[string, int]
-      e: Table[string, int]
-
-    a["a"] = 7
-    doAssert a.hasKey("a")
-    doAssert a.len == 1
-    doAssert a["a"] == 7
-    a["a"] = 9
-    doAssert a.len == 1
-    doAssert a["a"] == 9
-
-    doAssert b.hasKeyOrPut("b", 5) == false
-    doAssert b.hasKey("b")
-    doAssert b.hasKeyOrPut("b", 8)
-    doAssert b["b"] == 5
-
-    doAssert c.getOrDefault("a") == 0
-    doAssert c.getOrDefault("a", 3) == 3
-    c["a"] = 6
-    doAssert c.getOrDefault("a", 3) == 6
-
-    doAssert d.mgetOrPut("a", 3) == 3
-    doAssert d.mgetOrPut("a", 6) == 3
-
-    var x = 99
-    doAssert e.pop("a", x) == false
-    doAssert x == 99
-    e["a"] = 77
-    doAssert e.pop("a", x)
-    doAssert x == 77
-
-  block orderedTableWithoutInit:
-    var
-      a: OrderedTable[string, int]
-      b: OrderedTable[string, int]
-      c: OrderedTable[string, int]
-      d: OrderedTable[string, int]
-
-    a["a"] = 7
-    doAssert a.hasKey("a")
-    doAssert a.len == 1
-    doAssert a["a"] == 7
-    a["a"] = 9
-    doAssert a.len == 1
-    doAssert a["a"] == 9
-
-    doAssert b.hasKeyOrPut("b", 5) == false
-    doAssert b.hasKey("b")
-    doAssert b.hasKeyOrPut("b", 8)
-    doAssert b["b"] == 5
-
-    doAssert c.getOrDefault("a") == 0
-    doAssert c.getOrDefault("a", 3) == 3
-    c["a"] = 6
-    doAssert c.getOrDefault("a", 3) == 6
-
-    doAssert d.mgetOrPut("a", 3) == 3
-    doAssert d.mgetOrPut("a", 6) == 3
-
-  block countTableWithoutInit:
-    var
-      a: CountTable[string]
-      b: CountTable[string]
-      c: CountTable[string]
-      d: CountTable[string]
-      e: CountTable[string]
-
-    a["a"] = 7
-    doAssert a.hasKey("a")
-    doAssert a.len == 1
-    doAssert a["a"] == 7
-    a["a"] = 9
-    doAssert a.len == 1
-    doAssert a["a"] == 9
-
-    doAssert b["b"] == 0
-    b.inc("b")
-    doAssert b["b"] == 1
-
-    doAssert c.getOrDefault("a") == 0
-    doAssert c.getOrDefault("a", 3) == 3
-    c["a"] = 6
-    doAssert c.getOrDefault("a", 3) == 6
-
-    e["f"] = 3
-    merge(d, e)
-    doAssert d.hasKey("f")
-    d.inc("f")
-    merge(d, e)
-    doAssert d["f"] == 7

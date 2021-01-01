@@ -134,7 +134,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e.position = int(counter)
     let symNode = newSymNode(e)
     if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil and
-        c.config.cmd != cmdDoc: # A hack to produce documentation for enum fields.
+        c.config.cmd notin cmdDocLike: # A hack to produce documentation for enum fields.
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
@@ -146,10 +146,12 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     onDef(e.info, e)
     if sfGenSym notin e.flags:
       if not isPure: addDecl(c, e)
-      else: importPureEnumField(c, e)
+      else: declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
+  if isPure and sfExported in result.sym.flags:
+    addPureEnum(c, result.sym)
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
 
@@ -915,6 +917,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
+      # echo "semAnyRef ", "n: ", n, "i: ", i, "ni: ", ni
       if ni.kind == nkNilLit:
         isNilable = true
       else:
@@ -931,7 +934,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     addSonSkipIntLit(result, t, c.idgen)
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
-    #if not isNilable: result.flags.incl tfNotNil
+    # if not isNilable: result.flags.incl tfNotNil
     case wrapperKind
     of tyOwned:
       if optOwnedRefs in c.config.globalOptions:
@@ -1561,6 +1564,8 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
     if modifier != tyNone:
       dummyName = param[0]
       dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
+      # if modifier == tyRef:
+        # dummyType.flags.incl tfNotNil
       if modifier == tyTypeDesc:
         dummyType.flags.incl tfConceptMatchedTypeSym
         dummyType.flags.incl tfCheckedForDestructor
@@ -1593,7 +1598,9 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
       if strTableGet(c.userPragmas, ident) != nil:
         discard "User-defined pragma"
       else:
-        let sym = searchInScopes(c, ident)
+        var amb = false
+        let sym = searchInScopes(c, ident, amb)
+        # XXX: What to do here if amb is true?
         if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
         else:
@@ -1743,9 +1750,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           if n[2].kind != nkNilLit:
             localError(c.config, n.info,
               "Invalid syntax. When used with a type, 'not' can be followed only by 'nil'")
-          if notnil notin c.features:
+          if notnil notin c.features and strictNotNil notin c.features:
             localError(c.config, n.info,
-              "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
+              "enable the 'not nil' annotation with {.experimental: \"notnil\".} or " &
+              "  the `strict not nil` annotation with {.experimental: \"strictNotNil\".} " &
+              "  the \"notnil\" one is going to be deprecated, so please use \"strictNotNil\"")
           let resolvedType = result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
           case resolvedType.kind
           of tyGenericParam, tyTypeDesc, tyFromExpr:

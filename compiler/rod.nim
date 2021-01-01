@@ -22,7 +22,7 @@ when not nimIncremental:
 
   template storeRemaining*(g: ModuleGraph; module: PSym) = discard
 
-  template registerModule*(g: ModuleGraph; module: PSym) = discard
+  #template registerModule*(g: ModuleGraph; module: PSym) = discard
 
 else:
   include rodimpl

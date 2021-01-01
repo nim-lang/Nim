@@ -112,7 +112,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## it helps to prettify the generated index if no title is found.
   ##
   ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
-  ## are defined in the the `packages/docutils/rst module <rst.html>`_.
+  ## are defined in the `packages/docutils/rst module <rst.html>`_.
   ## ``options`` selects the behaviour of the rst parser.
   ##
   ## ``findFile`` is a proc used by the rst ``include`` directive among others.
@@ -1009,7 +1009,8 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
 
 proc texColumns(n: PRstNode): string =
   result = ""
-  for i in countup(1, len(n)): add(result, "|X")
+  let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
+  for i in countup(1, nColumns): add(result, "|X")
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
@@ -1028,6 +1029,79 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
   if not b:
     renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
 
+proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
+  var
+    specifier = ""
+    specStart = ""
+    i1 = 0
+    pre = ""
+    i2 = n.text.len-1
+    post = ""
+  if n.text[0] == '(':
+    i1 = 1
+    pre = "("
+  if n.text[^1] == ')' or n.text[^1] == '.':
+    i2 = n.text.len-2
+    post = $n.text[^1]
+  let enumR = i1 .. i2  # enumerator range without surrounding (, ), .
+  if d.target == outLatex:
+    result.add ("\n%"&n.text&"\n")
+    # use enumerate parameters from package enumitem
+    if n.text[i1].isDigit:
+      var labelDef = ""
+      if pre != "" or post != "":
+        labelDef = "label=" & pre & "\\arabic*" & post & ","
+      if n.text[enumR] != "1":
+        specStart = "start=$1" % [n.text[enumR]]
+      if labelDef != "" or specStart != "":
+        specifier = "[$1$2]" % [labelDef, specStart]
+    else:
+      let (first, labelDef) =
+        if n.text[i1].isUpperAscii: ('A', "label=" & pre & "\\Alph*" & post)
+        else: ('a', "label=" & pre & "\\alph*" & post)
+      if n.text[i1] != first:
+        specStart = ",start=" & $(ord(n.text[i1]) - ord(first) + 1)
+      specifier = "[$1$2]" % [labelDef, specStart]
+  else:  # HTML
+    # TODO: implement enumerator formatting using pre and post ( and ) for HTML
+    if n.text[i1].isDigit:
+      if n.text[enumR] != "1":
+        specStart = " start=\"$1\"" % [n.text[enumR]]
+      specifier = "class=\"simple\"" & specStart
+    else:
+      let (first, labelDef) =
+        if n.text[i1].isUpperAscii: ('A', "class=\"upperalpha simple\"")
+        else: ('a', "class=\"loweralpha simple\"")
+      if n.text[i1] != first:
+        specStart = " start=\"$1\"" % [ $(ord(n.text[i1]) - ord(first) + 1) ]
+      specifier = labelDef & specStart
+  renderAux(d, n, "<ol " & specifier & ">$1</ol>\n",
+            "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
+            result)
+
+proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
+  var
+    htmlCls = "admonition_warning"
+    texSz = "\\large"
+    texColor = "orange"
+  case n.text
+  of "hint", "note", "tip":
+    htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
+  of "attention", "admonition", "important", "warning":
+    htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
+  of "danger", "error":
+    htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
+  else: discard
+  let txt = n.text.capitalizeAscii()
+  let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
+  renderAux(d, n,
+      htmlHead & "<span class=\"" & htmlCls & "-text\"><b>" & txt &
+        ":</b></span>\n" & "$1</div>\n",
+      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]\n" &
+        "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
+        "$1\n\\end{mdframed}\n",
+      result)
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
@@ -1041,9 +1115,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
                     "\\begin{itemize}$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
     renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
-  of rnEnumList:
-    renderAux(d, n, "<ol class=\"simple\">$1</ol>\n",
-                    "\\begin{enumerate}$1\\end{enumerate}\n", result)
+  of rnEnumList: renderEnumList(d, n, result)
   of rnDefList:
     renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
                        "\\begin{description}$1\\end{description}\n", result)
@@ -1088,12 +1160,25 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", result)
+    if n.sons.len == 1 and n.sons[0].text == "\n":
+      # whole line block is one empty line, no need to add extra spacing
+      renderAux(d, n, "<p>$1</p> ", "\n\n$1", result)
+    else:  # add extra spacing around the line block for Latex
+      renderAux(d, n, "<p>$1</p>", "\n\\vspace{0.5em}\n$1\\vspace{0.5em}\n", result)
   of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", result)
+    if n.text.len == 0:  # normal case - no additional indentation
+      renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
+    elif n.text == "\n":  # add one empty line
+      renderAux(d, n, "<br/>", "\\vspace{1em}\n", result)
+    else:  # additional indentation w.r.t. '| '
+      let indent = $(0.5 * (n.text.len - 1).toFloat) & "em"
+      renderAux(d, n,
+        "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
+        "\\noindent\\hspace{" & indent & "}$1\n\n", result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
+  of rnAdmonition: renderAdmonition(d, n, result)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",
@@ -1364,9 +1449,3 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
   rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
-
-
-when isMainModule:
-  assert rstToHtml("*Hello* **world**!", {},
-    newStringTable(modeStyleInsensitive)) ==
-    "<em>Hello</em> <strong>world</strong>!"

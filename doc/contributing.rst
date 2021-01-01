@@ -47,7 +47,7 @@ which only gets executed when the tester is building the file.
 Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
 testing by itself, don't rely on echo statements or similar; in particular, avoid
-things like `echo "done"`.
+things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 
@@ -407,7 +407,6 @@ General commit rules
 
       #!/bin/sh
       git diff --check --cached || exit $?
-
 5. Describe your commit and use your common sense.
    Example commit message:
 
@@ -418,11 +417,10 @@ General commit rules
    (e.g.: partially fixed) and won't close the issue when committed.
 
 6. PR body (not just PR title) should contain references to fixed/referenced github
-  issues, e.g.: `fix #123` or `refs #123`. This is so that you get proper cross
-  referencing from linked issue to the PR (github won't make those links with just
-  PR title, and commit messages aren't always sufficient to ensure that, e.g.
-  can't be changed after a PR is merged).
-
+   issues, e.g.: `fix #123` or `refs #123`. This is so that you get proper cross
+   referencing from linked issue to the PR (github won't make those links with just
+   PR title, and commit messages aren't always sufficient to ensure that, e.g.
+   can't be changed after a PR is merged).
 
 7. Commits should be always be rebased against devel (so a fast forward
    merge can happen)

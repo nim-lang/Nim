@@ -3,7 +3,7 @@ discard """
   output: '''
 z
 e
-  '''
+'''
 """
 
 type

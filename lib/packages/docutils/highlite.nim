@@ -45,6 +45,9 @@ import
 from algorithm import binarySearch
 
 type
+  SourceLanguage* = enum
+    langNone, langNim, langCpp, langCsharp, langC, langJava,
+    langYaml, langPython
   TokenClass* = enum
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber,
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit,
@@ -59,14 +62,11 @@ type
     buf: cstring
     pos: int
     state: TokenClass
-
-  SourceLanguage* = enum
-    langNone, langNim, langCpp, langCsharp, langC, langJava,
-    langYaml
+    lang: SourceLanguage
 
 const
   sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
-    "Nim", "C++", "C#", "C", "Java", "Yaml"]
+    "Nim", "C++", "C#", "C", "Java", "Yaml", "Python"]
   tokenClassToStr*: array[TokenClass, string] = ["Eof", "None", "Whitespace",
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber",
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit",
@@ -101,6 +101,7 @@ proc initGeneralTokenizer*(g: var GeneralTokenizer, buf: cstring) =
   g.start = 0
   g.length = 0
   g.state = low(TokenClass)
+  g.lang = low(SourceLanguage)
   var pos = 0                     # skip initial whitespace:
   while g.buf[pos] in {' ', '\x09'..'\x0D'}: inc(pos)
   g.pos = pos
@@ -161,7 +162,13 @@ const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
               '|', '=', '%', '&', '$', '@', '~', ':'}
 
-proc nimNextToken(g: var GeneralTokenizer) =
+proc isKeyword(x: openArray[string], y: string): int =
+  binarySearch(x, y)
+
+proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
+  binarySearch(x, y, cmpIgnoreCase)
+
+proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
   const
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
     octChars = {'0'..'7', '_'}
@@ -207,7 +214,7 @@ proc nimNextToken(g: var GeneralTokenizer) =
       if g.buf[pos] == '#':
         inc(pos)
         isDoc = true
-      if g.buf[pos] == '[':
+      if g.buf[pos] == '[' and g.lang == langNim:
         g.kind = gtLongComment
         var nesting = 0
         while true:
@@ -265,7 +272,10 @@ proc nimNextToken(g: var GeneralTokenizer) =
             inc(pos)
           if g.buf[pos] == '\"': inc(pos)
       else:
-        g.kind = nimGetKeyword(id)
+        if g.lang == langNim:
+          g.kind = nimGetKeyword(id)
+        elif isKeyword(keywords, id) >= 0:
+          g.kind = gtKeyword
     of '0':
       inc(pos)
       case g.buf[pos]
@@ -393,12 +403,6 @@ proc generalStrLit(g: var GeneralTokenizer, position: int): int =
       else:
         inc(pos)
   result = pos
-
-proc isKeyword(x: openArray[string], y: string): int =
-  binarySearch(x, y)
-
-proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
-  binarySearch(x, y, cmpIgnoreCase)
 
 type
   TokenizerFlag = enum
@@ -886,7 +890,18 @@ proc yamlNextToken(g: var GeneralTokenizer) =
   g.length = pos - g.pos
   g.pos = pos
 
+proc pythonNextToken(g: var GeneralTokenizer) =
+  const
+    keywords: array[0..34, string] = [
+      "False", "None", "True", "and", "as", "assert", "async", "await",
+      "break", "class", "continue", "def", "del", "elif", "else", "except",
+      "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+      "nonlocal", "not", "or", "pass", "raise", "return", "try", "while",
+      "with", "yield"]
+  nimNextToken(g, keywords)
+
 proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
+  g.lang = lang
   case lang
   of langNone: assert false
   of langNim: nimNextToken(g)
@@ -895,6 +910,7 @@ proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   of langC: cNextToken(g)
   of langJava: javaNextToken(g)
   of langYaml: yamlNextToken(g)
+  of langPython: pythonNextToken(g)
 
 when isMainModule:
   var keywords: seq[string]

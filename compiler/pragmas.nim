@@ -155,7 +155,7 @@ proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
     s.cname = $s.loc.r
-  if c.config.cmd == cmdPretty and '$' notin extname:
+  if c.config.cmd == cmdNimfix and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
 
@@ -559,7 +559,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "":
-        var e = searchInScopes(con, getIdent(con.cache, sub))
+        var amb = false
+        var e = searchInScopes(con, getIdent(con.cache, sub), amb)
+        # XXX what to do here if 'amb' is true?
         if e != nil:
           when false:
             if e.kind == skStub: loadStub(e)

@@ -1,6 +1,6 @@
 #[
-move to std/asciitables.nim once stable, or to a nimble paackage
-once compiler can depend on nimble
+move to std/asciitables.nim once stable, or to a fusion package
+once compiler can depend on fusion
 ]#
 
 type Cell* = object
@@ -8,7 +8,7 @@ type Cell* = object
   width*, row*, col*, ncols*, nrows*: int
 
 iterator parseTableCells*(s: string, delim = '\t'): Cell =
-  ## iterates over all cells in a `delim`-delimited `s`, after a 1st
+  ## Iterates over all cells in a `delim`-delimited `s`, after a 1st
   ## pass that computes number of rows, columns, and width of each column.
   var widths: seq[int]
   var cell: Cell
@@ -69,7 +69,7 @@ iterator parseTableCells*(s: string, delim = '\t'): Cell =
     finishRow()
 
 proc alignTable*(s: string, delim = '\t', fill = ' ', sep = " "): string =
-  ## formats a `delim`-delimited `s` representing a table; each cell is aligned
+  ## Formats a `delim`-delimited `s` representing a table; each cell is aligned
   ## to a width that's computed for each column; consecutive columns are
   ## delimited by `sep`, and alignment space is filled using `fill`.
   ## More customized formatting can be done by calling `parseTableCells` directly.

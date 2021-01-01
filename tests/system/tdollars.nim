@@ -77,3 +77,29 @@ block: # #14350 for JS
   doAssert cstr == nil
   doAssert cstr.isNil
   doAssert cstr != cstring("")
+
+
+proc main()=
+  block:
+    let a = -0.0
+    doAssert $a == "-0.0"
+    doAssert $(-0.0) == "-0.0"
+
+  block:
+    let a = 0.0
+    doAssert $a == "0.0"
+    doAssert $(0.0) == "0.0"
+
+  block:
+    let b = -0
+    doAssert $b == "0"
+    doAssert $(-0) == "0"
+
+  block:
+    let b = 0
+    doAssert $b == "0"
+    doAssert $(0) == "0"
+
+
+static: main()
+main()

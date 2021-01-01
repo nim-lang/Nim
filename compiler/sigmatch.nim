@@ -568,9 +568,11 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ##..code-block:: nim
+  ## 
+  ## .. code-block:: nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
+  ##
   ## And we want to match: myMap(@[1,2,3], innerProc)
   ## This proc (procParamTypeRel) will do the following steps in
   ## three different calls:

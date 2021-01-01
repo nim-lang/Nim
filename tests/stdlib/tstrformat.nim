@@ -6,7 +6,7 @@ output: '''Received (name: "Foo", species: "Bar")'''
 # issue #7632
 
 import genericstrformat
-import strutils
+import strutils, times
 
 
 doAssert works(5) == "formatted  5"
@@ -202,10 +202,10 @@ doAssert fmt"{nat=:3X}" == "nat= 40"
 proc my_proc =
   const value = "value"
   const a = &"{value}"
-  assert a == value
+  doAssert a == value
 
   const b = &"{value=}"
-  assert b == "value=" & value
+  doAssert b == "value=" & value
 
 my_proc()
 
@@ -376,3 +376,140 @@ block:
   doAssert fmt"{x.foo(y) =}" == "x.foo(y) =18"
   doAssert fmt"{x.foo(y)= }" == "x.foo(y)= 18"
   doAssert fmt"{x.foo(y) = }" == "x.foo(y) = 18"
+
+block:
+  template check(actual, expected: string) =
+    doAssert actual == expected
+
+  # Basic tests
+  let s = "string"
+  check &"{0} {s}", "0 string"
+  check &"{s[0..2].toUpperAscii}", "STR"
+  check &"{-10:04}", "-010"
+  check &"{-10:<04}", "-010"
+  check &"{-10:>04}", "-010"
+  check &"0x{10:02X}", "0x0A"
+
+  check &"{10:#04X}", "0x0A"
+
+  check &"""{"test":#>5}""", "#test"
+  check &"""{"test":>5}""", " test"
+
+  check &"""{"test":#^7}""", "#test##"
+
+  check &"""{"test": <5}""", "test "
+  check &"""{"test":<5}""", "test "
+  check &"{1f:.3f}", "1.000"
+  check &"Hello, {s}!", "Hello, string!"
+
+  # Tests for identifiers without parenthesis
+  check &"{s} works{s}", "string worksstring"
+  check &"{s:>7}", " string"
+  doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`
+
+  # Misc general tests
+  check &"{{}}", "{}"
+  check &"{0}%", "0%"
+  check &"{0}%asdf", "0%asdf"
+  check &("\n{\"\\n\"}\n"), "\n\n\n"
+  check &"""{"abc"}s""", "abcs"
+
+  # String tests
+  check &"""{"abc"}""", "abc"
+  check &"""{"abc":>4}""", " abc"
+  check &"""{"abc":<4}""", "abc "
+  check &"""{"":>4}""", "    "
+  check &"""{"":<4}""", "    "
+
+  # Int tests
+  check &"{12345}", "12345"
+  check &"{ - 12345}", "-12345"
+  check &"{12345:6}", " 12345"
+  check &"{12345:>6}", " 12345"
+  check &"{12345:4}", "12345"
+  check &"{12345:08}", "00012345"
+  check &"{-12345:08}", "-0012345"
+  check &"{0:0}", "0"
+  check &"{0:02}", "00"
+  check &"{-1:3}", " -1"
+  check &"{-1:03}", "-01"
+  check &"{10}", "10"
+  check &"{16:#X}", "0x10"
+  check &"{16:^#7X}", " 0x10  "
+  check &"{16:^+#7X}", " +0x10 "
+
+  # Hex tests
+  check &"{0:x}", "0"
+  check &"{-0:x}", "0"
+  check &"{255:x}", "ff"
+  check &"{255:X}", "FF"
+  check &"{-255:x}", "-ff"
+  check &"{-255:X}", "-FF"
+  check &"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
+  check &"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
+  check &"{255:4x}", "  ff"
+  check &"{255:04x}", "00ff"
+  check &"{-255:4x}", " -ff"
+  check &"{-255:04x}", "-0ff"
+
+  # Float tests
+  check &"{123.456}", "123.456"
+  check &"{-123.456}", "-123.456"
+  check &"{123.456:.3f}", "123.456"
+  check &"{123.456:+.3f}", "+123.456"
+  check &"{-123.456:+.3f}", "-123.456"
+  check &"{-123.456:.3f}", "-123.456"
+  check &"{123.456:1g}", "123.456"
+  check &"{123.456:.1f}", "123.5"
+  check &"{123.456:.0f}", "123."
+  check &"{123.456:>9.3f}", "  123.456"
+  check &"{123.456:9.3f}", "  123.456"
+  check &"{123.456:>9.4f}", " 123.4560"
+  check &"{123.456:>9.0f}", "     123."
+  check &"{123.456:<9.4f}", "123.4560 "
+
+  # Float (scientific) tests
+  check &"{123.456:e}", "1.234560e+02"
+  check &"{123.456:>13e}", " 1.234560e+02"
+  check &"{123.456:<13e}", "1.234560e+02 "
+  check &"{123.456:.1e}", "1.2e+02"
+  check &"{123.456:.2e}", "1.23e+02"
+  check &"{123.456:.3e}", "1.235e+02"
+
+  # Note: times.format adheres to the format protocol. Test that this
+  # works:
+
+  var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
+  check &"{dt:yyyy-MM-dd}", "2000-01-01"
+
+  var tm = fromUnix(0)
+  discard &"{tm}"
+
+  var noww = now()
+  check &"{noww}", $noww
+
+  # Unicode string tests
+  check &"""{"αβγ"}""", "αβγ"
+  check &"""{"αβγ":>5}""", "  αβγ"
+  check &"""{"αβγ":<5}""", "αβγ  "
+  check &"""a{"a"}α{"α"}€{"€"}𐍈{"𐍈"}""", "aaαα€€𐍈𐍈"
+  check &"""a{"a":2}α{"α":2}€{"€":2}𐍈{"𐍈":2}""", "aa αα €€ 𐍈𐍈 "
+  # Invalid unicode sequences should be handled as plain strings.
+  # Invalid examples taken from: https://stackoverflow.com/a/3886015/1804173
+  let invalidUtf8 = [
+    "\xc3\x28", "\xa0\xa1",
+    "\xe2\x28\xa1", "\xe2\x82\x28",
+    "\xf0\x28\x8c\xbc", "\xf0\x90\x28\xbc", "\xf0\x28\x8c\x28"
+  ]
+  for s in invalidUtf8:
+    check &"{s:>5}", repeat(" ", 5-s.len) & s
+
+  # bug #11089
+  let flfoo: float = 1.0
+  check &"{flfoo}", "1.0"
+
+  # bug #11092
+  check &"{high(int64)}", "9223372036854775807"
+  check &"{low(int64)}", "-9223372036854775808"
+
+  doAssert fmt"{'a'} {'b'}" == "a b"
