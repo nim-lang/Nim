@@ -255,10 +255,10 @@ first appearance of the proc.
 .. code-block:: nim
 
   proc hello*(): string
-    ## Puts documentation here
+    ## Put documentation here
   proc nothing() = discard
   proc hello*(): string =
-    ## Ignores this
+    ## Ignore this
     echo "hello"
 
 The preferred documentation style is to begin with a capital letter and use
