@@ -26,7 +26,7 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees, md5
+  btrees, md5
 
 # import ic / packed_ast
 
@@ -67,7 +67,6 @@ type
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
     emptyNode*: PNode
-    incr*: IncrementalCtx
     canonTypes*: Table[SigHash, PType]
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
@@ -206,7 +205,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
-  init(result.incr)
   result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
     discard
   result.cacheSeqs = initTable[string, PNode]()
@@ -235,7 +233,6 @@ proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   assert m.position == m.info.fileIndex.int32
-  addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
   if g.suggestMode:
     g.deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when querying the graph lazily.
@@ -243,7 +240,6 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
-  addModuleDep(g.incr, g.config, module, includeFile, isIncludeFile = true)
   discard hasKeyOrPut(g.inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =

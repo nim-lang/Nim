@@ -16,7 +16,7 @@ import
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, plugins/active, rod, lineinfos, strtabs, int128,
+  lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
@@ -638,7 +638,6 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  storeRemaining(c.graph, c.module)
   saveRodFile(c)
 
 const semPass* = makePass(myOpen, myProcess, myClose,

@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, msgs, options,
-  idents, lexer, passes, syntaxes, llstream, modulegraphs, rod,
+  idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
@@ -93,8 +93,10 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-    result = loadModuleSym(graph, fileIdx, filename)
-    if result == nil:
+    when false:
+      # XXX entry point for module loading from the rod file
+      result = loadModuleSym(graph, fileIdx, filename)
+    when true:
       result = newModule(graph, fileIdx)
       result.flags.incl flags
       registerModule(graph, result)

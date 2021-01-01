@@ -31,7 +31,6 @@ import
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
   pathutils, strtabs
 
-from incremental import nimIncremental
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
@@ -792,10 +791,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
   of "incremental":
-    when not nimIncremental:
-      localError(conf, info, "the compiler was not built with " &
-        "incremental compilation features; bootstrap with " &
-        "-d:nimIncremental to enable")
     case arg.normalize
     of "on": conf.symbolFiles = v2Sf
     of "off": conf.symbolFiles = disabledSf

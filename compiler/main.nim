@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -164,7 +164,6 @@ proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
 
-  setupModuleCache(graph)
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
