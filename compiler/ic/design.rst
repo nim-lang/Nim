@@ -29,12 +29,6 @@ mechanism needs to be implemented that we could get wrong. ModuleIds
 are rod-file specific too.
 
 
-Configuration setup changes
----------------------------
-
-For a MVP these are not detected. Later the configuration will be
-stored in every `.rod` file.
-
 
 Global state
 ------------
@@ -44,8 +38,4 @@ Global persistent state will be kept in a project specific `.rod` file.
 Rod File Format
 ---------------
 
-Frosty and snappy combine serially:
-- frosty(version: string)                  # a version string for the rodfile
-- frosty(config: Hash)                     # a hash of the ConfigRef
-- frosty(value: Hash)                      # a hash of the PackedTree
-- frosty(snappy(frosty(module: Module)))   # the Module (merely name, ast)
+It's a simple binary file format. `rodfiles.nim` contains some details.

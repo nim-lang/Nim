@@ -24,14 +24,7 @@ type
     options: TOptions
     globalOptions: TGlobalOptions
 
-  ModuleStatus* = enum
-    undefined,
-    loading,
-    loaded,
-    outdated
-
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
-    status: ModuleStatus
     definedSymbols: string
     includes: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
@@ -410,7 +403,19 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   result = f.err
 
 type
-  PackedModuleGraph* = seq[PackedModule] # indexed by FileIndex
+  ModuleStatus* = enum
+    undefined,
+    loading,
+    loaded,
+    outdated
+
+  LoadedModule* = object
+    status: ModuleStatus
+    fromDisk: PackedModule
+    syms: seq[PSym] # indexed by itemId
+    types: seq[PType]
+
+  PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef;
                     fileIdx: FileIndex): bool =
@@ -423,12 +428,12 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef;
     g[m].status = loading
     let fullpath = msgs.toFullPath(conf, fileIdx)
     let rod = toRodFile(conf, AbsoluteFile fullpath)
-    let err = loadRodFile(rod, g[m], conf)
+    let err = loadRodFile(rod, g[m].fromDisk, conf)
     if err == ok:
       result = false
       # check its dependencies:
-      for dep in g[m].imports:
-        let fid = toFileIndex(dep, g[m], conf)
+      for dep in g[m].fromDisk.imports:
+        let fid = toFileIndex(dep, g[m].fromDisk, conf)
         # Warning: we need to traverse the full graph, so
         # do **not use break here**!
         if needsRecompile(g, conf, fid):
@@ -498,20 +503,63 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
 
 type
   PackedDecoder* = object
-    m: PackedModule
     thisModule*: int32
-    lastFile*: FileIndex # remember the last lookup entry.
     lastLit*: LitId
-    filenames*: Table[FileIndex, LitId]
-    pendingTypes*: seq[PType]
-    pendingSyms*: seq[PSym]
-    typeMap*: Table[int32, PType]
-    symMap*: Table[int32, PSym]
-    sh: Shared
+    lastFile*: FileIndex # remember the last lookup entry.
     config*: ConfigRef
+    ident: IdentCache
 
+proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType
 
+proc toFileIndexCached(c: var PackedDecoder; g: var PackedModuleGraph; f: LitId): FileIndex =
+  if c.lastLit == f:
+    result = c.lastFile
+  else:
+    result = toFileIndex(f, g[c.thisModule].fromDisk, c.config)
+    c.lastLit = f
+    c.lastFile = result
 
+proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph;
+                       x: PackedLineInfo): TLineInfo =
+  assert g[c.thisModule].status == loaded
+  result = TLineInfo(line: x.line, col: x.col,
+            fileIndex: toFileIndexCached(c, g, x.file))
+
+proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph;
+               tree: PackedTree; n: NodePos): PNode =
+  let k = n.kind
+  result = newNodeIT(k, translateLineInfo(c, g, n.info),
+    loadType(c, g, n.typ))
+  result.flags = n.flags
+
+  case k
+  of nkEmpty, nkNilLit, nkType:
+    discard
+  of nkIdent:
+    result.ident = getIdent(c.ident, g[c.thisModule].fromDisk.sh.strings[n.litId])
+  of nkSym:
+    discard
+  of directIntLit:
+    result.intVal = tree.nodes[n.int].operand
+  of externIntLit:
+    result.intVal = g[c.thisModule].fromDisk.sh.integers[n.litId]
+  of nkStrLit..nkTripleStrLit:
+    result.strVal = g[c.thisModule].fromDisk.sh.strings[n.litId]
+  of nkFloatLit..nkFloat128Lit:
+    result.floatVal = g[c.thisModule].fromDisk.sh.floats[n.litId]
+  of nkModuleRef:
+    discard
+  else:
+    discard
+
+proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): PSym =
+  discard
+
+proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType =
+  if t == nilTypeId:
+    result = nil
+  else:
+    discard
 
 when false:
   proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
@@ -524,9 +572,3 @@ when false:
     if key notin m.generics:
       m.generics[key] = toPackedSym(s, m.ast, c)
       toPackedNode(s.ast, m.ast, c)
-
-  proc moduleToIr*(n: PNode; ir: var PackedTree; module: PSym) =
-    ## serialize a module into packed ast
-    var c: PackedEncoder
-    initEncoder(c, module)
-    toPackedNode(n, ir, c)

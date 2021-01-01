@@ -328,6 +328,11 @@ proc litId*(tree: PackedTree; n: NodePos): LitId {.inline.} =
 proc info*(tree: PackedTree; n: NodePos): PackedLineInfo {.inline.} =
   tree.nodes[n.int].info
 
+template typ*(n: NodePos): PackedItemId =
+  tree.nodes[n.int].typeId
+template flags*(n: NodePos): TNodeFlags =
+  tree.nodes[n.int].flags
+
 proc span(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
