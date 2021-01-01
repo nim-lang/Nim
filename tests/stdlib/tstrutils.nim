@@ -28,6 +28,19 @@ template main() =
     doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
     doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
+    block:
+      let a = "xxxxxx"
+      doAssert a.strip(chars={'x'}).len == 0
+
+    doAssert "".strip(chars={'x'}).len == 0
+    doAssert "         ".strip(chars={'x'}) == "         "
+    doAssert "xxx xxx".strip(chars={'x'}) == " "
+    doAssert "xxx  wind".strip(chars={'x'}) == "  wind"
+    doAssert "xxx  iii".strip(chars={'i'}) == "xxx  "
+    doAssert "x".strip(leading = false, chars={'x'}).len == 0
+    doAssert "x".strip(trailing = false, chars={'x'}).len == 0
+    doAssert "x".strip(leading = false, trailing = false, chars={'x'}) == "x"
+
   block: # split
     var ret: seq[string] # or use `toSeq` or `collect`
     for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
@@ -45,9 +58,9 @@ template main() =
 
   block: # splitLines
     let fixture = "a\nb\rc\r\nd"
-    assert len(fixture.splitLines) == 4
-    assert splitLines(fixture) == @["a", "b", "c", "d"]
-    assert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
+    doAssert len(fixture.splitLines) == 4
+    doAssert splitLines(fixture) == @["a", "b", "c", "d"]
+    doAssert splitLines(fixture, keepEol=true) == @["a\n", "b\r", "c\r\n", "d"]
 
   block: # rsplit
     doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
@@ -70,207 +83,207 @@ template main() =
   block: # removeSuffix
     var s = "hello\n\r"
     s.removeSuffix
-    assert s == "hello"
+    doAssert s == "hello"
     s.removeSuffix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "hello\n\n"
     s.removeSuffix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "hello\r"
     s.removeSuffix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "hello \n there"
     s.removeSuffix
-    assert s == "hello \n there"
+    doAssert s == "hello \n there"
 
     s = "hello"
     s.removeSuffix("llo")
-    assert s == "he"
+    doAssert s == "he"
     s.removeSuffix('e')
-    assert s == "h"
+    doAssert s == "h"
 
     s = "hellos"
     s.removeSuffix({'s','z'})
-    assert s == "hello"
+    doAssert s == "hello"
     s.removeSuffix({'l','o'})
-    assert s == "he"
+    doAssert s == "he"
 
     s = "aeiou"
     s.removeSuffix("")
-    assert s == "aeiou"
+    doAssert s == "aeiou"
 
     s = ""
     s.removeSuffix("")
-    assert s == ""
+    doAssert s == ""
 
     s = "  "
     s.removeSuffix
-    assert s == "  "
+    doAssert s == "  "
 
     s = "  "
     s.removeSuffix("")
-    assert s == "  "
+    doAssert s == "  "
 
     s = "    "
     s.removeSuffix(" ")
-    assert s == "   "
+    doAssert s == "   "
 
     s = "    "
     s.removeSuffix(' ')
-    assert s == ""
+    doAssert s == ""
 
     # Contrary to Chomp in other languages
     # empty string does not change behaviour
     s = "hello\r\n\r\n"
     s.removeSuffix("")
-    assert s == "hello\r\n\r\n"
+    doAssert s == "hello\r\n\r\n"
 
   block: # removePrefix
     var s = "\n\rhello"
     s.removePrefix
-    assert s == "hello"
+    doAssert s == "hello"
     s.removePrefix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "\n\nhello"
     s.removePrefix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "\rhello"
     s.removePrefix
-    assert s == "hello"
+    doAssert s == "hello"
 
     s = "hello \n there"
     s.removePrefix
-    assert s == "hello \n there"
+    doAssert s == "hello \n there"
 
     s = "hello"
     s.removePrefix("hel")
-    assert s == "lo"
+    doAssert s == "lo"
     s.removePrefix('l')
-    assert s == "o"
+    doAssert s == "o"
 
     s = "hellos"
     s.removePrefix({'h','e'})
-    assert s == "llos"
+    doAssert s == "llos"
     s.removePrefix({'l','o'})
-    assert s == "s"
+    doAssert s == "s"
 
     s = "aeiou"
     s.removePrefix("")
-    assert s == "aeiou"
+    doAssert s == "aeiou"
 
     s = ""
     s.removePrefix("")
-    assert s == ""
+    doAssert s == ""
 
     s = "  "
     s.removePrefix
-    assert s == "  "
+    doAssert s == "  "
 
     s = "  "
     s.removePrefix("")
-    assert s == "  "
+    doAssert s == "  "
 
     s = "    "
     s.removePrefix(" ")
-    assert s == "   "
+    doAssert s == "   "
 
     s = "    "
     s.removePrefix(' ')
-    assert s == ""
+    doAssert s == ""
 
     # Contrary to Chomp in other languages
     # empty string does not change behaviour
     s = "\r\n\r\nhello"
     s.removePrefix("")
-    assert s == "\r\n\r\nhello"
+    doAssert s == "\r\n\r\nhello"
 
   block: # delete
     var s = "0123456789ABCDEFGH"
     delete(s, 4, 5)
-    assert s == "01236789ABCDEFGH"
+    doAssert s == "01236789ABCDEFGH"
     delete(s, s.len-1, s.len-1)
-    assert s == "01236789ABCDEFG"
+    doAssert s == "01236789ABCDEFG"
     delete(s, 0, 0)
-    assert s == "1236789ABCDEFG"
+    doAssert s == "1236789ABCDEFG"
 
   block: # find
-    assert "0123456789ABCDEFGH".find('A') == 10
-    assert "0123456789ABCDEFGH".find('A', 5) == 10
-    assert "0123456789ABCDEFGH".find('A', 5, 10) == 10
-    assert "0123456789ABCDEFGH".find('A', 5, 9) == -1
-    assert "0123456789ABCDEFGH".find("A") == 10
-    assert "0123456789ABCDEFGH".find("A", 5) == 10
-    assert "0123456789ABCDEFGH".find("A", 5, 10) == 10
-    assert "0123456789ABCDEFGH".find("A", 5, 9) == -1
-    assert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
-    assert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
-    assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
-    assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
+    doAssert "0123456789ABCDEFGH".find('A') == 10
+    doAssert "0123456789ABCDEFGH".find('A', 5) == 10
+    doAssert "0123456789ABCDEFGH".find('A', 5, 10) == 10
+    doAssert "0123456789ABCDEFGH".find('A', 5, 9) == -1
+    doAssert "0123456789ABCDEFGH".find("A") == 10
+    doAssert "0123456789ABCDEFGH".find("A", 5) == 10
+    doAssert "0123456789ABCDEFGH".find("A", 5, 10) == 10
+    doAssert "0123456789ABCDEFGH".find("A", 5, 9) == -1
+    doAssert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
+    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
+    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
+    doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
 
   block: # rfind
-    assert "0123456789ABCDEFGAH".rfind('A') == 17
-    assert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
-    assert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
-    assert "0123456789ABCDEFGAH".rfind("A") == 17
-    assert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
-    assert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
-    assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
-    assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
-    assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
-    assert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
-    assert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
-    assert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
-    assert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
-    assert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
-    assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
-    assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
+    doAssert "0123456789ABCDEFGAH".rfind('A') == 17
+    doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
+    doAssert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
+    doAssert "0123456789ABCDEFGAH".rfind("A") == 17
+    doAssert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
+    doAssert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
+    doAssert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
+    doAssert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
+    doAssert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
+    doAssert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
+    doAssert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
+    doAssert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
+    doAssert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
+    doAssert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
+    doAssert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
+    doAssert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
 
-    assert "/1/2/3".rfind('/') == 4
-    assert "/1/2/3".rfind('/', last=1) == 0
-    assert "/1/2/3".rfind('0') == -1
+    doAssert "/1/2/3".rfind('/') == 4
+    doAssert "/1/2/3".rfind('/', last=1) == 0
+    doAssert "/1/2/3".rfind('0') == -1
 
   block: # trimZeros
     var x = "1200"
     x.trimZeros()
-    assert x == "1200"
+    doAssert x == "1200"
     x = "120.0"
     x.trimZeros()
-    assert x == "120"
+    doAssert x == "120"
     x = "0."
     x.trimZeros()
-    assert x == "0"
+    doAssert x == "0"
     x = "1.0e2"
     x.trimZeros()
-    assert x == "1e2"
+    doAssert x == "1e2"
     x = "78.90"
     x.trimZeros()
-    assert x == "78.9"
+    doAssert x == "78.9"
     x = "1.23e4"
     x.trimZeros()
-    assert x == "1.23e4"
+    doAssert x == "1.23e4"
     x = "1.01"
     x.trimZeros()
-    assert x == "1.01"
+    doAssert x == "1.01"
     x = "1.1001"
     x.trimZeros()
-    assert x == "1.1001"
+    doAssert x == "1.1001"
     x = "0.0"
     x.trimZeros()
-    assert x == "0"
+    doAssert x == "0"
     x = "0.01"
     x.trimZeros()
-    assert x == "0.01"
+    doAssert x == "0.01"
     x = "1e0"
     x.trimZeros()
-    assert x == "1e0"
+    doAssert x == "1e0"
 
   block: # countLines
-    proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
+    proc assertCountLines(s: string) = doAssert s.countLines == s.splitLines.len
     assertCountLines("")
     assertCountLines("\n")
     assertCountLines("\n\n")
@@ -282,36 +295,36 @@ template main() =
 
   block: # parseBinInt, parseHexInt, parseOctInt
     # binary
-    assert "0b1111".parseBinInt == 15
-    assert "0B1111".parseBinInt == 15
-    assert "1111".parseBinInt == 15
-    assert "1110".parseBinInt == 14
-    assert "1_1_1_1".parseBinInt == 15
-    assert "0b1_1_1_1".parseBinInt == 15
+    doAssert "0b1111".parseBinInt == 15
+    doAssert "0B1111".parseBinInt == 15
+    doAssert "1111".parseBinInt == 15
+    doAssert "1110".parseBinInt == 14
+    doAssert "1_1_1_1".parseBinInt == 15
+    doAssert "0b1_1_1_1".parseBinInt == 15
     rejectParse "".parseBinInt
     rejectParse "_".parseBinInt
     rejectParse "0b".parseBinInt
     rejectParse "0b1234".parseBinInt
     # hex
-    assert "0x72".parseHexInt == 114
-    assert "0X72".parseHexInt == 114
-    assert "#72".parseHexInt == 114
-    assert "72".parseHexInt == 114
-    assert "FF".parseHexInt == 255
-    assert "ff".parseHexInt == 255
-    assert "fF".parseHexInt == 255
-    assert "0x7_2".parseHexInt == 114
+    doAssert "0x72".parseHexInt == 114
+    doAssert "0X72".parseHexInt == 114
+    doAssert "#72".parseHexInt == 114
+    doAssert "72".parseHexInt == 114
+    doAssert "FF".parseHexInt == 255
+    doAssert "ff".parseHexInt == 255
+    doAssert "fF".parseHexInt == 255
+    doAssert "0x7_2".parseHexInt == 114
     rejectParse "".parseHexInt
     rejectParse "_".parseHexInt
     rejectParse "0x".parseHexInt
     rejectParse "0xFFG".parseHexInt
     rejectParse "reject".parseHexInt
     # octal
-    assert "0o17".parseOctInt == 15
-    assert "0O17".parseOctInt == 15
-    assert "17".parseOctInt == 15
-    assert "10".parseOctInt == 8
-    assert "0o1_0_0".parseOctInt == 64
+    doAssert "0o17".parseOctInt == 15
+    doAssert "0O17".parseOctInt == 15
+    doAssert "17".parseOctInt == 15
+    doAssert "10".parseOctInt == 8
+    doAssert "0o1_0_0".parseOctInt == 64
     rejectParse "".parseOctInt
     rejectParse "_".parseOctInt
     rejectParse "0o".parseOctInt
@@ -320,53 +333,53 @@ template main() =
     rejectParse "reject".parseOctInt
 
   block: # parseHexStr
-    assert "".parseHexStr == ""
-    assert "00Ff80".parseHexStr == "\0\xFF\x80"
+    doAssert "".parseHexStr == ""
+    doAssert "00Ff80".parseHexStr == "\0\xFF\x80"
     try:
       discard "00Ff8".parseHexStr
-      assert false, "Should raise ValueError"
+      doAssert false, "Should raise ValueError"
     except ValueError:
       discard
 
     try:
       discard "0k".parseHexStr
-      assert false, "Should raise ValueError"
+      doAssert false, "Should raise ValueError"
     except ValueError:
       discard
 
-    assert "".toHex == ""
-    assert "\x00\xFF\x80".toHex == "00FF80"
-    assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
+    doAssert "".toHex == ""
+    doAssert "\x00\xFF\x80".toHex == "00FF80"
+    doAssert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
   block: # toHex
-    assert(toHex(100i16, 32) == "00000000000000000000000000000064")
-    assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
+    doAssert(toHex(100i16, 32) == "00000000000000000000000000000064")
+    doAssert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
     when not defined js:
-      assert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
-      assert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
-      assert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
+      doAssert(toHex(high(uint64)) == "FFFFFFFFFFFFFFFF")
+      doAssert(toHex(high(uint64), 16) == "FFFFFFFFFFFFFFFF")
+      doAssert(toHex(high(uint64), 32) == "0000000000000000FFFFFFFFFFFFFFFF")
 
   block: # insertSep
-    assert(insertSep($1000_000) == "1_000_000")
-    assert(insertSep($232) == "232")
-    assert(insertSep($12345, ',') == "12,345")
-    assert(insertSep($0) == "0")
+    doAssert(insertSep($1000_000) == "1_000_000")
+    doAssert(insertSep($232) == "232")
+    doAssert(insertSep($12345, ',') == "12,345")
+    doAssert(insertSep($0) == "0")
 
   block: # repeat, spaces
-    assert(' '.repeat(8) == "        ")
-    assert(" ".repeat(8) == "        ")
-    assert(spaces(8) == "        ")
+    doAssert(' '.repeat(8) == "        ")
+    doAssert(" ".repeat(8) == "        ")
+    doAssert(spaces(8) == "        ")
 
-    assert(' '.repeat(0) == "")
-    assert(" ".repeat(0) == "")
-    assert(spaces(0) == "")
+    doAssert(' '.repeat(0) == "")
+    doAssert(" ".repeat(0) == "")
+    doAssert(spaces(0) == "")
 
   block: # toBin, toOct
     block:# bug #11369
       var num: int64 = -1
       when not defined js:
-        assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
-        assert num.toOct(24) == "001777777777777777777777"
+        doAssert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+        doAssert num.toOct(24) == "001777777777777777777777"
 
   block: # replace
     doAssert "oo".replace("", "abc") == "oo"
@@ -486,26 +499,26 @@ template main() =
     doAssert parseEnum("invalid enum value", enC) == enC
 
   block: # indentation
-    assert 0 == indentation """
+    doAssert 0 == indentation """
 hey
   low
     there
 """
-    assert 2 == indentation """
+    doAssert 2 == indentation """
   hey
     low
       there
 """
-    assert 2 == indentation """  hey
+    doAssert 2 == indentation """  hey
     low
       there
 """
-    assert 2 == indentation """  hey
+    doAssert 2 == indentation """  hey
     low
       there"""
-    assert 0 == indentation ""
-    assert 0 == indentation "  \n  \n"
-    assert 0 == indentation "    "
+    doAssert 0 == indentation ""
+    doAssert 0 == indentation "  \n  \n"
+    doAssert 0 == indentation "    "
 
   block: # indent
     doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"

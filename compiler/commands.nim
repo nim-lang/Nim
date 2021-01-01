@@ -438,6 +438,13 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
   setCmd(conf, command.parseCommand)
+  # command early customizations
+  # must be handled here to honor subsequent `--hint:x:on|off`
+  case conf.cmd
+  of cmdRst2html, cmdRst2tex: # xxx see whether to add others: cmdGendepend, etc.
+    conf.foreignPackageNotes = {hintSuccessX}
+  else:
+    conf.foreignPackageNotes = foreignPackageNotesDefault
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =

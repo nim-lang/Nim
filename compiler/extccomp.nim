@@ -848,7 +848,10 @@ proc callCCompiler*(conf: ConfigRef) =
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) =
-    if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+    if prettyCmds[idx].len > 0:
+      flushDot(conf)
+      # xxx should probably use stderr like other compiler messages, not stdout
+      echo prettyCmds[idx]
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:

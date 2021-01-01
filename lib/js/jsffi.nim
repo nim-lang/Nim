@@ -380,7 +380,7 @@ iterator pairs*[K: JsKey, V](assoc: JsAssoc[K, V]): (K,V) =
   yield (k.toJsKey(K), v)
   {.emit: "}".}
 
-iterator items*[K, V](assoc: JSAssoc[K, V]): V =
+iterator items*[K, V](assoc: JsAssoc[K, V]): V =
   ## Yields the `values` in a JsAssoc.
   var v: V
   {.emit: "for (var k in `assoc`) {".}
@@ -389,7 +389,7 @@ iterator items*[K, V](assoc: JSAssoc[K, V]): V =
   yield v
   {.emit: "}".}
 
-iterator keys*[K: JsKey, V](assoc: JSAssoc[K, V]): K =
+iterator keys*[K: JsKey, V](assoc: JsAssoc[K, V]): K =
   ## Yields the `keys` in a JsAssoc.
   var k: cstring
   {.emit: "for (var `k` in `assoc`) {".}

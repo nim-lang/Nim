@@ -62,6 +62,9 @@ when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
+  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
@@ -144,14 +147,48 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
-    doAssert not isNan(3.1415926)
-    doAssert not isNan(0'f32)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
 
   template fn: untyped = result = x != x
   when nimvm: fn()
   else:
     when defined(js): fn()
     else: result = c_isnan(x)
+
+func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Returns a value with the magnitude of `x` and the sign of `y`;
+  ## this works even if x or y are NaN or zero, both of which can carry a sign.
+  runnableExamples:
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+
+    # fails in VM and JS backend
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
+  # TODO use signbit for examples
+  template impl() =
+    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+      result = abs(x)
+    elif y <= 0.0:
+      result = -abs(x)
+    else: # must be NaN
+      result = abs(x)
+
+  when defined(js): impl()
+  else:
+    when nimvm: impl()
+    else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -567,6 +604,8 @@ else: # JS
   func tanh*[T: float32|float64](x: T): T {.importc: "Math.tanh", nodecl.}
 
   func arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
+    # keep this as generic or update test in `tvmops.nim` to make sure we
+    # keep testing that generic importc procs work
   func arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
   func arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
   func arctan2*[T: float32|float64](y, x: T): T {.importc: "Math.atan2", nodecl.}
@@ -880,6 +919,32 @@ func floorMod*[T: SomeNumber](x, y: T): T =
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
+func euclDiv*[T: SomeInteger](x, y: T): T {.since: (1, 5, 1).} =
+  ## Returns euclidean division of `x` by `y`.
+  runnableExamples:
+    assert euclDiv(13, 3) == 4
+    assert euclDiv(-13, 3) == -5
+    assert euclDiv(13, -3) == -4
+    assert euclDiv(-13, -3) == 5
+  result = x div y
+  if x mod y < 0:
+    if y > 0:
+      dec result
+    else:
+      inc result
+
+func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
+  ## Returns euclidean modulo of `x` by `y`.
+  ## `euclMod(x, y)` is non-negative.
+  runnableExamples:
+    assert euclMod(13, 3) == 1
+    assert euclMod(-13, 3) == 2
+    assert euclMod(13, -3) == 1
+    assert euclMod(-13, -3) == 2
+  result = x mod y
+  if result < 0:
+    result += abs(y)
+
 when not defined(js):
   func c_frexp*(x: float32, exponent: var int32): float32 {.
       importc: "frexp", header: "<math.h>".}
@@ -1131,3 +1196,4 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
+

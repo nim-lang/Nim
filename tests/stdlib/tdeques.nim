@@ -11,7 +11,7 @@ block:
   proc main =
     var testDeque = initDeque[int]()
     testDeque.addFirst(1)
-    assert testDeque.index(0) == 1
+    doAssert testDeque.index(0) == 1
 
   main()
 
@@ -35,26 +35,26 @@ block:
   deq.addFirst(123)
   var first = deq.popFirst()
   deq.addLast(56)
-  assert(deq.peekLast() == 56)
+  doAssert(deq.peekLast() == 56)
   deq.addLast(6)
-  assert(deq.peekLast() == 6)
+  doAssert(deq.peekLast() == 6)
   var second = deq.popFirst()
   deq.addLast(789)
-  assert(deq.peekLast() == 789)
+  doAssert(deq.peekLast() == 789)
 
-  assert first == 123
-  assert second == 9
-  assert($deq == "[4, 56, 6, 789]")
-  assert deq == [4, 56, 6, 789].toDeque
+  doAssert first == 123
+  doAssert second == 9
+  doAssert($deq == "[4, 56, 6, 789]")
+  doAssert deq == [4, 56, 6, 789].toDeque
 
-  assert deq[0] == deq.peekFirst and deq.peekFirst == 4
-  #assert deq[^1] == deq.peekLast and deq.peekLast == 789
+  doAssert deq[0] == deq.peekFirst and deq.peekFirst == 4
+  #doAssert deq[^1] == deq.peekLast and deq.peekLast == 789
   deq[0] = 42
   deq[deq.len - 1] = 7
 
-  assert 6 in deq and 789 notin deq
-  assert deq.find(6) >= 0
-  assert deq.find(789) < 0
+  doAssert 6 in deq and 789 notin deq
+  doAssert deq.find(6) >= 0
+  doAssert deq.find(789) < 0
 
   block:
     var d = initDeque[int](1)
@@ -74,21 +74,21 @@ block:
 
   for i in -2 .. 10:
     if i in deq:
-      assert deq.contains(i) and deq.find(i) >= 0
+      doAssert deq.contains(i) and deq.find(i) >= 0
     else:
-      assert(not deq.contains(i) and deq.find(i) < 0)
+      doAssert(not deq.contains(i) and deq.find(i) < 0)
 
   when compileOption("boundChecks"):
     try:
       echo deq[99]
-      assert false
+      doAssert false
     except IndexDefect:
       discard
 
     try:
-      assert deq.len == 4
+      doAssert deq.len == 4
       for i in 0 ..< 5: deq.popFirst()
-      assert false
+      doAssert false
     except IndexDefect:
       discard
 
@@ -98,24 +98,24 @@ block:
   deq.popFirst()
   deq.popLast()
   for i in 5 .. 8: deq.addFirst i
-  assert $deq == "[8, 7, 6, 5, 2, 3]"
+  doAssert $deq == "[8, 7, 6, 5, 2, 3]"
 
   # Similar to proc from the documentation example
   proc foo(a, b: Positive) = # assume random positive values for `a` and `b`.
     var deq = initDeque[int]()
-    assert deq.len == 0
+    doAssert deq.len == 0
     for i in 1 .. a: deq.addLast i
 
     if b < deq.len: # checking before indexed access.
-      assert deq[b] == b + 1
+      doAssert deq[b] == b + 1
 
     # The following two lines don't need any checking on access due to the logic
     # of the program, but that would not be the case if `a` could be 0.
-    assert deq.peekFirst == 1
-    assert deq.peekLast == a
+    doAssert deq.peekFirst == 1
+    doAssert deq.peekLast == a
 
     while deq.len > 0: # checking if the deque is empty
-      assert deq.popFirst() > 0
+      doAssert deq.popFirst() > 0
 
   #foo(0,0)
   foo(8, 5)
@@ -133,7 +133,7 @@ block t13310:
     q.addFirst([1'i16].toHashSet)
     q.addFirst([2'i16].toHashSet)
     q.addFirst([3'i16].toHashSet)
-    assert $q == "[{3}, {2}, {1}]"
+    doAssert $q == "[{3}, {2}, {1}]"
 
   static:
     main()

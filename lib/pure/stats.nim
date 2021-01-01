@@ -103,7 +103,7 @@ proc push*(s: var RunningStat, x: int) =
   ## and the other push operation is called.
   s.push(toFloat(x))
 
-proc push*(s: var RunningStat, x: openarray[float|int]) =
+proc push*(s: var RunningStat, x: openArray[float|int]) =
   ## pushes all values of `x` for processing.
   ##
   ## Int values of `x` are simply converted to ``float`` and
@@ -277,7 +277,7 @@ proc push*(r: var RunningRegress, x, y: int) {.inline.} =
   ## and the other push operation is called.
   r.push(toFloat(x), toFloat(y))
 
-proc push*(r: var RunningRegress, x, y: openarray[float|int]) =
+proc push*(r: var RunningRegress, x, y: openArray[float|int]) =
   ## pushes two sets of values `x` and `y` for processing.
   assert(x.len == y.len)
   for i in 0..<x.len:

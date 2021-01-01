@@ -1004,7 +1004,7 @@ const
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
-    tyProc, tyError}
+    tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
@@ -1403,6 +1403,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
     if result.id == 76426:
       echo "KNID ", kind
       writeStackTrace()
+
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
@@ -1969,9 +1970,13 @@ proc canRaise*(fn: PNode): bool =
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
   else:
-    result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
-      (fn.typ.n[0][exceptionEffects] != nil and
-      fn.typ.n[0][exceptionEffects].safeLen > 0))
+    # TODO check for n having sons? or just return false for now if not
+    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+      result = false
+    else:
+      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+        (fn.typ.n[0][exceptionEffects] != nil and
+        fn.typ.n[0][exceptionEffects].safeLen > 0))
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind
