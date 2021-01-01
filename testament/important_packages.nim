@@ -41,7 +41,7 @@ pkg1 "fidget"
 pkg1 "fragments", "nim c -r fragments/dsl.nim"
 pkg1 "gara"
 pkg1 "glob"
-# pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim" # pending bug #16523
+pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 # pkg1 "gittyup", "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "gnuplot", "nim c gnuplot.nim"
 # pkg1 "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
