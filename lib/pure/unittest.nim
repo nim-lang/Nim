@@ -23,7 +23,7 @@
 ## Testament
 ## =========
 ##
-## Instead of `unittest`, please consider to use
+## Instead of `unittest`, please consider using
 ## `the Testament tool <testament.html>`_ which offers process isolation for your tests.
 ##
 ## Alternatively using `when isMainModule: doAssert conditionHere` is usually a
