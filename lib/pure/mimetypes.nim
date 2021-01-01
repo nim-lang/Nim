@@ -1932,10 +1932,10 @@ since (1, 5):
 
   const
     ctValue = mimesLongest() # Use 2 const instead of func, save tuple unpack.
-    extLongest*: int = ctValue[0] ## \
+    mimesExtMaxLen*: int = ctValue[0] ## \
       ## The length of the longest "ext" from `mimes`,
       ## this is useful for optimizations with `newStringOfCap` and `newString`.
-    mimeLongest*: int = ctValue[1] ## \
+    mimesMaxLen*: int = ctValue[1] ## \
       ## The length of the longest "mime" from `mimes`,
       ## this is useful for optimizations with `newStringOfCap` and `newString`.
       ##
