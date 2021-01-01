@@ -411,6 +411,7 @@ type
 
   LoadedModule* = object
     status: ModuleStatus
+    symsInit, typesInit: bool
     fromDisk: PackedModule
     syms: seq[PSym] # indexed by itemId
     types: seq[PType]
@@ -611,8 +612,10 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): P
   else:
     let si = moduleIndex(c, g, s)
     assert g[si].status == loaded
-    if s.item >= g[si].syms.len:
-      setLen g[si].syms, s.item+1
+    if not g[si].symsInit:
+      g[si].symsInit = true
+      setLen g[si].syms, g[si].fromDisk.sh.syms.len
+
     if g[si].syms[s.item] == nil:
       let packed = addr(g[si].fromDisk.sh.syms[s.item])
       result = symHeaderFromPacked(c, g, packed[], si, s.item)
@@ -648,8 +651,10 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): 
   else:
     let si = moduleIndex(c, g, t)
     assert g[si].status == loaded
-    if t.item >= g[si].types.len:
-      setLen g[si].types, t.item+1
+    if not g[si].typesInit:
+      g[si].typesInit = true
+      setLen g[si].types, g[si].fromDisk.sh.types.len
+
     if g[si].types[t.item] == nil:
       let packed = addr(g[si].fromDisk.sh.types[t.item])
       result = typeHeaderFromPacked(c, g, packed[], si, t.item)
