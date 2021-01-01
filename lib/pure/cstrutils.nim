@@ -16,23 +16,20 @@ import std/private/strimpl
 
 
 when defined(js):
-  proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
-    importjs: "#.startsWith(#)".}
+  func startsWith*(s, prefix: cstring): bool {.importjs: "#.startsWith(#)".}
 
-  proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
-    importjs: "#.endsWith(#)".}
+  func endsWith*(s, suffix: cstring): bool {.importjs: "#.endsWith(#)".}
 
-  proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect.} =
+  func cmpIgnoreStyle*(a, b: cstring): int =
     cmpIgnoreStyleImpl(a, b)
 
-  proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect.} =
+  func cmpIgnoreCase*(a, b: cstring): int =
     cmpIgnoreCaseImpl(a, b)
 
   # JS string has more operations that might warrant its own module:
   # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
 else:
-  proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
-    rtl, extern: "csuStartsWith".} =
+  func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
     ## Returns true if `s` starts with `prefix`.
     ##
     ## If `prefix == ""` true is returned.
@@ -48,8 +45,7 @@ else:
       if s[i] != prefix[i]: return false
       inc(i)
 
-  proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
-    rtl, extern: "csuEndsWith".} =
+  func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
     ## Returns true if `s` ends with `suffix`.
     ##
     ## If `suffix == ""` true is returned.
@@ -67,8 +63,7 @@ else:
       inc(i)
     if suffix[i] == '\0': return true
 
-  proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
-    rtl, extern: "csuCmpIgnoreStyle".} =
+  func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
     ## Semantically the same as `cmp(normalize($a), normalize($b))`. It
     ## is just optimized to not allocate temporary strings.  This should
     ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
@@ -92,8 +87,7 @@ else:
       inc(i)
       inc(j)
 
-  proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect,
-    rtl, extern: "csuCmpIgnoreCase".} =
+  func cmpIgnoreCase*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreCase".} =
     ## Compares two strings in a case insensitive manner. Returns:
     ##
     ## .. code-block::
