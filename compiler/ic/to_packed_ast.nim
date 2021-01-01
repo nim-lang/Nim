@@ -510,6 +510,7 @@ type
     ident: IdentCache
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType
+proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): PSym
 
 proc toFileIndexCached(c: var PackedDecoder; g: var PackedModuleGraph; f: LitId): FileIndex =
   if c.lastLit == f:
@@ -538,7 +539,7 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph;
   of nkIdent:
     result.ident = getIdent(c.ident, g[c.thisModule].fromDisk.sh.strings[n.litId])
   of nkSym:
-    discard
+    result.sym = loadSym(c, g, PackedItemId(module: LitId(0), item: tree.nodes[n.int].operand))
   of directIntLit:
     result.intVal = tree.nodes[n.int].operand
   of externIntLit:
@@ -548,18 +549,116 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph;
   of nkFloatLit..nkFloat128Lit:
     result.floatVal = g[c.thisModule].fromDisk.sh.floats[n.litId]
   of nkModuleRef:
-    discard
+    let (n1, n2) = sons2(tree, n)
+    assert n1.kind == nkInt32Lit
+    assert n2.kind == nkInt32Lit
+    transitionNoneToSym(result)
+    result.sym = loadSym(c, g, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
   else:
-    discard
+    for n0 in sonsReadonly(tree, n):
+      result.add loadNodes(c, g, tree, n0)
+
+proc moduleIndex*(c: var PackedDecoder; g: var PackedModuleGraph;
+                  s: PackedItemId): int32 {.inline.} =
+  result = if s.module == LitId(0): c.thisModule
+           else: toFileIndexCached(c, g, s.module).int32
+
+proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
+                         s: PackedSym; si, item: int32): PSym =
+  result = PSym(itemId: ItemId(module: si, item: item),
+    kind: s.kind, magic: s.magic, flags: s.flags,
+    info: translateLineInfo(c, g, s.info),
+    options: s.options,
+    position: s.position,
+    name: getIdent(c.ident, g[si].fromDisk.sh.strings[s.name])
+  )
+
+template loadAstBody(p, field) =
+  if p.field != emptyNodeId:
+    result.field = loadNodes(c, g, g[si].fromDisk.bodies, NodePos p.field)
+
+proc loadLib(c: var PackedDecoder; g: var PackedModuleGraph;
+             si, item: int32; l: PackedLib): PLib =
+  # XXX: hack; assume a zero LitId means the PackedLib is all zero (empty)
+  if l.name.int == 0:
+    result = nil
+  else:
+    result = PLib(generated: l.generated, isOverriden: l.isOverriden,
+                  kind: l.kind, name: rope g[si].fromDisk.sh.strings[l.name])
+    loadAstBody(l, path)
+
+proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
+                       s: PackedSym; si, item: int32; result: PSym) =
+  result.typ = loadType(c, g, s.typ)
+  loadAstBody(s, constraint)
+  loadAstBody(s, ast)
+  result.annex = loadLib(c, g, si, item, s.annex)
+  when hasFFI:
+    result.cname = g[si].fromDisk.sh.strings[s.cname]
+
+  if s.kind in {skLet, skVar, skField, skForVar}:
+    result.guard = loadSym(c, g, s.guard)
+    result.bitsize = s.bitsize
+    result.alignment = s.alignment
+  result.owner = loadSym(c, g, s.owner)
+  let externalName = g[si].fromDisk.sh.strings[s.externalName]
+  if externalName != "":
+    result.loc.r = rope externalName
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): PSym =
-  discard
+  if s == nilTypeId:
+    result = nil
+  else:
+    let si = moduleIndex(c, g, s)
+    assert g[si].status == loaded
+    if s.item >= g[si].syms.len:
+      setLen g[si].syms, s.item+1
+    if g[si].syms[s.item] == nil:
+      let packed = addr(g[si].fromDisk.sh.syms[s.item])
+      result = symHeaderFromPacked(c, g, packed[], si, s.item)
+      # store it here early on, so that recursions work properly:
+      g[si].syms[s.item] = result
+      symBodyFromPacked(c, g, packed[], si, s.item, result)
+    else:
+      result = g[si].syms[s.item]
+
+proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
+                          t: PackedType; si, item: int32): PType =
+  result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
+                flags: t.flags, size: t.size, align: t.align,
+                paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
+                uniqueId: ItemId(module: si, item: item))
+
+proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
+                        t: PackedType; si, item: int32; result: PType) =
+  result.sym = loadSym(c, g, t.sym)
+  result.owner = loadSym(c, g, t.owner)
+  for op, item in pairs t.attachedOps:
+    result.attachedOps[op] = loadSym(c, g, item)
+  result.typeInst = loadType(c, g, t.typeInst)
+  for son in items t.types:
+    result.sons.add loadType(c, g, son)
+  loadAstBody(t, n)
+  for gen, id in items t.methods:
+    result.methods.add((gen, loadSym(c, g, id)))
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType =
   if t == nilTypeId:
     result = nil
   else:
-    discard
+    let si = moduleIndex(c, g, t)
+    assert g[si].status == loaded
+    if t.item >= g[si].types.len:
+      setLen g[si].types, t.item+1
+    if g[si].types[t.item] == nil:
+      let packed = addr(g[si].fromDisk.sh.types[t.item])
+      result = typeHeaderFromPacked(c, g, packed[], si, t.item)
+      # store it here early on, so that recursions work properly:
+      g[si].types[t.item] = result
+      typeBodyFromPacked(c, g, packed[], si, t.item, result)
+    else:
+      result = g[si].types[t.item]
+
 
 when false:
   proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =

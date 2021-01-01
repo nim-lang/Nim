@@ -159,7 +159,7 @@ proc hash*(a: SymId): Hash {.borrow.}
 
 proc `==`*(a, b: NodePos): bool {.borrow.}
 #proc `==`*(a, b: TypeId): bool {.borrow.}
-proc `==`*(a, b: ModuleId): bool {.borrow.}
+proc `==`*(a, b: NodeId): bool {.borrow.}
 
 proc newTreeFrom*(old: PackedTree): PackedTree =
   result.nodes = @[]
