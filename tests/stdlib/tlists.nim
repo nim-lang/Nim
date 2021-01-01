@@ -155,6 +155,7 @@ template testCommon(initList, toList) =
         l3 = [4, 5, 6].toList
       l0.prepend l3
       l1.prepend l3
+      doAssert l3.toSeq == [4, 5, 6]
       l2.prependMoved l3
       doAssert l0.toSeq == [4, 5, 6]
       doAssert l1.toSeq == [4, 5, 6, 1]
@@ -193,6 +194,8 @@ template testCommon(initList, toList) =
       l3 = l2.next
     l.remove l0
     doAssert l.toSeq == [1, 2, 3]
+    l.remove l2
+    doAssert l.toSeq == [1, 3]
     l.remove l2
     doAssert l.toSeq == [1, 3]
     l.remove l3

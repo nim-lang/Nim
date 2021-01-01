@@ -219,20 +219,13 @@ iterator items*[T](L: SomeLinkedList[T]): T =
   ## See also:
   ## * `mitems iterator <#mitems.i,SomeLinkedList[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedList[T]>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initSinglyLinkedList[int]()
-  ##   for i in 1 .. 3:
-  ##     a.add(10*i)
-  ##
-  ##   for x in a:  # the same as: for x in items(a):
-  ##     echo x
-  ##
-  ##   # 10
-  ##   # 20
-  ##   # 30
+  runnableExamples:
+    from std/sugar import collect
+    from std/sequtils import toSeq
+    let a = collect(initSinglyLinkedList):
+      for i in 1..3: 10*i
+    doAssert toSeq(items(a)) == toSeq(a)
+    doAssert toSeq(a) == @[10, 20, 30]
   itemsListImpl()
 
 iterator items*[T](L: SomeLinkedRing[T]): T =
@@ -241,20 +234,13 @@ iterator items*[T](L: SomeLinkedRing[T]): T =
   ## See also:
   ## * `mitems iterator <#mitems.i,SomeLinkedRing[T]>`_
   ## * `nodes iterator <#nodes.i,SomeLinkedRing[T]>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = initSinglyLinkedRing[int]()
-  ##   for i in 1 .. 3:
-  ##     a.add(10*i)
-  ##
-  ##   for x in a:  # the same as: for x in items(a):
-  ##     echo x
-  ##
-  ##   # 10
-  ##   # 20
-  ##   # 30
+  runnableExamples:
+    from std/sugar import collect
+    from std/sequtils import toSeq
+    let a = collect(initSinglyLinkedRing):
+      for i in 1..3: 10*i
+    doAssert toSeq(items(a)) == toSeq(a)
+    doAssert toSeq(a) == @[10, 20, 30]
   itemsRingImpl()
 
 iterator mitems*[T](L: var SomeLinkedList[T]): var T =
@@ -382,9 +368,16 @@ proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
 
   result = find(L, value) != nil
 
-proc append*[T](L: var SomeLinkedCollection[T], n: SomeLinkedNode[T] | T)
-    {.deprecated: "Deprecated since v1.6; use `add`".} =
-  add(L, n)
+proc append*[T](a: var SomeLinkedCollection[T], b: SomeLinkedNode[T] | T) =
+  ## Alias for `a.add(b)`.
+  ##
+  ## See also:
+  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add proc <#add,SinglyLinkedList[T],T>`_
+  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add proc <#add,DoublyLinkedList[T],T>`_
+  ## * `add proc <#add,T,T>`_
+  a.add b
 
 proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Prepends a shallow copy of `b` to the beginning of `a`.
@@ -415,7 +408,7 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## * `prepend proc <#prepend,T,T>`_
   ##   for prepending a copy of a list
   runnableExamples:
-    import sequtils, std/enumerate, std/sugar
+    import std/[sequtils, enumerate, sugar]
     var
       a = [4, 5].toSinglyLinkedList
       b = [1, 2, 3].toSinglyLinkedList
@@ -538,7 +531,7 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
   ## * `add proc <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
-    import sequtils, std/enumerate, std/sugar
+    import std/[sequtils, enumerate, sugar]
     var
       a = [1, 2, 3].toSinglyLinkedList
       b = [4, 5].toSinglyLinkedList
@@ -675,7 +668,7 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
   ## * `add proc <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
-    import sequtils, std/enumerate, std/sugar
+    import std/[sequtils, enumerate, sugar]
     var
       a = [1, 2, 3].toDoublyLinkedList
       b = [4, 5].toDoublyLinkedList
@@ -722,22 +715,25 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
 proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
   ## Removes a node `n` from `L`.
   ## Efficiency: O(n), unless `n` is the head element.
+  ## Attempting to remove an element not contained in the list is a no-op.
   runnableExamples:
-    var
-      a = initSinglyLinkedList[int]()
-      n = newSinglyLinkedNode[int](5)
-    a.add(n)
-    assert 5 in a
-    a.remove(n)
-    assert 5 notin a
+    from sequtils import toSeq
+    var a = [0, 1, 2].toSinglyLinkedList
+    let n = a.head.next
+    doAssert n.value == 1
+    a.remove n
+    doAssert a.toSeq == [0, 2]
+    a.remove n
+    doAssert a.toSeq == [0, 2]
 
   if n == L.head:
     L.head = n.next
   else:
     var prev = L.head
-    while prev.next != n:
+    while prev.next != n and prev.next != nil:
       prev = prev.next
-    prev.next = n.next
+    if prev.next != nil:
+      prev.next = n.next
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
