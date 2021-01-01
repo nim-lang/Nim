@@ -111,8 +111,16 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
   c.m.hidden = newTreeFrom(c.m.topLevel)
+
   let thisNimFile = FileIndex c.thisModule
-  c.m.includes.add((toLitId(thisNimFile, c), hashFileCached(config, thisNimFile))) # the module itself
+  var h = msgs.getHash(config, thisNimFile)
+  if h.len == 0:
+    let fullpath = msgs.toFullPath(config, thisNimFile)
+    if isAbsolute(fullpath):
+      # For NimScript compiler API support the main Nim file might be from a stream.
+      h = $secureHashFile(fullpath)
+      msgs.setHash(config, thisNimFile, h)
+  c.m.includes.add((toLitId(thisNimFile, c), h)) # the module itself
 
 proc addIncludeFileDep*(c: var PackedEncoder; f: FileIndex) =
   c.m.includes.add((toLitId(f, c), hashFileCached(c.config, f)))
