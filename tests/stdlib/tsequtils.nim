@@ -410,13 +410,11 @@ block: # mapIt with direct openArray
   template foo2(x: openArray[int]): seq[int] = x.mapIt(it * 10)
   counter = 0
   doAssert foo2(openArray[int]([identity(1), identity(2)])) == @[10, 20]
-  # TODO: this fails; not sure how to fix this case
-  # doAssert counter == 2
+  doAssert counter == 2
 
   counter = 0
   doAssert openArray[int]([identity(1), identity(2)]).mapIt(it) == @[1, 2]
-  # ditto
-  # doAssert counter == 2
+  doAssert counter == 2
 
 block: # mapIt empty test, see https://github.com/nim-lang/Nim/pull/8584#pullrequestreview-144723468
   # NOTE: `[].mapIt(it)` is illegal, just as `let a = @[]` is (lacks type
