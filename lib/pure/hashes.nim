@@ -200,8 +200,7 @@ proc hash*(x: float): Hash {.inline.} =
   let y = x + 0.0 # for denormalization
   when nimvm:
     when defined(js):
-      # workaround a JS VM bug
-      # TODO see issue #16547
+      # workaround a JS VM bug: bug #16547
       result = hashWangYi1(cast[int64](y))
     else:
       result = hashWangYi1(cast[Hash](y))
@@ -218,7 +217,7 @@ proc hash*(x: float): Hash {.inline.} =
 
       # res is a `BigInt` type, but we cheat the type system
       # and say it is a `Hash` type.
-      # TODO refactor it using bigInt once jsBigInt is ready
+      # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
       result = hashWangYi1(res)
 
 # Forward declarations before methods that hash containers. This allows
