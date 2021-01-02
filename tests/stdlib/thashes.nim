@@ -79,10 +79,11 @@ block largeSize: # longer than 4 characters
 proc main() =
   block:
     doAssert hash(0.0) == hash(0)
-    doAssert hash(1.0) != 0
-    doAssert hash(-1.0) != 0
-    doAssert hash(1000.0) != 0
-    doAssert hash(-1000.0) != 0
+    var s: seq[Hash]
+    for a in [0.0, 1.0, -1.0, 1000.0, -1000.0]:
+      let b = hash(a)
+      doAssert b notin s
+      s.add b
 
   when defined(js):
     doAssert hash(0.345602) == 2035867618

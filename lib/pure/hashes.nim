@@ -195,6 +195,18 @@ else:
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
+when defined(js):
+  proc asBigInt(x: float): Hash =
+    # result is a `BigInt` type in js, but we cheat the type system
+    # and say it is a `int64` type.
+    # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
+    asm """
+    const buffer = new ArrayBuffer(8);
+    const floatBuffer = new Float64Array(buffer);
+    const uintBuffer = new BigUint64Array(buffer);
+    floatBuffer[0] = `x`;
+    `result` = uintBuffer[0];"""
+
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   let y = x + 0.0 # for denormalization
@@ -208,17 +220,7 @@ proc hash*(x: float): Hash {.inline.} =
     when not defined(js):
       result = hashWangYi1(cast[Hash](y))
     else:
-      var res: Hash
-      asm """const buffer = new ArrayBuffer(8);
-    const floatBuffer = new Float64Array(buffer);
-    const uintBuffer = new BigUint64Array(buffer);
-    floatBuffer[0] = `y`;
-    `res` = uintBuffer[0];"""
-
-      # res is a `BigInt` type, but we cheat the type system
-      # and say it is a `Hash` type.
-      # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
-      result = hashWangYi1(res)
+      result = hashWangYi1(asBigInt(y))
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
