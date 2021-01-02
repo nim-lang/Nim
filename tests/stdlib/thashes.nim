@@ -4,6 +4,15 @@ discard """
 
 import std/hashes
 
+
+when not defined(js):
+  block:
+    var x = 12
+    iterator hello(): int {.closure.} =
+      yield x
+
+    discard hash(hello)
+
 block hashes:
   block hashing:
     var dummy = 0.0
