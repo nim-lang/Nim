@@ -297,6 +297,9 @@ proc murmurHash(x: openArray[byte]): Hash =
   h1 = h1 xor (h1 shr 16)
   return cast[Hash](h1)
 
+proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
+  doAssert false, "implementation override in compiler/vmops.nim"
+
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
@@ -341,11 +344,14 @@ proc hash*(x: cstring): Hash =
       inc i
     result = !$result
   else:
-    when not defined(js) and defined(nimToOpenArrayCString):
-      murmurHash(toOpenArrayByte(x, 0, x.high))
+    when nimvm:
+      hashVmImpl(x, 0, high(x))
     else:
-      let xx = $x
-      murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+      when not defined(js) and defined(nimToOpenArrayCString):
+        murmurHash(toOpenArrayByte(x, 0, x.high))
+      else:
+        let xx = $x
+        murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
