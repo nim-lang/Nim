@@ -197,7 +197,7 @@ else:
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
-  var y = x + 0.0 # for denormalization
+  let y = x + 0.0 # for denormalization
   when nimvm:
     when defined(js):
       # workaround a JS VM bug
