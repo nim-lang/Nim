@@ -198,7 +198,20 @@ else:
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   var y = x + 0.0 # for denormalization
-  result = hash(cast[ptr Hash](addr(y))[])
+  when nimvm:
+    result = hash(cast[Hash](y))
+  else:
+    when not defined(js):
+      result = hash(cast[Hash](y))
+    else:
+      var res: Hash
+      asm """const buffer = new ArrayBuffer(8);
+      const floatBuffer = new Float64Array(buffer);
+      const uintBuffer = new BigUint64Array(buffer);
+      floatBuffer[0] = `y`;
+      `res` = uintBuffer[0];
+  """
+      result = hash(res)
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
