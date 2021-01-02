@@ -211,11 +211,8 @@ proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   let y = x + 0.0 # for denormalization
   when nimvm:
-    when defined(js):
-      # workaround a JS VM bug: bug #16547
-      result = hashWangYi1(cast[int64](y))
-    else:
-      result = hashWangYi1(cast[Hash](y))
+    # workaround a JS VM bug: bug #16547
+    result = hashWangYi1(cast[int64](float64(y)))
   else:
     when not defined(js):
       result = hashWangYi1(cast[Hash](y))
