@@ -86,8 +86,13 @@ block largeSize: # longer than 4 characters
   doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)
 
 proc main() =
+
+
   doAssert hash(0.0) == hash(0)
-  when sizeof(int) == 8:
+  doAssert hash(cstring"abracadabra") == 97309975
+  doAssert hash(cstring"abracadabra") == hash("abracadabra")
+
+  when sizeof(int) == 8 or defined(js):
     block:
       var s: seq[Hash]
       for a in [0.0, 1.0, -1.0, 1000.0, -1000.0]:
