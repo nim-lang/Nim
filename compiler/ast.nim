@@ -834,16 +834,9 @@ type
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
     of skModule, skPackage:
-      # modules keep track of the generic symbols they use from other modules.
-      # this is because in incremental compilation, when a module is about to
-      # be replaced with a newer version, we must decrement the usage count
-      # of all previously used generics.
       # For 'import as' we copy the module symbol but shallowCopy the 'tab'
       # and set the 'usedGenerics' to ... XXX gah! Better set module.name
       # instead? But this doesn't work either. --> We need an skModuleAlias?
-      # No need, just leave it as skModule but set the owner accordingly and
-      # check for the owner when touching 'usedGenerics'.
-      usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
@@ -1479,8 +1472,6 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex
-  # XXX once usedGenerics is used, ensure module aliases keep working!
-  assert s.usedGenerics.len == 0
 
 proc initStrTable*(x: var TStrTable) =
   x.counter = 0
