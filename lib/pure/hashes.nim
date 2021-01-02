@@ -218,7 +218,7 @@ proc hash*(x: float): Hash {.inline.} =
 
       # res is a `BigInt` type, but we cheat the type system
       # and say it is a `Hash` type.
-      # TODO refactor it using bigint once jsBigint is ready
+      # TODO refactor it using bigInt once jsBigInt is ready
       result = hashWangYi1(res)
 
 # Forward declarations before methods that hash containers. This allows
