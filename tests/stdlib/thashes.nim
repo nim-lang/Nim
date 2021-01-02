@@ -75,3 +75,15 @@ block largeSize: # longer than 4 characters
   doAssert hash(xx) == hash(ssl, 0, 4)
   doAssert hash(xx, 0, 3) == hash(xxl, 0, 3)
   doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)
+
+proc main() =
+  block:
+    doAssert hash(0.0) == hash(0)
+    doAssert hash(1.0) != 0
+    doAssert hash(-1.0) != 0
+    doAssert hash(1000.0) != 0
+    doAssert hash(-1000.0) != 0
+
+
+static: main()
+main()

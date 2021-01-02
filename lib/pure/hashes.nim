@@ -199,19 +199,27 @@ proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   var y = x + 0.0 # for denormalization
   when nimvm:
-    result = hash(cast[Hash](y))
+    when defined(js):
+      # workaround a JS VM bug
+      # TODO see issue #16547
+      result = hashWangYi1(cast[int64](y))
+    else:
+      result = hashWangYi1(cast[Hash](y))
   else:
     when not defined(js):
-      result = hash(cast[Hash](y))
+      result = hashWangYi1(cast[Hash](y))
     else:
       var res: Hash
       asm """const buffer = new ArrayBuffer(8);
-      const floatBuffer = new Float64Array(buffer);
-      const uintBuffer = new BigUint64Array(buffer);
-      floatBuffer[0] = `y`;
-      `res` = uintBuffer[0];
-  """
-      result = hash(res)
+    const floatBuffer = new Float64Array(buffer);
+    const uintBuffer = new BigUint64Array(buffer);
+    floatBuffer[0] = `y`;
+    `res` = uintBuffer[0];"""
+
+      # res is a `BigInt` type, but we cheat the type system
+      # and say it is a `Hash` type.
+      # TODO refactor it using bigint once jsBigint is ready
+      result = hashWangYi1(res)
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
