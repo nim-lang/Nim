@@ -196,7 +196,7 @@ else:
     hashWangYi1(uint64(ord(x)))
 
 when defined(js):
-  proc asBigInt(x: float): Hash =
+  proc asBigInt(x: float): int64 =
     # result is a `BigInt` type in js, but we cheat the type system
     # and say it is a `int64` type.
     # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
