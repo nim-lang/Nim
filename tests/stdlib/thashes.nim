@@ -85,7 +85,7 @@ proc main() =
       doAssert b notin s
       s.add b
 
-  when sizeof(int) == 4:
+  when sizeof(int) == 8:
     when defined(js):
       doAssert hash(0.345602) == 2035867618
       doAssert hash(234567.45) == -20468103
