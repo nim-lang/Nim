@@ -17,28 +17,6 @@ import bitabs
 import ".." / [ast, options]
 
 const
-  localNamePos* = 0
-  localExportMarkerPos* = 1
-  localPragmaPos* = 2
-  localTypePos* = 3
-  localValuePos* = 4
-
-  typeNamePos* = 0
-  typeExportMarkerPos* = 1
-  typeGenericParamsPos* = 2
-  typePragmaPos* = 3
-  typeBodyPos* = 4
-
-  routineNamePos* = 0
-  routineExportMarkerPos* = 1
-  routinePatternPos* = 2
-  routineGenericParamsPos* = 3
-  routineParamsPos* = 4
-  routineResultPos* = 5
-  routinePragmasPos* = 6
-  routineBodyPos* = 7
-
-const
   nkModuleRef* = nkNone # pair of (ModuleId, SymId)
 
 type
@@ -55,7 +33,6 @@ type
   TypeId* = PackedItemId
 
 const
-  nilTypeId* = PackedItemId(module: LitId(0), item: -1.int32)
   nilItemId* = PackedItemId(module: LitId(0), item: -1.int32)
 
 const

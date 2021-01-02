@@ -197,7 +197,7 @@ template storeNode(dest, src, field) =
 
 proc toPackedType(t: PType; c: var PackedEncoder): PackedItemId =
   ## serialize a ptype
-  if t.isNil: return nilTypeId
+  if t.isNil: return nilItemId
 
   if t.uniqueId.module != c.thisModule:
     # XXX Assert here that it already was serialized in the foreign module!
@@ -615,7 +615,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     result.loc.r = rope externalName
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): PSym =
-  if s == nilTypeId:
+  if s == nilItemId:
     result = nil
   else:
     let si = moduleIndex(c, g, s)
@@ -654,7 +654,7 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     result.methods.add((gen, loadSym(c, g, id)))
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType =
-  if t == nilTypeId:
+  if t == nilItemId:
     result = nil
   else:
     let si = moduleIndex(c, g, t)
