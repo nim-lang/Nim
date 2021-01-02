@@ -3,7 +3,7 @@ discard """
 '''
 """
 #12928,10456
-import sequtils, strutils, algorithm, json
+import sequtils, algorithm, json
 
 proc test() = 
   try: 
@@ -14,7 +14,7 @@ proc test() =
     echo prefixes
   except:
     discard
-  
+
 test()
 
 block:
