@@ -25,10 +25,10 @@ iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   var it: TTabIter
-  var s = initTabIter(it, i.mainModule.tab)
+  var s = initTabIter(it, i.mainModule.tab(i.graph))
   while s != nil:
     yield s
-    s = nextIter(it, i.mainModule.tab)
+    s = nextIter(it, i.mainModule.tab(i.graph))
 
 proc selectUniqueSymbol*(i: Interpreter; name: string;
                          symKinds: set[TSymKind] = {skLet, skVar}): PSym =
@@ -38,13 +38,13 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
   assert i.mainModule != nil, "no main module selected"
   let n = getIdent(i.graph.cache, name)
   var it: TIdentIter
-  var s = initIdentIter(it, i.mainModule.tab, n)
+  var s = initIdentIter(it, i.mainModule.tab(i.graph), n)
   result = nil
   while s != nil:
     if s.kind in symKinds:
       if result == nil: result = s
       else: return nil # ambiguous
-    s = nextIdentIter(it, i.mainModule.tab)
+    s = nextIdentIter(it, i.mainModule.tab(i.graph))
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
   ## Selects a declared routine (proc/func/etc) from the main module.
@@ -70,7 +70,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.tab)
+  initStrTable(i.mainModule.tab(i.graph))
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream

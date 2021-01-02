@@ -296,6 +296,12 @@ proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.graph.ifaces[c.module.position].patterns, p)
   #addPattern(c.graph, c.module, p) # upcoming
 
+proc exportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.tab(c.graph), s)
+
+proc reexportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.tab(c.graph), s)
+
 proc newLib*(kind: TLibKind): PLib =
   new(result)
   result.kind = kind          #initObjectSet(result.syms)

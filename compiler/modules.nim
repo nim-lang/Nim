@@ -31,28 +31,36 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     pck = getPackageName(graph.config, filename.string)
     pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(graph.cache, pck2)
-  var packSym = graph.packageSyms.strTableGet(pack)
-  if packSym == nil:
-    packSym = newSym(skPackage, getIdent(graph.cache, pck2), packageId(), nil, info)
-    initStrTable(packSym.tab)
-    graph.packageSyms.strTableAdd(packSym)
+  result = graph.packageSyms.strTableGet(pack)
+  if result == nil:
+    result = newSym(skPackage, getIdent(graph.cache, pck2), packageId(), nil, info)
+    #initStrTable(packSym.tab)
+    graph.packageSyms.strTableAdd(result)
   else:
-    let existing = strTableGet(packSym.tab, name)
-    if existing != nil and existing.info.fileIndex != info.fileIndex:
-      when false:
-        # we used to produce an error:
-        localError(graph.config, info,
-          "module names need to be unique per Nimble package; module clashes with " &
-            toFullPath(graph.config, existing.info.fileIndex))
-      else:
-        # but starting with version 0.20 we now produce a fake Nimble package instead
-        # to resolve the conflicts:
-        let pck3 = fakePackageName(graph.config, filename)
-        # this makes the new `packSym`'s owner be the original `packSym`
-        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), packSym, info)
-        initStrTable(packSym.tab)
-        graph.packageSyms.strTableAdd(packSym)
-  result = packSym
+    # we now produce a fake Nimble package instead
+    # to resolve the conflicts:
+    let pck3 = fakePackageName(graph.config, filename)
+    # this makes the new `packSym`'s owner be the original `packSym`
+    result = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), result, info)
+    #initStrTable(packSym.tab)
+    graph.packageSyms.strTableAdd(result)
+
+    when false:
+      let existing = strTableGet(packSym.tab, name)
+      if existing != nil and existing.info.fileIndex != info.fileIndex:
+        when false:
+          # we used to produce an error:
+          localError(graph.config, info,
+            "module names need to be unique per Nimble package; module clashes with " &
+              toFullPath(graph.config, existing.info.fileIndex))
+        else:
+          # but starting with version 0.20 we now produce a fake Nimble package instead
+          # to resolve the conflicts:
+          let pck3 = fakePackageName(graph.config, filename)
+          # this makes the new `packSym`'s owner be the original `packSym`
+          packSym = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), packSym, info)
+          #initStrTable(packSym.tab)
+          graph.packageSyms.strTableAdd(packSym)
 
 proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
   let packSym = getPackage(graph, fileIdx)
@@ -61,13 +69,13 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
 
   graph.registerModule(result)
 
-  initStrTable(result.tab)
+  #initStrTable(result.tab(graph))
   when false:
     strTableAdd(result.tab, result) # a module knows itself
     # This is now implemented via
     #   c.moduleScope.addSym(module) # a module knows itself
     # in sem.nim, around line 527
-  strTableAdd(packSym.tab, result)
+  #strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
@@ -106,7 +114,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
-    initStrTable(result.tab)
+    initStrTable(result.tab(graph))
     result.ast = nil
     processModuleAux()
     graph.markClientsDirty(fileIdx)

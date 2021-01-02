@@ -36,14 +36,6 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-when false:
-  proc hashOwner(s: PSym): SigHash =
-    var m = s
-    while m.kind != skModule: m = m.owner
-    let p = m.owner
-    assert p.kind == skPackage
-    result = gDebugInfo.register(p.name.s, m.name.s)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:

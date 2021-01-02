@@ -14,8 +14,6 @@ import ".." / [ast, idents, lineinfos, msgs, ropes, options,
 
 from std / os import removeFile, isAbsolute
 
-when not defined(release): import ".." / astalgo # debug()
-
 type
   PackedConfig* = object
     backend: TBackend

@@ -39,6 +39,7 @@ type
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
+    interf*: TStrTable
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
@@ -132,6 +133,12 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+template tab*(m: PSym; g: ModuleGraph): TStrTable =
+  g.ifaces[m.position].interf
+
+template systemModuleTab*(g: ModuleGraph): TStrTable =
+  g.ifaces[g.systemModule.position].interf
+
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
 
@@ -186,6 +193,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.ifaces.len:
     setLen(g.ifaces, m.position + 1)
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+  initStrTable(g.ifaces[m.position].interf)
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()

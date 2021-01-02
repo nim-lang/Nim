@@ -11,7 +11,8 @@
 
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets
+  semdata, modulepaths, sigmatch, lineinfos, sets,
+  modulegraphs
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -108,7 +109,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
-  let s = strTableGet(fromMod.tab, ident)
+  let s = strTableGet(fromMod.tab(c.graph), ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -119,12 +120,12 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     if multiImport:
       # for a overloadable syms add all overloaded routines
       var it: TIdentIter
-      var e = initIdentIter(it, fromMod.tab, s.name)
+      var e = initIdentIter(it, fromMod.tab(c.graph), s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
           rawImportSymbol(c, e, fromMod, importSet)
-        e = nextIdentIter(it, fromMod.tab)
+        e = nextIdentIter(it, fromMod.tab(c.graph))
     else:
       rawImportSymbol(c, s, fromMod, importSet)
     suggestSym(c.config, n.info, s, c.graph.usageSym, false)
@@ -178,7 +179,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
 
   when false:
     var i: TTabIter
-    var s = initTabIter(i, fromMod.tab)
+    var s = initTabIter(i, fromMod.tab(c.graph))
     while s != nil:
       if s.kind != skModule:
         if s.kind != skEnumField:
@@ -186,7 +187,7 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
             internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
           if exceptSet.isNil or s.name.id notin exceptSet:
             rawImportSymbol(c, s, fromMod)
-      s = nextIter(i, fromMod.tab)
+      s = nextIter(i, fromMod.tab(c.graph))
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)

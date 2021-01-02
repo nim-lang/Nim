@@ -129,7 +129,7 @@ proc loadSection*(f: var RodFile; expected: RodSection) =
   if f.err != ok: return
   var s: RodSection
   loadPrim(f, s)
-  if expected != s:
+  if expected != s and f.err == ok:
     f.err = wrongSection
 
 proc create*(filename: string): RodFile =

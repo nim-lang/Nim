@@ -833,11 +833,6 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
-    of skModule, skPackage:
-      # For 'import as' we copy the module symbol but shallowCopy the 'tab'
-      # and set the 'usedGenerics' to ... XXX gah! Better set module.name
-      # instead? But this doesn't work either. --> We need an skModuleAlias?
-      tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1448,8 +1443,6 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.typ = s.typ
   result.flags = s.flags
   result.magic = s.magic
-  if s.kind == skModule:
-    copyStrTable(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1467,7 +1460,6 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
-  system.shallowCopy(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
