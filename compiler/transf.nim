@@ -87,7 +87,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextId(c.idgen), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextSymId(c.idgen), getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
@@ -163,7 +163,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
   else:
-    var newVar = copySym(v, nextId(c.idgen))
+    var newVar = copySym(v, nextSymId(c.idgen))
     incl(newVar.flags, sfFromGeneric)
     newVar.owner = owner
     result = newSymNode(newVar)
@@ -233,7 +233,7 @@ proc hasContinue(n: PNode): bool =
       if hasContinue(n[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, nextId(c.idgen), getCurrOwner(c), n.info)
+  result = newSym(skLabel, nil, nextSymId(c.idgen), getCurrOwner(c), n.info)
   result.name = getIdent(c.graph.cache, genPrefix)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =

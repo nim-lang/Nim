@@ -49,7 +49,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
-          x = copySym(s, nextId(c.idgen))
+          x = copySym(s, nextSymId(c.idgen))
           # sem'check needs to set the owner properly later, see bug #9476
           x.owner = nil # c.genSymOwner
           #if x.kind == skParam and x.owner.kind == skModule:
