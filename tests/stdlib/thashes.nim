@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
 """
 
-import hashes
+import std/hashes
 
 block hashes:
   block hashing:
