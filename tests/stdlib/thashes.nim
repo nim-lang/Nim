@@ -85,16 +85,22 @@ proc main() =
       doAssert b notin s
       s.add b
 
-  when defined(js):
-    doAssert hash(0.345602) == 2035867618
-    doAssert hash(234567.45) == -20468103
-    doAssert hash(-9999.283456) == -43247422
-    doAssert hash(84375674.0) == 707542256
+  when sizeof(int) == 4:
+    when defined(js):
+      doAssert hash(0.345602) == 2035867618
+      doAssert hash(234567.45) == -20468103
+      doAssert hash(-9999.283456) == -43247422
+      doAssert hash(84375674.0) == 707542256
+    else:
+      doAssert hash(0.345602) == 387936373221941218
+      doAssert hash(234567.45) == -8179139172229468551
+      doAssert hash(-9999.283456) == 5876943921626224834
+      doAssert hash(84375674.0) == 1964453089107524848
   else:
-    doAssert hash(0.345602) == 387936373221941218
-    doAssert hash(234567.45) == -8179139172229468551
-    doAssert hash(-9999.283456) == 5876943921626224834
-    doAssert hash(84375674.0) == 1964453089107524848
+    doAssert hash(0.345602) != 0
+    doAssert hash(234567.45) != 0
+    doAssert hash(-9999.283456) != 0
+    doAssert hash(84375674.0) != 0
 
 
 static: main()
