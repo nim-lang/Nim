@@ -568,7 +568,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ## 
+  ##
   ## .. code-block:: nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
@@ -728,7 +728,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, nextId(c.idgen), typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, nextSymId(c.idgen), typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -741,7 +741,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyStatic:
           param = paramSym skConst
           param.typ = typ.exactReplica
-          #copyType(typ, nextId(c.idgen), typ.owner)
+          #copyType(typ, nextTypeId(c.idgen), typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
@@ -749,7 +749,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyUnknown:
           param = paramSym skVar
           param.typ = typ.exactReplica
-          #copyType(typ, nextId(c.idgen), typ.owner)
+          #copyType(typ, nextTypeId(c.idgen), typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -801,7 +801,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
     result = ff.exactReplica
-    #copyType(ff, nextId(c.idgen), ff.owner)
+    #copyType(ff, nextTypeId(c.idgen), ff.owner)
 
   result.n = checkedBody
 

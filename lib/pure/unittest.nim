@@ -9,11 +9,6 @@
 
 ## :Author: Zahary Karadjov
 ##
-## **Note**: Instead of ``unittest.nim``, please consider to use
-## the ``testament`` tool which offers process isolation for your tests.
-## Also ``when isMainModule: doAssert conditionHere`` is usually a
-## much simpler solution for testing purposes.
-##
 ## This module implements boilerplate to make unit testing easy.
 ##
 ## The test status and name is printed after any output or traceback.
@@ -22,8 +17,17 @@
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
 ##
-## Compiled test files as well as ``nim c -r <testfile.nim>``
+## Compiled test files as well as `nim c -r <testfile.nim>`
 ## exit with 0 for success (no failed tests) or 1 for failure.
+##
+## Testament
+## =========
+##
+## Instead of `unittest`, please consider using
+## `the Testament tool <testament.html>`_ which offers process isolation for your tests.
+##
+## Alternatively using `when isMainModule: doAssert conditionHere` is usually a
+## much simpler solution for testing purposes.
 ##
 ## Running a single test
 ## =====================
@@ -39,7 +43,7 @@
 ## Running a single test suite
 ## ===========================
 ##
-## Specify the suite name delimited by ``"::"``.
+## Specify the suite name delimited by `"::"`.
 ##
 ## .. code::
 ##
@@ -50,7 +54,7 @@
 ##
 ## A single ``"*"`` can be used for globbing.
 ##
-## Delimit the end of a suite name with ``"::"``.
+## Delimit the end of a suite name with `"::"`.
 ##
 ## Tests matching **any** of the arguments are executed.
 ##
@@ -92,7 +96,7 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
-## 
+##
 ## Limitations/Bugs
 ## ================
 ## Since `check` will rewrite some expressions for supporting checkpoints

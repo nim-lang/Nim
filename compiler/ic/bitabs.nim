@@ -1,7 +1,7 @@
 ## A BiTable is a table that can be seen as an optimized pair
 ## of (Table[LitId, Val], Table[Val, LitId]).
 
-import hashes
+import hashes, rodfiles
 
 type
   LitId* = distinct uint32
@@ -30,7 +30,9 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
 const
-  idStart = 256 # Ids do not start with 0 but with this value. The IR needs it.
+  idStart = 256 ##
+  ## Ids do not start with 0 but with this value. The IR needs it.
+  ## TODO: explain why
 
 template idToIdx(x: LitId): int = x.int - idStart
 
@@ -94,6 +96,21 @@ proc `[]`*[T](t: BiTable[T]; LitId: LitId): lent T {.inline.} =
   assert idx < t.vals.len
   result = t.vals[idx]
 
+proc hash*[T](t: BiTable[T]): Hash =
+  ## as the keys are hashes of the values, we simply use them instead
+  var h: Hash = 0
+  for i, n in pairs t.keys:
+    h = h !& hash((i, n))
+  result = !$h
+
+proc store*[T](f: var RodFile; t: BiTable[T]) =
+  storeSeq(f, t.vals)
+  storeSeq(f, t.keys)
+
+proc load*[T](f: var RodFile; t: var BiTable[T]) =
+  loadSeq(f, t.vals)
+  loadSeq(f, t.keys)
+
 when isMainModule:
 
   var t: BiTable[string]
@@ -113,7 +130,35 @@ when isMainModule:
 
   for i in 0 ..< 100_000:
     assert t.getOrIncl($i & "___" & $i).idToIdx == i + 4
+  echo "begin"
   echo t.vals.len
 
   echo t.vals[0]
   echo t.vals[1004]
+
+  echo "middle"
+
+  var tf: BiTable[float]
+
+  discard tf.getOrIncl(0.4)
+  discard tf.getOrIncl(16.4)
+  discard tf.getOrIncl(32.4)
+  echo getKeyId(tf, 32.4)
+
+  var f2 = open("testblah.bin", fmWrite)
+  echo store(f2, tf)
+  f2.close
+
+  var f1 = open("testblah.bin", fmRead)
+
+  var t2: BiTable[float]
+
+  echo f1.load(t2)
+  echo t2.vals.len
+
+  echo getKeyId(t2, 32.4)
+
+  echo "end"
+
+
+  f1.close

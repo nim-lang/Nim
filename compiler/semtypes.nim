@@ -387,7 +387,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         if result.typ.sym == nil:
           localError(c.config, n.info, errTypeExpected)
           return errorSym(c, n)
-        result = result.typ.sym.copySym(nextId c.idgen)
+        result = result.typ.sym.copySym(nextSymId c.idgen)
         result.typ = exactReplica(result.typ)
         result.typ.flags.incl tfUnresolved
 
@@ -965,7 +965,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
   if kind == skMacro:
     let staticType = findEnforcedStaticType(param.typ)
     if staticType != nil:
-      var a = copySym(param, nextId c.idgen)
+      var a = copySym(param, nextSymId c.idgen)
       a.typ = staticType.base
       addDecl(c, a)
       #elif param.typ != nil and param.typ.kind == tyTypeDesc:
@@ -973,7 +973,7 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
     else:
       # within a macro, every param has the type NimNode!
       let nn = getSysSym(c.graph, param.info, "NimNode")
-      var a = copySym(param, nextId c.idgen)
+      var a = copySym(param, nextSymId c.idgen)
       a.typ = nn.typ
       addDecl(c, a)
   else:
@@ -1003,7 +1003,7 @@ proc addImplicitGeneric(c: PContext; typeClass: PType, typId: PIdent;
 
   let owner = if typeClass.sym != nil: typeClass.sym
               else: getCurrOwner(c)
-  var s = newSym(skType, finalTypId, nextId c.idgen, owner, info)
+  var s = newSym(skType, finalTypId, nextSymId c.idgen, owner, info)
   if sfExplain in owner.flags: s.flags.incl sfExplain
   if typId == nil: s.flags.incl(sfAnon)
   s.linkTo(typeClass)
@@ -1109,7 +1109,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
-      var cp = copyType(paramType, nextId c.idgen, getCurrOwner(c))
+      var cp = copyType(paramType, nextTypeId c.idgen, getCurrOwner(c))
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(c, cp, paramTypId, info, genericParams, paramName)
 
@@ -1146,7 +1146,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
      tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(c,
-        copyType(paramType, nextId c.idgen, getCurrOwner(c)), paramTypId,
+        copyType(paramType, nextTypeId c.idgen, getCurrOwner(c)), paramTypId,
         info, genericParams, paramName)
 
   of tyGenericParam:
@@ -1522,7 +1522,7 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
 
 proc freshType(c: PContext; res, prev: PType): PType {.inline.} =
   if prev.isNil:
-    result = copyType(res, nextId c.idgen, res.owner)
+    result = copyType(res, nextTypeId c.idgen, res.owner)
   else:
     result = res
 
@@ -1579,7 +1579,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert c.config, dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, nextId c.idgen, owner, param.info)
+                            dummyName.ident, nextSymId c.idgen, owner, param.info)
     dummyParam.typ = dummyType
     incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
@@ -1836,7 +1836,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mExpr:
       result = semTypeNode(c, n[0], nil)
       if result != nil:
-        result = copyType(result, nextId c.idgen, getCurrOwner(c))
+        result = copyType(result, nextTypeId c.idgen, getCurrOwner(c))
         for i in 1..<n.len:
           result.rawAddSon(semTypeNode(c, n[i], nil))
     of mDistinct:
@@ -2115,7 +2115,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
 
       for j in 0..<a.len-2:
         let finalType = if j == 0: typ
-                        else: copyType(typ, nextId c.idgen, typ.owner)
+                        else: copyType(typ, nextTypeId c.idgen, typ.owner)
                         # it's important the we create an unique
                         # type for each generic param. the index
                         # of the parameter will be stored in the

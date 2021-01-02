@@ -14,10 +14,15 @@ Nim's Memory Management
 Introduction
 ============
 
-This document describes how the multi-paradigm memory management strategies work.
-How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
-and how the memory management strategies that are not garbage collectors work.
+A memory-management algorithm optimal for every use-case cannot exist.
+Nim provides multiple paradigms for needs ranging from large multi-threaded
+applications, to games, hard-realtime systems and small microcontrollers.
 
+This document describes how the management strategies work;
+How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
+and how the memory management strategies other than garbage collectors work.
+
+.. note:: the default GC is incremental, thread-local and not "stop-the-world"
 
 Multi-paradigm Memory Management Strategies
 ===========================================

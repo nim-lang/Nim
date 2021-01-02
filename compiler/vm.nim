@@ -688,7 +688,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let s = regs[rb].node.strVal.addr # or `byaddr`
       if idx <% s[].len:
          # `makePtrType` not accessible from vm.nim
-        let typ = newType(tyPtr, nextId c.idgen, c.module.owner)
+        let typ = newType(tyPtr, nextTypeId c.idgen, c.module.owner)
         typ.add getSysType(c.graph, c.debug[pc], tyChar)
         let node = newNodeIT(nkIntLit, c.debug[pc], typ) # xxx nkPtrLit
         node.intVal = cast[int](s[][idx].addr)
@@ -1962,7 +1962,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                  else: regs[rc].node.strVal
       if k < 0 or k > ord(high(TSymKind)):
         internalError(c.config, c.debug[pc], "request to create symbol of invalid kind")
-      var sym = newSym(k.TSymKind, getIdent(c.cache, name), nextId c.idgen, c.module.owner, c.debug[pc])
+      var sym = newSym(k.TSymKind, getIdent(c.cache, name), nextSymId c.idgen, c.module.owner, c.debug[pc])
       incl(sym.flags, sfGenSym)
       regs[ra].node = newSymNode(sym)
       regs[ra].node.flags.incl nfIsRef
@@ -2257,7 +2257,7 @@ const evalMacroLimit = 1000
 
 proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
-  result.typ = newType(tyError, nextId idgen, owner)
+  result.typ = newType(tyError, nextTypeId idgen, owner)
   result.typ.flags.incl tfCheckedForDestructor
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
