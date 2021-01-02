@@ -224,6 +224,25 @@ sub/mmain.idx""", context
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
 
+  block: # config.nims, nim.cfg, hintConf, bug #16557
+    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
+    let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    doAssert exitCode == 0
+    let dir = getCurrentDir()
+    let files = """
+config/nim.cfg
+config/config.nims
+tests/config.nims
+tests/newconfig/bar/nim.cfg
+tests/newconfig/bar/config.nims
+tests/newconfig/bar/mfoo.nim.cfg
+tests/newconfig/bar/mfoo.nims""".splitLines
+    var expected = ""
+    for a in files:
+      let b = dir / a
+      expected.add &"Hint: used config file '{b}' [Conf]\n"
+    doAssert outp == expected, outp & "\n" & expected
+
   block: # nim --eval
     let opt = "--hints:off"
     check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
