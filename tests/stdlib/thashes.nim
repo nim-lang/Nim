@@ -5,7 +5,7 @@ discard """
 import std/hashes
 
 
-when not defined(js):
+when not defined(js) and not defined(cpp):
   block:
     var x = 12
     iterator hello(): int {.closure.} =
