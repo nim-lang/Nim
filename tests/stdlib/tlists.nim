@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-import lists, sequtils, std/enumerate, std/sugar
+import lists, sequtils
 
 const
   data = [1, 2, 3, 4, 5, 6]
@@ -82,6 +82,18 @@ block tlistsToString:
     l.add('3')
     doAssert $l == """['1', '2', '3']"""
 
+# Copied here until it is merged into sequtils
+template take(a: untyped, max: int): untyped =
+  type T = typeof(block: (for ai in a: ai))
+  var ret: seq[T]
+  var i = 0
+  if max > 0:
+    for ai in a:
+      ret.add ai
+      i.inc
+      if i >= max: break
+  ret
+
 template testCommon(initList, toList) =
 
   block: # toSinglyLinkedList, toDoublyLinkedList
@@ -140,11 +152,7 @@ template testCommon(initList, toList) =
     block:
       var c = [0, 1].toList
       c.addMoved c
-      let s = collect:
-        for i, ci in enumerate(c):
-          if i == 6: break
-          ci
-      doAssert s == [0, 1, 0, 1, 0, 1]
+      doAssert c.take(6) == [0, 1, 0, 1, 0, 1]
 
   block: # prepend, prependMoved
     block:
@@ -179,11 +187,7 @@ template testCommon(initList, toList) =
     block:
       var c = [0, 1].toList
       c.prependMoved c
-      let s = collect:
-        for i, ci in enumerate(c):
-          if i == 6: break
-          ci
-      doAssert s == [0, 1, 0, 1, 0, 1]
+      doAssert c.take(6) == [0, 1, 0, 1, 0, 1]
 
   block remove:
     var l = [0, 1, 2, 3].toList
@@ -202,6 +206,14 @@ template testCommon(initList, toList) =
     doAssert l.toSeq == [1]
     l.remove l1
     doAssert l.toSeq == []
+    # Cycle preservation
+    var a = [10, 11, 12].toList
+    a.addMoved a
+    doAssert a.take(6) == @[10, 11, 12, 10, 11, 12]
+    a.remove a.head.next
+    doAssert a.take(6) == @[10, 12, 10, 12, 10, 12]
+    a.remove a.head
+    doAssert a.take(6) == @[12, 12, 12, 12, 12, 12]
 
 testCommon initSinglyLinkedList, toSinglyLinkedList
 testCommon initDoublyLinkedList, toDoublyLinkedList

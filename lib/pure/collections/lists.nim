@@ -22,50 +22,43 @@
 ##
 ## Lists
 ## -----
-##
-## .. code-block::
-##   import lists
-##
-##   var
-##     l = initDoublyLinkedList[int]()
-##     a = newDoublyLinkedNode[int](3)
-##     b = newDoublyLinkedNode[int](7)
-##     c = newDoublyLinkedNode[int](9)
-##
-##   l.add(a)
-##   l.add(b)
-##   l.prepend(c)
-##
-##   assert a.next == b
-##   assert a.prev == c
-##   assert c.next == a
-##   assert c.next.next == b
-##   assert c.prev == nil
-##   assert b.next == nil
-##
-##
+runnableExamples:
+  var
+    l = initDoublyLinkedList[int]()
+    a = newDoublyLinkedNode[int](3)
+    b = newDoublyLinkedNode[int](7)
+    c = newDoublyLinkedNode[int](9)
+
+  l.add(a)
+  l.add(b)
+  l.prepend(c)
+
+  assert a.next == b
+  assert a.prev == c
+  assert c.next == a
+  assert c.next.next == b
+  assert c.prev == nil
+  assert b.next == nil
+
 ## Rings
 ## -----
-##
-## .. code-block::
-##   import lists
-##
-##   var
-##     l = initSinglyLinkedRing[int]()
-##     a = newSinglyLinkedNode[int](3)
-##     b = newSinglyLinkedNode[int](7)
-##     c = newSinglyLinkedNode[int](9)
-##
-##   l.add(a)
-##   l.add(b)
-##   l.prepend(c)
-##
-##   assert c.next == a
-##   assert a.next == b
-##   assert c.next.next == b
-##   assert b.next == c
-##   assert c.next.next.next == c
-##
+runnableExamples:
+  var
+    l = initSinglyLinkedRing[int]()
+    a = newSinglyLinkedNode[int](3)
+    b = newSinglyLinkedNode[int](7)
+    c = newSinglyLinkedNode[int](9)
+
+  l.add(a)
+  l.add(b)
+  l.prepend(c)
+
+  assert c.next == a
+  assert a.next == b
+  assert c.next.next == b
+  assert b.next == c
+  assert c.next.next.next == c
+
 ## See also
 ## ========
 ##
@@ -368,16 +361,33 @@ proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
 
   result = find(L, value) != nil
 
-proc append*[T](a: var SomeLinkedCollection[T], b: SomeLinkedNode[T] | T) =
-  ## Alias for `a.add(b)`.
+proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
+                b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T) =
+  ## Deprecated alias for `a.add(b)`.
   ##
   ## See also:
   ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ## * `add proc <#add,SinglyLinkedList[T],T>`_
+  ## * `add proc <#add,T,T>`_
+  a.add b
+
+proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
+                b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T) =
+  ## Deprecated alias for `a.add(b)`.
+  ##
+  ## See also:
   ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ## * `add proc <#add,DoublyLinkedList[T],T>`_
   ## * `add proc <#add,T,T>`_
   a.add b
+
+proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
+  ## Deprecated alias for `a.addMoved(b)`.
+  ##
+  ## See also:
+  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
+  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
+  a.addMoved b
 
 proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Prepends a shallow copy of `b` to the beginning of `a`.
@@ -714,10 +724,11 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
 
 proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
   ## Removes a node `n` from `L`.
-  ## Efficiency: O(n), unless `n` is the head element.
+  ## Efficiency: O(n); the list is traversed until `n` is found.
   ## Attempting to remove an element not contained in the list is a no-op.
+  ## When the list is cyclic, the cycle is preserved after removal.
   runnableExamples:
-    from sequtils import toSeq
+    import std/[sequtils, enumerate, sugar]
     var a = [0, 1, 2].toSinglyLinkedList
     let n = a.head.next
     doAssert n.value == 1
@@ -725,9 +736,18 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
     doAssert a.toSeq == [0, 2]
     a.remove n
     doAssert a.toSeq == [0, 2]
+    a.addMoved a # cycle: [0, 2, 0, 2, ...]
+    a.remove a.head
+    let s = collect:
+      for i, ai in enumerate(a):
+        if i == 4: break
+        ai
+    doAssert s == [2, 2, 2, 2]
 
   if n == L.head:
     L.head = n.next
+    if L.tail.next == n:
+      L.tail.next = L.head # restore cycle
   else:
     var prev = L.head
     while prev.next != n and prev.next != nil:
@@ -737,6 +757,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
+  ## When the list is cyclic, the cycle is preserved after removal.
   runnableExamples:
     var
       a = initDoublyLinkedList[int]()
