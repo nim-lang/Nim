@@ -134,26 +134,29 @@ proc `$`*[T: tuple|object](x: T): string =
   result.add(")")
 
 proc collectionToString[T:char](cs: set[T], prefix, separator, suffix: string): string =
+  const flatten = { '\0'..'\31', '0'..'9', 'A'..'Z', 'a'..'z', '\127'..'\255' }
+  result.add prefix
+  var c = T.low
   var firstElement = true
-  result = prefix
-  var c = low(T).int
-  while c <= high(T).int:
-    let first = c
-    while c <= high(T).int and c.T in cs:
-      inc c
-    if c >= first+1:
+  while c < T.high:
+    if c in cs:
       if firstElement:
         firstElement = false
       else:
         result.add separator
-      if c == first+1:
-        result.add first.T.repr
-      elif c > first+1:
-        result.add first.T.repr
-        result.add if c == first+2: ", " else: ".."
-        result.add (c-1).T.repr
-    inc c
-  result.add(suffix)
+      result.addQuoted c
+      let prev = c
+      while c < T.high and c in flatten and c.succ in flatten and c.succ in cs:
+        inc c
+      if c.int - prev.int >= 2:
+        result.add ".."
+        result.addQuoted c
+      elif c.int - prev.int >= 1:
+        result.add separator
+        result.addQuoted c
+    if c < T.high:
+      inc c
+  result.add suffix
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
