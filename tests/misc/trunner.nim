@@ -225,13 +225,11 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
-    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf --skipParentCfg tests/newconfig/bar/mfoo.nim"
+    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
     let dir = getCurrentDir()
     let files = """
-config/nim.cfg
-config/config.nims
 tests/config.nims
 tests/newconfig/bar/nim.cfg
 tests/newconfig/bar/config.nims
@@ -241,7 +239,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     for a in files:
       let b = dir / a
       expected.add &"Hint: used config file '{b}' [Conf]\n"
-    doAssert outp == expected, outp & "\n" & expected
+    doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # nim --eval
     let opt = "--hints:off"
