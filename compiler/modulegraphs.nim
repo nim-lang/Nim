@@ -65,6 +65,7 @@ type
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
     exposed*: TStrTable
+    packageTypes*: TStrTable
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
     emptyNode*: PNode
@@ -210,6 +211,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.methods = @[]
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
+  initStrTable(result.packageTypes)
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)

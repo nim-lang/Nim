@@ -1055,22 +1055,21 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     if pkg.isNil or pkg.kind != skPackage:
       localError(c.config, name.info, "unknown package name: " & pkgName.s)
     else:
-      when false:
-        let typsym = pkg.tab.strTableGet(typName)
-        if typsym.isNil:
-          s = semIdentDef(c, name[1], skType)
-          onDef(name[1].info, s)
-          s.typ = newTypeS(tyObject, c)
-          s.typ.sym = s
-          s.flags.incl sfForward
-          pkg.tab.strTableAdd s
-          addInterfaceDecl(c, s)
-        elif typsym.kind == skType and sfForward in typsym.flags:
-          s = typsym
-          addInterfaceDecl(c, s)
-        else:
-          localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
-          s = typsym
+      let typsym = c.graph.packageTypes.strTableGet(typName)
+      if typsym.isNil:
+        s = semIdentDef(c, name[1], skType)
+        onDef(name[1].info, s)
+        s.typ = newTypeS(tyObject, c)
+        s.typ.sym = s
+        s.flags.incl sfForward
+        c.graph.packageTypes.strTableAdd s
+        addInterfaceDecl(c, s)
+      elif typsym.kind == skType and sfForward in typsym.flags:
+        s = typsym
+        addInterfaceDecl(c, s)
+      else:
+        localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
+        s = typsym
   else:
     s = semIdentDef(c, name, skType)
     onDef(name.info, s)
@@ -1089,16 +1088,15 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
       if not isTopLevel(c) or pkg.isNil:
         localError(c.config, name.info, "only top level types in a package can be 'package'")
       else:
-        when false:
-          let typsym = pkg.tab.strTableGet(s.name)
-          if typsym != nil:
-            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
-              typeCompleted(typsym)
-              typsym.info = s.info
-            else:
-              localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
-                      "previous type completion was here: " & c.config$typsym.info)
-            s = typsym
+        let typsym = c.graph.packageTypes.strTableGet(s.name)
+        if typsym != nil:
+          if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+            typeCompleted(typsym)
+            typsym.info = s.info
+          else:
+            localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                    "previous type completion was here: " & c.config$typsym.info)
+          s = typsym
     # add it here, so that recursive types are possible:
     if sfGenSym notin s.flags: addInterfaceDecl(c, s)
     elif s.owner == nil: s.owner = getCurrOwner(c)
