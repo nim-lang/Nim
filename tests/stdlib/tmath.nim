@@ -1,5 +1,5 @@
 discard """
-  targets: "c js"
+  targets: "c cpp js"
 """
 
 ## xxx enable matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
