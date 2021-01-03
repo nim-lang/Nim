@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp js"
   matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
 
