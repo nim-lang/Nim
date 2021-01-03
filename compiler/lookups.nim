@@ -309,7 +309,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
     # add to interface:
-    if c.module != nil: strTableAdd(c.module.tab(c.graph), sym)
+    if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =

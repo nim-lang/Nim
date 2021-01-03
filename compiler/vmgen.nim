@@ -1964,6 +1964,7 @@ proc matches(s: PSym; x: string): bool =
     if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
+    while s != nil and s.kind == skPackage and s.owner != nil: s = s.owner
   result = true
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
