@@ -92,6 +92,10 @@
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
+- Added `os.setHostname`; for consistency reasons `nativesockets.getHostname` is now available under `os.getHostname`
+  name, `os.getHostname` now raises assertion error when it's called from OS, different from Windows and POSIX, and does
+  not require calling WSAStartup anymore.
+
 
 ## Language changes
 

@@ -539,3 +539,6 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # getHostname
+  doAssert getHostname().len > 0

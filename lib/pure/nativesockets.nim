@@ -35,7 +35,7 @@ else:
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
-  freeAddrInfo
+  freeAddrInfo, getHostname
 
 export
   SO_ERROR,
@@ -433,22 +433,6 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   else:
     result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
-
-proc getHostname*(): string {.tags: [ReadIOEffect].} =
-  ## Returns the local hostname (not the FQDN)
-  # https://tools.ietf.org/html/rfc1035#section-2.3.1
-  # https://tools.ietf.org/html/rfc2181#section-11
-  const size = 64
-  result = newString(size)
-  when useWinVersion:
-    let success = winlean.gethostname(result, size)
-  else:
-    # Posix
-    let success = posix.gethostname(result, size)
-  if success != 0.cint:
-    raiseOSError(osLastError())
-  let x = len(cstring(result))
-  result.setLen(x)
 
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## Returns the socket's domain (AF_INET or AF_INET6).
