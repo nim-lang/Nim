@@ -36,7 +36,7 @@ type
 const
   RodVersion = 1
   cookie = [byte(0), byte('R'), byte('O'), byte('D'),
-            byte(0), byte(0), byte(0), byte(RodVersion)]
+            byte(sizeof(int)*8), byte(system.littleEndian), byte(0), byte(RodVersion)]
 
 proc storePrim*(f: var RodFile; s: string) =
   if f.err != ok: return
