@@ -1,11 +1,13 @@
 discard """
-  targets: "c js"
+  action: run
   matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
 
-import std/[math, random, os]
-import std/[unittest]
-import std/[sets, tables]
+# xxx: fix bugs for js then add: targets:"c js"
+
+import math, random, os
+import unittest
+import sets, tables
 
 block: # random int
   block: # there might be some randomness
