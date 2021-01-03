@@ -18,6 +18,8 @@ type
     depsSection
     integersSection
     floatsSection
+    exportSection
+    compilerProcSection
     topLevelSection
     bodiesSection
     symsSection

@@ -298,6 +298,8 @@ proc addPattern*(c: PContext, p: PSym) =
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.tab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addExported(c.encoder, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.tab(c.graph), s)

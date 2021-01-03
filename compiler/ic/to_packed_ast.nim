@@ -30,6 +30,8 @@ type
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
     #producedGenerics*: Table[GenericKey, SymId]
+    exported*: seq[(LitId, int32)]
+    compilerProcs*: seq[(LitId, int32)]
     sh*: Shared
     cfg: PackedConfig
 
@@ -125,6 +127,14 @@ proc addIncludeFileDep*(c: var PackedEncoder; f: FileIndex) =
 
 proc addImportFileDep*(c: var PackedEncoder; f: FileIndex) =
   c.m.imports.add toLitId(f, c)
+
+proc addExported*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  c.m.exported.add((nameId, s.itemId.item))
+
+proc addCompilerProc*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  c.m.compilerProcs.add((nameId, s.itemId.item))
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder)
 proc toPackedSym*(s: PSym; c: var PackedEncoder): PackedItemId
@@ -393,6 +403,12 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadSection floatsSection
   f.load m.sh.floats
 
+  f.loadSection exportSection
+  f.loadSeq m.exported
+
+  f.loadSection compilerProcSection
+  f.loadSeq m.compilerProcs
+
   f.loadSection topLevelSection
   f.loadSeq m.topLevel.nodes
 
@@ -485,6 +501,12 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
 
   f.storeSection floatsSection
   f.store encoder.m.sh.floats
+
+  f.storeSection exportSection
+  f.storeSeq encoder.m.exported
+
+  f.storeSection compilerProcSection
+  f.storeSeq encoder.m.compilerProcs
 
   f.storeSection topLevelSection
   f.storeSeq encoder.m.topLevel.nodes
