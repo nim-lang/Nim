@@ -37,3 +37,5 @@ proc clone*(fn: pointer; child_stack: pointer; flags: cint;
             ctid: ptr Pid): cint {.importc, header: "<sched.h>".}
 
 proc pipe2*(a: array[0..1, cint], flags: cint): cint {.importc, header: "<unistd.h>".}
+
+proc unshare*(flags: cint): cint {.importc, header: "<sched.h>", sideEffect.}
