@@ -1,5 +1,4 @@
 discard """
-  action: run
   matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
 
