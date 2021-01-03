@@ -6,8 +6,8 @@ discard """
 # xxx: fix bugs for js then add: targets:"c js"
 
 import std/[math, random, os]
-import std[unittest]
-import std;sets, tables]
+import std/[unittest]
+import std/[sets, tables]
 
 block: # random int
   block: # there might be some randomness
