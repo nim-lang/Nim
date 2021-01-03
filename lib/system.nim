@@ -2399,7 +2399,7 @@ when notJSnotNims:
       `result` = `x`.ClP_0;
       """.}
     else:
-      raise newException(ValueError, "Only closure function and iterator are allowed!")
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. This is
@@ -2409,7 +2409,7 @@ when notJSnotNims:
       `result` = `x`.ClE_0;
       """.}
     else:
-      raise newException(ValueError, "Only closure function and iterator are allowed!")
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
     ## can be used to determine if a first class iterator has finished.
