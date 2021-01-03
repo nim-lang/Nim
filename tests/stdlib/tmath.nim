@@ -1,7 +1,8 @@
 discard """
   targets: "c js"
-  matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
+
+## xxx enable matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 
 import std/[math, random, os]
 import std/[unittest]
