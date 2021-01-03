@@ -37,6 +37,14 @@ joinable: false
 """
 
 
+block:
+  proc f(): int = 0
+  doAssertRaises(ValueError):
+    discard f.rawProc
+
+  doAssertRaises(ValueError):
+    discard f.rawEnv
+
 block tclosure:
   proc map(n: var openarray[int], fn: proc (x: int): int {.closure}) =
     for i in 0..n.len-1: n[i] = fn(n[i])
