@@ -230,8 +230,6 @@ sub/mmain.idx""", context
     doAssert exitCode == 0
     let dir = getCurrentDir()
     let files = """
-config/nim.cfg
-config/config.nims
 tests/config.nims
 tests/newconfig/bar/nim.cfg
 tests/newconfig/bar/config.nims
@@ -241,7 +239,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     for a in files:
       let b = dir / a
       expected.add &"Hint: used config file '{b}' [Conf]\n"
-    doAssert outp == expected, outp & "\n" & expected
+    doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # nim --eval
     let opt = "--hints:off"
