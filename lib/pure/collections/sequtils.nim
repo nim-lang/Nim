@@ -435,7 +435,7 @@ proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1
   for i in 0 ..< s.len: op(s[i])
 
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
-  ## Iterates through a container `s` and yields every item that fulfilled the
+  ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (a function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
@@ -459,7 +459,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
 
 proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
-  ## Returns a new sequence with all the items of `s` that fulfilled the
+  ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
@@ -486,7 +486,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
-  ## Keeps the items in the passed sequence `s` if they fulfilled the
+  ## Keeps the items in the passed sequence `s` if they fulfill the
   ## predicate `pred` (a function that returns a `bool`).
   ##
   ## Note that `s` must be declared as a `var`.
@@ -574,7 +574,7 @@ func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
 
 
 template filterIt*(s, pred: untyped): untyped =
-  ## Returns a new sequence with all the items of `s` that fulfilled the
+  ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred`.
   ##
   ## Unlike the `filter proc<#filter,openArray[T],proc(T)>`_ and
@@ -605,7 +605,7 @@ template filterIt*(s, pred: untyped): untyped =
 
 template keepItIf*(varSeq: seq, pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a `var`)
-  ## if they fulfilled the predicate.
+  ## if they fulfill the predicate.
   ##
   ## Unlike the `keepIf proc<#keepIf,seq[T],proc(T)>`_,
   ## the predicate needs to be an expression using
@@ -634,7 +634,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
 
 since (1, 1):
   template countIt*(s, pred: untyped): int =
-    ## Returns a count of all the items that fulfilled the predicate.
+    ## Returns a count of all the items that fulfill the predicate.
     ##
     ## The predicate needs to be an expression using
     ## the `it` variable for testing, like: `countIt(@[1, 2, 3], it > 2)`.
