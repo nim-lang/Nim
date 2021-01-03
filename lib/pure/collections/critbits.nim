@@ -13,28 +13,24 @@
 ## (A crit bit tree is a form of `radix tree`:idx: or `patricia trie`:idx:.)
 
 runnableExamples:
-  static:
-    block:
-      var critbitAsSet: CritBitTree[void]
-      doAssert critbitAsSet.len == 0
-      incl critbitAsSet, "kitten"
-      doAssert critbitAsSet.len == 1
-      incl critbitAsSet, "puppy"
-      doAssert critbitAsSet.len == 2
-      incl critbitAsSet, "kitten"
-      doAssert critbitAsSet.len == 2
-      incl critbitAsSet, ""
-      doAssert critbitAsSet.len == 3
-  block:
-    var critbitAsDict: CritBitTree[int]
-    critbitAsDict["key"] = 42
-    doAssert critbitAsDict["key"] == 42
-    critbitAsDict["key"] = 0
-    doAssert critbitAsDict["key"] == 0
-    critbitAsDict["key"] = -int.high
-    doAssert critbitAsDict["key"] == -int.high
-    critbitAsDict["key"] = int.high
-    doAssert critbitAsDict["key"] == int.high
+  from sequtils import toSeq
+
+  var critbitAsSet: CritBitTree[void] = ["kitten", "puppy"].toCritBitTree
+  doAssert critbitAsSet.len == 2
+  critbitAsSet.incl("")
+  doAssert "" in critbitAsSet
+  critbitAsSet.excl("")
+  doAssert "" notin critbitAsSet
+  doAssert toSeq(critbitAsSet.items) == @["kitten", "puppy"]
+
+  var critbitAsDict: CritBitTree[int] = {"key1": 42}.toCritBitTree
+  doAssert critbitAsDict.len == 1
+  critbitAsDict["key2"] = 0
+  doAssert "key2" in critbitAsDict
+  doAssert critbitAsDict["key2"] == 0
+  critbitAsDict.excl("key1")
+  doAssert "key1" notin critbitAsDict
+  doAssert toSeq(critbitAsDict.pairs) == @[("key2", 0)]
 
 import std/private/since
 
@@ -292,11 +288,6 @@ proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## **See also:**
   ## * `[] proc <#[],CritBitTree[T],string>`_
   ## * `[] proc <#[],CritBitTree[T],string_2>`_
-  runnableExamples:
-    var c: CritBitTree[int]
-    c["key"] = 42
-    doAssert c["key"] == 42
-
   var n = rawInsert(c, key)
   n.val = val
 
@@ -342,10 +333,11 @@ iterator leaves[T](n: Node[T]): Node[T] =
 iterator keys*[T](c: CritBitTree[T]): string =
   ## Yields all keys in lexicographical order.
   runnableExamples:
-    let c = {"key1": 1, "key2": 2}.toCritBitTree
-    var keys: seq[string]
-    for key in c.keys:
-      keys.add(key)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 1, "key2": 2}.toCritBitTree
+      keys = toSeq(c.keys)
     doAssert keys == @["key1", "key2"]
 
   for x in leaves(c.root): yield x.key
@@ -357,10 +349,11 @@ iterator values*[T](c: CritBitTree[T]): T =
   ## **See also:**
   ## * `mvalues iterator <#mvalues.i,CritBitTree[T]>`_
   runnableExamples:
-    let c = {"key1": 1, "key2": 2}.toCritBitTree
-    var vals: seq[int]
-    for val in c.values:
-      vals.add(val)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 1, "key2": 2}.toCritBitTree
+      vals = toSeq(c.values)
     doAssert vals == @[1, 2]
 
   for x in leaves(c.root): yield x.val
@@ -375,13 +368,6 @@ iterator mvalues*[T](c: var CritBitTree[T]): var T =
 
 iterator items*[T](c: CritBitTree[T]): string =
   ## Alias for `keys <#keys.i,CritBitTree[T]>`_.
-  runnableExamples:
-    let c = {"key1": 1, "key2": 2}.toCritBitTree
-    var keys: seq[string]
-    for key in c.items:
-      keys.add(key)
-    doAssert keys == @["key1", "key2"]
-
   for x in leaves(c.root): yield x.key
 
 iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: T] =
@@ -391,10 +377,11 @@ iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: T] =
   ## **See also:**
   ## * `mpairs iterator <#mpairs.i,CritBitTree[T]>`_
   runnableExamples:
-    let c = {"key1": 1, "key2": 2}.toCritBitTree
-    var ps: seq[tuple[key: string, val: int]]
-    for p in c.pairs:
-      ps.add(p)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 1, "key2": 2}.toCritBitTree
+      ps = toSeq(c.pairs)
     doAssert ps == @[(key: "key1", val: 1), (key: "key2", val: 2)]
 
   for x in leaves(c.root): yield (x.key, x.val)
@@ -426,14 +413,12 @@ proc allprefixedAux[T](c: CritBitTree[T], key: string;
 iterator keysWithPrefix*[T](c: CritBitTree[T], prefix: string;
                             longestMatch = false): string =
   ## Yields all keys starting with `prefix`.
-  ##
-  ## If `longestMatch` is true and no key starts with `prefix`, only
-  ## the longest match is yielded, it doesn't have to be a complete match then.
   runnableExamples:
-    let c = {"key1": 42, "key2": 43}.toCritBitTree
-    var keys: seq[string]
-    for key in c.keysWithPrefix("key"):
-      keys.add(key)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 42, "key2": 43}.toCritBitTree
+      keys = toSeq(c.keysWithPrefix("key"))
     doAssert keys == @["key1", "key2"]
 
   let top = allprefixedAux(c, prefix, longestMatch)
@@ -444,16 +429,14 @@ iterator valuesWithPrefix*[T](c: CritBitTree[T], prefix: string;
   ## Yields all values of `c` starting with `prefix` of the
   ## corresponding keys.
   ##
-  ## If `longestMatch` is true and no key starts with `prefix`, only
-  ## the longest match is yielded, it doesn't have to be a complete match then.
-  ##
   ## **See also:**
   ## * `mvaluesWithPrefix iterator <#mvaluesWithPrefix.i,CritBitTree[T],string>`_
   runnableExamples:
-    let c = {"key1": 42, "key2": 43}.toCritBitTree
-    var vals: seq[int]
-    for val in c.valuesWithPrefix("key"):
-      vals.add(val)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 42, "key2": 43}.toCritBitTree
+      vals = toSeq(c.valuesWithPrefix("key"))
     doAssert vals == @[42, 43]
 
   let top = allprefixedAux(c, prefix, longestMatch)
@@ -464,9 +447,6 @@ iterator mvaluesWithPrefix*[T](c: var CritBitTree[T], prefix: string;
   ## Yields all values of `c` starting with `prefix` of the
   ## corresponding keys. The values can be modified.
   ##
-  ## If `longestMatch` is true and no key starts with `prefix`, only
-  ## the longest match is yielded, it doesn't have to be a complete match then.
-  ##
   ## **See also:**
   ## * `valuesWithPrefix iterator <#valuesWithPrefix.i,CritBitTree[T],string>`_
   let top = allprefixedAux(c, prefix, longestMatch)
@@ -475,13 +455,6 @@ iterator mvaluesWithPrefix*[T](c: var CritBitTree[T], prefix: string;
 iterator itemsWithPrefix*[T](c: CritBitTree[T], prefix: string;
                              longestMatch = false): string =
   ## Alias for `keysWithPrefix <#keysWithPrefix.i,CritBitTree[T],string>`_.
-  runnableExamples:
-    let c = {"key1": 42, "key2": 43}.toCritBitTree
-    var keys: seq[string]
-    for key in c.itemsWithPrefix("key"):
-      keys.add(key)
-    doAssert keys == @["key1", "key2"]
-
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield x.key
 
@@ -490,16 +463,14 @@ iterator pairsWithPrefix*[T](c: CritBitTree[T],
                              longestMatch = false): tuple[key: string, val: T] =
   ## Yields all (key, value)-pairs of `c` starting with `prefix`.
   ##
-  ## If `longestMatch` is true and no key starts with `prefix`, only
-  ## the longest match is yielded, it doesn't have to be a complete match then.
-  ##
   ## **See also:**
   ## * `mpairsWithPrefix iterator <#mpairsWithPrefix.i,CritBitTree[T],string>`_
   runnableExamples:
-    let c = {"key1": 42, "key2": 43}.toCritBitTree
-    var ps: seq[tuple[key: string, val: int]]
-    for p in c.pairsWithPrefix("key"):
-      ps.add(p)
+    from sequtils import toSeq
+
+    let
+      c = {"key1": 42, "key2": 43}.toCritBitTree
+      ps = toSeq(c.pairsWithPrefix("key"))
     doAssert ps == @[(key: "key1", val: 42), (key: "key2", val: 43)]
 
   let top = allprefixedAux(c, prefix, longestMatch)
@@ -511,19 +482,27 @@ iterator mpairsWithPrefix*[T](c: var CritBitTree[T],
   ## Yields all (key, value)-pairs of `c` starting with `prefix`.
   ## The yielded values can be modified.
   ##
-  ## If `longestMatch` is true and no key starts with `prefix`, only
-  ## the longest match is yielded, it doesn't have to be a complete match then.
-  ##
   ## **See also:**
   ## * `pairsWithPrefix iterator <#pairsWithPrefix.i,CritBitTree[T],string>`_
   let top = allprefixedAux(c, prefix, longestMatch)
   for x in leaves(top): yield (x.key, x.val)
 
 func `$`*[T](c: CritBitTree[T]): string =
-  ## Turns `c` into a string representation. Example outputs:
-  ## `{keyA: value, keyB: value}`, `{:}`.
-  ## If `T` is `void`, the outputs look like:
-  ## `{keyA, keyB}`, `{}`.
+  ## Turns `c` into a string representation.
+  runnableExamples:
+    block:
+      var c: CritBitTree[int]
+      assert $c == "{:}"
+      c["key1"] = 1
+      c["key2"] = 2
+      assert $c == """{"key1": 1, "key2": 2}"""
+    block:
+      var c: CritBitTree[void]
+      assert $c == "{}"
+      c.incl("key1")
+      c.incl("key2")
+      assert $c == """{"key1", "key2"}"""
+
   if c.len == 0:
     when T is void:
       result = "{}"
