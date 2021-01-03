@@ -1110,5 +1110,8 @@ proc getrlimit*(resource: cint, rlp: var RLimit): cint
       {.importc: "getrlimit",header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
 
+when defined(linux) or defined(bsd):
+  proc sethostname*(name: cstring, len: csize_t): cint {.importc, header: "<unistd.h>", sideEffect.}
+
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}
