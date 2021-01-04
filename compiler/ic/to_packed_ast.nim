@@ -30,8 +30,11 @@ type
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
     #producedGenerics*: Table[GenericKey, SymId]
-    exported*: seq[(LitId, int32)]
-    compilerProcs*: seq[(LitId, int32)]
+    exports*: seq[(LitId, int32)]
+    reexports*: seq[(LitId, PackedItemId)]
+    compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
+    methods*: seq[(LitId, PackedItemId, int32)]
+    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
     sh*: Shared
     cfg: PackedConfig
 
@@ -130,7 +133,22 @@ proc addImportFileDep*(c: var PackedEncoder; f: FileIndex) =
 
 proc addExported*(c: var PackedEncoder; s: PSym) =
   let nameId = getOrIncl(c.m.sh.strings, s.name.s)
-  c.m.exported.add((nameId, s.itemId.item))
+  c.m.exports.add((nameId, s.itemId.item))
+
+  when false:
+    case s.kind
+    of skConverter:
+      c.m.converters.add((nameId, s.itemId.item))
+    of skTemplate, skMacro:
+      if hasPattern(s):
+        c.m.trmacros.add((nameId, s.itemId.item))
+    of skType:
+      if isPureEnum(s.typ):
+        c.m.pureEnums.add((nameId, s.itemId.item))
+    of skMethod:
+      c.m.methods.add((nameId, s.itemId.item))
+    else:
+      discard
 
 proc addCompilerProc*(c: var PackedEncoder; s: PSym) =
   let nameId = getOrIncl(c.m.sh.strings, s.name.s)
@@ -387,39 +405,42 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   if not configIdentical(m, config):
     f.err = configMismatch
 
-  f.loadSection stringsSection
-  f.load m.sh.strings
+  template loadSeqSection(section, data) {.dirty.} =
+    f.loadSection section
+    f.loadSeq data
 
-  f.loadSection checkSumsSection
-  f.loadSeq m.includes
+  template loadTabSection(section, data) {.dirty.} =
+    f.loadSection section
+    f.load data
+
+  loadTabSection stringsSection, m.sh.strings
+
+  loadSeqSection checkSumsSection, m.includes
   if not includesIdentical(m, config):
     f.err = includeFileChanged
 
-  f.loadSection depsSection
-  f.loadSeq m.imports
+  loadSeqSection depsSection, m.imports
 
-  f.loadSection integersSection
-  f.load m.sh.integers
-  f.loadSection floatsSection
-  f.load m.sh.floats
+  loadTabSection integersSection, m.sh.integers
+  loadTabSection floatsSection, m.sh.floats
 
-  f.loadSection exportSection
-  f.loadSeq m.exported
+  loadSeqSection exportsSection, m.exports
 
-  f.loadSection compilerProcSection
-  f.loadSeq m.compilerProcs
+  loadSeqSection reexportsSection, m.reexports
 
-  f.loadSection topLevelSection
-  f.loadSeq m.topLevel.nodes
+  loadSeqSection compilerProcsSection, m.compilerProcs
 
-  f.loadSection bodiesSection
-  f.loadSeq m.bodies.nodes
+  loadSeqSection trmacrosSection, m.trmacros
 
-  f.loadSection symsSection
-  f.loadSeq m.sh.syms
+  loadSeqSection convertersSection, m.converters
+  loadSeqSection methodsSection, m.methods
+  loadSeqSection pureEnumsSection, m.pureEnums
+  loadSeqSection macroUsagesSection, m.macroUsages
 
-  f.loadSection typesSection
-  f.loadSeq m.sh.types
+  loadSeqSection topLevelSection, m.topLevel.nodes
+  loadSeqSection bodiesSection, m.bodies.nodes
+  loadSeqSection symsSection, m.sh.syms
+  loadSeqSection typesSection, m.sh.types
 
   close(f)
   result = f.err
@@ -487,38 +508,41 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   f.storePrim encoder.m.definedSymbols
   f.storePrim encoder.m.cfg
 
-  f.storeSection stringsSection
-  f.store encoder.m.sh.strings
+  template storeSeqSection(section, data) {.dirty.} =
+    f.storeSection section
+    f.storeSeq data
 
-  f.storeSection checkSumsSection
-  f.storeSeq encoder.m.includes
+  template storeTabSection(section, data) {.dirty.} =
+    f.storeSection section
+    f.store data
 
-  f.storeSection depsSection
-  f.storeSeq encoder.m.imports
+  storeTabSection stringsSection, encoder.m.sh.strings
 
-  f.storeSection integersSection
-  f.store encoder.m.sh.integers
+  storeSeqSection checkSumsSection, encoder.m.includes
 
-  f.storeSection floatsSection
-  f.store encoder.m.sh.floats
+  storeSeqSection depsSection, encoder.m.imports
 
-  f.storeSection exportSection
-  f.storeSeq encoder.m.exported
+  storeTabSection integersSection, encoder.m.sh.integers
+  storeTabSection floatsSection, encoder.m.sh.floats
 
-  f.storeSection compilerProcSection
-  f.storeSeq encoder.m.compilerProcs
+  storeSeqSection exportsSection, encoder.m.exports
 
-  f.storeSection topLevelSection
-  f.storeSeq encoder.m.topLevel.nodes
+  storeSeqSection reexportsSection, encoder.m.reexports
 
-  f.storeSection bodiesSection
-  f.storeSeq encoder.m.bodies.nodes
+  storeSeqSection compilerProcsSection, encoder.m.compilerProcs
 
-  f.storeSection symsSection
-  f.storeSeq encoder.m.sh.syms
+  storeSeqSection trmacrosSection, encoder.m.trmacros
+  storeSeqSection convertersSection, encoder.m.converters
+  storeSeqSection methodsSection, encoder.m.methods
+  storeSeqSection pureEnumsSection, encoder.m.pureEnums
+  storeSeqSection macroUsagesSection, encoder.m.macroUsages
 
-  f.storeSection typesSection
-  f.storeSeq encoder.m.sh.types
+  storeSeqSection topLevelSection, encoder.m.topLevel.nodes
+
+  storeSeqSection bodiesSection, encoder.m.bodies.nodes
+  storeSeqSection symsSection, encoder.m.sh.syms
+
+  storeSeqSection typesSection, encoder.m.sh.types
   close(f)
   if f.err != ok:
     loadError(f.err, filename)

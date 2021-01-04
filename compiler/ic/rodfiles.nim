@@ -18,8 +18,14 @@ type
     depsSection
     integersSection
     floatsSection
-    exportSection
-    compilerProcSection
+    exportsSection
+    reexportsSection
+    compilerProcsSection
+    trmacrosSection
+    convertersSection
+    methodsSection
+    pureEnumsSection
+    macroUsagesSection
     topLevelSection
     bodiesSection
     symsSection
