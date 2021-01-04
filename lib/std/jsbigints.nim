@@ -106,44 +106,45 @@ func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(newJsBigInt"10101010101") == newJsBigInt"-10101010101"
 
-func inc*(a: var JsBigInt; b = 1) {.importjs: "([#][0][0] += BigInt(#))".} =
+func inc*(a: var JsBigInt; b = newJsBigInt"1") {.importjs: "([#][0][0] += [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     inc big1, 2
     doAssert big1 == newJsBigInt"3"
 
-func dec*(a: var JsBigInt; b = 1) {.importjs: "([#][0][0] -= BigInt(#))".} =
+func dec*(a: var JsBigInt; b = newJsBigInt"1") {.importjs: "([#][0][0] -= [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     dec big1, 2
     doAssert big1 == newJsBigInt"-1"
 
-func `+=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 += 2
     doAssert big1 == newJsBigInt"3"
 
-func `-=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 -= 2
     doAssert big1 == newJsBigInt"-1"
 
-func `*=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"2"
     big1 *= 4
     doAssert big1 == newJsBigInt"8"
 
-func `/=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] /= BigInt(#))".} =
+func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= [#][0][0])".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"11"
     big1 /= 2
     doAssert big1 == newJsBigInt"5"
 
-proc `+`*(_: JsBigInt): JsBigInt {.error.} # Can not be used by design.
+proc `+`*(_: JsBigInt): JsBigInt {.error:
+  "See https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs".} # Can not be used by design
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
 proc low*(_: typedesc[JsBigInt]): JsBigInt {.error.} ## **Do NOT use.**
