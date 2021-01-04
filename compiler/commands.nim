@@ -513,6 +513,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
           defineSymbol(conf.symbols, "nimV2")
+        if conf.exc == excNone and conf.backend != backendCpp:
+          conf.exc = excGoto
       of "orc":
         conf.selectedGC = gcOrc
         defineSymbol(conf.symbols, "gcdestructors")
@@ -522,6 +524,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
           defineSymbol(conf.symbols, "nimV2")
+        if conf.exc == excNone and conf.backend != backendCpp:
+          conf.exc = excGoto
       of "hooks":
         conf.selectedGC = gcHooks
         defineSymbol(conf.symbols, "gchooks")
