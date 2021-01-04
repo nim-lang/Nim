@@ -13,7 +13,6 @@
 
 import posix, parsecfg, os
 import std/private/since
-export Config
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
