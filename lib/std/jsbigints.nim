@@ -106,13 +106,25 @@ func `-`*(a: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(newJsBigInt"10101010101") == newJsBigInt"-10101010101"
 
-func inc*(a: var JsBigInt; b = newJsBigInt"1") {.importjs: "([#][0][0] += [#][0][0])".} =
+func inc*(a: var JsBigInt) {.importjs: "(++[#][0][0])".} =
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"1"
+    inc big1
+    doAssert big1 == newJsBigInt"2"
+
+func dec*(a: var JsBigInt) {.importjs: "(--[#][0][0])".} =
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"2"
+    dec big1
+    doAssert big1 == newJsBigInt"1"
+
+func inc*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] += [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     inc big1, 2
     doAssert big1 == newJsBigInt"3"
 
-func dec*(a: var JsBigInt; b = newJsBigInt"1") {.importjs: "([#][0][0] -= [#][0][0])".} =
+func dec*(a: var JsBigInt; b: JsBigInt) {.importjs: "([#][0][0] -= [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     dec big1, 2
