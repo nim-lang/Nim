@@ -1,8 +1,10 @@
 discard """
   targets: "c cpp js"
+  matrix:"; -d:danger"
 """
 
-## xxx enable matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
+# xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
+# but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/[math, random, os]
 import std/[unittest]

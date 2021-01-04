@@ -49,6 +49,7 @@ proc isTestFile*(file: string): bool =
 
 # ---------------- IC tests ---------------------------------------------
 
+# xxx deadcode
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
@@ -659,7 +660,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf.string
@@ -762,7 +763,9 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      const whiteListedDirs = ["deps"]
+      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+        # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
+        # that try an old version of choosenim.
       doAssert cat.string in whiteListedDirs,
         "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
