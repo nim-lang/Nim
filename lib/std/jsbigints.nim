@@ -22,11 +22,12 @@ func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#
   runnableExamples:
     doAssert newJsBigInt"2147483647".toCstring(2) == "1111111111111111111111111111111".cstring
 
-func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted on $
+func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".}
+  ## Convert from `JsBigInt` to `cstring` representation.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
-  ## Returns a string representation of `JsBigInt`.
+  ## Returns a `string` representation of `JsBigInt`.
   runnableExamples: doAssert $newJsBigInt"1024" == "1024"
   $toCstring(this)
 
@@ -159,9 +160,11 @@ proc `+`*(_: JsBigInt): JsBigInt {.error:
   "See https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs".} # Can not be used by design
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
-proc low*(_: typedesc[JsBigInt]): JsBigInt {.error.} ## **Do NOT use.**
+proc low*(_: typedesc[JsBigInt]): JsBigInt {.error:
+  "Arbitrary precision integers do not have a known low.".} ## **Do NOT use.**
 
-proc high*(_: typedesc[JsBigInt]): JsBigInt {.error.} ## **Do NOT use.**
+proc high*(_: typedesc[JsBigInt]): JsBigInt {.error:
+  "Arbitrary precision integers do not have a known high.".} ## **Do NOT use.**
 
 
 runnableExamples:
