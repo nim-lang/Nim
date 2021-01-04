@@ -89,6 +89,8 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
+- Added `BackwardsIndex` overload for `JsonNode`.
+
 
 ## Language changes
 
