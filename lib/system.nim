@@ -2412,10 +2412,13 @@ when notJSnotNims:
       {.error: "Only closure function and iterator are allowed!".}
 
   proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-    ## can be used to determine if a first class iterator has finished.
-    {.emit: """
-    `result` = ((NI*) `x`.ClE_0)[1] < 0;
-    """.}
+    ## It can be used to determine if a first class iterator has finished.
+    when T is "iterator":
+      {.emit: """
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
+      """.}
+    else:
+      {.error: "Only closure iterator is allowed!".}
 
 when defined(js):
   include "system/jssys"
