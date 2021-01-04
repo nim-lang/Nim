@@ -110,7 +110,8 @@ proc mkdtemp*(prefix: string): string =
   return $tmpl
 
 proc osReleaseFile*(): Config {.since: (1, 5).} =
-  ## Gets system identification from `os-release` file and returns it as a `Config`.
+  ## Gets system identification from `os-release` file and returns it as a `parsecfg.Config`.
+  ## You also need to import the `parsecfg` module to gain access to this object.
   ## The `os-release` file is an official Freedesktop.org open standard.
   ## Available in Linux and BSD distributions, except Android and Android-based Linux.
   ## `os-release` file is not available on Windows and OS X by design.
