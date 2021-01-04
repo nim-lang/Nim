@@ -85,6 +85,11 @@
 - Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
 
 
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
