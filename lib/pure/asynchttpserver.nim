@@ -35,7 +35,7 @@
 ##     server.listen Port(8080)
 ##     while true:
 ##       if server.shouldAcceptRequest():
-##         waitFor server.acceptRequest(cb)
+##         await server.acceptRequest(cb)
 ##       else:
 ##         poll()
 ##
