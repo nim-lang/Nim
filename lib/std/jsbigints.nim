@@ -1,6 +1,6 @@
 ## Arbitrary precision integers.
 ## * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt
-when not defined(js) and not defined(nimdoc):
+when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
 type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
@@ -15,7 +15,9 @@ func newJsBigInt*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   runnableExamples:
     doAssert newJsBigInt"-1" == newJsBigInt"1" - newJsBigInt"2"
 
-func toCstring*(this: JsBigInt; radix: int): cstring {.importjs: "#.toString(#)".} =
+func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
+  ## Convert from `JsBigInt` to `cstring` representation.
+  ## * `radix` Base to use for representing numeric values.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
   runnableExamples:
     doAssert newJsBigInt"2147483647".toCstring(2) == "1111111111111111111111111111111".cstring
@@ -28,20 +30,21 @@ func `$`*(this: JsBigInt): string =
   runnableExamples: doAssert $newJsBigInt"1024" == "1024"
   $toCstring(this)
 
-func toInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asIntN(#, #)".} =
+func wrapToInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asIntN(#, #)".} =
   ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
-    doAssert toInt(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
+    doAssert wrapToInt(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
 
-func toUint*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asUintN(#, #)".} =
+func wrapToUint*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asUintN(#, #)".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
-    doAssert toUint(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
+    doAssert wrapToUint(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
 
-func toInt*(a: JsBigInt): int {.importjs: "Number(#)".} =
+func unsafeToNumber*(a: JsBigInt): int {.importjs: "Number(#)".} =
+  ## Does not do any bounds check and may or may not return an inexact representation.
   runnableExamples:
-    doAssert toInt(newJsBigInt"2147483647") == 2147483647
+    doAssert unsafeToNumber(newJsBigInt"2147483647") == 2147483647
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
