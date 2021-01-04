@@ -135,20 +135,28 @@ proc addExported*(c: var PackedEncoder; s: PSym) =
   let nameId = getOrIncl(c.m.sh.strings, s.name.s)
   c.m.exports.add((nameId, s.itemId.item))
 
-  when false:
-    case s.kind
-    of skConverter:
-      c.m.converters.add((nameId, s.itemId.item))
-    of skTemplate, skMacro:
-      if hasPattern(s):
-        c.m.trmacros.add((nameId, s.itemId.item))
-    of skType:
-      if isPureEnum(s.typ):
-        c.m.pureEnums.add((nameId, s.itemId.item))
-    of skMethod:
-      c.m.methods.add((nameId, s.itemId.item))
-    else:
-      discard
+proc addConverter*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  c.m.converters.add((nameId, s.itemId.item))
+
+proc addTrmacro*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  c.m.trmacros.add((nameId, s.itemId.item))
+
+proc addPureEnum*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  assert s.kind == skType
+  c.m.pureEnums.add((nameId, s.itemId.item))
+
+proc addMethod*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  discard "to do"
+  # c.m.methods.add((nameId, s.itemId.item))
+
+proc addReexport*(c: var PackedEncoder; s: PSym) =
+  let nameId = getOrIncl(c.m.sh.strings, s.name.s)
+  c.m.reexports.add((nameId, PackedItemId(module: toLitId(s.itemId.module.FileIndex, c),
+                                          item: s.itemId.item)))
 
 proc addCompilerProc*(c: var PackedEncoder; s: PSym) =
   let nameId = getOrIncl(c.m.sh.strings, s.name.s)

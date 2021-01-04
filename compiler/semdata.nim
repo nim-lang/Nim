@@ -286,15 +286,19 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
   inclSym(c.graph.ifaces[c.module.position].converters, conv)
-  #addConverter(c.graph, c.module, conv) # upcoming
+  if c.config.symbolFiles != disabledSf:
+    addConverter(c.encoder, conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+  if c.config.symbolFiles != disabledSf:
+    addPureEnum(c.encoder, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
   inclSym(c.graph.ifaces[c.module.position].patterns, p)
-  #addPattern(c.graph, c.module, p) # upcoming
+  if c.config.symbolFiles != disabledSf:
+    addTrmacro(c.encoder, p)
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.tab(c.graph), s)
@@ -303,6 +307,8 @@ proc exportSym*(c: PContext; s: PSym) =
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.tab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addReexport(c.encoder, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
