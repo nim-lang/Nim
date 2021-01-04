@@ -86,7 +86,7 @@
 
 
 
-- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux.
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
 
