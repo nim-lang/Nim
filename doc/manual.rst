@@ -7062,8 +7062,10 @@ one can import C++'s templates rather easily without the need for a pattern
 language for object types:
 
 .. code-block:: nim
+  :test: "nim cpp $1"
+
   type
-    StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
+    StdMap[K, V] {.importcpp: "std::map", header: "<map>".} = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
     importcpp: "#[#] = #", header: "<map>".}
 

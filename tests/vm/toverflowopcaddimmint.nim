@@ -7,5 +7,5 @@ static:
     var
       x = int64.high
     discard x + 1
-    assert false
+    doAssert false
   p()

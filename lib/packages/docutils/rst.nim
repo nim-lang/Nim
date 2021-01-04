@@ -1147,7 +1147,8 @@ proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
   result = currentTok(p).col == p.tok[j].col and p.tok[j].symbol == "|" or
-      p.tok[j].col > currentTok(p).col
+      p.tok[j].col > currentTok(p).col or
+      p.tok[j].symbol == "\n"
 
 proc predNL(p: RstParser): bool =
   result = true
@@ -1245,21 +1246,28 @@ proc whichSection(p: RstParser): RstNodeKind =
 
 proc parseLineBlock(p: var RstParser): PRstNode =
   result = nil
-  if nextTok(p).kind == tkWhite:
+  if nextTok(p).kind in {tkWhite, tkIndent}:
     var col = currentTok(p).col
     result = newRstNode(rnLineBlock)
-    pushInd(p, p.tok[p.idx + 2].col)
-    inc p.idx, 2
     while true:
       var item = newRstNode(rnLineBlockItem)
-      parseSection(p, item)
+      if nextTok(p).kind == tkWhite:
+        if nextTok(p).symbol.len > 1:  # pass additional indentation after '| '
+          item.text = nextTok(p).symbol
+        inc p.idx, 2
+        pushInd(p, p.tok[p.idx].col)
+        parseSection(p, item)
+        popInd(p)
+      else:  # tkIndent => add an empty line
+        item.text = "\n"
+        inc p.idx, 1
       result.add(item)
       if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-          nextTok(p).symbol == "|" and p.tok[p.idx + 2].kind == tkWhite:
-        inc p.idx, 3
+          nextTok(p).symbol == "|" and
+          p.tok[p.idx + 2].kind in {tkWhite, tkIndent}:
+        inc p.idx, 1
       else:
         break
-    popInd(p)
 
 proc parseParagraph(p: var RstParser, result: PRstNode) =
   while true:
@@ -1737,7 +1745,8 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
   ##
   ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, flags)
-  if not isNil(contentParser):
+  if not isNil(contentParser) and
+      (currentTok(p).kind != tkIndent or indFollows(p)):
     var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
     if nextIndent <= currInd(p):  # parse only this line
       nextIndent = currentTok(p).col

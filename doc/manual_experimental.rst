@@ -465,6 +465,7 @@ The compiler ensures that every code path initializes variables which contain
 non-nilable pointers. The details of this analysis are still to be specified
 here.
 
+.. include:: manual_experimental_strictnotnil.rst
 
 Concepts
 ========

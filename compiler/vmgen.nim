@@ -35,7 +35,7 @@ const
   debugEchoCode* = defined(nimVMDebug)
 
 when debugEchoCode:
-  import asciitables
+  import std/private/asciitables
 when hasFFI:
   import evalffi
 

@@ -17,7 +17,7 @@ import
 
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
-  result = newType(tyError, nextId(g.idgen), g.owners[^1])
+  result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
@@ -476,7 +476,7 @@ proc foldConStrStr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode
 proc newSymNodeTypeDesc*(s: PSym; idgen: IdGenerator; info: TLineInfo): PNode =
   result = newSymNode(s, info)
   if s.typ.kind != tyTypeDesc:
-    result.typ = newType(tyTypeDesc, idgen.nextId, s.owner)
+    result.typ = newType(tyTypeDesc, idgen.nextTypeId, s.owner)
     result.typ.addSonSkipIntLit(s.typ, idgen)
   else:
     result.typ = s.typ

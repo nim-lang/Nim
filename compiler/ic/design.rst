@@ -29,14 +29,13 @@ mechanism needs to be implemented that we could get wrong. ModuleIds
 are rod-file specific too.
 
 
-Configuration setup changes
----------------------------
-
-For a MVP these are not detected. Later the configuration will be
-stored in every `.rod` file.
-
 
 Global state
 ------------
 
 Global persistent state will be kept in a project specific `.rod` file.
+
+Rod File Format
+---------------
+
+It's a simple binary file format. `rodfiles.nim` contains some details.

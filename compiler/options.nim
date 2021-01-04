@@ -176,7 +176,8 @@ type
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
-    views
+    views,
+    strictNotNil
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -367,8 +368,11 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  # ternary states instead of binary states would simplify logic
   if optHints notin conf.options: false
-  elif note in {hintConf}: # could add here other special notes like hintSource
+  elif note in {hintConf, hintProcessing}:
+    # could add here other special notes like hintSource
+    # these notes apply globally.
     note in conf.mainPackageNotes
   else: note in conf.notes
 
@@ -717,6 +721,10 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
       quit(1)
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
+
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    withPackageName(conf, f)), RodExt)
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:

@@ -1,19 +1,8 @@
 discard """
-  output: '''{"foo":{"test":"123"}}'''
+  targets: "c js"
 """
 
-import json, options
-
-type
-  Foo = ref object
-    test: string
-  Test = object
-    foo: Option[Foo]
-
-let js = """{"foo": {"test": "123"}}"""
-let parsed = parseJson(js)
-let a = parsed.to(Test)
-echo $(%*a)
+import std/[json, options]
 
 
 # RefPerson is used to test that overloaded `==` operator is not called by
@@ -26,133 +15,183 @@ proc `==`(a, b: RefPerson): bool =
   assert(not a.isNil and not b.isNil)
   a.name == b.name
 
-block options:
-  # work around a bug in unittest
-  let intNone = none(int)
-  let stringNone = none(string)
 
-  block example:
-    proc find(haystack: string, needle: char): Option[int] =
-      for i, c in haystack:
-        if c == needle:
-          return some i
+template disableJsVm(body) =
+  # something doesn't work in JS VM
+  when defined(js):
+    when nimvm: discard
+    else: body
+  else:
+    body
 
-    doAssert("abc".find('c').get() == 2)
+proc main() =
+  type
+    Foo = ref object
+      test: string
+    Test = object
+      foo: Option[Foo]
 
-    let result = "team".find('i')
+  let js = """{"foo": {"test": "123"}}"""
+  let parsed = parseJson(js)
+  let a = parsed.to(Test)
+  doAssert $(%*a) == """{"foo":{"test":"123"}}"""
 
-    doAssert result == intNone
-    doAssert result.isNone
+  block options:
+    # work around a bug in unittest
+    let intNone = none(int)
+    let stringNone = none(string)
 
-  block some:
-    doAssert some(6).get() == 6
-    doAssert some("a").unsafeGet() == "a"
-    doAssert some(6).isSome
-    doAssert some("a").isSome
+    block example:
+      proc find(haystack: string, needle: char): Option[int] =
+        for i, c in haystack:
+          if c == needle:
+            return some i
 
-  block none:
-    doAssertRaises UnpackDefect:
-      discard none(int).get()
-    doAssert(none(int).isNone)
-    doAssert(not none(string).isSome)
+      doAssert("abc".find('c').get() == 2)
 
-  block equality:
-    doAssert some("a") == some("a")
-    doAssert some(7) != some(6)
-    doAssert some("a") != stringNone
-    doAssert intNone == intNone
+      let result = "team".find('i')
 
-    when compiles(some("a") == some(5)):
-      doAssert false
-    when compiles(none(string) == none(int)):
-      doAssert false
+      doAssert result == intNone
+      doAssert result.isNone
 
-  block get_with_a_default_value:
-    doAssert(some("Correct").get("Wrong") == "Correct")
-    doAssert(stringNone.get("Correct") == "Correct")
+    block some:
+      doAssert some(6).get() == 6
+      doAssert some("a").unsafeGet() == "a"
+      doAssert some(6).isSome
+      doAssert some("a").isSome
 
-  block stringify:
-    doAssert($(some("Correct")) == "Some(\"Correct\")")
-    doAssert($(stringNone) == "None[string]")
+    block none:
+      doAssertRaises UnpackDefect:
+        discard none(int).get()
+      doAssert(none(int).isNone)
+      doAssert(not none(string).isSome)
 
-  block map_with_a_void_result:
-    var procRan = 0
-    some(123).map(proc (v: int) = procRan = v)
-    doAssert procRan == 123
-    intNone.map(proc (v: int) = doAssert false)
+    block equality:
+      doAssert some("a") == some("a")
+      doAssert some(7) != some(6)
+      doAssert some("a") != stringNone
+      doAssert intNone == intNone
 
-  block map:
-    doAssert(some(123).map(proc (v: int): int = v * 2) == some(246))
-    doAssert(intNone.map(proc (v: int): int = v * 2).isNone)
+      when compiles(some("a") == some(5)):
+        doAssert false
+      when compiles(none(string) == none(int)):
+        doAssert false
 
-  block filter:
-    doAssert(some(123).filter(proc (v: int): bool = v == 123) == some(123))
-    doAssert(some(456).filter(proc (v: int): bool = v == 123).isNone)
-    doAssert(intNone.filter(proc (v: int): bool = doAssert false).isNone)
+    block get_with_a_default_value:
+      doAssert(some("Correct").get("Wrong") == "Correct")
+      doAssert(stringNone.get("Correct") == "Correct")
 
-  block flatMap:
-    proc addOneIfNotZero(v: int): Option[int] =
-      if v != 0:
-        result = some(v + 1)
-      else:
-        result = none(int)
+    block stringify:
+      doAssert($(some("Correct")) == "Some(\"Correct\")")
+      doAssert($(stringNone) == "None[string]")
 
-    doAssert(some(1).flatMap(addOneIfNotZero) == some(2))
-    doAssert(some(0).flatMap(addOneIfNotZero) == none(int))
-    doAssert(some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3))
+    disableJsVm:
+      block map_with_a_void_result:
+        var procRan = 0
+        # TODO closure anonymous functions doesn't work in VM with JS
+        # Error: cannot evaluate at compile time: procRan
+        some(123).map(proc (v: int) = procRan = v)
+        doAssert procRan == 123
+        intNone.map(proc (v: int) = doAssert false)
 
-    proc maybeToString(v: int): Option[string] =
-      if v != 0:
-        result = some($v)
-      else:
-        result = none(string)
+    block map:
+      doAssert(some(123).map(proc (v: int): int = v * 2) == some(246))
+      doAssert(intNone.map(proc (v: int): int = v * 2).isNone)
 
-    doAssert(some(1).flatMap(maybeToString) == some("1"))
+    block filter:
+      doAssert(some(123).filter(proc (v: int): bool = v == 123) == some(123))
+      doAssert(some(456).filter(proc (v: int): bool = v == 123).isNone)
+      doAssert(intNone.filter(proc (v: int): bool = doAssert false).isNone)
 
-    proc maybeExclaim(v: string): Option[string] =
-      if v != "":
-        result = some v & "!"
-      else:
-        result = none(string)
+    block flatMap:
+      proc addOneIfNotZero(v: int): Option[int] =
+        if v != 0:
+          result = some(v + 1)
+        else:
+          result = none(int)
 
-    doAssert(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
-    doAssert(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
+      doAssert(some(1).flatMap(addOneIfNotZero) == some(2))
+      doAssert(some(0).flatMap(addOneIfNotZero) == none(int))
+      doAssert(some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3))
 
-  block SomePointer:
-    var intref: ref int
-    doAssert(option(intref).isNone)
-    intref.new
-    doAssert(option(intref).isSome)
+      proc maybeToString(v: int): Option[string] =
+        if v != 0:
+          result = some($v)
+        else:
+          result = none(string)
 
-    let tmp = option(intref)
-    doAssert(sizeof(tmp) == sizeof(ptr int))
+      doAssert(some(1).flatMap(maybeToString) == some("1"))
 
-    var prc = proc (x: int): int = x + 1
-    doAssert(option(prc).isSome)
-    prc = nil
-    doAssert(option(prc).isNone)
+      proc maybeExclaim(v: string): Option[string] =
+        if v != "":
+          result = some v & "!"
+        else:
+          result = none(string)
 
-  block:
-    doAssert(none[int]().isNone)
-    doAssert(none(int) == none[int]())
+      doAssert(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
+      doAssert(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
 
-  # "$ on typed with .name"
-  block:
-    type Named = object
-      name: string
+    block SomePointer:
+      var intref: ref int
+      doAssert(option(intref).isNone)
+      intref.new
+      doAssert(option(intref).isSome)
 
-    let nobody = none(Named)
-    doAssert($nobody == "None[Named]")
+      let tmp = option(intref)
+      doAssert(sizeof(tmp) == sizeof(ptr int))
 
-  # "$ on type with name()"
-  block:
-    type Person = object
-      myname: string
+      var prc = proc (x: int): int = x + 1
+      doAssert(option(prc).isSome)
+      prc = nil
+      doAssert(option(prc).isNone)
 
-    let noperson = none(Person)
-    doAssert($noperson == "None[Person]")
+    block:
+      doAssert(none[int]().isNone)
+      doAssert(none(int) == none[int]())
 
-  # "Ref type with overloaded `==`"
-  block:
-    let p = some(RefPerson.new())
-    doAssert p.isSome
+    # "$ on typed with .name"
+    block:
+      type Named = object
+        name: string
+
+      let nobody = none(Named)
+      doAssert($nobody == "None[Named]")
+
+    # "$ on type with name()"
+    block:
+      type Person = object
+        myname: string
+
+      let noperson = none(Person)
+      doAssert($noperson == "None[Person]")
+
+    # "Ref type with overloaded `==`"
+    block:
+      let p = some(RefPerson.new())
+      doAssert p.isSome
+
+    block: # test cstring
+      block:
+        let x = some("".cstring)
+        doAssert x.isSome
+        doAssert x.get == ""
+
+      block:
+        let x = some("12345".cstring)
+        doAssert x.isSome
+        doAssert x.get == "12345"
+
+      block:
+        let x = "12345".cstring
+        let y = some(x)
+        doAssert y.isSome
+        doAssert y.get == "12345"
+
+      block:
+        let x = none(cstring)
+        doAssert x.isNone
+        doAssert $x == "None[cstring]"
+
+
+static: main()
+main()

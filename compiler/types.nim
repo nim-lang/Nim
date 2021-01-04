@@ -1311,7 +1311,7 @@ proc baseOfDistinct*(t: PType; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
-    result = copyType(t, nextId idgen, t.owner)
+    result = copyType(t, nextTypeId idgen, t.owner)
     var parent: PType = nil
     var it = result
     while it.kind in {tyPtr, tyRef, tyOwned}:
@@ -1457,7 +1457,7 @@ proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextId(idgen), arg.owner)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextTypeId(idgen), arg.owner)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:

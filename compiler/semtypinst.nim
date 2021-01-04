@@ -279,7 +279,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextId cl.c.idgen)
+  result = copySym(s, nextSymId cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -305,7 +305,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if cl.allowMetaTypes:
     result = t.exactReplica
   else:
-    result = copyType(t, nextId(cl.c.idgen), t.owner)
+    result = copyType(t, nextTypeId(cl.c.idgen), t.owner)
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
@@ -360,7 +360,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextId(cl.c.idgen), t[0].owner)
+  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header[0]]

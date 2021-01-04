@@ -202,10 +202,10 @@ doAssert fmt"{nat=:3X}" == "nat= 40"
 proc my_proc =
   const value = "value"
   const a = &"{value}"
-  assert a == value
+  doAssert a == value
 
   const b = &"{value=}"
-  assert b == "value=" & value
+  doAssert b == "value=" & value
 
 my_proc()
 

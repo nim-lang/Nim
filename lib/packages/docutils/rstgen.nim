@@ -1160,9 +1160,21 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", result)
+    if n.sons.len == 1 and n.sons[0].text == "\n":
+      # whole line block is one empty line, no need to add extra spacing
+      renderAux(d, n, "<p>$1</p> ", "\n\n$1", result)
+    else:  # add extra spacing around the line block for Latex
+      renderAux(d, n, "<p>$1</p>", "\n\\vspace{0.5em}\n$1\\vspace{0.5em}\n", result)
   of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", result)
+    if n.text.len == 0:  # normal case - no additional indentation
+      renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
+    elif n.text == "\n":  # add one empty line
+      renderAux(d, n, "<br/>", "\\vspace{1em}\n", result)
+    else:  # additional indentation w.r.t. '| '
+      let indent = $(0.5 * (n.text.len - 1).toFloat) & "em"
+      renderAux(d, n,
+        "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
+        "\\noindent\\hspace{" & indent & "}$1\n\n", result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)

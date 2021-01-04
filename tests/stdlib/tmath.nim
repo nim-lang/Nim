@@ -152,10 +152,10 @@ block:
       return sqrt(num)
 
     # check gamma function
-    assert(gamma(5.0) == 24.0) # 4!
-    assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
-    assert(erf(6.0) > erf(5.0))
-    assert(erfc(6.0) < erfc(5.0))
+    doAssert(gamma(5.0) == 24.0) # 4!
+    doAssert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
+    doAssert(erf(6.0) > erf(5.0))
+    doAssert(erfc(6.0) < erfc(5.0))
 
 
     # Function for approximate comparison of floats
@@ -215,21 +215,21 @@ block:
       doAssert(classify(trunc(0.0'f32)) == fcZero)
 
     block: # sgn() tests
-      assert sgn(1'i8) == 1
-      assert sgn(1'i16) == 1
-      assert sgn(1'i32) == 1
-      assert sgn(1'i64) == 1
-      assert sgn(1'u8) == 1
-      assert sgn(1'u16) == 1
-      assert sgn(1'u32) == 1
-      assert sgn(1'u64) == 1
-      assert sgn(-12342.8844'f32) == -1
-      assert sgn(123.9834'f64) == 1
-      assert sgn(0'i32) == 0
-      assert sgn(0'f32) == 0
-      assert sgn(NegInf) == -1
-      assert sgn(Inf) == 1
-      assert sgn(NaN) == 0
+      doAssert sgn(1'i8) == 1
+      doAssert sgn(1'i16) == 1
+      doAssert sgn(1'i32) == 1
+      doAssert sgn(1'i64) == 1
+      doAssert sgn(1'u8) == 1
+      doAssert sgn(1'u16) == 1
+      doAssert sgn(1'u32) == 1
+      doAssert sgn(1'u64) == 1
+      doAssert sgn(-12342.8844'f32) == -1
+      doAssert sgn(123.9834'f64) == 1
+      doAssert sgn(0'i32) == 0
+      doAssert sgn(0'f32) == 0
+      doAssert sgn(NegInf) == -1
+      doAssert sgn(Inf) == 1
+      doAssert sgn(NaN) == 0
 
     block: # fac() tests
       try:
@@ -308,5 +308,53 @@ template main =
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
 
-main()
+  block: # copySign
+    doAssert copySign(10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, 1.0) == 10.0
+    doAssert copySign(float(10), -1.0) == -10.0
+
+    doAssert copySign(10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, 1.0) == 10.0
+    doAssert copySign(10'f64, -1.0) == -10.0
+
+    doAssert copySign(10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, 1.0) == 10.0
+    doAssert copySign(10'f32, -1.0) == -10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(Inf, 1.0) == Inf
+    doAssert copySign(-Inf, -1.0) == -Inf
+    doAssert copySign(Inf, 0.0) == Inf
+    doAssert copySign(Inf, -0.0) == -Inf
+    doAssert copySign(-Inf, 0.0) == Inf
+    doAssert copySign(-Inf, -0.0) == -Inf
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, NaN).isNaN
+    doAssert copySign(-NaN, NaN).isNaN
+    doAssert copySign(NaN, -NaN).isNaN
+    doAssert copySign(-NaN, -NaN).isNaN
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+    doAssert copySign(-NaN, 0.0).isNaN
+    doAssert copySign(-NaN, -0.0).isNaN
+
+    when nimvm:
+      discard
+    else:
+      when not defined(js):
+        doAssert copySign(-1.0, -NaN) == 1.0
+        doAssert copySign(10.0, -NaN) == 10.0
+        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
+
 static: main()
+main()

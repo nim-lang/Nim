@@ -2,7 +2,16 @@ discard """
   targets: "c cpp js"
 """
 
-import hashes
+import std/hashes
+
+
+when not defined(js) and not defined(cpp):
+  block:
+    var x = 12
+    iterator hello(): int {.closure.} =
+      yield x
+
+    discard hash(hello)
 
 block hashes:
   block hashing:
@@ -75,3 +84,37 @@ block largeSize: # longer than 4 characters
   doAssert hash(xx) == hash(ssl, 0, 4)
   doAssert hash(xx, 0, 3) == hash(xxl, 0, 3)
   doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)
+
+proc main() =
+
+
+  doAssert hash(0.0) == hash(0)
+  doAssert hash(cstring"abracadabra") == 97309975
+  doAssert hash(cstring"abracadabra") == hash("abracadabra")
+
+  when sizeof(int) == 8 or defined(js):
+    block:
+      var s: seq[Hash]
+      for a in [0.0, 1.0, -1.0, 1000.0, -1000.0]:
+        let b = hash(a)
+        doAssert b notin s
+        s.add b
+    when defined(js):
+      doAssert hash(0.345602) == 2035867618
+      doAssert hash(234567.45) == -20468103
+      doAssert hash(-9999.283456) == -43247422
+      doAssert hash(84375674.0) == 707542256
+    else:
+      doAssert hash(0.345602) == 387936373221941218
+      doAssert hash(234567.45) == -8179139172229468551
+      doAssert hash(-9999.283456) == 5876943921626224834
+      doAssert hash(84375674.0) == 1964453089107524848
+  else:
+    doAssert hash(0.345602) != 0
+    doAssert hash(234567.45) != 0
+    doAssert hash(-9999.283456) != 0
+    doAssert hash(84375674.0) != 0
+
+
+static: main()
+main()

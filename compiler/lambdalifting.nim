@@ -130,14 +130,14 @@ proc createClosureIterStateType*(g: ModuleGraph; iter: PSym; idgen: IdGenerator)
   var n = newNodeI(nkRange, iter.info)
   n.add newIntNode(nkIntLit, -1)
   n.add newIntNode(nkIntLit, 0)
-  result = newType(tyRange, nextId(idgen), iter)
+  result = newType(tyRange, nextTypeId(idgen), iter)
   result.n = n
   var intType = nilOrSysInt(g)
-  if intType.isNil: intType = newType(tyInt, nextId(idgen), iter)
+  if intType.isNil: intType = newType(tyInt, nextTypeId(idgen), iter)
   rawAddSon(result, intType)
 
 proc createStateField(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym =
-  result = newSym(skField, getIdent(g.cache, ":state"), nextId(idgen), iter, iter.info)
+  result = newSym(skField, getIdent(g.cache, ":state"), nextSymId(idgen), iter, iter.info)
   result.typ = createClosureIterStateType(g, iter, idgen)
 
 proc createEnvObj(g: ModuleGraph; idgen: IdGenerator; owner: PSym; info: TLineInfo): PType =
@@ -151,7 +151,7 @@ proc getClosureIterResult*(g: ModuleGraph; iter: PSym; idgen: IdGenerator): PSym
     result = iter.ast[resultPos].sym
   else:
     # XXX a bit hacky:
-    result = newSym(skResult, getIdent(g.cache, ":result"), nextId(idgen), iter, iter.info, {})
+    result = newSym(skResult, getIdent(g.cache, ":result"), nextSymId(idgen), iter, iter.info, {})
     result.typ = iter.typ[0]
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
@@ -259,7 +259,7 @@ proc liftIterSym*(g: ModuleGraph; n: PNode; idgen: IdGenerator; owner: PSym): PN
     addUniqueField(it.typ.skipTypes({tyOwned})[0], hp, g.cache, idgen)
     env = indirectAccess(newSymNode(it), hp, hp.info)
   else:
-    let e = newSym(skLet, iter.name, nextId(idgen), owner, n.info)
+    let e = newSym(skLet, iter.name, nextSymId(idgen), owner, n.info)
     e.typ = hp.typ
     e.flags = hp.flags
     env = newSymNode(e)
@@ -330,7 +330,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
                         info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
-    result = newType(tyRef, nextId(c.idgen), owner)
+    result = newType(tyRef, nextTypeId(c.idgen), owner)
     let obj = createEnvObj(c.graph, c.idgen, owner, info)
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
@@ -338,7 +338,7 @@ proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
 proc asOwnedRef(c: var DetectionPass; t: PType): PType =
   if optOwnedRefs in c.graph.config.globalOptions:
     assert t.kind == tyRef
-    result = newType(tyOwned, nextId(c.idgen), t.owner)
+    result = newType(tyOwned, nextTypeId(c.idgen), t.owner)
     result.flags.incl tfHasOwned
     result.rawAddSon t
   else:
@@ -347,7 +347,7 @@ proc asOwnedRef(c: var DetectionPass; t: PType): PType =
 proc getEnvTypeForOwnerUp(c: var DetectionPass; owner: PSym;
                           info: TLineInfo): PType =
   var r = c.getEnvTypeForOwner(owner, info)
-  result = newType(tyPtr, nextId(c.idgen), owner)
+  result = newType(tyPtr, nextTypeId(c.idgen), owner)
   rawAddSon(result, r.skipTypes({tyOwned, tyRef, tyPtr}))
 
 proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
@@ -375,7 +375,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
       if c.graph.config.selectedGC == gcDestructors and sfCursor notin upField.flags:
         localError(c.graph.config, dep.info, "internal error: up reference is not a .cursor")
   else:
-    let result = newSym(skField, upIdent, nextId(c.idgen), obj.owner, obj.owner.info)
+    let result = newSym(skField, upIdent, nextSymId(c.idgen), obj.owner, obj.owner.info)
     result.typ = fieldType
     when false:
       if c.graph.config.selectedGC == gcDestructors:
@@ -413,7 +413,7 @@ proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
   let t = c.getEnvTypeForOwner(owner, info)
   if cp == nil:
-    cp = newSym(skParam, getIdent(c.graph.cache, paramName), nextId(c.idgen), fn, fn.info)
+    cp = newSym(skParam, getIdent(c.graph.cache, paramName), nextSymId(c.idgen), fn, fn.info)
     incl(cp.flags, sfFromGeneric)
     cp.typ = t
     addHiddenParam(fn, cp)
@@ -539,7 +539,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result = n
 
 proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo; idgen: IdGenerator): PNode =
-  var v = newSym(skVar, getIdent(cache, envName), nextId(idgen), owner, info)
+  var v = newSym(skVar, getIdent(cache, envName), nextSymId(idgen), owner, info)
   v.flags = {sfShadowed, sfGeneratedOp}
   v.typ = typ
   result = newSymNode(v)
@@ -563,7 +563,7 @@ proc setupEnvVar(owner: PSym; d: var DetectionPass;
     result = newEnvVar(d.graph.cache, owner, asOwnedRef(d, envVarType), info, d.idgen)
     c.envVars[owner.id] = result
     if optOwnedRefs in d.graph.config.globalOptions:
-      var v = newSym(skVar, getIdent(d.graph.cache, envName & "Alt"), nextId d.idgen, owner, info)
+      var v = newSym(skVar, getIdent(d.graph.cache, envName & "Alt"), nextSymId d.idgen, owner, info)
       v.flags = {sfShadowed, sfGeneratedOp}
       v.typ = envVarType
       c.unownedEnvVars[owner.id] = newSymNode(v)
@@ -647,7 +647,7 @@ proc closureCreationForIter(iter: PNode;
                             d: var DetectionPass; c: var LiftingPass): PNode =
   result = newNodeIT(nkStmtListExpr, iter.info, iter.sym.typ)
   let owner = iter.sym.skipGenericOwner
-  var v = newSym(skVar, getIdent(d.graph.cache, envName), nextId(d.idgen), owner, iter.info)
+  var v = newSym(skVar, getIdent(d.graph.cache, envName), nextSymId(d.idgen), owner, iter.info)
   incl(v.flags, sfShadowed)
   v.typ = asOwnedRef(d, getHiddenParam(d.graph, iter.sym).typ)
   var vnode: PNode
@@ -937,7 +937,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; idgen: IdGenerator; owner: PSym):
     let iter = op.sym
 
     let hp = getHiddenParam(g, iter)
-    env = newSym(skLet, iter.name, nextId(idgen), owner, body.info)
+    env = newSym(skLet, iter.name, nextSymId(idgen), owner, body.info)
     env.typ = hp.typ
     env.flags = hp.flags
 

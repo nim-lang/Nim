@@ -468,19 +468,19 @@ block isRelativeTo:
   doAssert not isRelativeTo("/foo2", "/foo")
 
 block: # quoteShellWindows
-  assert quoteShellWindows("aaa") == "aaa"
-  assert quoteShellWindows("aaa\"") == "aaa\\\""
-  assert quoteShellWindows("") == "\"\""
+  doAssert quoteShellWindows("aaa") == "aaa"
+  doAssert quoteShellWindows("aaa\"") == "aaa\\\""
+  doAssert quoteShellWindows("") == "\"\""
 
 block: # quoteShellWindows
-  assert quoteShellPosix("aaa") == "aaa"
-  assert quoteShellPosix("aaa a") == "'aaa a'"
-  assert quoteShellPosix("") == "''"
-  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+  doAssert quoteShellPosix("aaa") == "aaa"
+  doAssert quoteShellPosix("aaa a") == "'aaa a'"
+  doAssert quoteShellPosix("") == "''"
+  doAssert quoteShellPosix("a'a") == "'a'\"'\"'a'"
 
 block: # quoteShell
   when defined(posix):
-    assert quoteShell("") == "''"
+    doAssert quoteShell("") == "''"
 
 block: # normalizePathEnd
   # handle edge cases correctly: shouldn't affect whether path is
