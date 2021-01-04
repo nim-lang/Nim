@@ -11,7 +11,7 @@ runnableExamples:
   doAssert jsregex.test(r"0123456789abcd")
 
 
-when not defined(js) and not defined(Nimdoc):
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 type RegExp* {.importjs.} = object    ## Regular Expressions for JavaScript target.
