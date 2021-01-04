@@ -366,3 +366,19 @@ block:
   block:
     type Foo[N: static int] = array[int32(0) .. int32(N), float]
     type T = Foo[3]
+
+
+#------------------------------------------------------------------------------------------
+# static proc/lambda param
+func isSorted2[T](a: openArray[T], cmp: static proc(x, y: T): bool {.inline.}): bool =
+  result = true
+  for i in 0..<len(a)-1:
+    if not cmp(a[i], a[i+1]):
+      return false
+
+proc compare(a, b: int): bool {.inline.} = a < b
+
+var sorted = newSeq[int](1000)
+for i in 0..<sorted.len: sorted[i] = i*2
+doAssert isSorted2(sorted, compare)
+doAssert isSorted2(sorted, proc (a, b: int): bool {.inline.} = a < b)
