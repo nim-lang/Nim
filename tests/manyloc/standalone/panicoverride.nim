@@ -11,9 +11,4 @@ proc panic(s: string) {.noreturn.} =
   rawoutput(s)
   exit(1)
 
-# Alternatively we also could implement these 2 here:
-#
-# proc sysFatal(exceptn: typeDesc, message: string) {.noReturn.}
-# proc sysFatal(exceptn: typeDesc, message, arg: string) {.noReturn.}
-
 {.pop.}
