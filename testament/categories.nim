@@ -583,6 +583,8 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
   testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =
+  # xxx simplify implementation using a whitelist of fields that are allowed to be
+  # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
@@ -595,6 +597,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.exitCode == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
+    spec.matrix.len == 0 and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
