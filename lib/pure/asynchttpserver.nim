@@ -382,7 +382,7 @@ when not defined(testing) and isMainModule:
     server.listen Port(5555)
     while true:
       if server.shouldAcceptRequest():
-        waitFor server.acceptRequest(cb)
+        await server.acceptRequest(cb)
       else:
         poll()
 
