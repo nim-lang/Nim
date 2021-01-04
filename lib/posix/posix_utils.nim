@@ -113,7 +113,7 @@ proc mkdtemp*(prefix: string): string =
 proc osReleaseFile*(): Config {.since: (1, 5).} =
   ## Gets system identification from `os-release` file and returns it as a `Config`.
   ## The `os-release` file is an official Freedesktop.org open standard.
-  ## Available in Linux distributions, except Android and Android-based.
+  ## Available in Linux and BSD distributions, except Android and Android-based Linux.
   ## `os-release` file is not available on Windows and OS X by design.
   ## * https://www.freedesktop.org/software/systemd/man/os-release.html
   runnableExamples:
