@@ -158,13 +158,13 @@ block:
     doAssert(erf(6.0) > erf(5.0))
     doAssert(erfc(6.0) < erfc(5.0))
 
-
-    # Function for approximate comparison of floats
     proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+      # Function for approximate comparison of floats
+      # xxx use `almostEqual`
 
     block: # prod
       doAssert prod([1, 2, 3, 4]) == 24
-      doAssert prod([1.5, 3.4]) == 5.1
+      doAssert prod([1.5, 3.4]).almostEqual 5.1
       let x: seq[float] = @[]
       doAssert prod(x) == 1.0
 
