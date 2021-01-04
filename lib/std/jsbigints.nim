@@ -5,8 +5,6 @@ when not defined(js) and not defined(nimdoc):
 
 type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
 
-
-
 func newJsBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
