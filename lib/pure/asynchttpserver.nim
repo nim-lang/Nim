@@ -35,6 +35,7 @@ runnableExamples:
         if server.shouldAcceptRequest():
           await server.acceptRequest(cb)
         else:
+          # too many concurrent connections, `maxFDs` exceeded
           poll()
 
     asyncCheck main()
