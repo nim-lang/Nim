@@ -24,7 +24,7 @@ func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
-  ## Return a string representation of `JsBigInt`.
+  ## Returns a string representation of `JsBigInt`.
   runnableExamples: doAssert $newJsBigInt"1024" == "1024"
   $toCstring(this)
 
