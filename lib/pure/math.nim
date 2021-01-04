@@ -847,7 +847,16 @@ else: # JS
   func floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   func ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   func ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-  func round*(x: float): float {.importc: "Math.round", nodecl.}
+
+  when not declared(copySign) or defined(nimLegacyRound):
+    func round*(x: float): float {.importc: "Math.round", nodecl.}
+  else:
+    func round*[T: float64 | float32](x: T): T =
+      let magnitude = abs(x)
+      var y = floor(magnitude)
+      if (magnitude - y) >= T(0.5):
+        y += T(1.0)
+      result = copySign(y, x)
   func trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   func trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 

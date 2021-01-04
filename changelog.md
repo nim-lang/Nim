@@ -89,6 +89,9 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+with other backends. see #9125. Use `-d:nimLegacyRound` for previous behavior.
+
 
 ## Language changes
 
