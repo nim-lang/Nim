@@ -29,7 +29,7 @@ func `$`*(this: JsBigInt): string =
   $toCstring(this)
 
 func toInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asIntN(#, #)".} =
-  ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
+  ## Wraps `a` to a signed `JsBigInt` of `bits` bits, i.e. between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
     doAssert toInt(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
