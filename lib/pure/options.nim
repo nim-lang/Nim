@@ -23,38 +23,29 @@
 ## Let's start with an example: a procedure that finds the index of a character
 ## in a string.
 ##
-## .. code-block:: nim
-##
-##   import options
-##
-##   proc find(haystack: string, needle: char): Option[int] =
-##     for i, c in haystack:
-##       if c == needle:
-##         return some(i)
-##     return none(int)  # This line is actually optional,
-##                       # because the default is empty
-##
-## .. code-block:: nim
-##
-##    let found = "abc".find('c')
-##    assert found.isSome and found.get() == 2
-##
+runnableExamples:
+  proc find(haystack: string, needle: char): Option[int] =
+    for i, c in haystack:
+      if c == needle:
+        return some(i)
+    return none(int)  # This line is actually optional,
+                      # because the default is empty
+
+  let found = "abc".find('c')
+  assert found.isSome and found.get() == 2
+
 ## The `get` operation demonstrated above returns the underlying value, or
 ## raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
 ## inherits from `system.Defect`, and should therefore never be caught.
 ## Instead, rely on checking if the option contains a value with
 ## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
-##
+## 
 ## How to deal with an absence of a value:
-##
-## .. code-block:: nim
-##
-##   let result = "team".find('i')
-##
-##   # Nothing was found, so the result is `none`.
-##   assert(result == none(int))
-##   # It has no value:
-##   assert(result.isNone)
+
+runnableExamples:
+  let result = none(int)
+  # It has no value:
+  assert(result.isNone)
 
 import typetraits
 

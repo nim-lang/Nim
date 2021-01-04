@@ -410,7 +410,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
     let y = considerQuotedIdent(c, n[1])
     let obj = x.typ.skipTypes(abstractPtrs)
     if obj.kind == tyObject and tfPartial in obj.flags:
-      let field = newSym(skField, getIdent(c.cache, y.s), nextId c.idgen, obj.sym, n[1].info)
+      let field = newSym(skField, getIdent(c.cache, y.s), nextSymId c.idgen, obj.sym, n[1].info)
       field.typ = skipIntLit(typ, c.idgen)
       field.position = obj.n.len
       obj.n.add newSymNode(field)
@@ -1278,7 +1278,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert c.config, st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
       let obj = newSym(skType, getIdent(c.cache, s.name.s & ":ObjectType"),
-                       nextId c.idgen, getCurrOwner(c), s.info)
+                       nextSymId c.idgen, getCurrOwner(c), s.info)
       let symNode = newSymNode(obj)
       obj.ast = a.shallowCopy
       case a[0].kind
@@ -1449,7 +1449,7 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
         localError(c.config, n.info, "incorrect result proc symbol")
       c.p.resultSym = n[resultPos].sym
     else:
-      var s = newSym(skResult, getIdent(c.cache, "result"), nextId c.idgen, getCurrOwner(c), n.info)
+      var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen, getCurrOwner(c), n.info)
       s.typ = t
       incl(s.flags, sfUsed)
       c.p.resultSym = s
@@ -1548,7 +1548,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkSonsLen(n, bodyPos + 1, c.config)
   var s: PSym
   if n[namePos].kind != nkSym:
-    s = newSym(skProc, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), n.info)
+    s = newSym(skProc, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
     s.ast = n
     n[namePos] = newSymNode(s)
   else:
@@ -1856,7 +1856,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     assert phase == stepRegisterSymbol
 
     if n[namePos].kind == nkEmpty:
-      s = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), n.info)
+      s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
       incl(s.flags, sfUsed)
       isAnon = true
     else:
@@ -2011,7 +2011,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
         if (s.typ[0] != nil and kind != skIterator) or kind == skMacro:
-          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextId c.idgen, nil, n.info))
+          addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
 
         openScope(c)
         n[bodyPos] = semGenericStmt(c, n[bodyPos])
@@ -2149,6 +2149,7 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
 proc incMod(c: PContext, n: PNode, it: PNode, includeStmtResult: PNode) =
   var f = checkModuleName(c.config, it)
   if f != InvalidFileIdx:
+    addIncludeFileDep(c, f)
     if containsOrIncl(c.includedFiles, f.int):
       localError(c.config, n.info, errRecursiveDependencyX % toMsgFilename(c.config, f))
     else:

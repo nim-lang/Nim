@@ -1267,9 +1267,9 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, nextId m.idgen, owner)
-  result.rawAddSon(newType(tyPointer, nextId m.idgen, owner))
-  var r = newType(tyRef, nextId m.idgen, owner)
+  result = newType(tyTuple, nextTypeId m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, nextTypeId m.idgen, owner))
+  var r = newType(tyRef, nextTypeId m.idgen, owner)
   let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
@@ -1396,9 +1396,9 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, nextId m.idgen, t.owner)
-  let p = newType(tyPtr, nextId m.idgen, t.owner)
-  let a = newType(tyUncheckedArray, nextId m.idgen, t.owner)
+  result = newType(tyTuple, nextTypeId m.idgen, t.owner)
+  let p = newType(tyPtr, nextTypeId m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, nextTypeId m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p

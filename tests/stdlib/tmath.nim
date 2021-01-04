@@ -1,18 +1,6 @@
 discard """
   action: run
-  output: '''
-
-[Suite] random int
-
-[Suite] random float
-
-[Suite] cumsum
-
-[Suite] random sample
-
-[Suite] ^
-'''
-matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
+  matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
 
 # xxx: fix bugs for js then add: targets:"c js"
@@ -21,22 +9,22 @@ import math, random, os
 import unittest
 import sets, tables
 
-suite "random int":
-  test "there might be some randomness":
+block: # random int
+  block: # there might be some randomness
     var set = initHashSet[int](128)
 
     for i in 1..1000:
       incl(set, rand(high(int)))
     check len(set) == 1000
-  test "single number bounds work":
 
+  block: # single number bounds work
     var rand: int
     for i in 1..1000:
       rand = rand(1000)
       check rand < 1000
       check rand > -1
-  test "slice bounds work":
 
+  block: # slice bounds work
     var rand: int
     for i in 1..1000:
       rand = rand(100..1000)
@@ -45,8 +33,8 @@ suite "random int":
       else:
         check rand < 1000
       check rand >= 100
-  test " again gives new numbers":
 
+  block: # again gives new numbers
     var rand1 = rand(1000000)
     when not defined(js):
       os.sleep(200)
@@ -55,28 +43,29 @@ suite "random int":
     check rand1 != rand2
 
 
-suite "random float":
-  test "there might be some randomness":
+block: # random float
+  block: # there might be some randomness
     var set = initHashSet[float](128)
 
     for i in 1..100:
       incl(set, rand(1.0))
     check len(set) == 100
-  test "single number bounds work":
 
+  block: # single number bounds work
     var rand: float
     for i in 1..1000:
       rand = rand(1000.0)
       check rand < 1000.0
       check rand > -1.0
-  test "slice bounds work":
 
+  block: # slice bounds work
     var rand: float
     for i in 1..1000:
       rand = rand(100.0..1000.0)
       check rand < 1000.0
       check rand >= 100.0
-  test " again gives new numbers":
+
+  block: # again gives new numbers
 
     var rand1:float = rand(1000000.0)
     when not defined(js):
@@ -85,27 +74,27 @@ suite "random float":
     var rand2:float = rand(1000000.0)
     check rand1 != rand2
 
-suite "cumsum":
-  test "cumsum int seq return":
+block: # cumsum
+  block: # cumsum int seq return
     let counts = [ 1, 2, 3, 4 ]
     check counts.cumsummed == [ 1, 3, 6, 10 ]
 
-  test "cumsum float seq return":
+  block: # cumsum float seq return
     let counts = [ 1.0, 2.0, 3.0, 4.0 ]
     check counts.cumsummed == [ 1.0, 3.0, 6.0, 10.0 ]
 
-  test "cumsum int in-place":
+  block: # cumsum int in-place
     var counts = [ 1, 2, 3, 4 ]
     counts.cumsum
     check counts == [ 1, 3, 6, 10 ]
 
-  test "cumsum float in-place":
+  block: # cumsum float in-place
     var counts = [ 1.0, 2.0, 3.0, 4.0 ]
     counts.cumsum
     check counts == [ 1.0, 3.0, 6.0, 10.0 ]
 
-suite "random sample":
-  test "non-uniform array sample unnormalized int CDF":
+block: # random sample
+  block: # "non-uniform array sample unnormalized int CDF
     let values = [ 10, 20, 30, 40, 50 ] # values
     let counts = [ 4, 3, 2, 1, 0 ]      # weights aka unnormalized probabilities
     var histo = initCountTable[int]()
@@ -127,7 +116,7 @@ suite "random sample":
       let stdDev = sqrt(n * p * (1.0 - p))
       check abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
 
-  test "non-uniform array sample normalized float CDF":
+  block: # non-uniform array sample normalized float CDF
     let values = [ 10, 20, 30, 40, 50 ]     # values
     let counts = [ 0.4, 0.3, 0.2, 0.1, 0 ]  # probabilities
     var histo = initCountTable[int]()
@@ -146,8 +135,8 @@ suite "random sample":
       # NOTE: like unnormalized int CDF test, P(wholeTestFails) =~ 0.01.
       check abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
 
-suite "^":
-  test "compiles for valid types":
+block: # ^
+  block: # compiles for valid types
     check: compiles(5 ^ 2)
     check: compiles(5.5 ^ 2)
     check: compiles(5.5 ^ 2.int8)
@@ -163,10 +152,10 @@ block:
       return sqrt(num)
 
     # check gamma function
-    assert(gamma(5.0) == 24.0) # 4!
-    assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
-    assert(erf(6.0) > erf(5.0))
-    assert(erfc(6.0) < erfc(5.0))
+    doAssert(gamma(5.0) == 24.0) # 4!
+    doAssert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
+    doAssert(erf(6.0) > erf(5.0))
+    doAssert(erfc(6.0) < erfc(5.0))
 
 
     # Function for approximate comparison of floats
@@ -226,21 +215,21 @@ block:
       doAssert(classify(trunc(0.0'f32)) == fcZero)
 
     block: # sgn() tests
-      assert sgn(1'i8) == 1
-      assert sgn(1'i16) == 1
-      assert sgn(1'i32) == 1
-      assert sgn(1'i64) == 1
-      assert sgn(1'u8) == 1
-      assert sgn(1'u16) == 1
-      assert sgn(1'u32) == 1
-      assert sgn(1'u64) == 1
-      assert sgn(-12342.8844'f32) == -1
-      assert sgn(123.9834'f64) == 1
-      assert sgn(0'i32) == 0
-      assert sgn(0'f32) == 0
-      assert sgn(NegInf) == -1
-      assert sgn(Inf) == 1
-      assert sgn(NaN) == 0
+      doAssert sgn(1'i8) == 1
+      doAssert sgn(1'i16) == 1
+      doAssert sgn(1'i32) == 1
+      doAssert sgn(1'i64) == 1
+      doAssert sgn(1'u8) == 1
+      doAssert sgn(1'u16) == 1
+      doAssert sgn(1'u32) == 1
+      doAssert sgn(1'u64) == 1
+      doAssert sgn(-12342.8844'f32) == -1
+      doAssert sgn(123.9834'f64) == 1
+      doAssert sgn(0'i32) == 0
+      doAssert sgn(0'f32) == 0
+      doAssert sgn(NegInf) == -1
+      doAssert sgn(Inf) == 1
+      doAssert sgn(NaN) == 0
 
     block: # fac() tests
       try:
@@ -319,5 +308,53 @@ template main =
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
 
-main()
+  block: # copySign
+    doAssert copySign(10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, -1.0) == -10.0
+    doAssert copySign(-10.0, 1.0) == 10.0
+    doAssert copySign(float(10), -1.0) == -10.0
+
+    doAssert copySign(10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, -1.0) == -10.0
+    doAssert copySign(-10.0'f64, 1.0) == 10.0
+    doAssert copySign(10'f64, -1.0) == -10.0
+
+    doAssert copySign(10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, -1.0) == -10.0
+    doAssert copySign(-10.0'f32, 1.0) == 10.0
+    doAssert copySign(10'f32, -1.0) == -10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(Inf, 1.0) == Inf
+    doAssert copySign(-Inf, -1.0) == -Inf
+    doAssert copySign(Inf, 0.0) == Inf
+    doAssert copySign(Inf, -0.0) == -Inf
+    doAssert copySign(-Inf, 0.0) == Inf
+    doAssert copySign(-Inf, -0.0) == -Inf
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, NaN).isNaN
+    doAssert copySign(-NaN, NaN).isNaN
+    doAssert copySign(NaN, -NaN).isNaN
+    doAssert copySign(-NaN, -NaN).isNaN
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+    doAssert copySign(-NaN, 0.0).isNaN
+    doAssert copySign(-NaN, -0.0).isNaN
+
+    when nimvm:
+      discard
+    else:
+      when not defined(js):
+        doAssert copySign(-1.0, -NaN) == 1.0
+        doAssert copySign(10.0, -NaN) == 10.0
+        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
+
 static: main()
+main()

@@ -19,9 +19,11 @@ template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
 
-template flushDot(conf, stdOrr) =
+proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
-  let stdOrrKind = stdOrr.toStdOrrKind()
+  # xxx one edge case not yet handled is when `printf` is called at CT with `compiletimeFFI`.
+  let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
+  let stdOrrKind = toStdOrrKind(stdOrr)
   if stdOrrKind in conf.lastMsgWasDot:
     conf.lastMsgWasDot.excl stdOrrKind
     write(stdOrr, "\n")
@@ -311,12 +313,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr)
+      flushDot(conf)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -368,11 +370,11 @@ template styledMsgWriteln*(args: varargs[typed]) =
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr)
+    flushDot(conf)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:

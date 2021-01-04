@@ -47,15 +47,15 @@ doAssert b[1] == 1
 import sets, tables
 
 let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
-assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
+doAssert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
+doAssert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
       1: "word"}.toTable
-assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
+doAssert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
 
 let x = collect(newSeqOfCap(4)):
     for (i, d) in data.pairs:
       if i mod 2 == 0: d
-assert x == @["bird"]
+doAssert x == @["bird"]
 
 # bug #12874
 
@@ -69,20 +69,20 @@ let bug1 = collect(
           d & d
       )
 )
-assert bug1 == @["bird", "wordword"]
+doAssert bug1 == @["bird", "wordword"]
 
 import strutils
 let y = collect(newSeq):
   for (i, d) in data.pairs:
     try: parseInt(d) except: 0
-assert y == @[0, 0]
+doAssert y == @[0, 0]
 
 let z = collect(newSeq):
   for (i, d) in data.pairs:
     case d
     of "bird": "word"
     else: d
-assert z == @["word", "word"]
+doAssert z == @["word", "word"]
 
 proc tforum =
   let ans = collect(newSeq):
@@ -97,12 +97,12 @@ block:
     for d in data.items:
       when d is int: "word"
       else: d
-  assert x == @["bird", "word"]
-assert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
-assert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
-assert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
+  doAssert x == @["bird", "word"]
+doAssert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
+doAssert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
+doAssert collect(for (i, d) in pairs(data): {i: d}) == {1: "word",
     0: "bird"}.toTable
-assert collect(for d in data.items: {d}) == data.toHashSet
+doAssert collect(for d in data.items: {d}) == data.toHashSet
 
 # bug #14332
 template foo =

@@ -408,8 +408,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     of "closure":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator notin t.flags
+            t.callConv == ccClosure
     of "iterator":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
@@ -1119,7 +1118,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             # This seems semantically correct and then we'll be able
             # to return the section symbol directly here
             let foundType = makeTypeDesc(c, def[2].typ)
-            return newSymNode(copySym(def[0].sym, nextId c.idgen).linkTo(foundType), info)
+            return newSymNode(copySym(def[0].sym, nextSymId c.idgen).linkTo(foundType), info)
 
       of nkConstSection:
         for def in statement:
@@ -1144,7 +1143,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
-          return newSymNode(copySym(tParam.sym, nextId c.idgen).linkTo(foundTyp), info)
+          return newSymNode(copySym(tParam.sym, nextSymId c.idgen).linkTo(foundTyp), info)
 
   return nil
 
@@ -1941,7 +1940,7 @@ proc expectString(c: PContext, n: PNode): string =
     localError(c.config, n.info, errStringLiteralExpected)
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
-  result = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), info)
+  result = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), info)
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
@@ -2156,7 +2155,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvocation, nextId c.idgen, c.module)
+  result = newType(tyGenericInvocation, nextTypeId c.idgen, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
   addSonSkipIntLit(result, t, c.idgen)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
@@ -2631,7 +2630,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
     let paramPos = defExpr.sym.position + 1
 
     if call[paramPos].kind != nkSym:
-      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), nextId c.idgen,
+      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), nextSymId c.idgen,
                                  c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
 

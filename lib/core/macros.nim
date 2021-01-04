@@ -1389,25 +1389,10 @@ when defined(nimVmEqIdent):
     ## these nodes will be unwrapped.
 
 else:
+  from std/private/strimpl import cmpIgnoreStyleImpl
   # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
   proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-    proc toLower(c: char): char {.inline.} =
-      if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-      else: result = c
-    var i = 0
-    var j = 0
-    # first char is case sensitive
-    if a[0] != b[0]: return 1
-    while true:
-      while a[i] == '_': inc(i)
-      while b[j] == '_': inc(j) # BUGFIX: typo
-      var aa = toLower(a[i])
-      var bb = toLower(b[j])
-      result = ord(aa) - ord(bb)
-      if result != 0 or aa == '\0': break
-      inc(i)
-      inc(j)
-
+    cmpIgnoreStyleImpl(a, b, true)
 
   proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
     ## Check if two idents are equal.

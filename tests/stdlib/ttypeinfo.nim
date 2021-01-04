@@ -17,16 +17,16 @@ var test = @[0,1,2,3,4]
 var x = toAny(test)
 var y = 78
 x[4] = toAny(y)
-assert x[2].getInt == 2
+doAssert x[2].getInt == 2
 
 var test2: tuple[name: string, s: int] = ("test", 56)
 var x2 = toAny(test2)
 var i = 0
 for n, a in fields(x2):
   case i
-  of 0: assert n == "Field0" and $a.kind == "akString"
-  of 1: assert n == "Field1" and $a.kind == "akInt"
-  else: assert false
+  of 0: doAssert n == "Field0" and $a.kind == "akString"
+  of 1: doAssert n == "Field1" and $a.kind == "akInt"
+  else: doAssert false
   inc i
 
 var test3: TestObj
@@ -36,17 +36,17 @@ var x3 = toAny(test3)
 i = 0
 for n, a in fields(x3):
   case i
-  of 0: assert n == "test" and $a.kind == "akInt"
-  of 1: assert n == "asd" and $a.kind == "akInt"
-  of 2: assert n == "test2" and $a.kind == "akEnum"
-  else: assert false
+  of 0: doAssert n == "test" and $a.kind == "akInt"
+  of 1: doAssert n == "asd" and $a.kind == "akInt"
+  of 2: doAssert n == "test2" and $a.kind == "akEnum"
+  else: doAssert false
   inc i
 
 var test4: ref string
 new(test4)
 test4[] = "test"
 var x4 = toAny(test4)
-assert($x4[].kind() == "akString")
+doAssert($x4[].kind() == "akString")
 
 block:
   # gimme a new scope dammit

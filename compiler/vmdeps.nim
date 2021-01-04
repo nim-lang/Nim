@@ -26,7 +26,7 @@ proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): str
 
 proc atomicTypeX(cache: IdentCache; name: string; m: TMagic; t: PType; info: TLineInfo;
                  idgen: IdGenerator): PNode =
-  let sym = newSym(skType, getIdent(cache, name), nextId(idgen), t.owner, info)
+  let sym = newSym(skType, getIdent(cache, name), nextSymId(idgen), t.owner, info)
   sym.magic = m
   sym.typ = t
   result = newSymNode(sym)
@@ -47,7 +47,7 @@ proc mapTypeToBracketX(cache: IdentCache; name: string; m: TMagic; t: PType; inf
   for i in 0..<t.len:
     if t[i] == nil:
       let void = atomicTypeX(cache, "void", mVoid, t, info, idgen)
-      void.typ = newType(tyVoid, nextId(idgen), t.owner)
+      void.typ = newType(tyVoid, nextTypeId(idgen), t.owner)
       result.add void
     else:
       result.add mapTypeToAstX(cache, t[i], info, idgen, inst)
