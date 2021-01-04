@@ -26,12 +26,12 @@ func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".} # asserted
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
-  ## Return a string representation of `JsBigInt`.
+  ## Returns a string representation of `JsBigInt`.
   runnableExamples: doAssert $newJsBigInt"1024" == "1024"
   $toCstring(this)
 
 func wrapToInt*(bits: int; a: JsBigInt): JsBigInt {.importjs: "BigInt.asIntN(#, #)".} =
-  ## Wrap `a` to a signed `JsBigInt` of `bits` bits, ie between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
+  ## Wrap `a` to a signed `JsBigInt` of `bits` bits, for example between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
     doAssert wrapToInt(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
