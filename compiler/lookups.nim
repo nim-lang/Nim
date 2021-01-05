@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils
+  renderer, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -656,4 +656,3 @@ proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
       if result == nil: result = a
       else: return nil # ambiguous
     a = nextOverloadIter(o, c, n)
-
