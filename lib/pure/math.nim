@@ -848,7 +848,7 @@ else: # JS
   func ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   func ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
 
-  when not declared(copySign) or defined(nimLegacyRound):
+  when not declared(copySign) or defined(nimLegacyJsRound):
     func round*(x: float): float {.importc: "Math.round", nodecl.}
   else:
     func round*[T: float64 | float32](x: T): T =
