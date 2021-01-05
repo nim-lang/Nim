@@ -148,22 +148,47 @@ func dec*(this: var JsBigInt; amount: Positive) {.importjs: "([#][0][0] -= BigIn
 func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
-    big1 += 2
+    big1 += newJsBigInt"2"
     doAssert big1 == newJsBigInt"3"
 
 func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
-    big1 -= 2
+    big1 -= newJsBigInt"2"
     doAssert big1 == newJsBigInt"-1"
 
 func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 [#][0][0])".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"2"
-    big1 *= 4
+    big1 *= newJsBigInt"4"
     doAssert big1 == newJsBigInt"8"
 
 func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= [#][0][0])".} =
+  ## Same as `x = x div y`.
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"11"
+    big1 /= newJsBigInt"2"
+    doAssert big1 == newJsBigInt"5"
+
+func `+=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"1"
+    big1 += 2
+    doAssert big1 == newJsBigInt"3"
+
+func `-=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"1"
+    big1 -= 2
+    doAssert big1 == newJsBigInt"-1"
+
+func `*=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+  runnableExamples:
+    var big1: JsBigInt = newJsBigInt"2"
+    big1 *= 4
+    doAssert big1 == newJsBigInt"8"
+
+func `/=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] /= BigInt(#))".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"11"
