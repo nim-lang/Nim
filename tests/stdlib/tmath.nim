@@ -170,19 +170,19 @@ block:
 
     block: # round() tests
       # Round to 0 decimal places
-      doAssert round(54.652) ==~ 55.0
-      doAssert round(54.352) ==~ 54.0
-      doAssert round(-54.652) ==~ -55.0
-      doAssert round(-54.352) ==~ -54.0
-      doAssert round(0.0) ==~ 0.0
+      doAssert round(54.652) == 55.0
+      doAssert round(54.352) == 54.0
+      doAssert round(-54.652) == -55.0
+      doAssert round(-54.352) == -54.0
+      doAssert round(0.0) == 0.0
 
     block: # splitDecimal() tests
-      doAssert splitDecimal(54.674).intpart ==~ 54.0
+      doAssert splitDecimal(54.674).intpart == 54.0
       doAssert splitDecimal(54.674).floatpart ==~ 0.674
-      doAssert splitDecimal(-693.4356).intpart ==~ -693.0
+      doAssert splitDecimal(-693.4356).intpart == -693.0
       doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-      doAssert splitDecimal(0.0).intpart ==~ 0.0
-      doAssert splitDecimal(0.0).floatpart ==~ 0.0
+      doAssert splitDecimal(0.0).intpart == 0.0
+      doAssert splitDecimal(0.0).floatpart == 0.0
 
     block: # trunc tests for vcc
       doAssert(trunc(-1.1) == -1)
@@ -257,8 +257,8 @@ block:
       doAssert floorDiv(-8, -3) == 2
       doAssert floorMod(-8, -3) == -2
 
-      doAssert floorMod(8.0, -3.0) ==~ -1.0
-      doAssert floorMod(-8.5, 3.0) ==~ 0.5
+      doAssert floorMod(8.0, -3.0) == -1.0
+      doAssert floorMod(-8.5, 3.0) == 0.5
 
     block: # euclDiv/euclMod
       doAssert euclDiv(8, 3) == 2
@@ -273,8 +273,8 @@ block:
       doAssert euclDiv(-8, -3) == 3
       doAssert euclMod(-8, -3) == 1
 
-      doAssert euclMod(8.0, -3.0) ==~ 2.0
-      doAssert euclMod(-8.5, 3.0) ==~ 0.5
+      doAssert euclMod(8.0, -3.0) == 2.0
+      doAssert euclMod(-8.5, 3.0) == 0.5
 
       doAssert euclDiv(9, 3) == 3
       doAssert euclMod(9, 3) == 0
