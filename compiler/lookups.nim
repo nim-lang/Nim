@@ -347,14 +347,7 @@ proc mergeShadowScope*(c: PContext) =
     else:
       c.addInterfaceDecl(sym)
 
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
-    let alt = ident.altSpelling
-    result = op(c, alt).skipAlias(n)
-    if result != nil:
-      prettybase.replaceDeprecated(n.info, ident, alt)
-      return result
-else:
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
+template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var err = "ambiguous identifier: '" & s.name.s & "'"
