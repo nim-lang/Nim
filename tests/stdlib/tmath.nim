@@ -176,6 +176,13 @@ block:
       doAssert round(-54.352) == -54.0
       doAssert round(0.0) == 0.0
 
+    block: # splitDecimal() tests
+      doAssert splitDecimal(54.674).intpart == 54.0
+      doAssert splitDecimal(54.674).floatpart ==~ 0.674
+      doAssert splitDecimal(-693.4356).intpart == -693.0
+      doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
+      doAssert splitDecimal(0.0).intpart == 0.0
+      doAssert splitDecimal(0.0).floatpart == 0.0
 
     block: # trunc tests for vcc
       doAssert(trunc(-1.1) == -1)
