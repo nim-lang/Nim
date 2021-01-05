@@ -49,6 +49,7 @@ proc isTestFile*(file: string): bool =
 
 # ---------------- IC tests ---------------------------------------------
 
+# xxx deadcode
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
@@ -583,6 +584,8 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
   testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =
+  # xxx simplify implementation using a whitelist of fields that are allowed to be
+  # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
@@ -595,6 +598,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.exitCode == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
+    spec.matrix.len == 0 and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
@@ -656,7 +660,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf.string
@@ -759,7 +763,9 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      const whiteListedDirs = ["deps"]
+      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+        # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
+        # that try an old version of choosenim.
       doAssert cat.string in whiteListedDirs,
         "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 

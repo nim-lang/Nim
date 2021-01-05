@@ -4,13 +4,13 @@ func toLowerAscii*(c: char): char {.inline.} =
   else:
     result = c
 
-template firstCharCaseSensitiveImpl(a, b: typed, aLen, bLen: int) =
+template firstCharCaseSensitiveImpl[T: string | cstring](a, b: T, aLen, bLen: int) =
   if aLen == 0 or bLen == 0:
     return aLen - bLen
   if a[0] != b[0]: return ord(a[0]) - ord(b[0])
 
-template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = false) =
-  # a, b are string or cstring
+template cmpIgnoreStyleImpl*[T: string | cstring](a, b: T,
+            firstCharCaseSensitive: static bool = false) =
   let aLen = a.len
   let bLen = b.len
   var i = 0
@@ -37,8 +37,8 @@ template cmpIgnoreStyleImpl*(a, b: typed, firstCharCaseSensitive: static bool = 
     inc i
     inc j
 
-template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = false) =
-  # a, b are string or cstring
+template cmpIgnoreCaseImpl*[T: string | cstring](a, b: T,
+        firstCharCaseSensitive: static bool = false) =
   let aLen = a.len
   let bLen = b.len
   var i = 0
@@ -51,3 +51,22 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
     if result != 0: return
     inc i
   result = aLen - bLen
+
+template startsWithImpl*[T: string | cstring](s, prefix: T) =
+  let prefixLen = prefix.len
+  let sLen = s.len
+  var i = 0
+  while true:
+    if i >= prefixLen: return true
+    if i >= sLen or s[i] != prefix[i]: return false
+    inc(i)
+
+template endsWithImpl*[T: string | cstring](s, suffix: T) =
+  let suffixLen = suffix.len
+  let sLen = s.len
+  var i = 0
+  var j = sLen - suffixLen
+  while i+j >= 0 and i+j < sLen:
+    if s[i+j] != suffix[i]: return false
+    inc(i)
+  if i >= suffixLen: return true

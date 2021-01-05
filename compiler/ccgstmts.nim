@@ -653,12 +653,19 @@ proc genParForStmt(p: BProc, t: PNode) =
     initLocExpr(p, call[2], rangeB)
 
     # $n at the beginning because of #9710
-    if call.len == 4: # `||`(a, b, annotation)
-      lineF(p, cpsStmts, "$n#pragma omp $4$n" &
-                          "for ($1 = $2; $1 <= $3; ++$1)",
-                          [forLoopVar.loc.rdLoc,
-                          rangeA.rdLoc, rangeB.rdLoc,
-                          call[3].getStr.rope])
+    if call.len == 4: # procName(a, b, annotation)
+      if call[0].sym.name.s == "||":  # `||`(a, b, annotation)
+        lineF(p, cpsStmts, "$n#pragma omp $4$n" &
+                            "for ($1 = $2; $1 <= $3; ++$1)",
+                            [forLoopVar.loc.rdLoc,
+                            rangeA.rdLoc, rangeB.rdLoc,
+                            call[3].getStr.rope])
+      else:
+        lineF(p, cpsStmts, "$n#pragma $4$n" &
+                    "for ($1 = $2; $1 <= $3; ++$1)",
+                    [forLoopVar.loc.rdLoc,
+                    rangeA.rdLoc, rangeB.rdLoc,
+                    call[3].getStr.rope])
     else: # `||`(a, b, step, annotation)
       var step: TLoc
       initLocExpr(p, call[3], step)

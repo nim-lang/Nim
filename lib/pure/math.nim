@@ -847,7 +847,17 @@ else: # JS
   func floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   func ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   func ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-  func round*(x: float): float {.importc: "Math.round", nodecl.}
+
+  when (NimMajor, NimMinor) < (1, 5) or defined(nimLegacyJsRound):
+    func round*(x: float): float {.importc: "Math.round", nodecl.}
+  else:
+    func jsRound(x: float): float {.importc: "Math.round", nodecl.}
+    func round*[T: float64 | float32](x: T): T =
+      if x >= 0: result = jsRound(x)
+      else:
+        result = ceil(x)
+        if result - x >= T(0.5):
+          result -= T(1.0)
   func trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   func trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 

@@ -10,7 +10,7 @@
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 import std/private/since
-when not defined(js) and not defined(Nimdoc):
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 const
