@@ -84,14 +84,13 @@
 - Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
 - Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
 
-
-
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
+- Added `BackwardsIndex` overload for `JsonNode`.
+
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-- Added `BackwardsIndex` overload for `JsonNode`.
 
 
 ## Language changes
