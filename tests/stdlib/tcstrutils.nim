@@ -11,12 +11,16 @@ proc main() =
   doAssert not s.startsWith("b")
   doAssert s.endsWith("f")
   doAssert not s.endsWith("a")
+  doAssert s.startsWith("")
+  doAssert s.endsWith("")
 
   let a = cstring "abracadabra"
   doAssert a.startsWith("abra")
   doAssert not a.startsWith("bra")
   doAssert a.endsWith("abra")
   doAssert not a.endsWith("dab")
+  doAssert a.startsWith("")
+  doAssert a.endsWith("")
 
   doAssert cmpIgnoreCase(cstring "FooBar", "foobar") == 0
   doAssert cmpIgnoreCase(cstring "bar", "Foo") < 0

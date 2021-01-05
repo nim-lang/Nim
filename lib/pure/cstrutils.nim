@@ -22,13 +22,12 @@ when defined(js):
 
 func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
   ## Returns true if `s` starts with `prefix`.
-  ##
-  ## If `prefix == ""` true is returned.
   ## 
   ## JS backend uses native `String.prototype.startsWith`.
   runnableExamples:
     assert startsWith(cstring"Hello, Nimion", cstring"Hello")
     assert not startsWith(cstring"Hello, Nimion", cstring"Nimion")
+    assert startsWith(cstring"Hello", cstring"")
   when nimvm:
     startsWithImpl(s, prefix)
   else:
@@ -44,12 +43,11 @@ func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
 func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
   ## Returns true if `s` ends with `suffix`.
   ##
-  ## If `suffix == ""` true is returned.
-  ##
   ## JS backend uses native `String.prototype.endsWith`.
   runnableExamples:
     assert endsWith(cstring"Hello, Nimion", cstring"Nimion")
     assert not endsWith(cstring"Hello, Nimion", cstring"Hello")
+    assert endsWith(cstring"Hello", cstring"")
   when nimvm:
     endsWithImpl(s, suffix)
   else:
