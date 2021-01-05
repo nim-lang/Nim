@@ -2,10 +2,10 @@ discard """
   targets: "c cpp js"
 """
 
-import cstrutils
+import std/cstrutils
 
 
-block tcstrutils:
+proc main() =
   let s = cstring "abcdef"
   doAssert s.startsWith("a")
   doAssert not s.startsWith("b")
@@ -28,3 +28,7 @@ block tcstrutils:
   doAssert cmpIgnoreCase(cstring "", cstring "") == 0
   doAssert cmpIgnoreCase(cstring "", cstring "Hello") < 0
   doAssert cmpIgnoreCase(cstring "wind", cstring "") > 0
+
+
+static: main()
+main()

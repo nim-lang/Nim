@@ -51,3 +51,19 @@ template cmpIgnoreCaseImpl*(a, b: typed, firstCharCaseSensitive: static bool = f
     if result != 0: return
     inc i
   result = aLen - bLen
+
+template startsWithImpl*(s, prefix: typed) =
+  # s, prefix are string or cstring
+  var i = 0
+  while true:
+    if i >= prefix.len: return true
+    if i >= s.len or s[i] != prefix[i]: return false
+    inc(i)
+
+template endsWithImpl*(s, suffix: typed) =
+  var i = 0
+  var j = len(s) - len(suffix)
+  while i+j >= 0 and i+j < s.len:
+    if s[i+j] != suffix[i]: return false
+    inc(i)
+  if i >= suffix.len: return true
