@@ -175,10 +175,6 @@ proc bundleWinTools(args: string) =
   nimCompile("tools/nimgrab.nim", options = "-d:ssl " & args)
   nimCompile("tools/nimgrep.nim", options = args)
   nimCompile("testament/testament.nim", options = args)
-  when false:
-    # not yet a tool worth including
-    nimCompile(r"tools\downloader.nim",
-               options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
 proc bundleFusion(latest: bool) =
   let commit = if latest: "HEAD" else: FusionStableCommit
