@@ -92,6 +92,9 @@
 - Added `BackwardsIndex` overload for `JsonNode`.
 
 
+
+- Added `math.signbit`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

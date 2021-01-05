@@ -56,7 +56,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
 
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
@@ -64,6 +64,8 @@ when defined(c) or defined(cpp):
 
   proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
   proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+
+  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -155,6 +157,29 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   else:
     when defined(js): fn()
     else: result = c_isnan(x)
+
+when defined(js):
+  proc toBitsImpl(x: float): array[2, uint32] =
+    asm """
+    const buffer = new ArrayBuffer(8);
+    const floatBuffer = new Float64Array(buffer);
+    const uintBuffer = new Uint32Array(buffer);
+    floatBuffer[0] = `x`;
+    `result` = uintBuffer
+    """
+
+proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
+  ## Returns true if `x` is negative, false otherwise.
+  runnableExamples:
+    doAssert not signbit(0.0)
+    doAssert signbit(-0.0)
+    doAssert signbit(-0.1)
+    doAssert not signbit(0.1)
+  when defined(js):
+    let uintBuffer = toBitsImpl(x)
+    result = (uintBuffer[1] shr 31) != 0
+  else:
+    result = c_signbit(x) != 0
 
 func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
   ## Returns a value with the magnitude of `x` and the sign of `y`;

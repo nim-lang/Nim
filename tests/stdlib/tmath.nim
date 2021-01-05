@@ -304,6 +304,12 @@ block:
 
 template main =
   # xxx wrap all under `main` so it also gets tested in vm.
+  block: # signbit
+    doAssert not signbit(0.0)
+    doAssert signbit(-0.0)
+    doAssert signbit(-0.1)
+    doAssert not signbit(0.1)
+
   block: # isNaN
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
