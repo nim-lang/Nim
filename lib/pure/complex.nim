@@ -12,6 +12,27 @@
 ##
 ## Complex numbers are currently generic over 64-bit or 32-bit floats.
 
+runnableExamples:
+  from math import almostEqual, sqrt
+
+  func almostEqual(a, b: Complex): bool =
+    almostEqual(a.re, b.re) and almostEqual(a.im, b.im)
+
+  let
+    z1 = complex(1.0, 2.0)
+    z2 = complex(3.0, -4.0)
+
+  assert almostEqual(z1 + z2, complex(4.0, -2.0))
+  assert almostEqual(z1 - z2, complex(-2.0, 6.0))
+  assert almostEqual(z1 * z2, complex(11.0, 2.0))
+  assert almostEqual(z1 / z2, complex(-0.2, 0.4))
+
+  assert almostEqual(abs(z1), sqrt(5.0))
+  assert almostEqual(conjugate(z1), complex(1.0, -2.0))
+
+  let (r, phi) = z1.polar
+  assert almostEqual(rect(r, phi), z1)
+
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
@@ -27,20 +48,17 @@ type
     ## Alias for a complex number using 32-bit floats.
 
 func complex*[T: SomeFloat](re: T; im: T = 0.0): Complex[T] =
-  ## Returns a `Complex[T]` with real part `re` and imaginary part `im`
-  ## (default: 0).
+  ## Returns a `Complex[T]` with real part `re` and imaginary part `im`.
   result.re = re
   result.im = im
 
 func complex32*(re: float32; im: float32 = 0.0): Complex32 =
-  ## Returns a `Complex32` with real part `re` and imaginary part `im`
-  ## (default: 0).
+  ## Returns a `Complex32` with real part `re` and imaginary part `im`.
   result.re = re
   result.im = im
 
 func complex64*(re: float64; im: float64 = 0.0): Complex64 =
-  ## Returns a `Complex64` with real part `re` and imaginary part `im`
-  ## (default: 0).
+  ## Returns a `Complex64` with real part `re` and imaginary part `im`.
   result.re = re
   result.im = im
 
@@ -99,7 +117,8 @@ func `-`*[T](z: Complex[T]): Complex[T] =
 
 func `-`*[T](x: T; y: Complex[T]): Complex[T] =
   ## Subtracts a complex number from a real number.
-  x + (-y)
+  result.re = x - y.re
+  result.im = -y.im
 
 func `-`*[T](x: Complex[T]; y: T): Complex[T] =
   ## Subtracts a real number from a complex number.
@@ -172,7 +191,9 @@ func `/=`*[T](x: var Complex[T]; y: Complex[T]) =
 
 
 func sqrt*[T](z: Complex[T]): Complex[T] =
-  ## Computes the (principal) square root of a complex number `z`.
+  ## Computes the
+  ## ([principal](https://en.wikipedia.org/wiki/Square_root#Principal_square_root_of_a_complex_number))
+  ## square root of a complex number `z`.
   var x, y, w, r: T
 
   if z.re == 0.0 and z.im == 0.0:
@@ -196,14 +217,16 @@ func sqrt*[T](z: Complex[T]): Complex[T] =
 
 func exp*[T](z: Complex[T]): Complex[T] =
   ## Computes the exponential function (`e^z`).
-  var
+  let
     rho = exp(z.re)
     theta = z.im
   result.re = rho * cos(theta)
   result.im = rho * sin(theta)
 
 func ln*[T](z: Complex[T]): Complex[T] =
-  ## Returns the (principal value of the) natural logarithm of `z`.
+  ## Returns the
+  ## ([principal value](https://en.wikipedia.org/wiki/Complex_logarithm#Principal_value)
+  ## of the) natural logarithm of `z`.
   result.re = ln(abs(z))
   result.im = arctan2(z.im, z.re)
 
@@ -235,7 +258,7 @@ func pow*[T](x, y: Complex[T]): Complex[T] =
   elif y.re == -1.0 and y.im == 0.0:
     result = T(1.0) / x
   else:
-    var
+    let
       rho = abs(x)
       theta = arctan2(x.im, x.re)
       s = pow(rho, y.re) * exp(-y.im * theta)
@@ -375,6 +398,9 @@ func rect*[T](r, phi: T): Complex[T] =
 
 func `$`*(z: Complex): string =
   ## Returns `z`'s string representation as `"(re, im)"`.
+  runnableExamples:
+    doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
+
   result = "(" & $z.re & ", " & $z.im & ")"
 
 {.pop.}
