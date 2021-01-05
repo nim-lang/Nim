@@ -21,9 +21,6 @@ import
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
-when defined(nimfix):
-  import nimfix/prettybase
-
 when not defined(leanCompiler):
   import spawn
 

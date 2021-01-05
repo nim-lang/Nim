@@ -489,11 +489,10 @@ proc BIO_do_handshake*(bio: BIO): int =
 proc BIO_do_connect*(bio: BIO): int =
   return BIO_do_handshake(bio)
 
-when not defined(nimfix):
-  proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
-  proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl,
-      dynlib: DLLUtilName, importc.}
+proc BIO_read*(b: BIO, data: cstring, length: cint): cint{.cdecl,
+    dynlib: DLLUtilName, importc.}
+proc BIO_write*(b: BIO, data: cstring, length: cint): cint{.cdecl,
+    dynlib: DLLUtilName, importc.}
 
 proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 

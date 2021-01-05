@@ -90,11 +90,8 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
     result = s
   else:
     result = s.owner
-    if conf.cmd == cmdNimfix:
-      prettybase.replaceDeprecated(conf, n.info, s, result)
-    else:
-      message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s & " is deprecated")
+    message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
+            s.name.s & " is deprecated")
 
 proc isShadowScope*(s: PScope): bool {.inline.} =
   s.parent != nil and s.parent.depthLevel == s.depthLevel
@@ -349,14 +346,6 @@ proc mergeShadowScope*(c: PContext) =
       c.addInterfaceOverloadableSymAt(c.currentScope, sym)
     else:
       c.addInterfaceDecl(sym)
-
-when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifier:
-  proc altSpelling(x: PIdent): PIdent =
-    case x.s[0]
-    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    else: result = x
 
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
     let alt = ident.altSpelling

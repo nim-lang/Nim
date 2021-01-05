@@ -432,7 +432,7 @@ General commit rules
    https://github.com/nim-lang/Nim/pull/9356
 
 8. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
-   automated changes (e.g. nimfix) with other code changes: these should be in
+   automated changes with other code changes: these should be in
    separate commits (and the merge on GitHub should not squash these into 1).
 
 

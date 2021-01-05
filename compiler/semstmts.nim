@@ -2297,12 +2297,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
      result[0].kind != nkDefer:
     result = result[0]
 
-  when defined(nimfix):
-    if result.kind == nkCommentStmt and not result.comment.isNil and
-        not (result.comment[0] == '#' and result.comment[1] == '#'):
-      # it is an old-style comment statement: we replace it with 'discard ""':
-      prettybase.replaceComment(result.info)
-
 proc semStmt(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if efInTypeof notin flags:
     result = semExprNoType(c, n)
