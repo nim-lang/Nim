@@ -13,7 +13,7 @@
 ## Complex numbers are currently generic over 64-bit or 32-bit floats.
 
 runnableExamples:
-  from math import almostEqual, sqrt
+  from std/math import almostEqual, sqrt
 
   func almostEqual(a, b: Complex): bool =
     almostEqual(a.re, b.re) and almostEqual(a.im, b.im)
@@ -36,7 +36,7 @@ runnableExamples:
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
-import math
+import std/math
 
 type
   Complex*[T: SomeFloat] = object

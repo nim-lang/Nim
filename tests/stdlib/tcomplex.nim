@@ -1,4 +1,4 @@
-import complex, math
+import std/[complex, math]
 
 
 proc `=~`[T](x, y: Complex[T]): bool =
