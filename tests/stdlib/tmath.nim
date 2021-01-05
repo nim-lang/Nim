@@ -343,22 +343,25 @@ template main =
 
     block: # round() tests
       # Round to 0 decimal places
-      doAssert round(54.652) ==~ 55.0
-      doAssert round(54.352) ==~ 54.0
-      doAssert round(-54.652) ==~ -55.0
-      doAssert round(-54.352) ==~ -54.0
+      doAssert round(54.652) == 55.0
+      doAssert round(54.352) == 54.0
+      doAssert round(-54.652) == -55.0
+      doAssert round(-54.352) == -54.0
+      doAssert round(0.0) == 0.0
       doAssert 1 / round(0.0) == Inf
       doAssert 1 / round(-0.0) == -Inf
       doAssert round(Inf) == Inf
       doAssert round(-Inf) == -Inf
       doAssert round(NaN).isNaN
       doAssert round(-NaN).isNaN
-      doAssert round(-0.5) ==~ -1.0
-      doAssert round(0.5) ==~ 1.0
-      doAssert round(-1.5) ==~ -2.0
-      doAssert round(1.5) ==~ 2.0
-      doAssert round(-2.5) ==~ -3.0
-      doAssert round(2.5) ==~ 3.0
+      doAssert round(-0.5) == -1.0
+      doAssert round(0.5) == 1.0
+      doAssert round(-1.5) == -2.0
+      doAssert round(1.5) == 2.0
+      doAssert round(-2.5) == -3.0
+      doAssert round(2.5) == 3.0
+      doAssert round(2.5'f32) == 3.0'f32
+      doAssert round(2.5'f64) == 3.0'f64
 
     when nimvm:
       discard
