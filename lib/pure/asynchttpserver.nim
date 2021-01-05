@@ -13,34 +13,34 @@
 ## for testing applications locally. Because of this, when deploying your
 ## application in production you should use a reverse proxy (for example nginx)
 ## instead of allowing users to connect directly to this server.
-##
-## Example
-## =======
-##
-## This example will create an HTTP server on port 8080. The server will
-## respond to all requests with a ``200 OK`` response code and "Hello World"
-## as the response body.
-##
-## .. code-block:: Nim
-##
-##   import asynchttpserver, asyncdispatch
-##
-##   proc main {.async.} =
-##     var server = newAsyncHttpServer()
-##     proc cb(req: Request) {.async.} =
-##       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-##           "Content-type": "text/plain; charset=utf-8"}
-##       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
-##
-##     server.listen Port(8080)
-##     while true:
-##       if server.shouldAcceptRequest():
-##         await server.acceptRequest(cb)
-##       else:
-##         poll()
-##
-##   asyncCheck main()
-##   runForever()
+
+runnableExamples:
+  # This example will create an HTTP server on port 8080. The server will
+  # respond to all requests with a `200 OK` response code and "Hello World"
+  # as the response body. Run locally with:
+  # `nim doc --doccmd:-d:nimAsynchttpserverEnableTest --lib:lib lib/pure/asynchttpserver.nim`
+  import asyncdispatch
+  if defined(nimAsynchttpserverEnableTest):
+    proc main {.async.} =
+      const port = 8080
+      var server = newAsyncHttpServer()
+      proc cb(req: Request) {.async.} =
+        echo (req.reqMethod, req.url, req.headers)
+        let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
+            "Content-type": "text/plain; charset=utf-8"}
+        await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+
+      echo "test this with: curl localhost:" & $port & "/"
+      server.listen Port(port)
+      while true:
+        if server.shouldAcceptRequest():
+          await server.acceptRequest(cb)
+        else:
+          # too many concurrent connections, `maxFDs` exceeded
+          poll()
+
+    asyncCheck main()
+    runForever()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -368,23 +368,3 @@ proc serve*(server: AsyncHttpServer, port: Port,
 proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
-
-when not defined(testing) and isMainModule:
-  proc main {.async.} =
-    var server = newAsyncHttpServer()
-    proc cb(req: Request) {.async.} =
-      #echo(req.reqMethod, " ", req.url)
-      #echo(req.headers)
-      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-          "Content-type": "text/plain; charset=utf-8"}
-      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
-
-    server.listen Port(5555)
-    while true:
-      if server.shouldAcceptRequest():
-        await server.acceptRequest(cb)
-      else:
-        poll()
-
-  asyncCheck main()
-  runForever()
