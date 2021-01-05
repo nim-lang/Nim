@@ -36,13 +36,13 @@ func wrapToInt*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   ## Wrap `a` to a signed `JsBigInt` of `bits` bits, for example between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
-    doAssert wrapToInt(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
+    doAssert newJsBigInt("2147483647").wrapToInt(32) == newJsBigInt"2147483647"
 
 func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asUintN(b, i) })()".} =
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
-    doAssert wrapToUint(32, newJsBigInt"2147483647") == newJsBigInt"2147483647"
+    doAssert newJsBigInt("2147483647").wrapToUint(32) == newJsBigInt"2147483647"
 
 func unsafeToNumber*(this: JsBigInt): int {.importjs: "Number(#)".} =
   ## Does not do any bounds check and may or may not return an inexact representation.
