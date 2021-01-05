@@ -66,7 +66,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         x.info = n.info
         incl(s.flags, sfUsed)
         n[0] = x
-        suggestSym(c.config, x.info, s, c.graph.usageSym)
+        suggestSym(c.graph, x.info, s, c.graph.usageSym)
         onUse(x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
@@ -332,7 +332,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
       discard
     result = n.info
   let info = getLineInfo(n)
-  suggestSym(c.config, info, result, c.graph.usageSym)
+  suggestSym(c.graph, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and v.typ.requiresInit:
@@ -1956,7 +1956,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
       incl(proto.flags, sfWasForwarded)
-    suggestSym(c.config, s.info, proto, c.graph.usageSym)
+    suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast[genericParamsPos].kind != nkEmpty:

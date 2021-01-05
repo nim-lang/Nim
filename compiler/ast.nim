@@ -1898,8 +1898,6 @@ template incompleteType*(t: PType): bool =
 template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
 
-template getBody*(s: PSym): PNode = s.ast[bodyPos]
-
 template detailedInfo*(sym: PSym): string =
   sym.name.s
 

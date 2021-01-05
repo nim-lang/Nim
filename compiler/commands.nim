@@ -797,7 +797,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
-  of "incremental":
+  of "incremental", "ic":
     case arg.normalize
     of "on": conf.symbolFiles = v2Sf
     of "off": conf.symbolFiles = disabledSf

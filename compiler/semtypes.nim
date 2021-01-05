@@ -779,7 +779,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    n[i][1].info
                  else:
                    n[i].info
-      suggestSym(c.config, info, f, c.graph.usageSym)
+      suggestSym(c.graph, info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       f.options = c.config.options

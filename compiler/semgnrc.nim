@@ -481,7 +481,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       if sfGenSym in s.flags and s.ast == nil:
         body = n[bodyPos]
       else:
-        body = s.getBody
+        body = getBody(c.graph, s)
     else: body = n[bodyPos]
     n[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)

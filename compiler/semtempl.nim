@@ -250,7 +250,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
-      suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+      suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 

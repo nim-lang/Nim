@@ -20,7 +20,7 @@ import
   isolation_check, typeallowed
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward,
-  systemModuleTab, tab
+  systemModuleTab, tab, getBody
 
 when defined(nimfix):
   import nimfix/prettybase

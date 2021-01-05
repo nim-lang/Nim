@@ -619,6 +619,31 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph;
     for n0 in sonsReadonly(tree, n):
       result.add loadNodes(c, g, tree, n0)
 
+proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph;
+                    tree: PackedTree; n: NodePos): PNode =
+  # do not load the body of the proc. This will be done later in
+  # getProcBody, if required.
+  let k = n.kind
+  result = newNodeIT(k, translateLineInfo(c, g, n.info),
+    loadType(c, g, n.typ))
+  result.flags = n.flags
+  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef}
+  var i = 0
+  for n0 in sonsReadonly(tree, n):
+    if i != bodyPos:
+      result.add loadNodes(c, g, tree, n0)
+    else:
+      result.add nil
+    inc i
+
+proc loadProcBody(c: var PackedDecoder; g: var PackedModuleGraph;
+                  tree: PackedTree; n: NodePos): PNode =
+  var i = 0
+  for n0 in sonsReadonly(tree, n):
+    if i == bodyPos:
+      result = loadNodes(c, g, tree, n0)
+    inc i
+
 proc moduleIndex*(c: var PackedDecoder; g: var PackedModuleGraph;
                   s: PackedItemId): int32 {.inline.} =
   result = if s.module == LitId(0): c.thisModule
@@ -638,6 +663,10 @@ template loadAstBody(p, field) =
   if p.field != emptyNodeId:
     result.field = loadNodes(c, g, g[si].fromDisk.bodies, NodePos p.field)
 
+template loadAstBodyLazy(p, field) =
+  if p.field != emptyNodeId:
+    result.field = loadProcHeader(c, g, g[si].fromDisk.bodies, NodePos p.field)
+
 proc loadLib(c: var PackedDecoder; g: var PackedModuleGraph;
              si, item: int32; l: PackedLib): PLib =
   # XXX: hack; assume a zero LitId means the PackedLib is all zero (empty)
@@ -652,7 +681,10 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                        s: PackedSym; si, item: int32; result: PSym) =
   result.typ = loadType(c, g, s.typ)
   loadAstBody(s, constraint)
-  loadAstBody(s, ast)
+  if result.kind in {skProc, skFunc, skIterator, skConverter, skMethod}:
+    loadAstBodyLazy(s, ast)
+  else:
+    loadAstBody(s, ast)
   result.annex = loadLib(c, g, si, item, s.annex)
   when hasFFI:
     result.cname = g[si].fromDisk.sh.strings[s.cname]

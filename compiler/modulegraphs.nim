@@ -290,3 +290,7 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
   result = g.suggestMode and sfDirty in m.flags
+
+proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
+  result = s.ast[bodyPos]
+  assert result != nil # XXX reloading logic here

@@ -2505,7 +2505,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     elif labl.owner == nil:
       labl.owner = c.p.owner
     n[0] = newSymNode(labl, n[0].info)
-    suggestSym(c.config, n[0].info, labl, c.graph.usageSym)
+    suggestSym(c.graph, n[0].info, labl, c.graph.usageSym)
     styleCheckDef(c.config, labl)
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)

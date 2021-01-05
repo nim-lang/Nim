@@ -128,7 +128,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
         e = nextIdentIter(it, fromMod.tab(c.graph))
     else:
       rawImportSymbol(c, s, fromMod, importSet)
-    suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+    suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
 
 proc addImport(c: PContext; im: sink ImportedModule) =
   for i in 0..high(c.imports):
@@ -257,7 +257,7 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
       else:
         message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
-    suggestSym(c.config, n.info, result, c.graph.usageSym, false)
+    suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 
