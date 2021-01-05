@@ -90,7 +90,7 @@
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
-with other backends. see #9125. Use `-d:nimLegacyRound` for previous behavior.
+with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `BackwardsIndex` overload for `JsonNode`.
 
 
