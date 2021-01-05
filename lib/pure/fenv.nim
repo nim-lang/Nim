@@ -9,6 +9,8 @@
 
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
+## The types, vars and procs are bindings for the C standard library
+## [<fenv.h>](https://en.cppreference.com/w/c/numeric/fenv) header.
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
@@ -35,8 +37,8 @@ var
   FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
     ## round toward +Inf
   FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
-    ## macro of type pointer to fenv_t to be used as the argument
-    ## to functions taking an argument of type fenv_t; in this
+    ## macro of type pointer to `fenv_t` to be used as the argument
+    ## to functions taking an argument of type `fenv_t`; in this
     ## case the default environment will be used
 
 type
