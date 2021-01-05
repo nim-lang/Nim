@@ -110,6 +110,12 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
   result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
+proc partOfStdlib(x: PSym): bool =
+  var it = x.owner
+  while it != nil and it.kind == skPackage and it.owner != nil:
+    it = it.owner
+  result = it != nil and it.name.s == "stdlib"
+
 proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
                     stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
@@ -131,7 +137,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
   while true:
     openParser(p, fileIdx, s, graph.cache, graph.config)
 
-    if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
+    if not partOfStdlib(module) or module.name.s == "distros":
       # XXX what about caching? no processing then? what if I change the
       # modules to include between compilation runs? we'd need to track that
       # in ROD files. I think we should enable this feature only
