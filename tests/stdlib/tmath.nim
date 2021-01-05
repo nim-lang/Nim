@@ -1,8 +1,10 @@
 discard """
   targets: "c cpp js"
+  matrix:"; -d:danger"
 """
 
-## xxx enable matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
+# xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
+# but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
 import std/[math, random, os]
 import std/[unittest]
@@ -162,7 +164,7 @@ block:
 
     block: # prod
       doAssert prod([1, 2, 3, 4]) == 24
-      doAssert prod([1.5, 3.4]) == 5.1
+      doAssert prod([1.5, 3.4]).almostEqual 5.1
       let x: seq[float] = @[]
       doAssert prod(x) == 1.0
 
