@@ -65,8 +65,8 @@ proc sameMethodBucket(a, b: PSym; multiMethods: bool): MethodResult =
     var aa = a.typ[i]
     var bb = b.typ[i]
     while true:
-      aa = skipTypes(aa, {tyGenericInst, tyAlias})
-      bb = skipTypes(bb, {tyGenericInst, tyAlias})
+      aa = skipTypes(aa, {tyGenericInst, tyAlias, tySink})
+      bb = skipTypes(bb, {tyGenericInst, tyAlias, tySink})
       if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent}:
         aa = aa.lastSon
         bb = bb.lastSon
