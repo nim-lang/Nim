@@ -573,8 +573,9 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
   ## for any interpolated expression. The original meaning of the interpolation
-  ## operator may be obtained by escaping it (by prefixing it with itself):
-  ## e.g. `@` is escaped as `@@`, `@@` is escaped as `@@@` and so on; see examples.
+  ## operator may be obtained by escaping it (by prefixing it with itself) when used
+  ## as a unary operator:
+  ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%` and so on; see examples.
   runnableExamples:
     macro check(ex: untyped) =
       # this is a simplified version of the check macro from the
@@ -629,6 +630,18 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
           let a = Foo()
     bar()
     doAssert destroyCalled
+
+    proc `&%`(x: int): int = 1
+    proc `&%`(x, y: int): int = 2
+
+    macro bar2() =
+      var x = 3
+      result = quote("&%") do:
+        var y = &%x # quoting operator
+        doAssert &%&%y == 1 # unary operator => need to escape
+        doAssert y &% y == 2 # binary operator => no need to escape
+        doAssert y == 3
+    bar2()
 
 proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## Checks that `n` is of kind `k`. If this is not the case,
