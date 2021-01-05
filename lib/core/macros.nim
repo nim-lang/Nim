@@ -575,7 +575,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## for any interpolated expression. The original meaning of the interpolation
   ## operator may be obtained by escaping it (by prefixing it with itself) when used
   ## as a unary operator:
-  ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%` and so on; see examples.
+  ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%&%` and so on; see examples.
   runnableExamples:
     macro check(ex: untyped) =
       # this is a simplified version of the check macro from the
