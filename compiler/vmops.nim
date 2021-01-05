@@ -178,7 +178,7 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2f_math(copySign)
 
   when declared(signbit):
-    wrap2f_math(signbit)
+    wrap1f_math(signbit)
 
   wrap1s(getMD5, md5op)
 
