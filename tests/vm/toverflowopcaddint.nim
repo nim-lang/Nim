@@ -8,5 +8,5 @@ static:
       x = int64.high
       y = 1
     discard x + y
-    assert false
+    doAssert false
   p()

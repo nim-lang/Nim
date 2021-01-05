@@ -1079,6 +1079,29 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
             "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
             result)
 
+proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
+  var
+    htmlCls = "admonition_warning"
+    texSz = "\\large"
+    texColor = "orange"
+  case n.text
+  of "hint", "note", "tip":
+    htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
+  of "attention", "admonition", "important", "warning":
+    htmlCls = "admonition-warning"; texSz = "\\large"; texColor = "orange"
+  of "danger", "error":
+    htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
+  else: discard
+  let txt = n.text.capitalizeAscii()
+  let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
+  renderAux(d, n,
+      htmlHead & "<span class=\"" & htmlCls & "-text\"><b>" & txt &
+        ":</b></span>\n" & "$1</div>\n",
+      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]\n" &
+        "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
+        "$1\n\\end{mdframed}\n",
+      result)
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
@@ -1137,12 +1160,25 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    renderAux(d, n, "<p>$1</p>", "$1\n\n", result)
+    if n.sons.len == 1 and n.sons[0].text == "\n":
+      # whole line block is one empty line, no need to add extra spacing
+      renderAux(d, n, "<p>$1</p> ", "\n\n$1", result)
+    else:  # add extra spacing around the line block for Latex
+      renderAux(d, n, "<p>$1</p>", "\n\\vspace{0.5em}\n$1\\vspace{0.5em}\n", result)
   of rnLineBlockItem:
-    renderAux(d, n, "$1<br />", "$1\\\\\n", result)
+    if n.text.len == 0:  # normal case - no additional indentation
+      renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
+    elif n.text == "\n":  # add one empty line
+      renderAux(d, n, "<br/>", "\\vspace{1em}\n", result)
+    else:  # additional indentation w.r.t. '| '
+      let indent = $(0.5 * (n.text.len - 1).toFloat) & "em"
+      renderAux(d, n,
+        "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
+        "\\noindent\\hspace{" & indent & "}$1\n\n", result)
   of rnBlockQuote:
     renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
                     "\\begin{quote}$1\\end{quote}\n", result)
+  of rnAdmonition: renderAdmonition(d, n, result)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table border=\"1\" class=\"docutils\">$1</table>",

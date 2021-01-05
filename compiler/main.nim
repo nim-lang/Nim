@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -137,8 +137,9 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    var idgen = IdGenerator(module: m.itemId.module, item: m.itemId.item)
-    processModule(graph, m, idgen, llStreamOpenStdIn())
+    var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
+    let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
+    processModule(graph, m, idgen, s)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -164,7 +165,6 @@ proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
 
-  setupModuleCache(graph)
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
@@ -192,8 +192,6 @@ proc mainCommand*(graph: ModuleGraph) =
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
     of backendInvalid: doAssert false
-    if conf.selectedGC in {gcArc, gcOrc} and conf.backend != backendCpp:
-      conf.exc = excGoto
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)

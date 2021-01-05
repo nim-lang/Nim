@@ -17,13 +17,14 @@ proc main =
   map0.#[!]#
 
 discard """
-disabled:true
 $nimsuggest --tester $file
 >sug $1
-sug;;skProc;;tables.getOrDefault;;proc (t: Table[getOrDefault.A, getOrDefault.B], key: A): B;;$lib/pure/collections/tables.nim;;178;;5;;"";;100;;None
-sug;;skProc;;tables.hasKey;;proc (t: Table[hasKey.A, hasKey.B], key: A): bool;;$lib/pure/collections/tables.nim;;233;;5;;"returns true iff `key` is in the table `t`.";;100;;None
-sug;;skProc;;tables.add;;proc (t: var Table[add.A, add.B], key: A, val: B);;$lib/pure/collections/tables.nim;;309;;5;;"puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.";;100;;None
-sug;;skIterator;;tables.allValues;;iterator (t: Table[allValues.A, allValues.B], key: A): B{.inline.};;$lib/pure/collections/tables.nim;;225;;9;;"iterates over any value in the table `t` that belongs to the given `key`.";;100;;None
-sug;;skProc;;tables.clear;;proc (t: var Table[clear.A, clear.B]);;$lib/pure/collections/tables.nim;;121;;5;;"Resets the table so that it is empty.";;100;;None
+sug;;skProc;;tables.hasKey;;proc (t: Table[hasKey.A, hasKey.B], key: A): bool;;*/lib/pure/collections/tables.nim;;374;;5;;"Returns true if*";;100;;None
+sug;;skProc;;tables.add;;proc (t: var Table[add.A, add.B], key: A, val: sink B);;*/lib/pure/collections/tables.nim;;505;;5;;"Puts a new*";;100;;None
+sug;;skIterator;;tables.allValues;;iterator (t: Table[allValues.A, allValues.B], key: A): B{.inline.};;*/lib/pure/collections/tables.nim;;769;;9;;"Iterates over any*";;100;;None
+sug;;skProc;;tables.clear;;proc (t: var Table[clear.A, clear.B]);;*/lib/pure/collections/tables.nim;;567;;5;;"Resets the table so that it is empty.*";;100;;None
+sug;;skProc;;tables.contains;;proc (t: Table[contains.A, contains.B], key: A): bool;;*/lib/pure/collections/tables.nim;;392;;5;;"Alias of `hasKey*";;100;;None
 *
 """
+
+# TODO: test/fix suggestion sorting - deprecated suggestions should rank lower

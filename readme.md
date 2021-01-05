@@ -204,7 +204,7 @@ Nim. You are explicitly permitted to develop commercial applications using Nim.
 
 Please read the [copying.txt](copying.txt) file for more details.
 
-Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
+Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 
 [nim-site]: https://nim-lang.org
 [nim-forum]: https://forum.nim-lang.org

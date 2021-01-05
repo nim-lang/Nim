@@ -35,7 +35,7 @@ const
   debugEchoCode* = defined(nimVMDebug)
 
 when debugEchoCode:
-  import asciitables
+  import std/private/asciitables
 when hasFFI:
   import evalffi
 
@@ -453,7 +453,12 @@ proc sameConstant*(a, b: PNode): bool =
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit:
+      result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # refs bug #16469
+      # if we wanted to only distinguish 0.0 vs -0.0:
+      # if a.floatVal == 0.0: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # else: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true

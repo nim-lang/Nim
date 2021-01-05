@@ -62,6 +62,9 @@ when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
+  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
@@ -152,6 +155,40 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   else:
     when defined(js): fn()
     else: result = c_isnan(x)
+
+func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Returns a value with the magnitude of `x` and the sign of `y`;
+  ## this works even if x or y are NaN or zero, both of which can carry a sign.
+  runnableExamples:
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+
+    # fails in VM and JS backend
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
+  # TODO use signbit for examples
+  template impl() =
+    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+      result = abs(x)
+    elif y <= 0.0:
+      result = -abs(x)
+    else: # must be NaN
+      result = abs(x)
+
+  when defined(js): impl()
+  else:
+    when nimvm: impl()
+    else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -1159,3 +1196,4 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
+

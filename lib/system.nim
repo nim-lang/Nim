@@ -1522,10 +1522,26 @@ include "system/iterators_1"
 
 {.push stackTrace: off.}
 
-proc abs*(x: float64): float64 {.noSideEffect, inline.} =
-  if x < 0.0: -x else: x
-proc abs*(x: float32): float32 {.noSideEffect, inline.} =
-  if x < 0.0: -x else: x
+
+when defined(js):
+  proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
+else:
+  proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
+  proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
+
+proc abs*[T: float64 | float32](x: T): T {.noSideEffect, inline.} =
+  when nimvm:
+    if x < 0.0: result = -x
+    elif x == 0.0: result = 0.0 # handle 0.0, -0.0
+    else: result = x # handle NaN, > 0
+  else:
+    when defined(js): result = js_abs(x)
+    else:
+      when T is float64:
+        result = c_fabs(x)
+      else:
+        result = c_fabsf(x)
+
 proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
   if x <= y or y != y: x else: y
 proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
@@ -2182,6 +2198,8 @@ when notJSnotNims:
       memTrackerOp("moveMem", dest, size)
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
+  proc cmpMem(a, b: pointer, size: Natural): int =
+    nimCmpMem(a, b, size)
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2376,32 +2394,35 @@ when notJSnotNims:
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClP_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClP_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClE_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClE_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-    ## can be used to determine if a first class iterator has finished.
-    {.emit: """
-    `result` = ((NI*) `x`.ClE_0)[1] < 0;
-    """.}
+    ## It can be used to determine if a first class iterator has finished.
+    when T is "iterator":
+      {.emit: """
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
+      """.}
+    else:
+      {.error: "Only closure iterator is allowed!".}
 
 when defined(js):
-  when not defined(nimscript):
-    include "system/jssys"
-    include "system/reprjs"
-  else:
-    proc cmp(x, y: string): int =
-      if x == y: return 0
-      if x < y: return -1
-      return 1
+  include "system/jssys"
+  include "system/reprjs"
 
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =

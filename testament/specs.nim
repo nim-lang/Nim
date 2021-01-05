@@ -71,6 +71,7 @@ type
     disabled, enabled, leaking
   
   TSpec* = object
+    # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
     file*, cmd*: string
     input*: string

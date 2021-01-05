@@ -65,7 +65,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, nextId c.idgen, getCurrOwner(c), q.info)
+    var s = newSym(symKind, q.name, nextSymId c.idgen, getCurrOwner(c), q.info)
     s.flags.incl {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
@@ -118,7 +118,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s, nextId c.idgen)
+      x = copySym(s, nextSymId c.idgen)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
@@ -200,7 +200,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var param: PSym
 
     template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, nextId c.idgen, genericTyp.sym, genParam.sym.info)
+      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
 
     if genParam.kind == tyStatic:
       param = paramSym skConst
@@ -270,7 +270,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
-    let param = copySym(oldParam, nextId c.idgen)
+    let param = copySym(oldParam, nextSymId c.idgen)
     param.owner = prc
     param.typ = result[i]
 
@@ -339,7 +339,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn, nextId c.idgen)
+  result = copySym(fn, nextSymId c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
@@ -401,3 +401,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   dec(c.instCounter)
   c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)
+
+  # inform IC of the generic
+  #addGeneric(c.ic, result, entry.concreteTypes)

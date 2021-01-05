@@ -62,7 +62,7 @@ proc main =
 let mem = getOccupiedMem()
 main()
 
-assert msgCount == swarmSize * messagesToSend
+doAssert msgCount == swarmSize * messagesToSend
 echo "result: ", msgCount
 GC_fullCollect()
 echo "memory: ", formatSize(getOccupiedMem() - mem)

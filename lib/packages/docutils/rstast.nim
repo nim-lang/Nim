@@ -35,14 +35,18 @@ type
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
     rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
     rnLineBlock,              # the | thingie
-    rnLineBlockItem,          # sons of the | thing
+    rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
+                              # When `RstNode` text="\n" the line's empty
     rnBlockQuote,             # text just indented
     rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
     rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnDirective, # a directive
-    rnDirArg, rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock,
+    rnStandaloneHyperlink, rnHyperlink, rnRef,
+    rnDirective,              # a general directive
+    rnDirArg,                 # a directive argument (for some directives).
+                              # here are directives that are not rnDirective:
+    rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock, rnAdmonition,
     rnRawHtml, rnRawLatex,
     rnContainer,              # ``container`` directive
     rnIndex,                  # index directve:
@@ -70,6 +74,7 @@ type
     kind*: RstNodeKind       ## the node's kind
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section; and rnEnumList
+                              ## and rnAdmonition; and rnLineBlockItem
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
 
@@ -316,3 +321,17 @@ proc renderRstToJson*(node: PRstNode): string =
   ##     "sons":optional node array
   ##   }
   renderRstToJsonNode(node).pretty
+
+proc renderRstToStr*(node: PRstNode, indent=0): string =
+  ## Writes the parsed RST `node` into a compact string
+  ## representation in the format (one line per every sub-node):
+  ## ``indent - kind - text - level (if non-zero)``
+  ## (suitable for debugging of RST parsing).
+  if node == nil:
+    result.add " ".repeat(indent) & "[nil]\n"
+    return
+  result.add " ".repeat(indent) & $node.kind & "\t" &
+      (if node.text == "": "" else: "'" & node.text & "'") &
+      (if node.level == 0: "" else: "\tlevel=" & $node.level) & "\n"
+  for son in node.sons:
+    result.add renderRstToStr(son, indent=indent+2)

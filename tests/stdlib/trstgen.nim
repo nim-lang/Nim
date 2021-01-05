@@ -22,7 +22,7 @@ suite "YAML syntax highlighting":
     : value
     ..."""
     let output = rstTohtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
+    doAssert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
 <span class="Keyword">---</span>
 <span class="StringLit">a string</span><span class="Punctuation">:</span> <span class="StringLit">string</span>
 <span class="StringLit">a list</span><span class="Punctuation">:</span>
@@ -48,7 +48,7 @@ suite "YAML syntax highlighting":
       |+ # comment after header
      allowed, since more indented than parent"""
     let output = rstToHtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="StringLit">a literal block scalar</span><span class="Punctuation">:</span> <span class="Command">|</span><span class="Command"></span><span class="LongStringLit">
+    doAssert output == """<pre class = "listing"><span class="StringLit">a literal block scalar</span><span class="Punctuation">:</span> <span class="Command">|</span><span class="Command"></span><span class="LongStringLit">
   some text
   # not a comment
  </span><span class="Comment"># a comment, since less indented</span>
@@ -74,7 +74,7 @@ suite "YAML syntax highlighting":
     ...
     %TAG ! !foo:"""
     let output = rstToHtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
+    doAssert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
 <span class="Keyword">---</span>
 <span class="StringLit">%not a directive</span>
 <span class="Keyword">...</span>
@@ -95,7 +95,7 @@ suite "YAML syntax highlighting":
       not numbers: [ 42e, 0023, +32.37, 8 ball]
     }"""
     let output = rstToHtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="Punctuation">{</span>
+    doAssert output == """<pre class = "listing"><span class="Punctuation">{</span>
   <span class="StringLit">&quot;</span><span class="StringLit">quoted string&quot;</span><span class="Punctuation">:</span> <span class="DecNumber">42</span><span class="Punctuation">,</span>
   <span class="StringLit">'single quoted string'</span><span class="Punctuation">:</span> <span class="StringLit">false</span><span class="Punctuation">,</span>
   <span class="Punctuation">[</span> <span class="StringLit">list</span><span class="Punctuation">,</span> <span class="StringLit">&quot;</span><span class="StringLit">with&quot;</span><span class="Punctuation">,</span> <span class="StringLit">'entries'</span> <span class="Punctuation">]</span><span class="Punctuation">:</span> <span class="FloatNumber">73.32e-73</span><span class="Punctuation">,</span>
@@ -112,7 +112,7 @@ suite "YAML syntax highlighting":
     alias: *anchor
     """
     let output = rstToHtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="Keyword">---</span> <span class="TagStart">!!map</span>
+    doAssert output == """<pre class = "listing"><span class="Keyword">---</span> <span class="TagStart">!!map</span>
 <span class="TagStart">!!str</span> <span class="StringLit">string</span><span class="Punctuation">:</span> <span class="TagStart">!&lt;tag:yaml.org,2002:int&gt;</span> <span class="DecNumber">42</span>
 <span class="Punctuation">?</span> <span class="Label">&amp;anchor</span> <span class="TagStart">!!seq</span> <span class="Punctuation">[</span><span class="Punctuation">]</span><span class="Punctuation">:</span>
 <span class="Punctuation">:</span> <span class="TagStart">!localtag</span> <span class="StringLit">foo</span>
@@ -132,7 +132,7 @@ suite "YAML syntax highlighting":
       ?not a map key
     """
     let output = rstToHtml(input, {}, defaultConfig())
-    assert output == """<pre class = "listing"><span class="Keyword">...</span>
+    doAssert output == """<pre class = "listing"><span class="Keyword">...</span>
  <span class="StringLit">%a string</span><span class="Punctuation">:</span>
   <span class="StringLit">a:string:not:a:map</span>
 <span class="Keyword">...</span>
@@ -146,7 +146,7 @@ suite "YAML syntax highlighting":
 
 suite "RST/Markdown general":
   test "RST emphasis":
-    assert rstToHtml("*Hello* **world**!", {},
+    doAssert rstToHtml("*Hello* **world**!", {},
       newStringTable(modeStyleInsensitive)) ==
       "<em>Hello</em> <strong>world</strong>!"
 
@@ -156,9 +156,9 @@ suite "RST/Markdown general":
       b = rstToHtml("(([Nim](https://nim-lang.org/)))", {roSupportMarkdown}, defaultConfig())
       c = rstToHtml("[[Nim](https://nim-lang.org/)]", {roSupportMarkdown}, defaultConfig())
 
-    assert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
-    assert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
-    assert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""
+    doAssert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
+    doAssert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
+    doAssert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""
 
   test "Markdown tables":
     let input1 = """
@@ -170,7 +170,7 @@ suite "RST/Markdown general":
 |              | F2 without pipe
 not in table"""
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
+    doAssert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
 <tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
@@ -181,7 +181,7 @@ not in table"""
 | A1 header | A2 |
 | --- | --- |"""
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    assert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
+    doAssert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
 
   test "RST tables":
@@ -197,10 +197,10 @@ A2     A3
 A4     A5
 ====   === """
     let output1 = rstToLatex(input1, {})
-    assert "{|X|X|}" in output1  # 2 columns
-    assert count(output1, "\\\\") == 4  # 4 rows
+    doAssert "{|X|X|}" in output1  # 2 columns
+    doAssert count(output1, "\\\\") == 4  # 4 rows
     for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
-      assert cell in output1
+      doAssert cell in output1
 
     let input2 = """
 Now test 3 columns / 2 rows, and also borders containing 4 =, 3 =, 1 = signs:
@@ -212,10 +212,10 @@ A0     A1   X
        Ax   Y
 ====   ===  = """
     let output2 = rstToLatex(input2, {})
-    assert "{|X|X|X|}" in output2  # 3 columns
-    assert count(output2, "\\\\") == 2  # 2 rows
+    doAssert "{|X|X|X|}" in output2  # 3 columns
+    doAssert count(output2, "\\\\") == 2  # 2 rows
     for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
-      assert cell in output2
+      doAssert cell in output2
 
 
   test "RST adornments":
@@ -231,7 +231,7 @@ Long chapter name
 '''''''''''''''''''
 """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "Long chapter name" in output1 and "<h1" in output1
+    doAssert "Long chapter name" in output1 and "<h1" in output1
 
     let input2 = """
 Short chapter name:
@@ -240,7 +240,7 @@ ChA
 ===
 """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    assert "ChA" in output2 and "<h1" in output2
+    doAssert "ChA" in output2 and "<h1" in output2
 
     let input3 = """
 Very short chapter name:
@@ -249,7 +249,7 @@ X
 ~
 """
     let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
-    assert "X" in output3 and "<h1" in output3
+    doAssert "X" in output3 and "<h1" in output3
 
     let input4 = """
 Check that short underline is not enough to make section:
@@ -259,7 +259,7 @@ Wrong chapter
 
 """
     let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
-    assert "Wrong chapter" in output4 and "<h1" notin output4
+    doAssert "Wrong chapter" in output4 and "<h1" notin output4
 
     let input5 = """
 Check that punctuation after adornment and indent are not detected as adornment.
@@ -269,7 +269,7 @@ Some chapter
 
   "punctuation symbols" """
     let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
-    assert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
+    doAssert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
 
 
   test "RST links":
@@ -278,7 +278,7 @@ Want to learn about `my favorite programming language`_?
 
 .. _my favorite programming language: https://nim-lang.org"""
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "<a" in output1 and "href=\"https://nim-lang.org\"" in output1
+    doAssert "<a" in output1 and "href=\"https://nim-lang.org\"" in output1
 
   test "RST transitions":
     let input1 = """
@@ -289,7 +289,7 @@ context1
 context2
 """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "<hr" in output1
+    doAssert "<hr" in output1
 
     let input2 = """
 This is too short to be a transition:
@@ -299,7 +299,7 @@ This is too short to be a transition:
 context2
 """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    assert "<hr" notin output2
+    doAssert "<hr" notin output2
 
   test "RST literal block":
     let input1 = """
@@ -309,7 +309,7 @@ Test literal block
 
   check """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "<pre>" in output1
+    doAssert "<pre>" in output1
 
   test "Markdown code block":
     let input1 = """
@@ -317,7 +317,7 @@ Test literal block
 let x = 1
 ``` """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert "<pre" in output1 and "class=\"Keyword\"" notin output1
+    doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
 
     let input2 = """
 Parse the block with language specifier:
@@ -325,7 +325,7 @@ Parse the block with language specifier:
 let x = 1
 ``` """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    assert "<pre" in output2 and "class=\"Keyword\"" in output2
+    doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
 
   test "RST comments":
     let input1 = """
@@ -334,7 +334,7 @@ Check that comment disappears:
 ..
   some comment """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    assert output1 == "Check that comment disappears:"
+    doAssert output1 == "Check that comment disappears:"
 
   test "RST line blocks":
     let input1 = """
@@ -353,13 +353,43 @@ Test1
     var output1: string
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
     rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
-    assert rstGenera.meta[metaTitle] == "Test1"
+    doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'
-    assert "line block<br />" in output1
-    assert "other line<br />" in output1
+    doAssert output1 == "<p><br/><br/>line block<br/>other line<br/></p>"
     let output1l = rstToLatex(input1, {})
-    assert "line block\\\\" in output1l
-    assert "other line\\\\" in output1l
+    doAssert "line block\n\n" in output1l
+    doAssert "other line\n\n" in output1l
+    doAssert output1l.count("\\vspace") == 2 + 2  # +2 surrounding paddings
+
+    let input2 = dedent"""
+      Paragraph1
+      
+      |
+
+      Paragraph2"""
+
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
+
+    let input3 = dedent"""
+      | xxx
+      |   yyy
+      |     zzz"""
+
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    doAssert "xxx<br/>" in output3
+    doAssert "<span style=\"margin-left: 1.0em\">yyy</span><br/>" in output3
+    doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output3
+
+    # check that '|   ' with a few spaces is still parsed as new line
+    let input4 = dedent"""
+      | xxx
+      |      
+      |     zzz"""
+
+    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    doAssert "xxx<br/><br/>" in output4
+    doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output4
 
   test "RST enumerated lists":
     let input1 = dedent """
@@ -382,8 +412,8 @@ Test1
       """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
     for i in 1..5:
-      assert ($i & ". line" & $i) notin output1
-      assert ("<li>line" & $i & " " & $i & "</li>") in output1
+      doAssert ($i & ". line" & $i) notin output1
+      doAssert ("<li>line" & $i & " " & $i & "</li>") in output1
 
     let input2 = dedent """
       3. line3
@@ -404,8 +434,8 @@ Test1
       """
     let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
     for i in [3, 4, 5, 7, 8]:
-      assert ($i & ". line" & $i) notin output2
-      assert ("<li>line" & $i & "</li>") in output2
+      doAssert ($i & ". line" & $i) notin output2
+      doAssert ("<li>line" & $i & "</li>") in output2
 
     # check that nested enumerated lists work
     let input3 = dedent """
@@ -413,9 +443,9 @@ Test1
       2. string2
       """
     let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
-    assert count(output3, "<ol ") == 2
-    assert count(output3, "</ol>") == 2
-    assert "<li>string1</li>" in output3 and "<li>string2</li>" in output3
+    doAssert count(output3, "<ol ") == 2
+    doAssert count(output3, "</ol>") == 2
+    doAssert "<li>string1</li>" in output3 and "<li>string2</li>" in output3
 
     let input4 = dedent """
       Check that enumeration specifiers are respected
@@ -429,12 +459,12 @@ Test1
       e) string6
       """
     let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
-    assert count(output4, "<ol ") == 4
-    assert count(output4, "</ol>") == 4
+    doAssert count(output4, "<ol ") == 4
+    doAssert count(output4, "</ol>") == 4
     for enumerator in [9, 12]:
-      assert "start=\"$1\"" % [$enumerator] in output4
+      doAssert "start=\"$1\"" % [$enumerator] in output4
     for enumerator in [2, 5]:  # 2=b, 5=e
-      assert "start=\"$1\"" % [$enumerator] in output4
+      doAssert "start=\"$1\"" % [$enumerator] in output4
 
     let input5 = dedent """
       Check that auto-numbered enumeration lists work.
@@ -449,9 +479,9 @@ Test1
       #) string6
       """
     let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
-    assert count(output5, "<ol ") == 2
-    assert count(output5, "</ol>") == 2
-    assert count(output5, "<li>") == 5
+    doAssert count(output5, "<ol ") == 2
+    doAssert count(output5, "</ol>") == 2
+    doAssert count(output5, "<li>") == 5
 
     let input5a = dedent """
       Auto-numbered RST list can start with 1 even when Markdown support is on.
@@ -461,9 +491,9 @@ Test1
       #. string3
       """
     let output5a = rstToHtml(input5a, {roSupportMarkdown}, defaultConfig())
-    assert count(output5a, "<ol ") == 1
-    assert count(output5a, "</ol>") == 1
-    assert count(output5a, "<li>") == 3
+    doAssert count(output5a, "<ol ") == 1
+    doAssert count(output5a, "</ol>") == 1
+    doAssert count(output5a, "<li>") == 3
 
     let input6 = dedent """
       ... And for alphabetic enumerators too!
@@ -473,10 +503,10 @@ Test1
       #. string3
       """
     let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
-    assert count(output6, "<ol ") == 1
-    assert count(output6, "</ol>") == 1
-    assert count(output6, "<li>") == 3
-    assert "start=\"2\"" in output6 and "class=\"loweralpha simple\"" in output6
+    doAssert count(output6, "<ol ") == 1
+    doAssert count(output6, "</ol>") == 1
+    doAssert count(output6, "<li>") == 3
+    doAssert "start=\"2\"" in output6 and "class=\"loweralpha simple\"" in output6
 
     let input7 = dedent """
       ... And for uppercase alphabetic enumerators.
@@ -486,10 +516,10 @@ Test1
       #. string3
       """
     let output7 = rstToHtml(input7, {roSupportMarkdown}, defaultConfig())
-    assert count(output7, "<ol ") == 1
-    assert count(output7, "</ol>") == 1
-    assert count(output7, "<li>") == 3
-    assert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
+    doAssert count(output7, "<ol ") == 1
+    doAssert count(output7, "</ol>") == 1
+    doAssert count(output7, "<li>") == 3
+    doAssert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
 
   test "Markdown enumerated lists":
     let input1 = dedent """
@@ -505,10 +535,10 @@ Test1
       """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
     for i in 1..5:
-      assert ($i & ". line" & $i) notin output1
-      assert ("<li>line" & $i & "</li>") in output1
-    assert count(output1, "<ol ") == 2
-    assert count(output1, "</ol>") == 2
+      doAssert ($i & ". line" & $i) notin output1
+      doAssert ("<li>line" & $i & "</li>") in output1
+    doAssert count(output1, "<ol ") == 2
+    doAssert count(output1, "</ol>") == 2
 
   test "RST bullet lists":
     let input1 = dedent """
@@ -531,9 +561,69 @@ Test1
       """
     let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
     for i in 1..5:
-      assert ("<li>line" & $i & " " & $i & "</li>") in output1
-    assert count(output1, "<ul ") == 1
-    assert count(output1, "</ul>") == 1
+      doAssert ("<li>line" & $i & " " & $i & "</li>") in output1
+    doAssert count(output1, "<ul ") == 1
+    doAssert count(output1, "</ul>") == 1
+
+  test "Nim (RST extension) code-block":
+    # check that presence of fields doesn't consume the following text as
+    # its code (which is a literal block)
+    let input0 = dedent """
+      .. code-block:: nim
+         :number-lines: 0
+
+      Paragraph1"""
+    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    doAssert "<p>Paragraph1</p>" in output0
+
+  test "RST admonitions":
+    # check that all admonitions are implemented
+    let input0 = dedent """
+      .. admonition:: endOf admonition
+      .. attention:: endOf attention
+      .. caution:: endOf caution
+      .. danger:: endOf danger
+      .. error:: endOf error
+      .. hint:: endOf hint
+      .. important:: endOf important
+      .. note:: endOf note
+      .. tip:: endOf tip
+      .. warning:: endOf warning
+    """
+    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    for a in ["admonition", "attention", "caution", "danger", "error", "hint",
+        "important", "note", "tip", "warning" ]:
+      doAssert "endOf " & a & "</div>" in output0
+
+    # Test that admonition does not swallow up the next paragraph.
+    let input1 = dedent """
+      .. error:: endOfError
+
+      Test paragraph.
+    """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    doAssert "endOfError</div>" in output1
+    doAssert "<p>Test paragraph. </p>" in output1
+    doAssert "class=\"admonition admonition-error\"" in output1
+
+    # Test that second line is parsed as continuation of the first line.
+    let input2 = dedent """
+      .. error:: endOfError
+        Test2p.
+
+      Test paragraph.
+    """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    doAssert "endOfError Test2p.</div>" in output2
+    doAssert "<p>Test paragraph. </p>" in output2
+    doAssert "class=\"admonition admonition-error\"" in output2
+
+    let input3 = dedent """
+      .. note:: endOfNote
+    """
+    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    doAssert "endOfNote</div>" in output3
+    doAssert "class=\"admonition admonition-info\"" in output3
 
 suite "RST/Code highlight":
   test "Basic Python code highlight":

@@ -84,5 +84,5 @@ proc main(): Future[void] =
 for i in 0..9:
   waitFor main()
   GC_fullCollect()
-  assert getOccupiedMem() < 1024
+  doAssert getOccupiedMem() < 1024
 echo "success"
