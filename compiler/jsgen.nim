@@ -1673,11 +1673,23 @@ proc arrayTypeForElemType(typ: PType): string =
   of tyFloat64, tyFloat: "Float64Array"
   else: ""
 
+import astalgo
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
-    result = putToSeq("0", indirect)
+    # if typ.
+    # dbg typ.kind, typ
+    # if typ.name.s == "JsBigInt":
+    if $t.sym.loc.r == "bigint":
+    # if $typ == "JsBigInt":
+    #   dbg t
+    #   dbg t.sym.loc.r == "bigint"
+    #   debug(typ)
+    #   debug(t)
+      result = putToSeq("0n", indirect)
+    else:
+      result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned:
@@ -1752,18 +1764,24 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
     useGlobalPragmas = sfGlobal in v.flags and ({sfPure, sfThread} * v.flags != {})
 
+  dbg p.prc, v, p.config$n.info, n.kind, n.renderTree, v.constraint.isNil
+
   if v.constraint.isNil:
     if useReloadingGuard:
+      dbg()
       lineF(p, "var $1;$n", varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     elif useGlobalPragmas:
+      dbg()
       lineF(p, "if (globalThis.$1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     else:
+      dbg()
       varCode = "var $2"
+    dbg varCode
   else:
     # Is this really a thought through feature?  this basically unused
     # feature makes it impossible for almost all format strings in
@@ -1771,12 +1789,23 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode = v.constraint.strVal
 
   if n.kind == nkEmpty:
+    dbg()
     if not isIndirect(v) and
       v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p, v.typ) == etyBaseIndex:
+      dbg()
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
-      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, createVar(p, v.typ, isIndirect(v))]))
+      dbg()
+      dbg v.typ
+      dbg v.typ.kind
+      dbg returnType
+      dbg varName
+      dbg createVar(p, v.typ, isIndirect(v))
+      let temp = runtimeFormat(varCode & " = $3;$n", [returnType, varName, createVar(p, v.typ, isIndirect(v))])
+      dbg temp
+      line(p, temp)
+      # line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, createVar(p, v.typ, isIndirect(v))]))
   else:
     gen(p, n, a)
     case mapType(p, v.typ)
