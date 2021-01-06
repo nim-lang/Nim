@@ -100,14 +100,15 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     result = moduleFromRodFile(graph, fileIdx)
+    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:
-      let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
       result = newModule(graph, fileIdx)
       result.flags.incl flags
       registerModule(graph, result)
       processModuleAux()
     else:
       partialInitModule(result, graph, fileIdx, filename)
+      # XXX replay the pragmas here!
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

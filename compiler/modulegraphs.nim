@@ -25,7 +25,7 @@ type
     converters*: seq[PSym]
     patterns*: seq[PSym]
     pureEnums*: seq[PSym]
-    interf*: TStrTable
+    interf: TStrTable
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
