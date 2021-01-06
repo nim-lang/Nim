@@ -117,3 +117,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasInvariant")
   defineSymbol("nimHasStacktraceMsgs")
   defineSymbol("nimHasStacktracesModule")
+  defineSymbol("nimHasJsBigIntBackend")
