@@ -119,7 +119,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
     when key notin discKeys:
       if json.hasKey key:
         numMatched.inc
-        fromJson(val, json[key])
+        fromJson(val, json[key], opt)
       elif opt.allowMissingKeys:
         # if there are no discriminant keys the `oldObj` must always have the
         # same keys as the new one. Otherwise we must check, because they could

@@ -123,6 +123,9 @@ template fn() =
       a: int
       b: string
       c: float
+    type Bar = object
+      foo: Foo
+      boo: string
     var f: seq[Foo]
     try:
       fromJson(f, parseJson """[{"b": "bbb"}]""")
@@ -131,6 +134,9 @@ template fn() =
       doAssert true
     fromJson(f, parseJson """[{"b": "bbb"}]""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
     doAssert f == @[Foo(a: 0, b: "bbb", c: 0.0)]
+    var b: Bar
+    fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
 
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"
