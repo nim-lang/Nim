@@ -12,7 +12,7 @@
 
 template volatileLoad*[T](src: ptr T): T =
   ## Generates a volatile load of the value stored in the container `src`.
-  ## Note that this only effects code generation on `C` like backends
+  ## Note that this only effects code generation on `C` like backends.
   when nimvm:
     src[]
   else:
@@ -26,7 +26,7 @@ template volatileLoad*[T](src: ptr T): T =
 template volatileStore*[T](dest: ptr T, val: T) =
   ## Generates a volatile store into the container `dest` of the value
   ## `val`. Note that this only effects code generation on `C` like
-  ## backends
+  ## backends.
   when nimvm:
     dest[] = val
   else:

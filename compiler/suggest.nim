@@ -474,26 +474,37 @@ proc ensureSeq[T](x: var seq[T]) =
 
 proc suggestSym*(g: ModuleGraph; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
   ## misnamed: should be 'symDeclared'
+  let conf = g.config
   when defined(nimsuggest):
-    if g.config.suggestVersion == 0:
+    if conf.suggestVersion == 0:
       if s.allUsages.len == 0:
         s.allUsages = @[info]
       else:
         s.addNoDup(info)
 
-    if g.config.ideCmd == ideUse:
+    if conf.ideCmd == ideUse:
       findUsages(g, info, s, usageSym)
-    elif g.config.ideCmd == ideDef:
+    elif conf.ideCmd == ideDef:
       findDefinition(g, info, s, usageSym)
-    elif g.config.ideCmd == ideDus and s != nil:
-      if isTracked(info, g.config.m.trackPos, s.name.s.len):
-        suggestResult(g.config, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
+    elif conf.ideCmd == ideDus and s != nil:
+      if isTracked(info, conf.m.trackPos, s.name.s.len):
+        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
       findUsages(g, info, s, usageSym)
-    elif g.config.ideCmd == ideHighlight and info.fileIndex == g.config.m.trackPos.fileIndex:
-      suggestResult(g.config, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif g.config.ideCmd == ideOutline and info.fileIndex == g.config.m.trackPos.fileIndex and
-        isDecl:
-      suggestResult(g.config, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
+    elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
+      suggestResult(conf, symToSuggest(g, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
+    elif conf.ideCmd == ideOutline and isDecl:
+      # if a module is included then the info we have is inside the include and
+      # we need to walk up the owners until we find the outer most module,
+      # which will be the last skModule prior to an skPackage.
+      var
+        parentFileIndex = info.fileIndex # assume we're in the correct module
+        parentModule = s.owner
+      while parentModule != nil and parentModule.kind == skModule:
+        parentFileIndex = parentModule.info.fileIndex
+        parentModule = parentModule.owner
+
+      if parentFileIndex == conf.m.trackPos.fileIndex:
+        suggestResult(conf, symToSuggest(g, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:

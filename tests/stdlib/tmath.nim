@@ -10,6 +10,10 @@ import std/[math, random, os]
 import std/[unittest]
 import std/[sets, tables]
 
+
+# Function for approximate comparison of floats
+proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+
 block: # random int
   block: # there might be some randomness
     var set = initHashSet[int](128)
@@ -158,10 +162,6 @@ block:
     doAssert(erf(6.0) > erf(5.0))
     doAssert(erfc(6.0) < erfc(5.0))
 
-    proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
-      # Function for approximate comparison of floats
-      # xxx use `almostEqual`
-
     block: # prod
       doAssert prod([1, 2, 3, 4]) == 24
       doAssert prod([1.5, 3.4]).almostEqual 5.1
@@ -170,19 +170,19 @@ block:
 
     block: # round() tests
       # Round to 0 decimal places
-      doAssert round(54.652) ==~ 55.0
-      doAssert round(54.352) ==~ 54.0
-      doAssert round(-54.652) ==~ -55.0
-      doAssert round(-54.352) ==~ -54.0
-      doAssert round(0.0) ==~ 0.0
+      doAssert round(54.652) == 55.0
+      doAssert round(54.352) == 54.0
+      doAssert round(-54.652) == -55.0
+      doAssert round(-54.352) == -54.0
+      doAssert round(0.0) == 0.0
 
     block: # splitDecimal() tests
-      doAssert splitDecimal(54.674).intpart ==~ 54.0
+      doAssert splitDecimal(54.674).intpart == 54.0
       doAssert splitDecimal(54.674).floatpart ==~ 0.674
-      doAssert splitDecimal(-693.4356).intpart ==~ -693.0
+      doAssert splitDecimal(-693.4356).intpart == -693.0
       doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-      doAssert splitDecimal(0.0).intpart ==~ 0.0
-      doAssert splitDecimal(0.0).floatpart ==~ 0.0
+      doAssert splitDecimal(0.0).intpart == 0.0
+      doAssert splitDecimal(0.0).floatpart == 0.0
 
     block: # trunc tests for vcc
       doAssert(trunc(-1.1) == -1)
@@ -257,8 +257,8 @@ block:
       doAssert floorDiv(-8, -3) == 2
       doAssert floorMod(-8, -3) == -2
 
-      doAssert floorMod(8.0, -3.0) ==~ -1.0
-      doAssert floorMod(-8.5, 3.0) ==~ 0.5
+      doAssert floorMod(8.0, -3.0) == -1.0
+      doAssert floorMod(-8.5, 3.0) == 0.5
 
     block: # euclDiv/euclMod
       doAssert euclDiv(8, 3) == 2
@@ -273,8 +273,8 @@ block:
       doAssert euclDiv(-8, -3) == 3
       doAssert euclMod(-8, -3) == 1
 
-      doAssert euclMod(8.0, -3.0) ==~ 2.0
-      doAssert euclMod(-8.5, 3.0) ==~ 0.5
+      doAssert euclMod(8.0, -3.0) == 2.0
+      doAssert euclMod(-8.5, 3.0) == 0.5
 
       doAssert euclDiv(9, 3) == 3
       doAssert euclMod(9, 3) == 0
@@ -349,6 +349,28 @@ template main =
     doAssert copySign(-NaN, 0.0).isNaN
     doAssert copySign(-NaN, -0.0).isNaN
 
+    block: # round() tests
+      # Round to 0 decimal places
+      doAssert round(54.652) == 55.0
+      doAssert round(54.352) == 54.0
+      doAssert round(-54.652) == -55.0
+      doAssert round(-54.352) == -54.0
+      doAssert round(0.0) == 0.0
+      doAssert 1 / round(0.0) == Inf
+      doAssert 1 / round(-0.0) == -Inf
+      doAssert round(Inf) == Inf
+      doAssert round(-Inf) == -Inf
+      doAssert round(NaN).isNaN
+      doAssert round(-NaN).isNaN
+      doAssert round(-0.5) == -1.0
+      doAssert round(0.5) == 1.0
+      doAssert round(-1.5) == -2.0
+      doAssert round(1.5) == 2.0
+      doAssert round(-2.5) == -3.0
+      doAssert round(2.5) == 3.0
+      doAssert round(2.5'f32) == 3.0'f32
+      doAssert round(2.5'f64) == 3.0'f64
+
     when nimvm:
       discard
     else:
@@ -356,6 +378,19 @@ template main =
         doAssert copySign(-1.0, -NaN) == 1.0
         doAssert copySign(10.0, -NaN) == 10.0
         doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
+
+  block:
+    doAssert 1.0 / abs(-0.0) == Inf
+    doAssert 1.0 / abs(0.0) == Inf
+    doAssert -1.0 / abs(-0.0) == -Inf
+    doAssert -1.0 / abs(0.0) == -Inf
+    doAssert abs(0.0) == 0.0
+    doAssert abs(0.0'f32) == 0.0'f32
+
+    doAssert abs(Inf) == Inf
+    doAssert abs(-Inf) == Inf
+    doAssert abs(NaN).isNaN
+    doAssert abs(-NaN).isNaN
 
 static: main()
 main()
