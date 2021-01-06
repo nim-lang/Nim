@@ -72,5 +72,5 @@ template endsWithImpl*[T: string | cstring](s, suffix: T) =
   if i >= suffixLen: return true
 
 
-func cmpNimIdentifier*[T: string | cstring](a, b: T): int {.noSideEffect.} =
+func cmpNimIdentifier*[T: string | cstring](a, b: T): int =
   cmpIgnoreStyleImpl(a, b, true)

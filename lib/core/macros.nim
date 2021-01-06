@@ -1390,7 +1390,6 @@ when defined(nimVmEqIdent):
 
 else:
   from std/private/strimpl import cmpNimIdentifier
-  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
 
   proc eqIdent*(a, b: string): bool = cmpNimIdentifier(a, b) == 0
     ## Check if two idents are equal.
