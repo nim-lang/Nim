@@ -226,6 +226,16 @@ template main() =
     doAssert signbit(x2)
     doAssert signbit(x3)
 
+  block: # almostEqual
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert not almostEqual(Inf, -Inf)
+    doAssert not almostEqual(-Inf, Inf)
+    doAssert not almostEqual(Inf, NaN)
+    doAssert not almostEqual(NaN, NaN)
+
   block: # copySign
     doAssert copySign(10.0, 1.0) == 10.0
     doAssert copySign(10.0, -1.0) == -10.0
@@ -269,17 +279,12 @@ template main() =
     doAssert copySign(-NaN, 0.0).isNaN
     doAssert copySign(-NaN, -0.0).isNaN
 
-  block: # almostEqual
-    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
-    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
-    doAssert almostEqual(Inf, Inf)
-    doAssert almostEqual(-Inf, -Inf)
-    doAssert not almostEqual(Inf, -Inf)
-    doAssert not almostEqual(-Inf, Inf)
-    doAssert not almostEqual(Inf, NaN)
-    doAssert not almostEqual(NaN, NaN)
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(-1.0, -NaN) == -1.0
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+    doAssert copySign(1.0, -NaN) == -1.0 # pending https://github.com/timotheecour/Nim/issues/499
 
-  block: # round() tests
+  block: # round
     block: # Round to 0 decimal places
       doAssert round(54.652) == 55.0
       doAssert round(54.352) == 54.0
@@ -300,6 +305,7 @@ template main() =
       doAssert round(2.5) == 3.0
       doAssert round(2.5'f32) == 3.0'f32
       doAssert round(2.5'f64) == 3.0'f64
+
     block: # func round*[T: float32|float64](x: T, places: int): T
       doAssert round(54.345, 0) == 54.0
       template fn(x) =
@@ -311,15 +317,7 @@ template main() =
       fn(54.346)
       fn(54.346'f32)
 
-    when nimvm:
-      discard
-    else:
-      when not defined(js):
-        doAssert copySign(-1.0, -NaN) == -1.0
-        doAssert copySign(10.0, -NaN) == -10.0
-        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
-
-  block:
+  block: # abs
     doAssert 1.0 / abs(-0.0) == Inf
     doAssert 1.0 / abs(0.0) == Inf
     doAssert -1.0 / abs(-0.0) == -Inf
