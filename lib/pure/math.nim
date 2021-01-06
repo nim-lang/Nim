@@ -175,20 +175,17 @@ when defined(js):
 
   proc toBitsImpl(x: float): array[2, uint32] =
     let buffer = newArrayBuffer(8)
-    let floatBuffer = newFloat64Array(buffer)
-    let uintBuffer = newUint32Array(buffer)
-    floatBuffer[0] = x
-    {.emit: "`result` = `uintBuffer`;".}
-    # result = cast[array[2, uint32]](uintBuffer)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
+    {.emit: "`result` = `b`;".}
+    # result = cast[array[2, uint32]](b)
 
   proc jsSetSign(x: float, sgn: bool): float =
     asm """
     function updateBit(num, bitPos, bitVal) {
-      const bitVal2 = bitVal ? 1 : 0;
-      const mask = ~(1 << bitPos);
-      return (num & mask) | (bitVal2 << bitPos);
+      return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
-
     const buffer = new ArrayBuffer(8);
     const a = new Float64Array(buffer);
     const b = new Uint32Array(buffer);
