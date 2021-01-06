@@ -12,14 +12,14 @@ func `<=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".}
 func `==`*(x, y: JsBigInt): bool {.importjs: "(# === #)".}
 func inc*(x: var JsBigInt) {.importjs: "[#][0][0]++".}
 func inc2*(x: var JsBigInt) {.importjs: "#++".}
-func toString*(this: JsBigInt): cstring {.importjs: "#.toString()".}
+func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".}
 func `$`*(this: JsBigInt): string =
-  $toString(this)
+  $toCstring(this)
 
 block:
   doAssert defined(nimHasJsBigIntBackend)
-  let z1=big"10"
-  let z2=big"15"
+  let z1 = big"10"
+  let z2 = big"15"
   doAssert z1 == big"10"
   doAssert z1 == z1
   doAssert z1 != z2
