@@ -222,20 +222,18 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
 
   # TODO: use signbit for examples
-  template implVM() =
-    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
-      result = abs(x)
-    elif y <= 0.0:
-      result = -abs(x)
-    else: # must be NaN
-      result = abs(x)
-
   when defined(js):
     let uintBuffer = toBitsImpl(y)
     let sgn = (uintBuffer[1] shr 31) != 0
     result = jsSetSign(x, sgn)
   else:
-    when nimvm: implVM()
+    when nimvm: # not exact but we have a vmops for recent enough nim
+      if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+        result = abs(x)
+      elif y <= 0.0:
+        result = -abs(x)
+      else: # must be NaN
+        result = abs(x)
     else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
