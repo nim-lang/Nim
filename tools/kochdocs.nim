@@ -136,7 +136,6 @@ lib/wrappers/openssl.nim
 lib/posix/posix.nim
 lib/posix/linux.nim
 lib/posix/termios.nim
-lib/js/jscore.nim
 """.splitWhitespace()
 
   # some of these are include files so shouldn't be docgen'd

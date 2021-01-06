@@ -2394,22 +2394,31 @@ when notJSnotNims:
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClP_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClP_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClE_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClE_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-    ## can be used to determine if a first class iterator has finished.
-    {.emit: """
-    `result` = ((NI*) `x`.ClE_0)[1] < 0;
-    """.}
+    ## It can be used to determine if a first class iterator has finished.
+    when T is "iterator":
+      {.emit: """
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
+      """.}
+    else:
+      {.error: "Only closure iterator is allowed!".}
 
 when defined(js):
   include "system/jssys"

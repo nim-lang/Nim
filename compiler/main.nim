@@ -192,8 +192,6 @@ proc mainCommand*(graph: ModuleGraph) =
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
     of backendInvalid: doAssert false
-    if conf.selectedGC in {gcArc, gcOrc} and conf.backend != backendCpp:
-      conf.exc = excGoto
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)

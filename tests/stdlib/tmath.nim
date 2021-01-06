@@ -1,13 +1,14 @@
 discard """
-  action: run
-  matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
+  targets: "c cpp js"
+  matrix:"; -d:danger"
 """
 
-# xxx: fix bugs for js then add: targets:"c js"
+# xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
+# but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
-import math, random, os
-import unittest
-import sets, tables
+import std/[math, random, os]
+import std/[unittest]
+import std/[sets, tables]
 
 block: # random int
   block: # there might be some randomness
@@ -157,13 +158,13 @@ block:
     doAssert(erf(6.0) > erf(5.0))
     doAssert(erfc(6.0) < erfc(5.0))
 
-
-    # Function for approximate comparison of floats
     proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
+      # Function for approximate comparison of floats
+      # xxx use `almostEqual`
 
     block: # prod
       doAssert prod([1, 2, 3, 4]) == 24
-      doAssert prod([1.5, 3.4]) == 5.1
+      doAssert prod([1.5, 3.4]).almostEqual 5.1
       let x: seq[float] = @[]
       doAssert prod(x) == 1.0
 

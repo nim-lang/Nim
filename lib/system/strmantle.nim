@@ -24,26 +24,26 @@ const digitsTable = "0001020304050607080910111213141516171819" &
   #     else:
   #       res.add $i
   #   doAssert res == digitsTable
-  
+
 
 func digits10(num: uint64): int {.noinline.} =
-  if num < 10:
+  if num < 10'u64:
     result = 1
-  elif num < 100:
+  elif num < 100'u64:
     result = 2
-  elif num < 1_000:
+  elif num < 1_000'u64:
     result = 3
-  elif num < 10_000:
+  elif num < 10_000'u64:
     result = 4
-  elif num < 100_000:
+  elif num < 100_000'u64:
     result = 5
-  elif num < 1_000_000:
+  elif num < 1_000_000'u64:
     result = 6
-  elif num < 10_000_000:
+  elif num < 10_000_000'u64:
     result = 7
-  elif num < 100_000_000:
+  elif num < 100_000_000'u64:
     result = 8
-  elif num < 1_000_000_000:
+  elif num < 1_000_000_000'u64:
     result = 9
   elif num < 10_000_000_000'u64:
     result = 10

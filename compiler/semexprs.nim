@@ -408,8 +408,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     of "closure":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator notin t.flags
+            t.callConv == ccClosure
     of "iterator":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
