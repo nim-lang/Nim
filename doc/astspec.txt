@@ -1033,7 +1033,7 @@ AST:
       nnkEmpty(), # no pragmas here
       nnkOfInherit(
         nnkIdent("RootObj") # inherits from RootObj
-      )
+      ),
       nnkEmpty()
     )
   )
