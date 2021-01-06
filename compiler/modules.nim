@@ -67,8 +67,6 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   result.owner = packSym
   result.position = int fileIdx
 
-  graph.registerModule(result)
-
   #initStrTable(result.tab(graph))
   when false:
     strTableAdd(result.tab, result) # a module knows itself
@@ -87,6 +85,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
   partialInitModule(result, graph, fileIdx, filename)
+  graph.registerModule(result)
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
   var flags = flags
@@ -100,17 +99,15 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-    when false:
-      # XXX entry point for module loading from the rod file
-      result = loadModuleSym(graph, fileIdx, filename)
-    when true:
+    result = moduleFromRodFile(graph, fileIdx)
+    if result == nil:
+      let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
       result = newModule(graph, fileIdx)
       result.flags.incl flags
       registerModule(graph, result)
+      processModuleAux()
     else:
       partialInitModule(result, graph, fileIdx, filename)
-    processModuleAux()
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

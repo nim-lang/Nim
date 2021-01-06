@@ -280,7 +280,12 @@ proc isDirty*(g: ModuleGraph; m: PSym): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
-  if result == nil:
+  if result == nil and g.config.symbolFiles != disabledSf:
     result = loadProcBody(g.config, g.cache, g.packed, s)
     s.ast[bodyPos] = result
   assert result != nil
+
+proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+  ## Returns 'nil' if the module needs to be recompiled.
+  if g.config.symbolFiles != disabledSf:
+    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)

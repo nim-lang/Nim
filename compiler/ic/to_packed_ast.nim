@@ -535,6 +535,7 @@ type
     fromDisk: PackedModule
     syms: seq[PSym] # indexed by itemId
     types: seq[PType]
+    module: PSym # the one true module symbol.
     iface: Table[PIdent, seq[PackedItemId]] # PackedItemId so that it works with reexported symbols too
 
   PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
@@ -679,10 +680,16 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): P
 
     if g[si].syms[s.item] == nil:
       let packed = addr(g[si].fromDisk.sh.syms[s.item])
-      result = symHeaderFromPacked(c, g, packed[], si, s.item)
-      # store it here early on, so that recursions work properly:
-      g[si].syms[s.item] = result
-      symBodyFromPacked(c, g, packed[], si, s.item, result)
+
+      if packed.kind != skModule:
+        result = symHeaderFromPacked(c, g, packed[], si, s.item)
+        # store it here early on, so that recursions work properly:
+        g[si].syms[s.item] = result
+        symBodyFromPacked(c, g, packed[], si, s.item, result)
+      else:
+        result = g[si].module
+        assert result != nil
+
     else:
       result = g[si].syms[s.item]
 
@@ -725,7 +732,7 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): 
     else:
       result = g[si].types[t.item]
 
-proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache) =
+proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
   for e in m.fromDisk.exports:
     let nameLit = e[0]
@@ -734,8 +741,15 @@ proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache) 
     let nameLit = re[0]
     m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(re[1])
 
-proc needsRecompile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                     fileIdx: FileIndex): bool =
+  let filename = AbsoluteFile toFullPath(conf, fileIdx)
+  # We cannot call ``newSym`` here, because we have to circumvent the ID
+  # mechanism, which we do in order to assign each module a persistent ID.
+  m.module = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+                  name: getIdent(cache, splitFile(filename).name),
+                  info: newLineInfo(fileIdx, 1, 1))
+
+proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                    fileIdx: FileIndex): bool =
   let m = int(fileIdx)
   if m >= g.len:
     g.setLen(m+1)
@@ -757,7 +771,7 @@ proc needsRecompile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCach
           result = true
 
       if not result:
-        setupLookupTables(g[m], conf, cache)
+        setupLookupTables(g[m], conf, cache, fileIdx)
       g[m].status = if result: outdated else: loaded
     else:
       loadError(err, rod)
@@ -767,6 +781,15 @@ proc needsRecompile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCach
     result = false
   of outdated:
     result = true
+
+proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                        fileIdx: FileIndex): PSym =
+  ## Returns 'nil' if the module needs to be recompiled.
+  if needsRecompile(g, conf, cache, fileIdx):
+    result = nil
+  else:
+    result = g[int fileIdx].module
+    assert result != nil
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(
