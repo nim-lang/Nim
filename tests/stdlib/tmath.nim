@@ -310,6 +310,11 @@ template main =
     doAssert signbit(-0.1)
     doAssert not signbit(0.1)
 
+    doAssert not signbit(Inf)
+    doAssert signbit(-Inf)
+    doAssert not signbit(NaN)
+    doAssert not signbit(-NaN)
+
   block: # isNaN
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
