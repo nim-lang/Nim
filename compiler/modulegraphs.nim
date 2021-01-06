@@ -121,28 +121,61 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
-template tab*(m: PSym; g: ModuleGraph): TStrTable =
+template semtab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
-proc cachedSystemModule(g: ModuleGraph): bool {.inline.} =
-  g.systemModule.position < g.packed.len and g.packed[g.systemModule.position].status == loaded
+proc cachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
+  m.position < g.packed.len and g.packed[m.position].status == loaded
 
-proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
-  if cachedSystemModule(g):
-    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(g.systemModule.position), name)
-  else:
-    result = strTableGet(g.ifaces[g.systemModule.position].interf, name)
+type
+  ModuleIter* = object
+    fromRod: bool
+    modIndex: int
+    ti: TIdentIter
+    rodIt: RodIter
 
-iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
-  if cachedSystemModule(g):
-    for r in interfaceSymbols(g.config, g.cache, g.packed, FileIndex(g.systemModule.position), name):
-      yield r
+proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  assert m.kind == skModule
+  mi.modIndex = m.position
+  mi.fromRod = mi.modIndex < g.packed.len and g.packed[mi.modIndex].status == loaded
+  if mi.fromRod:
+    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
-    var ti: TIdentIter
-    var r = initIdentIter(ti, g.ifaces[g.systemModule.position].interf, name)
+    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
+
+proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
+  if mi.fromRod:
+    result = nextRodIter(mi.rodIt, g.packed)
+  else:
+    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interf)
+
+iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
+  if cachedModule(g, m):
+    var rodIt: RodIter
+    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position)
     while r != nil:
       yield r
-      r = nextIdentIter(ti, g.ifaces[g.systemModule.position].interf)
+      r = nextRodIter(rodIt, g.packed)
+  else:
+    for s in g.ifaces[m.position].interf.data:
+      if s != nil:
+        yield s
+
+proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  if cachedModule(g, m):
+    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
+  else:
+    result = strTableGet(g.ifaces[m.position].interf, name)
+
+proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
+  result = someSym(g, g.systemModule, name)
+
+iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
+  var mi: ModuleIter
+  var r = initModuleIter(mi, g, g.systemModule, name)
+  while r != nil:
+    yield r
+    r = nextModuleIter(mi, g)
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))

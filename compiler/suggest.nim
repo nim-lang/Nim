@@ -365,7 +365,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         let m = c.graph.importModuleCallback(c.graph, c.module, fileInfoIdx(c.config, fullPath))
         if m == nil: typ = nil
         else:
-          for it in items(n.sym.tab(c.graph)):
+          for it in allSyms(c.graph, n.sym):
             if filterSym(it, field, pm):
               outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -100))
           outputs.add(symToSuggest(c.graph, m, isLocal=false, ideMod, n.info, 100, PrefixMatch.None,
@@ -380,7 +380,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
           if filterSym(it, field, pm):
             outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
       else:
-        for it in items(n.sym.tab(c.graph)):
+        for it in allSyms(c.graph, n.sym):
           if filterSym(it, field, pm):
             outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
     else:

@@ -112,7 +112,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
-    initStrTable(result.tab(graph))
+    initStrTable(result.semtab(graph))
     result.ast = nil
     processModuleAux()
     graph.markClientsDirty(fileIdx)

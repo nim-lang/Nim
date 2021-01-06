@@ -812,6 +812,48 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, g[mId].fromDisk.bodies, NodePos pos)
 
+type
+  RodIter* = object
+    decoder: PackedDecoder
+    values: seq[PackedItemId]
+    i: int
+
+proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
+                  g: var PackedModuleGraph; module: FileIndex;
+                  name: PIdent): PSym =
+  it.decoder = PackedDecoder(
+    thisModule: int32(module),
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
+  it.values = g[int module].iface.getOrDefault(name)
+  it.i = 0
+  if it.i < it.values.len:
+    result = loadSym(it.decoder, g, it.values[it.i])
+    inc it.i
+
+proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
+                         g: var PackedModuleGraph; module: FileIndex): PSym =
+  it.decoder = PackedDecoder(
+    thisModule: int32(module),
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
+  it.values = @[]
+  for v in g[int module].iface.values:
+    it.values.add v
+  it.i = 0
+  if it.i < it.values.len:
+    result = loadSym(it.decoder, g, it.values[it.i])
+    inc it.i
+
+proc nextRodIter*(it: var RodIter; g: var PackedModuleGraph): PSym =
+  if it.i < it.values.len:
+    result = loadSym(it.decoder, g, it.values[it.i])
+    inc it.i
+
 iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
                            g: var PackedModuleGraph; module: FileIndex;
                            name: PIdent): PSym =

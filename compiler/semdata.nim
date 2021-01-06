@@ -301,12 +301,12 @@ proc addPattern*(c: PContext, p: PSym) =
     addTrmacro(c.encoder, p)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.tab(c.graph), s)
+  strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.tab(c.graph), s)
+  strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, s)
 

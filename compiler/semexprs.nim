@@ -1897,7 +1897,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
-        result = strTableGet(m.tab(c.graph), ident)
+        result = someSym(c.graph, m, ident)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -2523,14 +2523,11 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
   reexportSym(c, exported)
-  var i: TTabIter
-  var s = initTabIter(i, exported.tab(c.graph))
-  while s != nil:
+  for s in allSyms(c.graph, exported):
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet and sfError notin s.flags:
       reexportSym(c, s)
       result.add newSymNode(s, n.info)
-    s = nextIter(i, exported.tab(c.graph))
   markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
@@ -2549,14 +2546,11 @@ proc semExport(c: PContext, n: PNode): PNode =
     elif s.kind == skModule:
       # forward everything from that module:
       reexportSym(c, s)
-      var ti: TTabIter
-      var it = initTabIter(ti, s.tab(c.graph))
-      while it != nil:
+      for it in allSyms(c.graph, s):
         if it.kind in ExportableSymKinds+{skModule}:
           reexportSym(c, it)
           result.add newSymNode(it, a.info)
           specialSyms(c, it)
-        it = nextIter(ti, s.tab(c.graph))
       markUsed(c, n.info, s)
     else:
       while s != nil:
