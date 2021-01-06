@@ -124,18 +124,25 @@ proc toBase64a(s: cstring, len: int): string =
 template tab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
-#template systemModuleTab*(g: ModuleGraph): TStrTable =
-#  g.ifaces[g.systemModule.position].interf
+proc cachedSystemModule(g: ModuleGraph): bool {.inline.} =
+  g.systemModule.position < g.packed.len and g.packed[g.systemModule.position].status == loaded
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
-  result = strTableGet(g.ifaces[g.systemModule.position].interf, name)
+  if cachedSystemModule(g):
+    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(g.systemModule.position), name)
+  else:
+    result = strTableGet(g.ifaces[g.systemModule.position].interf, name)
 
 iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
-  var ti: TIdentIter
-  var r = initIdentIter(ti, g.ifaces[g.systemModule.position].interf, name)
-  while r != nil:
-    yield r
-    r = nextIdentIter(ti, g.ifaces[g.systemModule.position].interf)
+  if cachedSystemModule(g):
+    for r in interfaceSymbols(g.config, g.cache, g.packed, FileIndex(g.systemModule.position), name):
+      yield r
+  else:
+    var ti: TIdentIter
+    var r = initIdentIter(ti, g.ifaces[g.systemModule.position].interf, name)
+    while r != nil:
+      yield r
+      r = nextIdentIter(ti, g.ifaces[g.systemModule.position].interf)
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))

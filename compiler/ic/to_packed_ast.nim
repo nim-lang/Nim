@@ -812,15 +812,20 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, g[mId].fromDisk.bodies, NodePos pos)
 
-proc interfaceSymbols*(config: ConfigRef, cache: IdentCache;
-                       g: var PackedModuleGraph; module: FileIndex;
-                       name: PIdent): seq[PSym] =
+iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
+                           g: var PackedModuleGraph; module: FileIndex;
+                           name: PIdent): PSym =
   setupDecoder()
-  result = @[]
   let values = g[int module].iface.getOrDefault(name)
   for pid in values:
     let s = loadSym(decoder, g, pid)
     assert s != nil
-    result.add s
+    yield s
 
+proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
+                      g: var PackedModuleGraph; module: FileIndex;
+                      name: PIdent): PSym =
+  setupDecoder()
+  let values = g[int module].iface.getOrDefault(name)
+  result = loadSym(decoder, g, values[0])
 
