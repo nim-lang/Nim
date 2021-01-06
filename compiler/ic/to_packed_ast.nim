@@ -453,54 +453,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   close(f)
   result = f.err
 
-type
-  ModuleStatus* = enum
-    undefined,
-    loading,
-    loaded,
-    outdated
-
-  LoadedModule* = object
-    status: ModuleStatus
-    symsInit, typesInit: bool
-    fromDisk: PackedModule
-    syms: seq[PSym] # indexed by itemId
-    types: seq[PType]
-
-  PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
-
-proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef;
-                    fileIdx: FileIndex): bool =
-  let m = int(fileIdx)
-  if m >= g.len:
-    g.setLen(m+1)
-
-  case g[m].status
-  of undefined:
-    g[m].status = loading
-    let fullpath = msgs.toFullPath(conf, fileIdx)
-    let rod = toRodFile(conf, AbsoluteFile fullpath)
-    let err = loadRodFile(rod, g[m].fromDisk, conf)
-    if err == ok:
-      result = false
-      # check its dependencies:
-      for dep in g[m].fromDisk.imports:
-        let fid = toFileIndex(dep, g[m].fromDisk, conf)
-        # Warning: we need to traverse the full graph, so
-        # do **not use break here**!
-        if needsRecompile(g, conf, fid):
-          result = true
-
-      g[m].status = if result: outdated else: loaded
-    else:
-      loadError(err, rod)
-      g[m].status = outdated
-      result = true
-  of loading, loaded:
-    result = false
-  of outdated:
-    result = true
-
 # -------------------------------------------------------------------------
 
 proc storeError(err: RodFileError; filename: AbsoluteFile) =
@@ -555,7 +507,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   if f.err != ok:
     loadError(f.err, filename)
 
-  when true:
+  when false:
     # basic loader testing:
     var m2: PackedModule
     discard loadRodFile(filename, m2, encoder.config)
@@ -568,7 +520,24 @@ type
     lastLit*: LitId
     lastFile*: FileIndex # remember the last lookup entry.
     config*: ConfigRef
-    ident: IdentCache
+    cache: IdentCache
+
+type
+  ModuleStatus* = enum
+    undefined,
+    loading,
+    loaded,
+    outdated
+
+  LoadedModule* = object
+    status: ModuleStatus
+    symsInit, typesInit: bool
+    fromDisk: PackedModule
+    syms: seq[PSym] # indexed by itemId
+    types: seq[PType]
+    iface: Table[PIdent, seq[PackedItemId]] # PackedItemId so that it works with reexported symbols too
+
+  PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): PType
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; s: PackedItemId): PSym
@@ -598,7 +567,7 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph;
   of nkEmpty, nkNilLit, nkType:
     discard
   of nkIdent:
-    result.ident = getIdent(c.ident, g[c.thisModule].fromDisk.sh.strings[n.litId])
+    result.ident = getIdent(c.cache, g[c.thisModule].fromDisk.sh.strings[n.litId])
   of nkSym:
     result.sym = loadSym(c, g, PackedItemId(module: LitId(0), item: tree.nodes[n.int].operand))
   of directIntLit:
@@ -656,7 +625,7 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     info: translateLineInfo(c, g, s.info),
     options: s.options,
     position: s.position,
-    name: getIdent(c.ident, g[si].fromDisk.sh.strings[s.name])
+    name: getIdent(c.cache, g[si].fromDisk.sh.strings[s.name])
   )
 
 template loadAstBody(p, field) =
@@ -756,15 +725,79 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): 
     else:
       result = g[si].types[t.item]
 
+proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache) =
+  m.iface = initTable[PIdent, seq[PackedItemId]]()
+  for e in m.fromDisk.exports:
+    let nameLit = e[0]
+    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(PackedItemId(module: LitId(0), item: e[1]))
+  for re in m.fromDisk.reexports:
+    let nameLit = re[0]
+    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(re[1])
 
-when false:
-  proc initGenericKey*(s: PSym; types: seq[PType]): GenericKey =
-    result.module = s.owner.itemId.module
-    result.name = s.name.s
-    result.types = mapIt types: hashType(it, {CoType, CoDistinct}).MD5Digest
+proc needsRecompile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                     fileIdx: FileIndex): bool =
+  let m = int(fileIdx)
+  if m >= g.len:
+    g.setLen(m+1)
 
-  proc addGeneric*(m: var Module; c: var PackedEncoder; key: GenericKey; s: PSym) =
-    ## add a generic to the module
-    if key notin m.generics:
-      m.generics[key] = toPackedSym(s, m.ast, c)
-      toPackedNode(s.ast, m.ast, c)
+  case g[m].status
+  of undefined:
+    g[m].status = loading
+    let fullpath = msgs.toFullPath(conf, fileIdx)
+    let rod = toRodFile(conf, AbsoluteFile fullpath)
+    let err = loadRodFile(rod, g[m].fromDisk, conf)
+    if err == ok:
+      result = false
+      # check its dependencies:
+      for dep in g[m].fromDisk.imports:
+        let fid = toFileIndex(dep, g[m].fromDisk, conf)
+        # Warning: we need to traverse the full graph, so
+        # do **not use break here**!
+        if needsRecompile(g, conf, cache, fid):
+          result = true
+
+      if not result:
+        setupLookupTables(g[m], conf, cache)
+      g[m].status = if result: outdated else: loaded
+    else:
+      loadError(err, rod)
+      g[m].status = outdated
+      result = true
+  of loading, loaded:
+    result = false
+  of outdated:
+    result = true
+
+template setupDecoder() {.dirty.} =
+  var decoder = PackedDecoder(
+    thisModule: int32(module),
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
+
+proc loadProcBody*(config: ConfigRef, cache: IdentCache;
+                   g: var PackedModuleGraph; s: PSym): PNode =
+  let mId = s.itemId.module
+  var decoder = PackedDecoder(
+    thisModule: mId,
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
+  let pos = g[mId].fromDisk.sh.syms[s.itemId.item].ast
+  assert pos != emptyNodeId
+  result = loadProcBody(decoder, g, g[mId].fromDisk.bodies, NodePos pos)
+
+proc interfaceSymbols*(config: ConfigRef, cache: IdentCache;
+                       g: var PackedModuleGraph; module: FileIndex;
+                       name: PIdent): seq[PSym] =
+  setupDecoder()
+  result = @[]
+  let values = g[int module].iface.getOrDefault(name)
+  for pid in values:
+    let s = loadSym(decoder, g, pid)
+    assert s != nil
+    result.add s
+
+

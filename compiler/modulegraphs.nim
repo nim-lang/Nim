@@ -10,25 +10,11 @@
 ## This module implements the module graph data structure. The module graph
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
-##
-## The caching of modules is critical for 'nimsuggest' and is tricky to get
-## right. If module E is being edited, we need autocompletion (and type
-## checking) for E but we don't want to recompile depending
-## modules right away for faster turnaround times. Instead we mark the module's
-## dependencies as 'dirty'. Let D be a dependency of E. If D is dirty, we
-## need to recompile it and all of its dependencies that are marked as 'dirty'.
-## 'nimsuggest sug' actually is invoked for the file being edited so we know
-## its content changed and there is no need to compute any checksums.
-## Instead of a recursive algorithm, we use an iterative algorithm:
-##
-## - If a module gets recompiled, its dependencies need to be updated.
-## - Its dependent module stays the same.
-##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
   btrees, md5
 
-# import ic / packed_ast
+import ic / to_packed_ast
 
 type
   SigHash* = distinct MD5Digest
@@ -43,6 +29,7 @@ type
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
+    packed: PackedModuleGraph
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
@@ -293,4 +280,7 @@ proc isDirty*(g: ModuleGraph; m: PSym): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
-  assert result != nil # XXX reloading logic here
+  if result == nil:
+    result = loadProcBody(g.config, g.cache, g.packed, s)
+    s.ast[bodyPos] = result
+  assert result != nil
