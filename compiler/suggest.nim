@@ -491,9 +491,19 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
       findUsages(conf, info, s, usageSym)
     elif conf.ideCmd == ideHighlight and info.fileIndex == conf.m.trackPos.fileIndex:
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif conf.ideCmd == ideOutline and info.fileIndex == conf.m.trackPos.fileIndex and
-        isDecl:
-      suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
+    elif conf.ideCmd == ideOutline and isDecl:
+      # if a module is included then the info we have is inside the include and
+      # we need to walk up the owners until we find the outer most module,
+      # which will be the last skModule prior to an skPackage.
+      var
+        parentFileIndex = info.fileIndex # assume we're in the correct module
+        parentModule = s.owner
+      while parentModule != nil and parentModule.kind == skModule:
+        parentFileIndex = parentModule.info.fileIndex
+        parentModule = parentModule.owner
+
+      if parentFileIndex == conf.m.trackPos.fileIndex:
+        suggestResult(conf, symToSuggest(conf, s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
