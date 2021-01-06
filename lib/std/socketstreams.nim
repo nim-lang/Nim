@@ -21,7 +21,7 @@
 ## =======
 ##
 ## .. code-block:: Nim
-##  import socketstreams
+##  import std/socketstreams
 ##
 ##  var
 ##    socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -36,7 +36,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import socketstreams
+##  import std/socketstreams
 ##
 ##  var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
 ##  socket.connect("127.0.0.1", Port(12345))
@@ -76,18 +76,17 @@ proc rsGetPosition(s: Stream): int =
   return s.pos
 
 proc rsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
-  var s = ReadSocketStream(s)
-  result = bufLen
-  if result > 0:
+  let s = ReadSocketStream(s)
+  if bufLen > 0:
     let oldLen = s.buf.len
     s.buf.setLen(max(s.pos + bufLen, s.buf.len))
-    if s.pos > oldLen:
-      discard s.data.recv(s.buf[s.pos].addr, s.pos - s.buf.len + bufLen)
-    elif s.pos == oldLen:
-      discard s.data.recv(s.buf[s.pos].addr, bufLen)
-    elif s.pos + bufLen > oldLen:
-      discard s.data.recv(s.buf[oldLen].addr, s.buf.len - oldLen)
-    copyMem(buffer, s.buf[s.pos].addr, bufLen)
+    if s.pos + bufLen > oldLen:
+      result = s.data.recv(s.buf[oldLen].addr, s.buf.len - oldLen)
+      if result > 0:
+        result += oldLen - s.pos
+    else:
+      result = bufLen
+    copyMem(buffer, s.buf[s.pos].addr, result)
 
 proc rsReadData(s: Stream, buffer: pointer, bufLen: int): int =
   result = s.rsPeekData(buffer, bufLen)
