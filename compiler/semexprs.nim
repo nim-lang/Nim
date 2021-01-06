@@ -1014,7 +1014,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:
   result = newNodeI(nkCall, n.info)
-  var e = strTableGet(c.graph.systemModuleTab, getIdent(c.cache, "echo"))
+  let e = systemModuleSym(c.graph, getIdent(c.cache, "echo"))
   if e != nil:
     result.add(newSymNode(e))
   else:

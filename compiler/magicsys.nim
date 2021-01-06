@@ -26,7 +26,7 @@ proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModuleTab, getIdent(g.cache, name))
+  result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
     result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
@@ -34,15 +34,12 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
-  var ti: TIdentIter
   let id = getIdent(g.cache, name)
-  var r = initIdentIter(ti, g.systemModuleTab, id)
-  while r != nil:
+  for r in systemModuleSyms(g, id):
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
       result = r
-    r = nextIdentIter(ti, g.systemModuleTab)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
   result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})

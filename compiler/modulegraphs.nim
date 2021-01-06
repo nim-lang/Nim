@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import ast, intsets, tables, options, lineinfos, hashes, idents,
+import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
   btrees, md5
 
 import ic / to_packed_ast
@@ -124,8 +124,18 @@ proc toBase64a(s: cstring, len: int): string =
 template tab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
-template systemModuleTab*(g: ModuleGraph): TStrTable =
-  g.ifaces[g.systemModule.position].interf
+#template systemModuleTab*(g: ModuleGraph): TStrTable =
+#  g.ifaces[g.systemModule.position].interf
+
+proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
+  result = strTableGet(g.ifaces[g.systemModule.position].interf, name)
+
+iterator systemModuleSyms*(g: ModuleGraph; name: PIdent): PSym =
+  var ti: TIdentIter
+  var r = initIdentIter(ti, g.ifaces[g.systemModule.position].interf, name)
+  while r != nil:
+    yield r
+    r = nextIdentIter(ti, g.ifaces[g.systemModule.position].interf)
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
@@ -223,8 +233,11 @@ proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len:
-    result = g.ifaces[fileIdx.int32].module
+  if fileIdx.int32 >= 0:
+    if fileIdx.int32 < g.packed.len and g.packed[fileIdx.int32].status == loaded:
+      result = g.packed[fileIdx.int32].module
+    elif fileIdx.int32 < g.ifaces.len:
+      result = g.ifaces[fileIdx.int32].module
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

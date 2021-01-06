@@ -530,12 +530,12 @@ type
     outdated
 
   LoadedModule* = object
-    status: ModuleStatus
+    status*: ModuleStatus
     symsInit, typesInit: bool
     fromDisk: PackedModule
     syms: seq[PSym] # indexed by itemId
     types: seq[PType]
-    module: PSym # the one true module symbol.
+    module*: PSym # the one true module symbol.
     iface: Table[PIdent, seq[PackedItemId]] # PackedItemId so that it works with reexported symbols too
 
   PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
