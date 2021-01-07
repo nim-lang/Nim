@@ -93,6 +93,9 @@
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 
+
+- Added `math.signbit`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
