@@ -2486,9 +2486,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     case classify(f)
     of fcNan:
       if signbit(f):
-        r.res = rope"-NAN"
+        r.res = rope"-NaN"
       else:
-        r.res = rope"NAN"
+        r.res = rope"NaN"
     of fcNegZero:
       r.res = rope"-0.0"
     of fcZero:
