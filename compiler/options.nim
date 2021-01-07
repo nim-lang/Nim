@@ -124,7 +124,7 @@ type
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
     cmdParse # parse a single file (for debugging)
-    cmdScan # scan a single file (for debugging)
+    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0

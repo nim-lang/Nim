@@ -883,3 +883,24 @@ proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
   let values = g[int module].iface.getOrDefault(name)
   result = loadSym(decoder, g, values[0])
 
+# ------------------------- .rod file viewer ---------------------------------
+
+proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
+  var m: PackedModule
+  if loadRodFile(rodfile, m, config) != ok:
+    echo "Error: could not load: ", rodfile.string
+    quit 1
+
+  when true:
+    echo "exports:"
+    for ex in m.exports:
+      echo "  ", m.sh.strings[ex[0]]
+      assert ex[0] == m.sh.syms[ex[1]].name
+      # ex[1] int32
+
+    echo "reexports:"
+    for ex in m.reexports:
+      echo "  ", m.sh.strings[ex[0]]
+    #  reexports*: seq[(LitId, PackedItemId)]
+  echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
+    " top level nodes: ", m.topLevel.nodes.len, " other nodes ", m.bodies.nodes.len
