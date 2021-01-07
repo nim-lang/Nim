@@ -204,7 +204,7 @@ Automatic dereferencing
 =======================
 
 Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be only enabled via ``{.experimental: "implicitDeref".}``:
+This feature has to be enabled via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
   {.experimental: "implicitDeref".}

@@ -124,7 +124,7 @@
 ## ``nim c -d:ssl ...``.
 ##
 ## Certificate validation is NOT performed by default.
-## This will change in future.
+## This will change in the future.
 ##
 ## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
 ## module are scanned to locate CA certificates.
