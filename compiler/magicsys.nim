@@ -21,7 +21,7 @@ proc registerSysType*(g: ModuleGraph; t: PType) =
   if g.sysTypes[t.kind] == nil: g.sysTypes[t.kind] = t
 
 proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
-  result = newType(kind, nextId(g.idgen), g.systemModule)
+  result = newType(kind, nextTypeId(g.idgen), g.systemModule)
   result.size = size
   result.align = size.int16
 
@@ -29,8 +29,8 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextId(g.idgen), g.systemModule, g.systemModule.info, {})
-    result.typ = newType(tyError, nextId(g.idgen), g.systemModule)
+    result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
   if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
@@ -45,8 +45,8 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
     r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, nextId(g.idgen), g.systemModule, g.systemModule.info, {})
-  result.typ = newType(tyError, nextId(g.idgen), g.systemModule)
+  result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+  result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
   result = getSysSym(g, info, name).typ
@@ -101,12 +101,12 @@ proc getIntLitType*(g: ModuleGraph; literal: PNode): PType =
     result = g.intTypeCache[value.int]
     if result == nil:
       let ti = getSysType(g, literal.info, tyInt)
-      result = copyType(ti, nextId(g.idgen), ti.owner)
+      result = copyType(ti, nextTypeId(g.idgen), ti.owner)
       result.n = literal
       g.intTypeCache[value.int] = result
   else:
     let ti = getSysType(g, literal.info, tyInt)
-    result = copyType(ti, nextId(g.idgen), ti.owner)
+    result = copyType(ti, nextTypeId(g.idgen), ti.owner)
     result.n = literal
 
 proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
@@ -116,7 +116,7 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
 
 proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, nextId(id), t.owner)
+    result = copyType(t, nextTypeId(id), t.owner)
     result.n = nil
   else:
     result = t

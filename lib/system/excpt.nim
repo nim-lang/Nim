@@ -13,6 +13,8 @@
 import std/private/miscdollars
 import stacktraces
 
+const noStacktraceAvailable = "No stack traceback available\n"
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -36,6 +38,10 @@ else:
   proc writeToStdErr(msg: cstring, length: int) =
     discard MessageBoxA(nil, msg, nil, 0)
 
+proc writeToStdErr(msg: string) {.inline.} =
+  # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
+  writeToStdErr(msg.cstring, msg.len)
+
 proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
@@ -50,6 +56,9 @@ proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
       echo data
     else:
       writeToStdErr(data, length)
+
+proc showErrorMessage2(data: string) {.inline.} =
+  showErrorMessage(data.cstring, data.len)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -123,11 +132,11 @@ proc popSafePoint {.compilerRtl, inl.} =
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
-  #showErrorMessage "A"
+  #showErrorMessage2 "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
-  #showErrorMessage "B"
+  #showErrorMessage2 "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
@@ -305,7 +314,7 @@ when hasSomeStackTrace:
       auxWriteStackTraceWithOverride(s)
     elif NimStackTrace:
       if framePtr == nil:
-        add(s, "No stack traceback available\n")
+        add(s, noStacktraceAvailable)
       else:
         add(s, "Traceback (most recent call last)\n")
         auxWriteStackTrace(framePtr, s)
@@ -313,7 +322,7 @@ when hasSomeStackTrace:
       add(s, "Traceback from system (most recent call last)\n")
       auxWriteStackTraceWithBacktrace(s)
     else:
-      add(s, "No stack traceback available\n")
+      add(s, noStacktraceAvailable)
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
     when defined(nimStackTraceOverride):
@@ -363,7 +372,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if onUnhandledException != nil:
       onUnhandledException(buf)
     else:
-      showErrorMessage(buf, buf.len)
+      showErrorMessage2(buf)
     `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
@@ -504,16 +513,16 @@ proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    cast[proc (s: cstring, length: int) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)(s, s.len)
   else:
-    cast[proc (s: cstring, length: int) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n", 32)
+    let s = noStacktraceAvailable
+  cast[proc (s: string) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage2)(s)
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
     result = ""
     rawWriteStackTrace(result)
   else:
-    result = "No stack traceback available\n"
+    result = noStacktraceAvailable
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e):
@@ -543,7 +552,7 @@ proc callDepthLimitReached() {.noinline.} =
       $nimCallDepthLimit & " function calls). You can change it with " &
       "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
       "recursions instead.\n"
-  showErrorMessage(msg, msg.len)
+  showErrorMessage2(msg)
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
@@ -627,13 +636,16 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
-      showErrorMessage(buf, buf.len)
+      showErrorMessage2(buf)
       when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =
         msg = y
       processSignal(sign, asgn)
+      # xxx use string for msg instead of cstring, and here use showErrorMessage2(msg)
+      # unless there's a good reason to use cstring in signal handler to avoid
+      # using gc?
       showErrorMessage(msg, msg.len)
     quit(1) # always quit when SIGABRT
 

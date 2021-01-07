@@ -13,6 +13,12 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
+when declared(math.copySign):
+  from math import copySign
+
+when declared(math.signbit):
+  from math import signbit
+
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
 from sighashes import symBodyDigest
@@ -167,6 +173,12 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
+
+  when declared(copySign):
+    wrap2f_math(copySign)
+
+  when declared(signbit):
+    wrap1f_math(signbit)
 
   wrap1s(getMD5, md5op)
 

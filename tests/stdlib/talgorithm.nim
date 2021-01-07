@@ -3,7 +3,7 @@ discard """
 '''
 """
 #12928,10456
-import sequtils, strutils, algorithm, json
+import sequtils, algorithm, json
 
 proc test() = 
   try: 
@@ -14,37 +14,37 @@ proc test() =
     echo prefixes
   except:
     discard
-  
+
 test()
 
 block:
   # Tests for lowerBound
   var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
-  assert arr.lowerBound(0) == 0
-  assert arr.lowerBound(4) == 3
-  assert arr.lowerBound(5) == 3
-  assert arr.lowerBound(10) == 8
+  doAssert arr.lowerBound(0) == 0
+  doAssert arr.lowerBound(4) == 3
+  doAssert arr.lowerBound(5) == 3
+  doAssert arr.lowerBound(10) == 8
   arr = @[1, 5, 10]
-  assert arr.lowerBound(4) == 1
-  assert arr.lowerBound(5) == 1
-  assert arr.lowerBound(6) == 2
+  doAssert arr.lowerBound(4) == 1
+  doAssert arr.lowerBound(5) == 1
+  doAssert arr.lowerBound(6) == 2
   # Tests for isSorted
   var srt1 = [1, 2, 3, 4, 4, 4, 4, 5]
   var srt2 = ["iello", "hello"]
   var srt3 = [1.0, 1.0, 1.0]
   var srt4: seq[int]
-  assert srt1.isSorted(cmp) == true
-  assert srt2.isSorted(cmp) == false
-  assert srt3.isSorted(cmp) == true
-  assert srt4.isSorted(cmp) == true
+  doAssert srt1.isSorted(cmp) == true
+  doAssert srt2.isSorted(cmp) == false
+  doAssert srt3.isSorted(cmp) == true
+  doAssert srt4.isSorted(cmp) == true
   var srtseq = newSeq[int]()
-  assert srtseq.isSorted(cmp) == true
+  doAssert srtseq.isSorted(cmp) == true
   # Tests for reversed
   var arr1 = @[0, 1, 2, 3, 4]
-  assert arr1.reversed() == @[4, 3, 2, 1, 0]
+  doAssert arr1.reversed() == @[4, 3, 2, 1, 0]
   for i in 0 .. high(arr1):
-    assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
-    assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
+    doAssert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
+    doAssert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 block:
   var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

@@ -1311,7 +1311,7 @@ proc baseOfDistinct*(t: PType; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
-    result = copyType(t, nextId idgen, t.owner)
+    result = copyType(t, nextTypeId idgen, t.owner)
     var parent: PType = nil
     var it = result
     while it.kind in {tyPtr, tyRef, tyOwned}:
@@ -1457,7 +1457,7 @@ proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextId(idgen), arg.owner)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextTypeId(idgen), arg.owner)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
@@ -1482,7 +1482,7 @@ proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
+proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
     let formalStr = typeToString(formal)
@@ -1491,7 +1491,10 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     let verbose = actualStr == formalStr or optDeclaredLocs in conf.globalOptions
     var msg = "type mismatch:"
     if verbose: msg.add "\n"
-    msg.add  " got <$1>" % actualStr
+    if conf.isDefined("nimLegacyTypeMismatch"):
+      msg.add  " got <$1>" % actualStr
+    else:
+      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]
     if verbose:
       msg.addDeclaredLoc(conf, actual)
       msg.add "\n"

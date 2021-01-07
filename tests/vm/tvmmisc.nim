@@ -22,11 +22,11 @@ import algorithm
 static:
   var numArray = [1, 2, 3, 4, -1]
   numArray.sort(cmp)
-  assert numArray == [-1, 1, 2, 3, 4]
+  doAssert numArray == [-1, 1, 2, 3, 4]
 
   var str = "cba"
   str.sort(cmp)
-  assert str == "abc"
+  doAssert str == "abc"
 
 # #6086
 import math, sequtils, sugar
@@ -42,7 +42,7 @@ block:
   var a = f()
   const b = f()
 
-  assert a == b
+  doAssert a == b
 
 block:
   proc f(): seq[char] =
@@ -50,7 +50,7 @@ block:
 
   var runTime = f()
   const compTime = f()
-  assert runTime == compTime
+  doAssert runTime == compTime
 
 # #6083
 block:
@@ -64,24 +64,24 @@ block:
       result[i] = tmp
 
   const fact1000 = abc()
-  assert fact1000 == @[1, 2]
+  doAssert fact1000 == @[1, 2]
 
 # Tests for VM ops
 block:
   static:
     # for joint test, the project path is different, so I disabled it:
     when false:
-      assert "vm" in getProjectPath()
+      doAssert "vm" in getProjectPath()
 
     let b = getEnv("UNSETENVVAR")
-    assert b == ""
-    assert existsEnv("UNSERENVVAR") == false
+    doAssert b == ""
+    doAssert existsEnv("UNSERENVVAR") == false
     putEnv("UNSETENVVAR", "VALUE")
-    assert getEnv("UNSETENVVAR") == "VALUE"
-    assert existsEnv("UNSETENVVAR") == true
+    doAssert getEnv("UNSETENVVAR") == "VALUE"
+    doAssert existsEnv("UNSETENVVAR") == true
 
-    assert fileExists("MISSINGFILE") == false
-    assert dirExists("MISSINGDIR") == false
+    doAssert fileExists("MISSINGFILE") == false
+    doAssert dirExists("MISSINGDIR") == false
 
 # #7210
 block:
@@ -305,6 +305,23 @@ block: # bug #8007
   # OK with seq & object variants
   const d = @[Cost(kind: Fixed, cost: 999), Cost(kind: Dynamic, handler: foo)]
   doAssert $d == "@[(kind: Fixed, cost: 999), (kind: Dynamic, handler: ...)]"
+
+block: # bug #14340
+  block:
+    proc opl3EnvelopeCalcSin0() = discard
+    type EnvelopeSinfunc = proc()
+    # const EnvelopeCalcSin0 = opl3EnvelopeCalcSin0 # ok
+    const EnvelopeCalcSin0: EnvelopeSinfunc = opl3EnvelopeCalcSin0 # was bug
+    const envelopeSin = [EnvelopeCalcSin0]
+    var a = 0
+    envelopeSin[a]()
+
+  block:
+    type Mutator = proc() {.noSideEffect, gcsafe, locks: 0.}
+    proc mutator0() = discard
+    const mTable = [Mutator(mutator0)]
+    var i=0
+    mTable[i]()
 
 block: # VM wrong register free causes errors in unrelated code
   block: # bug #15597

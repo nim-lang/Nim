@@ -56,10 +56,12 @@ function main() {
     }
   }
 }
+
+window.addEventListener('DOMContentLoaded', main);
 </script>
 
 </head>
-<body onload="main()">
+<body>
 <div class="document" id="documentId">
   <div class="container">
     <h1 class="title">testproject</h1>
@@ -120,7 +122,9 @@ function main() {
 <li>
   <a class="reference reference-toplevel" href="#8" id="58">Vars</a>
   <ul class="simple simple-toc-section">
-      <li><a class="reference" href="#aVariable"
+      <li><a class="reference" href="#someVariable"
+    title="someVariable: bool">someVariable</a></li>
+  <li><a class="reference" href="#aVariable"
     title="aVariable: array[1, int]">aVariable</a></li>
 
   </ul>
@@ -259,6 +263,11 @@ function main() {
     title="z4()">z4</a></li>
 
   </ul>
+  <ul class="simple nested-toc-section">someFunc
+      <li><a class="reference" href="#someFunc"
+    title="someFunc()">someFunc</a></li>
+
+  </ul>
   <ul class="simple nested-toc-section">z8
       <li><a class="reference" href="#z8"
     title="z8(): int">z8</a></li>
@@ -287,17 +296,6 @@ function main() {
   <ul class="simple nested-toc-section">asyncFun1
       <li><a class="reference" href="#asyncFun1"
     title="asyncFun1(): Future[int]">asyncFun1</a></li>
-
-  </ul>
-
-  </ul>
-</li>
-<li>
-  <a class="reference reference-toplevel" href="#13" id="63">Funcs</a>
-  <ul class="simple simple-toc-section">
-      <ul class="simple nested-toc-section">someFunc
-      <li><a class="reference" href="#someFunc"
-    title="someFunc()">someFunc</a></li>
 
   </ul>
 
@@ -427,6 +425,13 @@ Some shapes.
 <div class="section" id="8">
 <h1><a class="toc-backref" href="#8">Vars</a></h1>
 <dl class="item">
+<a id="someVariable"></a>
+<dt><pre><a href="testproject.html#someVariable"><span class="Identifier">someVariable</span></a><span class="Other">:</span> <span class="Identifier">bool</span></pre></dt>
+<dd>
+
+This should be visible.
+
+</dd>
 <a id="aVariable"></a>
 <dt><pre><a href="testproject.html#aVariable"><span class="Identifier">aVariable</span></a><span class="Other">:</span> <span class="Identifier">array</span><span class="Other">[</span><span class="DecNumber">1</span><span class="Other">,</span> <span class="Identifier">int</span><span class="Other">]</span></pre></dt>
 <dd>
@@ -497,6 +502,13 @@ This is deprecated without message.
   </div>
 
 This is deprecated with a message.
+
+</dd>
+<a id="someFunc"></a>
+<dt><pre><span class="Keyword">func</span> <a href="#someFunc"><span class="Identifier">someFunc</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</span></tt> here. <a class="reference external" href="https://nim-lang.org">Some link</a>
 
 </dd>
 <a id="fromUtils3"></a>
@@ -781,18 +793,6 @@ ok1
 
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">discard</span></pre>ok1
-
-</dd>
-
-</dl></div>
-<div class="section" id="13">
-<h1><a class="toc-backref" href="#13">Funcs</a></h1>
-<dl class="item">
-<a id="someFunc"></a>
-<dt><pre><span class="Keyword">func</span> <a href="#someFunc"><span class="Identifier">someFunc</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
-<dd>
-
-My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</span></tt> here. <a class="reference external" href="https://nim-lang.org">Some link</a>
 
 </dd>
 

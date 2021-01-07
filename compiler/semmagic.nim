@@ -119,7 +119,7 @@ proc uninstantiate(t: PType): PType =
     else: t
 
 proc getTypeDescNode(c: PContext; typ: PType, sym: PSym, info: TLineInfo): PNode =
-  var resType = newType(tyTypeDesc, nextId c.idgen, sym)
+  var resType = newType(tyTypeDesc, nextTypeId c.idgen, sym)
   rawAddSon(resType, typ)
   result = toNode(resType, info)
 
@@ -160,7 +160,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.info = traitCall.info
   of "arity":
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
-    result.typ = newType(tyInt, nextId c.idgen, context)
+    result.typ = newType(tyInt, nextTypeId c.idgen, context)
     result.info = traitCall.info
   of "genericHead":
     var arg = operand
@@ -172,7 +172,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     #   result = toNode(resType, traitCall.info) # doesn't work yet
     else:
       localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
-      result = newType(tyError, nextId c.idgen, context).toNode(traitCall.info)
+      result = newType(tyError, nextTypeId c.idgen, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -198,7 +198,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
-      result = newType(tyError, nextId c.idgen, context).toNode(traitCall.info)
+      result = newType(tyError, nextTypeId c.idgen, context).toNode(traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -370,7 +370,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
         elems[i] = unownedType(c, t[i])
         if elems[i] != t[i]: someChange = true
       if someChange:
-        result = newType(tyTuple, nextId c.idgen, t.owner)
+        result = newType(tyTuple, nextTypeId c.idgen, t.owner)
         # we have to use 'rawAddSon' here so that type flags are
         # properly computed:
         for e in elems: result.rawAddSon(e)
@@ -381,7 +381,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])
       if b != t[^1]:
-        result = copyType(t, nextId c.idgen, t.owner)
+        result = copyType(t, nextTypeId c.idgen, t.owner)
         result[^1] = b
         result.flags.excl tfHasOwned
       else:
@@ -407,26 +407,26 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
       if n.sym == oldParam:
         result.sym = newParam
       elif n.sym.owner == orig:
-        result.sym = copySym(n.sym, nextId c.idgen)
+        result.sym = copySym(n.sym, nextSymId c.idgen)
         result.sym.owner = procSym
     for i in 0 ..< safeLen(n):
       result[i] = transform(c, procSym, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
-  result = copySym(orig, nextId c.idgen)
+  result = copySym(orig, nextSymId c.idgen)
   result.info = info
   result.flags.incl sfFromGeneric
   result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs), c.idgen)
   let oldParam = orig.typ.n[1].sym
-  let newParam = newSym(skParam, oldParam.name, nextId c.idgen, result, result.info)
+  let newParam = newSym(skParam, oldParam.name, nextSymId c.idgen, result, result.info)
   newParam.typ = newParamType
   # proc body:
   result.ast = transform(c, result, orig.ast, origParamType, newParamType, oldParam, newParam)
   # proc signature:
-  result.typ = newProcType(result.info, nextId c.idgen, result)
+  result.typ = newProcType(result.info, nextTypeId c.idgen, result)
   result.typ.addParam newParam
 
 proc semQuantifier(c: PContext; n: PNode): PNode =
@@ -528,10 +528,10 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
       let nfin = skipConvCastAndClosure(n[^1])
-      let fin = case nfin.kind 
+      let fin = case nfin.kind
         of nkSym: nfin.sym
         of nkLambda, nkDo: nfin[namePos].sym
-        else: 
+        else:
           localError(c.config, n.info, "finalizer must be a direct reference to a proc")
           nil
       if fin != nil:

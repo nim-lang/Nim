@@ -58,13 +58,13 @@ block tsets2:
     var t = initHashSet[tuple[x, y: int]]()
     t.incl((0,0))
     t.incl((1,0))
-    assert(not t.containsOrIncl((0,1)))
+    doAssert(not t.containsOrIncl((0,1)))
     t.incl((1,1))
 
     for x in 0..1:
       for y in 0..1:
-        assert((x,y) in t)
-    #assert($t ==
+        doAssert((x,y) in t)
+    #doAssert($t ==
     #  "{(x: 0, y: 0), (x: 0, y: 1), (x: 1, y: 0), (x: 1, y: 1)}")
 
   block setTest2:
@@ -76,31 +76,31 @@ block tsets2:
     t.incl("012")
     t.incl("123") # test duplicates
 
-    assert "123" in t
-    assert "111" notin t # deleted
+    doAssert "123" in t
+    doAssert "111" notin t # deleted
 
-    assert t.missingOrExcl("000")
-    assert "000" notin t
-    assert t.missingOrExcl("012") == false
-    assert "012" notin t
+    doAssert t.missingOrExcl("000")
+    doAssert "000" notin t
+    doAssert t.missingOrExcl("012") == false
+    doAssert "012" notin t
 
-    assert t.containsOrIncl("012") == false
-    assert t.containsOrIncl("012")
-    assert "012" in t # added back
+    doAssert t.containsOrIncl("012") == false
+    doAssert t.containsOrIncl("012")
+    doAssert "012" in t # added back
 
     for key in items(data): t.incl(key)
-    for key in items(data): assert key in t
+    for key in items(data): doAssert key in t
 
     for key in items(data): t.excl(key)
-    for key in items(data): assert key notin t
+    for key in items(data): doAssert key notin t
 
   block orderedSetTest1:
     var t = data.toOrderedSet
-    for key in items(data): assert key in t
+    for key in items(data): doAssert key in t
     var i = 0
     # `items` needs to yield in insertion order:
     for key in items(t):
-      assert key == data[i]
+      doAssert key == data[i]
       inc(i)
 
 
@@ -117,22 +117,22 @@ block tsets3:
       s1_s3 = s1 + s3
       s2_s3 = s2 + s3
 
-    assert s1_s2.len == 7
-    assert s1_s3.len == 8
-    assert s2_s3.len == 6
+    doAssert s1_s2.len == 7
+    doAssert s1_s3.len == 8
+    doAssert s2_s3.len == 6
 
     for i in s1:
-      assert i in s1_s2
-      assert i in s1_s3
+      doAssert i in s1_s2
+      doAssert i in s1_s3
     for i in s2:
-      assert i in s1_s2
-      assert i in s2_s3
+      doAssert i in s1_s2
+      doAssert i in s2_s3
     for i in s3:
-      assert i in s1_s3
-      assert i in s2_s3
+      doAssert i in s1_s3
+      doAssert i in s2_s3
 
-    assert((s1 + s1) == s1)
-    assert((s2 + s1) == s1_s2)
+    doAssert((s1 + s1) == s1)
+    doAssert((s2 + s1) == s1_s2)
 
   block intersection:
     let
@@ -140,22 +140,22 @@ block tsets3:
       s1_s3 = intersection(s1, s3)
       s2_s3 = s2 * s3
 
-    assert s1_s2.len == 3
-    assert s1_s3.len == 0
-    assert s2_s3.len == 2
+    doAssert s1_s2.len == 3
+    doAssert s1_s3.len == 0
+    doAssert s2_s3.len == 2
 
     for i in s1_s2:
-      assert i in s1
-      assert i in s2
+      doAssert i in s1
+      doAssert i in s2
     for i in s1_s3:
-      assert i in s1
-      assert i in s3
+      doAssert i in s1
+      doAssert i in s3
     for i in s2_s3:
-      assert i in s2
-      assert i in s3
+      doAssert i in s2
+      doAssert i in s3
 
-    assert((s2 * s2) == s2)
-    assert((s3 * s2) == s2_s3)
+    doAssert((s2 * s2) == s2)
+    doAssert((s3 * s2) == s2_s3)
 
   block symmetricDifference:
     let
@@ -163,22 +163,22 @@ block tsets3:
       s1_s3 = s1 -+- s3
       s2_s3 = s2 -+- s3
 
-    assert s1_s2.len == 4
-    assert s1_s3.len == 8
-    assert s2_s3.len == 4
+    doAssert s1_s2.len == 4
+    doAssert s1_s3.len == 8
+    doAssert s2_s3.len == 4
 
     for i in s1:
-      assert i in s1_s2 xor i in s2
-      assert i in s1_s3 xor i in s3
+      doAssert i in s1_s2 xor i in s2
+      doAssert i in s1_s3 xor i in s3
     for i in s2:
-      assert i in s1_s2 xor i in s1
-      assert i in s2_s3 xor i in s3
+      doAssert i in s1_s2 xor i in s1
+      doAssert i in s2_s3 xor i in s3
     for i in s3:
-      assert i in s1_s3 xor i in s1
-      assert i in s2_s3 xor i in s2
+      doAssert i in s1_s3 xor i in s1
+      doAssert i in s2_s3 xor i in s2
 
-    assert((s3 -+- s3) == initHashSet[int]())
-    assert((s3 -+- s1) == s1_s3)
+    doAssert((s3 -+- s3) == initHashSet[int]())
+    doAssert((s3 -+- s1) == s1_s3)
 
   block difference:
     let
@@ -186,23 +186,23 @@ block tsets3:
       s1_s3 = difference(s1, s3)
       s2_s3 = s2 - s3
 
-    assert s1_s2.len == 2
-    assert s1_s3.len == 5
-    assert s2_s3.len == 3
+    doAssert s1_s2.len == 2
+    doAssert s1_s3.len == 5
+    doAssert s2_s3.len == 3
 
     for i in s1:
-      assert i in s1_s2 xor i in s2
-      assert i in s1_s3 xor i in s3
+      doAssert i in s1_s2 xor i in s2
+      doAssert i in s1_s3 xor i in s3
     for i in s2:
-      assert i in s2_s3 xor i in s3
+      doAssert i in s2_s3 xor i in s3
 
-    assert((s2 - s2) == initHashSet[int]())
+    doAssert((s2 - s2) == initHashSet[int]())
 
   block disjoint:
-    assert(not disjoint(s1, s2))
-    assert disjoint(s1, s3)
-    assert(not disjoint(s2, s3))
-    assert(not disjoint(s2, s2))
+    doAssert(not disjoint(s1, s2))
+    doAssert disjoint(s1, s3)
+    doAssert(not disjoint(s2, s3))
+    doAssert(not disjoint(s2, s2))
 
 block: # https://github.com/nim-lang/Nim/issues/13496
   template testDel(body) =
@@ -217,7 +217,7 @@ block: # https://github.com/nim-lang/Nim/issues/13496
       doAssert sortedItems(t) == @[15, 17, 19]
       var s = newSeq[int]()
       for v in t: s.add(v)
-      assert s.len == 3
+      doAssert s.len == 3
       doAssert sortedItems(s) == @[15, 17, 19]
       when t is OrderedSet:
         doAssert sortedPairs(t) == @[(a: 0, b: 15), (a: 1, b: 19), (a: 2, b: 17)]

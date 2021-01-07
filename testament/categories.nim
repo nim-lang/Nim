@@ -49,6 +49,7 @@ proc isTestFile*(file: string): bool =
 
 # ---------------- IC tests ---------------------------------------------
 
+# xxx deadcode
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
@@ -482,6 +483,17 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
+const maxRetries = 3
+template retryCommand(call): untyped =
+  var res: typeof(call)
+  var backoff = 1
+  for i in 0..<maxRetries:
+    res = call
+    if res.exitCode == QuitSuccess or i == maxRetries-1: break
+    sleep(backoff * 1000)
+    backoff *= 2
+  res
+
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
@@ -503,28 +515,28 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       let buildPath = packagesDir / name
 
       if not dirExists(buildPath):
-        let (cloneCmd, cloneOutput, cloneStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        let (cloneCmd, cloneOutput, cloneStatus) = retryCommand execCmdEx2("git", ["clone", url, buildPath])
         if cloneStatus != QuitSuccess:
           r.addResult(test, targetC, "", cloneCmd & "\n" & cloneOutput, reInstallFailed)
           continue
 
         if not useHead:
-          let (fetchCmd, fetchOutput, fetchStatus) = execCmdEx2("git", ["fetch", "--tags"], workingDir = buildPath)
+          let (fetchCmd, fetchOutput, fetchStatus) = retryCommand execCmdEx2("git", ["fetch", "--tags"], workingDir = buildPath)
           if fetchStatus != QuitSuccess:
             r.addResult(test, targetC, "", fetchCmd & "\n" & fetchOutput, reInstallFailed)
             continue
 
-          let (describeCmd, describeOutput, describeStatus) = execCmdEx2("git", ["describe", "--tags", "--abbrev=0"], workingDir = buildPath)
+          let (describeCmd, describeOutput, describeStatus) = retryCommand execCmdEx2("git", ["describe", "--tags", "--abbrev=0"], workingDir = buildPath)
           if describeStatus != QuitSuccess:
             r.addResult(test, targetC, "", describeCmd & "\n" & describeOutput, reInstallFailed)
             continue
 
-          let (checkoutCmd, checkoutOutput, checkoutStatus) = execCmdEx2("git", ["checkout", describeOutput.strip], workingDir = buildPath)
+          let (checkoutCmd, checkoutOutput, checkoutStatus) = retryCommand execCmdEx2("git", ["checkout", describeOutput.strip], workingDir = buildPath)
           if checkoutStatus != QuitSuccess:
             r.addResult(test, targetC, "", checkoutCmd & "\n" & checkoutOutput, reInstallFailed)
             continue
 
-        let (installDepsCmd, installDepsOutput, installDepsStatus) = execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
+        let (installDepsCmd, installDepsOutput, installDepsStatus) = retryCommand execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
         if installDepsStatus != QuitSuccess:
           r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
           continue
@@ -572,6 +584,8 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
   testSpec r, makeTest(test, options, cat), targets
 
 proc isJoinableSpec(spec: TSpec): bool =
+  # xxx simplify implementation using a whitelist of fields that are allowed to be
+  # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
@@ -584,6 +598,7 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.exitCode == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
+    spec.matrix.len == 0 and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
@@ -645,7 +660,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf.string
@@ -748,7 +763,11 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
+      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+        # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
+        # that try an old version of choosenim.
+      doAssert cat.string in whiteListedDirs,
+        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0

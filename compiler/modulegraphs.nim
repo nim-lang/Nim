@@ -9,7 +9,7 @@
 
 ## This module implements the module graph data structure. The module graph
 ## represents a complete Nim project. Single modules can either be kept in RAM
-## or stored in a Sqlite database.
+## or stored in a rod-file.
 ##
 ## The caching of modules is critical for 'nimsuggest' and is tricky to get
 ## right. If module E is being edited, we need autocompletion (and type
@@ -26,13 +26,22 @@
 ##
 
 import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees, md5
+  btrees, md5
+
+# import ic / packed_ast
 
 type
   SigHash* = distinct MD5Digest
 
+  Iface* = object       ## data we don't want to store directly in the
+                        ## ast.PSym type for s.kind == skModule
+    module*: PSym       ## module this "Iface" belongs to
+    converters*: seq[PSym]
+    patterns*: seq[PSym]
+    pureEnums*: seq[PSym]
+
   ModuleGraph* = ref object
-    modules*: seq[PSym]  ## indexed by int32 fileIdx
+    ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
@@ -58,7 +67,6 @@ type
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
     emptyNode*: PNode
-    incr*: IncrementalCtx
     canonTypes*: Table[SigHash, PType]
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
@@ -167,17 +175,25 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextId(g.idgen), nil, unknownLineInfo, {})
+  result = newSym(skProc, getIdent(g.cache, name), nextSymId(g.idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
 
+proc registerModule*(g: ModuleGraph; m: PSym) =
+  assert m != nil
+  assert m.kind == skModule
+
+  if m.position >= g.ifaces.len:
+    setLen(g.ifaces, m.position + 1)
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
-  result.idgen = IdGenerator(module: -1'i32, item: 0'i32)
+  result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
-  result.modules = @[]
+  result.ifaces = @[]
   result.importStack = @[]
   result.inclToMod = initTable[FileIndex, FileIndex]()
   result.config = config
@@ -189,7 +205,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
-  init(result.incr)
   result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
     discard
   result.cacheSeqs = initTable[string, PNode]()
@@ -201,7 +216,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
   g.deps = initIntSet()
-  g.modules = @[]
+  g.ifaces = @[]
   g.importStack = @[]
   g.inclToMod = initTable[FileIndex, FileIndex]()
   g.usageSym = nil
@@ -211,14 +226,13 @@ proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
-  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len:
-    result = g.modules[fileIdx.int32]
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len:
+    result = g.ifaces[fileIdx.int32].module
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
   assert m.position == m.info.fileIndex.int32
-  addModuleDep(g.incr, g.config, m.info.fileIndex, dep, isIncludeFile = false)
   if g.suggestMode:
     g.deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when querying the graph lazily.
@@ -226,14 +240,13 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
-  addModuleDep(g.incr, g.config, module, includeFile, isIncludeFile = true)
   discard hasKeyOrPut(g.inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   ## returns 'fileIdx' if the file belonging to this index is
   ## directly used as a module or else the module that first
   ## references this include file.
-  if fileIdx.int32 >= 0 and fileIdx.int32 < g.modules.len and g.modules[fileIdx.int32] != nil:
+  if fileIdx.int32 >= 0 and fileIdx.int32 < g.ifaces.len and g.ifaces[fileIdx.int32].module != nil:
     result = fileIdx
   else:
     result = g.inclToMod.getOrDefault(fileIdx)
@@ -257,11 +270,11 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # cleared but D still needs to be remembered as 'dirty'.
   if g.invalidTransitiveClosure:
     g.invalidTransitiveClosure = false
-    transitiveClosure(g.deps, g.modules.len)
+    transitiveClosure(g.deps, g.ifaces.len)
 
   # every module that *depends* on this file is also dirty:
-  for i in 0i32..<g.modules.len.int32:
-    let m = g.modules[i]
+  for i in 0i32..<g.ifaces.len.int32:
+    let m = g.ifaces[i].module
     if m != nil and g.deps.contains(i.dependsOn(fileIdx.int)):
       incl m.flags, sfDirty
 

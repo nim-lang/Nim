@@ -99,7 +99,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
   ##
-  ## See `checkReply(reply)<#checkReply,,string>`_.
+  ## See `checkReply(reply)<#checkReply,AsyncSmtp,string>`_.
 
   result = await smtp.sock.recvLine()
   if smtp.debug:
@@ -112,17 +112,17 @@ proc quitExcpt(smtp: Smtp, msg: string) =
 const compiledWithSsl = defined(ssl)
 
 when not defined(ssl):
-  let defaultSSLContext: SSLContext = nil
+  let defaultSSLContext: SslContext = nil
 else:
-  var defaultSSLContext {.threadvar.}: SSLContext
+  var defaultSSLContext {.threadvar.}: SslContext
 
-  proc getSSLContext(): SSLContext =
+  proc getSSLContext(): SslContext =
     if defaultSSLContext == nil:
       defaultSSLContext = newContext(verifyMode = CVerifyNone)
     result = defaultSSLContext
 
 proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
-                otherHeaders: openarray[tuple[name, value: string]]): Message =
+                otherHeaders: openArray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
   ##
   ## You need to make sure that ``mSubject``, ``mTo`` and ``mCc`` don't contain
@@ -172,7 +172,7 @@ proc `$`*(msg: Message): string =
   result.add(msg.msgBody)
 
 proc newSmtp*(useSsl = false, debug = false,
-              sslContext: SSLContext = nil): Smtp =
+              sslContext: SslContext = nil): Smtp =
   ## Creates a new ``Smtp`` instance.
   new result
   result.debug = debug
@@ -187,7 +187,7 @@ proc newSmtp*(useSsl = false, debug = false,
       {.error: "SMTP module compiled without SSL support".}
 
 proc newAsyncSmtp*(useSsl = false, debug = false,
-                   sslContext: SSLContext = nil): AsyncSmtp =
+                   sslContext: SslContext = nil): AsyncSmtp =
   ## Creates a new ``AsyncSmtp`` instance.
   new result
   result.debug = debug
@@ -211,7 +211,7 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
   return retFuture
 
 proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
-  ## Calls `debugRecv<#debugRecv>`_ and checks that the received
+  ## Calls `debugRecv<#debugRecv,AsyncSmtp>`_ and checks that the received
   ## data starts with ``reply``. If the received data does not start
   ## with ``reply``, then a ``QUIT`` command will be sent to the SMTP
   ## server and a ``ReplyError`` exception will be raised.
@@ -222,7 +222,7 @@ proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
 
   var line = await smtp.debugRecv()
-  if not line.startswith(reply):
+  if not line.startsWith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)
 
 proc helo*(smtp: Smtp | AsyncSmtp) {.multisync.} =
@@ -239,7 +239,7 @@ proc connect*(smtp: Smtp | AsyncSmtp,
   await smtp.checkReply("220")
   await smtp.helo()
 
-proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SSLContext = nil) {.multisync.} =
+proc startTls*(smtp: Smtp | AsyncSmtp, sslContext: SslContext = nil) {.multisync.} =
   ## Put the SMTP connection in TLS (Transport Layer Security) mode.
   ## May fail with ReplyError
   await smtp.debugSend("STARTTLS\c\L")

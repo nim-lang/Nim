@@ -44,3 +44,13 @@ proc setControlCHook(hook: proc () {.noconv.}) = discard
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   sysFatal(ReraiseDefect, "exception handling is not available")
+
+when gotoBasedExceptions:
+  var nimInErrorMode {.threadvar.}: bool
+
+  proc nimErrorFlag(): ptr bool {.compilerRtl, inl.} =
+    result = addr(nimInErrorMode)
+
+  proc nimTestErrorFlag() {.compilerRtl.} =
+    if nimInErrorMode:
+      sysFatal(ReraiseDefect, "exception handling is not available")

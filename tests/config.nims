@@ -8,3 +8,9 @@ switch("path", "$lib/../testament/lib")
 switch("colors", "off")
 switch("listFullPaths", "off")
 switch("excessiveStackTrace", "off")
+
+# for std/unittest
+switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
+switch("define", "nimUnittestColor:off")
+
+switch("define", "nimLegacyTypeMismatch")

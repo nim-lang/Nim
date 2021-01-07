@@ -465,6 +465,7 @@ The compiler ensures that every code path initializes variables which contain
 non-nilable pointers. The details of this analysis are still to be specified
 here.
 
+.. include:: manual_experimental_strictnotnil.rst
 
 Concepts
 ========
@@ -1250,7 +1251,7 @@ all the arguments, but also the matched operators in reverse polish notation:
   echo x + y * z - x
 
 This passes the expression ``x + y * z - x`` to the ``optM`` macro as
-an ``nnkArgList`` node containing::
+an ``nnkArglist`` node containing::
 
   Arglist
     Sym "x"

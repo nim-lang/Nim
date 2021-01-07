@@ -17,10 +17,7 @@ proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:
       prag = ex[1]
-      if ex[0].kind == nnkPar and ex[0].len == 1:
-        ex = ex[0][0]
-      else:
-        ex = ex[0]
+      ex = ex[0]
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkProcTy)
@@ -61,17 +58,17 @@ macro `=>`*(p, b: untyped): untyped =
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int =
       f(2, 2)
-  
+
     doAssert passTwoAndTwo((x, y) => x + y) == 4
 
     type
       Bot = object
-        call: proc (): string {.nosideEffect.}
+        call: proc (name: string): string {.noSideEffect.}
 
     var myBot = Bot()
 
-    myBot.call = () {.nosideEffect.} => "I'm a bot."
-    doAssert myBot.call() == "I'm a bot."
+    myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
+    doAssert myBot.call("John") == "Hello John, I'm a bot."
 
   var
     params = @[ident"auto"]
@@ -89,7 +86,7 @@ macro `=>`*(p, b: untyped): untyped =
   checkPragma(p, pragma) # check again after -> transform
 
   since (1, 3):
-    if p.kind == nnkCall:
+    if p.kind in {nnkCall, nnkObjConstr}:
       # foo(x, y) => x + y
       kind = nnkProcDef
       name = p[0]
@@ -129,7 +126,7 @@ macro `=>`*(p, b: untyped): untyped =
           error("Expected proc type (->) got (" & c[0].strVal & ").", c)
         break
       else:
-        error("Incorrect procedure parameter list.", c)
+        error("Incorrect procedure parameter.", c)
       params.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
@@ -273,54 +270,79 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
-
-proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
-  of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
+  of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt, nnkWhenStmt:
     result[0] = copyNimTree(n)
     result[1] = copyNimTree(n)
     result[2] = copyNimTree(n)
-    for i in ord(n.kind == nnkCaseStmt)..<n.len:
-      (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
+    for i in ord(n.kind == nnkCaseStmt) ..< n.len:
+      (result[0][i], result[1][^1], result[2][^1]) = trans(n[i], res, bracketExpr)
   of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
       nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
     result[0] = copyNimTree(n)
     result[1] = copyNimTree(n)
     result[2] = copyNimTree(n)
     if n.len >= 1:
-      (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
+      (result[0][^1], result[1][^1], result[2][^1]) = trans(n[^1],
+          res, bracketExpr)
   of nnkTableConstr:
     result[1] = n[0][0]
     result[2] = n[0][1]
+    if bracketExpr.len == 0:
+      bracketExpr.add(ident"initTable") # don't import tables
     if bracketExpr.len == 1:
-      bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
-          bindSym"typeof", newEmptyNode())])
+      bracketExpr.add([newCall(bindSym"typeof",
+          newEmptyNode()), newCall(bindSym"typeof", newEmptyNode())])
     template adder(res, k, v) = res[k] = v
     result[0] = getAst(adder(res, n[0][0], n[0][1]))
   of nnkCurly:
     result[2] = n[0]
+    if bracketExpr.len == 0:
+      bracketExpr.add(ident"initHashSet")
     if bracketExpr.len == 1:
       bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
     template adder(res, v) = res.incl(v)
     result[0] = getAst(adder(res, n[0]))
   else:
     result[2] = n
+    if bracketExpr.len == 0:
+      bracketExpr.add(bindSym"newSeq")
     if bracketExpr.len == 1:
       bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
+proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
+  let res = genSym(nskVar, "collectResult")
+  var bracketExpr: NimNode
+  if init != nil:
+    expectKind init, {nnkCall, nnkIdent, nnkSym}
+    bracketExpr = newTree(nnkBracketExpr,
+      if init.kind == nnkCall: freshIdentNodes(init[0]) else: freshIdentNodes(init))
+  else:
+    bracketExpr = newTree(nnkBracketExpr)
+  let (resBody, keyType, valueType) = trans(body, res, bracketExpr)
+  if bracketExpr.len == 3:
+    bracketExpr[1][1] = keyType
+    bracketExpr[2][1] = valueType
+  else:
+    bracketExpr[1][1] = valueType
+  let call = newTree(nnkCall, bracketExpr)
+  if init != nil and init.kind == nnkCall:
+    for i in 1 ..< init.len:
+      call.add init[i]
+  result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+
 macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
-  ## Comprehension for seq/set/table collections. ``init`` is
-  ## the init call, and so custom collections are supported.
+  ## Comprehension for seqs/sets/tables.
   ##
-  ## The last statement of ``body`` has special syntax that specifies
-  ## the collection's add operation. Use ``{e}`` for set's ``incl``,
-  ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
-  ##
-  ## The ``init`` proc can be called with any number of arguments,
-  ## i.e. ``initTable(initialSize)``.
+  ## The last expression of `body` has special syntax that specifies
+  ## the collection's add operation. Use `{e}` for set's `incl`,
+  ## `{k: v}` for table's `[]=` and `e` for seq's `add`.
+  # analyse the body, find the deepest expression 'it' and replace it via
+  # 'result.add it'
   runnableExamples:
     import sets, tables
     let data = @["bird", "word"]
@@ -346,20 +368,27 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       for i, d in data.pairs: {i: d}
 
     assert z == {0: "bird", 1: "word"}.toTable
-  # analyse the body, find the deepest expression 'it' and replace it via
-  # 'result.add it'
-  let res = genSym(nskVar, "collectResult")
-  expectKind init, {nnkCall, nnkIdent, nnkSym}
-  let bracketExpr = newTree(nnkBracketExpr,
-    if init.kind == nnkCall: init[0] else: init)
-  let (resBody, keyType, valueType) = transLastStmt(body, res, bracketExpr)
-  if bracketExpr.len == 3:
-    bracketExpr[1][1] = keyType
-    bracketExpr[2][1] = valueType
-  else:
-    bracketExpr[1][1] = valueType
-  let call = newTree(nnkCall, bracketExpr)
-  if init.kind == nnkCall:
-    for i in 1 ..< init.len:
-      call.add init[i]
-  result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+  result = collectImpl(init, body)
+
+macro collect*(body: untyped): untyped {.since: (1, 5).} =
+  ## Same as `collect` but without an `init` parameter.
+  runnableExamples:
+    import sets, tables
+    # Seq:
+    let data = @["bird", "word"]
+    let k = collect:
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
+
+    assert k == @["bird"]
+    ## HashSet:
+    let n = collect:
+      for d in data.items: {d}
+
+    assert n == data.toHashSet
+    ## Table:
+    let m = collect:
+      for i, d in data.pairs: {i: d}
+
+    assert m == {0: "bird", 1: "word"}.toTable
+  result = collectImpl(nil, body)

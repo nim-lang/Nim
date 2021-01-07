@@ -22,6 +22,9 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added an overload for the `collect` macro that inferes the container type based
+  on the syntax of the last expression. Works with std seqs, tables and sets.
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
@@ -32,6 +35,8 @@
   [nimble](https://github.com/nim-lang/iup).
 
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
+
+- Added `cmpMem` to `system`.
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
@@ -52,7 +57,51 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+
+
+- Added `decodeQuery` to `std/uri`.
+- `strscans.scanf` now supports parsing single characters.
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
+
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+  if the iterable yields a built-in settable type.
+
+- Added `math.isNaN`.
+
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- Added `math.copySign`.
+- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
+  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
+  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
+  its argument, `addMoved`, is also supplied.
+
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+- Added `jsconsole.jsAssert` for JavaScript target.
+
+- Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
+- Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+- Added `BackwardsIndex` overload for `JsonNode`.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+- Added `socketstream` module that wraps sockets in the stream interface
+
+
+
+
+- Added `math.signbit`.
+
 - Added `algorithm.merge`.
+
 
 ## Language changes
 
@@ -61,6 +110,7 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+
 
 ## Compiler changes
 
@@ -71,6 +121,9 @@
 
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
+- VM now supports `addr(mystring[ind])` (index + index assignment)
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
 
 
 ## Tool changes

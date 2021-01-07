@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, msgs, options,
-  idents, lexer, passes, syntaxes, llstream, modulegraphs, rod,
+  idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
@@ -59,12 +59,14 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   result.owner = packSym
   result.position = int fileIdx
 
-  if int(fileIdx) >= graph.modules.len:
-    setLen(graph.modules, int(fileIdx) + 1)
-  graph.modules[result.position] = result
+  graph.registerModule(result)
 
   initStrTable(result.tab)
-  strTableAdd(result.tab, result) # a module knows itself
+  when false:
+    strTableAdd(result.tab, result) # a module knows itself
+    # This is now implemented via
+    #   c.moduleScope.addSym(module) # a module knows itself
+    # in sem.nim, around line 527
   strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
@@ -91,8 +93,10 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-    result = loadModuleSym(graph, fileIdx, filename)
-    if result == nil:
+    when false:
+      # XXX entry point for module loading from the rod file
+      result = loadModuleSym(graph, fileIdx, filename)
+    when true:
       result = newModule(graph, fileIdx)
       result.flags.incl flags
       registerModule(graph, result)

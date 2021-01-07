@@ -1,24 +1,24 @@
 # comparison operators:
-proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
+proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
   ## Checks whether values within the *same enum* have the same underlying value.
-  ##
-  ## .. code-block:: Nim
-  ##  type
-  ##    Enum1 = enum
-  ##      Field1 = 3, Field2
-  ##    Enum2 = enum
-  ##      Place1, Place2 = 3
-  ##  var
-  ##    e1 = Field1
-  ##    e2 = Enum1(Place2)
-  ##  echo (e1 == e2) # true
-  ##  echo (e1 == Place2) # raises error
-proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
-  ## .. code-block:: Nim
-  ##  var # this is a wildly dangerous example
-  ##    a = cast[pointer](0)
-  ##    b = cast[pointer](nil)
-  ##  echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
+  runnableExamples:
+    type
+      Enum1 = enum
+        field1 = 3, field2
+      Enum2 = enum
+        place1, place2 = 3
+    var
+      e1 = field1
+      e2 = Enum1(place2)
+    assert e1 == e2
+    assert not compiles(e1 == place2) # raises error
+proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =
+  ## Checks for equality between two `pointer` variables.
+  runnableExamples:
+    var # this is a wildly dangerous example
+      a = cast[pointer](0)
+      b = cast[pointer](nil)
+    assert a == b # true due to the special meaning of `nil`/0 as a pointer
 proc `==`*(x, y: string): bool {.magic: "EqStr", noSideEffect.}
   ## Checks for equality between two `string` variables.
 
@@ -26,13 +26,11 @@ proc `==`*(x, y: char): bool {.magic: "EqCh", noSideEffect.}
   ## Checks for equality between two `char` variables.
 proc `==`*(x, y: bool): bool {.magic: "EqB", noSideEffect.}
   ## Checks for equality between two `bool` variables.
-proc `==`*[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
+proc `==`*[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.} =
   ## Checks for equality between two variables of type `set`.
-  ##
-  ## .. code-block:: Nim
-  ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
-  ##  var b = {1, 2, 3}
-  ##  echo (a == b) # true
+  runnableExamples:
+    assert {1, 2, 2, 3} == {1, 2, 3} # duplication in sets is ignored
+
 proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
   ## Checks that two `ref` variables refer to the same item.
 proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
@@ -41,87 +39,87 @@ proc `==`*[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
   ## Checks that two `proc` variables refer to the same procedure.
 
 proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
-proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.}
+proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.} =
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
-  ##
-  ## .. code-block:: Nim
-  ##     let
-  ##       a = "abc"
-  ##       b = "abd"
-  ##       c = "ZZZ"
-  ##     assert a <= b
-  ##     assert a <= a
-  ##     assert (a <= c) == false
-proc `<=`*(x, y: char): bool {.magic: "LeCh", noSideEffect.}
+  runnableExamples:
+    let
+      a = "abc"
+      b = "abd"
+      c = "ZZZ"
+    assert a <= b
+    assert a <= a
+    assert not (a <= c)
+
+proc `<=`*(x, y: char): bool {.magic: "LeCh", noSideEffect.} =
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
-  ##
-  ## .. code-block:: Nim
-  ##     let
-  ##       a = 'a'
-  ##       b = 'b'
-  ##       c = 'Z'
-  ##     assert a <= b
-  ##     assert a <= a
-  ##     assert (a <= c) == false
-proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
+  runnableExamples:
+    let
+      a = 'a'
+      b = 'b'
+      c = 'Z'
+    assert a <= b
+    assert a <= a
+    assert not (a <= c)
+
+proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.} =
   ## Returns true if `x` is a subset of `y`.
   ##
   ## A subset `x` has all of its members in `y` and `y` doesn't necessarily
   ## have more members than `x`. That is, `x` can be equal to `y`.
-  ##
-  ## .. code-block:: Nim
-  ##   let
-  ##     a = {3, 5}
-  ##     b = {1, 3, 5, 7}
-  ##     c = {2}
-  ##   assert a <= b
-  ##   assert a <= a
-  ##   assert (a <= c) == false
+  runnableExamples:
+    let
+      a = {3, 5}
+      b = {1, 3, 5, 7}
+      c = {2}
+    assert a <= b
+    assert a <= a
+    assert not (a <= c)
+
 proc `<=`*(x, y: bool): bool {.magic: "LeB", noSideEffect.}
 proc `<=`*[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
 proc `<=`*(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
 
 proc `<`*[Enum: enum](x, y: Enum): bool {.magic: "LtEnum", noSideEffect.}
-proc `<`*(x, y: string): bool {.magic: "LtStr", noSideEffect.}
+proc `<`*(x, y: string): bool {.magic: "LtStr", noSideEffect.} =
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
-  ##
-  ## .. code-block:: Nim
-  ##     let
-  ##       a = "abc"
-  ##       b = "abd"
-  ##       c = "ZZZ"
-  ##     assert a < b
-  ##     assert (a < a) == false
-  ##     assert (a < c) == false
-proc `<`*(x, y: char): bool {.magic: "LtCh", noSideEffect.}
+  runnableExamples:
+    let
+      a = "abc"
+      b = "abd"
+      c = "ZZZ"
+    assert a < b
+    assert not (a < a)
+    assert not (a < c)
+
+proc `<`*(x, y: char): bool {.magic: "LtCh", noSideEffect.} =
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
-  ##
-  ## .. code-block:: Nim
-  ##     let
-  ##       a = 'a'
-  ##       b = 'b'
-  ##       c = 'Z'
-  ##     assert a < b
-  ##     assert (a < a) == false
-  ##     assert (a < c) == false
-proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
+  runnableExamples:
+    let
+      a = 'a'
+      b = 'b'
+      c = 'Z'
+    assert a < b
+    assert not (a < a)
+    assert not (a < c)
+
+proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.} =
   ## Returns true if `x` is a strict or proper subset of `y`.
   ##
   ## A strict or proper subset `x` has all of its members in `y` but `y` has
   ## more elements than `y`.
-  ##
-  ## .. code-block:: Nim
-  ##   let
-  ##     a = {3, 5}
-  ##     b = {1, 3, 5, 7}
-  ##     c = {2}
-  ##   assert a < b
-  ##   assert (a < a) == false
-  ##   assert (a < c) == false
+  runnableExamples:
+    let
+      a = {3, 5}
+      b = {1, 3, 5, 7}
+      c = {2}
+    assert a < b
+    assert not (a < a)
+    assert not (a < c)
+
 proc `<`*(x, y: bool): bool {.magic: "LtB", noSideEffect.}
 proc `<`*[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
@@ -252,11 +250,14 @@ proc max*[T](x: openArray[T]): T =
 
 
 proc clamp*[T](x, a, b: T): T =
-  ## Limits the value ``x`` within the interval [a, b].
-  ##
-  ## .. code-block:: Nim
-  ##   assert((1.4).clamp(0.0, 1.0) == 1.0)
-  ##   assert((0.5).clamp(0.0, 1.0) == 0.5)
+  ## Limits the value `x` within the interval [a, b].
+  ## This proc is equivalent to but fatser than `max(a, min(b, x))`.
+  ## 
+  ## **Note:** `a <= b` is assumed and will not be checked.
+  runnableExamples:
+    assert (1.4).clamp(0.0, 1.0) == 1.0
+    assert (0.5).clamp(0.0, 1.0) == 0.5
+    assert 4.clamp(1, 3) == max(1, min(3, 4))
   if x < a: return a
   if x > b: return b
   return x

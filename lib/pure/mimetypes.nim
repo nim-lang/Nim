@@ -8,7 +8,7 @@
 #
 
 ## This module implements a mimetypes database
-import strtabs
+import strtabs, std/private/since
 from strutils import startsWith, toLowerAscii, strip
 
 type
@@ -1916,6 +1916,33 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
   {.noSideEffect.}:
     mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
+
+
+since (1, 5):
+  func mimesLongest(): array[2, int] {.compiletime.} =
+    runnableExamples:
+      static:
+        doAssert mimesLongest() >= (ext: 24, mime: 73)
+    var currentKeyLength, currentValLength: int
+    for item in mimes:
+      currentKeyLength = item[0].len
+      currentValLength = item[1].len
+      if currentKeyLength > result[0]: result[0] = currentKeyLength
+      if currentValLength > result[1]: result[1] = currentValLength
+
+  const
+    ctValue = mimesLongest() # Use 2 const instead of func, save tuple unpack.
+    mimesExtMaxLen*: int = ctValue[0] ## \
+      ## The length of the longest "ext" from `mimes`,
+      ## this is useful for optimizations with `newStringOfCap` and `newString`.
+    mimesMaxLen*: int = ctValue[1] ## \
+      ## The length of the longest "mime" from `mimes`,
+      ## this is useful for optimizations with `newStringOfCap` and `newString`.
+      ##
+      ## See also:
+      ## * `newStringOfCap <system.html#newStringOfCap>`_
+      ## * `newString <system.html#newString>`_
+
 
 runnableExamples:
   static:
