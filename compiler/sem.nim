@@ -19,7 +19,8 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed
 
-from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
+from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward,
+  systemModuleSym, semtab, getBody, someSym, allSyms
 
 when defined(nimfix):
   import nimfix/prettybase

@@ -14,6 +14,8 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+from ic / to_packed_ast import addCompilerProc
+
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
@@ -702,6 +704,8 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s.flags, sfCompilerProc)
   incl(s.flags, sfUsed)
   registerCompilerProc(c.graph, s)
+  if c.config.symbolFiles != disabledSf:
+    addCompilerProc(c.encoder, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]

@@ -1292,7 +1292,7 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfoV1(p.module, typ, a.lode.info)
-    if bt.destructor != nil and not isTrivialProc(bt.destructor):
+    if bt.destructor != nil and not isTrivialProc(p.module.g.graph, bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -2204,7 +2204,7 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and t.destructor.ast[bodyPos].len != 0:
+    if t.destructor != nil and getBody(p.module.g.graph, t.destructor).len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
