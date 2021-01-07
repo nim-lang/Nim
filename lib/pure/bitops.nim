@@ -739,7 +739,7 @@ when useBuiltinsRotate:
                        {.importc: "__rolw", header: "x86intrin.h".}
     func builtin_rotl32(value: uint32, shift: int32): uint32
                        {.importc: "__rold", header: "x86intrin.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotl64(value: uint64, shift: int32): uint64
                          {.importc: "__rolq", header: "x86intrin.h".}
 
@@ -749,7 +749,7 @@ when useBuiltinsRotate:
                        {.importc: "__rorw", header: "x86intrin.h".}
     func builtin_rotr32(value: uint32, shift: int32): uint32
                        {.importc: "__rord", header: "x86intrin.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotr64(value: uint64, shift: int32): uint64
                          {.importc: "__rorq", header: "x86intrin.h".}
   elif defined(clang):
@@ -762,7 +762,7 @@ when useBuiltinsRotate:
                        {.importc: "__builtin_rotateleft16".}
     func builtin_rotl32(value: cuint, shift: cuint): cuint
                        {.importc: "__builtin_rotateleft32".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotl64(value: culonglong, shift: culonglong): culonglong
                          {.importc: "__builtin_rotateleft64".}
     
@@ -772,7 +772,7 @@ when useBuiltinsRotate:
                        {.importc: "__builtin_rotateright16".}
     func builtin_rotr32(value: cuint, shift: cuint): cuint
                        {.importc: "__builtin_rotateright32".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotr64(value: culonglong, shift: culonglong): culonglong
                          {.importc: "__builtin_rotateright64".}
   elif defined(vcc):
@@ -785,7 +785,7 @@ when useBuiltinsRotate:
                        {.importc: "_rotl16", header: "intrin.h".}
     func builtin_rotl32(value: uint32, shift: int32): uint32
                        {.importc: "_rotl", header: "stdlib.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotl64(value: uint64, shift: int32): uint64
                          {.importc: "_rotl64", header: "stdlib.h".}
 
@@ -795,7 +795,7 @@ when useBuiltinsRotate:
                        {.importc: "_rotr16", header: "intrin.h".}
     func builtin_rotr32(value: uint32, shift: int32): uint32
                        {.importc: "_rotr", header: "stdlib.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotr64(value: uint64, shift: int32): uint64
                          {.importc: "_rotr64", header: "stdlib.h".}
   elif defined(icl):
@@ -805,7 +805,7 @@ when useBuiltinsRotate:
                        {.importc: "__rolw", header: "immintrin.h".}
     func builtin_rotl32(value: uint32, shift: int32): uint32
                        {.importc: "__rold", header: "immintrin.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotl64(value: uint64, shift: int32): uint64
                          {.importc: "__rolq", header: "immintrin.h".}
 
@@ -815,22 +815,21 @@ when useBuiltinsRotate:
                        {.importc: "__rorw", header: "immintrin.h".}
     func builtin_rotr32(value: uint32, shift: int32): uint32
                        {.importc: "__rord", header: "immintrin.h".}
-    when arch64:
+    when defined(amd64):
       func builtin_rotr64(value: uint64, shift: int32): uint64
                          {.importc: "__rorq", header: "immintrin.h".}
 
-when not useBuiltinsRotate or not arch64:
-  # https://blog.regehr.org/archives/1063
-  # https://stackoverflow.com/a/776523
-  # The GCC compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction since version 4.9.0 for SomeUnsignedInt.
-  # The CLANG compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction on version 8.0.0 and 11.0.0 for SomeUnsignedInt. CLANG from 7.0.0, 9.0.0 to 10.0.0 does not recognize for uint8 and uint16.
-  func rotl[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
-    const mask: int32 = 8 * sizeof(value) - 1
-    (value shl rot) or (value shr (-rot and mask))
+# https://blog.regehr.org/archives/1063
+# https://stackoverflow.com/a/776523
+# The GCC compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction since version 4.9.0 for SomeUnsignedInt.
+# The CLANG compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction on version 8.0.0 and 11.0.0 for SomeUnsignedInt. CLANG from 7.0.0, 9.0.0 to 10.0.0 does not recognize for uint8 and uint16.
+func rotl[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
+  const mask: int32 = 8 * sizeof(value) - 1
+  (value shl rot) or (value shr (-rot and mask))
 
-  func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
-    const mask: int32 = 8 * sizeof(value) - 1
-    (value shr rot) or (value shl (-rot and mask))
+func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
+  const mask: int32 = 8 * sizeof(value) - 1
+  (value shr rot) or (value shl (-rot and mask))
 
 func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Left-rotate bits in a 8-bits value.
@@ -839,57 +838,69 @@ func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
     doAssert rotateLeftBits(0b0000_0001'u8, 2) == 0b0000_0100'u8
     doAssert rotateLeftBits(0b0100_0001'u8, 1) == 0b1000_0010'u8
     doAssert rotateLeftBits(0b0100_0001'u8, 2) == 0b0000_0101'u8
-
-  when useBuiltinsRotate:
-    when defined(gcc) or defined(icl):
-      builtin_rotl8(value, shift.int32)
-    elif defined(clang):
-      builtin_rotl8(value.cuchar, shift.cuchar).uint8
-    elif defined(vcc):
-      builtin_rotl8(value, shift.uint8)
-  else:
+  
+  when nimvm:
     rotl(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(gcc) or defined(icl):
+        builtin_rotl8(value, shift.int32)
+      elif defined(clang):
+        builtin_rotl8(value.cuchar, shift.cuchar).uint8
+      elif defined(vcc):
+        builtin_rotl8(value, shift.uint8)
+    else:
+      rotl(value, shift.int32)
 
 func rotateLeftBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   ## Left-rotate bits in a 16-bits value.
   ##
   ## See also:
   ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
-  when useBuiltinsRotate:
-    when defined(gcc) or defined(icl):
-      builtin_rotl16(value, shift.int32)
-    elif defined(clang):
-      builtin_rotl16(value.cushort, shift.cushort).uint16
-    elif defined(vcc):
-      builtin_rotl16(value, shift.uint8)
-  else:
+  when nimvm:
     rotl(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(gcc) or defined(icl):
+        builtin_rotl16(value, shift.int32)
+      elif defined(clang):
+        builtin_rotl16(value.cushort, shift.cushort).uint16
+      elif defined(vcc):
+        builtin_rotl16(value, shift.uint8)
+    else:
+      rotl(value, shift.int32)
 
 func rotateLeftBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
   ## Left-rotate bits in a 32-bits value.
   ##
   ## See also:
   ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
-  when useBuiltinsRotate:
-    when defined(clang):
-      builtin_rotl32(value.cuint, shift.cuint).uint32
-    else:
-      builtin_rotl32(value, shift.int32)
-  else:
+  when nimvm:
     rotl(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(clang):
+        builtin_rotl32(value.cuint, shift.cuint).uint32
+      else:
+        builtin_rotl32(value, shift.int32)
+    else:
+      rotl(value, shift.int32)
 
 func rotateLeftBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
   ## Left-rotate bits in a 64-bits value.
   ##
   ## See also:
   ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
-  when useBuiltinsRotate and arch64:
-    when defined(clang):
-      builtin_rotl64(value.culonglong, shift.culonglong).uint64
-    else:
-      builtin_rotl64(value, shift.int32)
-  else:
+  when nimvm:
     rotl(value, shift.int32)
+  else:
+    when useBuiltinsRotate and defined(amd64):
+      when defined(clang):
+        builtin_rotl64(value.culonglong, shift.culonglong).uint64
+      else:
+        builtin_rotl64(value, shift.int32)
+    else:
+      rotl(value, shift.int32)
 
 func rotateRightBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Right-rotate bits in a 8-bits value.
@@ -899,56 +910,68 @@ func rotateRightBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
     doAssert rotateRightBits(0b0100_0001'u8, 1) == 0b1010_0000'u8
     doAssert rotateRightBits(0b0100_0001'u8, 2) == 0b0101_0000'u8
 
-  when useBuiltinsRotate:
-    when defined(gcc) or defined(icl):
-      builtin_rotr8(value, shift.int32)
-    elif defined(clang):
-      builtin_rotr8(value.cuchar, shift.cuchar).uint8
-    elif defined(vcc):
-      builtin_rotr8(value, shift.uint8)
-  else:
+  when nimvm:
     rotr(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(gcc) or defined(icl):
+        builtin_rotr8(value, shift.int32)
+      elif defined(clang):
+        builtin_rotr8(value.cuchar, shift.cuchar).uint8
+      elif defined(vcc):
+        builtin_rotr8(value, shift.uint8)
+    else:
+      rotr(value, shift.int32)
 
 func rotateRightBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   ## Right-rotate bits in a 16-bits value.
   ##
   ## See also:
   ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
-  when useBuiltinsRotate:
-    when defined(gcc) or defined(icl):
-      builtin_rotr16(value, shift.int32)
-    elif defined(clang):
-      builtin_rotr16(value.cushort, shift.cushort).uint16
-    elif defined(vcc):
-      builtin_rotr16(value, shift.uint8)
-  else:
+  when nimvm:
     rotr(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(gcc) or defined(icl):
+        builtin_rotr16(value, shift.int32)
+      elif defined(clang):
+        builtin_rotr16(value.cushort, shift.cushort).uint16
+      elif defined(vcc):
+        builtin_rotr16(value, shift.uint8)
+    else:
+      rotr(value, shift.int32)
 
 func rotateRightBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
   ## Right-rotate bits in a 32-bits value.
   ##
   ## See also:
   ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
-  when useBuiltinsRotate:
-    when defined(clang):
-      builtin_rotr32(value.cuint, shift.cuint).uint32
-    else:
-      builtin_rotr32(value, shift.int32)
-  else:
+  when nimvm:
     rotr(value, shift.int32)
+  else:
+    when useBuiltinsRotate:
+      when defined(clang):
+        builtin_rotr32(value.cuint, shift.cuint).uint32
+      else:
+        builtin_rotr32(value, shift.int32)
+    else:
+      rotr(value, shift.int32)
 
 func rotateRightBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
   ## Right-rotate bits in a 64-bits value.
   ##
   ## See also:
   ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
-  when useBuiltinsRotate and arch64:
-    when defined(clang):
-      builtin_rotr64(value.culonglong, shift.culonglong).uint64
-    else:
-      builtin_rotr64(value, shift.int32)
-  else:
+  when nimvm:
     rotr(value, shift.int32)
+  else:
+    when useBuiltinsRotate and defined(amd64):
+      when defined(clang):
+        builtin_rotr64(value.culonglong, shift.culonglong).uint64
+      else:
+        builtin_rotr64(value, shift.int32)
+    else:
+      rotr(value, shift.int32)
 
 proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
   noSideEffect.} =
