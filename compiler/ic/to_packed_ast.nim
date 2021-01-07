@@ -64,18 +64,27 @@ proc definedSymbolsAsString(config: ConfigRef): string =
     result.add ' '
     result.add d
 
-proc rememberConfig(c: var PackedEncoder; config: ConfigRef) =
+proc rememberConfig(c: var PackedEncoder; config: ConfigRef; pc: PackedConfig) =
   c.m.definedSymbols = definedSymbolsAsString(config)
-
-  template rem(x) =
-    c.m.cfg.x = config.x
-  primConfigFields rem
+  #template rem(x) =
+  #  c.m.cfg.x = config.x
+  #primConfigFields rem
+  c.m.cfg = pc
 
 proc configIdentical(m: PackedModule; config: ConfigRef): bool =
   result = m.definedSymbols == definedSymbolsAsString(config)
+  #if not result:
+  #  echo "A ", m.definedSymbols, " ", definedSymbolsAsString(config)
   template eq(x) =
     result = result and m.cfg.x == config.x
+    #if not result:
+    #  echo "B ", m.cfg.x, " ", config.x
   primConfigFields eq
+
+proc rememberStartupConfig*(dest: var PackedConfig, config: ConfigRef) =
+  template rem(x) =
+    dest.x = config.x
+  primConfigFields rem
 
 proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
   result = msgs.getHash(conf, fileIdx)
@@ -107,7 +116,7 @@ proc includesIdentical(m: var PackedModule; config: ConfigRef): bool =
       return false
   result = true
 
-proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
+proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef; pc: PackedConfig) =
   ## setup a context for serializing to packed ast
   c.m.sh = Shared()
   c.thisModule = m.itemId.module
@@ -124,6 +133,8 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef) =
       h = $secureHashFile(fullpath)
       msgs.setHash(config, thisNimFile, h)
   c.m.includes.add((toLitId(thisNimFile, c), h)) # the module itself
+
+  rememberConfig(c, config, pc)
 
 proc addIncludeFileDep*(c: var PackedEncoder; f: FileIndex) =
   c.m.includes.add((toLitId(f, c), hashFileCached(c.config, f)))
@@ -460,7 +471,7 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
   removeFile(filename.string)
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
-  rememberConfig(encoder, encoder.config)
+  #rememberConfig(encoder, encoder.config)
 
   var f = rodfiles.create(filename.string)
   f.storeHeader()

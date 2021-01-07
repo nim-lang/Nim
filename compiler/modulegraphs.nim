@@ -30,6 +30,7 @@ type
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed: PackedModuleGraph
+    startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
@@ -342,3 +343,6 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)
+
+proc configComplete*(g: ModuleGraph) =
+  rememberStartupConfig(g.startupPackedConfig, g.config)

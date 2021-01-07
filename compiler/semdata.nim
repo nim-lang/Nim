@@ -268,7 +268,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
-    initEncoder result.encoder, module, graph.config
+    initEncoder result.encoder, module, graph.config, graph.startupPackedConfig
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -503,4 +503,4 @@ proc storeRodNode*(c: PContext, n: PNode) =
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    saveRodFile(toRodFile(c.config, c.filename.AbsoluteFile), c.encoder)
+    saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)
