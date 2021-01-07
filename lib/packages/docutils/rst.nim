@@ -677,8 +677,8 @@ proc isInlineMarkupStart(p: RstParser, markup: string, twoTokens=false): bool =
   if not twoTokens:
     result = currentTok(p).symbol == markup
   else:
-    result = currentTok(p).symbol == markup[0..0] and
-               nextTok(p).symbol == markup[1..1]
+    result = currentTok(p).symbol == $markup[0] and
+               nextTok(p).symbol == $markup[1]
   if not result: return
   # Rule 6:
   result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
