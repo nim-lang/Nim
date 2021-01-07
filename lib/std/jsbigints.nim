@@ -33,16 +33,17 @@ func `$`*(this: JsBigInt): string =
 
 func wrapToInt*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asIntN(b, i) })()".} =
-  ## Wrap `a` to a signed `JsBigInt` of `bits` bits, for example between `-2 ^ (bits - 1)` and `2 ^ (bits - 1) - 1`.
+  ## Wrap `this` to a signed `JsBigInt` of `bits` bits in `-2 ^ (bits - 1)` .. `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
-    doAssert newJsBigInt("2147483647").wrapToInt(32) == newJsBigInt"2147483647"
+    doAssert (newJsBigInt("3") + newJsBigInt("2") ** newJsBigInt("66")).wrapToInt(13) == newJsBigInt("3")
 
 func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asUintN(b, i) })()".} =
+  ## Wrap `this` to an unsigned `JsBigInt` of `bits` bits in 0 ..  `2 ^ bits - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
-    doAssert newJsBigInt("2147483647").wrapToUint(32) == newJsBigInt"2147483647"
+    doAssert (newJsBigInt("3") + newJsBigInt("2") ** newJsBigInt("66")).wrapToUint(66) == newJsBigInt("3")
 
 func unsafeToNumber*(this: JsBigInt): BiggestInt {.importjs: "Number(#)".} =
   ## **Unsafe**: Does not do any bounds check and may or may not return an inexact representation.
