@@ -1,8 +1,19 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2021 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 ## This module provides an implementation of the streams interface for sockets.
 ## It contains two separate implementations, a
-## `ReadSocketStream <#ReadSocketStream>` and a
-## `WriteSocketStream <#WriteSocketStream>`. The `ReadSocketStream` only
-## supports reading, peeking, and seeking. It reads into a buffer, so even by
+## `ReadSocketStream <#ReadSocketStream>`_ and a
+## `WriteSocketStream <#WriteSocketStream>`_.
+##
+## The `ReadSocketStream` only supports reading, peeking, and seeking.
+## It reads into a buffer, so even by
 ## seeking backwards it will only read the same position a single time from the
 ## underlying socket. To clear the buffer and free the data read into it you
 ## can call `resetStream`, this will also reset the position back to 0 but
@@ -18,7 +29,7 @@
 ## `resetStream`.
 ##
 ## Examples
-## =======
+## ========
 ##
 ## .. code-block:: Nim
 ##  import std/socketstreams
