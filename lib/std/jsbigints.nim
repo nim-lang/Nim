@@ -135,18 +135,6 @@ func dec*(this: var JsBigInt; amount: JsBigInt) {.importjs: "([#][0][0] -= #)".}
     dec big1, newJsBigInt"2"
     doAssert big1 == newJsBigInt"-1"
 
-func inc*(this: var JsBigInt; amount: Positive) {.importjs: "([#][0][0] += BigInt(#))".} =
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"1"
-    inc big1, 2
-    doAssert big1 == newJsBigInt"3"
-
-func dec*(this: var JsBigInt; amount: Positive) {.importjs: "([#][0][0] -= BigInt(#))".} =
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"1"
-    dec big1, 2
-    doAssert big1 == newJsBigInt"-1"
-
 func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
@@ -172,31 +160,6 @@ func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
     big1 /= newJsBigInt"2"
     doAssert big1 == newJsBigInt"5"
 
-func `+=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"1"
-    big1 += 2
-    doAssert big1 == newJsBigInt"3"
-
-func `-=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"1"
-    big1 -= 2
-    doAssert big1 == newJsBigInt"-1"
-
-func `*=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"2"
-    big1 *= 4
-    doAssert big1 == newJsBigInt"8"
-
-func `/=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] /= BigInt(#))".} =
-  ## Same as `x = x div y`.
-  runnableExamples:
-    var big1: JsBigInt = newJsBigInt"11"
-    big1 /= 2
-    doAssert big1 == newJsBigInt"5"
-
 proc `+`*(_: JsBigInt): JsBigInt {.error:
   "See https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs".} # Can not be used by design
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
@@ -218,3 +181,5 @@ runnableExamples:
   doAssert big2 < big1
   doAssert big2 <= big1
   doAssert not(big1 == big2)
+  let z = JsBigInt.default
+  doAssert $z == "0"
