@@ -6,6 +6,7 @@ when not defined(js):
 type JsBigIntImpl {.importc: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
 type JsBigInt* = distinct JsBigIntImpl        ## Arbitrary precision integer for JavaScript target.
 
+
 func newJsBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
