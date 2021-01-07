@@ -47,7 +47,7 @@ func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
 func unsafeToNumber*(this: JsBigInt): BiggestInt {.importjs: "Number(#)".} =
   ## **Unsafe**: Does not do any bounds check and may or may not return an inexact representation.
   runnableExamples:
-    doAssert unsafeToNumber(newJsBigInt"2147483647") == 2147483647
+    doAssert unsafeToNumber(newJsBigInt"2147483647") == 2147483647.BiggestInt
 
 func `+`*(x, y: JsBigInt): JsBigInt {.importjs: "(# $1 #)".} =
   runnableExamples:
