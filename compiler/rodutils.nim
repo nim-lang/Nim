@@ -34,7 +34,7 @@ when defined(windows) and defined(bcc):
 proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 
-when (NimMajor, NimMinor, NimPatch) < (1, 5, 1):
+when not declared(signbit):
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
   proc signbit*(x: SomeFloat): bool {.inline.} =
     result = c_signbit(x) != 0
