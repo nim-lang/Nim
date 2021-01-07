@@ -67,7 +67,7 @@ const useVCC_builtins = defined(vcc) and useBuiltins
 const arch64 = sizeof(int) == 8
 const useBuiltinsRotate = (defined(amd64) or defined(i386)) and
                           (defined(gcc) or defined(clang) or defined(vcc) or
-                           defined(icl)) and useBuiltins
+                           (defined(icl) and not defined(cpp))) and useBuiltins
 
 template toUnsigned(x: int8): uint8 = cast[uint8](x)
 template toUnsigned(x: int16): uint16 = cast[uint16](x)
@@ -732,28 +732,31 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
 
 when useBuiltinsRotate:
   when defined(gcc):
-    # GCC was tested until version 4.8.1 and intrinsics were present.
-    func builtin_rotl8(value: uint8, shift: int32): uint8
+    # GCC was tested until version 4.8.1 and intrinsics were present. Not tested
+    # in previous versions.
+    func builtin_rotl8(value: cuchar, shift: cint): cuchar
                        {.importc: "__rolb", header: "x86intrin.h".}
-    func builtin_rotl16(value: uint16, shift: int32): uint16
+    func builtin_rotl16(value: cushort, shift: cint): cushort
                        {.importc: "__rolw", header: "x86intrin.h".}
-    func builtin_rotl32(value: uint32, shift: int32): uint32
+    func builtin_rotl32(value: cuint, shift: cint): cuint
                        {.importc: "__rold", header: "x86intrin.h".}
     when defined(amd64):
-      func builtin_rotl64(value: uint64, shift: int32): uint64
+      func builtin_rotl64(value: culonglong, shift: cint): culonglong
                          {.importc: "__rolq", header: "x86intrin.h".}
 
-    func builtin_rotr8(value: uint8, shift: int32): uint8
+    func builtin_rotr8(value: cuchar, shift: cint): cuchar
                       {.importc: "__rorb", header: "x86intrin.h".}
-    func builtin_rotr16(value: uint16, shift: int32): uint16
+    func builtin_rotr16(value: cushort, shift: cint): cushort
                        {.importc: "__rorw", header: "x86intrin.h".}
-    func builtin_rotr32(value: uint32, shift: int32): uint32
+    func builtin_rotr32(value: cuint, shift: cint): cuint
                        {.importc: "__rord", header: "x86intrin.h".}
     when defined(amd64):
-      func builtin_rotr64(value: uint64, shift: int32): uint64
+      func builtin_rotr64(value: culonglong, shift: cint): culonglong
                          {.importc: "__rorq", header: "x86intrin.h".}
   elif defined(clang):
-    # In CLANG, builtins have been present since version 8.0.0 and intrinsics since version 9.0.0. This implementation chose the builtins, as they have been around for longer.
+    # In CLANG, builtins have been present since version 8.0.0 and intrinsics
+    # since version 9.0.0. This implementation chose the builtins, as they have
+    # been around for longer.
     # https://releases.llvm.org/8.0.0/tools/clang/docs/ReleaseNotes.html#non-comprehensive-list-of-changes-in-this-release
     # https://releases.llvm.org/8.0.0/tools/clang/docs/LanguageExtensions.html#builtin-rotateleft
     func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
@@ -776,53 +779,61 @@ when useBuiltinsRotate:
       func builtin_rotr64(value: culonglong, shift: culonglong): culonglong
                          {.importc: "__builtin_rotateright64".}
   elif defined(vcc):
+    # Tested on Microsoft (R) C/C++ Optimizing Compiler 19.28.29335 x64 and x86.
+    # Not tested in previous versions.
     # https://docs.microsoft.com/en-us/cpp/intrinsics/rotl8-rotl16?view=msvc-160
     # https://docs.microsoft.com/en-us/cpp/intrinsics/rotr8-rotr16?view=msvc-160
     # https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/rotl-rotl64-rotr-rotr64?view=msvc-160
-    func builtin_rotl8(value: uint8, shift: uint8): uint8 {.importc: "_rotl8",
-                                                           header: "intrin.h".}
-    func builtin_rotl16(value: uint16, shift: uint8): uint16
+    func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
+                      {.importc: "_rotl8", header: "intrin.h".}
+    func builtin_rotl16(value: cushort, shift: cuchar): cushort
                        {.importc: "_rotl16", header: "intrin.h".}
-    func builtin_rotl32(value: uint32, shift: int32): uint32
+    func builtin_rotl32(value: cuint, shift: cint): cuint
                        {.importc: "_rotl", header: "stdlib.h".}
     when defined(amd64):
-      func builtin_rotl64(value: uint64, shift: int32): uint64
+      func builtin_rotl64(value: culonglong, shift: cint): culonglong
                          {.importc: "_rotl64", header: "stdlib.h".}
 
-    func builtin_rotr8(value: uint8, shift: uint8): uint8 {.importc: "_rotr8",
-                                                           header: "intrin.h".}
-    func builtin_rotr16(value: uint16, shift: uint8): uint16
+    func builtin_rotr8(value: cuchar, shift: cuchar): cuchar
+                      {.importc: "_rotr8", header: "intrin.h".}
+    func builtin_rotr16(value: cushort, shift: cuchar): cushort
                        {.importc: "_rotr16", header: "intrin.h".}
-    func builtin_rotr32(value: uint32, shift: int32): uint32
+    func builtin_rotr32(value: cuint, shift: cint): cuint
                        {.importc: "_rotr", header: "stdlib.h".}
     when defined(amd64):
-      func builtin_rotr64(value: uint64, shift: int32): uint64
+      func builtin_rotr64(value: culonglong, shift: cint): culonglong
                          {.importc: "_rotr64", header: "stdlib.h".}
   elif defined(icl):
-    func builtin_rotl8(value: uint8, shift: int32): uint8
+    # Tested on Intel(R) C++ Intel(R) 64 Compiler Classic Version 2021.1.2 Build
+    # 20201208_000000 x64 and x86. Not tested in previous versions.
+    func builtin_rotl8(value: cuchar, shift: cint): cuchar
                       {.importc: "__rolb", header: "immintrin.h".}
-    func builtin_rotl16(value: uint16, shift: int32): uint16
+    func builtin_rotl16(value: cushort, shift: cint): cushort
                        {.importc: "__rolw", header: "immintrin.h".}
-    func builtin_rotl32(value: uint32, shift: int32): uint32
+    func builtin_rotl32(value: cuint, shift: cint): cuint
                        {.importc: "__rold", header: "immintrin.h".}
     when defined(amd64):
-      func builtin_rotl64(value: uint64, shift: int32): uint64
+      func builtin_rotl64(value: culonglong, shift: cint): culonglong
                          {.importc: "__rolq", header: "immintrin.h".}
 
-    func builtin_rotr8(value: uint8, shift: int32): uint8
+    func builtin_rotr8(value: cuchar, shift: cint): cuchar
                       {.importc: "__rorb", header: "immintrin.h".}
-    func builtin_rotr16(value: uint16, shift: int32): uint16
+    func builtin_rotr16(value: cushort, shift: cint): cushort
                        {.importc: "__rorw", header: "immintrin.h".}
-    func builtin_rotr32(value: uint32, shift: int32): uint32
+    func builtin_rotr32(value: cuint, shift: cint): cuint
                        {.importc: "__rord", header: "immintrin.h".}
     when defined(amd64):
-      func builtin_rotr64(value: uint64, shift: int32): uint64
+      func builtin_rotr64(value: culonglong, shift: cint): culonglong
                          {.importc: "__rorq", header: "immintrin.h".}
 
 # https://blog.regehr.org/archives/1063
 # https://stackoverflow.com/a/776523
-# The GCC compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction since version 4.9.0 for SomeUnsignedInt.
-# The CLANG compiler recognizes this code as rotation and inserts a single x86/x86_64 rol/ror instruction on version 8.0.0 and 11.0.0 for SomeUnsignedInt. CLANG from 7.0.0, 9.0.0 to 10.0.0 does not recognize for uint8 and uint16.
+# - The GCC compiler recognizes this code as rotation and inserts a single
+#   x86/x86_64 rol/ror instruction since version 4.9.0 for `SomeUnsignedInt`.
+# - The CLANG compiler recognizes this code as rotation and inserts a single
+#   x86/x86_64 rol/ror instruction on version 8.0.0 and 11.0.0 to 12.0.0 for
+#   `SomeUnsignedInt`. CLANG from 7.0.0, 9.0.0 to 10.0.0 does not recognize for
+#   uint8 and uint16.
 func rotl[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
   const mask: int32 = 8 * sizeof(value) - 1
   (value shl rot) or (value shr (-rot and mask))
@@ -844,11 +855,11 @@ func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   else:
     when useBuiltinsRotate:
       when defined(gcc) or defined(icl):
-        builtin_rotl8(value, shift.int32)
+        builtin_rotl8(value.cuchar, shift.cint).uint8
       elif defined(clang):
         builtin_rotl8(value.cuchar, shift.cuchar).uint8
       elif defined(vcc):
-        builtin_rotl8(value, shift.uint8)
+        builtin_rotl8(value.cuchar, shift.cuchar).uint8
     else:
       rotl(value, shift.int32)
 
@@ -862,11 +873,11 @@ func rotateLeftBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   else:
     when useBuiltinsRotate:
       when defined(gcc) or defined(icl):
-        builtin_rotl16(value, shift.int32)
+        builtin_rotl16(value.cushort, shift.cint).uint16
       elif defined(clang):
         builtin_rotl16(value.cushort, shift.cushort).uint16
       elif defined(vcc):
-        builtin_rotl16(value, shift.uint8)
+        builtin_rotl16(value.cushort, shift.cuchar).uint16
     else:
       rotl(value, shift.int32)
 
@@ -882,7 +893,7 @@ func rotateLeftBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
       when defined(clang):
         builtin_rotl32(value.cuint, shift.cuint).uint32
       else:
-        builtin_rotl32(value, shift.int32)
+        builtin_rotl32(value.cuint, shift.cint).uint32
     else:
       rotl(value, shift.int32)
 
@@ -898,7 +909,7 @@ func rotateLeftBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
       when defined(clang):
         builtin_rotl64(value.culonglong, shift.culonglong).uint64
       else:
-        builtin_rotl64(value, shift.int32)
+        builtin_rotl64(value.culonglong, shift.cint).uint64
     else:
       rotl(value, shift.int32)
 
@@ -915,11 +926,11 @@ func rotateRightBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   else:
     when useBuiltinsRotate:
       when defined(gcc) or defined(icl):
-        builtin_rotr8(value, shift.int32)
+        builtin_rotr8(value.cuchar, shift.cint).uint8
       elif defined(clang):
         builtin_rotr8(value.cuchar, shift.cuchar).uint8
       elif defined(vcc):
-        builtin_rotr8(value, shift.uint8)
+        builtin_rotr8(value.cuchar, shift.cuchar).uint8
     else:
       rotr(value, shift.int32)
 
@@ -933,11 +944,11 @@ func rotateRightBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   else:
     when useBuiltinsRotate:
       when defined(gcc) or defined(icl):
-        builtin_rotr16(value, shift.int32)
+        builtin_rotr16(value.cushort, shift.cint).uint16
       elif defined(clang):
         builtin_rotr16(value.cushort, shift.cushort).uint16
       elif defined(vcc):
-        builtin_rotr16(value, shift.uint8)
+        builtin_rotr16(value.cushort, shift.cuchar).uint16
     else:
       rotr(value, shift.int32)
 
@@ -953,7 +964,7 @@ func rotateRightBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
       when defined(clang):
         builtin_rotr32(value.cuint, shift.cuint).uint32
       else:
-        builtin_rotr32(value, shift.int32)
+        builtin_rotr32(value.cuint, shift.cint).uint32
     else:
       rotr(value, shift.int32)
 
@@ -969,7 +980,7 @@ func rotateRightBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
       when defined(clang):
         builtin_rotr64(value.culonglong, shift.culonglong).uint64
       else:
-        builtin_rotr64(value, shift.int32)
+        builtin_rotr64(value.culonglong, shift.cint).uint64
     else:
       rotr(value, shift.int32)
 
