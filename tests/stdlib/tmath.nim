@@ -397,8 +397,8 @@ template main =
       discard
     else:
       when not defined(js):
-        doAssert copySign(-1.0, -NaN) == 1.0
-        doAssert copySign(10.0, -NaN) == 10.0
+        doAssert copySign(-1.0, -NaN) == -1.0
+        doAssert copySign(10.0, -NaN) == -10.0
         doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
 
   block:
