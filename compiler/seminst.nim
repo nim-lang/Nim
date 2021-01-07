@@ -160,7 +160,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushInfoContext(c.config, oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
-      n[bodyPos] = copyTree(s.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, s))
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext(c.config)
@@ -383,7 +383,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
-      n[bodyPos] = copyTree(fn.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, fn))
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)

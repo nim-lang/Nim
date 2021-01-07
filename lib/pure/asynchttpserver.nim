@@ -18,29 +18,28 @@ runnableExamples:
   # This example will create an HTTP server on port 8080. The server will
   # respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body. Run locally with:
-  # `nim doc --doccmd:-d:nimAsynchttpserverEnableTest --lib:lib lib/pure/asynchttpserver.nim`
+  # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
   import asyncdispatch
-  if defined(nimAsynchttpserverEnableTest):
+  if defined(nimAsyncHttpServerEnableTest):
     proc main {.async.} =
       const port = 8080
       var server = newAsyncHttpServer()
       proc cb(req: Request) {.async.} =
         echo (req.reqMethod, req.url, req.headers)
-        let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-            "Content-type": "text/plain; charset=utf-8"}
+        let headers = {"Content-type": "text/plain; charset=utf-8"}
         await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
       echo "test this with: curl localhost:" & $port & "/"
-      server.listen Port(port)
+      server.listen(Port(port))
       while true:
         if server.shouldAcceptRequest():
           await server.acceptRequest(cb)
         else:
           # too many concurrent connections, `maxFDs` exceeded
-          poll()
+          # wait 500ms for FDs to be closed
+          await sleepAsync(500)
 
-    asyncCheck main()
-    runForever()
+    waitFor main()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore

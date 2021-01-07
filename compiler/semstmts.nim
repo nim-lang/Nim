@@ -66,7 +66,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         x.info = n.info
         incl(s.flags, sfUsed)
         n[0] = x
-        suggestSym(c.config, x.info, s, c.graph.usageSym)
+        suggestSym(c.graph, x.info, s, c.graph.usageSym)
         onUse(x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
@@ -332,7 +332,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
       discard
     result = n.info
   let info = getLineInfo(n)
-  suggestSym(c.config, info, result, c.graph.usageSym)
+  suggestSym(c.graph, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and v.typ.requiresInit:
@@ -1055,14 +1055,14 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
     if pkg.isNil or pkg.kind != skPackage:
       localError(c.config, name.info, "unknown package name: " & pkgName.s)
     else:
-      let typsym = pkg.tab.strTableGet(typName)
+      let typsym = c.graph.packageTypes.strTableGet(typName)
       if typsym.isNil:
         s = semIdentDef(c, name[1], skType)
         onDef(name[1].info, s)
         s.typ = newTypeS(tyObject, c)
         s.typ.sym = s
         s.flags.incl sfForward
-        pkg.tab.strTableAdd s
+        c.graph.packageTypes.strTableAdd s
         addInterfaceDecl(c, s)
       elif typsym.kind == skType and sfForward in typsym.flags:
         s = typsym
@@ -1088,7 +1088,7 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
       if not isTopLevel(c) or pkg.isNil:
         localError(c.config, name.info, "only top level types in a package can be 'package'")
       else:
-        let typsym = pkg.tab.strTableGet(s.name)
+        let typsym = c.graph.packageTypes.strTableGet(s.name)
         if typsym != nil:
           if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
             typeCompleted(typsym)
@@ -1956,7 +1956,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not comesFromShadowScope:
       excl(proto.flags, sfForward)
       incl(proto.flags, sfWasForwarded)
-    suggestSym(c.config, s.info, proto, c.graph.usageSym)
+    suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast[genericParamsPos].kind != nkEmpty:

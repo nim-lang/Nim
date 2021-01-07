@@ -31,6 +31,8 @@ import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
 
+from modulegraphs import getBody
+
 const
   debugEchoCode* = defined(nimVMDebug)
 
@@ -1570,11 +1572,11 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
-proc importcCond*(s: PSym): bool {.inline.} =
+proc importcCond*(c: PCtx; s: PSym): bool {.inline.} =
   ## return true to importc `s`, false to execute its body instead (refs #8405)
   if sfImportc in s.flags:
     if s.kind in routineKinds:
-      return s.ast[bodyPos].kind == nkEmpty
+      return getBody(c.graph, s).kind == nkEmpty
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
@@ -1615,7 +1617,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s) or isImportcVar: c.importcSym(n.info, s)
+      if importcCond(c, s) or isImportcVar: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
@@ -1841,7 +1843,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       checkCanEval(c, a[0])
       if s.isGlobal:
         if s.position == 0:
-          if importcCond(s): c.importcSym(a.info, s)
+          if importcCond(c, s): c.importcSym(a.info, s)
           else:
             let sa = getNullValue(s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
@@ -1964,6 +1966,7 @@ proc matches(s: PSym; x: string): bool =
     if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
+    while s != nil and s.kind == skPackage and s.owner != nil: s = s.owner
   result = true
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
@@ -1989,7 +1992,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
         globalError(c.config, n.info, "Closure iterators are not supported by VM!")
       if procIsCallback(c, s): discard
-      elif importcCond(s): c.importcSym(n.info, s)
+      elif importcCond(c, s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n

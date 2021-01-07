@@ -268,7 +268,7 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
-    initEncoder result.encoder, module, graph.config
+    initEncoder result.encoder, module, graph.config, graph.startupPackedConfig
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -286,15 +286,29 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
   inclSym(c.graph.ifaces[c.module.position].converters, conv)
-  #addConverter(c.graph, c.module, conv) # upcoming
+  if c.config.symbolFiles != disabledSf:
+    addConverter(c.encoder, conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+  if c.config.symbolFiles != disabledSf:
+    addPureEnum(c.encoder, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
   inclSym(c.graph.ifaces[c.module.position].patterns, p)
-  #addPattern(c.graph, c.module, p) # upcoming
+  if c.config.symbolFiles != disabledSf:
+    addTrmacro(c.encoder, p)
+
+proc exportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.semtab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addExported(c.encoder, s)
+
+proc reexportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.semtab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addReexport(c.encoder, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -489,4 +503,4 @@ proc storeRodNode*(c: PContext, n: PNode) =
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    saveRodFile(toRodFile(c.config, c.filename.AbsoluteFile), c.encoder)
+    saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)

@@ -18,6 +18,14 @@ type
     depsSection
     integersSection
     floatsSection
+    exportsSection
+    reexportsSection
+    compilerProcsSection
+    trmacrosSection
+    convertersSection
+    methodsSection
+    pureEnumsSection
+    macroUsagesSection
     topLevelSection
     bodiesSection
     symsSection
@@ -36,26 +44,30 @@ type
 const
   RodVersion = 1
   cookie = [byte(0), byte('R'), byte('O'), byte('D'),
-            byte(0), byte(0), byte(0), byte(RodVersion)]
+            byte(sizeof(int)*8), byte(system.cpuEndian), byte(0), byte(RodVersion)]
+
+proc setError(f: var RodFile; err: RodFileError) {.inline.} =
+  f.err = err
+  #raise newException(IOError, "IO error")
 
 proc storePrim*(f: var RodFile; s: string) =
   if f.err != ok: return
   if s.len >= high(int32):
-    f.err = tooBig
+    setError f, tooBig
     return
   var lenPrefix = int32(s.len)
   if writeBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    f.err = ioFailure
+    setError f, ioFailure
   else:
     if s.len != 0:
       if writeBuffer(f.f, unsafeAddr(s[0]), s.len) != s.len:
-        f.err = ioFailure
+        setError f, ioFailure
 
 proc storePrim*[T](f: var RodFile; x: T) =
   if f.err != ok: return
   when supportsCopyMem(T):
     if writeBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
-      f.err = ioFailure
+      setError f, ioFailure
   elif T is tuple:
     for y in fields(x):
       storePrim(f, y)
@@ -65,11 +77,11 @@ proc storePrim*[T](f: var RodFile; x: T) =
 proc storeSeq*[T](f: var RodFile; s: seq[T]) =
   if f.err != ok: return
   if s.len >= high(int32):
-    f.err = tooBig
+    setError f, tooBig
     return
   var lenPrefix = int32(s.len)
   if writeBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    f.err = ioFailure
+    setError f, ioFailure
   else:
     for i in 0..<s.len:
       storePrim(f, s[i])
@@ -78,18 +90,18 @@ proc loadPrim*(f: var RodFile; s: var string) =
   if f.err != ok: return
   var lenPrefix = int32(0)
   if readBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    f.err = ioFailure
+    setError f, ioFailure
   else:
     s = newString(lenPrefix)
     if lenPrefix > 0:
       if readBuffer(f.f, unsafeAddr(s[0]), s.len) != s.len:
-        f.err = ioFailure
+        setError f, ioFailure
 
 proc loadPrim*[T](f: var RodFile; x: var T) =
   if f.err != ok: return
   when supportsCopyMem(T):
     if readBuffer(f.f, unsafeAddr(x), sizeof(x)) != sizeof(x):
-      f.err = ioFailure
+      setError f, ioFailure
   elif T is tuple:
     for y in fields(x):
       loadPrim(f, y)
@@ -100,7 +112,7 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
   if f.err != ok: return
   var lenPrefix = int32(0)
   if readBuffer(f.f, addr lenPrefix, sizeof(lenPrefix)) != sizeof(lenPrefix):
-    f.err = ioFailure
+    setError f, ioFailure
   else:
     s = newSeq[T](lenPrefix)
     for i in 0..<lenPrefix:
@@ -109,15 +121,15 @@ proc loadSeq*[T](f: var RodFile; s: var seq[T]) =
 proc storeHeader*(f: var RodFile) =
   if f.err != ok: return
   if f.f.writeBytes(cookie, 0, cookie.len) != cookie.len:
-    f.err = ioFailure
+    setError f, ioFailure
 
 proc loadHeader*(f: var RodFile) =
   if f.err != ok: return
   var thisCookie: array[cookie.len, byte]
   if f.f.readBytes(thisCookie, 0, thisCookie.len) != thisCookie.len:
-    f.err = ioFailure
+    setError f, ioFailure
   elif thisCookie != cookie:
-    f.err = wrongHeader
+    setError f, wrongHeader
 
 proc storeSection*(f: var RodFile; s: RodSection) =
   if f.err != ok: return
@@ -129,15 +141,15 @@ proc loadSection*(f: var RodFile; expected: RodSection) =
   if f.err != ok: return
   var s: RodSection
   loadPrim(f, s)
-  if expected != s:
-    f.err = wrongSection
+  if expected != s and f.err == ok:
+    setError f, wrongSection
 
 proc create*(filename: string): RodFile =
   if not open(result.f, filename, fmWrite):
-    result.err = ioFailure
+    setError result, ioFailure
 
 proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   if not open(result.f, filename, fmRead):
-    result.err = ioFailure
+    setError result, ioFailure

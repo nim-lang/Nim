@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, lineinfos, strutils
+  renderer, lineinfos, strutils, modulegraphs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -104,8 +104,9 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-proc initIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule; name: PIdent): PSym =
-  result = initIdentIter(ti, im.m.tab, name)
+proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
+                   g: ModuleGraph): PSym =
+  result = initModuleIter(ti, g, im.m, name)
   while result != nil:
     let b =
       case im.mode
@@ -114,11 +115,12 @@ proc initIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule; n
       of importExcept: name.id notin im.exceptSet
     if b and not containsOrIncl(marked, result.id):
       return result
-    result = nextIdentIter(ti, im.m.tab)
+    result = nextModuleIter(ti, g)
 
-proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule): PSym =
+proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
+                   g: ModuleGraph): PSym =
   while true:
-    result = nextIdentIter(ti, im.m.tab)
+    result = nextModuleIter(ti, g)
     if result == nil: return nil
     case im.mode
     of importAll:
@@ -131,17 +133,17 @@ proc nextIdentIter(ti: var TIdentIter; marked: var IntSet; im: ImportedModule): 
       if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):
         return result
 
-iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent): PSym =
-  var ti: TIdentIter
-  var candidate = initIdentIter(ti, marked, im, name)
+iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent; g: ModuleGraph): PSym =
+  var ti: ModuleIter
+  var candidate = initIdentIter(ti, marked, im, name, g)
   while candidate != nil:
     yield candidate
-    candidate = nextIdentIter(ti, marked, im)
+    candidate = nextIdentIter(ti, marked, im, g)
 
 iterator importedItems*(c: PContext; name: PIdent): PSym =
   var marked = initIntSet()
   for im in c.imports.mitems:
-    for s in symbols(im, marked, name):
+    for s in symbols(im, marked, name, c.graph):
       yield s
 
 proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
@@ -166,15 +168,15 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
   dec scopeN
   isLocal = false
   for im in c.imports.mitems:
-    for s in im.m.tab.data:
-      if s != nil:
-        yield (s, scopeN, isLocal)
+    for s in modulegraphs.allSyms(c.graph, im.m):
+      assert s != nil
+      yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
   var marked = initIntSet()
   result = nil
   for im in c.imports.mitems:
-    for s in symbols(im, marked, name):
+    for s in symbols(im, marked, name, c.graph):
       if result == nil:
         result = s
       else:
@@ -211,7 +213,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
   if result.len == 0:
     var marked = initIntSet()
     for im in c.imports.mitems:
-      for s in symbols(im, marked, s):
+      for s in symbols(im, marked, s, c.graph):
         if s.kind in filter:
           result.add s
 
@@ -237,6 +239,7 @@ type
     oimSymChoiceLocalLookup
   TOverloadIter* = object
     it*: TIdentIter
+    mit*: ModuleIter
     m*: PSym
     mode*: TOverloadIterMode
     symChoiceIndex*: int
@@ -303,7 +306,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   if sfExported in sym.flags:
     # add to interface:
-    if c.module != nil: strTableAdd(c.module.tab, sym)
+    if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
@@ -457,7 +460,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = strTableGet(m.tab, ident).skipAlias(n, c.config)
+          result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n[1], ident, searchInScopes)
           errorUndeclaredIdentifier(c, n[1].info, ident.s)
@@ -491,7 +494,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         scope = scope.parent
         if scope == nil:
           for i in 0..c.imports.high:
-            result = initIdentIter(o.it, o.marked, c.imports[i], ident).skipAlias(n, c.config)
+            result = initIdentIter(o.mit, o.marked, c.imports[i], ident, c.graph).skipAlias(n, c.config)
             if result != nil:
               o.currentScope = nil
               o.importIdx = i
@@ -517,7 +520,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                  ident).skipAlias(n, c.config)
           o.mode = oimSelfModule
         else:
-          result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n, c.config)
+          result = initModuleIter(o.mit, c.graph, o.m, ident).skipAlias(n, c.config)
       else:
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
@@ -550,7 +553,7 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
   var idx = o.importIdx+1
   o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
   while idx < c.imports.len:
-    result = initIdentIter(o.it, o.marked, c.imports[idx], o.it.name).skipAlias(n, c.config)
+    result = initIdentIter(o.mit, o.marked, c.imports[idx], o.it.name, c.graph).skipAlias(n, c.config)
     if result != nil:
       # oh, we were wrong, some other module had the symbol, so remember that:
       o.importIdx = idx
@@ -560,7 +563,7 @@ proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym 
 proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
   assert o.currentScope == nil
   while o.importIdx < c.imports.len:
-    result = initIdentIter(o.it, o.marked, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+    result = initIdentIter(o.mit, o.marked, c.imports[o.importIdx], o.it.name, c.graph).skipAlias(n, c.config)
     #while result != nil and result.id in o.marked:
     #  result = nextIdentIter(o.it, o.marked, c.imports[o.importIdx])
     if result != nil:
@@ -584,12 +587,12 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         else:
           o.importIdx = 0
           if c.imports.len > 0:
-            result = initIdentIter(o.it, o.marked, c.imports[o.importIdx], o.it.name).skipAlias(n, c.config)
+            result = initIdentIter(o.mit, o.marked, c.imports[o.importIdx], o.it.name, c.graph).skipAlias(n, c.config)
             if result == nil:
               result = nextOverloadIterImports(o, c, n)
           break
     elif o.importIdx < c.imports.len:
-      result = nextIdentIter(o.it, o.marked, c.imports[o.importIdx]).skipAlias(n, c.config)
+      result = nextIdentIter(o.mit, o.marked, c.imports[o.importIdx], c.graph).skipAlias(n, c.config)
       if result == nil:
         result = nextOverloadIterImports(o, c, n)
     else:
@@ -597,7 +600,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
   of oimOtherModule:
-    result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
+    result = nextModuleIter(o.mit, c.graph).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym
@@ -636,7 +639,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         incl o.marked, result.id
 
     elif o.importIdx < c.imports.len:
-      result = nextIdentIter(o.it, o.marked, c.imports[o.importIdx]).skipAlias(n, c.config)
+      result = nextIdentIter(o.mit, o.marked, c.imports[o.importIdx], c.graph).skipAlias(n, c.config)
       #assert result.id notin o.marked
       #while result != nil and result.id in o.marked:
       #  result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
