@@ -410,7 +410,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadPrim m.definedSymbols
   f.loadPrim m.cfg
 
-  if not configIdentical(m, config):
+  if f.err == ok and not configIdentical(m, config):
     f.err = configMismatch
 
   template loadSeqSection(section, data) {.dirty.} =
@@ -505,12 +505,13 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   storeSeqSection typesSection, encoder.m.sh.types
   close(f)
   if f.err != ok:
-    loadError(f.err, filename)
+    storeError(f.err, filename)
 
   when false:
     # basic loader testing:
     var m2: PackedModule
     discard loadRodFile(filename, m2, encoder.config)
+    echo "loaded ", filename.string
 
 # ----------------------------------------------------------------------------
 

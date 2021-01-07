@@ -802,13 +802,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
   of "incremental", "ic":
-    case arg.normalize
-    of "on": conf.symbolFiles = v2Sf
-    of "off": conf.symbolFiles = disabledSf
-    of "writeonly": conf.symbolFiles = writeOnlySf
-    of "readonly": conf.symbolFiles = readOnlySf
-    of "v2": conf.symbolFiles = v2Sf
-    else: localError(conf, info, "invalid option for --incremental: " & arg)
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "on": conf.symbolFiles = v2Sf
+      of "off": conf.symbolFiles = disabledSf
+      of "writeonly": conf.symbolFiles = writeOnlySf
+      of "readonly": conf.symbolFiles = readOnlySf
+      of "v2": conf.symbolFiles = v2Sf
+      else: localError(conf, info, "invalid option for --incremental: " & arg)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)
   of "skipprojcfg":
