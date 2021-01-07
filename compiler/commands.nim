@@ -31,7 +31,6 @@ import
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
   pathutils, strtabs
 
-from incremental import nimIncremental
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
@@ -439,6 +438,13 @@ proc setCmd*(conf: ConfigRef, cmd: Command) =
 proc setCommandEarly*(conf: ConfigRef, command: string) =
   conf.command = command
   setCmd(conf, command.parseCommand)
+  # command early customizations
+  # must be handled here to honor subsequent `--hint:x:on|off`
+  case conf.cmd
+  of cmdRst2html, cmdRst2tex: # xxx see whether to add others: cmdGendepend, etc.
+    conf.foreignPackageNotes = {hintSuccessX}
+  else:
+    conf.foreignPackageNotes = foreignPackageNotesDefault
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -566,6 +572,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
           defineSymbol(conf.symbols, "nimV2")
+        if conf.exc == excNone and conf.backend != backendCpp:
+          conf.exc = excGoto
       of "orc":
         conf.selectedGC = gcOrc
         defineSymbol(conf.symbols, "gcdestructors")
@@ -575,6 +583,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         if pass in {passCmd2, passPP}:
           defineSymbol(conf.symbols, "nimSeqsV2")
           defineSymbol(conf.symbols, "nimV2")
+        if conf.exc == excNone and conf.backend != backendCpp:
+          conf.exc = excGoto
       of "hooks":
         conf.selectedGC = gcHooks
         defineSymbol(conf.symbols, "gchooks")
@@ -791,18 +801,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
   of "symbolfiles": discard "ignore for backwards compat"
-  of "incremental":
-    when not nimIncremental:
-      localError(conf, info, "the compiler was not built with " &
-        "incremental compilation features; bootstrap with " &
-        "-d:nimIncremental to enable")
-    case arg.normalize
-    of "on": conf.symbolFiles = v2Sf
-    of "off": conf.symbolFiles = disabledSf
-    of "writeonly": conf.symbolFiles = writeOnlySf
-    of "readonly": conf.symbolFiles = readOnlySf
-    of "v2": conf.symbolFiles = v2Sf
-    else: localError(conf, info, "invalid option for --incremental: " & arg)
+  of "incremental", "ic":
+    if pass in {passCmd2, passPP}:
+      case arg.normalize
+      of "on": conf.symbolFiles = v2Sf
+      of "off": conf.symbolFiles = disabledSf
+      of "writeonly": conf.symbolFiles = writeOnlySf
+      of "readonly": conf.symbolFiles = readOnlySf
+      of "v2": conf.symbolFiles = v2Sf
+      else: localError(conf, info, "invalid option for --incremental: " & arg)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)
   of "skipprojcfg":

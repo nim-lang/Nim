@@ -123,3 +123,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasEffectTraitsModule")
   defineSymbol("nimHasCastPragmaBlocks")
   defineSymbol("nimHasDeclaredLocs")
+  defineSymbol("nimHasJsBigIntBackend")

@@ -11,7 +11,9 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, sets
+  magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
+
+import ic / to_packed_ast
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -70,13 +72,25 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  ImportMode* = enum
+    importAll, importSet, importExcept
+  ImportedModule* = object
+    m*: PSym
+    case mode*: ImportMode
+    of importAll: discard
+    of importSet:
+      imported*: IntSet          # of PIdent.id
+    of importExcept:
+      exceptSet*: IntSet         # of PIdent.id
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    importTable*: PScope       # scope for all imported symbols
+    moduleScope*: PScope       # scope for modules
+    imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
@@ -85,9 +99,6 @@ type
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
     templInstCounter*: ref int # gives every template instantiation a unique id
-
-    ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
-                               # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
     inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
@@ -131,9 +142,11 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
+    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
     typesWithOps*: seq[(PType, PType)] #\
@@ -238,7 +251,6 @@ proc popOptionEntry*(c: PContext) =
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
   result.enforceVoidContext = PType(kind: tyTyped)
-  result.ambiguousSymbols = initIntSet()
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module
@@ -255,6 +267,16 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   initStrTable(result.signatures)
   result.typesWithOps = @[]
   result.features = graph.config.features
+  if graph.config.symbolFiles != disabledSf:
+    initEncoder result.encoder, module, graph.config, graph.startupPackedConfig
+
+proc addIncludeFileDep*(c: PContext; f: FileIndex) =
+  if c.config.symbolFiles != disabledSf:
+    addIncludeFileDep(c.encoder, f)
+
+proc addImportFileDep*(c: PContext; f: FileIndex) =
+  if c.config.symbolFiles != disabledSf:
+    addImportFileDep(c.encoder, f)
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
@@ -263,9 +285,30 @@ proc inclSym(sq: var seq[PSym], s: PSym) =
 
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
+  inclSym(c.graph.ifaces[c.module.position].converters, conv)
+  if c.config.symbolFiles != disabledSf:
+    addConverter(c.encoder, conv)
+
+proc addPureEnum*(c: PContext, e: PSym) =
+  inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+  if c.config.symbolFiles != disabledSf:
+    addPureEnum(c.encoder, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
+  inclSym(c.graph.ifaces[c.module.position].patterns, p)
+  if c.config.symbolFiles != disabledSf:
+    addTrmacro(c.encoder, p)
+
+proc exportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.semtab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addExported(c.encoder, s)
+
+proc reexportSym*(c: PContext; s: PSym) =
+  strTableAdd(c.module.semtab(c.graph), s)
+  if c.config.symbolFiles != disabledSf:
+    addReexport(c.encoder, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -277,10 +320,10 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextId(idgen), owner)
+  result = newType(tyPtr, nextTypeId(idgen), owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
@@ -308,7 +351,7 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, nextId(idgen), owner)
+    result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
@@ -324,7 +367,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)
 
@@ -335,12 +378,12 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
                       idgen: IdGenerator): PType =
-  result = newType(kind, nextId(idgen), owner)
+  result = newType(kind, nextTypeId(idgen), owner)
   result.sons = sons
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
@@ -449,3 +492,15 @@ proc popCaseContext*(c: PContext) =
 
 proc setCaseContextIdx*(c: PContext, idx: int) =
   c.p.caseContext[^1].idx = idx
+
+template addExport*(c: PContext; s: PSym) =
+  ## convenience to export a symbol from the current module
+  addExport(c.graph, c.module, s)
+
+proc storeRodNode*(c: PContext, n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    toPackedNodeTopLevel(n, c.encoder)
+
+proc saveRodFile*(c: PContext) =
+  if c.config.symbolFiles != disabledSf:
+    saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)

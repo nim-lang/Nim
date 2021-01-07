@@ -138,7 +138,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
 
   for D in 0 .. maxD:
     # Extend the forward path.
-    for k in countUp(downK - D, downK + D, 2):
+    for k in countup(downK - D, downK + D, 2):
       # find the only or better starting point
       var x: int
       if k == downK - D:
@@ -164,7 +164,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
                        y: downVector[downOffset + k] - k)
 
     # Extend the reverse path.
-    for k in countUp(upK - D, upK + D, 2):
+    for k in countup(upK - D, upK + D, 2):
       # find the only or better starting point
       var x: int
       if k == upK + D:

@@ -36,6 +36,8 @@
 
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
+- Added `cmpMem` to `system`.
+
 - `doAssertRaises` now correctly handles foreign exceptions.
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
@@ -55,11 +57,46 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+- Added `decodeQuery` to `std/uri`.
 - `strscans.scanf` now supports parsing single characters.
-- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`. 
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
 
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+  if the iterable yields a built-in settable type.
 
 - Added `math.isNaN`.
+
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- Added `math.copySign`.
+- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
+  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
+  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
+  its argument, `addMoved`, is also supplied.
+
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+- Added `jsconsole.jsAssert` for JavaScript target.
+
+- Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
+- Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+- Added `BackwardsIndex` overload for `JsonNode`.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+- Added `socketstream` module that wraps sockets in the stream interface
+
+
+
+
+- Added `math.signbit`.
 
 ## Language changes
 

@@ -44,7 +44,8 @@ proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
   # in different directory get different name and they can be
   # placed in a directory.
   # foo-#head/../bar becomes @foo-@hhead@s..@sbar
-  result = "@m" & relativeTo(path, conf.projectPath).string.multiReplace({$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+  result = "@m" & relativeTo(path, conf.projectPath).string.multiReplace(
+    {$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
 
 proc demanglePackageName*(path: string): string =
   result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})

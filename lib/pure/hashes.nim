@@ -195,10 +195,29 @@ else:
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
+when defined(js):
+  proc asBigInt(x: float): int64 =
+    # result is a `BigInt` type in js, but we cheat the type system
+    # and say it is a `int64` type.
+    # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
+    asm """
+    const buffer = new ArrayBuffer(8);
+    const floatBuffer = new Float64Array(buffer);
+    const uintBuffer = new BigUint64Array(buffer);
+    floatBuffer[0] = `x`;
+    `result` = uintBuffer[0];"""
+
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
-  var y = x + 0.0 # for denormalization
-  result = hash(cast[ptr Hash](addr(y))[])
+  let y = x + 0.0 # for denormalization
+  when nimvm:
+    # workaround a JS VM bug: bug #16547
+    result = hashWangYi1(cast[int64](float64(y)))
+  else:
+    when not defined(js):
+      result = hashWangYi1(cast[Hash](y))
+    else:
+      result = hashWangYi1(asBigInt(y))
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
@@ -278,6 +297,9 @@ proc murmurHash(x: openArray[byte]): Hash =
   h1 = h1 xor (h1 shr 16)
   return cast[Hash](h1)
 
+proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
+  doAssert false, "implementation override in compiler/vmops.nim"
+
 proc hashVmImpl(x: string, sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
@@ -322,11 +344,14 @@ proc hash*(x: cstring): Hash =
       inc i
     result = !$result
   else:
-    when not defined(js) and defined(nimToOpenArrayCString):
-      murmurHash(toOpenArrayByte(x, 0, x.high))
+    when nimvm:
+      hashVmImpl(x, 0, high(x))
     else:
-      let xx = $x
-      murmurHash(toOpenArrayByte(xx, 0, high(xx)))
+      when not defined(js) and defined(nimToOpenArrayCString):
+        murmurHash(toOpenArrayByte(x, 0, x.high))
+      else:
+        let xx = $x
+        murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting

@@ -1,5 +1,5 @@
 discard """
-cmd: "testament/testament --directory:testament --colors:off --backendLogging:off --nim:../compiler/nim category shouldfail"
+cmd: "testament/testament --directory:testament --colors:off --backendLogging:off --nim:$nim category shouldfail"
 action: compile
 nimout: '''
 FAIL: tests/shouldfail/tccodecheck.nim c
@@ -35,5 +35,3 @@ FAIL: tests/shouldfail/tvalgrind.nim c
 Failure: reExitcodesDiffer
 '''
 """
-
-# xxx `--nim:../compiler/nim`, doesn't seem correct (and should also honor `testament --nim`)

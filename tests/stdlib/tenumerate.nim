@@ -6,14 +6,14 @@ block:
   var res: seq[(int, int)]
   for i, x in enumerate(a):
     res.add (i, x)
-  assert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
+  doAssert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
 block:
   var res: seq[(int, int)]
   for (i, x) in enumerate(a.items):
     res.add (i, x)
-  assert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
+  doAssert res == @[(0, 1), (1, 3), (2, 5), (3, 7)]
 block:
   var res: seq[(int, int)]
   for i, x in enumerate(3, a):
     res.add (i, x)
-  assert res == @[(3, 1), (4, 3), (5, 5), (6, 7)]
+  doAssert res == @[(3, 1), (4, 3), (5, 5), (6, 7)]

@@ -1,7 +1,7 @@
 discard """
   output: '''1 [2, 3, 4, 7]
 [0, 0]'''
-  target: "c"
+  targets: "c"
   joinable: false
 disabled: 32bit
   cmd: "nim c --gc:arc $file"

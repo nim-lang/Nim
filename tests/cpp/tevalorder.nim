@@ -2,7 +2,7 @@ discard """
   output: '''0
 1
 2'''
-target: "cpp"
+targets: "cpp"
 """
 
 # bug #8202

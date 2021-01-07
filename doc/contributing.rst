@@ -47,7 +47,7 @@ which only gets executed when the tester is building the file.
 Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
 testing by itself, don't rely on echo statements or similar; in particular, avoid
-things like `echo "done"`.
+things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 
@@ -239,7 +239,7 @@ not guaranteed to stay in sync, so ``runnableExamples`` is usually preferred:
 .. code-block:: nim
 
   proc someproc*(): string =
-    ## Return "something"
+    ## Returns "something"
     ##
     ## .. code-block::
     ##  echo someproc() # "something"
@@ -262,12 +262,12 @@ first appearance of the proc.
     echo "hello"
 
 The preferred documentation style is to begin with a capital letter and use
-the imperative (command) form. That is, between:
+the third-person singular. That is, between:
 
 .. code-block:: nim
 
   proc hello*(): string =
-    ## Return "hello"
+    ## Returns "hello"
     result = "hello"
 
 or
@@ -275,7 +275,7 @@ or
 .. code-block:: nim
 
   proc hello*(): string =
-    ## says hello
+    ## say hello
     result = "hello"
 
 the first is preferred.

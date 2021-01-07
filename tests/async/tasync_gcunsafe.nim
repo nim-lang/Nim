@@ -4,7 +4,7 @@ discard """
   file: "asyncmacro.nim"
 """
 
-assert compileOption("threads"), "this test will not do anything useful without --threads:on"
+doAssert compileOption("threads"), "this test will not do anything useful without --threads:on"
 
 import asyncdispatch
 

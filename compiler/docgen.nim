@@ -7,19 +7,20 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the documentation generator. It is currently pretty simple: No
-# semantic checking is done for the code. Cross-references are generated
+# This is the documentation generator. Cross-references are generated
 # by knowing how the anchors are going to be named.
 
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  json, xmltree, cgi, trees, types,
+  json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
+from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
+
 
 const
   exportSection = skField
@@ -468,10 +469,11 @@ proc runAllExamples(d: PDoc) =
     writeFile(outp, group.code)
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
-    let cmd = "$nim $backend -r --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", os.getAppFilename(),
       "backend", $d.conf.backend,
       "path", quoteShell(d.conf.projectPath),
+      "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
       "rdoccmd", group.rdoccmd,
