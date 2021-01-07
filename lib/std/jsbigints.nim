@@ -3,7 +3,8 @@
 when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
-type JsBigInt* = ref object of JsRoot ## Arbitrary precision integer for JavaScript target.
+type JsBigIntImpl {.importc: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
+type JsBigInt* = distinct JsBigIntImpl        ## Arbitrary precision integer for JavaScript target.
 
 func newJsBigInt*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
@@ -110,86 +111,86 @@ func `-`*(this: JsBigInt): JsBigInt {.importjs: "($1#)".} =
   runnableExamples:
     doAssert -(newJsBigInt"10101010101") == newJsBigInt"-10101010101"
 
-func inc*(this: var JsBigInt) {.importjs: "(++[#][0][0])".} =
+func inc*(this: var JsBigInt) {.importjs: "(++#)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     inc big1
     doAssert big1 == newJsBigInt"2"
 
-func dec*(this: var JsBigInt) {.importjs: "(--[#][0][0])".} =
+func dec*(this: var JsBigInt) {.importjs: "(--#)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"2"
     dec big1
     doAssert big1 == newJsBigInt"1"
 
-func inc*(this: var JsBigInt; amount: JsBigInt) {.importjs: "([#][0][0] += #)".} =
+func inc*(this: var JsBigInt; amount: JsBigInt) {.importjs: "(# += #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     inc big1, newJsBigInt"2"
     doAssert big1 == newJsBigInt"3"
 
-func dec*(this: var JsBigInt; amount: JsBigInt) {.importjs: "([#][0][0] -= #)".} =
+func dec*(this: var JsBigInt; amount: JsBigInt) {.importjs: "(# -= #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     dec big1, newJsBigInt"2"
     doAssert big1 == newJsBigInt"-1"
 
-func inc*(this: var JsBigInt; amount: Positive) {.importjs: "([#][0][0] += BigInt(#))".} =
+func inc*(this: var JsBigInt; amount: Positive) {.importjs: "(# += BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     inc big1, 2
     doAssert big1 == newJsBigInt"3"
 
-func dec*(this: var JsBigInt; amount: Positive) {.importjs: "([#][0][0] -= BigInt(#))".} =
+func dec*(this: var JsBigInt; amount: Positive) {.importjs: "(# -= BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     dec big1, 2
     doAssert big1 == newJsBigInt"-1"
 
-func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `+=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "(# $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 += newJsBigInt"2"
     doAssert big1 == newJsBigInt"3"
 
-func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `-=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "(# $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 -= newJsBigInt"2"
     doAssert big1 == newJsBigInt"-1"
 
-func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
+func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "(# $1 #)".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"2"
     big1 *= newJsBigInt"4"
     doAssert big1 == newJsBigInt"8"
 
-func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
+func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "(# /= #)".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"11"
     big1 /= newJsBigInt"2"
     doAssert big1 == newJsBigInt"5"
 
-func `+=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `+=`*(x: var JsBigInt; y: int) {.importjs: "(# $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 += 2
     doAssert big1 == newJsBigInt"3"
 
-func `-=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `-=`*(x: var JsBigInt; y: int) {.importjs: "(# $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"1"
     big1 -= 2
     doAssert big1 == newJsBigInt"-1"
 
-func `*=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] $1 BigInt(#))".} =
+func `*=`*(x: var JsBigInt; y: int) {.importjs: "(# $1 BigInt(#))".} =
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"2"
     big1 *= 4
     doAssert big1 == newJsBigInt"8"
 
-func `/=`*(x: var JsBigInt; y: int) {.importjs: "([#][0][0] /= BigInt(#))".} =
+func `/=`*(x: var JsBigInt; y: int) {.importjs: "(# /= BigInt(#))".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = newJsBigInt"11"
@@ -210,6 +211,7 @@ proc high*(_: typedesc[JsBigInt]): JsBigInt {.error:
 runnableExamples:
   let big1: JsBigInt = newJsBigInt"2147483647"
   let big2: JsBigInt = newJsBigInt"666"
+  doAssert JsBigInt isnot int
   doAssert big1 != big2
   doAssert big1 > big2
   doAssert big1 >= big2
