@@ -758,7 +758,7 @@ when useBuiltinsRotate:
     # https://releases.llvm.org/8.0.0/tools/clang/docs/LanguageExtensions.html#builtin-rotateleft
     func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
                        {.importc: "__builtin_rotateleft8".}
-    func builtin_rotl16(value: cushort, shift: cushort): cuchar
+    func builtin_rotl16(value: cushort, shift: cushort): cushort
                        {.importc: "__builtin_rotateleft16".}
     func builtin_rotl32(value: cuint, shift: cuint): cuint
                        {.importc: "__builtin_rotateleft32".}
