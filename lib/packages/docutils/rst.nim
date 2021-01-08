@@ -7,18 +7,28 @@
 #    distribution, for details about the copyright.
 #
 
+## ==================================
+## rst: Nim-flavored reStructuredText
+## ==================================
+##
 ## This module implements a `reStructuredText`:idx: (RST) parser.
 ## A large subset is implemented with some limitations_ and
 ## `Nim-specific features`_.
-## A few features_ of the `markdown`:idx: syntax are also supported.
-## Nim can output the result to HTML (commands ``nim doc`` for \*.nim files and
-## ``nim rst2html`` for \*.rst files) or Latex (command ``nim rst2tex``).
+## A few `extra features`_ of the `Markdown`:idx: syntax are
+## also supported.
+##
+## Nim can output the result to HTML (commands ``nim doc`` for
+## ``*.nim`` files and ``nim rst2html`` for ``*.rst`` files) or
+## Latex (command ``nim rst2tex`` for ``*.rst``).
 ##
 ## If you are new to RST please consider reading the following:
 ##
 ## 1) a short `quick introduction`_
 ## 2) an `RST reference`_: a comprehensive cheatsheet for RST
 ## 3) a more formal 50-page `RST specification`_.
+##
+## Features
+## --------
 ##
 ## Supported standard RST features:
 ##
@@ -53,25 +63,25 @@
 ##     (see `RST roles list`_ for description).
 ##   + inline internal targets
 ##
-## Additional features of rst.nim:
-##
 ## .. _`Nim-specific features`:
+##
+## Additional Nim-specific features:
 ##
 ## * directives: ``code-block``, ``title``, ``index``
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
 ##
+## .. _`extra features`:
+##
 ## Optional additional features, turned on by ``options: RstParseOption`` in
 ## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
 ##
-## .. _features:
-##
 ## * emoji / smiley symbols
-## * markdown tables
-## * markdown code blocks
-## * markdown links
-## * markdown headlines
+## * Markdown tables
+## * Markdown code blocks
+## * Markdown links
+## * Markdown headlines
 ## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
 ##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
 ##
@@ -81,9 +91,8 @@
 ## .. warning:: Using Nim-specific features can cause other RST implementations
 ##   to fail on your document.
 ##
-## Limitations:
-##
-## .. _limitations:
+## Limitations
+## -----------
 ##
 ## * no Unicode support in character width calculations
 ## * body elements
@@ -103,19 +112,24 @@
 ##   - no simple-inline-markup
 ##   - no embedded aliases
 ##
+## Usage
+## -----
+##
+## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
+## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+##
+## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
+## generate HTML or Latex strings to embed them into your documents.
+##
+## .. Tip:: Import ``packages/docutils/rst`` to use this module
+##    programmatically.
+##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
 ## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
 ## .. _RST directives list: https://docutils.sourceforge.io/docs/ref/rst/directives.html
 ## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
 ## .. _Nim index: https://nim-lang.org/docs/theindex.html
-##
-## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
-##
-## .. note:: Import ``packages/docutils/rst`` to use this module.
-##
-## See also `packages/docutils/rstgen module <rstgen.html>`_.
 
 import
   os, strutils, rstast
@@ -127,7 +141,7 @@ type
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
-    roSupportMarkdown         ## support additional features of markdown
+    roSupportMarkdown         ## support additional features of Markdown
 
   RstParseOptions* = set[RstParseOption]
 
@@ -140,7 +154,7 @@ type
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
     meGridTableNotImplemented = "grid table is not implemented",
-    meMarkdownIllformedTable = "illformed delimiter row of a markdown table",
+    meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
     meNewSectionExpected = "new section expected",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
@@ -591,7 +605,8 @@ proc findRef(p: var RstParser, key: string): PRstNode =
     if key == p.s.refs[i].key:
       return p.s.refs[i].value
 
-proc updateAnchors(p: var RstParser, refn: string, reset: bool) =
+proc addAnchor(p: var RstParser, refn: string, reset: bool) =
+  ## add anchor `refn` to anchor aliases and update last anchor ``curAnchor``
   if p.curAnchor == "":
     p.s.anchors.add (refn, @[refn])
   else:
@@ -615,7 +630,7 @@ proc findMainAnchor(p: RstParser, refn: string): string =
     if toLeave:
       break
 
-proc newRstNodeA(kind: RstNodeKind, p: var RstParser): PRstNode =
+proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
   ## create node and consume the current anchor
   result = newRstNode(kind)
   if p.curAnchor != "":
@@ -671,14 +686,13 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
     if markup != "``" and prevTok(p).symbol == "\\":
       result = false
 
-proc isInlineMarkupStart(p: RstParser, markup: string, twoTokens=false): bool =
+proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
   var d: char
-  if not twoTokens:
+  if markup != "_`":
     result = currentTok(p).symbol == markup
-  else:
-    result = currentTok(p).symbol == $markup[0] and
-               nextTok(p).symbol == $markup[1]
+  else:  # _` is a 2 token case
+    result = currentTok(p).symbol == "_" and nextTok(p).symbol == "`"
   if not result: return
   # Rule 6:
   result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
@@ -922,7 +936,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
-  result = newRstNodeA(rnCodeBlock, p)
+  result = newRstNodeA(p, rnCodeBlock)
   result.add(args)
   result.add(PRstNode(nil))
   result.add(lb)
@@ -967,7 +981,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       father.add(n)
-    elif isInlineMarkupStart(p, "_`", twoTokens=true):
+    elif isInlineMarkupStart(p, "_`"):
       var n = newRstNode(rnInlineTarget)
       inc p.idx
       parseUntil(p, n, "`", false)
@@ -1105,7 +1119,7 @@ proc parseFields(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkIndent and nextTok(p).symbol == ":" or
       atStart:
     var col = if atStart: currentTok(p).col else: currentTok(p).ival
-    result = newRstNodeA(rnFieldList, p)
+    result = newRstNodeA(p, rnFieldList)
     if not atStart: inc p.idx
     while true:
       result.add(parseField(p))
@@ -1146,7 +1160,7 @@ proc getArgument(n: PRstNode): string =
 
 proc parseDotDot(p: var RstParser): PRstNode {.gcsafe.}
 proc parseLiteralBlock(p: var RstParser): PRstNode =
-  result = newRstNodeA(rnLiteralBlock, p)
+  result = newRstNodeA(p, rnLiteralBlock)
   var n = newRstNode(rnLeaf, "")
   if currentTok(p).kind == tkIndent:
     var indent = currentTok(p).ival
@@ -1304,7 +1318,7 @@ proc parseLineBlock(p: var RstParser): PRstNode =
   result = nil
   if nextTok(p).kind in {tkWhite, tkIndent}:
     var col = currentTok(p).col
-    result = newRstNodeA(rnLineBlock, p)
+    result = newRstNodeA(p, rnLineBlock)
     while true:
       var item = newRstNode(rnLineBlockItem)
       if nextTok(p).kind == tkWhite:
@@ -1370,7 +1384,7 @@ proc parseHeadline(p: var RstParser): PRstNode =
     var c = nextTok(p).symbol[0]
     inc p.idx, 2
     result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
-  updateAnchors(p, rstnodeToRefname(result), reset=true)
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 type
   IntSeq = seq[int]
@@ -1406,7 +1420,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
     c: char
     q: RstParser
     a, b: PRstNode
-  result = newRstNodeA(rnTable, p)
+  result = newRstNodeA(p, rnTable)
   cols = @[]
   row = @[]
   a = nil
@@ -1485,7 +1499,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     colNum: int
     a, b: PRstNode
     q: RstParser
-  result = newRstNodeA(rnMarkdownTable, p)
+  result = newRstNodeA(p, rnMarkdownTable)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
@@ -1509,7 +1523,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     parseRow(p, rnTableDataCell, result)
 
 proc parseTransition(p: var RstParser): PRstNode =
-  result = newRstNodeA(rnTransition, p)
+  result = newRstNodeA(p, rnTransition)
   inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
@@ -1532,14 +1546,14 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx                # XXX: check?
     if currentTok(p).kind == tkIndent: inc p.idx
-  updateAnchors(p, rstnodeToRefname(result), reset=true)
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 proc parseBulletList(p: var RstParser): PRstNode =
   result = nil
   if nextTok(p).kind == tkWhite:
     var bullet = currentTok(p).symbol
     var col = currentTok(p).col
-    result = newRstNodeA(rnBulletList, p)
+    result = newRstNodeA(p, rnBulletList)
     pushInd(p, p.tok[p.idx + 2].col)
     inc p.idx, 2
     while true:
@@ -1555,7 +1569,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
     popInd(p)
 
 proc parseOptionList(p: var RstParser): PRstNode =
-  result = newRstNodeA(rnOptionList, p)
+  result = newRstNodeA(p, rnOptionList)
   while true:
     if isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -1588,7 +1602,7 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
   if j >= 1 and p.tok[j].kind == tkIndent and
       p.tok[j].ival > currInd(p) and p.tok[j - 1].symbol != "::":
     var col = currentTok(p).col
-    result = newRstNodeA(rnDefList, p)
+    result = newRstNodeA(p, rnDefList)
     while true:
       j = p.idx
       var a = newRstNode(rnDefName)
@@ -1626,7 +1640,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
     wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
     wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
       # position of enumeration sequence (number/letter) in enumerator
-  result = newRstNodeA(rnEnumList, p)
+  result = newRstNodeA(p, rnEnumList)
   let col = currentTok(p).col
   var w = 0
   while w < wildcards.len:
@@ -1690,7 +1704,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
         inc p.idx
       elif currentTok(p).ival > currInd(p):
         pushInd(p, currentTok(p).ival)
-        var a = newRstNodeA(rnBlockQuote, p)
+        var a = newRstNodeA(p, rnBlockQuote)
         parseSection(p, a)
         result.add(a)
         popInd(p)
@@ -1726,7 +1740,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       #InternalError("rst.parseSection()")
       discard
     if a == nil and k != rnDirective:
-      a = newRstNodeA(rnParagraph, p)
+      a = newRstNodeA(p, rnParagraph)
       parseParagraph(p, a)
     result.addIfNotNil(a)
   if sonKind(result, 0) == rnParagraph and sonKind(result, 1) != rnParagraph:
@@ -1762,7 +1776,7 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ##
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
-  result = newRstNodeA(rnDirective, p)
+  result = newRstNodeA(p, rnDirective)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -2041,8 +2055,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
     if len(b) == 0 and b.text == "":  # set internal anchor
-      let refn = rstnodeToRefname(a)
-      updateAnchors(p, refn, reset=false)
+      addAnchor(p, rstnodeToRefname(a), reset=false)
     else:  # external hyperlink
       setRef(p, rstnodeToRefname(a), b)
   elif match(p, p.idx, " |"):
