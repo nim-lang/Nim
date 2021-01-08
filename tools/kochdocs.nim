@@ -15,9 +15,7 @@ const
 
 var nimExe*: string
 
-template isJsOnly(file: string): bool =
-  file.isRelativeTo("lib/js") or
-  file.isRelativeTo("lib/fusion/js")
+template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -187,7 +185,8 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+    result = a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"] and
+      not a.path.isRelativeTo("lib/fusion")
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or

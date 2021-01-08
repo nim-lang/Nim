@@ -26,7 +26,7 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
-
+      - 'koch.nim'
 
 jobs:
   build:
