@@ -980,8 +980,11 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
     data = await client.format(multipart)
-  elif httpMethod in ["POST", "PATCH", "PUT"] or body.len != 0:
-    client.headers["Content-Length"] = $body.len
+  else:
+    if body.len != 0:
+      client.headers["Content-Length"] = $body.len
+    elif httpMethod notin ["GET", "HEAD"] and not client.headers.hasKey("Content-Length"):
+      client.headers["Content-Length"] = "0"
 
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:
