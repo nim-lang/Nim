@@ -764,7 +764,8 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
   # mechanism, which we do in order to assign each module a persistent ID.
   m.module = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
                   name: getIdent(cache, splitFile(filename).name),
-                  info: newLineInfo(fileIdx, 1, 1))
+                  info: newLineInfo(fileIdx, 1, 1),
+                  position: int(fileIdx))
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
