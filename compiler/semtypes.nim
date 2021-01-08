@@ -252,6 +252,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
+  when not declared(isNaN):
+    static: doAssert (NimMajor, NimMinor, NimPatch) < (1, 5, 1) # sanity check to ensure this workaround isn't taken in recent nim
+    template isNaN(a): untyped = classify(a) == fcNan)
+
   if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and isNaN(result.n[0].floatVal)) or
       (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and isNaN(result.n[1].floatVal)):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
