@@ -142,6 +142,18 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+func hasChunkedEncoding(request: Request): bool = 
+  ## Searches for a chunked transfer encoding
+  var isChunked = false
+  for encoding in request.headers.iter("Transfer-Encoding"):
+    if "chunked" == encoding.strip:
+      isChunked = true
+      break
+
+  return (request.reqMethod == HttpPost and
+          request.headers.hasKey("Transfer-Encoding") and
+          isChunked)
+
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
@@ -261,6 +273,38 @@ proc processRequest(
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
         return true
+  elif hasChunkedEncoding(request):
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+    var sizeOrData = 0
+    var bytesToRead = 0
+    request.body = ""
+
+    while true:
+      lineFut.mget.setLen(0)
+      lineFut.clean()
+      
+      # The encoding format alternates between specifying a number of bytes to read
+      # and the data to be read, of the previously specified size
+      if sizeOrData mod 2 == 0:
+        # Expect a number of chars to read
+        await client.recvLineInto(lineFut, maxLength = maxLine)
+        try:
+          bytesToRead = lineFut.mget.parseHexInt
+        except ValueError:
+          # Malformed request
+          await request.respond(Http411, ("Invalid chunked transfer encoding - " &
+                                          "chunk data size must be hex encoded"))
+          return true
+      else:
+        if bytesToRead == 0:
+          # Done reading chunked data
+          break
+
+        # Read bytesToRead and add to body
+        await client.recvLineInto(lineFut, maxLength = bytesToRead)
+        request.body = request.body & lineFut.mget
+
+      inc sizeOrData
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
