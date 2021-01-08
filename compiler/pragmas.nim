@@ -99,7 +99,7 @@ proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
   var recorded = newNodeI(nkCommentStmt, n.info)
   for i in 0..args.high:
     recorded.add newStrNode(args[i], n.info)
-  c.graph.recordStmt(c.graph, c.module, recorded)
+  addPragmaComputation(c, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"

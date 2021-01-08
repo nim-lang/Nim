@@ -61,7 +61,6 @@ type
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
-    recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
@@ -253,8 +252,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
-  result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
-    discard
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()

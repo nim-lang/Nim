@@ -26,9 +26,9 @@ type
     definedSymbols: string
     includes: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
+    toReplay: PackedTree # pragmas and VM specific state to replay.
     topLevel*: PackedTree  # top level statements
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
-    hidden*: PackedTree # instantiated generics and other trees not directly in the source code.
     #producedGenerics*: Table[GenericKey, SymId]
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
@@ -122,7 +122,7 @@ proc initEncoder*(c: var PackedEncoder; m: PSym; config: ConfigRef; pc: PackedCo
   c.thisModule = m.itemId.module
   c.config = config
   c.m.bodies = newTreeFrom(c.m.topLevel)
-  c.m.hidden = newTreeFrom(c.m.topLevel)
+  c.m.toReplay = newTreeFrom(c.m.topLevel)
 
   let thisNimFile = FileIndex c.thisModule
   var h = msgs.getHash(config, thisNimFile)
@@ -380,6 +380,9 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder) =
   when false:
     ir.flush c   # flush any pending types and symbols
 
+proc addPragmaComputation*(c: var PackedEncoder; n: PNode) =
+  toPackedNode(n, c.m.toReplay, c)
+
 proc toPackedNodeIgnoreProcDefs*(n: PNode, encoder: var PackedEncoder) =
   case n.kind
   of routineDefs:
@@ -456,6 +459,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection pureEnumsSection, m.pureEnums
   loadSeqSection macroUsagesSection, m.macroUsages
 
+  loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
   loadSeqSection bodiesSection, m.bodies.nodes
   loadSeqSection symsSection, m.sh.syms
@@ -508,6 +512,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder) =
   storeSeqSection pureEnumsSection, encoder.m.pureEnums
   storeSeqSection macroUsagesSection, encoder.m.macroUsages
 
+  storeSeqSection toReplaySection, encoder.m.toReplay.nodes
   storeSeqSection topLevelSection, encoder.m.topLevel.nodes
 
   storeSeqSection bodiesSection, encoder.m.bodies.nodes
@@ -824,6 +829,8 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, g[mId].fromDisk.bodies, NodePos pos)
 
+# ---------------- symbol table handling ----------------
+
 type
   RodIter* = object
     decoder: PackedDecoder
@@ -883,6 +890,13 @@ proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
   let values = g[int module].iface.getOrDefault(name)
   result = loadSym(decoder, g, values[0])
 
+# ------------------------- pragma handling ----------------------------------
+
+proc recordPragma*(config: ConfigRef, cache: IdentCache;
+                   g: var PackedModuleGraph; module: FileIndex; n: PNode) =
+
+  discard
+
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
@@ -903,4 +917,6 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
       echo "  ", m.sh.strings[ex[0]]
     #  reexports*: seq[(LitId, PackedItemId)]
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
-    " top level nodes: ", m.topLevel.nodes.len, " other nodes ", m.bodies.nodes.len
+    " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
+    " strings: ", m.sh.strings.len, " integers: ", m.sh.integers.len,
+    " floats: ", m.sh.floats.len

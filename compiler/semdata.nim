@@ -278,6 +278,10 @@ proc addImportFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
     addImportFileDep(c.encoder, f)
 
+proc addPragmaComputation*(c: PContext; n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    addPragmaComputation(c.encoder, n)
+
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
     if sq[i].id == s.id: return
@@ -503,4 +507,7 @@ proc storeRodNode*(c: PContext, n: PNode) =
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
+    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+      if m == c.module:
+        addPragmaComputation(c, n)
     saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)
