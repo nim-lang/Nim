@@ -15,9 +15,7 @@ const
 
 var nimExe*: string
 
-template isJsOnly(file: string): bool =
-  file.isRelativeTo("lib/js") or
-  file.isRelativeTo("lib/fusion/js")
+template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
