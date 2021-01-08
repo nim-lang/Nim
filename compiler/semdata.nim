@@ -511,3 +511,9 @@ proc saveRodFile*(c: PContext) =
       if m == c.module:
         addPragmaComputation(c, n)
     saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)
+    if sfSystemModule in c.module.flags:
+      c.graph.systemModuleComplete = true
+    when true:
+      # debug code, but maybe a good idea for production? Could reduce the compiler's
+      # memory consumption considerably at the cost of more loads from disk.
+      simulateCachedModule(c.graph, c.module, c.encoder.m)

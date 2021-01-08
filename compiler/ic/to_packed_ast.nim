@@ -39,7 +39,7 @@ type
     cfg: PackedConfig
 
   PackedEncoder* = object
-    m: PackedModule
+    m*: PackedModule
     thisModule*: int32
     lastFile*: FileIndex # remember the last lookup entry.
     lastLit*: LitId
@@ -846,6 +846,18 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   let pos = g[mId].fromDisk.sh.syms[s.itemId.item].ast
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, g[mId].fromDisk.bodies, NodePos pos)
+
+proc simulateLoadedModule*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                           moduleSym: PSym; m: PackedModule) =
+  # For now only used for heavy debugging. In the future we could use this to reduce the
+  # compiler's memory consumption.
+  let idx = moduleSym.position
+  if idx >= g.len:
+    setLen g, idx
+  assert g[idx].status in {undefined, outdated}
+  g[idx] = LoadedModule(status: loaded, fromDisk: m, module: moduleSym)
+  setupLookupTables(g, conf, cache, FileIndex(idx), g[idx])
+  loadToReplayNodes(g, conf, cache, FileIndex(idx), g[idx])
 
 # ---------------- symbol table handling ----------------
 

@@ -36,6 +36,7 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
+    systemModuleComplete*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
@@ -126,6 +127,11 @@ template semtab*(m: PSym; g: ModuleGraph): TStrTable =
 
 proc cachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
   m.position < g.packed.len and g.packed[m.position].status == loaded
+
+proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
+  when false:
+    echo "simulating ", moduleSym.name.s, " ", moduleSym.position
+  simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
 
 type
   ModuleIter* = object
