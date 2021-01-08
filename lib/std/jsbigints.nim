@@ -184,3 +184,11 @@ runnableExamples:
   doAssert not(big1 == big2)
   let z = JsBigInt.default
   doAssert $z == "0"
+  block:
+    var a: seq[JsBigInt]
+    a.setLen 2
+    doAssert a == @[newJsBigInt"0", newJsBigInt"0"]
+    doAssert a[^1] == newJsBigInt"0"
+    var b: JsBigInt
+    doAssert b == newJsBigInt"0"
+    doAssert b == JsBigInt.default
