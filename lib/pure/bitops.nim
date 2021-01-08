@@ -845,10 +845,10 @@ func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
 func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Left-rotate bits in a 8-bits value.
   runnableExamples:
-    doAssert rotateLeftBits(0b0000_0001'u8, 1) == 0b0000_0010'u8
-    doAssert rotateLeftBits(0b0000_0001'u8, 2) == 0b0000_0100'u8
-    doAssert rotateLeftBits(0b0100_0001'u8, 1) == 0b1000_0010'u8
-    doAssert rotateLeftBits(0b0100_0001'u8, 2) == 0b0000_0101'u8
+    doAssert rotateLeftBits(0b0110_1001'u8, 1) == 0b1101_0010'u8
+    doAssert rotateLeftBits(0b0110_1001'u8, 2) == 0b1010_0101'u8
+    doAssert rotateLeftBits(0b0110_1001'u8, 3) == 0b0100_1011'u8
+    doAssert rotateLeftBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
   
   when nimvm:
     rotl(value, shift.int32)
@@ -865,9 +865,16 @@ func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
 
 func rotateLeftBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   ## Left-rotate bits in a 16-bits value.
-  ##
-  ## See also:
-  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateLeftBits(0b00111100_11000011'u16, 1) ==
+      0b01111001_10000110'u16
+    doAssert rotateLeftBits(0b00111100_11000011'u16, 3) ==
+      0b11100110_00011001'u16
+    doAssert rotateLeftBits(0b00111100_11000011'u16, 6) ==
+      0b00110000_11001111'u16
+    doAssert rotateLeftBits(0b00111100_11000011'u16, 8) ==
+      0b11000011_00111100'u16
+
   when nimvm:
     rotl(value, shift.int32)
   else:
@@ -883,9 +890,16 @@ func rotateLeftBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
 
 func rotateLeftBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
   ## Left-rotate bits in a 32-bits value.
-  ##
-  ## See also:
-  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateLeftBits(0b0000111111110000_1111000000001111'u32, 1) ==
+      0b0001111111100001_1110000000011110'u32
+    doAssert rotateLeftBits(0b0000111111110000_1111000000001111'u32, 5) ==
+      0b1111111000011110_0000000111100001'u32
+    doAssert rotateLeftBits(0b0000111111110000_1111000000001111'u32, 12) ==
+      0b0000111100000000_1111000011111111'u32
+    doAssert rotateLeftBits(0b0000111111110000_1111000000001111'u32, 16) ==
+      0b1111000000001111_0000111111110000'u32
+  
   when nimvm:
     rotl(value, shift.int32)
   else:
@@ -899,9 +913,16 @@ func rotateLeftBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
 
 func rotateLeftBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
   ## Left-rotate bits in a 64-bits value.
-  ##
-  ## See also:
-  ## * `rotateLeftBits proc <#rotateLeftBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateLeftBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 1) ==
+      0b00000001111111111111111000000001_11111110000000000000000111111110'u64
+    doAssert rotateLeftBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 9) ==
+      0b11111111111111100000000111111110_00000000000000011111111000000001'u64
+    doAssert rotateLeftBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 24) ==
+      0b00000000111111110000000000000000_11111111000000001111111111111111'u64
+    doAssert rotateLeftBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 32) ==
+      0b11111111000000000000000011111111_00000000111111111111111100000000'u64
+
   when nimvm:
     rotl(value, shift.int32)
   else:
@@ -916,10 +937,10 @@ func rotateLeftBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
 func rotateRightBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Right-rotate bits in a 8-bits value.
   runnableExamples:
-    doAssert rotateRightBits(0b0000_0001'u8, 1) == 0b1000_0000'u8
-    doAssert rotateRightBits(0b0000_0001'u8, 2) == 0b0100_0000'u8
-    doAssert rotateRightBits(0b0100_0001'u8, 1) == 0b1010_0000'u8
-    doAssert rotateRightBits(0b0100_0001'u8, 2) == 0b0101_0000'u8
+    doAssert rotateRightBits(0b0110_1001'u8, 1) == 0b1011_0100'u8
+    doAssert rotateRightBits(0b0110_1001'u8, 2) == 0b0101_1010'u8
+    doAssert rotateRightBits(0b0110_1001'u8, 3) == 0b0010_1101'u8
+    doAssert rotateRightBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
 
   when nimvm:
     rotr(value, shift.int32)
@@ -936,9 +957,16 @@ func rotateRightBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
 
 func rotateRightBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
   ## Right-rotate bits in a 16-bits value.
-  ##
-  ## See also:
-  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateRightBits(0b00111100_11000011'u16, 1) ==
+      0b10011110_01100001'u16
+    doAssert rotateRightBits(0b00111100_11000011'u16, 3) ==
+      0b01100111_10011000'u16
+    doAssert rotateRightBits(0b00111100_11000011'u16, 6) ==
+      0b00001100_11110011'u16
+    doAssert rotateRightBits(0b00111100_11000011'u16, 8) ==
+      0b11000011_00111100'u16
+
   when nimvm:
     rotr(value, shift.int32)
   else:
@@ -954,9 +982,16 @@ func rotateRightBits*(value: uint16, shift: range[0..16]): uint16 {.inline.} =
 
 func rotateRightBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
   ## Right-rotate bits in a 32-bits value.
-  ##
-  ## See also:
-  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateRightBits(0b0000111111110000_1111000000001111'u32, 1) ==
+      0b1000011111111000_0111100000000111'u32
+    doAssert rotateRightBits(0b0000111111110000_1111000000001111'u32, 5) ==
+      0b0111100001111111_1000011110000000'u32
+    doAssert rotateRightBits(0b0000111111110000_1111000000001111'u32, 12) ==
+      0b0000000011110000_1111111100001111'u32
+    doAssert rotateRightBits(0b0000111111110000_1111000000001111'u32, 16) ==
+      0b1111000000001111_0000111111110000'u32
+
   when nimvm:
     rotr(value, shift.int32)
   else:
@@ -970,9 +1005,16 @@ func rotateRightBits*(value: uint32, shift: range[0..32]): uint32 {.inline.} =
 
 func rotateRightBits*(value: uint64, shift: range[0..64]): uint64 {.inline.} =
   ## Right-rotate bits in a 64-bits value.
-  ##
-  ## See also:
-  ## * `rotateRightBits proc <#rotateRightBits,uint8,range[]>`_
+  runnableExamples:
+    doAssert rotateRightBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 1) ==
+      0b10000000011111111111111110000000_01111111100000000000000001111111'u64
+    doAssert rotateRightBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 9) ==
+      0b01111111100000000111111111111111_10000000011111111000000000000000'u64
+    doAssert rotateRightBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 24) ==
+      0b00000000000000001111111100000000_11111111111111110000000011111111'u64
+    doAssert rotateRightBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 32) ==
+      0b11111111000000000000000011111111_00000000111111111111111100000000'u64
+
   when nimvm:
     rotr(value, shift.int32)
   else:
