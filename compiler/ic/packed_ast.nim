@@ -310,7 +310,7 @@ template typ*(n: NodePos): PackedItemId =
 template flags*(n: NodePos): TNodeFlags =
   tree.nodes[n.int].flags
 
-proc span(tree: PackedTree; pos: int): int {.inline.} =
+proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
 proc sons2*(tree: PackedTree; n: NodePos): (NodePos, NodePos) =

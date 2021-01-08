@@ -749,7 +749,8 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; t: PackedItemId): 
     else:
       result = g[si].types[t.item]
 
-proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache; fileIdx: FileIndex) =
+proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                       fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
   for e in m.fromDisk.exports:
     let nameLit = e[0]
@@ -764,6 +765,22 @@ proc setupLookupTables(m: var LoadedModule; conf: ConfigRef; cache: IdentCache; 
   m.module = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
                   name: getIdent(cache, splitFile(filename).name),
                   info: newLineInfo(fileIdx, 1, 1))
+
+proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
+                       fileIdx: FileIndex; m: var LoadedModule) =
+  m.module.ast = newNode(nkStmtList)
+  if m.fromDisk.toReplay.len > 0:
+    var decoder = PackedDecoder(
+      thisModule: int32(fileIdx),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: conf,
+      cache: cache)
+    var p = 0
+    while p < m.fromDisk.toReplay.len:
+      m.module.ast.add loadNodes(decoder, g, m.fromDisk.toReplay, NodePos p)
+      let s = span(m.fromDisk.toReplay, p)
+      inc p, s
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                     fileIdx: FileIndex): bool =
@@ -788,7 +805,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
           result = true
 
       if not result:
-        setupLookupTables(g[m], conf, cache, fileIdx)
+        setupLookupTables(g, conf, cache, fileIdx, g[m])
       g[m].status = if result: outdated else: loaded
     else:
       loadError(err, rod)
@@ -807,6 +824,7 @@ proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentC
   else:
     result = g[int fileIdx].module
     assert result != nil
+    loadToReplayNodes(g, conf, cache, fileIdx, g[int fileIdx])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(
@@ -889,13 +907,6 @@ proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
   setupDecoder()
   let values = g[int module].iface.getOrDefault(name)
   result = loadSym(decoder, g, values[0])
-
-# ------------------------- pragma handling ----------------------------------
-
-proc recordPragma*(config: ConfigRef, cache: IdentCache;
-                   g: var PackedModuleGraph; module: FileIndex; n: PNode) =
-
-  discard
 
 # ------------------------- .rod file viewer ---------------------------------
 
