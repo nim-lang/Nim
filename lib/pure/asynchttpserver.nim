@@ -301,8 +301,9 @@ proc processRequest(
           break
 
         # Read bytesToRead and add to body
-        await client.recvLineInto(lineFut, maxLength = bytesToRead)
-        request.body = request.body & lineFut.mget
+        # Note we add +2 because the line must be terminated by \r\n
+        let chunk = await client.recv(bytesToRead + 2)
+        request.body = request.body & chunk
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:
