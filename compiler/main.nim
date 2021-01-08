@@ -211,18 +211,17 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       body
 
-  block: ## command prepass
-    if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
-    if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
-    if conf.outDir.isEmpty:
-      # doc like commands can generate a lot of files (especially with --project)
-      # so by default should not end up in $PWD nor in $projectPath.
-      conf.outDir = block:
-        var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-                  else: conf.projectPath
-        doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
-        ret
+  ## command prepass
+  if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+  if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
+  if conf.outDir.isEmpty:
+    # doc like commands can generate a lot of files (especially with --project)
+    # so by default should not end up in $PWD nor in $projectPath.
+    var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
+              else: conf.projectPath
+    doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
+    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
+    conf.outDir = ret
 
   ## process all commands
   case conf.cmd
