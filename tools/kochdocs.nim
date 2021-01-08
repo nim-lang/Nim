@@ -18,7 +18,6 @@ const allowList = ["jsbigints.nim"]
 
 template isJsOnly(file: string): bool =
   file.isRelativeTo("lib/js") or
-  file.isRelativeTo("lib/fusion/js") or
   file.extractFilename in allowList
 
 proc exe*(f: string): string =
@@ -189,7 +188,8 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+    result = a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"] and
+      not a.path.isRelativeTo("lib/fusion")
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or
