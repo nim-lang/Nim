@@ -38,6 +38,15 @@
 ##    h = h !& hash(x.bar)
 ##    result = !$h
 ##
+## You can hash an object by all of its fields with the `fields` iterator:
+## 
+## .. code-block:: Nim
+##  proc hash(x: MyObject): Hash =
+##    var h: Hash = 0
+##    for val in obj.fields:
+##      h = h !& hash(val)
+##    result = !$h
+##
 ## **See also:**
 ## * `md5 module <md5.html>`_ for MD5 checksum algorithm
 ## * `base64 module <base64.html>`_ for a base64 encoder and decoder
