@@ -14,10 +14,12 @@ const
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+const allowList = ["jsbigints.nim"]
 
 template isJsOnly(file: string): bool =
   file.isRelativeTo("lib/js") or
-  file.isRelativeTo("lib/fusion/js")
+  file.isRelativeTo("lib/fusion/js") or
+  file.extractFilename in allowList
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
