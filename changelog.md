@@ -96,6 +96,16 @@
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
 
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
+
+
+
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
