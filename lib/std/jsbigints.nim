@@ -30,8 +30,8 @@ func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".}
 
 func `$`*(this: JsBigInt): string =
   ## Returns a `string` representation of `JsBigInt`.
-  runnableExamples: doAssert $newJsBigInt"1024" == "1024"
-  $toCstring(this)
+  runnableExamples: doAssert $newJsBigInt"1024" == "1024n"
+  $toCstring(this) & 'n'
 
 func wrapToInt*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asIntN(b, i) })()".} =
@@ -183,7 +183,7 @@ runnableExamples:
   doAssert big2 <= big1
   doAssert not(big1 == big2)
   let z = JsBigInt.default
-  doAssert $z == "0"
+  doAssert $z == "0n"
   block:
     var a: seq[JsBigInt]
     a.setLen 2

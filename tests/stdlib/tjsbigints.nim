@@ -19,7 +19,7 @@ doAssert big1 - big2 == newJsBigInt"2147482981"
 doAssert big1 shl big3 == newJsBigInt"8589934588"
 doAssert big1 shr big3 == newJsBigInt"536870911"
 doAssert big1 * big2 == newJsBigInt"1430224108902"
-doAssert $big1 == "2147483647".cstring
+doAssert $big1 == "2147483647n"
 doAssert big1.toCstring(10) == "2147483647".cstring
 doAssert big2 ** big3 == newJsBigInt(443556)
 var huge = newJsBigInt"999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
