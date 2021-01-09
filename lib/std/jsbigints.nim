@@ -17,7 +17,7 @@ func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
     doAssert big"-1" == big"1" - big"2"
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
-  ## Convert from `JsBigInt` to `cstring` representation.
+  ## Converts from `JsBigInt` to `cstring` representation.
   ## * `radix` Base to use for representing numeric values.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
   runnableExamples:
