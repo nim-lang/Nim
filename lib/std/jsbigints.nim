@@ -34,7 +34,7 @@ func `$`*(this: JsBigInt): string =
 
 func wrapToInt*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asIntN(b, i) })()".} =
-  ## Wrap `this` to a signed `JsBigInt` of `bits` bits in `-2 ^ (bits - 1)` .. `2 ^ (bits - 1) - 1`.
+  ## Wraps `this` to a signed `JsBigInt` of `bits` bits in `-2 ^ (bits - 1)` .. `2 ^ (bits - 1) - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asIntN
   runnableExamples:
     doAssert (big("3") + big("2") ** big("66")).wrapToInt(13) == big("3")
