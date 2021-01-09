@@ -41,7 +41,7 @@ func wrapToInt*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
 
 func wrapToUint*(this: JsBigInt; bits: Natural): JsBigInt {.importjs:
   "(() => { const i = #, b = #; return BigInt.asUintN(b, i) })()".} =
-  ## Wrap `this` to an unsigned `JsBigInt` of `bits` bits in 0 ..  `2 ^ bits - 1`.
+  ## Wraps `this` to an unsigned `JsBigInt` of `bits` bits in 0 ..  `2 ^ bits - 1`.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN
   runnableExamples:
     doAssert (big("3") + big("2") ** big("66")).wrapToUint(66) == big("3")
