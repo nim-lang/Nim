@@ -87,7 +87,7 @@ func `<=`*(x, y: JsBigInt): bool {.importjs: "(# $1 #)".} =
   runnableExamples:
     doAssert big"1" <= big"5"
 
-func `==`*(x, y: JsBigInt): bool {.importjs: "(# === #)".} =
+func `==`*(x, y: JsBigInt): bool {.importjs: "(# == #)".} =
   runnableExamples:
     doAssert big"42" == big"42"
 
