@@ -102,5 +102,20 @@ proc main() =
   tester(1)
   doAssert reverse("hello") == "olleh"
 
+  block: # `len` bug #16405
+    var a = "ab\0\cd"
+    var b = a.cstring
+    doAssert a.len == 5
+    doAssert a.high == 4
+    template impl() =
+      doAssert b.len == 2
+      doAssert b.high == 1
+    when defined(js):
+      when nimvm: impl()
+      else:
+        doAssert b.len == 5
+        doAssert b.high == 4
+    else: impl()
+
 static: main()
 main()
