@@ -153,7 +153,7 @@ func `*=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
     big1 *= big"4"
     doAssert big1 == big"8"
 
-func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] /= #)".} =
+func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
   ## Same as `x = x div y`.
   runnableExamples:
     var big1: JsBigInt = big"11"
