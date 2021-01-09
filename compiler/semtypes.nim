@@ -1059,6 +1059,14 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
 
+  of tyTuple:
+    for i in 0..<paramType.len:
+      let t = recurse(paramType[i])
+      if t != nil:
+        if result == nil: 
+          result = paramType
+        result[i] = t
+
   of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)
 
