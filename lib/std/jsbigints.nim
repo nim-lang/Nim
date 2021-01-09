@@ -24,7 +24,7 @@ func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#
     doAssert big"2147483647".toCstring(2) == "1111111111111111111111111111111".cstring
 
 func toCstring*(this: JsBigInt): cstring {.importjs: "#.toString()".}
-  ## Convert from `JsBigInt` to `cstring` representation.
+  ## Converts from `JsBigInt` to `cstring` representation.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
 
 func `$`*(this: JsBigInt): string =
