@@ -705,7 +705,7 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s.flags, sfUsed)
   registerCompilerProc(c.graph, s)
   if c.config.symbolFiles != disabledSf:
-    addCompilerProc(c.encoder, s)
+    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]

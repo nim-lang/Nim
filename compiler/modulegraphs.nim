@@ -29,7 +29,7 @@ type
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
-    packed: PackedModuleGraph
+    packed*: PackedModuleGraph
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -236,6 +236,10 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
   if m.position >= g.ifaces.len:
     setLen(g.ifaces, m.position + 1)
+
+  if m.position >= g.packed.len:
+    setLen(g.packed, m.position + 1)
+
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
   initStrTable(g.ifaces[m.position].interf)
 
@@ -337,14 +341,14 @@ proc isDirty*(g: ModuleGraph; m: PSym): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
-  if result == nil and g.config.symbolFiles in {readOnlySf, v2Sf}:
+  if result == nil and g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = loadProcBody(g.config, g.cache, g.packed, s)
     s.ast[bodyPos] = result
   assert result != nil
 
 proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
-  if g.config.symbolFiles in {readOnlySf, v2Sf}:
+  if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)
 
 proc configComplete*(g: ModuleGraph) =
