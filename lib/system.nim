@@ -702,8 +702,8 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
   ##   echo len(str) # => 12
 
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
-  ## Returns the length of a compatible string. This is sometimes
-  ## an O(n) operation.
+  ## Returns the length of a compatible string. This is an O(n) operation except
+  ## in js at runtime.
   ##
   ## **Note:** On the JS backend this currently counts UTF-16 code points
   ## instead of bytes at runtime (not at compile time). For now, if you
