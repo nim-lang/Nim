@@ -183,13 +183,6 @@ proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Replaces any existing values.
   headers.table[headers.toCaseInsensitive(key)] = @[value]
 
-iterator iter*(headers: HttpHeaders, key: string): string =
-  ## Yields each value associated with the requested key
-  ## If no such key exists, this does nothing.
-  if headers.table.contains(headers.toCaseInsensitive(key)):
-    for value in headers.table[headers.toCaseInsensitive(key)]:
-      yield value
-
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
   ## values. Replaces any existing values. If ``value`` is empty,

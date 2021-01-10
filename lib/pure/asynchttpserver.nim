@@ -144,15 +144,14 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
 
 func hasChunkedEncoding(request: Request): bool = 
   ## Searches for a chunked transfer encoding
-  var isChunked = false
-  for encoding in request.headers.iter("Transfer-Encoding"):
-    if "chunked" == encoding.strip:
-      isChunked = true
-      break
+  const transferEncoding = "Transfer-Encoding"
 
-  return (request.reqMethod == HttpPost and
-          request.headers.hasKey("Transfer-Encoding") and
-          isChunked)
+  if request.headers.hasKey(transferEncoding):
+    for encoding in seq[string](request.headers[transferEncoding]):
+      if "chunked" == encoding.strip:
+        # Returns true if it is both an HttpPost and has chunked encoding
+        return request.reqMethod == HttpPost
+  return false
 
 proc processRequest(
   server: AsyncHttpServer,
