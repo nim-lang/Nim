@@ -977,9 +977,13 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if multipart != nil and multipart.content.len > 0:
     data = await client.format(multipart)
   else:
+    # A new request should always have a new content length
+    if client.headers.hasKey("Content-Length"):
+      client.headers.del("Content-Length")
+  
     if body.len != 0:
       client.headers["Content-Length"] = $body.len
-    elif httpMethod notin [HttpGet, HttpHead] and not client.headers.hasKey("Content-Length"):
+    elif httpMethod notin {HttpGet, HttpHead}:
       client.headers["Content-Length"] = "0"
 
   when client is AsyncHttpClient:
