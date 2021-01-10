@@ -43,6 +43,12 @@ converter tupleToPoint[T1, T2: SomeFloat](self: tuple[x: T1, y: T2]): PointTup =
 proc tupleToPointX(self: tuple[x: SomeFloat, y: SomeFloat]): PointTup =
   result = (self.x.float32, self.y.float32)
 
-var t1: PointTup = tupleToPointX((1.0, 0.0))
+proc tupleToPointX2(self: tuple[x: SomeFloat, y: distinct SomeFloat]): PointTup =
+  result = (self.x.float32, self.y.float32)
 
-var t2: PointTup = (1.0, 0.0)
+var t1: PointTup = tupleToPointX((1.0, 0.0))
+var t2: PointTup = tupleToPointX2((1.0, 0.0))
+var t3: PointTup = tupleToPointX2((1.0'f32, 0.0))
+var t4: PointTup = tupleToPointX2((1.0, 0.0'f32))
+
+var x2: PointTup = (1.0, 0.0)
