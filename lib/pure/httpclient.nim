@@ -129,7 +129,7 @@
 ## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
 ## module are scanned to locate CA certificates.
 ##
-## See `newContext <net.html#newContext>`_ to tweak or disable certificate validation.
+## See `newContext <net.html#newContext.string,string,string,string>`_ to tweak or disable certificate validation.
 ##
 ## Timeouts
 ## ========
@@ -563,7 +563,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## default is 5.
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
-  ## See `SSL/TLS support <##ssl-tls-support>`_
+  ## See `SSL/TLS support <#sslslashtls-support>`_
   ##
   ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
   ## connections.
@@ -977,7 +977,10 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if multipart != nil and multipart.content.len > 0:
     data = await client.format(multipart)
   else:
-    client.headers["Content-Length"] = $body.len
+    if body.len != 0:
+      client.headers["Content-Length"] = $body.len
+    elif httpMethod notin ["GET", "HEAD"] and not client.headers.hasKey("Content-Length"):
+      client.headers["Content-Length"] = "0"
 
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:

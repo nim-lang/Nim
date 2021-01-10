@@ -230,7 +230,7 @@ when defined(createNimHcr):
     when defined(testNimHcr): return ($arg).splitFile.name.splitFile.name
     else: return $arg
 
-  {.pragma: nimhcr, compilerProc, exportc, dynlib.}
+  {.pragma: nimhcr, compilerproc, exportc, dynlib.}
 
   # XXX these types are CPU specific and need ARM etc support
   type
@@ -622,7 +622,7 @@ elif defined(hotcodereloading) or defined(testNimHcr):
                       elif defined(macosx): "libnimhcr." & dllExt
                       else: "libnimhcr." & dllExt
 
-    {.pragma: nimhcr, compilerProc, importc, dynlib: nimhcrLibname.}
+    {.pragma: nimhcr, compilerproc, importc, dynlib: nimhcrLibname.}
 
     proc hcrRegisterProc*(module: cstring, name: cstring, fn: pointer): pointer {.nimhcr.}
 

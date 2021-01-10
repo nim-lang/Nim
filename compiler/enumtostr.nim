@@ -2,15 +2,15 @@
 import ast, idents, lineinfos, modulegraphs, magicsys
 
 proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "$"), nextId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "$"), nextSymId idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
   dest.typ = t
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
   res.typ = getSysType(g, info, tyString)
 
-  result.typ = newType(tyProc, nextId idgen, t.owner)
+  result.typ = newType(tyProc, nextTypeId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)
@@ -63,15 +63,15 @@ proc searchObjCase(t: PType; field: PSym): PNode =
   doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph; idgen: IdGenerator): PSym =
-  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextId idgen, t.owner, info)
+  result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), nextSymId idgen, t.owner, info)
 
-  let dest = newSym(skParam, getIdent(g.cache, "e"), nextId idgen, result, info)
+  let dest = newSym(skParam, getIdent(g.cache, "e"), nextSymId idgen, result, info)
   dest.typ = field.typ
 
-  let res = newSym(skResult, getIdent(g.cache, "result"), nextId idgen, result, info)
+  let res = newSym(skResult, getIdent(g.cache, "result"), nextSymId idgen, result, info)
   res.typ = getSysType(g, info, tyUInt8)
 
-  result.typ = newType(tyProc, nextId idgen, t.owner)
+  result.typ = newType(tyProc, nextTypeId idgen, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
   result.typ.n.add newNodeI(nkEffectList, info)

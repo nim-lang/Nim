@@ -1778,7 +1778,7 @@ dereferencing operations for reference types:
 
 Automatic dereferencing can be performed for the first argument of a routine
 call, but this is an experimental feature and is described `here
-<manual_experimental.html#type-bound-operations>`_.
+<manual_experimental.html#automatic-dereferencing>`_.
 
 In order to simplify structural type checking, recursive tuples are not valid:
 
@@ -1948,7 +1948,7 @@ Nim supports these `calling conventions`:idx:\:
     hardware stack.
 
 `inline`:idx:
-    The inline convention means the the caller should not call the procedure,
+    The inline convention means the caller should not call the procedure,
     but inline its code directly. Note that Nim does not inline, but leaves
     this to the C compiler; it generates ``__inline`` procedures. This is
     only a hint for the compiler: it may completely ignore it and
@@ -2499,13 +2499,13 @@ matches) is preferred:
   gen(ri) # "ref T"
 
 
-Overloading based on 'var T' / 'out T'
+Overloading based on 'var T'
 --------------------------------------
 
-If the formal parameter ``f`` is of type ``var T`` (or ``out T``)
-in addition to the ordinary
-type checking, the argument is checked to be an `l-value`:idx:.
-``var T`` (or ``out T``) matches better than just ``T`` then.
+If the formal parameter ``f`` is of type ``var T``
+in addition to the ordinary type checking,
+the argument is checked to be an `l-value`:idx:.
+``var T`` matches better than just ``T`` then.
 
 .. code-block:: nim
   proc sayHi(x: int): string =
@@ -2522,17 +2522,6 @@ type checking, the argument is checked to be an `l-value`:idx:.
 
   sayHello(3) # 3
               # 13
-
-
-An l-value matches ``var T`` and ``out T`` equally well, hence
-the following is ambiguous:
-
-.. code-block:: nim
-
-  proc p(x: out string) = x = ""
-  proc p(x: var string) = x = ""
-  var v: string
-  p(v) # ambiguous
 
 
 Lazy type resolution for untyped
@@ -3653,7 +3642,7 @@ Creating closures in loops
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
 <system.html#closureScope.t,untyped>`_ and `capture
-<sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
+<sugar.html#capture.m,varargs[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -4975,7 +4964,7 @@ of "typedesc"-ness is stripped off:
 Generic inference restrictions
 ------------------------------
 
-The types ``var T``, ``out T`` and ``typedesc[T]`` cannot be inferred in a generic
+The types ``var T`` and ``typedesc[T]`` cannot be inferred in a generic
 instantiation. The following is not allowed:
 
 .. code-block:: nim
@@ -6155,10 +6144,10 @@ noSideEffect pragma
 The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
 effects. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
-arguments. If none of its parameters have the type ``var T`` or ``out T``
-or ``ref T`` or ``ptr T`` this means no locations are modified. It is a static
-error to mark a proc/iterator to have no side effect if the compiler cannot
-verify this.
+arguments. If none of its parameters have the type ``var T`` or ``ref T``
+or ``ptr T`` this means no locations are modified. It is a static error to
+mark a proc/iterator to have no side effect if the compiler cannot verify
+this.
 
 As a special semantic rule, the built-in `debugEcho
 <system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
@@ -7073,8 +7062,10 @@ one can import C++'s templates rather easily without the need for a pattern
 language for object types:
 
 .. code-block:: nim
+  :test: "nim cpp $1"
+
   type
-    StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
+    StdMap[K, V] {.importcpp: "std::map", header: "<map>".} = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
     importcpp: "#[#] = #", header: "<map>".}
 

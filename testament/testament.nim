@@ -15,6 +15,7 @@ import
   algorithm, times, md5, sequtils, azure, intsets
 from std/sugar import dup
 import compiler/nodejs
+import lib/stdtest/testutils
 
 var useColors = true
 var backendLogging = true
@@ -87,11 +88,12 @@ proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
   input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
 
-proc normalizeMsg(s: string): string =
-  result = newStringOfCap(s.len+1)
-  for x in splitLines(s):
-    if result.len > 0: result.add '\L'
-    result.add x.strip
+when false: # deadcode
+  proc normalizeMsg(s: string): string =
+    result = newStringOfCap(s.len+1)
+    for x in splitLines(s):
+      if result.len > 0: result.add '\L'
+      result.add x.strip
 
 proc getFileDir(filename: string): string =
   result = filename.splitFile().dir
@@ -143,7 +145,7 @@ proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
   options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
-                      "filedir", filename.getFileDir()])
+                      "filedir", filename.getFileDir(), "nim", compilerPrefix])
 
 proc callCompiler(cmdTemplate, filename, options, nimcache: string,
                   target: TTarget, extraOptions = ""): TSpec =
@@ -364,7 +366,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     checkForInlineErrors(r, expected, given, test, target)
   elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -402,9 +404,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
   try:
     let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
-    let check = spec.ccodeCheck
-    if check.len > 0:
-      if check[0] == '\\':
+    for check in spec.ccodeCheck:
+      if check.len > 0 and check[0] == '\\':
         # little hack to get 'match' support:
         if not contents.match(check.peg):
           given.err = reCodegenFailure
@@ -423,17 +424,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let giv = given.nimout.strip
-  var currentPos = 0
-  # Only check that nimout contains all expected lines in that order.
-  # There may be more output in nimout. It is ignored here.
-  for line in expectedNimout.strip.splitLines:
-    currentPos = giv.find(line.strip, currentPos)
-    if currentPos < 0:
-      given.err = reMsgsDiffer
-      break
-
-
+  if not greedyOrderedSubsetLines(expectedNimout, given.nimout):
+    given.err = reMsgsDiffer
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
@@ -670,9 +662,6 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
-  os.putEnv "NIMTEST_COLOR", "never"
-  os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
-
   azure.init()
   backend.open()
   var optPrintResults = false
@@ -694,7 +683,7 @@ proc main() =
       gTargets = parseTargets(targetsStr)
       targetsSet = true
     of "nim":
-      compilerPrefix = addFileExt(p.val.string, ExeExt)
+      compilerPrefix = addFileExt(p.val.string.absolutePath, ExeExt)
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":
@@ -806,7 +795,7 @@ proc main() =
     var subPath = p.key.string
     let nimRoot = currentSourcePath / "../.."
       # makes sure points to this regardless of cwd or which nim is used to compile this.
-    doAssert existsDir(nimRoot/testsDir) # sanity check
+    doAssert dirExists(nimRoot/testsDir) # sanity check
     if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
     # at least one directory is required in the path, to use as a category name
     let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})

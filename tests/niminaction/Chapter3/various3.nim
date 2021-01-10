@@ -7,7 +7,7 @@ Future is no longer empty, 42
 import threadpool
 proc foo: string = "Dog"
 var x: FlowVar[string] = spawn foo()
-assert(^x == "Dog")
+doAssert(^x == "Dog")
 
 block:
   type
@@ -19,20 +19,20 @@ block:
         discard
 
   var obj = Box(empty: false, contents: "Hello")
-  assert obj.contents == "Hello"
+  doAssert obj.contents == "Hello"
 
   var obj2 = Box(empty: true)
   doAssertRaises(FieldDefect):
     echo(obj2.contents)
 
 import json
-assert parseJson("null").kind == JNull
-assert parseJson("true").kind == JBool
-assert parseJson("42").kind == JInt
-assert parseJson("3.14").kind == JFloat
-assert parseJson("\"Hi\"").kind == JString
-assert parseJson("""{ "key": "value" }""").kind == JObject
-assert parseJson("[1, 2, 3, 4]").kind == JArray
+doAssert parseJson("null").kind == JNull
+doAssert parseJson("true").kind == JBool
+doAssert parseJson("42").kind == JInt
+doAssert parseJson("3.14").kind == JFloat
+doAssert parseJson("\"Hi\"").kind == JString
+doAssert parseJson("""{ "key": "value" }""").kind == JObject
+doAssert parseJson("[1, 2, 3, 4]").kind == JArray
 
 import json
 let data = """
@@ -40,15 +40,15 @@ let data = """
 """
 
 let obj = parseJson(data)
-assert obj.kind == JObject
-assert obj["username"].kind == JString
-assert obj["username"].str == "Dominik"
+doAssert obj.kind == JObject
+doAssert obj["username"].kind == JString
+doAssert obj["username"].str == "Dominik"
 
 block:
   proc count10(): int =
     for i in 0 ..< 10:
       result.inc
-  assert count10() == 10
+  doAssert count10() == 10
 
 type
   Point = tuple[x, y: int]

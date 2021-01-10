@@ -253,7 +253,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
     a.llmem = cast[PLLChunk](osAllocPages(PageSize))
-    when defined(avlcorruption):
+    when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
     a.llmem.size = PageSize - sizeof(LLChunk)
@@ -276,7 +276,7 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
     a.freeAvlNodes = a.freeAvlNodes.link[0]
   else:
     result = cast[PAvlNode](llAlloc(a, sizeof(AvlNode)))
-    when defined(avlcorruption):
+    when defined(nimAvlcorruption):
       cprintf("tracking location: %p\n", result)
   result.key = key
   result.upperBound = upperBound
@@ -284,7 +284,7 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
   result.link[0] = bottom
   result.link[1] = bottom
   result.level = 1
-  #when defined(avlcorruption):
+  #when defined(nimAvlcorruption):
   #  track("allocAvlNode", result, sizeof(AvlNode))
   sysAssert(bottom == addr(a.bottomData), "bottom data")
   sysAssert(bottom.link[0] == bottom, "bottom link[0]")
@@ -1017,7 +1017,7 @@ when defined(nimTypeNames):
 template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
-  when defined(fulldebug):
+  when defined(nimFulldebug):
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
 

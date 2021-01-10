@@ -135,7 +135,7 @@
 ##
 ## The same could have been achieved by manually iterating over a container
 ## and increasing each key's value with `inc proc
-## <#inc,CountTable[A],A,Positive>`_:
+## <#inc,CountTable[A],A,int>`_:
 ##
 ## .. code-block::
 ##   import tables
@@ -230,13 +230,13 @@ type
     ## `data` and `counter` are internal implementation details which
     ## can't be accessed.
     ##
-    ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
+    ## For creating an empty Table, use `initTable proc<#initTable>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
-    ## <#newTable,int>`_.
+    ## <#newTable>`_.
 
 const
   defaultInitialSize* = 32
@@ -293,7 +293,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ##
   ## See also:
   ## * `toTable proc<#toTable,openArray[]>`_
-  ## * `newTable proc<#newTable,int>`_ for creating a `TableRef`
+  ## * `newTable proc<#newTable>`_ for creating a `TableRef`
   runnableExamples:
     let
       a = initTable[int, string]()
@@ -322,7 +322,7 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `initTable proc<#initTable,int>`_
+  ## * `initTable proc<#initTable>`_
   ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -771,7 +771,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
   ##
   ## Used if you have a table with duplicate keys (as a result of using
-  ## `add proc<#add,Table[A,B],A,B>`_).
+  ## `add proc<#add,Table[A,B],A,sinkB>`_).
   ##
   runnableExamples:
     import sequtils, algorithm
@@ -801,7 +801,7 @@ proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## See also:
   ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
   ##   from a collection of `(key, value)` pairs
-  ## * `initTable proc<#initTable,int>`_ for creating a `Table`
+  ## * `initTable proc<#initTable>`_ for creating a `Table`
   runnableExamples:
     let
       a = newTable[int, string]()
@@ -816,7 +816,7 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `newTable proc<#newTable,int>`_
+  ## * `newTable proc<#newTable>`_
   ## * `toTable proc<#toTable,openArray[]>`_ for a `Table` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -845,7 +845,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,TableRef[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_ for checking if a key is in
   ##   the table
@@ -1008,7 +1008,7 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,TableRef[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
@@ -1228,14 +1228,14 @@ type
     ## Hash table that remembers insertion order.
     ##
     ## For creating an empty OrderedTable, use `initOrderedTable proc
-    ## <#initOrderedTable,int>`_.
+    ## <#initOrderedTable>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
     ## For creating a new empty OrderedTableRef, use `newOrderedTable proc
-    ## <#newOrderedTable,int>`_.
+    ## <#newOrderedTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
@@ -1294,7 +1294,7 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
   ##
   ## See also:
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_
-  ## * `newOrderedTable proc<#newOrderedTable,int>`_ for creating an
+  ## * `newOrderedTable proc<#newOrderedTable>`_ for creating an
   ##   `OrderedTableRef`
   runnableExamples:
     let
@@ -1324,7 +1324,7 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `initOrderedTable proc<#initOrderedTable,int>`_
+  ## * `initOrderedTable proc<#initOrderedTable>`_
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for an
   ##   `OrderedTableRef` version
   runnableExamples:
@@ -1347,7 +1347,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
@@ -1369,7 +1369,7 @@ proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
@@ -1495,7 +1495,7 @@ proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTable[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
@@ -1796,7 +1796,7 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableR
   ## See also:
   ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
   ##   an `OrderedTableRef` from a collection of `(key, value)` pairs
-  ## * `initOrderedTable proc<#initOrderedTable,int>`_ for creating an
+  ## * `initOrderedTable proc<#initOrderedTable>`_ for creating an
   ##   `OrderedTable`
   runnableExamples:
     let
@@ -1811,7 +1811,7 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
   ## ``pairs`` is a container consisting of ``(key, value)`` tuples.
   ##
   ## See also:
-  ## * `newOrderedTable proc<#newOrderedTable,int>`_
+  ## * `newOrderedTable proc<#newOrderedTable>`_
   ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_ for an
   ##   `OrderedTable` version
   runnableExamples:
@@ -1835,7 +1835,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTableRef[A,B],A,B>`_ for inserting a new
+  ## * `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for checking if
   ##   a key is in the table
@@ -1981,7 +1981,7 @@ proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTableRef[A,B],A,B>`_ for inserting a new
+  ## Use `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
@@ -2208,7 +2208,7 @@ type
     ## Hash table that counts the number of each key.
     ##
     ## For creating an empty CountTable, use `initCountTable proc
-    ## <#initCountTable,int>`_.
+    ## <#initCountTable>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
     isSorted: bool
@@ -2216,7 +2216,7 @@ type
     ## `CountTable<#CountTable>`_.
     ##
     ## For creating a new empty CountTableRef, use `newCountTable proc
-    ## <#newCountTable,int>`_.
+    ## <#newCountTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
@@ -2260,7 +2260,7 @@ proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ##
   ## See also:
   ## * `toCountTable proc<#toCountTable,openArray[A]>`_
-  ## * `newCountTable proc<#newCountTable,int>`_ for creating a
+  ## * `newCountTable proc<#newCountTable>`_ for creating a
   ##   `CountTableRef`
   initImpl(result, initialSize)
 
@@ -2294,7 +2294,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##
   ## See also:
   ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,Positive>`_ for incrementing a
+  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
@@ -2617,7 +2617,7 @@ proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## See also:
   ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
-  ## * `initCountTable proc<#initCountTable,int>`_ for creating a
+  ## * `initCountTable proc<#initCountTable>`_ for creating a
   ##   `CountTable`
   new(result)
   result[] = initCountTable[A](initialSize)
@@ -2635,7 +2635,7 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `inc proc<#inc,CountTableRef[A],A>`_ to inc even if missing
+  ## * `inc proc<#inc,CountTableRef[A],A,int>`_ to inc even if missing
   ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key

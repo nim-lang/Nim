@@ -114,7 +114,7 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   when defined(nimscript):
     discard
   elif defined(windows):
-    result = OSErrorCode(getLastError())
+    result = cast[OSErrorCode](getLastError())
   else:
     result = OSErrorCode(errno)
 {.pop.}

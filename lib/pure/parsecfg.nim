@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsecfg`` module implements a high performance configuration file
-## parser. The configuration file's syntax is similar to the Windows ``.ini``
+## The `parsecfg` module implements a high performance configuration file
+## parser. The configuration file's syntax is similar to the Windows `.ini`
 ## format, but much more powerful, as it is not a line based parser. String
 ## literals, raw string literals and triple quoted string literals are supported
 ## as in the Nim programming language.
@@ -107,18 +107,82 @@
 ##     var dict = loadConfig("config.ini")
 ##     dict.delSectionKey("Author","email")
 ##     dict.writeConfig("config.ini")
+## 
+## Supported INI File structure
+## ----------------------------
+## The examples below are supported:
+##
 
-import
-  strutils, lexbase, streams, tables
+# taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
+runnableExamples:
+  import streams
+
+  var dict = loadConfig(newStringStream("""[Simple Values]
+    key=value
+    spaces in keys=allowed
+    spaces in values=allowed as well
+    spaces around the delimiter = obviously
+    you can also use : to delimit keys from values
+    [All Values Are Strings]
+    values like this: 19990429
+    or this: 3.14159265359
+    are they treated as numbers : no
+    integers floats and booleans are held as: strings
+    can use the API to get converted values directly: true
+    [No Values]
+    key_without_value
+    # empty string value is not allowed =
+    [ Seletion A   ]
+    space around section name will be ignored
+    [You can use comments]
+    # like this
+    ; or this
+    # By default only in an empty line.
+    # Inline comments can be harmful because they prevent users
+    # from using the delimiting characters as parts of values.
+    # That being said, this can be customized.
+        [Sections Can Be Indented]
+            can_values_be_as_well = True
+            does_that_mean_anything_special = False
+            purpose = formatting for readability
+            # Did I mention we can indent comments, too?
+    """)
+  )
+
+  let section1 = "Simple Values"
+  doAssert dict.getSectionValue(section1, "key") == "value"
+  doAssert dict.getSectionValue(section1, "spaces in keys") == "allowed"
+  doAssert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
+  doAssert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
+  doAssert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
+
+  let section2 = "All Values Are Strings"
+  doAssert dict.getSectionValue(section2, "values like this") == "19990429"
+  doAssert dict.getSectionValue(section2, "or this") == "3.14159265359"
+  doAssert dict.getSectionValue(section2, "are they treated as numbers") == "no"
+  doAssert dict.getSectionValue(section2, "integers floats and booleans are held as") == "strings"
+  doAssert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
+
+  let section3 = "Seletion A"
+  doAssert dict.getSectionValue(section3, 
+    "space around section name will be ignored", "not an empty value") == ""
+
+  let section4 = "Sections Can Be Indented"
+  doAssert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
+  doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
+  doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
+
+import strutils, lexbase, streams, tables
+import std/private/decode_helpers
 
 include "system/inclrtl"
 
 type
   CfgEventKind* = enum ## enumeration of all events that may occur when parsing
     cfgEof,            ## end of file reached
-    cfgSectionStart,   ## a ``[section]`` has been parsed
-    cfgKeyValuePair,   ## a ``key=value`` pair has been detected
-    cfgOption,         ## a ``--key=value`` command line option
+    cfgSectionStart,   ## a `[section]` has been parsed
+    cfgKeyValuePair,   ## a `key=value` pair has been detected
+    cfgOption,         ## a `--key=value` command line option
     cfgError           ## an error occurred during parsing
 
   CfgEvent* = object of RootObj ## describes a parsing event
@@ -126,12 +190,12 @@ type
     of cfgEof: nil
     of cfgSectionStart:
       section*: string          ## `section` contains the name of the
-                                ## parsed section start (syntax: ``[section]``)
+                                ## parsed section start (syntax: `[section]`)
     of cfgKeyValuePair, cfgOption:
       key*, value*: string      ## contains the (key, value) pair if an option
-                                ## of the form ``--key: value`` or an ordinary
-                                ## ``key= value`` pair has been parsed.
-                                ## ``value==""`` if it was not specified in the
+                                ## of the form `--key: value` or an ordinary
+                                ## `key= value` pair has been parsed.
+                                ## `value==""` if it was not specified in the
                                 ## configuration file.
     of cfgError:                ## the parser encountered an error: `msg`
       msg*: string              ## contains the error message. No exceptions
@@ -151,13 +215,13 @@ type
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\', '-'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', ' ', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
 proc open*(c: var CfgParser, input: Stream, filename: string,
            lineOffset = 0) {.rtl, extern: "npc$1".} =
-  ## initializes the parser with an input stream. `Filename` is only used
+  ## Initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. `lineOffset` can be used to influence the line
   ## number information in the generated error messages.
   lexbase.open(c, input)
@@ -168,34 +232,20 @@ proc open*(c: var CfgParser, input: Stream, filename: string,
   rawGetTok(c, c.tok)
 
 proc close*(c: var CfgParser) {.rtl, extern: "npc$1".} =
-  ## closes the parser `c` and its associated input stream.
+  ## Closes the parser `c` and its associated input stream.
   lexbase.close(c)
 
 proc getColumn*(c: CfgParser): int {.rtl, extern: "npc$1".} =
-  ## get the current column the parser has arrived at.
+  ## Gets the current column the parser has arrived at.
   result = getColNumber(c, c.bufpos)
 
 proc getLine*(c: CfgParser): int {.rtl, extern: "npc$1".} =
-  ## get the current line the parser has arrived at.
+  ## Gets the current line the parser has arrived at.
   result = c.lineNumber
 
 proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
-  ## get the filename of the file that the parser processes.
+  ## Gets the filename of the file that the parser processes.
   result = c.filename
-
-proc handleHexChar(c: var CfgParser, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
 
 proc handleDecChars(c: var CfgParser, xi: var int) =
   while c.buf[c.bufpos] in {'0'..'9'}:
@@ -241,8 +291,10 @@ proc getEscapedChar(c: var CfgParser, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'9':
     var xi = 0
@@ -306,6 +358,10 @@ proc getSymbol(c: var CfgParser, tok: var Token) =
     add(tok.literal, c.buf[pos])
     inc(pos)
     if not (c.buf[pos] in SymChars): break
+
+  while tok.literal.len > 0 and tok.literal[^1] == ' ':
+    tok.literal.setLen(tok.literal.len - 1)
+
   c.bufpos = pos
   tok.kind = tkSymbol
 
@@ -367,19 +423,19 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
   else: getSymbol(c, tok)
 
 proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formatted error message containing current line and
+  ## Returns a properly formatted error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4",
                 [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formatted warning message containing current line and
+  ## Returns a properly formatted warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4",
                 [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
-  ## returns a properly formatted warning message containing that
+  ## Returns a properly formatted warning message containing that
   ## an entry is ignored.
   case e.kind
   of cfgSectionStart: result = c.warningStr("section ignored: " & e.section)
@@ -410,7 +466,7 @@ proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
     rawGetTok(c, c.tok)
 
 proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
-  ## retrieves the first/next event. This controls the parser.
+  ## Retrieves the first/next event. This controls the parser.
   case c.tok.kind
   of tkEof:
     result = CfgEvent(kind: cfgEof)
@@ -442,12 +498,12 @@ type
   Config* = OrderedTableRef[string, <//>OrderedTableRef[string, string]]
 
 proc newConfig*(): Config =
-  ## Create a new configuration table.
+  ## Creates a new configuration table.
   ## Useful when wanting to create a configuration file.
   result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
 
 proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
-  ## Load the specified configuration from stream into a new Config instance.
+  ## Loads the specified configuration from stream into a new Config instance.
   ## `filename` parameter is only used for nicer error messages.
   var dict = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
@@ -480,7 +536,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
   result = dict
 
 proc loadConfig*(filename: string): <//>Config =
-  ## Load the specified configuration file into a new Config instance.
+  ## Loads the specified configuration file into a new Config instance.
   let file = open(filename, fmRead)
   let fileStream = newFileStream(file)
   defer: fileStream.close()
@@ -505,7 +561,7 @@ proc replace(s: string): string =
   result = d
 
 proc writeConfig*(dict: Config, stream: Stream) =
-  ## Writes the contents of the table to the specified stream
+  ## Writes the contents of the table to the specified stream.
   ##
   ## **Note:** Comment statement will be ignored.
   for section, sectionData in dict.pairs():
@@ -546,7 +602,8 @@ proc writeConfig*(dict: Config, stream: Stream) =
 
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
-  ## Note: Comment statement will be ignored.
+  ## 
+  ## **Note:** Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
   dict.writeConfig(stream)
@@ -554,7 +611,8 @@ proc `$`*(dict: Config): string =
 
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
-  ## Note: Comment statement will be ignored.
+  ## 
+  ## **Note:** Comment statement will be ignored.
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
@@ -584,7 +642,7 @@ proc delSection*(dict: var Config, section: string) =
   dict.del(section)
 
 proc delSectionKey*(dict: var Config, section, key: string) =
-  ## Delete the key of the specified section.
+  ## Deletes the key of the specified section.
   if dict.hasKey(section):
     if dict[section].hasKey(key):
       if dict[section].len == 1:

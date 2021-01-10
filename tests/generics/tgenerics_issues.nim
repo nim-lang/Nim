@@ -55,8 +55,8 @@ block t88:
 
   let c = ChildClass[string].new("Base", "Child")
 
-  assert c.baseMethod == "Base"
-  assert c.overriddenMethod == "Child"
+  doAssert c.baseMethod == "Base"
+  doAssert c.overriddenMethod == "Child"
 
 
 
@@ -128,7 +128,7 @@ block t1789:
       bar: array[N, T]
 
   proc `[]`[N, T](f: Bar[N, T], n: range[0..(N - 1)]): T =
-    assert high(n) == N-1
+    doAssert high(n) == N-1
     result = f.bar[n]
 
   var b: Bar[3, int]
@@ -734,7 +734,7 @@ block t1684:
   proc newDerived(idx: int): DerivedType {.inline.} = DerivedType(idx: idx)
 
   let d = newDerived(2)
-  assert(d.index == 2)
+  doAssert(d.index == 2)
 
 
 

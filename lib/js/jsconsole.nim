@@ -10,10 +10,12 @@
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 
-when not defined(js) and not defined(Nimdoc):
+import std/private/since, std/private/miscdollars  # toLocation
+
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
-type Console* = ref object of RootObj
+type Console* = ref object of JsRoot
 
 proc log*(console: Console) {.importcpp, varargs.}
   ## https://developer.mozilla.org/docs/Web/API/Console/log
@@ -66,5 +68,35 @@ proc timeLog*(console: Console, label = "".cstring) {.importcpp.}
 
 proc table*(console: Console) {.importcpp, varargs.}
   ## https://developer.mozilla.org/docs/Web/API/Console/table
+
+since (1, 5):
+  type InstantiationInfo = tuple[filename: string, line: int, column: int]
+
+  func getMsg(info: InstantiationInfo; msg: string): string =
+    var temp = ""
+    temp.toLocation(info.filename, info.line, info.column + 1)
+    result.addQuoted(temp)
+    result.add ','
+    result.addQuoted(msg)
+
+  template jsAssert*(console: Console; assertion) =
+    ## JavaScript `console.assert`, for NodeJS this prints to stderr,
+    ## assert failure just prints to console and do not quit the program,
+    ## this is not meant to be better or even equal than normal assertions,
+    ## is just for when you need faster performance *and* assertions,
+    ## otherwise use the normal assertions for better user experience.
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/assert
+    runnableExamples:
+      console.jsAssert(42 == 42) # OK
+      console.jsAssert(42 != 42) # Fail, prints "Assertion failed" and continues
+      console.jsAssert('`' == '\n' and '\t' == '\0') # Message correctly formatted
+      assert 42 == 42  # Normal assertions keep working
+
+    const
+      loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+      msg = getMsg(loc, astToStr(assertion)).cstring
+    {.line: loc.}:
+      {.emit: ["console.assert(", assertion, ", ", msg, ");"].}
+
 
 var console* {.importc, nodecl.}: Console

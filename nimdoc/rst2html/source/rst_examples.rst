@@ -1,6 +1,6 @@
-==========
+================
 Not a Nim Manual
-==========
+================
 
 :Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimversion|

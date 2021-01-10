@@ -887,7 +887,7 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
           var v = copyNode(e[0])
           inc(totalRange, int(e[1].intVal - v.intVal))
           if totalRange > 65535:
-            localError(p.config, n.info, 
+            localError(p.config, n.info,
                        "Your case statement contains too many branches, consider using if/else instead!")
           while v.intVal <= e[1].intVal:
             gen(p, v, cond)
@@ -1076,7 +1076,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       useMagic(p, "nimCopy")
       # supports proc getF(): var T
       if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
-          lineF(p, "nimCopy($1, $2, $3);$n", 
+          lineF(p, "nimCopy($1, $2, $3);$n",
                 [a.res, b.res, genTypeInfo(p, y.typ)])
       else:
         lineF(p, "$1 = nimCopy($1, $2, $3);$n",
@@ -1426,7 +1426,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     if lfNoDecl in s.loc.flags or s.magic != mNone or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
-    elif s.kind == skMethod and s.getBody.kind == nkEmpty:
+    elif s.kind == skMethod and getBody(p.module.graph, s).kind == nkEmpty:
       # we cannot produce code for the dispatcher yet:
       discard
     elif sfForward in s.flags:
@@ -1677,7 +1677,10 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   var t = skipTypes(typ, abstractInst)
   case t.kind
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar:
-    result = putToSeq("0", indirect)
+    if $t.sym.loc.r == "bigint":
+      result = putToSeq("0n", indirect)
+    else:
+      result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
   of tyRange, tyGenericInst, tyAlias, tySink, tyOwned:

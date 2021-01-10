@@ -11,7 +11,8 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-import posix
+import posix, parsecfg, os
+import std/private/since
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
@@ -107,3 +108,22 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
+
+proc osReleaseFile*(): Config {.since: (1, 5).} =
+  ## Gets system identification from `os-release` file and returns it as a `parsecfg.Config`.
+  ## You also need to import the `parsecfg` module to gain access to this object.
+  ## The `os-release` file is an official Freedesktop.org open standard.
+  ## Available in Linux and BSD distributions, except Android and Android-based Linux.
+  ## `os-release` file is not available on Windows and OS X by design.
+  ## * https://www.freedesktop.org/software/systemd/man/os-release.html
+  runnableExamples:
+    import parsecfg
+    when defined(linux):
+      let data = osReleaseFile()
+      doAssert data.getSectionValue("", "NAME").len > 0 ## the data is up to each distro.
+
+  # We do not use a {.strdefine.} because Standard says it *must* be that path.
+  for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:
+    if fileExists(osReleaseFile):
+      return loadConfig(osReleaseFile)
+  raise newException(IOError, "File not found: /etc/os-release, /usr/lib/os-release")

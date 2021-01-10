@@ -1,6 +1,6 @@
 discard """
   output: "Exit 1\nExit 2"
-  target: "c"
+  targets: "c"
 """
 import coro
 

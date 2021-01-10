@@ -138,7 +138,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
 
   for D in 0 .. maxD:
     # Extend the forward path.
-    for k in countUp(downK - D, downK + D, 2):
+    for k in countup(downK - D, downK + D, 2):
       # find the only or better starting point
       var x: int
       if k == downK - D:
@@ -164,7 +164,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
                        y: downVector[downOffset + k] - k)
 
     # Extend the reverse path.
-    for k in countUp(upK - D, upK + D, 2):
+    for k in countup(upK - D, upK + D, 2):
       # find the only or better starting point
       var x: int
       if k == upK + D:
@@ -331,83 +331,3 @@ proc diffText*(textA, textB: string): seq[Item] =
   optimize(dataA)
   optimize(dataB)
   result = createDiffs(dataA, dataB)
-
-when isMainModule:
-
-  proc testHelper(f: seq[Item]): string =
-    for it in f:
-      result.add(
-        $it.deletedA & "." & $it.insertedB & "." & $it.startA & "." & $it.startB & "*"
-      )
-
-  proc main() =
-    var a, b: string
-
-    stdout.writeLine("Diff Self Test...")
-
-    # test all changes
-    a = "a,b,c,d,e,f,g,h,i,j,k,l".replace(',', '\n')
-    b = "0,1,2,3,4,5,6,7,8,9".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "12.10.0.0*",
-      "all-changes test failed.")
-    stdout.writeLine("all-changes test passed.")
-    # test all same
-    a = "a,b,c,d,e,f,g,h,i,j,k,l".replace(',', '\n')
-    b = a
-    assert(testHelper(diffText(a, b)) ==
-      "",
-      "all-same test failed.")
-    stdout.writeLine("all-same test passed.")
-
-    # test snake
-    a = "a,b,c,d,e,f".replace(',', '\n')
-    b = "b,c,d,e,f,x".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.0.0.0*0.1.6.5*",
-      "snake test failed.")
-    stdout.writeLine("snake test passed.")
-
-    # 2002.09.20 - repro
-    a = "c1,a,c2,b,c,d,e,g,h,i,j,c3,k,l".replace(',', '\n')
-    b = "C1,a,C2,b,c,d,e,I1,e,g,h,i,j,C3,k,I2,l".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.1.0.0*1.1.2.2*0.2.7.7*1.1.11.13*0.1.13.15*",
-      "repro20020920 test failed.")
-    stdout.writeLine("repro20020920 test passed.")
-
-    # 2003.02.07 - repro
-    a = "F".replace(',', '\n')
-    b = "0,F,1,2,3,4,5,6,7".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "0.1.0.0*0.7.1.2*",
-      "repro20030207 test failed.")
-    stdout.writeLine("repro20030207 test passed.")
-
-    # Muegel - repro
-    a = "HELLO\nWORLD"
-    b = "\n\nhello\n\n\n\nworld\n"
-    assert(testHelper(diffText(a, b)) ==
-      "2.8.0.0*",
-      "repro20030409 test failed.")
-    stdout.writeLine("repro20030409 test passed.")
-
-    # test some differences
-    a = "a,b,-,c,d,e,f,f".replace(',', '\n')
-    b = "a,b,x,c,e,f".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.1.2.2*1.0.4.4*1.0.7.6*",
-      "some-changes test failed.")
-    stdout.writeLine("some-changes test passed.")
-
-    # test one change within long chain of repeats
-    a = "a,a,a,a,a,a,a,a,a,a".replace(',', '\n')
-    b = "a,a,a,a,-,a,a,a,a,a".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "0.1.4.4*1.0.9.10*",
-      "long chain of repeats test failed.")
-
-    stdout.writeLine("End.")
-    stdout.flushFile
-
-  main()

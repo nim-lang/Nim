@@ -29,10 +29,9 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import strutils, os, strtabs, cookies, uri
+import std/[strutils, os, strtabs, cookies, uri]
 export uri.encodeUrl, uri.decodeUrl
 
-include includes/decode_helpers
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -44,27 +43,24 @@ proc addXmlChar(dest: var string, c: char) {.inline.} =
 
 proc xmlEncode*(s: string): string =
   ## Encodes a value to be XML safe:
-  ## * ``"`` is replaced by ``&quot;``
-  ## * ``<`` is replaced by ``&lt;``
-  ## * ``>`` is replaced by ``&gt;``
-  ## * ``&`` is replaced by ``&amp;``
+  ## * `"` is replaced by `&quot;`
+  ## * `<` is replaced by `&lt;`
+  ## * `>` is replaced by `&gt;`
+  ## * `&` is replaced by `&amp;`
   ## * every other character is carried over.
   result = newStringOfCap(s.len + s.len shr 2)
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  CgiError* = object of IOError ## exception that is raised if a CGI error occurs
-  RequestMethod* = enum ## the used request method
+  CgiError* = object of IOError ## Exception that is raised if a CGI error occurs.
+  RequestMethod* = enum ## The used request method.
     methodNone,         ## no REQUEST_METHOD environment variable
     methodPost,         ## query uses the POST method
     methodGet           ## query uses the GET method
 
 proc cgiError*(msg: string) {.noreturn.} =
-  ## raises an ECgi exception with message `msg`.
-  var e: ref CgiError
-  new(e)
-  e.msg = msg
-  raise e
+  ## Raises a `CgiError` exception with message `msg`.
+  raise newException(CgiError, msg)
 
 proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   case getEnv("REQUEST_METHOD").string
@@ -88,192 +84,175 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
-  proc parseData(data: string, i: int, field: var string): int =
-    result = i
-    while result < data.len:
-      case data[result]
-      of '%': add(field, decodePercent(data, result))
-      of '+': add(field, ' ')
-      of '=', '&': break
-      else: add(field, data[result])
-      inc(result)
-
-  var i = 0
-  var name = ""
-  var value = ""
-  # decode everything in one pass:
-  while i < data.len:
-    setLen(name, 0) # reuse memory
-    i = parseData(data, i, name)
-    setLen(value, 0) # reuse memory
-    if i < data.len and data[i] == '=':
-      inc(i) # skip '='
-      i = parseData(data, i, value)
-    yield (name.TaintedString, value.TaintedString)
-    if i < data.len:
-      if data[i] == '&': inc(i)
-      else: cgiError("'&' expected")
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
+  ## `allowedMethods` set, a `CgiError` exception is raised.
   let data = getEncodedData(allowedMethods)
-  for key, value in decodeData(data):
-    yield (key, value)
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 proc readData*(allowedMethods: set[RequestMethod] =
                {methodNone, methodPost, methodGet}): StringTableRef =
-  ## Read CGI data. If the client does not use a method listed in the
-  ## `allowedMethods` set, an `ECgi` exception is raised.
+  ## Reads CGI data. If the client does not use a method listed in the
+  ## `allowedMethods` set, a `CgiError` exception is raised.
   result = newStringTable()
   for name, value in decodeData(allowedMethods):
     result[name.string] = value.string
 
 proc readData*(data: string): StringTableRef =
-  ## Read CGI data from a string.
+  ## Reads CGI data from a string.
   result = newStringTable()
   for name, value in decodeData(data):
     result[name.string] = value.string
 
 proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
-  ## validates data; raises `ECgi` if this fails. This checks that each variable
+  ## Validates data; raises `CgiError` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
   for key, val in pairs(data):
     if find(validKeys, key) < 0:
       cgiError("unknown variable name: " & key)
 
 proc getContentLength*(): string =
-  ## returns contents of the ``CONTENT_LENGTH`` environment variable
+  ## Returns contents of the `CONTENT_LENGTH` environment variable.
   return getEnv("CONTENT_LENGTH").string
 
 proc getContentType*(): string =
-  ## returns contents of the ``CONTENT_TYPE`` environment variable
+  ## Returns contents of the `CONTENT_TYPE` environment variable.
   return getEnv("CONTENT_Type").string
 
 proc getDocumentRoot*(): string =
-  ## returns contents of the ``DOCUMENT_ROOT`` environment variable
+  ## Returns contents of the `DOCUMENT_ROOT` environment variable.
   return getEnv("DOCUMENT_ROOT").string
 
 proc getGatewayInterface*(): string =
-  ## returns contents of the ``GATEWAY_INTERFACE`` environment variable
+  ## Returns contents of the `GATEWAY_INTERFACE` environment variable.
   return getEnv("GATEWAY_INTERFACE").string
 
 proc getHttpAccept*(): string =
-  ## returns contents of the ``HTTP_ACCEPT`` environment variable
+  ## Returns contents of the `HTTP_ACCEPT` environment variable.
   return getEnv("HTTP_ACCEPT").string
 
 proc getHttpAcceptCharset*(): string =
-  ## returns contents of the ``HTTP_ACCEPT_CHARSET`` environment variable
+  ## Returns contents of the `HTTP_ACCEPT_CHARSET` environment variable.
   return getEnv("HTTP_ACCEPT_CHARSET").string
 
 proc getHttpAcceptEncoding*(): string =
-  ## returns contents of the ``HTTP_ACCEPT_ENCODING`` environment variable
+  ## Returns contents of the `HTTP_ACCEPT_ENCODING` environment variable.
   return getEnv("HTTP_ACCEPT_ENCODING").string
 
 proc getHttpAcceptLanguage*(): string =
-  ## returns contents of the ``HTTP_ACCEPT_LANGUAGE`` environment variable
+  ## Returns contents of the `HTTP_ACCEPT_LANGUAGE` environment variable.
   return getEnv("HTTP_ACCEPT_LANGUAGE").string
 
 proc getHttpConnection*(): string =
-  ## returns contents of the ``HTTP_CONNECTION`` environment variable
+  ## Returns contents of the `HTTP_CONNECTION` environment variable.
   return getEnv("HTTP_CONNECTION").string
 
 proc getHttpCookie*(): string =
-  ## returns contents of the ``HTTP_COOKIE`` environment variable
+  ## Returns contents of the `HTTP_COOKIE` environment variable.
   return getEnv("HTTP_COOKIE").string
 
 proc getHttpHost*(): string =
-  ## returns contents of the ``HTTP_HOST`` environment variable
+  ## Returns contents of the `HTTP_HOST` environment variable.
   return getEnv("HTTP_HOST").string
 
 proc getHttpReferer*(): string =
-  ## returns contents of the ``HTTP_REFERER`` environment variable
+  ## Returns contents of the `HTTP_REFERER` environment variable.
   return getEnv("HTTP_REFERER").string
 
 proc getHttpUserAgent*(): string =
-  ## returns contents of the ``HTTP_USER_AGENT`` environment variable
+  ## Returns contents of the `HTTP_USER_AGENT` environment variable.
   return getEnv("HTTP_USER_AGENT").string
 
 proc getPathInfo*(): string =
-  ## returns contents of the ``PATH_INFO`` environment variable
+  ## Returns contents of the `PATH_INFO` environment variable.
   return getEnv("PATH_INFO").string
 
 proc getPathTranslated*(): string =
-  ## returns contents of the ``PATH_TRANSLATED`` environment variable
+  ## Returns contents of the `PATH_TRANSLATED` environment variable.
   return getEnv("PATH_TRANSLATED").string
 
 proc getQueryString*(): string =
-  ## returns contents of the ``QUERY_STRING`` environment variable
+  ## Returns contents of the `QUERY_STRING` environment variable.
   return getEnv("QUERY_STRING").string
 
 proc getRemoteAddr*(): string =
-  ## returns contents of the ``REMOTE_ADDR`` environment variable
+  ## Returns contents of the `REMOTE_ADDR` environment variable.
   return getEnv("REMOTE_ADDR").string
 
 proc getRemoteHost*(): string =
-  ## returns contents of the ``REMOTE_HOST`` environment variable
+  ## Returns contents of the `REMOTE_HOST` environment variable.
   return getEnv("REMOTE_HOST").string
 
 proc getRemoteIdent*(): string =
-  ## returns contents of the ``REMOTE_IDENT`` environment variable
+  ## Returns contents of the `REMOTE_IDENT` environment variable.
   return getEnv("REMOTE_IDENT").string
 
 proc getRemotePort*(): string =
-  ## returns contents of the ``REMOTE_PORT`` environment variable
+  ## Returns contents of the `REMOTE_PORT` environment variable.
   return getEnv("REMOTE_PORT").string
 
 proc getRemoteUser*(): string =
-  ## returns contents of the ``REMOTE_USER`` environment variable
+  ## Returns contents of the `REMOTE_USER` environment variable.
   return getEnv("REMOTE_USER").string
 
 proc getRequestMethod*(): string =
-  ## returns contents of the ``REQUEST_METHOD`` environment variable
+  ## Returns contents of the `REQUEST_METHOD` environment variable.
   return getEnv("REQUEST_METHOD").string
 
 proc getRequestURI*(): string =
-  ## returns contents of the ``REQUEST_URI`` environment variable
+  ## Returns contents of the `REQUEST_URI` environment variable.
   return getEnv("REQUEST_URI").string
 
 proc getScriptFilename*(): string =
-  ## returns contents of the ``SCRIPT_FILENAME`` environment variable
+  ## Returns contents of the `SCRIPT_FILENAME` environment variable.
   return getEnv("SCRIPT_FILENAME").string
 
 proc getScriptName*(): string =
-  ## returns contents of the ``SCRIPT_NAME`` environment variable
+  ## Returns contents of the `SCRIPT_NAME` environment variable.
   return getEnv("SCRIPT_NAME").string
 
 proc getServerAddr*(): string =
-  ## returns contents of the ``SERVER_ADDR`` environment variable
+  ## Returns contents of the `SERVER_ADDR` environment variable.
   return getEnv("SERVER_ADDR").string
 
 proc getServerAdmin*(): string =
-  ## returns contents of the ``SERVER_ADMIN`` environment variable
+  ## Returns contents of the `SERVER_ADMIN` environment variable.
   return getEnv("SERVER_ADMIN").string
 
 proc getServerName*(): string =
-  ## returns contents of the ``SERVER_NAME`` environment variable
+  ## Returns contents of the `SERVER_NAME` environment variable.
   return getEnv("SERVER_NAME").string
 
 proc getServerPort*(): string =
-  ## returns contents of the ``SERVER_PORT`` environment variable
+  ## Returns contents of the `SERVER_PORT` environment variable.
   return getEnv("SERVER_PORT").string
 
 proc getServerProtocol*(): string =
-  ## returns contents of the ``SERVER_PROTOCOL`` environment variable
+  ## Returns contents of the `SERVER_PROTOCOL` environment variable.
   return getEnv("SERVER_PROTOCOL").string
 
 proc getServerSignature*(): string =
-  ## returns contents of the ``SERVER_SIGNATURE`` environment variable
+  ## Returns contents of the `SERVER_SIGNATURE` environment variable.
   return getEnv("SERVER_SIGNATURE").string
 
 proc getServerSoftware*(): string =
-  ## returns contents of the ``SERVER_SOFTWARE`` environment variable
+  ## Returns contents of the `SERVER_SOFTWARE` environment variable.
   return getEnv("SERVER_SOFTWARE").string
 
 proc setTestData*(keysvalues: varargs[string]) =
-  ## fills the appropriate environment variables to test your CGI application.
+  ## Fills the appropriate environment variables to test your CGI application.
   ## This can only simulate the 'GET' request method. `keysvalues` should
   ## provide embedded (name, value)-pairs. Example:
   ##
@@ -291,7 +270,7 @@ proc setTestData*(keysvalues: varargs[string]) =
   putEnv("QUERY_STRING", query)
 
 proc writeContentType*() =
-  ## call this before starting to send your HTML data to `stdout`. This
+  ## Calls this before starting to send your HTML data to `stdout`. This
   ## implements this part of the CGI protocol:
   ##
   ## .. code-block:: Nim

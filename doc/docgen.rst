@@ -316,7 +316,7 @@ symbols in the `system module <system.html>`_.
 * ``proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}`` **=>**
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
-  `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
+  `#pairs.i,seq[T] <iterators.html#pairs.i,seq[T]>`_
 * ``template newException[](exceptn: typedesc; message: string;
     parentException: ref Exception = nil): untyped`` **=>**
   `#newException.t,typedesc,string,ref.Exception

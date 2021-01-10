@@ -118,6 +118,26 @@ template fn() =
     testRoundtrip(Foo[int](t1: false, z2: 7)): """{"t1":false,"z2":7}"""
     # pending https://github.com/nim-lang/Nim/issues/14698, test with `type Foo[T] = ref object`
 
+  block: # bug: pass opt params in fromJson
+    type Foo = object
+      a: int
+      b: string
+      c: float
+    type Bar = object
+      foo: Foo
+      boo: string
+    var f: seq[Foo]
+    try:
+      fromJson(f, parseJson """[{"b": "bbb"}]""")
+      doAssert false
+    except ValueError:
+      doAssert true
+    fromJson(f, parseJson """[{"b": "bbb"}]""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert f == @[Foo(a: 0, b: "bbb", c: 0.0)]
+    var b: Bar
+    fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
+
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"
     testRoundtrip([""].toHashSet): """[""]"""
