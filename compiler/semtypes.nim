@@ -265,6 +265,9 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if n.len == 2:
     if isRange(n[1]):
+      if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
+        if n[1][2].kind in {nkCharLit..nkUInt64Lit} and n[1][2].intVal != low(BiggestInt):
+          dec n[1][2].intVal
       result = semRangeAux(c, n[1], prev)
       let n = result.n
       if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
@@ -278,10 +281,7 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
           n[1].floatVal < 0.0:
         incl(result.flags, tfRequiresInit)
     else:
-      if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
-        localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
-      else:
-        localError(c.config, n[0].info, "expected range")
+      localError(c.config, n[0].info, "expected range")
       result = newOrPrevType(tyError, prev, c)
   else:
     localError(c.config, n.info, errXExpectsOneTypeParam % "range")
@@ -331,6 +331,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
   if n.len == 3:
     # 3 = length(array indx base)
+    if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<" and n[1][2].kind in {nkCharLit..nkUInt64Lit} and n[1][2].intVal != low(BiggestInt):
+      dec n[1][2].intVal
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
@@ -1713,7 +1715,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       let b = newNodeI(nkBracketExpr, n.info)
       for i in 1..<n.len: b.add(n[i])
       result = semTypeNode(c, b, prev)
-    elif ident != nil and ident.id == ord(wDotDot):
+    elif ident != nil and (ident.id == ord(wDotDot)):
+      result = semRangeAux(c, n, prev)
+    elif ident != nil and (ident.id == ord(wDotDotLt)):
+      if n.kind == nkInfix and n[2].kind in {nkCharLit..nkUInt64Lit} and n[2].intVal != low(BiggestInt):
+        dec n[2].intVal
       result = semRangeAux(c, n, prev)
     elif n[0].kind == nkNilLit and n.len == 2:
       result = semTypeNode(c, n[1], prev)

@@ -31,7 +31,7 @@ type
     wVar = "var", wWhen = "when", wWhile = "while", wXor = "xor", wYield = "yield",
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
-    wStar = "*", wMinus = "-",
+    wStar = "*", wMinus = "-", wDotDotLt = "..<", # dotdotlt is not operator(it is syntax sugar for dotdot)
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler", 
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 
