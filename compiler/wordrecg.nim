@@ -31,7 +31,7 @@ type
     wVar = "var", wWhen = "when", wWhile = "while", wXor = "xor", wYield = "yield",
 
     wColon = ":", wColonColon = "::", wEquals = "=", wDot = ".", wDotDot = "..",
-    wStar = "*", wMinus = "-", wDotDotLt = "..<", # dotdotlt is not operator(it is syntax sugar for dotdot)
+    wStar = "*", wMinus = "-", wDotDotLt = "..<", # wDotDotLt is syntax sugar(it is only used for array construction)
     wMagic = "magic", wThread = "thread", wFinal = "final", wProfiler = "profiler", 
     wMemTracker = "memtracker", wObjChecks = "objchecks",
     wIntDefine = "intdefine", wStrDefine = "strdefine", wBoolDefine = "booldefine", 

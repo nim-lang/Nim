@@ -1719,7 +1719,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n, prev)
     elif ident != nil and ident.id == ord(wDotDotLt):
       localError(c.config, n.info, "range types need to be constructed with '..', '..<' is not supported")
-      result = semRangeAux(c, n, prev)
     elif n[0].kind == nkNilLit and n.len == 2:
       result = semTypeNode(c, n[1], prev)
       if result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).kind in NilableTypes+GenericTypes:
