@@ -331,7 +331,8 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
   if n.len == 3:
     # 3 = length(array indx base)
-    if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<" and n[1][2].kind in {nkCharLit..nkUInt64Lit} and n[1][2].intVal != low(BiggestInt):
+    if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<" and 
+                  n[1][2].kind in {nkCharLit..nkUInt64Lit} and n[1][2].intVal != low(BiggestInt):
       dec n[1][2].intVal
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
