@@ -34,6 +34,9 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
+- various functions in `httpclient` now accept `url` of type `Uri`. Moreover `request` function's
+  `httpMethod` argument of type `string` was deprecated in favor of `HttpMethod` enum type.
+
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
 - Added `cmpMem` to `system`.
