@@ -86,7 +86,7 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   return partition(s, sep, right = true)
 
 
-proc wordsToCap*(wordCount: Positive, threshold = 80.Positive): int {.since: (1, 5).} =
+proc wordsToCap*(wordCount: Positive; threshold = 80.Positive): int {.since: (1, 5).} =
   ## Returns an "approximation" of `string` capacity from a `wordCount` with an optional `threshold`,
   ## using the average length of words world-wide, like a cache you hit *the happy path* frequently.
   ## This is useful for optimizations with `newStringOfCap` and `newString`.
