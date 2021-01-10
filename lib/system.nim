@@ -712,13 +712,13 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
   runnableExamples:
     doAssert len(cstring"abc") == 3
     doAssert len(cstring r"ab\0c") == 5 # \0 is escaped
-    doAssert len(cstring"ab\0c") == 5 # same
-    when defined(js):
-      doAssert len(cstring("ab\0c")) == 4 # \0 is a null terminator
-      # static: doAssert len(cstring("ab\0c")) == 2 # c backend semantics in vm
-    else:
-      doAssert len(cstring("ab\0c")) == 2
-      # static: doAssert len(cstring("ab\0c")) == 2
+    doAssert len(cstring"ab\0c") == 5 # ditto
+    var a: cstring = "ab\0c"
+    when defined(js): doAssert a.len == 4 # len ignores \0 for js
+    else: doAssert a.len == 2 # \0 is a null terminator
+    static:
+      var a2: cstring = "ab\0c"
+      doAssert a2.len == 2 # \0 is a null terminator, even in js vm
 
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ## Returns the length of an array or an array type.
