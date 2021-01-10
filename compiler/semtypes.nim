@@ -266,10 +266,7 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 2:
     if isRange(n[1]):
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
-        if n[1][2].kind in {nkCharLit..nkUInt64Lit} and n[1][2].intVal != low(BiggestInt):
-          dec n[1][2].intVal
-        else:
-          localError(c.config, n.info, "ordinal type expected")
+        localError(c.config, n[1].info, "range types need to be constructed with '..', '..<' is not supported")
       result = semRangeAux(c, n[1], prev)
       let n = result.n
       if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
@@ -1721,10 +1718,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
     elif ident != nil and ident.id == ord(wDotDotLt):
-      if n.kind == nkInfix and n[2].kind in {nkCharLit..nkUInt64Lit} and n[2].intVal != low(BiggestInt):
-        dec n[2].intVal
-      else:
-        localError(c.config, n.info, "ordinal type expected")
+      localError(c.config, n.info, "range types need to be constructed with '..', '..<' is not supported")
       result = semRangeAux(c, n, prev)
     elif n[0].kind == nkNilLit and n.len == 2:
       result = semTypeNode(c, n[1], prev)
