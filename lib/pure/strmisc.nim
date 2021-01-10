@@ -9,7 +9,7 @@
 
 ## This module contains various string utility routines that are uncommonly
 ## used in comparison to `strutils <strutils.html>`_.
-
+import std/private/since
 import strutils
 
 proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect.} =
@@ -84,3 +84,31 @@ proc rpartition*(s: string, sep: string): (string, string, string)
     doAssert rpartition("foofoobar", "bar") == ("foofoo", "bar", "")
 
   return partition(s, sep, right = true)
+
+
+proc wordsToCap*(wordCount: Positive, threshold = 80.Positive): int {.since: (1, 5).} =
+  ## Returns an "approximation" of `string` capacity from a `wordCount` with an optional `threshold`,
+  ## using the average length of words world-wide, like a cache you hit *the happy path* frequently.
+  ## This is useful for optimizations with `newStringOfCap` and `newString`.
+  ##
+  ## Average length of words:
+  ## * World `9`, English `6` (Wikipedia, Wolfram, Oxford, etc).
+  ## * Theres shorter and longer words but this is the most frequently used words.
+  ## * Define a customized average length of words by defining `nimAverageWordLength`.
+  ## * See http://ravi.io/language-word-lengths
+  ##
+  ## See also:
+  ## * `newStringOfCap <system.html#newStringOfCap>`_
+  ## * `newString <system.html#newString>`_
+  runnableExamples:
+    const sentence0 = "Hello World" ## Random sentences; You can try your own sentences...
+    doAssert wordsToCap(wordCount = sentence0.split.len) >= sentence0.len
+    const sentence1 = "The quick brown fox jumps over the lazy dog"
+    doAssert wordsToCap(wordCount = sentence1.split.len) >= sentence1.len
+    const sentence2 = "Nim is a statically typed compiled systems programming language."
+    doAssert wordsToCap(wordCount = sentence2.split.len) >= sentence2.len
+    const sentence3 = "She tore a hole in our universe, a gateway to another dimension, a dimension of pure chaos, pure evil"
+    doAssert wordsToCap(wordCount = sentence3.split.len) >= sentence3.len
+  # max((9 * wordCount) + (len(whitespace or newline) * wordCount), threshold)
+  const nimAverageWordLength {.strdefine.}: Positive = 9
+  result = max((nimAverageWordLength * wordCount) + wordCount , threshold) # Still better than a random hardcoded "guess".

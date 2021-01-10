@@ -101,6 +101,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `math.signbit`.
 
+- Added `strmisc.wordsToCap` that returns an approximation of `string` capacity from a `wordCount` with optional `threshold`.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
