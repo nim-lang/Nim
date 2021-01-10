@@ -101,6 +101,7 @@ proc wordsToCap*(wordCount: Positive; threshold = 80.Positive): int {.since: (1,
   ## * `newStringOfCap <system.html#newStringOfCap>`_
   ## * `newString <system.html#newString>`_
   runnableExamples:
+    import strutils
     const sentence0 = "Hello World" ## Random sentences; You can try your own sentences...
     doAssert wordsToCap(wordCount = sentence0.split.len) >= sentence0.len
     const sentence1 = "The quick brown fox jumps over the lazy dog"
