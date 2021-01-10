@@ -979,7 +979,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   else:
     if body.len != 0:
       client.headers["Content-Length"] = $body.len
-    elif $httpMethod notin ["GET", "HEAD"] and not client.headers.hasKey("Content-Length"):
+    elif httpMethod notin [HttpGet, HttpHead] and not client.headers.hasKey("Content-Length"):
       client.headers["Content-Length"] = "0"
 
   when client is AsyncHttpClient:
