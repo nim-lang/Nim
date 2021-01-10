@@ -1063,7 +1063,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     for i in 0..<paramType.len:
       let t = recurse(paramType[i])
       if t != nil:
-        paramType[i] = lifted
+        paramType[i] = t
         result = paramType
 
   of tyAlias, tyOwned, tySink:
