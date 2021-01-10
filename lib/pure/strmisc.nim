@@ -102,14 +102,15 @@ proc wordsToCap*(wordCount: Positive; threshold = 80.Positive): int {.since: (1,
   ## * `newString <system.html#newString>`_
   runnableExamples:
     import strutils
-    const sentence0 = "Hello World" ## Random sentences; You can try your own sentences...
-    doAssert wordsToCap(wordCount = sentence0.split.len) >= sentence0.len
-    const sentence1 = "The quick brown fox jumps over the lazy dog"
-    doAssert wordsToCap(wordCount = sentence1.split.len) >= sentence1.len
-    const sentence2 = "Nim is a statically typed compiled systems programming language."
-    doAssert wordsToCap(wordCount = sentence2.split.len) >= sentence2.len
-    const sentence3 = "She tore a hole in our universe, a gateway to another dimension, a dimension of pure chaos, pure evil"
-    doAssert wordsToCap(wordCount = sentence3.split.len) >= sentence3.len
+    static:
+      const sentence0 = "Hello World" ## Random sentences; You can try your own sentences...
+      doAssert wordsToCap(wordCount = sentence0.split.len) >= sentence0.len
+      const sentence1 = "The quick brown fox jumps over the lazy dog"
+      doAssert wordsToCap(wordCount = sentence1.split.len) >= sentence1.len
+      const sentence2 = "Nim is a statically typed compiled systems programming language."
+      doAssert wordsToCap(wordCount = sentence2.split.len) >= sentence2.len
+      const sentence3 = "She tore a hole in our universe, a gateway to another dimension, a dimension of pure chaos, pure evil"
+      doAssert wordsToCap(wordCount = sentence3.split.len) >= sentence3.len
   # max((9 * wordCount) + (len(whitespace or newline) * wordCount), threshold)
   const nimAverageWordLength {.intdefine.}: Positive = 9
   result = max((nimAverageWordLength * wordCount) + wordCount , threshold) # Still better than a random hardcoded "guess".
