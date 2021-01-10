@@ -110,5 +110,5 @@ proc wordsToCap*(wordCount: Positive, threshold = 80.Positive): int {.since: (1,
     const sentence3 = "She tore a hole in our universe, a gateway to another dimension, a dimension of pure chaos, pure evil"
     doAssert wordsToCap(wordCount = sentence3.split.len) >= sentence3.len
   # max((9 * wordCount) + (len(whitespace or newline) * wordCount), threshold)
-  const nimAverageWordLength {.strdefine.}: Positive = 9
+  const nimAverageWordLength {.intdefine.}: Positive = 9
   result = max((nimAverageWordLength * wordCount) + wordCount , threshold) # Still better than a random hardcoded "guess".
