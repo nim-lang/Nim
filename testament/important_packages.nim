@@ -33,6 +33,8 @@ pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
 pkg1 "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
 # pending https://github.com/nim-lang/Nim/issues/16447
+#pkg1 "cps", "nimble test", "https://github.com/disruptek/cps"
+# pending https://github.com/nim-lang/Nim/issues/16447
 #pkg1 "criterion", "nimble test", "https://github.com/disruptek/criterion"
 pkg1 "dashing", "nim c tests/functional.nim"
 pkg1 "delaunay"
@@ -58,7 +60,6 @@ pkg1 "inim"
 pkg1 "itertools", "nim doc src/itertools.nim"
 pkg1 "iterutils"
 # pending https://github.com/nim-lang/Nim/issues/16447
-# pending https://github.com/nim-lang/Nim/issues/16389 (also)
 #pkg1 "jason", "nimble test", "https://github.com/disruptek/jason"
 pkg1 "jstin"
 pkg1 "karax", "nim c -r tests/tester.nim"
@@ -122,7 +123,10 @@ pkg2 "RollingHash", "nim c -r tests/test_cyclichash.nim"
 pkg2 "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
 pkg2 "sdl1", "nim c -r src/sdl.nim"
 pkg2 "sdl2_nim", "nim c -r sdl2/sdl.nim"
-pkg2 "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg2 "sigv4", "nimble test", "https://github.com/disruptek/sigv4"
+# pending https://github.com/nim-lang/Nim/issues/16447
+#pkg2 "skiplists", "nimble test", "https://github.com/disruptek/skiplists"
 pkg2 "snip", "nimble test", "https://github.com/genotrance/snip"
 pkg2 "strslice"
 pkg2 "strunicode", "nim c -r src/strunicode.nim"
