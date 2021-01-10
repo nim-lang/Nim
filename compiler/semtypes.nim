@@ -1715,9 +1715,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       let b = newNodeI(nkBracketExpr, n.info)
       for i in 1..<n.len: b.add(n[i])
       result = semTypeNode(c, b, prev)
-    elif ident != nil and (ident.id == ord(wDotDot)):
+    elif ident != nil and ident.id == ord(wDotDot):
       result = semRangeAux(c, n, prev)
-    elif ident != nil and (ident.id == ord(wDotDotLt)):
+    elif ident != nil and ident.id == ord(wDotDotLt):
       if n.kind == nkInfix and n[2].kind in {nkCharLit..nkUInt64Lit} and n[2].intVal != low(BiggestInt):
         dec n[2].intVal
       result = semRangeAux(c, n, prev)
