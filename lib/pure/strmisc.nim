@@ -93,7 +93,7 @@ proc wordsToCap*(wordCount: Positive, threshold = 80.Positive): int {.since: (1,
   ##
   ## Average length of words:
   ## * World `9`, English `6` (Wikipedia, Wolfram, Oxford, etc).
-  ## * Theres shorter and longer words but this is the most frequently used words.
+  ## * There are shorter and longer words but this is the most frequently used words.
   ## * Define a customized average length of words by defining `nimAverageWordLength`.
   ## * See http://ravi.io/language-word-lengths
   ##
