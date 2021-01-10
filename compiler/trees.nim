@@ -125,8 +125,8 @@ proc isRange*(n: PNode): bool {.inline.} =
     let callee = n[0]
     if (callee.kind == nkIdent and callee.ident.id in rangeOpt) or
        (callee.kind == nkSym and callee.sym.name.id in rangeOpt) or
-       ((callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
-        callee[1].sym.name.id in rangeOpt)):
+       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
+        callee[1].sym.name.id in rangeOpt):
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
