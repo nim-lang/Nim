@@ -1,7 +1,3 @@
-discard """
-  output: "OK"
-"""
-
 import macros
 
 type
@@ -292,16 +288,12 @@ proc test_float32_castB() =
   # any surprising content.
   doAssert cast[uint64](c) == 3270918144'u64
 
-test()
-test_float_cast()
-test_float32_cast()
-free_integer_casting()
-test_float32_castB()
-static:
+template main() =
   test()
   test_float_cast()
   test_float32_cast()
   free_integer_casting()
   test_float32_castB()
 
-echo "OK"
+static: main()
+main()
