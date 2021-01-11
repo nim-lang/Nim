@@ -81,7 +81,7 @@ when defined(nimVmExportFixed):
 
 include "system/inclrtl"
 import std/private/since
-from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
 
 
 const
@@ -1530,11 +1530,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
-  var i = 0
-  while true:
-    if i >= prefix.len: return true
-    if i >= s.len or s[i] != prefix[i]: return false
-    inc(i)
+  startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
   ## Returns true if `s` ends with `suffix`.
@@ -1562,12 +1558,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
-  var i = 0
-  var j = len(s) - len(suffix)
-  while i+j >= 0 and i+j < s.len:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if i >= suffix.len: return true
+  endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     extern: "nsuContinuesWith".} =

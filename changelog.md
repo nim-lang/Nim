@@ -34,6 +34,9 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
+- various functions in `httpclient` now accept `url` of type `Uri`. Moreover `request` function's
+  `httpMethod` argument of type `string` was deprecated in favor of `HttpMethod` enum type.
+
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
 
 - Added `cmpMem` to `system`.
@@ -84,13 +87,19 @@
 - Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
 - Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
 
-
-
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
 - Added `BackwardsIndex` overload for `JsonNode`.
 
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+- Added `socketstream` module that wraps sockets in the stream interface
+
+
+
+
+- Added `math.signbit`.
 
 ## Language changes
 

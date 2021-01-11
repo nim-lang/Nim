@@ -7,7 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements procs to determine the number of CPUs / cores.
+## This module implements a proc to determine the number of CPUs / cores.
+
+runnableExamples:
+  doAssert countProcessors() > 0
+
 
 include "system/inclrtl"
 
@@ -15,15 +19,15 @@ when not defined(windows):
   import posix
 
 when defined(freebsd) or defined(macosx):
-  {.emit:"#include <sys/types.h>".}
+  {.emit: "#include <sys/types.h>".}
 
 when defined(openbsd) or defined(netbsd):
-  {.emit:"#include <sys/param.h>".}
+  {.emit: "#include <sys/param.h>".}
 
 when defined(macosx) or defined(bsd):
   # we HAVE to emit param.h before sysctl.h so we cannot use .header here
   # either. The amount of archaic bullshit in Poonix based OSes is just insane.
-  {.emit:"#include <sys/sysctl.h>".}
+  {.emit: "#include <sys/sysctl.h>".}
   const
     CTL_HW = 6
     HW_AVAILCPU = 25
@@ -47,7 +51,7 @@ when defined(haiku):
                                                     header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
-  ## returns the number of the processors/cores the machine has.
+  ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     type
@@ -95,8 +99,3 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0
-
-
-runnableExamples:
-  block:
-    doAssert countProcessors() > 0

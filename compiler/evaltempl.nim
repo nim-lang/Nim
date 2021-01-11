@@ -187,7 +187,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
   ctx.instID = instID[]
   ctx.idgen = idgen
 
-  let body = tmpl.getBody
+  let body = tmpl.ast[bodyPos]
   #echo "instantion of ", renderTree(body, {renderIds})
   if isAtom(body):
     result = newNodeI(nkPar, body.info)

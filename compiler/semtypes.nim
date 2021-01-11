@@ -140,7 +140,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
       incl(e.flags, sfExported)
-      if not isPure: strTableAdd(c.module.tab, e)
+      if not isPure: exportSym(c, e)
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -779,7 +779,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    n[i][1].info
                  else:
                    n[i].info
-      suggestSym(c.config, info, f, c.graph.usageSym)
+      suggestSym(c.graph, info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       f.options = c.config.options
@@ -1058,6 +1058,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     if paramType.len == 1:
       # disable the bindOnce behavior for the type class
       result = recurse(paramType.base, true)
+
+  of tyTuple:
+    for i in 0..<paramType.len:
+      let t = recurse(paramType[i])
+      if t != nil:
+        paramType[i] = t
+        result = paramType
 
   of tyAlias, tyOwned, tySink:
     result = recurse(paramType.base)

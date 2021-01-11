@@ -126,7 +126,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    b = s.getBody
+    b = getBody(c.graph, s)
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
   elif c.inlining > 0:
@@ -594,7 +594,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
-proc isSimpleIteratorVar(iter: PSym): bool =
+proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
     of nkEmpty..nkNilLit: discard
@@ -607,7 +607,7 @@ proc isSimpleIteratorVar(iter: PSym): bool =
       for c in n: rec(c, owner, dangerousYields)
 
   var dangerousYields = 0
-  rec(iter.ast[bodyPos], iter, dangerousYields)
+  rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
 
 proc transformFor(c: PTransf, n: PNode): PNode =
@@ -650,7 +650,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      if n[i].kind == nkSym and isSimpleIteratorVar(iter):
+      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter):
         incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
@@ -1087,12 +1087,12 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
 
   if prc.transformedBody != nil:
     result = prc.transformedBody
-  elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
-    result = prc.ast[bodyPos]
+  elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
+    result = getBody(g, prc)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, c.idgen)
+    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
@@ -1108,6 +1108,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
+    # XXX Rodfile support for transformedBody!
 
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})

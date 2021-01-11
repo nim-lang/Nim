@@ -701,18 +701,24 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
   ##   var str = "Hello world!"
   ##   echo len(str) # => 12
 
-proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-  ## Returns the length of a compatible string. This is sometimes
-  ## an O(n) operation.
+proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
+  ## Returns the length of a compatible string. This is an O(n) operation except
+  ## in js at runtime.
   ##
   ## **Note:** On the JS backend this currently counts UTF-16 code points
   ## instead of bytes at runtime (not at compile time). For now, if you
   ## need the byte length of the UTF-8 encoding, convert to string with
   ## `$` first then call `len`.
-  ##
-  ## .. code-block:: Nim
-  ##   var str: cstring = "Hello world!"
-  ##   len(str) # => 12
+  runnableExamples:
+    doAssert len(cstring"abc") == 3
+    doAssert len(cstring r"ab\0c") == 5 # \0 is escaped
+    doAssert len(cstring"ab\0c") == 5 # ditto
+    var a: cstring = "ab\0c"
+    when defined(js): doAssert a.len == 4 # len ignores \0 for js
+    else: doAssert a.len == 2 # \0 is a null terminator
+    static:
+      var a2: cstring = "ab\0c"
+      doAssert a2.len == 2 # \0 is a null terminator, even in js vm
 
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ## Returns the length of an array or an array type.

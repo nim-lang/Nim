@@ -36,14 +36,6 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-when false:
-  proc hashOwner(s: PSym): SigHash =
-    var m = s
-    while m.kind != skModule: m = m.owner
-    let p = m.owner
-    assert p.kind == skPackage
-    result = gDebugInfo.register(p.name.s, m.name.s)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
@@ -1313,11 +1305,11 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
     it = it[0]
   result = makeCString(res)
 
-proc isTrivialProc(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
   let theProc = t.attachedOps[op]
-  if theProc != nil and not isTrivialProc(theProc):
+  if theProc != nil and not isTrivialProc(m.g.graph, theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:

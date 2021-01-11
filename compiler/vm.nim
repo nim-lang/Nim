@@ -429,13 +429,13 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         return true
     of tyUInt..tyUInt64:
       dest.ensureKind(rkInt)
-      case skipTypes(srctyp, abstractRange).kind
+      let styp = srctyp.skipTypes(abstractRange) # skip distinct types(dest type could do this too if needed)
+      case styp.kind
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
       else:
-        let srcDist = (sizeof(src.intVal) - srctyp.size) * 8
+        let srcDist = (sizeof(src.intVal) - styp.size) * 8
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
-
         var value = cast[BiggestUInt](src.intVal)
         value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
@@ -872,6 +872,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
       regs[ra].intVal = regs[rb].node.strVal.len - imm
+    of opcLenCstring:
+      decodeBImm(rkInt)
+      assert regs[rb].kind == rkNode
+      regs[ra].intVal = regs[rb].node.strVal.cstring.len - imm
     of opcIncl:
       decodeB(rkNode)
       let b = regs[rb].regToNode
@@ -1204,7 +1208,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
-      elif importcCond(prc):
+      elif importcCond(c, prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
