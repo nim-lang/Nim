@@ -1336,7 +1336,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node
       c.currentExceptionA = raised
       # Set the `name` field of the exception
-      c.currentExceptionA[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
+      discard
+      let s = c.currentExceptionA.typ.sym.name.s
+      template old: untyped = c.currentExceptionA[2].skipColon
+      if old.kind == nkNilLit:
+        # old.kind = nkStrLit
+        # PRTEMP : other fields...
+        old[] = TNode(kind: nkStrLit)
+      old.strVal = s
       c.exceptionInstr = pc
 
       var frame = tos
