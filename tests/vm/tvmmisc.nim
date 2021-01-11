@@ -530,6 +530,10 @@ block: # bug #15730
     doAssert a5 == a3
     doAssert a5 != a4
     var a6 = a4
-    # doAssert a6 == ""
+    doAssert a6 == ""
+    doAssert a6 == a4
+    var a4b: cstring = """"""
+    doAssert a4b == a4
+    doAssert a4b.len == 0
   static:main()
   main()
