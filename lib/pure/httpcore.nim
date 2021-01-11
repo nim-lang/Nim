@@ -29,24 +29,26 @@ type
     HttpVer11,
     HttpVer10
 
-  HttpMethod* = enum ## the requested HttpMethod
-    HttpHead,        ## Asks for the response identical to the one that would
-                     ## correspond to a GET request, but without the response
-                     ## body.
-    HttpGet,         ## Retrieves the specified resource.
-    HttpPost,        ## Submits data to be processed to the identified
-                     ## resource. The data is included in the body of the
-                     ## request.
-    HttpPut,         ## Uploads a representation of the specified resource.
-    HttpDelete,      ## Deletes the specified resource.
-    HttpTrace,       ## Echoes back the received request, so that a client
-                     ## can see what intermediate servers are adding or
-                     ## changing in the request.
-    HttpOptions,     ## Returns the HTTP methods that the server supports
-                     ## for specified address.
-    HttpConnect,     ## Converts the request connection to a transparent
-                     ## TCP/IP tunnel, usually used for proxies.
-    HttpPatch        ## Applies partial modifications to a resource.
+  HttpMethod* = enum         ## the requested HttpMethod
+    HttpHead = "HEAD"        ## Asks for the response identical to the one that
+                             ## would correspond to a GET request, but without
+                             ## the response body.
+    HttpGet = "GET"          ## Retrieves the specified resource.
+    HttpPost = "POST"        ## Submits data to be processed to the identified
+                             ## resource. The data is included in the body of
+                             ## the request.
+    HttpPut = "PUT"          ## Uploads a representation of the specified
+                             ## resource.
+    HttpDelete = "DELETE"    ## Deletes the specified resource.
+    HttpTrace = "TRACE"      ## Echoes back the received request, so that a
+                             ## client
+                             ## can see what intermediate servers are adding or
+                             ## changing in the request.
+    HttpOptions = "OPTIONS"  ## Returns the HTTP methods that the server
+                             ## supports for specified address.
+    HttpConnect = "CONNECT"  ## Converts the request connection to a transparent
+                             ## TCP/IP tunnel, usually used for proxies.
+    HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
 
 
 const
@@ -149,7 +151,6 @@ func newHttpHeaders*(keyValuePairs:
         result.table[key].add(pair.val)
       else:
         result.table[key] = @[pair.val]
-
 
 func `$`*(headers: HttpHeaders): string {.inline.} =
   $headers.table
@@ -378,21 +379,3 @@ func is4xx*(code: HttpCode): bool {.inline.} =
 func is5xx*(code: HttpCode): bool {.inline.} =
   ## Determines whether ``code`` is a 5xx HTTP status code.
   code.int in {500 .. 599}
-
-func `$`*(httpMethod: HttpMethod): string {.inline.} =
-  runnableExamples:
-    doAssert $HttpHead == "HEAD"
-    doAssert $HttpPatch == "PATCH"
-    doAssert $HttpGet == "GET"
-    doAssert $HttpPost == "POST"
-
-  result = case httpMethod
-    of HttpHead: "HEAD"
-    of HttpGet: "GET"
-    of HttpPost: "POST"
-    of HttpPut: "PUT"
-    of HttpDelete: "DELETE"
-    of HttpTrace: "TRACE"
-    of HttpOptions: "OPTIONS"
-    of HttpConnect: "CONNECT"
-    of HttpPatch: "PATCH"

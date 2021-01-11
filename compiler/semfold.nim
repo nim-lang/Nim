@@ -15,6 +15,8 @@ import
   platform, math, msgs, idents, renderer, types,
   commands, magicsys, modulegraphs, strtabs, lineinfos
 
+from system/memory import nimCStrLen
+
 proc errorType*(g: ModuleGraph): PType =
   ## creates a type representing an error state
   result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
@@ -133,7 +135,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     if a.kind == nkNilLit:
       result = newIntNodeT(Zero, n, g)
     elif a.kind in {nkStrLit..nkTripleStrLit}:
-      result = newIntNodeT(toInt128(a.strVal.len), n, g)
+      if a.typ.kind == tyString:
+        result = newIntNodeT(toInt128(a.strVal.len), n, g)
+      elif a.typ.kind == tyCString:
+        result = newIntNodeT(toInt128(nimCStrLen(a.strVal)), n, g)
     else:
       result = newIntNodeT(toInt128(a.len), n, g)
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
