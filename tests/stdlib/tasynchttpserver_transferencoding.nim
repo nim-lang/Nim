@@ -27,7 +27,6 @@ proc testSimpleHelloWorld() =
         doAssert(request.headers.hasKey("Transfer-Encoding"))
         doAssert(not request.headers.hasKey("Content-Length"))
         sanitySimpleHelloWorldTest = true
-        echo "simpleHelloWorldTest ok"
         await request.respond(Http200, "Good")
 
     let server = newAsyncHttpServer()
@@ -56,7 +55,6 @@ proc testSimpleEncoding() =
         doAssert(request.headers.hasKey("Transfer-Encoding"))
         doAssert(not request.headers.hasKey("Content-Length"))
         sanitySimpleEncodingTest = true
-        echo "simpleEncodingTest ok"
         await request.respond(Http200, "Good")
 
     let server = newAsyncHttpServer()
@@ -90,7 +88,6 @@ proc testSimpleChunks() =
         doAssert(request.headers.hasKey("Transfer-Encoding"))
         doAssert(not request.headers.hasKey("Content-Length"))
         sanitySimpleChunksTest = true
-        echo "simpleChunksTest ok"
         await request.respond(Http200, "Good")
 
     let server = newAsyncHttpServer()
@@ -126,7 +123,6 @@ proc testComplexChunks() =
         doAssert(request.headers.hasKey("Transfer-Encoding"))
         doAssert(not request.headers.hasKey("Content-Length"))
         sanityComplexChunksTest = true
-        echo "complexChunksTest ok"
         await request.respond(Http200, "Good")
 
     let server = newAsyncHttpServer()
@@ -152,4 +148,3 @@ doAssert(sanitySimpleHelloWorldTest)
 doAssert(sanitySimpleEncodingTest)
 doAssert(sanitySimpleChunksTest)
 doAssert(sanityComplexChunksTest)
-echo "Ok"
