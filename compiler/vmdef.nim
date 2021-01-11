@@ -86,6 +86,7 @@ type
     opcSubImmInt,
     opcLenSeq,
     opcLenStr,
+    opcLenCstring,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
