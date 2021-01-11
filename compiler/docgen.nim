@@ -560,7 +560,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
           "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
       let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
       var dest2 = ""
       renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
       dest.add dest2
