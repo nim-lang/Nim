@@ -59,7 +59,7 @@ type
 
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
-  for k,v in fieldPairs(a):
+  for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
