@@ -197,6 +197,14 @@ template main() =
     doAssert: compiles(5.5 ^ 2.uint8)
     doAssert: not compiles(5.5 ^ 2.2)
 
+  block: # isNaN
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+    doAssert not isNaN(0.0)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
+
   block: # signbit
     doAssert not signbit(0.0)
     doAssert signbit(-0.0)
@@ -207,14 +215,6 @@ template main() =
     doAssert signbit(-Inf)
     doAssert not signbit(NaN)
 
-  block: # isNaN
-    doAssert NaN.isNaN
-    doAssert not Inf.isNaN
-    doAssert isNaN(Inf - Inf)
-    doAssert not isNaN(3.1415926)
-    doAssert not isNaN(0'f32)
-
-  block: # signbit
     let x1 = NaN
     let x2 = -NaN
     let x3 = -x1
@@ -282,7 +282,6 @@ template main() =
     doAssert copySign(-1.0, NaN) == 1.0
     doAssert copySign(-1.0, -NaN) == -1.0
     doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
-    doAssert copySign(1.0, -NaN) == -1.0 # pending https://github.com/timotheecour/Nim/issues/499
 
   block: # round
     block: # Round to 0 decimal places
