@@ -1060,11 +1060,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqStr:
       decodeBC(rkInt)
       var ret = false
-      if regs[rb].node.kind == nkNilLit:
-        ret = regs[rc].node.kind == nkNilLit:
-      elif regs[rb].node.kind == nkStrLit and regs[rc].node.kind == nkStrLit:
-        ret = regs[rb].node.strVal == regs[rc].node.strVal
-      # could add some sanity assert's
+      if regs[rb].node.kind == nkNilLit: ret = regs[rc].node.kind == nkNilLit
+      elif regs[rc].node.kind == nkNilLit: ret = false
+      else: ret = regs[rb].node.strVal == regs[rc].node.strVal
       regs[ra].intVal = ret.ord
     of opcLeStr:
       decodeBC(rkInt)
