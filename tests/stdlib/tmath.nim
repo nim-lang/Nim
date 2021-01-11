@@ -319,6 +319,18 @@ template main =
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
 
+  block: # signbit
+    let x1 = NaN
+    let x2 = -NaN
+    let x3 = -x1
+
+    doAssert isNaN(x1)
+    doAssert isNaN(x2)
+    doAssert isNaN(x3)
+    doAssert not signbit(x1)
+    doAssert signbit(x2)
+    doAssert signbit(x3)
+
   block: # copySign
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-10.0, -1.0) == -10.0
@@ -385,8 +397,8 @@ template main =
       discard
     else:
       when not defined(js):
-        doAssert copySign(-1.0, -NaN) == 1.0
-        doAssert copySign(10.0, -NaN) == 10.0
+        doAssert copySign(-1.0, -NaN) == -1.0
+        doAssert copySign(10.0, -NaN) == -10.0
         doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
 
   block:
