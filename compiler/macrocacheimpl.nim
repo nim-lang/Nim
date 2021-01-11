@@ -9,7 +9,7 @@
 
 ## This module implements helpers for the macro cache.
 
-import lineinfos, ast, modulegraphs, vmdef
+import lineinfos, ast, vmdef
 
 proc append(c: PCtx; n: PNode) =
   c.vmstateDiff.add((c.module, n))

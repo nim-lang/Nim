@@ -1139,6 +1139,9 @@ proc add*(father, son: Indexable) =
     if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
 
+proc addAllowNil*(father, son: Indexable) {.inline.} =
+  father.sons.add(son)
+
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 
