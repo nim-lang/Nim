@@ -221,6 +221,8 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
+    nkReplayAction        # for .rod file support: A replay action
 
   TNodeKinds* = set[TNodeKind]
 

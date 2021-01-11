@@ -16,9 +16,6 @@ import std / [hashes, tables, strtabs, md5]
 import bitabs
 import ".." / [ast, options]
 
-const
-  nkModuleRef* = nkNone # pair of (ModuleId, SymId)
-
 type
   SymId* = distinct int32
   ModuleId* = distinct int32
@@ -314,7 +311,7 @@ proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
 proc sons2*(tree: PackedTree; n: NodePos): (NodePos, NodePos) =
-  #assert(not isAtom(tree, n.int))
+  assert(not isAtom(tree, n.int))
   let a = n.int+1
   let b = a + span(tree, a)
   result = (NodePos a, NodePos b)

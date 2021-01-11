@@ -21,13 +21,7 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
   assert list != nil
   assert list.kind == nkStmtList
   for n in list:
-    assert n.kind == nkCommentStmt
-    # pragmas are complex and can be user-overriden via templates. So
-    # instead of using the original ``nkPragma`` nodes, we rely on the
-    # fact that pragmas.nim was patched to produce specialized recorded
-    # statements for us in the form of ``nkCommentStmt`` with (key, value)
-    # pairs. Ordinary nkCommentStmt nodes never have children so this is
-    # not ambiguous.
+    assert n.kind == nkReplayAction
     # Fortunately only a tiny subset of the available pragmas need to
     # be replayed here. This is always a subset of ``pragmas.stmtPragmas``.
     if n.len >= 2:
