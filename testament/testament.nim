@@ -795,7 +795,7 @@ proc main() =
     var subPath = p.key.string
     let nimRoot = currentSourcePath / "../.."
       # makes sure points to this regardless of cwd or which nim is used to compile this.
-    doAssert dirExists(nimRoot/testsDir) # sanity check
+    doAssert(dirExists(nimRoot/testsDir), nimRoot/testsDir & " doesn't exist!") # sanity check
     if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
     # at least one directory is required in the path, to use as a category name
     let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})
