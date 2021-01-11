@@ -300,9 +300,10 @@ proc processRequest(
           break
 
         # Read bytesToRead and add to body
-        # Note we add +2 because the line must be terminated by \r\n
-        let chunk = await client.recv(bytesToRead + 2)
-        request.body.add(chunk[0 ..< bytesToRead])
+        let chunk = await client.recv(bytesToRead)
+        request.body.add(chunk)
+        # Skip \r\n (chunk terminating bytes per spec)
+        discard await client.recv(2)
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:
