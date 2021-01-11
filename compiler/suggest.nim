@@ -386,17 +386,17 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     else:
       # fallback:
       suggestEverything(c, n, field, outputs)
-  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
-    # look up if the identifier belongs to the enum:
-    var t = typ
-    while t != nil:
-      suggestSymList(c, t.n, field, n.info, outputs)
-      t = t[0]
-    suggestOperations(c, n, field, typ, outputs)
   else:
-    let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
-    if typ.kind == tyObject:
+    let orig = typ
+    typ = skipTypes(orig, {tyTypeDesc, tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
+
+    if typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
+      # look up if the identifier belongs to the enum:
+      var t = typ
+      while t != nil:
+        suggestSymList(c, t.n, field, n.info, outputs)
+        t = t[0]
+    elif typ.kind == tyObject:
       var t = typ
       while true:
         suggestObject(c, t.n, field, n.info, outputs)
@@ -404,6 +404,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, field, n.info, outputs)
+    
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
       suggestOperations(c, n, field, typ, outputs)
