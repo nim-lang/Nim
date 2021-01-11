@@ -101,6 +101,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `math.signbit`.
 
+- Add `unrolls.unrollIt` for compile-time macro-unrolled `for` loops.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
