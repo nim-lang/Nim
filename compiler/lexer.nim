@@ -950,18 +950,10 @@ proc newlineFollows*(L: Lexer): bool =
 proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
                           isDoc: bool) =
   var pos = start
-  var toStrip = 0
   tokenBegin(tok, pos)
-  # detect the amount of indentation:
-  if isDoc:
-    toStrip = getColNumber(L, pos)
-    while L.buf[pos] == ' ': inc pos
-    if L.buf[pos] in {CR, LF}:
-      pos = handleCRLF(L, pos)
-      toStrip = 0
-      while L.buf[pos] == ' ':
-        inc pos
-        inc toStrip
+  if isDoc and getColNumber(L, pos) > "##[".len:
+    # the next text is indented as if it's placed at the beginning of ##[
+    tok.literal.add " ".repeat(getColNumber(L, pos) - "##[".len)
   var nesting = 0
   while true:
     case L.buf[pos]
@@ -997,10 +989,6 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
       if isDoc:
         when not defined(nimpretty): tok.literal.add "\n"
         inc tok.iNumber
-        var c = toStrip
-        while L.buf[pos] == ' ' and c > 0:
-          inc pos
-          dec c
     of nimlexbase.EndOfFile:
       tokenEndIgnore(tok, pos)
       lexMessagePos(L, errGenerated, pos, "end of multiline comment expected")
@@ -1011,6 +999,8 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
   L.bufpos = pos
   when defined(nimpretty):
     tok.commentOffsetB = L.offsetBase + pos - 1
+  if isDoc:
+    tok.literal = dedent(tok.literal)
 
 proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
@@ -1026,11 +1016,6 @@ proc scanComment(L: var Lexer, tok: var Token) =
     return
   tokenBegin(tok, pos)
   inc(pos, 2)
-
-  var toStrip = 0
-  while L.buf[pos] == ' ':
-    inc pos
-    inc toStrip
 
   while true:
     var lastBackslash = -1
@@ -1048,10 +1033,6 @@ proc scanComment(L: var Lexer, tok: var Token) =
     if L.buf[pos] == '#' and L.buf[pos+1] == '#':
       tok.literal.add "\n"
       inc(pos, 2)
-      var c = toStrip
-      while L.buf[pos] == ' ' and c > 0:
-        inc pos
-        dec c
       inc tok.iNumber
     else:
       if L.buf[pos] > ' ':
@@ -1061,6 +1042,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
   L.bufpos = pos
   when defined(nimpretty):
     tok.commentOffsetB = L.offsetBase + pos - 1
+  tok.literal = dedent(tok.literal)
 
 proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
