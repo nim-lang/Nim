@@ -411,7 +411,8 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
           [conf.command, "intern.html#debugging-the-compiler".createDocLink])
-  beforeQuit(conf)
+  # we could call something similar to `beforeQuit(conf)` here; maybe a different
+  # message to allow tests to distinguish
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
