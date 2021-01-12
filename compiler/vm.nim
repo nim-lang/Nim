@@ -1459,7 +1459,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
-        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode, onError = toInt128(1)))))
+        msgQuit(c.config, int8(toInt(getOrdValue(regs[ra].regToNode, onError = toInt128(1)))))
       else:
         return TFullReg(kind: rkNone)
     of opcInvalidField:

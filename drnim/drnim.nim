@@ -59,7 +59,7 @@ proc getCommandLineDesc(conf: ConfigRef): string =
 
 proc helpOnError(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
-  msgQuit(0)
+  msgQuit(conf, 0)
 
 type
   CannotMapToZ3Error = object of ValueError
@@ -1280,4 +1280,4 @@ when not defined(selftest):
   handleCmdLine(newIdentCache(), conf)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
-  msgQuit(int8(conf.errorCounter > 0))
+  msgQuit(conf, int8(conf.errorCounter > 0))

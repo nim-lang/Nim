@@ -69,7 +69,7 @@ proc getCommandLineDesc(conf: ConfigRef): string =
 proc helpOnError(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
-    msgQuit(0)
+    msgQuit(conf, 0)
 
 proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
@@ -78,7 +78,7 @@ proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]) &
                                  AdvancedUsage,
                {msgStdout})
-    msgQuit(0)
+    msgQuit(conf, 0)
 
 proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
@@ -87,7 +87,7 @@ proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]) &
                                  Usage & AdvancedUsage,
                {msgStdout})
-    msgQuit(0)
+    msgQuit(conf, 0)
 
 proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
@@ -104,7 +104,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       usedTinyC & useLinenoise & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
-    msgQuit(0)
+    msgQuit(conf, 0)
 
 proc writeCommandLineUsage*(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})

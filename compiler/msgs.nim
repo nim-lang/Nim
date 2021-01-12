@@ -153,9 +153,6 @@ proc suggestWriteln*(conf: ConfigRef; s: string) =
     else:
       conf.writelnHook(s)
 
-proc msgQuit*(x: int8) = quit x
-proc msgQuit*(x: string) = quit x
-
 proc suggestQuit*() =
   raise newException(ESuggestDone, "suggest done")
 
@@ -324,6 +321,14 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
       when defined(windows):
         flushFile(stderr)
 
+proc beforeQuit(conf: ConfigRef) {.inline.} =
+  if conf.isDefined("nimEchoQuitting"):
+    msgWriteln(conf, "nim quitting")
+
+proc msgQuit*(conf: ConfigRef, x: string | int8) =
+  beforeQuit(conf)
+  quit x
+
 macro callIgnoringStyle(theProc: typed, first: typed,
                         args: varargs[typed]): untyped =
   let typForegroundColor = bindSym"ForegroundColor".getType
@@ -406,6 +411,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
           [conf.command, "intern.html#debugging-the-compiler".createDocLink])
+  beforeQuit(conf)
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
