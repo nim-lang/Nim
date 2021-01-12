@@ -1710,7 +1710,7 @@ e.g. when rewriting term to same term plus extra content.
 e.g. with given example ``echo("ab")`` will be rewritten just once:
 
 .. code-block:: nim
-  template pwnEcho{echo(x)}(x: expr) =
+  template pwnEcho{echo(x)}(x: untyped) =
     {.noRewrite.}: echo("pwned!")
 
   echo "ab"
