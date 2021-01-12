@@ -11,7 +11,7 @@ from net import TimeoutError
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 
 template runTest(
-    handler: proc (request: Request): Future[void] {.gcsafe.},
+    handler: proc (request: asynchttpserver.Request): Future[void] {.gcsafe.},
     request: proc (server: AsyncHttpServer): Future[AsyncResponse],
     test: proc (response: AsyncResponse, body: string): Future[void]) =
 
@@ -26,7 +26,7 @@ template runTest(
   discard test(response, body)
 
 proc test200() {.async.} =
-  proc handler(request: Request) {.async.} =
+  proc handler(request: asynchttpserver.Request) {.async.} =
     await request.respond(Http200, "Hello World, 200")
 
   proc request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
@@ -47,7 +47,7 @@ proc test200() {.async.} =
   runTest(handler, request, test)
 
 proc test404() {.async.} =
-  proc handler(request: Request) {.async.} =
+  proc handler(request: asynchttpserver.Request) {.async.} =
     await request.respond(Http404, "Hello World, 404")
 
   proc request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
@@ -68,7 +68,7 @@ proc test404() {.async.} =
   runTest(handler, request, test)
 
 proc testCustomEmptyHeaders() {.async.} =
-  proc handler(request: Request) {.async.} =
+  proc handler(request: asynchttpserver.Request) {.async.} =
     await request.respond(Http200, "Hello World, 200", newHttpHeaders())
 
   proc request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
@@ -89,7 +89,7 @@ proc testCustomEmptyHeaders() {.async.} =
   runTest(handler, request, test)
 
 proc testCustomContentLength() {.async.} =
-  proc handler(request: Request) {.async.} =
+  proc handler(request: asynchttpserver.Request) {.async.} =
     let headers = newHttpHeaders()
     headers["Content-Length"] = "0"
     await request.respond(Http200, "Hello World, 200", headers)

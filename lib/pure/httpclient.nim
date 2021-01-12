@@ -210,12 +210,19 @@ import nativesockets
 export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
+  Request* = ref object
+    reqMethod*: HttpMethod
+    headers*: string
+    url*: Uri
+    body*: string
+
   Response* = ref object
     version*: string
     status*: string
     headers*: HttpHeaders
     body: string
     bodyStream*: Stream
+    request*: Request
 
   AsyncResponse* = ref object
     version*: string
@@ -223,6 +230,7 @@ type
     headers*: HttpHeaders
     body: string
     bodyStream*: FutureStream[string]
+    request*: Request
 
 proc code*(response: Response | AsyncResponse): HttpCode
            {.raises: [ValueError, OverflowDefect].} =
@@ -900,6 +908,11 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
             newHttpHeaders(), client.proxy)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
+        proxyResp.request = Request(
+          reqMethod: HttpConnect,
+          headers: proxyHeaderString,
+          url: connectUrl,
+        )
 
         if not proxyResp.status.startsWith("200"):
           raise newException(HttpRequestError,
@@ -1019,6 +1032,12 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   let getBody = httpMethod notin {HttpHead, HttpConnect} and
                 client.getBody
   result = await parseResponse(client, getBody)
+  result.request = Request(
+    reqMethod: httpMethod,
+    headers: headerString,
+    url: url,
+    body: body,
+  )
 
 proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
               httpMethod: HttpMethod | string = HttpGet, body = "",

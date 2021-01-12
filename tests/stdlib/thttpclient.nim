@@ -8,7 +8,7 @@ discard """
 import strutils
 from net import TimeoutError
 
-import nativesockets, os, httpclient, asyncdispatch
+import nativesockets, os, httpclient, asyncdispatch, uri
 
 const manualTests = false
 
@@ -41,6 +41,8 @@ proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
   var resp = await client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
+  doAssert(resp.request.reqMethod == HttpGet)
+  doAssert($(resp.request.url) == "http://example.com/")
   var body = await resp.body
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
@@ -104,6 +106,8 @@ proc syncTest() =
   var client = newHttpClient()
   var resp = client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
+  doAssert(resp.request.reqMethod == HttpGet)
+  doAssert($(resp.request.url) == "http://example.com/")
   doAssert("<title>Example Domain</title>" in resp.body)
 
   resp = client.request("http://example.com/404")
