@@ -321,12 +321,11 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
       when defined(windows):
         flushFile(stderr)
 
-proc beforeQuit(conf: ConfigRef) {.inline.} =
-  if conf.isDefined("nimEchoQuitting"):
-    msgWriteln(conf, "nim quitting")
-
-proc msgQuit*(conf: ConfigRef, x: string | int8) =
-  beforeQuit(conf)
+proc msgQuit*(conf: ConfigRef, x: int8) =
+  if x!=0 and conf.isDefined("nimEchoNimQuittingError"):
+    # this is used in tests to ensure nim quits gracefully instead of via some
+    # signal (e.g. SIGSEGV) or other error.
+    msgWriteln(conf, "NimQuittingError")
   quit x
 
 macro callIgnoringStyle(theProc: typed, first: typed,
@@ -411,7 +410,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
           [conf.command, "intern.html#debugging-the-compiler".createDocLink])
-  # we could call something similar to `beforeQuit(conf)` here; maybe a different
+  # we could call something similar to `nimEchoNimQuittingError` here; maybe a different
   # message to allow tests to distinguish
   quit 1
 

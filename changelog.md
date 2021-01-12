@@ -141,3 +141,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   - cell alignment is not supported, i.e. alignment annotations in a delimiter
     row (`:---`, `:--:`, `---:`) are ignored,
   - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.
+
+- When nim quits with error via `msgQuit`,  `NimQuittingError` is now printed
+  (enabled via `-d:nimEchoNimQuittingError` in tests/config.nims), which helps tests
+  determine that nim quit gracefully instead of via some signal.

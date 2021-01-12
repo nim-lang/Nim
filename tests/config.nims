@@ -13,7 +13,9 @@ switch("excessiveStackTrace", "off")
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
 switch("define", "nimUnittestColor:off")
 
+# other
 switch("define", "nimLegacyTypeMismatch")
+switch("define", "nimEchoNimQuittingError")
 
 hint("Processing", off)
   # dots can cause annoyances; instead, a single test can test `hintProcessing`
