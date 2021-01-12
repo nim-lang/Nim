@@ -303,7 +303,11 @@ proc processRequest(
         let chunk = await client.recv(bytesToRead)
         request.body.add(chunk)
         # Skip \r\n (chunk terminating bytes per spec)
-        discard await client.recv(2)
+        when compileOption("assertions"):
+          let separator = await client.recv(2)
+          assert separator == "\r\n"
+        else:
+          discard await client.recv(2)
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:
