@@ -6,10 +6,7 @@ import std/nativesockets
 
 const postBegin = """
 POST / HTTP/1.1
-Host: 127.0.0.1:64123
-Accept: */*
 Transfer-Encoding:chunked
-Content-Type: application/x-www-form-urlencoded
 
 """
 
