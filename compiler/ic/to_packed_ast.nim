@@ -212,7 +212,7 @@ proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemI
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## add a remote symbol reference to the tree
   let info = n.info.toPackedInfo(c, m)
-  ir.nodes.add PackedNode(kind: nkModuleRef, operand: 2.int32,  # 2 kids...
+  ir.nodes.add PackedNode(kind: nkModuleRef, operand: 3.int32, # spans 3 nodes in total
                           typeId: toPackedType(n.typ, c, m), info: info)
   ir.nodes.add PackedNode(kind: nkInt32Lit, info: info,
                           operand: toLitId(n.sym.itemId.module.FileIndex, c, m).int32)
