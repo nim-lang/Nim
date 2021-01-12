@@ -201,11 +201,12 @@ proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModule): Pack
 proc safeItemId(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId {.inline.} =
   ## given a symbol, produce an ItemId with the correct properties
   ## for local or remote symbols, packing the symbol as necessary
-  if s == nil:
+  if s == nil or s.kind == skPackage:
     result = nilItemId
   #elif s.itemId.module == c.thisModule:
   #  result = PackedItemId(module: LitId(0), item: s.itemId.item)
   else:
+    assert int(s.itemId.module) >= 0
     result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m),
                           item: s.itemId.item)
 
@@ -247,6 +248,7 @@ proc toPackedType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedIt
   if t.uniqueId.module != c.thisModule:
     # XXX Assert here that it already was serialized in the foreign module!
     # it is a foreign type:
+    assert t.uniqueId.module >= 0
     return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
 
   if not c.typeMarker.containsOrIncl(t.uniqueId.item):
@@ -276,6 +278,7 @@ proc toPackedType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedIt
     # fill the reserved slot, nothing else:
     m.sh.types[t.uniqueId.item] = p
 
+  assert t.itemId.module >= 0
   result = PackedItemId(module: toLitId(t.itemId.module.FileIndex, c, m), item: t.uniqueId.item)
 
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
@@ -296,6 +299,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedIte
   if s.itemId.module != c.thisModule:
     # XXX Assert here that it already was serialized in the foreign module!
     # it is a foreign symbol:
+    assert s.itemId.module >= 0
     return PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
 
   if not c.symMarker.containsOrIncl(s.itemId.item):
@@ -327,6 +331,7 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedIte
     # fill the reserved slot, nothing else:
     m.sh.syms[s.itemId.item] = p
 
+  assert s.itemId.module >= 0
   result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
 
 proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
