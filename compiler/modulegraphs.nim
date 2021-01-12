@@ -29,13 +29,14 @@ type
 
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
-    packed: PackedModuleGraph
+    packed*: PackedModuleGraph
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
+    systemModuleComplete*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
@@ -61,7 +62,6 @@ type
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
-    recordStmt*: proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.}
     cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API
     cacheCounters*: Table[string, BiggestInt]
     cacheTables*: Table[string, BTree[string, PNode]]
@@ -127,6 +127,11 @@ template semtab*(m: PSym; g: ModuleGraph): TStrTable =
 
 proc cachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
   m.position < g.packed.len and g.packed[m.position].status == loaded
+
+proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
+  when false:
+    echo "simulating ", moduleSym.name.s, " ", moduleSym.position
+  simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
 
 type
   ModuleIter* = object
@@ -231,6 +236,10 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
   if m.position >= g.ifaces.len:
     setLen(g.ifaces, m.position + 1)
+
+  if m.position >= g.packed.len:
+    setLen(g.packed, m.position + 1)
+
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
   initStrTable(g.ifaces[m.position].interf)
 
@@ -253,8 +262,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
-  result.recordStmt = proc (graph: ModuleGraph; m: PSym; n: PNode) {.nimcall.} =
-    discard
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()
   result.cacheTables = initTable[string, BTree[string, PNode]]()
@@ -334,14 +341,14 @@ proc isDirty*(g: ModuleGraph; m: PSym): bool =
 
 proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
   result = s.ast[bodyPos]
-  if result == nil and g.config.symbolFiles in {readOnlySf, v2Sf}:
+  if result == nil and g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = loadProcBody(g.config, g.cache, g.packed, s)
     s.ast[bodyPos] = result
   assert result != nil
 
 proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
-  if g.config.symbolFiles in {readOnlySf, v2Sf}:
+  if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
     result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)
 
 proc configComplete*(g: ModuleGraph) =

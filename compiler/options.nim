@@ -124,7 +124,7 @@ type
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
     cmdParse # parse a single file (for debugging)
-    cmdScan # scan a single file (for debugging)
+    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
@@ -190,7 +190,7 @@ type
       ## are not anymore.
 
   SymbolFilesOption* = enum
-    disabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,

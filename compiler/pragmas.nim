@@ -96,10 +96,10 @@ proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool = false)
 
 proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
-  var recorded = newNodeI(nkCommentStmt, n.info)
+  var recorded = newNodeI(nkReplayAction, n.info)
   for i in 0..args.high:
     recorded.add newStrNode(args[i], n.info)
-  c.graph.recordStmt(c.graph, c.module, recorded)
+  addPragmaComputation(c, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"
@@ -705,7 +705,7 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s.flags, sfUsed)
   registerCompilerProc(c.graph, s)
   if c.config.symbolFiles != disabledSf:
-    addCompilerProc(c.encoder, s)
+    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]

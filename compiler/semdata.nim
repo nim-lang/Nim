@@ -268,15 +268,25 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
-    initEncoder result.encoder, module, graph.config, graph.startupPackedConfig
+    let id = module.position
+    assert graph.packed[id].status in {undefined, outdated}
+    graph.packed[id].status = storing
+    graph.packed[id].module = module
+    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+
+template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
-    addIncludeFileDep(c.encoder, f)
+    addIncludeFileDep(c.encoder, c.packedRepr, f)
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
-    addImportFileDep(c.encoder, f)
+    addImportFileDep(c.encoder, c.packedRepr, f)
+
+proc addPragmaComputation*(c: PContext; n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    addPragmaComputation(c.encoder, c.packedRepr, n)
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
   for i in 0..<sq.len:
@@ -287,28 +297,28 @@ proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
   inclSym(c.graph.ifaces[c.module.position].converters, conv)
   if c.config.symbolFiles != disabledSf:
-    addConverter(c.encoder, conv)
+    addConverter(c.encoder, c.packedRepr, conv)
 
 proc addPureEnum*(c: PContext, e: PSym) =
   inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
   if c.config.symbolFiles != disabledSf:
-    addPureEnum(c.encoder, e)
+    addPureEnum(c.encoder, c.packedRepr, e)
 
 proc addPattern*(c: PContext, p: PSym) =
   inclSym(c.patterns, p)
   inclSym(c.graph.ifaces[c.module.position].patterns, p)
   if c.config.symbolFiles != disabledSf:
-    addTrmacro(c.encoder, p)
+    addTrmacro(c.encoder, c.packedRepr, p)
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
-    addExported(c.encoder, s)
+    addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
-    addReexport(c.encoder, s)
+    addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -499,8 +509,23 @@ template addExport*(c: PContext; s: PSym) =
 
 proc storeRodNode*(c: PContext, n: PNode) =
   if c.config.symbolFiles != disabledSf:
-    toPackedNodeTopLevel(n, c.encoder)
+    toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)
+    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+      if m == c.module:
+        addPragmaComputation(c, n)
+    if sfSystemModule in c.module.flags:
+      c.graph.systemModuleComplete = true
+    if c.config.symbolFiles != stressTest:
+      # For stress testing we seek to reload the symbols from memory. This
+      # way much of the logic is tested but the test is reproducible as it does
+      # not depend on the hard disk contents!
+      saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)),
+                  c.encoder, c.packedRepr)
+    else:
+      # debug code, but maybe a good idea for production? Could reduce the compiler's
+      # memory consumption considerably at the cost of more loads from disk.
+      simulateCachedModule(c.graph, c.module, c.packedRepr)
+    c.graph.packed[c.module.position].status = loaded

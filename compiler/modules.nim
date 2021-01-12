@@ -14,6 +14,8 @@ import
   idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
+import ic / replayer
+
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
 
@@ -108,7 +110,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       processModuleAux()
     else:
       partialInitModule(result, graph, fileIdx, filename)
-      # XXX replay the pragmas here!
+      replayStateChanges(result, graph)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
