@@ -210,9 +210,9 @@ import nativesockets
 export httpcore except parseHeader # TODO: The ``except`` doesn't work
 
 type
-  PreparedRequest* = ref object
+  PreparedRequest* = object
     reqMethod*: HttpMethod
-    headers*: string
+    headers*: HttpHeaders
     url*: Uri
     body*: string
 
@@ -904,13 +904,14 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
         connectUrl.hostname = url.hostname
         connectUrl.port = if url.port != "": url.port else: "443"
 
+        let newHeaders = newHttpHeaders()
         let proxyHeaderString = generateHeaders(connectUrl, HttpConnect,
-            newHttpHeaders(), client.proxy)
+            newHeaders, client.proxy)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
         proxyResp.request = PreparedRequest(
           reqMethod: HttpConnect,
-          headers: proxyHeaderString,
+          headers: newHeaders,
           url: connectUrl,
         )
 
@@ -1034,7 +1035,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   result = await parseResponse(client, getBody)
   result.request = PreparedRequest(
     reqMethod: httpMethod,
-    headers: headerString,
+    headers: newHeaders,
     url: url,
     body: body,
   )

@@ -43,6 +43,8 @@ proc asyncTest() {.async.} =
   doAssert(resp.code.is2xx)
   doAssert(resp.request.reqMethod == HttpGet)
   doAssert($(resp.request.url) == "http://example.com/")
+  var clientAgent = $(resp.request.headers["user-agent"])
+  doAssert(clientAgent.contains("Nim httpclient"))
   var body = await resp.body
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
@@ -108,6 +110,8 @@ proc syncTest() =
   doAssert(resp.code.is2xx)
   doAssert(resp.request.reqMethod == HttpGet)
   doAssert($(resp.request.url) == "http://example.com/")
+  var clientAgent = $(resp.request.headers["user-agent"])
+  doAssert(clientAgent.contains("Nim httpclient"))
   doAssert("<title>Example Domain</title>" in resp.body)
 
   resp = client.request("http://example.com/404")
