@@ -46,8 +46,8 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
-- ``--gc:orc`` is now 10% faster than previously for common workloads. If
-  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+- `--gc:orc` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
@@ -96,10 +96,9 @@
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
 
-
-
-
 - Added `math.signbit`.
+
+- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
 ## Language changes
 
