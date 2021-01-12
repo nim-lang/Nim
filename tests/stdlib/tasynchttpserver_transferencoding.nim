@@ -1,6 +1,9 @@
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 
+import std/asyncnet
+import std/nativesockets
+
 const postBegin = """
 POST / HTTP/1.1
 Host: 127.0.0.1:64123
@@ -19,9 +22,9 @@ template genTest(input, expected) =
       sanity = true
       await request.respond(Http200, "Good")
 
-  let port = Port(64123)
   let server = newAsyncHttpServer()
-  discard server.serve(port, handler)
+  discard server.serve(Port(0), handler)
+  let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
   let data = postBegin & input
   var socket = newSocket()
   socket.connect("127.0.0.1", port)

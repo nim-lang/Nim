@@ -43,6 +43,7 @@ runnableExamples:
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+import std/private/since
 
 export httpcore except parseHeader
 
@@ -70,6 +71,9 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
+
+func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
+  a.socket
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
