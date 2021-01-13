@@ -99,14 +99,6 @@ type
     typeId*: TypeId
     info*: PackedLineInfo
 
-  ModulePhase* = enum
-    preLookup, lookedUpTopLevelStmts
-
-  GenericKey* = object
-    module*: int32
-    name*: string
-    types*: seq[MD5Digest] # is this a joke?
-
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
     #sh*: Shared
@@ -120,13 +112,6 @@ type
     integers*: BiTable[BiggestInt]
     floats*: BiTable[BiggestFloat]
     #config*: ConfigRef
-
-proc hash*(key: GenericKey): Hash =
-  var h: Hash = 0
-  h = h !& hash(key.module)
-  h = h !& hash(key.name)
-  h = h !& hash(key.types)
-  result = !$h
 
 proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}
