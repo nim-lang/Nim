@@ -71,7 +71,7 @@ proc semAsgnOpr(c: PContext; n: PNode): PNode =
 
 proc semIsPartOf(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var r = isPartOf(n[1], n[2])
-  result = newIntNodeT(toInt128(ord(r)), n, c.graph)
+  result = newIntNodeT(toInt128(ord(r)), n, c.idgen, c.graph)
 
 proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
@@ -179,15 +179,15 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
-    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
+    result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.idgen, c.graph)
   of "isNamedTuple":
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
-    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.idgen, c.graph)
   of "tupleLen":
     var operand = operand.skipTypes({tyGenericInst})
     assert operand.kind == tyTuple, $operand.kind
-    result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
+    result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:
