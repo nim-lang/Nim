@@ -78,6 +78,7 @@ func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
   ## Useful for identifying what port the AsyncHttpServer is bound to, if it
   ## was chosen automatically.
   runnableExamples:
+    import asyncdispatch
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
     let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
