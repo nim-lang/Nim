@@ -315,7 +315,9 @@ proc processRequest(
         request.body.add(chunk)
         # Skip \r\n (chunk terminating bytes per spec)
         let separator = await client.recv(2)
-        assert separator == "\r\n"
+        if separator != "\r\n":
+          await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
+          return true
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:
