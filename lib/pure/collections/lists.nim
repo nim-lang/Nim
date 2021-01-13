@@ -722,8 +722,9 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   var tmp = b.copy
   a.addMoved tmp
 
-proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
+proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.discardable.} =
   ## Removes a node `n` from `L`.
+  ## Returns `true` if `n` was found in `L`.
   ## Efficiency: O(n); the list is traversed until `n` is found.
   ## Attempting to remove an element not contained in the list is a no-op.
   ## When the list is cyclic, the cycle is preserved after removal.
@@ -732,9 +733,9 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
     var a = [0, 1, 2].toSinglyLinkedList
     let n = a.head.next
     doAssert n.value == 1
-    a.remove n
+    doAssert a.remove(n) == true
     doAssert a.toSeq == [0, 2]
-    a.remove n
+    doAssert a.remove(n) == false
     doAssert a.toSeq == [0, 2]
     a.addMoved a # cycle: [0, 2, 0, 2, ...]
     a.remove a.head
@@ -752,12 +753,18 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
     var prev = L.head
     while prev.next != n and prev.next != nil:
       prev = prev.next
-    if prev.next != nil:
-      prev.next = n.next
+    if prev.next == nil:
+      return false
+    prev.next = n.next
+  true
 
 proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
-  ## When the list is cyclic, the cycle is preserved after removal.
+  ## This function assumes, for the sake of efficiency, that `n` is contained in `L`,
+  ## otherwise the effects are undefined.
+  ## When the list is cyclic, the cycle is preserved after removal,
+  ## see the example for
+  ## `remove proc <#remove,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   runnableExamples:
     var
       a = initDoublyLinkedList[int]()

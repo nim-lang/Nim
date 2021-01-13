@@ -217,3 +217,13 @@ template testCommon(initList, toList) =
 
 testCommon initSinglyLinkedList, toSinglyLinkedList
 testCommon initDoublyLinkedList, toDoublyLinkedList
+
+block remove: # return value check
+  var l = [0, 1, 2, 3].toSinglyLinkedList
+  let n = l.head.next.next
+  doAssert l.remove(n) == true
+  doAssert l.toSeq == [0, 1, 3]
+  doAssert l.remove(n) == false
+  doAssert l.toSeq == [0, 1, 3]
+  doAssert l.remove(l.head) == true
+  doAssert l.toSeq == [1, 3]
