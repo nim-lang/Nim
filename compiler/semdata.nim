@@ -297,7 +297,6 @@ proc popOptionEntry*(c: PContext) =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyTyped)
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module

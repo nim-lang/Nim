@@ -249,6 +249,7 @@ proc toPackedType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedIt
     # XXX Assert here that it already was serialized in the foreign module!
     # it is a foreign type:
     assert t.uniqueId.module >= 0
+    assert t.uniqueId.item > 0
     return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
 
   if not c.typeMarker.containsOrIncl(t.uniqueId.item):
@@ -279,6 +280,7 @@ proc toPackedType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedIt
     m.sh.types[t.uniqueId.item] = p
 
   assert t.itemId.module >= 0
+  assert t.uniqueId.item > 0
   result = PackedItemId(module: toLitId(t.itemId.module.FileIndex, c, m), item: t.uniqueId.item)
 
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
@@ -349,7 +351,9 @@ proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Packed
 
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## serialize a node into the tree
-  if n.isNil: return
+  if n == nil:
+    ir.nodes.add PackedNode(kind: nkNilRodNode, flags: {}, operand: 0)
+    return
   let info = toPackedInfo(n.info, c, m)
   case n.kind
   of nkNone, nkEmpty, nkNilLit, nkType:
@@ -586,6 +590,10 @@ proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModul
 proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                tree: PackedTree; n: NodePos): PNode =
   let k = n.kind
+  if k == nkNilRodNode:
+    return nil
+  when false:
+    echo "loading node ", c.config $ translateLineInfo(c, g, thisModule, n.info)
   result = newNodeIT(k, translateLineInfo(c, g, thisModule, n.info),
     loadType(c, g, thisModule, n.typ))
   result.flags = n.flags
@@ -613,7 +621,7 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
     result.sym = loadSym(c, g, thisModule, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
   else:
     for n0 in sonsReadonly(tree, n):
-      result.add loadNodes(c, g, thisModule, tree, n0)
+      result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
 
 proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                     tree: PackedTree; n: NodePos): PNode =
@@ -705,13 +713,11 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
       setLen g[si].syms, g[si].fromDisk.sh.syms.len
 
     if g[si].syms[s.item] == nil:
-      let packed = addr(g[si].fromDisk.sh.syms[s.item])
-
-      if packed.kind != skModule:
-        result = symHeaderFromPacked(c, g, packed[], si, s.item)
+      if g[si].fromDisk.sh.syms[s.item].kind != skModule:
+        result = symHeaderFromPacked(c, g, g[si].fromDisk.sh.syms[s.item], si, s.item)
         # store it here early on, so that recursions work properly:
         g[si].syms[s.item] = result
-        symBodyFromPacked(c, g, packed[], si, s.item, result)
+        symBodyFromPacked(c, g, g[si].fromDisk.sh.syms[s.item], si, s.item, result)
       else:
         result = g[si].module
         assert result != nil
@@ -745,18 +751,20 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
   else:
     let si = moduleIndex(c, g, thisModule, t)
     assert g[si].status in {loaded, storing}
+    assert t.item > 0
+
     if not g[si].typesInit:
       g[si].typesInit = true
       setLen g[si].types, g[si].fromDisk.sh.types.len
 
     if g[si].types[t.item] == nil:
-      let packed = addr(g[si].fromDisk.sh.types[t.item])
-      result = typeHeaderFromPacked(c, g, packed[], si, t.item)
+      result = typeHeaderFromPacked(c, g, g[si].fromDisk.sh.types[t.item], si, t.item)
       # store it here early on, so that recursions work properly:
       g[si].types[t.item] = result
-      typeBodyFromPacked(c, g, packed[], si, t.item, result)
+      typeBodyFromPacked(c, g, g[si].fromDisk.sh.types[t.item], si, t.item, result)
     else:
       result = g[si].types[t.item]
+    assert result.itemId.item > 0
 
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
