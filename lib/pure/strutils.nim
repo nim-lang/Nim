@@ -1478,11 +1478,11 @@ since (1,3):
       doAssert x == "Hello\n  There\n"
     result = unindent(s, count, " ")
 
-proc dedent*(a: string): string =
-  # pending https://github.com/timotheecour/Nim/issues/521
-  let b = a
-  let i = indentation(b)
-  dedent(a, i)
+  proc dedent*(a: string): string =
+    # pending https://github.com/timotheecour/Nim/issues/521
+    let b = a
+    let i = indentation(b)
+    dedent(a, i)
 
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
   ## Deletes in `s` (must be declared as `var`) the characters at positions
