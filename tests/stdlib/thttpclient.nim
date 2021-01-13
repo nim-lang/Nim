@@ -37,7 +37,7 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
       serverFd.accept().callback = onAccept
   serverFd.accept().callback = onAccept
 
-template testPreparedRequest(req: PreparedRequest) =
+proc testPreparedRequest(req: PreparedRequest) =
   doAssert req.reqMethod == HttpGet
   doAssert $req.url == "http://example.com/"
   let clientAgent = $req.headers["user-agent"]
