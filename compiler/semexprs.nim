@@ -2641,6 +2641,14 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
     for i in 0..<defExpr.safeLen:
       hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
 
+proc getNilType(c: PContext): PType =
+  result = c.nilTypeCache
+  if result == nil:
+    result = newTypeS(tyNil, c)
+    result.size = c.config.target.ptrSize
+    result.align = c.config.target.ptrSize.int16
+    c.nilTypeCache = result
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -2676,7 +2684,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyNil)
+    if result.typ == nil: result.typ = getNilType(c)
   of nkIntLit:
     if result.typ == nil: setIntLitType(c, result)
   of nkInt8Lit:

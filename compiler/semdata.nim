@@ -95,6 +95,7 @@ type
     p*: PProcCon               # procedure context
     intTypeCache*: array[-5..32, PType] # cache some common integer types
                                         # to avoid type allocations
+    nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
