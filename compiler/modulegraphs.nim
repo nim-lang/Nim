@@ -55,16 +55,14 @@ type
     compilerprocs*: TStrTable
     exposed*: TStrTable
     packageTypes*: TStrTable
-    intTypeCache*: array[-5..64, PType]
-    opContains*, opNot*: PSym
     emptyNode*: PNode
     canonTypes*: Table[SigHash, PType]
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}
-    cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API
-    cacheCounters*: Table[string, BiggestInt]
-    cacheTables*: Table[string, BTree[string, PNode]]
+    cacheSeqs*: Table[string, PNode] # state that is shared to support the 'macrocache' API; IC: implemented
+    cacheCounters*: Table[string, BiggestInt] # IC: implemented
+    cacheTables*: Table[string, BTree[string, PNode]] # IC: implemented
     passes*: seq[TPass]
     onDefinition*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
@@ -245,6 +243,8 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
+  # A module ID of -1 means that the symbol is not attached to a module at all,
+  # but to the module graph:
   result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
@@ -259,8 +259,6 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
   initStrTable(result.packageTypes)
-  result.opNot = createMagic(result, "not", mNot)
-  result.opContains = createMagic(result, "contains", mInSet)
   result.emptyNode = newNode(nkEmpty)
   result.cacheSeqs = initTable[string, PNode]()
   result.cacheCounters = initTable[string, BiggestInt]()

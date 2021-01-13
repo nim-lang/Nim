@@ -549,7 +549,7 @@ type
 type
   ModuleStatus* = enum
     undefined,
-    storing,
+    storing,  # state is strictly for stress-testing purposes
     loading,
     loaded,
     outdated
@@ -794,6 +794,7 @@ proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                     fileIdx: FileIndex): bool =
+  # Does the file belong to the fileIdx need to be recompiled?
   let m = int(fileIdx)
   if m >= g.len:
     g.setLen(m+1)
@@ -822,6 +823,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       g[m].status = outdated
       result = true
   of loading, loaded:
+    # For loading: Assume no recompile is required.
     result = false
   of outdated, storing:
     result = true

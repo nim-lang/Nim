@@ -1072,7 +1072,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in 0..<it.len - 1: s.add copyTree(it[j])
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           check.add inExpr
@@ -1085,11 +1085,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             check.add c.graph.emptyNode # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           var notExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          notExpr.add newSymNode(c.graph.opNot, n.info)
+          notExpr.add newSymNode(getSysMagic(c.graph, n.info, "not", mNot), n.info)
           notExpr.add inExpr
           check.add notExpr
           return
@@ -2678,7 +2678,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkNilLit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyNil)
   of nkIntLit:
-    if result.typ == nil: setIntLitType(c.graph, result)
+    if result.typ == nil: setIntLitType(c, result)
   of nkInt8Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt8)
   of nkInt16Lit:

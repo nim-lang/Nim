@@ -22,13 +22,19 @@ proc errorType*(g: ModuleGraph): PType =
   result = newType(tyError, nextTypeId(g.idgen), g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
+proc getIntLitTypeG(g: ModuleGraph; literal: PNode): PType =
+  # we cache some common integer literal types for performance:
+  let ti = getSysType(g, literal.info, tyInt)
+  result = copyType(ti, nextTypeId(g.idgen), ti.owner)
+  result.n = literal
+
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
   result = newIntTypeNode(intVal, n.typ)
   # See bug #6989. 'pred' et al only produce an int literal type if the
   # original type was 'int', not a distinct int etc.
   if n.typ.kind == tyInt:
     # access cache for the int lit type
-    result.typ = getIntLitType(g, result)
+    result.typ = getIntLitTypeG(g, result)
   result.info = n.info
 
 proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode; g: ModuleGraph): PNode =
