@@ -37,6 +37,12 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
       serverFd.accept().callback = onAccept
   serverFd.accept().callback = onAccept
 
+template testPreparedRequest(req: PreparedRequest) =
+  doAssert req.reqMethod == HttpGet
+  doAssert $req.url == "http://example.com/"
+  let clientAgent = $req.headers["user-agent"]
+  doAssert clientAgent.contains("Nim httpclient")
+
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
   var resp = await client.request("http://example.com/", HttpGet)
@@ -44,12 +50,7 @@ proc asyncTest() {.async.} =
   var body = await resp.body
   body = await resp.body # Test caching
   doAssert("<title>Example Domain</title>" in body)
-
-  # PreparedRequest
-  doAssert resp.request.reqMethod == HttpGet
-  doAssert $resp.request.url == "http://example.com/"
-  let clientAgent = $resp.request.headers["user-agent"]
-  doAssert clientAgent.contains("Nim httpclient")
+  testPreparedRequest(resp.request)
 
   resp = await client.request("http://example.com/404")
   doAssert(resp.code.is4xx)
@@ -111,12 +112,7 @@ proc syncTest() =
   var resp = client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
-
-  # PreparedRequest
-  doAssert resp.request.reqMethod == HttpGet
-  doAssert $resp.request.url == "http://example.com/"
-  let clientAgent = $resp.request.headers["user-agent"]
-  doAssert clientAgent.contains("Nim httpclient")
+  testPreparedRequest(resp.request)
 
   resp = client.request("http://example.com/404")
   doAssert(resp.code.is4xx)
