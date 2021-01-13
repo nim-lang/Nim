@@ -49,7 +49,7 @@ proc parseOid*(str: cstring): Oid =
     inc(i)
 
 template toStringImpl[T: string | cstring](result: var T, oid: Oid) =
-  ## Converts an oid to `str`.
+  ## Stringifies `oid`.
   const hex = "0123456789abcdef"
   const N = 24
 
