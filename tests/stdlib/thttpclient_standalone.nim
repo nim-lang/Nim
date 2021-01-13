@@ -1,11 +1,10 @@
 discard """
   cmd: "nim c --threads:on $file"
-  output: "OK"
 """
 
 import asynchttpserver, httpclient, asyncdispatch
 
-block: # issue #16436
+block: # bug #16436
   proc startServer() {.async.} =
     proc cb(req: Request) {.async.} =
       let headers = { "Content-length": "15"} # Provide invalid content-length
@@ -17,16 +16,8 @@ block: # issue #16436
   proc runClient() {.async.} =
     let c = newAsyncHttpClient(headers = {"Connection": "close"}.newHttpHeaders)
     let r = await c.getContent("http://127.0.0.1:5555")
-    echo r
+    doAssert false, "should fail earlier"
 
   asyncCheck startServer()
-
-  var gotException = false
-  try:
+  doAssertRaises(ProtocolError):
     waitFor runClient()
-  except ProtocolError:
-    gotException = true
-
-  doAssert(gotException)
-
-echo "OK"
