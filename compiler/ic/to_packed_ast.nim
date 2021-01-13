@@ -336,23 +336,10 @@ proc toPackedSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedIte
   assert s.itemId.module >= 0
   result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
 
-proc toSymNode(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
-  ## store a local or remote psym reference in the tree
-  assert n.kind == nkSym
-  template s: PSym = n.sym
-  let id = s.toPackedSym(c, m).item
-  if s.itemId.module == c.thisModule:
-    # it is a symbol that belongs to the module we're currently
-    # packing:
-    ir.addSym(id, toPackedInfo(n.info, c, m))
-  else:
-    # store it as an external module reference:
-    addModuleRef(n, ir, c, m)
-
 proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## serialize a node into the tree
   if n == nil:
-    ir.nodes.add PackedNode(kind: nkNilRodNode, flags: {}, operand: 0)
+    ir.nodes.add PackedNode(kind: nkNilRodNode, flags: {}, operand: 1)
     return
   let info = toPackedInfo(n.info, c, m)
   case n.kind
@@ -364,7 +351,15 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
                             operand: int32 getOrIncl(m.sh.strings, n.ident.s),
                             typeId: toPackedType(n.typ, c, m), info: info)
   of nkSym:
-    toSymNode(n, ir, c, m)
+    if n.sym.itemId.module == c.thisModule:
+      # it is a symbol that belongs to the module we're currently
+      # packing:
+      let id = n.sym.toPackedSym(c, m).item
+      ir.nodes.add PackedNode(kind: nkSym, flags: n.flags, operand: id,
+                              typeId: toPackedType(n.typ, c, m), info: info)
+    else:
+      # store it as an external module reference:
+      addModuleRef(n, ir, c, m)
   of directIntLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
                             operand: int32(n.intVal),
