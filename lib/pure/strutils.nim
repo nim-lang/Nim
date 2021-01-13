@@ -89,6 +89,9 @@ const
     ## All the characters that count as whitespace (space, tab, vertical tab,
     ## carriage return, new line, form feed).
 
+  Punctuation* = {'\33'..'\47', '\58'..'\64', '\91'..'\96', '\123'..'\126'}
+    ## All the characters that count as punctuation (comma, colon, dash etc).
+
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
 
