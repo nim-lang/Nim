@@ -73,6 +73,13 @@ type
     maxFDs: int
 
 func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
+  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
+  ## 
+  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
+  ## was chosen automatically.
+  runnableExamples:
+    let server = newAsyncHttpServer()
+    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
   a.socket
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
@@ -307,11 +314,8 @@ proc processRequest(
         let chunk = await client.recv(bytesToRead)
         request.body.add(chunk)
         # Skip \r\n (chunk terminating bytes per spec)
-        when compileOption("assertions"):
-          let separator = await client.recv(2)
-          assert separator == "\r\n"
-        else:
-          discard await client.recv(2)
+        let separator = await client.recv(2)
+        assert separator == "\r\n"
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:
