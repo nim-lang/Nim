@@ -38,7 +38,7 @@ proc hash*(oid: Oid): Hash =
   result = !$h
 
 proc hexbyte*(hex: char): int {.inline.} =
-  discard handleHexChar(hex, result)
+  result = handleHexChar(hex)
 
 proc parseOid*(str: cstring): Oid =
   ## Parses an OID.
