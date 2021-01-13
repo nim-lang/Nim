@@ -1,6 +1,12 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
+  disabled: "openbsd"
+  disabled: "windows"
 """
+
+#[
+disabled: see https://github.com/timotheecour/Nim/issues/528
+]#
 
 import strutils
 from net import TimeoutError
