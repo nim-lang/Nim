@@ -19,8 +19,14 @@ template genTest(input, expected) =
       sanity = true
       await request.respond(Http200, "Good")
 
+  proc runSleepLoop(server: AsyncHttpServer) {.async.} = 
+    server.listen(Port(0))
+    proc wrapper() = 
+      waitFor server.acceptRequest(handler)
+    asyncdispatch.callSoon wrapper
+
   let server = newAsyncHttpServer()
-  discard server.serve(Port(0), handler)
+  waitFor runSleepLoop(server)
   let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
   let data = postBegin & input
   var socket = newSocket()
