@@ -259,7 +259,6 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
-      # Bit hackish here.
 
       # Send any remaining pending SSL data.
       await sendPendingSslData(socket, flags)
