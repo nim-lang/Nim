@@ -84,9 +84,6 @@
 - Added `httpcore.is1xx` and missing HTTP codes.
 - Added `jsconsole.jsAssert` for JavaScript target.
 
-- Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
-- Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
-
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
