@@ -1,8 +1,5 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
-  exitcode: 0
-  output: "OK"
-  disabled: true
 """
 
 import strutils
@@ -168,5 +165,3 @@ proc ipv6Test() =
 ipv6Test()
 syncTest()
 waitFor(asyncTest())
-
-echo "OK"
