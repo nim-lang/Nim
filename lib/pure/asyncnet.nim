@@ -259,11 +259,9 @@ when defineSsl:
       ErrClearError()
       # Call the desired operation.
       opResult = op
-      # Bit hackish here.
-      # TODO: Introduce an async template transformation pragma?
 
       # Send any remaining pending SSL data.
-      yield sendPendingSslData(socket, flags)
+      await sendPendingSslData(socket, flags)
 
       # If the operation failed, try to see if SSL has some data to read
       # or write.
@@ -321,10 +319,8 @@ template readInto(buf: pointer, size: int, socket: AsyncSocket,
         sslRead(socket.sslHandle, cast[cstring](buf), size.cint))
       res = opResult
   else:
-    var recvIntoFut = asyncdispatch.recvInto(socket.fd.AsyncFD, buf, size, flags)
-    yield recvIntoFut
     # Not in SSL mode.
-    res = recvIntoFut.read()
+    res = await asyncdispatch.recvInto(socket.fd.AsyncFD, buf, size, flags)
   res
 
 template readIntoBuf(socket: AsyncSocket,
