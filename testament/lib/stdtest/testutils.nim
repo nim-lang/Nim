@@ -26,37 +26,15 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
     echo msg2
 
 proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
-  ## returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
-  iterator splitLinesLhs(): string {.closure.} =
-    for line in splitLines(lhs.strip):
-      yield line
-
-  var lhsIter = splitLinesLhs
-  var currentLhs: string = strip(lhsIter())
-
-  while currentLhs.len == 0 and not lhsIter.finished:
-    currentLhs = strip(lhsIter())
-
-  if lhsIter.finished:
-    return true
-
-  var rhs = rhs
-  var pos = find(rhs, currentLhs)
-  if pos < 0:
-    return false
-  else:
-    inc(pos, currentLhs.len)
-    rhs = rhs[pos .. ^1]
-
-  iterator splitLinesRhs(): string {.closure.} =
+  ## Returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+  iterator splitLinesClosure(): string {.closure.} =
     for line in splitLines(rhs.strip):
       yield line
 
-  var rhsIter = splitLinesRhs
-
+  var rhsIter = splitLinesClosure
   var currentLine = strip(rhsIter())
 
-  for line in lhsIter():
+  for line in lhs.strip.splitLines:
     let line = line.strip
     if line.len != 0:
       while line != currentLine:
