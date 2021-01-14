@@ -339,7 +339,7 @@ proc findMainFile(dir: string): string =
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
     if kind == pcFile:
-      if file.endsWith(cfgExt): return file[ .. ^(cfgExt.len+1)] & ".nim"
+      if file.endsWith(cfgExt): return file[0..^(cfgExt.len+1)] & ".nim"
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
