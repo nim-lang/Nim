@@ -36,11 +36,11 @@ Automatic imports
   magic to work.
 
 * `threads <threads.html>`_
-  Basic Nim thread support. **Note**: This is part of the system module. Do not
+  Basic Nim thread support. **Note:** This is part of the system module. Do not
   import it explicitly. Enabled with ``--threads:on``.
 
 * `channels <channels.html>`_
-  Nim message passing support for threads. **Note**: This is part of the
+  Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with ``--threads:on``.
 
 
@@ -104,6 +104,10 @@ Collections
 
 * `heapqueue <heapqueue.html>`_
   Implementation of a heap data structure that can be used as a priority queue.
+
+* `intsets <intsets.html>`_
+  Efficient implementation of a set of ints as a sparse bit set.
+  **Deprecated:** Use the packedsets module instead.
 
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
