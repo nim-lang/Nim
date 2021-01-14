@@ -661,6 +661,13 @@ bar
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
 
+  block: # isPunctAscii
+    doAssert isPunctAscii(',')
+    doAssert isPunctAscii('.')
+    doAssert isPunctAscii(':')
+    doAssert isPunctAscii(';')
+    doAssert(not isPunctAscii('A'))
+
   block: # isEmptyOrWhitespace
     doAssert(isEmptyOrWhitespace(""))
     doAssert(isEmptyOrWhitespace("       "))

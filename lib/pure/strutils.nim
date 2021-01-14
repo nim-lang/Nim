@@ -89,7 +89,7 @@ const
     ## All the characters that count as whitespace (space, tab, vertical tab,
     ## carriage return, new line, form feed).
 
-  Punctuation* = {'\33'..'\47', '\58'..'\64', '\91'..'\96', '\123'..'\126'}
+  Punctuation* = {'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
     ## All the characters that count as punctuation (comma, colon, dash etc).
 
   Letters* = {'A'..'Z', 'a'..'z'}
@@ -160,6 +160,14 @@ func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
     doAssert isSpaceAscii(' ') == true
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
+
+func isPunctAscii*(c: char): bool {.rtl, extern: "nsuIsPunctAsciiChar".} =
+  ## Checks whether or not `c` is a punctuation character.
+  runnableExamples:
+    doAssert isPunctAscii(',') == false
+    doAssert isPunctAscii('.') == true
+    doAssert isPunctAscii(':') == true
+  return c in Punctuation
 
 func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
