@@ -751,7 +751,8 @@ proc typeHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   result = PType(itemId: ItemId(module: si, item: t.nonUniqueId), kind: t.kind,
                 flags: t.flags, size: t.size, align: t.align,
                 paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel,
-                uniqueId: ItemId(module: si, item: item))
+                uniqueId: ItemId(module: si, item: item),
+                callConv: t.callConv)
 
 proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =
