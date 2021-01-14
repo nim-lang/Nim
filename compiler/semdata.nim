@@ -93,6 +93,9 @@ type
     imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
+    intTypeCache*: array[-5..32, PType] # cache some common integer types
+                                        # to avoid type allocations
+    nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
@@ -149,16 +152,55 @@ type
     isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
-    typesWithOps*: seq[(PType, PType)] #\
-      # We need to instantiate the type bound ops lazily after
-      # the generic type has been constructed completely. See
-      # tests/destructor/topttree.nim for an example that
-      # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
+
+proc getIntLitType*(c: PContext; literal: PNode): PType =
+  # we cache some common integer literal types for performance:
+  let value = literal.intVal
+  if value >= low(c.intTypeCache) and value <= high(c.intTypeCache):
+    result = c.intTypeCache[value.int]
+    if result == nil:
+      let ti = getSysType(c.graph, literal.info, tyInt)
+      result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+      result.n = literal
+      c.intTypeCache[value.int] = result
+  else:
+    let ti = getSysType(c.graph, literal.info, tyInt)
+    result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+    result.n = literal
+
+proc setIntLitType*(c: PContext; result: PNode) =
+  let i = result.intVal
+  case c.config.target.intSize
+  of 8: result.typ = getIntLitType(c, result)
+  of 4:
+    if i >= low(int32) and i <= high(int32):
+      result.typ = getIntLitType(c, result)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 2:
+    if i >= low(int16) and i <= high(int16):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 1:
+    # 8 bit CPUs are insane ...
+    if i >= low(int8) and i <= high(int8):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int16) and i <= high(int16):
+      result.typ = getSysType(c.graph, result.info, tyInt16)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  else:
+    internalError(c.config, result.info, "invalid int size")
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -250,7 +292,6 @@ proc popOptionEntry*(c: PContext) =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyTyped)
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module
@@ -265,7 +306,6 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
-  result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
     let id = module.position

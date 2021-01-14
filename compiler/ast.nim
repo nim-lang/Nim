@@ -223,6 +223,7 @@ type
     nkTupleConstr         # a tuple constructor
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
+    nkNilRodNode          # for .rod file support: a 'nil' PNode
 
   TNodeKinds* = set[TNodeKind]
 
@@ -923,7 +924,7 @@ type
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
     uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # required by the --incremental:on mode.
+                              # is required by the --incremental:on mode.
 
   TPair* = object
     key*, val*: RootRef

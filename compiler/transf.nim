@@ -791,7 +791,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
         while (j < n.len):
           let b = transform(c, n[j])
           if not isConstExpr(b): break
-          a = evalOp(op.magic, n, a, b, nil, c.graph)
+          a = evalOp(op.magic, n, a, b, nil, c.idgen, c.graph)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
@@ -869,7 +869,7 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
         while j < args.len:
           let b = args[j]
           if not isConstExpr(b): break
-          a = evalOp(op.magic, result, a, b, nil, g)
+          a = evalOp(op.magic, result, a, b, nil, idgen, g)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]

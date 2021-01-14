@@ -505,6 +505,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
 proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
   c.idgen = idgen
+  c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr

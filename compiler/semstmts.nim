@@ -537,8 +537,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       typFlags.incl taConcept
     typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
-    when false: liftTypeBoundOps(c, typ, a.info)
-    instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
