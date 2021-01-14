@@ -762,17 +762,23 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `L`. Efficiency: O(1).
   ## This function assumes, for the sake of efficiency, that `n` is contained in `L`,
   ## otherwise the effects are undefined.
-  ## When the list is cyclic, the cycle is preserved after removal,
-  ## see the example for
-  ## `remove proc <#remove,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## When the list is cyclic, the cycle is preserved after removal.
   runnableExamples:
-    var
-      a = initDoublyLinkedList[int]()
-      n = newDoublyLinkedNode[int](5)
-    a.add(n)
-    assert 5 in a
-    a.remove(n)
-    assert 5 notin a
+    import std/[sequtils, enumerate, sugar]
+    var a = [0, 1, 2].toSinglyLinkedList
+    let n = a.head.next
+    doAssert n.value == 1
+    a.remove n
+    doAssert a.toSeq == [0, 2]
+    a.remove n
+    doAssert a.toSeq == [0, 2]
+    a.addMoved a # cycle: [0, 2, 0, 2, ...]
+    a.remove a.head
+    let s = collect:
+      for i, ai in enumerate(a):
+        if i == 4: break
+        ai
+    doAssert s == [2, 2, 2, 2]
 
   if n == L.tail: L.tail = n.prev
   if n == L.head: L.head = n.next

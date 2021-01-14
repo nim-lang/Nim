@@ -227,3 +227,7 @@ block remove: # return value check
   doAssert l.toSeq == [0, 1, 3]
   doAssert l.remove(l.head) == true
   doAssert l.toSeq == [1, 3]
+  doAssert l.remove(l.head.next) == true
+  doAssert l.toSeq == [1]
+  doAssert l.remove(l.head) == true
+  doAssert l.toSeq == []
