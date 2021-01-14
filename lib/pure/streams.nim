@@ -115,27 +115,27 @@ type
     closeImpl*: proc (s: Stream)
       {.nimcall, raises: [Exception, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
     atEndImpl*: proc (s: Stream): bool
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [], gcsafe.}
     setPositionImpl*: proc (s: Stream, pos: int)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [], gcsafe.}
     getPositionImpl*: proc (s: Stream): int
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [], gcsafe.}
 
     readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
     readLineImpl*: proc(s: Stream, line: var TaintedString): bool
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     peekDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [ReadIOEffect], gcsafe.}
     writeDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
     flushImpl*: proc (s: Stream)
-      {.nimcall, raises: [Defect, IOError, OSError], tags: [WriteIOEffect], gcsafe.}
+      {.nimcall, raises: [IOError, OSError], tags: [WriteIOEffect], gcsafe.}
 
 proc flush*(s: Stream) =
   ## Flushes the buffers that the stream `s` might use.

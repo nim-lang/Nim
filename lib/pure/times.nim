@@ -2049,7 +2049,7 @@ template formatValue*(result: var string; value: Time, specifier: string) =
 
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, Defect].} =
+    {.raises: [TimeParseError].} =
   ## Parses ``input`` as a ``DateTime`` using the format specified by ``f``.
   ## If no UTC offset was parsed, then ``input`` is assumed to be specified in
   ## the ``zone`` timezone. If a UTC offset was parsed, the result will be
@@ -2093,7 +2093,7 @@ proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
 
 proc parse*(input, f: string, tz: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale): DateTime
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+    {.raises: [TimeParseError, TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``.
   ##
@@ -2107,13 +2107,13 @@ proc parse*(input, f: string, tz: Timezone = local(),
 
 proc parse*(input: string, f: static[string], zone: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale):
-  DateTime {.raises: [TimeParseError, Defect].} =
+  DateTime {.raises: [TimeParseError].} =
   ## Overload that validates ``f`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone, loc = loc)
 
 proc parseTime*(input, f: string, zone: Timezone): Time
-    {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
+    {.raises: [TimeParseError, TimeFormatParseError].} =
   ## Shorthand for constructing a ``TimeFormat`` and using it to parse
   ## ``input`` as a ``DateTime``, then converting it a ``Time``.
   ##
@@ -2125,7 +2125,7 @@ proc parseTime*(input, f: string, zone: Timezone): Time
   parse(input, f, zone).toTime()
 
 proc parseTime*(input: string, f: static[string], zone: Timezone): Time
-    {.raises: [TimeParseError, Defect].} =
+    {.raises: [TimeParseError].} =
   ## Overload that validates ``format`` at compile time.
   const f2 = initTimeFormat(f)
   result = input.parse(f2, zone).toTime()

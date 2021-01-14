@@ -434,14 +434,16 @@ Annotating procs with raised exceptions
 ---------------------------------------
 
 Through the use of the optional ``{.raises.}`` pragma you can specify that a
-proc is meant to raise a specific set of exceptions, or none at all. If the
-``{.raises.}`` pragma is used, the compiler will verify that this is true. For
-instance, if you specify that a proc raises ``IOError``, and at some point it
+proc is meant to raise a specific set of `CatchableError` exceptions, or none at all. If the
+``{.raises.}`` pragma is used, the compiler will verify that this is true. Note
+that procs are always assumed they can raise a `Defect` so `.raises` shouldn't
+be used for `Defect`'s.
+For instance, if you specify that a proc raises ``IOError``, and at some point it
 (or one of the procs it calls) starts raising a new exception the compiler will
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
+  proc complexProc() {.raises: [IOError].} =
     ...
 
   proc simpleProc() {.raises: [].} =
