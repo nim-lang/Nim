@@ -3,6 +3,7 @@ discard """
 """
 
 import std/strutils
+from std/setutils import toSet
 
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
@@ -17,6 +18,9 @@ template disableVm(body) =
   else: body
 
 template main() =
+  block: # Punctuation
+    doAssert "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".toSet == Punctuation
+
   block: # strip
     doAssert strip("  ha  ") == "ha"
     doAssert strip("  foofoofoo  ") == "foofoofoo"
@@ -660,13 +664,6 @@ bar
     doAssert isSpaceAscii('\t')
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
-
-  block: # isPunctAscii
-    doAssert isPunctAscii(',')
-    doAssert isPunctAscii('.')
-    doAssert isPunctAscii(':')
-    doAssert isPunctAscii(';')
-    doAssert(not isPunctAscii('A'))
 
   block: # isEmptyOrWhitespace
     doAssert(isEmptyOrWhitespace(""))
