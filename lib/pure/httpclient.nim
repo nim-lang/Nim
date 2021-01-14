@@ -1041,7 +1041,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ## You need to make sure that the ``url`` doesn't contain any newline
   ## characters. Failing to do so will raise ``AssertionDefect``.
   ##
-  ## ``headers`` are HTTP headers that override the ``client.headers`` for
+  ## `headers` are HTTP headers that override the `client.headers` for
   ## this specific request only and will not be persisted.
   ##
   ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
