@@ -79,7 +79,7 @@ func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
   ## was chosen automatically.
   runnableExamples:
     from asyncdispatch import Port
-    from asyncnet import getLocalAddr
+    from asyncnet import getLocalAddr, getFd
     from nativesockets import AF_INET
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
