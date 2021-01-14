@@ -22,8 +22,8 @@ runnableExamples:
       bar: string
 
   iterator items(x: Something): int =
-    yield hash(foo)
-    yield hash(bar)
+    yield hash(x.foo)
+    yield hash(x.bar)
 
   proc hash(x: Something): Hash =
     ## Computes a Hash from `x`.
