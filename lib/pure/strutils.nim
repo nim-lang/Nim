@@ -161,14 +161,6 @@ func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
 
-func isPunctAscii*(c: char): bool {.rtl, extern: "nsuIsPunctAsciiChar".} =
-  ## Checks whether or not `c` is a punctuation character.
-  runnableExamples:
-    doAssert isPunctAscii(',') == false
-    doAssert isPunctAscii('.') == true
-    doAssert isPunctAscii(':') == true
-  return c in Punctuation
-
 func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
