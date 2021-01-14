@@ -1400,7 +1400,7 @@ proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
     let avail = waitFor(socket, waited, timeout, size-read, "recv")
     var d = cast[cstring](data)
     assert avail <= size-read
-    result = recv(socket, addr(d[read]), avail)
+    result = recv(socket, addr(d[read]), size-read)
     if result == 0: break
     if result < 0:
       return result
