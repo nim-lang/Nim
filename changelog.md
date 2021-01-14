@@ -72,6 +72,8 @@
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 
+- Added `jsbigints` module, arbitrary precision integers for JavaScript target.
+
 - Added `math.copySign`.
 - Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
   and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
