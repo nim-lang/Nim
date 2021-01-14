@@ -415,7 +415,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
-proc toPackedNodeIgnoreProcDefs*(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
+proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
   case n.kind
   of routineDefs:
     # we serialize n[namePos].sym instead
@@ -423,6 +423,9 @@ proc toPackedNodeIgnoreProcDefs*(n: PNode, encoder: var PackedEncoder; m: var Pa
       discard storeSym(n[namePos].sym, encoder, m)
     else:
       toPackedNode(n, m.topLevel, encoder, m)
+  of nkStmtList, nkStmtListExpr:
+    for it in n:
+      toPackedNodeIgnoreProcDefs(it, encoder, m)
   else:
     toPackedNode(n, m.topLevel, encoder, m)
 
@@ -888,6 +891,19 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   let pos = g[mId].fromDisk.sh.syms[s.itemId.item].ast
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, mId, g[mId].fromDisk.bodies, NodePos pos)
+
+proc checkForHoles(m: PackedModule; config: ConfigRef; moduleId: int) =
+  var bugs = 0
+  for i in 1 .. high(m.sh.syms):
+    if m.sh.syms[i].kind == skUnknown:
+      echo "EMPTY ID ", i, " module ", moduleId, " ", toFullPath(config, FileIndex(moduleId))
+      inc bugs
+  assert bugs == 0
+  when false:
+    var nones = 0
+    for i in 1 .. high(m.sh.types):
+      inc nones, m.sh.types[i].kind == tyNone
+    assert nones < 1
 
 proc simulateLoadedModule*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                            moduleSym: PSym; m: PackedModule) =

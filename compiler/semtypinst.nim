@@ -432,7 +432,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # adding myseq for myseq[system.int]
     # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
     #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
-    #cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
@@ -641,23 +640,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
-
-template typeBound(c, newty, oldty, field, info) =
-  let opr = newty.attachedOps[field]
-  if opr != nil and sfFromGeneric notin opr.flags:
-    # '=' needs to be instantiated for generics when the type is constructed:
-    #echo "DESTROY: instantiating ", astToStr(field), " for ", typeToString(oldty)
-    newty.attachedOps[field] = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
-
-proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
-  var i = 0
-  while i < c.typesWithOps.len:
-    let (newty, oldty) = c.typesWithOps[i]
-    typeBound(c, newty, oldty, attachedDestructor, info)
-    typeBound(c, newty, oldty, attachedSink, info)
-    typeBound(c, newty, oldty, attachedAsgn, info)
-    inc i
-  setLen(c.typesWithOps, 0)
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =

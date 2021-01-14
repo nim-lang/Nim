@@ -924,7 +924,7 @@ type
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
     uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # required by the --incremental:on mode.
+                              # is required by the --incremental:on mode.
 
   TPair* = object
     key*, val*: RootRef

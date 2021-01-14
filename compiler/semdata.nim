@@ -152,11 +152,6 @@ type
     isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
-    typesWithOps*: seq[(PType, PType)] #\
-      # We need to instantiate the type bound ops lazily after
-      # the generic type has been constructed completely. See
-      # tests/destructor/topttree.nim for an example that
-      # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
@@ -311,7 +306,6 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
-  result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
     let id = module.position
