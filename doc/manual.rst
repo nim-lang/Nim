@@ -247,7 +247,7 @@ Multiline documentation comments also exist and support nesting too:
 .. code-block:: nim
   proc foo =
     ##[Long documentation comment
-    here.
+       here.
     ]##
 
 
