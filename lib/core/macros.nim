@@ -1437,12 +1437,9 @@ when defined(nimVmEqIdent):
     ## these nodes will be unwrapped.
 
 else:
-  from std/private/strimpl import cmpIgnoreStyleImpl
-  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
-  proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-    cmpIgnoreStyleImpl(a, b, true)
+  from std/private/strimpl import cmpNimIdentifier
 
-  proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+  proc eqIdent*(a, b: string): bool = cmpNimIdentifier(a, b) == 0
     ## Check if two idents are equal.
 
   proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =

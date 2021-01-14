@@ -221,6 +221,8 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
+    nkReplayAction        # for .rod file support: A replay action
 
   TNodeKinds* = set[TNodeKind]
 
@@ -1137,6 +1139,9 @@ proc add*(father, son: Indexable) =
   assert son != nil
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
+  father.sons.add(son)
+
+proc addAllowNil*(father, son: Indexable) {.inline.} =
   father.sons.add(son)
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]

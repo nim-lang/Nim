@@ -21,6 +21,8 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
+from ic / to_packed_ast import rodViewer
+
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 
@@ -157,6 +159,10 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     closeLexer(L)
   else:
     rawMessage(config, errGenerated, "cannot open file: " & f.string)
+
+proc commandView(graph: ModuleGraph) =
+  let f = toAbsolute(mainCommandArg(graph.config), AbsoluteDir getCurrentDir()).addFileExt(RodExt)
+  rodViewer(f, graph.config, graph.cache)
 
 const
   PrintRopeCacheStats = false
@@ -311,10 +317,10 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of cmdScan:
+  of cmdRod:
     wantMainModule(conf)
-    commandScan(cache, conf)
-    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
+    commandView(graph)
+    #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard

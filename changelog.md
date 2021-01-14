@@ -46,8 +46,8 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
-- ``--gc:orc`` is now 10% faster than previously for common workloads. If
-  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+- `--gc:orc` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
@@ -84,9 +84,6 @@
 - Added `httpcore.is1xx` and missing HTTP codes.
 - Added `jsconsole.jsAssert` for JavaScript target.
 
-- Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
-- Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
-
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
@@ -96,10 +93,19 @@
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
 
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
 
 
 
 - Added `math.signbit`.
+
+- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
 ## Language changes
 

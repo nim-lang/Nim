@@ -418,7 +418,7 @@ proc parseCommand*(command: string): Command =
   of "gendepend": cmdGendepend
   of "dump": cmdDump
   of "parse": cmdParse
-  of "scan": cmdScan
+  of "rod": cmdRod
   of "secret": cmdInteractive
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
@@ -800,8 +800,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "help", "h":
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
-  of "symbolfiles": discard "ignore for backwards compat"
-  of "incremental", "ic":
+  of "symbolfiles", "incremental", "ic":
     if pass in {passCmd2, passPP}:
       case arg.normalize
       of "on": conf.symbolFiles = v2Sf
@@ -809,6 +808,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
       of "v2": conf.symbolFiles = v2Sf
+      of "stress": conf.symbolFiles = stressTest
       else: localError(conf, info, "invalid option for --incremental: " & arg)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)

@@ -1,9 +1,12 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
-  exitcode: 0
-  output: "OK"
-  disabled: true
+  disabled: "openbsd"
+  disabled: "windows"
 """
+
+#[
+disabled: see https://github.com/timotheecour/Nim/issues/528
+]#
 
 import strutils
 from net import TimeoutError
@@ -168,5 +171,3 @@ proc ipv6Test() =
 ipv6Test()
 syncTest()
 waitFor(asyncTest())
-
-echo "OK"

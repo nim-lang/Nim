@@ -16,9 +16,6 @@ import std / [hashes, tables, strtabs, md5]
 import bitabs
 import ".." / [ast, options]
 
-const
-  nkModuleRef* = nkNone # pair of (ModuleId, SymId)
-
 type
   SymId* = distinct int32
   ModuleId* = distinct int32
@@ -310,7 +307,7 @@ template typ*(n: NodePos): PackedItemId =
 template flags*(n: NodePos): TNodeFlags =
   tree.nodes[n.int].flags
 
-proc span(tree: PackedTree; pos: int): int {.inline.} =
+proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
 proc sons2*(tree: PackedTree; n: NodePos): (NodePos, NodePos) =
@@ -471,68 +468,3 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
-
-  proc hash*(table: StringTableRef): Hash =
-    ## XXX: really should be introduced into strtabs...
-    var h: Hash = 0
-    for pair in pairs table:
-      h = h !& hash(pair)
-    result = !$h
-
-  proc hash*(config: ConfigRef): Hash =
-    ## XXX: vet and/or extend this
-    var h: Hash = 0
-    h = h !& hash(config.selectedGC)
-    h = h !& hash(config.features)
-    h = h !& hash(config.legacyFeatures)
-    h = h !& hash(config.configVars)
-    h = h !& hash(config.symbols)
-    result = !$h
-
-  # XXX: lazy hashes for now
-  type
-    LazyHashes = PackedSym or PackedType or PackedLib or
-                PackedLineInfo or PackedTree or PackedNode
-
-  proc hash*(sh: Shared): Hash
-  proc hash*(s: LazyHashes): Hash
-  proc hash*(s: seq[LazyHashes]): Hash
-
-  proc hash*(s: LazyHashes): Hash =
-    var h: Hash = 0
-    for k, v in fieldPairs(s):
-      h = h !& hash((k, v))
-    result = !$h
-
-  proc hash*(s: seq[LazyHashes]): Hash =
-    ## critically, we need to hash the indices alongside their values
-    var h: Hash = 0
-    for i, n in pairs s:
-      h = h !& hash((i, n))
-    result = !$h
-
-  proc hash*(sh: Shared): Hash =
-    ## might want to edit this...
-    # XXX: these have too many references
-    when false:
-      var h: Hash = 0
-      h = h !& hash(sh.syms)
-      h = h !& hash(sh.types)
-      h = h !& hash(sh.strings)
-      h = h !& hash(sh.integers)
-      h = h !& hash(sh.floats)
-      h = h !& hash(sh.config)
-      result = !$h
-
-  proc hash*(m: Module): Hash =
-    var h: Hash = 0
-    h = h !& hash(m.name)
-    h = h !& hash(m.ast)
-    result = !$h
-
-  template safeItemId*(x: typed; f: untyped): ItemId =
-    ## yield a valid ItemId value for the field of a nillable type
-    if x.isNil:
-      nilItemId
-    else:
-      x.`f`

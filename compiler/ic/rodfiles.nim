@@ -26,13 +26,14 @@ type
     methodsSection
     pureEnumsSection
     macroUsagesSection
+    toReplaySection
     topLevelSection
     bodiesSection
     symsSection
     typesSection
 
   RodFileError* = enum
-    ok, tooBig, ioFailure, wrongHeader, wrongSection, configMismatch,
+    ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
     includeFileChanged
 
   RodFile* = object
@@ -146,10 +147,10 @@ proc loadSection*(f: var RodFile; expected: RodSection) =
 
 proc create*(filename: string): RodFile =
   if not open(result.f, filename, fmWrite):
-    setError result, ioFailure
+    setError result, cannotOpen
 
 proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   if not open(result.f, filename, fmRead):
-    setError result, ioFailure
+    setError result, cannotOpen

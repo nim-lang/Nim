@@ -108,7 +108,8 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
+  result = true
+  #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
 proc partOfStdlib(x: PSym): bool =
   var it = x.owner
