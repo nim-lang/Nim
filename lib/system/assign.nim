@@ -122,8 +122,10 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       #     var tbObj = TB(p)
       #     tbObj of TC # needs to be false!
       #c_fprintf(stdout, "%s %s\n", pint[].name, mt.name)
-      let srcType = cast[ptr PNimType](src)[] # object is not initialized properly(for example std/times.DateTime)
+      let srcType = cast[ptr PNimType](src)[]
       if srcType != nil:
+        # `!= nil` needed because of cases where object is not initialized properly (see bug #16706)
+        # note that you can have `srcType == nil` yet `src != nil`
         chckObjAsgn(srcType, mt)
       pint[] = mt # cast[ptr PNimType](src)[]
   of tyTuple:
