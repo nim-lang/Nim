@@ -1,4 +1,5 @@
 discard """
+  matrix: "--hint:processing"
   nimout: '''
 compile start
 ..
