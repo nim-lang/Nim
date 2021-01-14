@@ -41,9 +41,13 @@ runnableExamples("-r:off"):
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+from nativesockets import getLocalAddr, AF_INET
 import std/private/since
 
 export httpcore except parseHeader
+
+since (1, 5, 1):
+  export Port
 
 const
   maxLine = 8*1024
@@ -70,17 +74,27 @@ type
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
 
+proc getPort*(a: AsyncHttpServer): Port {.since: (1, 5, 1).} =
+  ## Returns the port `a` was bound do to.
+  ## Useful when `listen(Port(0))` was called which assigns a port automatically.
+  runnableExamples:
+    let server = newAsyncHttpServer()
+    server.listen(Port(0))
+    doAssert server.getPort.uint16 > 0
+    server.close()
+  result = getLocalAddr(a.socket.getFd, AF_INET)[1]
+
 func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
   ## Returns the `AsyncHttpServer`s internal `AsyncSocket` instance.
   ## 
   ## Useful for identifying what port the AsyncHttpServer is bound to, if it
   ## was chosen automatically.
   runnableExamples:
-    from std/asyncdispatch import Port
     from std/asyncnet import getFd
     from std/nativesockets import getLocalAddr, AF_INET
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
+    # note: a more direct way to get the port is `getPort`.
     let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
     doAssert uint16(port) > 0
     server.close()
