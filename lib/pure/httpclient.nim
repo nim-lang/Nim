@@ -843,8 +843,11 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       client.bodyStream = newFutureStream[string]("parseResponse")
       result.bodyStream = client.bodyStream
       assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
+      # do not wait here for the body request to complete
       client.parseBodyFut = parseBody(client, result.headers, result.version)
-        # do not wait here for the body request to complete
+      client.parseBodyFut.addCallback do():
+        if client.parseBodyFut.failed:
+          client.bodyStream.fail(client.parseBodyFut.error)
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -1177,13 +1180,16 @@ proc downloadFile*(client: AsyncHttpClient, url: string,
 
     client.bodyStream = newFutureStream[string]("downloadFile")
     var file = openAsync(filename, fmWrite)
+    defer: file.close()
     # Let `parseBody` write response data into client.bodyStream in the
     # background.
-    asyncCheck parseBody(client, resp.headers, resp.version)
+    let parseBodyFut = parseBody(client, resp.headers, resp.version)
+    parseBodyFut.addCallback do():
+      if parseBodyFut.failed:
+        client.bodyStream.fail(parseBodyFut.error)
     # The `writeFromStream` proc will complete once all the data in the
     # `bodyStream` has been written to the file.
     await file.writeFromStream(client.bodyStream)
-    file.close()
 
     if resp.code.is4xx or resp.code.is5xx:
       raise newException(HttpRequestError, resp.status)
