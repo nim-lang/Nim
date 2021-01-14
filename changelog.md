@@ -110,6 +110,14 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+- On POSIX systems, the default signal handlers used for Nim programs (it's
+  used for printing the stacktrace on fatal signals) will now re-raise the
+  signal for the OS default handlers to handle.
+
+  This lets the OS perform its default actions, which might include core
+  dumping (on select signals) and notifying the parent process about the cause
+  of termination.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

@@ -655,7 +655,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # re-raise the signal, which will arrive once this handler exit.
       # this lets the OS perform actions like core dumping and will
       # also return the correct exit code to the shell.
-      c_raise(sign)
+      discard c_raise(sign)
     else:
       quit(1)
 
