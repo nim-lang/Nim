@@ -68,7 +68,7 @@ else:
       line.setLen(0)
       return false
     line = $buffer
-    if line.string.len > 0:
+    if line.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
     result = true
