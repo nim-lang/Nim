@@ -986,7 +986,7 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
     result += abs(y)
 
 func frexp*[T: float32|float64](x: T, exponent: var int): T =
-  ## Split a number into mantissa and exponent.
+  ## Splits a number into mantissa and exponent.
   ##
   ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
   ## and less than 1) and the integer value n such that `x` (the original
