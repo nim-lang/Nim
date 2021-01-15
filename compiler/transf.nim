@@ -534,7 +534,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result[0] = transform(c, n[1])
     elif diff > 0 and diff != high(int):
       result = newTransNode(nkObjDownConv, n, 1)
-      result[0] = transform(c, n[1])      
+      result[0] = transform(c, n[1])
     else:
       result = transform(c, n[1])
       result.typ = n.typ
