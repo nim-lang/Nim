@@ -11,11 +11,6 @@ true
 true
 true
 true
-true
-true
-true
-true
-true
 3
 2
 12
@@ -35,93 +30,68 @@ true
 import jsffi, jsconsole
 
 # Tests for JsObject
-# Test JsObject []= and []
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj["a"] = 11
-    obj["b"] = "test"
-    obj["c"] = "test".cstring
-    working = working and obj["a"].to(int) == 11
-    working = working and obj["c"].to(cstring) == "test".cstring
-    working
-  echo test()
+block: # Test JsObject []= and []
+  let obj = newJsObject()
+  obj["a"] = 11
+  obj["b"] = "test"
+  obj["c"] = "test".cstring
+  doAssert obj["a"].to(int) == 11
+  doAssert obj["c"].to(cstring) == "test".cstring
 
-# Test JsObject .= and .
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 11
-    obj.b = "test"
-    obj.c = "test".cstring
-    obj.`$!&` = 42
-    obj.`while` = 99
-    working = working and obj.a.to(int) == 11
-    working = working and obj.b.to(string) == "test"
-    working = working and obj.c.to(cstring) == "test".cstring
-    working = working and obj.`$!&`.to(int) == 42
-    working = working and obj.`while`.to(int) == 99
-    working
-  echo test()
+block: # Test JsObject .= and .
+  let obj = newJsObject()
+  obj.a = 11
+  obj.b = "test"
+  obj.c = "test".cstring
+  obj.`$!&` = 42
+  obj.`while` = 99
+  doAssert obj.a.to(int) == 11
+  doAssert obj.b.to(string) == "test"
+  doAssert obj.c.to(cstring) == "test".cstring
+  doAssert obj.`$!&`.to(int) == 42
+  doAssert obj.`while`.to(int) == 99
 
-# Test JsObject .()
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
-  echo test()
+block: # Test JsObject .()
+  let obj = newJsObject()
+  obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
+  doAssert obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
 
-# Test JsObject []()
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    obj.a = proc(x, y, z: int, t: string): string = t & $(x + y + z)
-    let call = obj["a"].to(proc(x, y, z: int, t: string): string)
-    call(1, 2, 3, "Result is: ") == "Result is: 6"
-  echo test()
+block: # Test JsObject []()
+  let obj = newJsObject()
+  obj.a = proc(x, y, z: int, t: string): string = t & $(x + y + z)
+  let call = obj["a"].to(proc(x, y, z: int, t: string): string)
+  doAssert call(1, 2, 3, "Result is: ") == "Result is: 6"
 
 # Test JsObject Iterators
-block:
-  proc testPairs(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for k, v in obj.pairs:
-      case $k
-      of "a":
-        working = working and v.to(int) == 10
-      of "b":
-        working = working and v.to(int) == 20
-      of "c":
-        working = working and v.to(int) == 30
-      else:
-        return false
-    working
-  proc testItems(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.items:
-      working = working and v.to(int) in [10, 20, 30]
-    working
-  proc testKeys(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.keys:
-      working = working and $v in ["a", "b", "c"]
-    working
-  proc test(): bool = testPairs() and testItems() and testKeys()
-  echo test()
+block: # testPairs
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for k, v in obj.pairs:
+    case $k
+    of "a":
+      doAssert v.to(int) == 10
+    of "b":
+      doAssert v.to(int) == 20
+    of "c":
+      doAssert v.to(int) == 30
+    else:
+      doAssert false
+block: # testItems
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.items:
+    doAssert v.to(int) in [10, 20, 30]
+block: # testKeys
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.keys:
+    doAssert $v in ["a", "b", "c"]
 
 # Test JsObject equality
 block:
@@ -362,4 +332,3 @@ block: # test **
   doAssert to(`**`(a + a, b), int) == 2
 
   doAssert to(`**`(toJs(1) + toJs(1), toJs(2)), int) == 4
-
