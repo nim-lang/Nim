@@ -35,7 +35,7 @@ runnableExamples:
     # Finish the hash.
     result = !$h
 
-## If your custom types contain fields for which there already is a hash proc,
+## If your custom types contain fields for which there already is a `hash` proc,
 ## you can simply hash together the hash values of the individual fields:
 
 runnableExamples:
@@ -65,13 +65,13 @@ import std/private/since
 
 type
   Hash* = int ## A hash value. Hash tables using these values should
-              ## always have a size of a power of two and can use the `and`
+              ## always have a size of a power of two so they can use the `and`
               ## operator instead of `mod` for truncation of the hash value.
 
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
-  ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` proc for a new datatype.
   let h = cast[uint](h)
   let val = cast[uint](val)
   var res = h + val
@@ -82,7 +82,7 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
 proc `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
-  ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` proc for a new datatype.
   let h = cast[uint](h) # Hash is practically unsigned.
   var res = h + h shl 3
   res = res xor (res shr 11)
@@ -479,7 +479,8 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
 
 
 proc hash*[T: tuple](x: T): Hash =
-  ## Efficient hashing of tuples. The fields must have a hash proc.
+  ## Efficient hashing of tuples.
+  ## There must be a `hash` proc defined for each of the field types.
   for f in fields(x):
     result = result !& hash(f)
   result = !$result
@@ -487,7 +488,7 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  ## The elements must have a hash proc.
+  ## There must be a `hash` proc defined for the element type `A`.
   when A is byte:
     result = murmurHash(x)
   elif A is char:
@@ -503,7 +504,7 @@ proc hash*[A](x: openArray[A]): Hash =
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
   ## position `sPos` to ending position `ePos` (included).
-  ## The elements must have a hash proc.
+  ## There must be a `hash` proc defined for the element type `A`.
   ##
   ## `hash(myBuf, 0, myBuf.high)` is equivalent to `hash(myBuf)`.
   runnableExamples:
@@ -527,7 +528,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
-  ## The elements must have a hash proc.
+  ## There must be a `hash` proc defined for the element type `A`.
   for it in items(x):
     result = result !& hash(it)
   result = !$result
