@@ -160,7 +160,7 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
+iterator decodeQuery*(data: string): tuple[key, value: string] =
   ## Reads and decodes query string `data` and yields the `(key, value)` pairs
   ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`, an
   ## error is raised when there is an unencoded `=` character in a decoded
@@ -197,7 +197,7 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
         i = parseData(data, i, value, '=')
       else:
         i = parseData(data, i, value, '&')
-    yield (name.TaintedString, value.TaintedString)
+    yield (name, value)
     if i < data.len:
       when defined(nimLegacyParseQueryStrict):
         if data[i] != '&':
