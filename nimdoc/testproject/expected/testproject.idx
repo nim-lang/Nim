@@ -1,3 +1,4 @@
+someVariable	testproject.html#someVariable	testproject: someVariable	
 C_A	testproject.html#C_A	testproject: C_A	
 C_B	testproject.html#C_B	testproject: C_B	
 C_C	testproject.html#C_C	testproject: C_C	
@@ -58,3 +59,4 @@ Circle	testproject.html#Circle	Shapes.Circle
 Triangle	testproject.html#Triangle	Shapes.Triangle	
 Rectangle	testproject.html#Rectangle	Shapes.Rectangle	
 Shapes	testproject.html#Shapes	testproject: Shapes	
+anything	testproject.html#anything	testproject: anything()	

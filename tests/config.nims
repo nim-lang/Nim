@@ -8,3 +8,12 @@ switch("path", "$lib/../testament/lib")
 switch("colors", "off")
 switch("listFullPaths", "off")
 switch("excessiveStackTrace", "off")
+
+# for std/unittest
+switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
+switch("define", "nimUnittestColor:off")
+
+switch("define", "nimLegacyTypeMismatch")
+
+hint("Processing", off)
+  # dots can cause annoyances; instead, a single test can test `hintProcessing`

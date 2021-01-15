@@ -96,7 +96,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## defined.
   ##
   ## `x` is an external symbol introduced through the compiler's
-  ## `-d:x switch <nimc.html#compiler-usage-compile-time-symbols>`_ to enable
+  ## `-d:x switch <nimc.html#compiler-usage-compileminustime-symbols>`_ to enable
   ## build time conditionals:
   ##
   ## .. code-block:: Nim
@@ -627,7 +627,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ## the sequence instead of adding them. Example:
   ##
   ## .. code-block:: Nim
-  ##   var inputStrings : seq[string]
+  ##   var inputStrings: seq[string]
   ##   newSeq(inputStrings, 3)
   ##   assert len(inputStrings) == 3
   ##   inputStrings[0] = "The fourth"
@@ -701,18 +701,24 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
   ##   var str = "Hello world!"
   ##   echo len(str) # => 12
 
-proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-  ## Returns the length of a compatible string. This is sometimes
-  ## an O(n) operation.
+proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
+  ## Returns the length of a compatible string. This is an O(n) operation except
+  ## in js at runtime.
   ##
   ## **Note:** On the JS backend this currently counts UTF-16 code points
   ## instead of bytes at runtime (not at compile time). For now, if you
   ## need the byte length of the UTF-8 encoding, convert to string with
   ## `$` first then call `len`.
-  ##
-  ## .. code-block:: Nim
-  ##   var str: cstring = "Hello world!"
-  ##   len(str) # => 12
+  runnableExamples:
+    doAssert len(cstring"abc") == 3
+    doAssert len(cstring r"ab\0c") == 5 # \0 is escaped
+    doAssert len(cstring"ab\0c") == 5 # ditto
+    var a: cstring = "ab\0c"
+    when defined(js): doAssert a.len == 4 # len ignores \0 for js
+    else: doAssert a.len == 2 # \0 is a null terminator
+    static:
+      var a2: cstring = "ab\0c"
+      doAssert a2.len == 2 # \0 is a null terminator, even in js vm
 
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ## Returns the length of an array or an array type.
@@ -873,9 +879,9 @@ else:
   template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
-  ## Useful for ``disarming`` dangling pointers explicitly for the
-  ## --newruntime. Regardless of whether --newruntime is used or not
-  ## this sets the pointer or callback ``x`` to ``nil``. This is an
+  ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
+  ## Regardless of whether `--newruntime` is used or not
+  ## this sets the pointer or callback `x` to `nil`. This is an
   ## experimental API!
   x = nil
 
@@ -1068,7 +1074,7 @@ const
     ## Possible values:
     ## `"i386"`, `"alpha"`, `"powerpc"`, `"powerpc64"`, `"powerpc64el"`,
     ## `"sparc"`, `"amd64"`, `"mips"`, `"mipsel"`, `"arm"`, `"arm64"`,
-    ## `"mips64"`, `"mips64el"`, `"riscv64"`.
+    ## `"mips64"`, `"mips64el"`, `"riscv32"`, `"riscv64"`.
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1152,7 +1158,7 @@ when defined(nimdoc):
     ## Stops the program immediately with an exit code.
     ##
     ## Before stopping the program the "exit procedures" are called in the
-    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc>`_.
+    ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
     ## ``quit`` never returns and ignores any exception that may have been raised
     ## by the quit procedures.  It does *not* call the garbage collector to free
     ## all the memory, unless a quit procedure calls `GC_fullCollect
@@ -1215,7 +1221,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-when defined(gcDestructors):
+when false: # defined(gcDestructors):
   proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
     ## Generic proc for adding a container `y` to a container `x`.
     ##
@@ -1225,7 +1231,7 @@ when defined(gcDestructors):
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1250,7 +1256,7 @@ else:
     ## respected.
     ##
     ## See also:
-    ## * `& proc <#&,seq[T][T],seq[T][T]>`_
+    ## * `& proc <#&,seq[T],seq[T]>`_
     ##
     ## .. code-block:: Nim
     ##   var s: seq[string] = @["test2","test2"]
@@ -1274,7 +1280,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(1)` operation.
   ##
   ## See also:
-  ## * `delete <#delete,seq[T][T],Natural>`_ for preserving the order
+  ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1289,7 +1295,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(n)` operation.
   ##
   ## See also:
-  ## * `del <#delete,seq[T][T],Natural>`_ for O(1) operation
+  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -1522,10 +1528,26 @@ include "system/iterators_1"
 
 {.push stackTrace: off.}
 
-proc abs*(x: float64): float64 {.noSideEffect, inline.} =
-  if x < 0.0: -x else: x
-proc abs*(x: float32): float32 {.noSideEffect, inline.} =
-  if x < 0.0: -x else: x
+
+when defined(js):
+  proc js_abs[T: SomeNumber](x: T): T {.importc: "Math.abs".}
+else:
+  proc c_fabs(x: cdouble): cdouble {.importc: "fabs", header: "<math.h>".}
+  proc c_fabsf(x: cfloat): cfloat {.importc: "fabsf", header: "<math.h>".}
+
+proc abs*[T: float64 | float32](x: T): T {.noSideEffect, inline.} =
+  when nimvm:
+    if x < 0.0: result = -x
+    elif x == 0.0: result = 0.0 # handle 0.0, -0.0
+    else: result = x # handle NaN, > 0
+  else:
+    when defined(js): result = js_abs(x)
+    else:
+      when T is float64:
+        result = c_fabs(x)
+      else:
+        result = c_fabsf(x)
+
 proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
   if x <= y or y != y: x else: y
 proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
@@ -1575,7 +1597,7 @@ proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
   ##
   ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
+  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1602,7 +1624,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1618,7 +1640,7 @@ when defined(nimSeqsV2):
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -1647,7 +1669,7 @@ else:
     ## Requires copying of the sequences.
     ##
     ## See also:
-    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T],openArray[T]>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
@@ -1663,7 +1685,7 @@ else:
     ## Requires copying of the sequence.
     ##
     ## See also:
-    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ## * `add(var seq[T], T) <#add,seq[T],sinkT>`_
     ##
     ## .. code-block:: Nim
     ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
@@ -2029,15 +2051,15 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## <typeinfo.html>`_ instead.
 
 {.push stackTrace: off.}
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int): int {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int8): int8 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int16): int16 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int32): int32 {.magic: "AbsI", inline.} =
   if x < 0: -x else: x
-proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int64): int64 {.magic: "AbsI", inline.} =
   ## Returns the absolute value of `x`.
   ##
   ## If `x` is ``low(x)`` (that is -MININT for its type),
@@ -2182,6 +2204,8 @@ when notJSnotNims:
       memTrackerOp("moveMem", dest, size)
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
+  proc cmpMem(a, b: pointer, size: Natural): int =
+    nimCmpMem(a, b, size)
 
 when not defined(js):
   proc cmp(x, y: string): int =
@@ -2376,32 +2400,35 @@ when notJSnotNims:
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClP_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClP_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
-    {.emit: """
-    `result` = `x`.ClE_0;
-    """.}
+    when T is "closure":
+      {.emit: """
+      `result` = `x`.ClE_0;
+      """.}
+    else:
+      {.error: "Only closure function and iterator are allowed!".}
 
   proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-    ## can be used to determine if a first class iterator has finished.
-    {.emit: """
-    `result` = ((NI*) `x`.ClE_0)[1] < 0;
-    """.}
+    ## It can be used to determine if a first class iterator has finished.
+    when T is "iterator":
+      {.emit: """
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
+      """.}
+    else:
+      {.error: "Only closure iterator is allowed!".}
 
 when defined(js):
-  when not defined(nimscript):
-    include "system/jssys"
-    include "system/reprjs"
-  else:
-    proc cmp(x, y: string): int =
-      if x == y: return 0
-      if x < y: return -1
-      return 1
+  include "system/jssys"
+  include "system/reprjs"
 
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
@@ -2950,7 +2977,7 @@ template closureScope*(body: untyped): untyped =
   ## their current iteration values.
   ##
   ## Note: This template may not work in some cases, use
-  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ## `capture <sugar.html#capture.m,varargs[typed],untyped>`_ instead.
   ##
   ## Example:
   ##

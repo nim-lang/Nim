@@ -19,7 +19,9 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+
+from ic / to_packed_ast import rodViewer
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -31,9 +33,9 @@ proc semanticPasses(g: ModuleGraph) =
 proc writeDepsFile(g: ModuleGraph) =
   let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
   let f = open(fname.string, fmWrite)
-  for m in g.modules:
-    if m != nil:
-      f.writeLine(toFullPath(g.config, m.position.FileIndex))
+  for m in g.ifaces:
+    if m.module != nil:
+      f.writeLine(toFullPath(g.config, m.module.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
       f.writeLine(toFullPath(g.config, k))
@@ -137,8 +139,9 @@ proc commandInteractive(graph: ModuleGraph) =
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    var idgen = IdGenerator(module: m.itemId.module, item: m.itemId.item)
-    processModule(graph, m, idgen, llStreamOpenStdIn())
+    var idgen = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
+    let s = llStreamOpenStdIn(onPrompt = proc() = flushDot(graph.config))
+    processModule(graph, m, idgen, s)
 
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
@@ -157,6 +160,10 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
   else:
     rawMessage(config, errGenerated, "cannot open file: " & f.string)
 
+proc commandView(graph: ModuleGraph) =
+  let f = toAbsolute(mainCommandArg(graph.config), AbsoluteDir getCurrentDir()).addFileExt(RodExt)
+  rodViewer(f, graph.config, graph.cache)
+
 const
   PrintRopeCacheStats = false
 
@@ -164,7 +171,6 @@ proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
 
-  setupModuleCache(graph)
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses(graph)
   conf.lastCmdTime = epochTime()
@@ -192,8 +198,6 @@ proc mainCommand*(graph: ModuleGraph) =
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
     of backendInvalid: doAssert false
-    if conf.selectedGC in {gcArc, gcOrc} and conf.backend != backendCpp:
-      conf.exc = excGoto
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
@@ -213,18 +217,17 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       body
 
-  block: ## command prepass
-    if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
-    if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
-    if conf.outDir.isEmpty:
-      # doc like commands can generate a lot of files (especially with --project)
-      # so by default should not end up in $PWD nor in $projectPath.
-      conf.outDir = block:
-        var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-                  else: conf.projectPath
-        doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
-        if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
-        ret
+  ## command prepass
+  if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
+  if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
+  if conf.outDir.isEmpty:
+    # doc like commands can generate a lot of files (especially with --project)
+    # so by default should not end up in $PWD nor in $projectPath.
+    var ret = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
+              else: conf.projectPath
+    doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
+    if conf.cmd in cmdDocLike + {cmdRst2html, cmdRst2tex}: ret = ret / htmldocsDir
+    conf.outDir = ret
 
   ## process all commands
   case conf.cmd
@@ -314,10 +317,10 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of cmdScan:
+  of cmdRod:
     wantMainModule(conf)
-    commandScan(cache, conf)
-    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
+    commandView(graph)
+    #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard

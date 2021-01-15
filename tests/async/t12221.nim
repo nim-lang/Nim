@@ -5,9 +5,9 @@ proc doubleSleep(hardSleep: int) {.async.} =
   sleep(hardSleep)
 
 template assertTime(target, timeTook: float): untyped {.dirty.} =
-  assert(timeTook*1000 > target - 1000, "Took too short, should've taken " &
+  doAssert(timeTook*1000 > target - 1000, "Took too short, should've taken " &
     $target & "ms, but took " & $(timeTook*1000) & "ms")
-  assert(timeTook*1000 < target + 1000, "Took too long, should've taken " &
+  doAssert(timeTook*1000 < target + 1000, "Took too long, should've taken " &
     $target & "ms, but took " & $(timeTook*1000) & "ms")
 
 var

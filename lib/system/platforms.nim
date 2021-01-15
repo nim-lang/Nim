@@ -33,7 +33,8 @@ type
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
     avr,                       ## AVR based processor
     msp430,                    ## TI MSP430 microcontroller
-    riscv64                    ## RISC-V 64-bit processor
+    riscv32,                   ## RISC-V 32-bit processor
+    riscv64,                   ## RISC-V 64-bit processor
     wasm32                     ## WASM, 32-bit
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
@@ -91,6 +92,7 @@ const
                elif defined(vm): CpuPlatform.vm
                elif defined(avr): CpuPlatform.avr
                elif defined(msp430): CpuPlatform.msp430
+               elif defined(riscv32): CpuPlatform.riscv32
                elif defined(riscv64): CpuPlatform.riscv64
                elif defined(wasm32): CpuPlatform.wasm32
                else: CpuPlatform.none

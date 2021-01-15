@@ -813,7 +813,7 @@ proc toRunes*(s: string): seq[Rune] =
   ## Obtains a sequence containing the Runes in ``s``.
   ##
   ## See also:
-  ## * `$ proc <#$,seq[T][Rune]>`_ for a reverse operation
+  ## * `$ proc <#$,Rune>`_ for a reverse operation
   runnableExamples:
     let a = toRunes("aáä")
     doAssert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]

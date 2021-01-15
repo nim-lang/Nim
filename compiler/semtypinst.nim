@@ -279,7 +279,7 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym =
       var g: G[string]
 
   ]#
-  result = copySym(s, nextId cl.c.idgen)
+  result = copySym(s, nextSymId cl.c.idgen)
   incl(result.flags, sfFromGeneric)
   #idTablePut(cl.symMap, s, result)
   result.owner = s.owner
@@ -305,7 +305,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if cl.allowMetaTypes:
     result = t.exactReplica
   else:
-    result = copyType(t, nextId(cl.c.idgen), t.owner)
+    result = copyType(t, nextTypeId(cl.c.idgen), t.owner)
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return
@@ -360,7 +360,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     header = instCopyType(cl, t)
 
-  result = newType(tyGenericInst, nextId(cl.c.idgen), t[0].owner)
+  result = newType(tyGenericInst, nextTypeId(cl.c.idgen), t[0].owner)
   result.flags = header.flags
   # be careful not to propagate unnecessary flags here (don't use rawAddSon)
   result.sons = @[header[0]]
@@ -432,7 +432,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # adding myseq for myseq[system.int]
     # sigmatch: Formal myseq[=destroy.T] real myseq[system.int]
     #echo "DESTROY: adding ", typeToString(newbody), " for ", typeToString(result, preferDesc)
-    #cl.c.typesWithOps.add((newbody, result))
     let mm = skipTypes(bbody, abstractPtrs)
     if tfFromGeneric notin mm.flags:
       # bug #5479, prevent endless recursions here:
@@ -641,23 +640,6 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         # Invalidate the type size as we may alter its structure
         result.size = -1
         result.n = replaceObjBranches(cl, result.n)
-
-template typeBound(c, newty, oldty, field, info) =
-  let opr = newty.attachedOps[field]
-  if opr != nil and sfFromGeneric notin opr.flags:
-    # '=' needs to be instantiated for generics when the type is constructed:
-    #echo "DESTROY: instantiating ", astToStr(field), " for ", typeToString(oldty)
-    newty.attachedOps[field] = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
-
-proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
-  var i = 0
-  while i < c.typesWithOps.len:
-    let (newty, oldty) = c.typesWithOps[i]
-    typeBound(c, newty, oldty, attachedDestructor, info)
-    typeBound(c, newty, oldty, attachedSink, info)
-    typeBound(c, newty, oldty, attachedAsgn, info)
-    inc i
-  setLen(c.typesWithOps, 0)
 
 proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =

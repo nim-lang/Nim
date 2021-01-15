@@ -48,7 +48,7 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:danger`` or ``--assertions:off``
-  ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
+  ## `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
   ##
   ## .. code-block:: nim
   ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"

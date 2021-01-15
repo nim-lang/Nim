@@ -1,0 +1,3 @@
+
+import mforwarded_pure_enum2
+export mforwarded_pure_enum2.PureEnum

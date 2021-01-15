@@ -22,6 +22,9 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added an overload for the `collect` macro that inferes the container type based
+  on the syntax of the last expression. Works with std seqs, tables and sets.
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
@@ -31,15 +34,20 @@
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
+- various functions in `httpclient` now accept `url` of type `Uri`. Moreover `request` function's
+  `httpMethod` argument of type `string` was deprecated in favor of `HttpMethod` enum type.
+
 - `nodejs` backend now supports osenv: `getEnv`, `putEnv`, `envPairs`, `delEnv`, `existsEnv`.
+
+- Added `cmpMem` to `system`.
 
 - `doAssertRaises` now correctly handles foreign exceptions.
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
-- ``--gc:orc`` is now 10% faster than previously for common workloads. If
-  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+- `--gc:orc` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
@@ -52,6 +60,55 @@
 
 - `writeStackTrace` is available in JS backend now.
 
+- Added `decodeQuery` to `std/uri`.
+- `strscans.scanf` now supports parsing single characters.
+- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
+
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+  if the iterable yields a built-in settable type.
+
+- Added `math.isNaN`.
+
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- Added `jsbigints` module, arbitrary precision integers for JavaScript target.
+
+- Added `math.copySign`.
+- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
+  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
+  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
+  its argument, `addMoved`, is also supplied.
+
+- Added `sequtils` import to `prelude`.
+
+- Added `euclDiv` and `euclMod` to `math`.
+- Added `httpcore.is1xx` and missing HTTP codes.
+- Added `jsconsole.jsAssert` for JavaScript target.
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+- Added `BackwardsIndex` overload for `JsonNode`.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+- Added `socketstream` module that wraps sockets in the stream interface
+
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
+
+
+
+- Added `math.signbit`.
+
+- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -59,6 +116,7 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+
 
 ## Compiler changes
 
@@ -69,6 +127,9 @@
 
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
+- VM now supports `addr(mystring[ind])` (index + index assignment)
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
 
 
 ## Tool changes

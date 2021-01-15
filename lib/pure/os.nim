@@ -2120,21 +2120,27 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
               y = path
             var k = pcFile
 
+            template kSetGeneric() =  # pure Posix component `k` resolution
+              if lstat(path, s) < 0'i32: continue  # don't yield
+              elif S_ISDIR(s.st_mode):
+                k = pcDir
+              elif S_ISLNK(s.st_mode):
+                k = getSymlinkFileKind(path)
+
             when defined(linux) or defined(macosx) or
                  defined(bsd) or defined(genode) or defined(nintendoswitch):
-              if x.d_type != DT_UNKNOWN:
-                if x.d_type == DT_DIR: k = pcDir
-                if x.d_type == DT_LNK:
-                  if dirExists(path): k = pcLinkToDir
-                  else: k = pcLinkToFile
-                yield (k, y)
-                continue
+              case x.d_type
+              of DT_DIR: k = pcDir
+              of DT_LNK:
+                if dirExists(path): k = pcLinkToDir
+                else: k = pcLinkToFile
+              of DT_UNKNOWN:
+                kSetGeneric()
+              else: # e.g. DT_REG etc
+                discard # leave it as pcFile
+            else:  # assuming that field `d_type` is not present
+              kSetGeneric()
 
-            if lstat(path, s) < 0'i32: break
-            if S_ISDIR(s.st_mode):
-              k = pcDir
-            elif S_ISLNK(s.st_mode):
-              k = getSymlinkFileKind(path)
             yield (k, y)
 
 iterator walkDirRec*(dir: string,

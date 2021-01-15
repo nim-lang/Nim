@@ -165,7 +165,7 @@ proc initPackedSet*[A]: PackedSet[A] =
   ## A must be Ordinal
   ##
   ## See also:
-  ## * `toPackedSet[A] proc <#toPackedSet[A],openArray[int]>`_
+  ## * `toPackedSet[A] proc <#toPackedSet,openArray[A]>`_
   runnableExamples:
     var a = initPackedSet[int]()
     assert len(a) == 0
@@ -273,7 +273,7 @@ proc toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initPackedSet[A] proc <#initPackedSet[A]>`_
+  ## * `initPackedSet[A] proc <#initPackedSet>`_
   runnableExamples:
     var
       a = toPackedSet([5, 6, 7])
@@ -418,7 +418,7 @@ proc isNil*[A](x: PackedSet[A]): bool {.inline.} = x.head.isNil and x.elems == 0
 
 proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
   ## Copies `src` to `dest`.
-  ## `dest` does not need to be initialized by `initPackedSet[A] proc <#initPackedSet[A]>`_.
+  ## `dest` does not need to be initialized by `initPackedSet[A] proc <#initPackedSet>`_.
   runnableExamples:
     var
       a = initPackedSet[int]()

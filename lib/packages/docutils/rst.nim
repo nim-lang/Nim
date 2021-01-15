@@ -7,11 +7,129 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a `reStructuredText`:idx: parser. A large
-## subset is implemented. Some features of the `markdown`:idx: wiki syntax are
+## ==================================
+## rst: Nim-flavored reStructuredText
+## ==================================
+##
+## This module implements a `reStructuredText`:idx: (RST) parser.
+## A large subset is implemented with some limitations_ and
+## `Nim-specific features`_.
+## A few `extra features`_ of the `Markdown`:idx: syntax are
 ## also supported.
 ##
-## **Note:** Import ``packages/docutils/rst`` to use this module
+## Nim can output the result to HTML (commands ``nim doc`` for
+## ``*.nim`` files and ``nim rst2html`` for ``*.rst`` files) or
+## Latex (command ``nim rst2tex`` for ``*.rst``).
+##
+## If you are new to RST please consider reading the following:
+##
+## 1) a short `quick introduction`_
+## 2) an `RST reference`_: a comprehensive cheatsheet for RST
+## 3) a more formal 50-page `RST specification`_.
+##
+## Features
+## --------
+##
+## Supported standard RST features:
+##
+## * body elements
+##   + sections
+##   + transitions
+##   + paragraphs
+##   + bullet lists using \+, \*, \-
+##   + enumerated lists using arabic numerals or alphabet
+##     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
+##   + definition lists
+##   + field lists
+##   + option lists
+##   + indented literal blocks
+##   + simple tables
+##   + directives (see official documentation in `RST directives list`_):
+##     - ``image``, ``figure`` for including images and videos
+##     - ``code``
+##     - ``contents`` (table of contents), ``container``, ``raw``
+##     - ``include``
+##     - admonitions: "attention", "caution", "danger", "error", "hint",
+##       "important", "note", "tip", "warning", "admonition"
+##     - substitution definitions: `replace` and `image`
+##   + comments
+## * inline markup
+##   + *emphasis*, **strong emphasis**,
+##     ``inline literals``, hyperlink references (including embedded URI),
+##     substitution references, standalone hyperlinks,
+##     internal links (inline and outline)
+##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
+##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##     (see `RST roles list`_ for description).
+##   + inline internal targets
+##
+## .. _`Nim-specific features`:
+##
+## Additional Nim-specific features:
+##
+## * directives: ``code-block``, ``title``, ``index``
+## * ***triple emphasis*** (bold and italic) using \*\*\*
+## * ``:idx:`` role for \`interpreted text\` to include the link to this
+##   text into an index (example: `Nim index`_).
+##
+## .. _`extra features`:
+##
+## Optional additional features, turned on by ``options: RstParseOption`` in
+## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
+##
+## * emoji / smiley symbols
+## * Markdown tables
+## * Markdown code blocks
+## * Markdown links
+## * Markdown headlines
+## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
+##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
+##
+## .. Note:: By default Nim has ``roSupportMarkdown`` and
+##    ``roSupportRawDirective`` turned **on**.
+##
+## .. warning:: Using Nim-specific features can cause other RST implementations
+##   to fail on your document.
+##
+## Limitations
+## -----------
+##
+## * no Unicode support in character width calculations
+## * body elements
+##   - no roman numerals in enumerated lists
+##   - no quoted literal blocks
+##   - no doctest blocks
+##   - no grid tables
+##   - some directives are missing (check official `RST directives list`_):
+##     ``parsed-literal``, ``sidebar``, ``topic``, ``math``, ``rubric``,
+##     ``epigraph``, ``highlights``, ``pull-quote``, ``compound``,
+##     ``table``, ``csv-table``, ``list-table``, ``section-numbering``,
+##     ``header``, ``footer``, ``meta``, ``class``
+##     - no ``role`` directives and no custom interpreted text roles
+##     - some standard roles are not supported (check `RST roles list`_)
+##   - no footnotes & citations support
+## * inline markup
+##   - no simple-inline-markup
+##   - no embedded aliases
+##
+## Usage
+## -----
+##
+## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
+## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+##
+## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
+## generate HTML or Latex strings to embed them into your documents.
+##
+## .. Tip:: Import ``packages/docutils/rst`` to use this module
+##    programmatically.
+##
+## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
+## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
+## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
+## .. _RST directives list: https://docutils.sourceforge.io/docs/ref/rst/directives.html
+## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
+## .. _Nim index: https://nim-lang.org/docs/theindex.html
 
 import
   os, strutils, rstast
@@ -23,7 +141,7 @@ type
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
-    roSupportMarkdown         ## support additional features of markdown
+    roSupportMarkdown         ## support additional features of Markdown
 
   RstParseOptions* = set[RstParseOption]
 
@@ -36,7 +154,7 @@ type
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
     meGridTableNotImplemented = "grid table is not implemented",
-    meMarkdownIllformedTable = "illformed delimiter row of a markdown table",
+    meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
     meNewSectionExpected = "new section expected",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
@@ -101,7 +219,12 @@ const
 
 type
   TokType = enum
-    tkEof, tkIndent, tkWhite, tkWord, tkAdornment, tkPunct, tkOther
+    tkEof, tkIndent,
+    tkWhite, tkWord,
+    tkAdornment,              # used for chapter adornment, transitions and
+                              # horizontal table borders
+    tkPunct,                  # one or many punctuation characters
+    tkOther
   Token = object              # a RST token
     kind*: TokType            # the type of the token
     ival*: int                # the indentation or parsed integer value
@@ -114,6 +237,7 @@ type
     bufpos*: int
     line*, col*, baseIndent*: int
     skipPounds*: bool
+    adornmentLine*: bool
 
 proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   tok.kind = tkWord
@@ -127,8 +251,26 @@ proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   inc L.col, pos - L.bufpos
   L.bufpos = pos
 
-proc getAdornment(L: var Lexer, tok: var Token) =
-  tok.kind = tkAdornment
+proc isCurrentLineAdornment(L: var Lexer): bool =
+  var pos = L.bufpos
+  let c = L.buf[pos]
+  while true:
+    inc pos
+    if L.buf[pos] in {'\c', '\l', '\0'}:
+      break
+    if c == '+':  # grid table
+      if L.buf[pos] notin {'-', '=', '+'}:
+        return false
+    else:  # section adornment or table horizontal border
+      if L.buf[pos] notin {c, ' ', '\t', '\v', '\f'}:
+        return false
+  result = true
+
+proc getPunctAdornment(L: var Lexer, tok: var Token) =
+  if L.adornmentLine:
+    tok.kind = tkAdornment
+  else:
+    tok.kind = tkPunct
   tok.line = L.line
   tok.col = L.col
   var pos = L.bufpos
@@ -139,6 +281,8 @@ proc getAdornment(L: var Lexer, tok: var Token) =
     if L.buf[pos] != c: break
   inc L.col, pos - L.bufpos
   L.bufpos = pos
+  if tok.symbol == "\\": tok.kind = tkPunct
+    # nim extension: standalone \ can not be adornment
 
 proc getBracket(L: var Lexer, tok: var Token) =
   tok.kind = tkPunct
@@ -189,6 +333,8 @@ proc getIndent(L: var Lexer, tok: var Token) =
 proc rawGetTok(L: var Lexer, tok: var Token) =
   tok.symbol = ""
   tok.ival = 0
+  if L.col == 0:
+    L.adornmentLine = false
   var c = L.buf[L.bufpos]
   case c
   of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '0'..'9':
@@ -200,11 +346,13 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       rawGetTok(L, tok)       # ignore spaces before \n
   of '\x0D', '\x0A':
     getIndent(L, tok)
+    L.adornmentLine = false
   of '!', '\"', '#', '$', '%', '&', '\'',  '*', '+', ',', '-', '.',
      '/', ':', ';', '<', '=', '>', '?', '@', '\\', '^', '_', '`',
      '|', '~':
-    getAdornment(L, tok)
-    if tok.symbol.len <= 3: tok.kind = tkPunct
+    if L.col == 0:
+      L.adornmentLine = L.isCurrentLineAdornment()
+    getPunctAdornment(L, tok)
   of '(', ')', '[', ']', '{', '}':
     getBracket(L, tok)
   else:
@@ -254,12 +402,16 @@ type
   Substitution = object
     key*: string
     value*: PRstNode
+  AnchorSubst = tuple
+    mainAnchor: string
+    aliases: seq[string]
 
   SharedState = object
     options: RstParseOptions    # parsing options
     uLevel, oLevel: int         # counters for the section levels
     subs: seq[Substitution]     # substitutions
     refs: seq[Substitution]     # references
+    anchors: seq[AnchorSubst]   # internal target substitutions
     underlineToLevel: LevelMap  # Saves for each possible title adornment
                                 # character its level in the
                                 # current document.
@@ -280,6 +432,7 @@ type
     filename*: string
     line*, col*: int
     hasToc*: bool
+    curAnchor*: string          # variable to track latest anchor in s.anchors
 
   EParseError* = object of ValueError
 
@@ -452,6 +605,38 @@ proc findRef(p: var RstParser, key: string): PRstNode =
     if key == p.s.refs[i].key:
       return p.s.refs[i].value
 
+proc addAnchor(p: var RstParser, refn: string, reset: bool) =
+  ## add anchor `refn` to anchor aliases and update last anchor ``curAnchor``
+  if p.curAnchor == "":
+    p.s.anchors.add (refn, @[refn])
+  else:
+    p.s.anchors[^1].mainAnchor = refn
+    p.s.anchors[^1].aliases.add refn
+  if reset:
+    p.curAnchor = ""
+  else:
+    p.curAnchor = refn
+
+proc findMainAnchor(p: RstParser, refn: string): string =
+  for subst in p.s.anchors:
+    if subst.mainAnchor == refn:  # no need to rename
+      result = subst.mainAnchor
+      break
+    var toLeave = false
+    for anchor in subst.aliases:
+      if anchor == refn:  # this anchor will be named as mainAnchor
+        result = subst.mainAnchor
+        toLeave = true
+    if toLeave:
+      break
+
+proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
+  ## create node and consume the current anchor
+  result = newRstNode(kind)
+  if p.curAnchor != "":
+    result.anchor = p.curAnchor
+    p.curAnchor = ""
+
 proc newLeaf(p: var RstParser): PRstNode =
   result = newRstNode(rnLeaf, currentTok(p).symbol)
 
@@ -504,7 +689,10 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
   var d: char
-  result = currentTok(p).symbol == markup
+  if markup != "_`":
+    result = currentTok(p).symbol == markup
+  else:  # _` is a 2 token case
+    result = currentTok(p).symbol == "_" and nextTok(p).symbol == "`"
   if not result: return
   # Rule 6:
   result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
@@ -539,7 +727,9 @@ proc match(p: RstParser, start: int, expr: string): bool =
   # 'p'              tkPunct
   # 'T'              always true
   # 'E'              whitespace, indent or eof
-  # 'e'              tkWord or '#' (for enumeration lists)
+  # 'e'              any enumeration sequence or '#' (for enumeration lists)
+  # 'x'              a..z or '#' (for enumeration lists)
+  # 'n'              0..9 or '#' (for enumeration lists)
   var i = 0
   var j = start
   var last = expr.len - 1
@@ -553,12 +743,16 @@ proc match(p: RstParser, start: int, expr: string): bool =
     of 'o': result = p.tok[j].kind == tkOther
     of 'T': result = true
     of 'E': result = p.tok[j].kind in {tkEof, tkWhite, tkIndent}
-    of 'e':
+    of 'e', 'x', 'n':
       result = p.tok[j].kind == tkWord or p.tok[j].symbol == "#"
       if result:
         case p.tok[j].symbol[0]
-        of 'a'..'z', 'A'..'Z', '#': result = p.tok[j].symbol.len == 1
-        of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
+        of '#': result = true
+        of 'a'..'z', 'A'..'Z':
+          result = expr[i] in {'e', 'x'} and p.tok[j].symbol.len == 1
+        of '0'..'9':
+          result = expr[i] in {'e', 'n'} and
+                     allCharsInSet(p.tok[j].symbol, {'0'..'9'})
         else: result = false
     else:
       var c = expr[i]
@@ -730,7 +924,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     of tkEof:
       rstMessage(p, meExpected, "```")
       break
-    of tkPunct:
+    of tkPunct, tkAdornment:
       if currentTok(p).symbol == "```":
         inc p.idx
         break
@@ -742,7 +936,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
-  result = newRstNode(rnCodeBlock)
+  result = newRstNodeA(p, rnCodeBlock)
   result.add(args)
   result.add(PRstNode(nil))
   result.add(lb)
@@ -787,6 +981,13 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
       father.add(n)
+    elif isInlineMarkupStart(p, "_`"):
+      var n = newRstNode(rnInlineTarget)
+      inc p.idx
+      parseUntil(p, n, "`", false)
+      let refn = rstnodeToRefname(n)
+      p.s.anchors.add (refn, @[refn])
+      father.add(n)
     elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc p.idx
       father.add(parseMarkdownCodeblock(p))
@@ -822,6 +1023,10 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         return
     parseUrl(p, father)
   of tkAdornment, tkOther, tkWhite:
+    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+      inc p.idx
+      father.add(parseMarkdownCodeblock(p))
+      return
     if roSupportSmilies in p.s.options:
       let n = parseSmiley(p)
       if n != nil:
@@ -850,6 +1055,7 @@ proc getDirective(p: var RstParser): string =
       result = ""             # error
   else:
     result = ""
+  result = result.toLowerAscii()
 
 proc parseComment(p: var RstParser): PRstNode =
   case currentTok(p).kind
@@ -870,21 +1076,6 @@ proc parseComment(p: var RstParser): PRstNode =
   else:
     while currentTok(p).kind notin {tkIndent, tkEof}: inc p.idx
   result = nil
-
-type
-  DirKind = enum             # must be ordered alphabetically!
-    dkNone, dkAuthor, dkAuthors, dkCode, dkCodeBlock, dkContainer, dkContents,
-    dkFigure, dkImage, dkInclude, dkIndex, dkRaw, dkTitle
-
-const
-  DirIds: array[0..12, string] = ["", "author", "authors", "code",
-    "code-block", "container", "contents", "figure", "image", "include",
-    "index", "raw", "title"]
-
-proc getDirKind(s: string): DirKind =
-  let i = find(DirIds, s)
-  if i >= 0: result = DirKind(i)
-  else: result = dkNone
 
 proc parseLine(p: var RstParser, father: PRstNode) =
   while true:
@@ -928,7 +1119,7 @@ proc parseFields(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkIndent and nextTok(p).symbol == ":" or
       atStart:
     var col = if atStart: currentTok(p).col else: currentTok(p).ival
-    result = newRstNode(rnFieldList)
+    result = newRstNodeA(p, rnFieldList)
     if not atStart: inc p.idx
     while true:
       result.add(parseField(p))
@@ -969,7 +1160,7 @@ proc getArgument(n: PRstNode): string =
 
 proc parseDotDot(p: var RstParser): PRstNode {.gcsafe.}
 proc parseLiteralBlock(p: var RstParser): PRstNode =
-  result = newRstNode(rnLiteralBlock)
+  result = newRstNodeA(p, rnLiteralBlock)
   var n = newRstNode(rnLeaf, "")
   if currentTok(p).kind == tkIndent:
     var indent = currentTok(p).ival
@@ -1011,10 +1202,23 @@ proc tokenAfterNewline(p: RstParser): int =
       break
     else: inc result
 
+proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
+  var headlineLen = 0
+  if p.idx < adornmentIdx:  # underline
+    for i in p.idx ..< adornmentIdx-1:  # adornmentIdx-1 is a linebreak
+      headlineLen += p.tok[i].symbol.len
+  else:  # overline
+    var i = p.idx + 2
+    while p.tok[i].kind notin {tkEof, tkIndent}:
+      headlineLen += p.tok[i].symbol.len
+      inc i
+  return p.tok[adornmentIdx].symbol.len >= headlineLen
+
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
   result = currentTok(p).col == p.tok[j].col and p.tok[j].symbol == "|" or
-      p.tok[j].col > currentTok(p).col
+      p.tok[j].col > currentTok(p).col or
+      p.tok[j].symbol == "\n"
 
 proc predNL(p: RstParser): bool =
   result = true
@@ -1052,13 +1256,26 @@ proc findPipe(p: RstParser, start: int): bool =
     inc i
 
 proc whichSection(p: RstParser): RstNodeKind =
+  if currentTok(p).kind in {tkAdornment, tkPunct}:
+    # for punctuation sequences that can be both tkAdornment and tkPunct
+    if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
+      return rnCodeBlock
+    elif currentTok(p).symbol == "::":
+      return rnLiteralBlock
+    elif currentTok(p).symbol == ".." and predNL(p):
+     return rnDirective
   case currentTok(p).kind
   of tkAdornment:
-    if match(p, p.idx + 1, "ii"): result = rnTransition
+    if match(p, p.idx + 1, "ii") and currentTok(p).symbol.len >= 4:
+      result = rnTransition
+    elif match(p, p.idx, "+a+"):
+      result = rnGridTable
+      rstMessage(p, meGridTableNotImplemented)
     elif match(p, p.idx + 1, " a"): result = rnTable
-    elif match(p, p.idx + 1, "i"): result = rnOverline
-    elif isMarkdownHeadline(p):
-      result = rnHeadline
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
+    elif match(p, p.idx + 1, "i") and isAdornmentHeadline(p, p.idx):
+      result = rnOverline
     else:
       result = rnLeaf
   of tkPunct:
@@ -1067,27 +1284,20 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif roSupportMarkdown in p.s.options and predNL(p) and
         match(p, p.idx, "| w") and findPipe(p, p.idx+3):
       result = rnMarkdownTable
-    elif currentTok(p).symbol == "```":
-      result = rnCodeBlock
-    elif match(p, tokenAfterNewline(p), "ai"):
+    elif currentTok(p).symbol == "|" and isLineBlock(p):
+      result = rnLineBlock
+    elif match(p, tokenAfterNewline(p), "ai") and
+        isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
-    elif currentTok(p).symbol == "::":
-      result = rnLiteralBlock
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif currentTok(p).symbol == "|" and isLineBlock(p):
-      result = rnLineBlock
-    elif currentTok(p).symbol == ".." and predNL(p):
-      result = rnDirective
     elif match(p, p.idx, ":w:") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
-    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e. "):
+    elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
+         match(p, p.idx, "e. "):
       result = rnEnumList
-    elif match(p, p.idx, "+a+"):
-      result = rnGridTable
-      rstMessage(p, meGridTableNotImplemented)
     elif isDefList(p):
       result = rnDefList
     elif isOptionList(p):
@@ -1095,7 +1305,10 @@ proc whichSection(p: RstParser): RstNodeKind =
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
-    if match(p, tokenAfterNewline(p), "ai"): result = rnHeadline
+    let tokIdx = tokenAfterNewline(p)
+    if match(p, tokIdx, "ai"):
+      if isAdornmentHeadline(p, tokIdx): result = rnHeadline
+      else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
     elif isDefList(p): result = rnDefList
     else: result = rnParagraph
@@ -1103,21 +1316,28 @@ proc whichSection(p: RstParser): RstNodeKind =
 
 proc parseLineBlock(p: var RstParser): PRstNode =
   result = nil
-  if nextTok(p).kind == tkWhite:
+  if nextTok(p).kind in {tkWhite, tkIndent}:
     var col = currentTok(p).col
-    result = newRstNode(rnLineBlock)
-    pushInd(p, p.tok[p.idx + 2].col)
-    inc p.idx, 2
+    result = newRstNodeA(p, rnLineBlock)
     while true:
       var item = newRstNode(rnLineBlockItem)
-      parseSection(p, item)
+      if nextTok(p).kind == tkWhite:
+        if nextTok(p).symbol.len > 1:  # pass additional indentation after '| '
+          item.text = nextTok(p).symbol
+        inc p.idx, 2
+        pushInd(p, p.tok[p.idx].col)
+        parseSection(p, item)
+        popInd(p)
+      else:  # tkIndent => add an empty line
+        item.text = "\n"
+        inc p.idx, 1
       result.add(item)
       if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-          nextTok(p).symbol == "|" and p.tok[p.idx + 2].kind == tkWhite:
-        inc p.idx, 3
+          nextTok(p).symbol == "|" and
+          p.tok[p.idx + 2].kind in {tkWhite, tkIndent}:
+        inc p.idx, 1
       else:
         break
-    popInd(p)
 
 proc parseParagraph(p: var RstParser, result: PRstNode) =
   while true:
@@ -1164,6 +1384,7 @@ proc parseHeadline(p: var RstParser): PRstNode =
     var c = nextTok(p).symbol[0]
     inc p.idx, 2
     result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 type
   IntSeq = seq[int]
@@ -1199,7 +1420,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
     c: char
     q: RstParser
     a, b: PRstNode
-  result = newRstNode(rnTable)
+  result = newRstNodeA(p, rnTable)
   cols = @[]
   row = @[]
   a = nil
@@ -1278,7 +1499,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     colNum: int
     a, b: PRstNode
     q: RstParser
-  result = newRstNode(rnMarkdownTable)
+  result = newRstNodeA(p, rnMarkdownTable)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
@@ -1302,7 +1523,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     parseRow(p, rnTableDataCell, result)
 
 proc parseTransition(p: var RstParser): PRstNode =
-  result = newRstNode(rnTransition)
+  result = newRstNodeA(p, rnTransition)
   inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
@@ -1325,13 +1546,14 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx                # XXX: check?
     if currentTok(p).kind == tkIndent: inc p.idx
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 proc parseBulletList(p: var RstParser): PRstNode =
   result = nil
   if nextTok(p).kind == tkWhite:
     var bullet = currentTok(p).symbol
     var col = currentTok(p).col
-    result = newRstNode(rnBulletList)
+    result = newRstNodeA(p, rnBulletList)
     pushInd(p, p.tok[p.idx + 2].col)
     inc p.idx, 2
     while true:
@@ -1347,7 +1569,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
     popInd(p)
 
 proc parseOptionList(p: var RstParser): PRstNode =
-  result = newRstNode(rnOptionList)
+  result = newRstNodeA(p, rnOptionList)
   while true:
     if isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -1380,7 +1602,7 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
   if j >= 1 and p.tok[j].kind == tkIndent and
       p.tok[j].ival > currInd(p) and p.tok[j - 1].symbol != "::":
     var col = currentTok(p).col
-    result = newRstNode(rnDefList)
+    result = newRstNodeA(p, rnDefList)
     while true:
       j = p.idx
       var a = newRstNode(rnDefName)
@@ -1412,39 +1634,68 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
 
 proc parseEnumList(p: var RstParser): PRstNode =
   const
-    wildcards: array[0..2, string] = ["(e) ", "e) ", "e. "]
-    wildpos: array[0..2, int] = [1, 0, 0]
-  result = nil
+    wildcards: array[0..5, string] = ["(n) ", "n) ", "n. ",
+                                      "(x) ", "x) ", "x. "]
+      # enumerator patterns, where 'x' means letter and 'n' means number
+    wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
+    wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
+      # position of enumeration sequence (number/letter) in enumerator
+  result = newRstNodeA(p, rnEnumList)
+  let col = currentTok(p).col
   var w = 0
-  while w <= 2:
+  while w < wildcards.len:
     if match(p, p.idx, wildcards[w]): break
     inc w
-  if w <= 2:
-    var col = currentTok(p).col
-    result = newRstNode(rnEnumList)
-    inc p.idx, wildpos[w] + 3
-    var j = tokenAfterNewline(p)
-    if p.tok[j].col == currentTok(p).col or match(p, j, wildcards[w]):
-      pushInd(p, currentTok(p).col)
-      while true:
-        var item = newRstNode(rnEnumItem)
-        parseSection(p, item)
-        result.add(item)
-        if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
-            match(p, p.idx + 1, wildcards[w]):
-          inc p.idx, wildpos[w] + 4
-        else:
-          break
-      popInd(p)
+  assert w < wildcards.len
+  let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
+  var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
+  var curEnum = 1
+  for i in 0 ..< wildToken[w]-1:  # add first enumerator with (, ), and .
+    if p.tok[p.idx + i].symbol == "#":
+      prevAE = "#"
+      result.text.add "1"
     else:
-      dec p.idx, wildpos[w] + 3
-      result = nil
+      result.text.add p.tok[p.idx + i].symbol
+  var prevEnum = p.tok[p.idx + wildIndex[w]].symbol
+  inc p.idx, wildToken[w]
+  while true:
+    var item = newRstNode(rnEnumItem)
+    pushInd(p, currentTok(p).col)
+    parseSection(p, item)
+    popInd(p)
+    result.add(item)
+    if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
+        match(p, p.idx+1, wildcards[w]):
+      let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
+      # check that it's in sequence: enumerator == next(prevEnum)
+      if "n" in wildcards[w]:  # arabic numeral
+        let prevEnumI = try: parseInt(prevEnum) except: 1
+        if enumerator in autoEnums:
+          if prevAE != "" and enumerator != prevAE:
+            break
+          prevAE = enumerator
+          curEnum = prevEnumI + 1
+        else: curEnum = (try: parseInt(enumerator) except: 1)
+        if curEnum - prevEnumI != 1:
+          break
+        prevEnum = enumerator
+      else:  # a..z
+        let prevEnumI = ord(prevEnum[0])
+        if enumerator == "#": curEnum = prevEnumI + 1
+        else: curEnum = ord(enumerator[0])
+        if curEnum - prevEnumI != 1:
+          break
+        prevEnum = $chr(curEnum)
+      inc p.idx, 1 + wildToken[w]
+    else:
+      break
 
 proc sonKind(father: PRstNode, i: int): RstNodeKind =
   result = rnLeaf
   if i < father.len: result = father.sons[i].kind
 
 proc parseSection(p: var RstParser, result: PRstNode) =
+  ## parse top-level RST elements: sections, transitions and body elements.
   while true:
     var leave = false
     assert(p.idx >= 0)
@@ -1453,11 +1704,13 @@ proc parseSection(p: var RstParser, result: PRstNode) =
         inc p.idx
       elif currentTok(p).ival > currInd(p):
         pushInd(p, currentTok(p).ival)
-        var a = newRstNode(rnBlockQuote)
+        var a = newRstNodeA(p, rnBlockQuote)
         parseSection(p, a)
         result.add(a)
         popInd(p)
       else:
+        while currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
+          inc p.idx  # skip blank lines
         leave = true
         break
     if leave or currentTok(p).kind == tkEof: break
@@ -1487,7 +1740,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       #InternalError("rst.parseSection()")
       discard
     if a == nil and k != rnDirective:
-      a = newRstNode(rnParagraph)
+      a = newRstNodeA(p, rnParagraph)
       parseParagraph(p, a)
     result.addIfNotNil(a)
   if sonKind(result, 0) == rnParagraph and sonKind(result, 1) != rnParagraph:
@@ -1517,13 +1770,13 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ## Parses arguments and options for a directive block.
   ##
   ## A directive block will always have three sons: the arguments for the
-  ## directive (rnDirArg), the options (rnFieldList) and the block
-  ## (rnLineBlock). This proc parses the two first nodes, the block is left to
+  ## directive (rnDirArg), the options (rnFieldList) and the directive
+  ## content block. This proc parses the two first nodes, the 3rd is left to
   ## the outer `parseDirective` call.
   ##
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
-  result = newRstNode(rnDirective)
+  result = newRstNodeA(p, rnDirective)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -1556,12 +1809,21 @@ proc indFollows(p: RstParser): bool =
 
 proc parseDirective(p: var RstParser, flags: DirFlags,
                     contentParser: SectionParser): PRstNode =
-  ## Returns a generic rnDirective tree.
+  ## A helper proc that does main work for specific directive procs.
+  ## Always returns a generic rnDirective tree with these 3 children:
   ##
-  ## The children are rnDirArg, rnFieldList and rnLineBlock. Any might be nil.
+  ## 1) rnDirArg
+  ## 2) rnFieldList
+  ## 3) a node returned by `contentParser`.
+  ##
+  ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, flags)
-  if not isNil(contentParser) and indFollows(p):
-    pushInd(p, currentTok(p).ival)
+  if not isNil(contentParser) and
+      (currentTok(p).kind != tkIndent or indFollows(p)):
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    if nextIndent <= currInd(p):  # parse only this line
+      nextIndent = currentTok(p).col
+    pushInd(p, nextIndent)
     var content = contentParser(p)
     popInd(p)
     result.add(content)
@@ -1667,7 +1929,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     n.add(newRstNode(rnLeaf, readFile(path)))
     result.sons[2] = n
 
-  # Extend the field block if we are using our custom extension.
+  # Extend the field block if we are using our custom Nim extension.
   if nimExtension:
     # Create a field block if the input block didn't have any.
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
@@ -1709,6 +1971,11 @@ proc dirIndex(p: var RstParser): PRstNode =
   result = parseDirective(p, {}, parseSectionWrapper)
   result.kind = rnIndex
 
+proc dirAdmonition(p: var RstParser, d: string): PRstNode =
+  result = parseDirective(p, {}, parseSectionWrapper)
+  result.kind = rnAdmonition
+  result.text = d
+
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
   var filename = getFieldValue(result, "file")
@@ -1744,29 +2011,42 @@ proc dirRaw(p: var RstParser): PRstNode =
   else:
     dirRawAux(p, result, rnRaw, parseSectionWrapper)
 
+proc selectDir(p: var RstParser, d: string): PRstNode =
+  result = nil
+  case d
+  of "admonition", "attention", "caution": result = dirAdmonition(p, d)
+  of "code": result = dirCodeBlock(p)
+  of "code-block": result = dirCodeBlock(p, nimExtension = true)
+  of "container": result = dirContainer(p)
+  of "contents": result = dirContents(p)
+  of "danger", "error": result = dirAdmonition(p, d)
+  of "figure": result = dirFigure(p)
+  of "hint": result = dirAdmonition(p, d)
+  of "image": result = dirImage(p)
+  of "important": result = dirAdmonition(p, d)
+  of "include": result = dirInclude(p)
+  of "index": result = dirIndex(p)
+  of "note": result = dirAdmonition(p, d)
+  of "raw":
+    if roSupportRawDirective in p.s.options:
+      result = dirRaw(p)
+    else:
+      rstMessage(p, meInvalidDirective, d)
+  of "tip": result = dirAdmonition(p, d)
+  of "title": result = dirTitle(p)
+  of "warning": result = dirAdmonition(p, d)
+  else:
+    rstMessage(p, meInvalidDirective, d)
+
 proc parseDotDot(p: var RstParser): PRstNode =
+  # parse "explicit markup blocks"
   result = nil
   var col = currentTok(p).col
   inc p.idx
   var d = getDirective(p)
   if d != "":
     pushInd(p, col)
-    case getDirKind(d)
-    of dkInclude: result = dirInclude(p)
-    of dkImage: result = dirImage(p)
-    of dkFigure: result = dirFigure(p)
-    of dkTitle: result = dirTitle(p)
-    of dkContainer: result = dirContainer(p)
-    of dkContents: result = dirContents(p)
-    of dkRaw:
-      if roSupportRawDirective in p.s.options:
-        result = dirRaw(p)
-      else:
-        rstMessage(p, meInvalidDirective, d)
-    of dkCode: result = dirCodeBlock(p)
-    of dkCodeBlock: result = dirCodeBlock(p, nimExtension = true)
-    of dkIndex: result = dirIndex(p)
-    else: rstMessage(p, meInvalidDirective, d)
+    result = selectDir(p, d)
     popInd(p)
   elif match(p, p.idx, " _"):
     # hyperlink target:
@@ -1774,7 +2054,10 @@ proc parseDotDot(p: var RstParser): PRstNode =
     var a = getReferenceName(p, ":")
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
-    setRef(p, rstnodeToRefname(a), b)
+    if len(b) == 0 and b.text == "":  # set internal anchor
+      addAnchor(p, rstnodeToRefname(a), reset=false)
+    else:  # external hyperlink
+      setRef(p, rstnodeToRefname(a), b)
   elif match(p, p.idx, " |"):
     # substitution definitions:
     inc p.idx, 2
@@ -1802,6 +2085,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
     result = parseComment(p)
 
 proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
+  ## resolve substitutions and anchor aliases
   result = n
   if n == nil: return
   case n.kind
@@ -1815,12 +2099,20 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
       if e != "": result = newRstNode(rnLeaf, e)
       else: rstMessage(p, mwUnknownSubstitution, key)
   of rnRef:
-    var y = findRef(p, rstnodeToRefname(n))
+    let refn = rstnodeToRefname(n)
+    var y = findRef(p, refn)
     if y != nil:
       result = newRstNode(rnHyperlink)
       n.kind = rnInner
       result.add(n)
       result.add(y)
+    else:
+      let s = findMainAnchor(p, refn)
+      if s != "":
+        result = newRstNode(rnInternalRef)
+        n.kind = rnInner
+        result.add(n)
+        result.add(newRstNode(rnLeaf, s))
   of rnLeaf:
     discard
   of rnContents:
@@ -1838,5 +2130,6 @@ proc rstParse*(text, filename: string,
   p.filename = filename
   p.line = line
   p.col = column + getTokens(text, roSkipPounds in options, p.tok)
-  result = resolveSubs(p, parseDoc(p))
+  let unresolved = parseDoc(p)
+  result = resolveSubs(p, unresolved)
   hasToc = p.hasToc

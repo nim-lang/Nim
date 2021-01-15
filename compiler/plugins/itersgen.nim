@@ -9,7 +9,7 @@
 
 ## Plugin to transform an inline iterator into a data structure.
 
-import ".." / [ast, lookups, semdata, lambdalifting, msgs]
+import ".." / [ast, modulegraphs, lookups, semdata, lambdalifting, msgs]
 
 proc iterToProcImpl*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
@@ -29,10 +29,10 @@ proc iterToProcImpl*(c: PContext, n: PNode): PNode =
     localError(c.config, n[2].info,
         "type must be a non-generic ref|ptr to object with state field")
     return
-  let body = liftIterToProc(c.graph, iter.sym, iter.sym.getBody, t, c.idgen)
+  let body = liftIterToProc(c.graph, iter.sym, getBody(c.graph, iter.sym), t, c.idgen)
 
-  let prc = newSym(skProc, n[3].ident, nextId c.idgen, iter.sym.owner, iter.sym.info)
-  prc.typ = copyType(iter.sym.typ, nextId c.idgen, prc)
+  let prc = newSym(skProc, n[3].ident, nextSymId c.idgen, iter.sym.owner, iter.sym.info)
+  prc.typ = copyType(iter.sym.typ, nextTypeId c.idgen, prc)
   excl prc.typ.flags, tfCapturesEnv
   prc.typ.n.add newSymNode(getEnvParam(iter.sym))
   prc.typ.rawAddSon t

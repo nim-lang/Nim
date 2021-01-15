@@ -235,7 +235,7 @@ template implementSetInheritable() {.dirty.} =
       ## Returns ``true`` on success.
       ##
       ## This procedure is not guaranteed to be available for all platforms.
-      ## Test for availability with `declared()`_.
+      ## Test for availability with `declared() <system.html#declared,untyped>`_.
       fd.FileHandle.setInheritable(inheritable)
 
 when defined(windows) or defined(nimdoc):

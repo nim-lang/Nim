@@ -11,7 +11,7 @@
 ##
 ## A Uniform Resource Identifier (URI) provides a simple and extensible
 ## means for identifying a resource. A URI can be further classified
-## as a locator, a name, or both. The term “Uniform Resource Locator”
+## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
 ## Basic usage
@@ -47,7 +47,7 @@
 import std/private/since
 
 import strutils, parseutils, base64
-include includes/decode_helpers
+import std/private/decode_helpers
 
 
 type
@@ -58,6 +58,13 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
     isIpv6: bool # not expose it for compatibility.
+
+  UriParseError* = object of ValueError
+
+
+proc uriParseError*(msg: string) {.noreturn.} =
+  ## Raises a ``UriParseError`` exception with message `msg`.
+  raise newException(UriParseError, msg)
 
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
@@ -152,6 +159,50 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     if not omitEq or val.len > 0:
       result.add('=')
       result.add(encodeUrl(val, usePlus))
+
+iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
+  ## Reads and decodes query string `data` and yields the `(key, value)` pairs
+  ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`, an
+  ## error is raised when there is an unencoded `=` character in a decoded
+  ## value, which was the behavior in Nim < 1.5.1
+  runnableExamples:
+    import std/sequtils
+    doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
+
+  proc parseData(data: string, i: int, field: var string, sep: char): int =
+    result = i
+    while result < data.len:
+      let c = data[result]
+      case c
+      of '%': add(field, decodePercent(data, result))
+      of '+': add(field, ' ')
+      of '&': break
+      else:
+        if c == sep: break
+        else: add(field, data[result])
+      inc(result)
+
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while i < data.len:
+    setLen(name, 0) # reuse memory
+    i = parseData(data, i, name, '=')
+    setLen(value, 0) # reuse memory
+    if i < data.len and data[i] == '=':
+      inc(i) # skip '='
+      when defined(nimLegacyParseQueryStrict):
+        i = parseData(data, i, value, '=')
+      else:
+        i = parseData(data, i, value, '&')
+    yield (name.TaintedString, value.TaintedString)
+    if i < data.len:
+      when defined(nimLegacyParseQueryStrict):
+        if data[i] != '&':
+          uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+      inc(i)
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0

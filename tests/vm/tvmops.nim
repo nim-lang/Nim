@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp js"
+"""
+
 #[
 test for vmops.nim
 ]#

@@ -11,7 +11,7 @@
 
 const
   NimbleStableCommit = "8f7af860c5ce9634af880a7081c6435e1f2a5148" # master
-  FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
+  FusionStableCommit = "372ee4313827ef9f2ea388840f7d6b46c2b1b014"
 
 when not defined(windows):
   const
@@ -156,7 +156,13 @@ proc bundleNimsuggest(args: string) =
                  options = "-d:release -d:danger " & args)
 
 proc buildVccTool(args: string) =
-  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)
+  let input = "tools/vccexe/vccexe.nim"
+  if contains(args, "--cc:vcc"):
+    nimCompileFold("Compile Vcc", input, "build", options = args)
+    let fileName = input.splitFile.name
+    moveFile(exe("build" / fileName), exe("bin" / fileName))
+  else:
+    nimCompileFold("Compile Vcc", input, options = args)
 
 proc bundleNimpretty(args: string) =
   nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",

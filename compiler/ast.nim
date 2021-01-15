@@ -221,6 +221,9 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
+    nkReplayAction        # for .rod file support: A replay action
+    nkNilRodNode          # for .rod file support: a 'nil' PNode
 
   TNodeKinds* = set[TNodeKind]
 
@@ -799,6 +802,7 @@ type
     libHeader, libDynamic
 
   TLib* = object              # also misused for headers!
+                              # keep in sync with PackedLib
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
@@ -823,7 +827,7 @@ type
   PScope* = ref TScope
 
   PLib* = ref TLib
-  TSym* {.acyclic.} = object of TIdObj
+  TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
     of skType, skGenericParam:
@@ -832,18 +836,6 @@ type
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
-    of skModule, skPackage:
-      # modules keep track of the generic symbols they use from other modules.
-      # this is because in incremental compilation, when a module is about to
-      # be replaced with a newer version, we must decrement the usage count
-      # of all previously used generics.
-      # For 'import as' we copy the module symbol but shallowCopy the 'tab'
-      # and set the 'usedGenerics' to ... XXX gah! Better set module.name
-      # instead? But this doesn't work either. --> We need an skModuleAlias?
-      # No need, just leave it as skModule but set the owner accordingly and
-      # check for the owner when touching 'usedGenerics'.
-      usedGenerics*: seq[PInstantiation]
-      tab*: TStrTable         # interface table for modules
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -904,6 +896,7 @@ type
                               # types are identical iff they have the
                               # same id; there may be multiple copies of a type
                               # in memory!
+                              # Keep in sync with PackedType
     kind*: TTypeKind          # kind of type
     callConv*: TCallingConvention # for procs
     flags*: TTypeFlags        # flags of the type
@@ -931,7 +924,7 @@ type
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
     uniqueId*: ItemId         # due to a design mistake, we need to keep the real ID here as it
-                              # required by the --incremental:on mode.
+                              # is required by the --incremental:on mode.
 
   TPair* = object
     key*, val*: RootRef
@@ -1002,7 +995,7 @@ const
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
-    tyProc, tyError}
+    tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
@@ -1072,18 +1065,35 @@ template id*(a: PIdObj): int =
   (x.itemId.module.int shl moduleShift) + x.itemId.item.int
 
 type
-  IdGenerator* = ref ItemId # unfortunately, we really need the 'shared mutable' aspect here.
+  IdGenerator* = ref object # unfortunately, we really need the 'shared mutable' aspect here.
+    module*: int32
+    symId*: int32
+    typeId*: int32
+
+proc hash*(x: ItemId): Hash =
+  var h: Hash = hash(x.module)
+  h = h !& hash(x.item)
+  result = !$h
 
 const
   PackageModuleId* = -3'i32
 
 proc idGeneratorFromModule*(m: PSym): IdGenerator =
   assert m.kind == skModule
-  result = IdGenerator(module: m.itemId.module, item: m.itemId.item)
+  result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
 
-proc nextId*(x: IdGenerator): ItemId {.inline.} =
-  inc x.item
-  result = x[]
+proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+  inc x.symId
+  result = ItemId(module: x.module, item: x.symId)
+
+proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
+  inc x.typeId
+  result = ItemId(module: x.module, item: x.typeId)
+
+when false:
+  proc nextId*(x: IdGenerator): ItemId {.inline.} =
+    inc x.item
+    result = x[]
 
 when false:
   proc storeBack*(dest: var IdGenerator; src: IdGenerator) {.inline.} =
@@ -1130,6 +1140,9 @@ proc add*(father, son: Indexable) =
   assert son != nil
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
+  father.sons.add(son)
+
+proc addAllowNil*(father, son: Indexable) {.inline.} =
   father.sons.add(son)
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
@@ -1385,6 +1398,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
       echo "KNID ", kind
       writeStackTrace()
 
+
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(typeof(a.k)): a.k = b.k
   if a.storage == low(typeof(a.storage)): a.storage = b.storage
@@ -1435,8 +1449,6 @@ proc copySym*(s: PSym; id: ItemId): PSym =
   result.typ = s.typ
   result.flags = s.flags
   result.magic = s.magic
-  if s.kind == skModule:
-    copyStrTable(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
@@ -1454,13 +1466,10 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
-  system.shallowCopy(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex
-  # XXX once usedGenerics is used, ensure module aliases keep working!
-  assert s.usedGenerics.len == 0
 
 proc initStrTable*(x: var TStrTable) =
   x.counter = 0
@@ -1828,7 +1837,7 @@ proc toVar*(typ: PType; kind: TTypeKind; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.kind != kind:
-    result = newType(kind, nextId(idgen), typ.owner)
+    result = newType(kind, nextTypeId(idgen), typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType; idgen: IdGenerator): PType =
@@ -1836,7 +1845,7 @@ proc toRef*(typ: PType; idgen: IdGenerator): PType =
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
   if typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject:
-    result = newType(tyRef, nextId(idgen), typ.owner)
+    result = newType(tyRef, nextTypeId(idgen), typ.owner)
     rawAddSon(result, typ)
 
 proc toObject*(typ: PType): PType =
@@ -1895,8 +1904,6 @@ template incompleteType*(t: PType): bool =
 template typeCompleted*(s: PSym) =
   incl s.flags, sfNoForward
 
-template getBody*(s: PSym): PNode = s.ast[bodyPos]
-
 template detailedInfo*(sym: PSym): string =
   sym.name.s
 
@@ -1950,9 +1957,13 @@ proc canRaise*(fn: PNode): bool =
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
   else:
-    result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
-      (fn.typ.n[0][exceptionEffects] != nil and
-      fn.typ.n[0][exceptionEffects].safeLen > 0))
+    # TODO check for n having sons? or just return false for now if not
+    if fn.typ != nil and fn.typ.n != nil and fn.typ.n[0].kind == nkSym:
+      result = false
+    else:
+      result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+        (fn.typ.n[0][exceptionEffects] != nil and
+        fn.typ.n[0][exceptionEffects].safeLen > 0))
 
 proc toHumanStrImpl[T](kind: T, num: static int): string =
   result = $kind

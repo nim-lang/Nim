@@ -191,7 +191,7 @@ template checkOsError =
 template log(msg: string, body: untyped) =
   if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
     echo "[NimScript] ", msg
-  if mode != ScriptMode.WhatIf:
+  if mode != ScriptMode.Whatif:
     body
 
 proc listDirs*(dir: string): seq[string] =

@@ -105,12 +105,12 @@ writeLine(stdout, "length of table ", $tab.len)
 
 block:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
-  assert x["k"] == "v"
-  assert x["11"] == "22"
-  assert x["565"] == "67"
+  doAssert x["k"] == "v"
+  doAssert x["11"] == "22"
+  doAssert x["565"] == "67"
   x["11"] = "23"
-  assert x["11"] == "23"
+  doAssert x["11"] == "23"
 
   x.clear(modeCaseInsensitive)
   x["11"] = "22"
-  assert x["11"] == "22"
+  doAssert x["11"] == "22"

@@ -71,6 +71,7 @@ type
     disabled, enabled, leaking
   
   TSpec* = object
+    # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
     file*, cmd*: string
     input*: string
@@ -218,7 +219,7 @@ proc parseTargets*(value: string): set[TTarget] =
     of "cpp", "c++": result.incl(targetCpp)
     of "objc": result.incl(targetObjC)
     of "js": result.incl(targetJS)
-    else: echo "target ignored: " & v
+    else: raise newException(ValueError, "invalid target: '$#'" % v)
 
 proc addLine*(self: var string; a: string) =
   self.add a
@@ -302,10 +303,6 @@ proc parseSpec*(filename: string): TSpec =
       of "exitcode":
         discard parseInt(e.value, result.exitCode)
         result.action = actionRun
-      of "msg":
-        result.msg = e.value
-        if result.action != actionRun:
-          result.action = actionCompile
       of "errormsg":
         result.msg = e.value
         result.action = actionReject
@@ -377,19 +374,11 @@ proc parseSpec*(filename: string): TSpec =
           result.timeout = parseFloat(e.value)
         except ValueError:
           result.parseErrors.addLine "cannot interpret as a float: ", e.value
-      of "target", "targets":
-        for v in e.value.normalize.splitWhitespace:
-          case v
-          of "c":
-            result.targets.incl(targetC)
-          of "cpp", "c++":
-            result.targets.incl(targetCpp)
-          of "objc":
-            result.targets.incl(targetObjC)
-          of "js":
-            result.targets.incl(targetJS)
-          else:
-            result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "targets", "target":
+        try:
+          result.targets.incl parseTargets(e.value)
+        except ValueError as e:
+          result.parseErrors.addLine e.msg
       of "matrix":
         for v in e.value.split(';'):
           result.matrix.add(v.strip)
