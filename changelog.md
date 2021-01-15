@@ -97,9 +97,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
 
 
-
-
 - Added `math.signbit`.
+
+- Added `math.frexp` overload procs.
 
 ## Language changes
 

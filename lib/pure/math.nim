@@ -67,9 +67,9 @@ when defined(c) or defined(cpp):
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
-  func c_frexp(x: cfloat, exponent: var cint): cfloat {.
+  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
       importc: "frexpf", header: "<math.h>".}
-  func c_frexp(x: cdouble, exponent: var cint): cdouble {.
+  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
       importc: "frexp", header: "<math.h>".}
 
 func binom*(n, k: int): int =
@@ -1017,6 +1017,10 @@ func frexp*[T: float32|float64](x: T, exponent: var int): T =
         result = result / 2
       if exponent == 1024 and result == 0.0:
         result = 0.99999999999999988898
+
+func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline, since: (1, 5, 1).} =
+  ## Splits a number into mantissa and exponent.
+  result.frac = frexp(x, result.exp)
 
 when not defined(js):
   when windowsCC89:
