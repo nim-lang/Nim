@@ -826,21 +826,16 @@ when useBuiltinsRotate:
       func builtin_rotr64(value: culonglong, shift: cint): culonglong
                          {.importc: "__rorq", header: "immintrin.h".}
 
-# https://blog.regehr.org/archives/1063
-# https://stackoverflow.com/a/776523
-# - The GCC compiler recognizes this code as rotation and inserts a single
-#   x86/x86_64 rol/ror instruction since version 4.9.0 for `SomeUnsignedInt`.
-# - The CLANG compiler recognizes this code as rotation and inserts a single
-#   x86/x86_64 rol/ror instruction on version 8.0.0 and 11.0.0 to 12.0.0 for
-#   `SomeUnsignedInt`. CLANG from 7.0.0, 9.0.0 to 10.0.0 does not recognize for
-#   uint8 and uint16.
 func rotl[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
-  const mask: int32 = 8 * sizeof(value) - 1
-  (value shl rot) or (value shr (-rot and mask))
+  # https://stackoverflow.com/a/776523
+  const mask = 8 * sizeof(value) - 1
+  let rot = rot and mask
+  (value shl rot) or (value shr ((-rot) and mask))
 
 func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
-  const mask: int32 = 8 * sizeof(value) - 1
-  (value shr rot) or (value shl (-rot and mask))
+  const mask = 8 * sizeof(value) - 1
+  let rot = rot and mask
+  (value shr rot) or (value shl ((-rot) and mask))
 
 func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Left-rotate bits in a 8-bits value.
