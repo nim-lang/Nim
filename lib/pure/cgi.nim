@@ -84,8 +84,11 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
 iterator decodeData*(data: string): tuple[key, value: string] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
-  for (key, value) in uri.decodeQuery(data):
-    yield (key, value)
+  try:
+    for (key, value) in uri.decodeQuery(data):
+      yield (key, value)
+  except UriParseError as e:
+    cgiError(e.msg)
 
 iterator decodeData*(allowedMethods: set[RequestMethod] =
        {methodNone, methodPost, methodGet}): tuple[key, value: string] =
