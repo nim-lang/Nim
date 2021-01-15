@@ -155,7 +155,6 @@ proc `=destroy`(d: var D) =
 proc `=destroy`(d: var DFinal) =
   dDestroyed.inc
 
-
 func newD(): DRef =
   DRef ObjRef()
 
