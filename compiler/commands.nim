@@ -312,6 +312,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "symbolfiles": result = conf.symbolFiles != disabledSf
   of "genscript": result = contains(conf.globalOptions, optGenScript)
   of "threads": result = contains(conf.globalOptions, optThreads)
+  of "taintmode": result = false
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
