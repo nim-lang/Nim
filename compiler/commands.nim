@@ -312,7 +312,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "symbolfiles": result = conf.symbolFiles != disabledSf
   of "genscript": result = contains(conf.globalOptions, optGenScript)
   of "threads": result = contains(conf.globalOptions, optThreads)
-  of "taintmode": result = false  # TODO: https://github.com/nim-lang/Nim/pull/15423/files/bc158f0b9a940044dfbf6701d50c0c3dbed2774e#r558482102
+  of "taintmode": result = false  # pending https://github.com/nim-lang/Nim/issues/16731
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
