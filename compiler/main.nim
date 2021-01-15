@@ -74,14 +74,15 @@ proc commandCompileToC(graph: ModuleGraph) =
   setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
-  registerPass(graph, cgenPass)
+  if conf.symbolFiles == disabledSf:
+    registerPass(graph, cgenPass)
 
-  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-    let proj = changeFileExt(conf.projectFull, "")
-    if not changeDetectedViaJsonBuildInstructions(conf, proj):
-      # nothing changed
-      graph.config.notes = graph.config.mainPackageNotes
-      return
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+      let proj = changeFileExt(conf.projectFull, "")
+      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
 
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
@@ -89,7 +90,10 @@ proc commandCompileToC(graph: ModuleGraph) =
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
-  cgenWriteModules(graph.backend, conf)
+  if conf.symbolFiles == disabledSf:
+    cgenWriteModules(graph.backend, conf)
+  else:
+    generateCode(graph)
   if conf.cmd != cmdTcc:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
