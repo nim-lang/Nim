@@ -20,7 +20,7 @@ import strutils
 
 # FWIW look for files before scanning entire dirs.
 
-const certificate_paths = [
+const certificatePaths = [
     # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
     # NetBSD (security/mozilla-rootcerts)
     # SLES10/SLES11, https://golang.org/issue/12139
@@ -77,7 +77,7 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 
   else:
     when not defined(haiku):
-      for p in certificate_paths:
+      for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
           if fileExists(p):
             yield p

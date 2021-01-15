@@ -29,7 +29,8 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, types, intsets, lineinfos, renderer, asciitables
+import ast, types, intsets, lineinfos, renderer
+import std/private/asciitables
 
 from patterns import sameTrees
 

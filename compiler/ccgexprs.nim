@@ -9,6 +9,9 @@
 
 # included from cgen.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       result: var Rope; count: var int;
                       isConst: bool, info: TLineInfo)
@@ -71,8 +74,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
         p.module.s[cfsData].addf(
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, ty), result])
-    else:
+    elif k in {tyPointer, tyNil, tyProc}:
       result = rope("NIM_NIL")
+    else:
+      result = "(($1) NIM_NIL)" % [getTypeDesc(p.module, ty)]
   of nkStrLit..nkTripleStrLit:
     let k = if ty == nil: tyString
             else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
@@ -879,6 +884,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
               [rdLoc(test), strLit, raiseInstr(p)])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
+  assert e[0].kind == nkDotExpr
   if optFieldCheck in p.options:
     var a: TLoc
     genRecordFieldAux(p, e[0], d, a)
@@ -1286,7 +1292,7 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfoV1(p.module, typ, a.lode.info)
-    if bt.destructor != nil and not isTrivialProc(bt.destructor):
+    if bt.destructor != nil and not isTrivialProc(p.module.g.graph, bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -1766,7 +1772,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   else: internalError(p.config, e.info, "genArrayLen()")
 
 proc makePtrType(baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextId idgen, baseType.owner)
+  result = newType(tyPtr, nextTypeId idgen, baseType.owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makeAddr(n: PNode; idgen: IdGenerator): PNode =
@@ -2198,7 +2204,7 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and t.destructor.ast[bodyPos].len != 0:
+    if t.destructor != nil and getBody(p.module.g.graph, t.destructor).len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
@@ -2269,7 +2275,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e[1], a)
       initLocExpr(p, e[2], b)
 
-      let ranged = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent})
+      let ranged = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyDistinct})
       let res = binaryArithOverflowRaw(p, ranged, a, b,
         if underlying.kind == tyInt64: fun64[op] else: fun[op])
 
@@ -2640,6 +2646,8 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
       d.storage = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg p.config$n.info & " " & $n.kind
   p.currLineInfo = n.info
 
   case n.kind
@@ -3086,7 +3094,9 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
       else:
         result = genConstSeq(p, n, typ, isConst)
     of tyProc:
-      if typ.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
+      if typ.callConv == ccClosure and n.safeLen > 1 and n[1].kind == nkNilLit:
+        # n.kind could be: nkClosure, nkTupleConstr and maybe others; `n.safeLen`
+        # guards against the case of `nkSym`, refs bug #14340.
         # Conversion: nimcall -> closure.
         # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
         # this behaviour is needed since closure_var = nil must be

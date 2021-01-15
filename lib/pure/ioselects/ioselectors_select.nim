@@ -58,7 +58,7 @@ when hasThreadSupport:
       eSet: FdSet
       maxFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
       lock: Lock
     Selector*[T] = ptr SelectorImpl[T]
 else:
@@ -69,7 +69,7 @@ else:
       eSet: FdSet
       maxFD: int
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 
 type
@@ -305,7 +305,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
     s.delKey(fd)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var tv = Timeval()
   var ptv = addr tv
   var rset, wset, eset: FdSet

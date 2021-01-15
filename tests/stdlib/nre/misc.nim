@@ -1,11 +1,11 @@
 import unittest, nre, strutils, optional_nonstrict
 
-suite "Misc tests":
-  test "unicode":
+block: # Misc tests
+  block: # unicode
     check("".find(re"(*UTF8)").match == "")
     check("перевірка".replace(re"(*U)\w", "") == "")
 
-  test "empty or non-empty match":
+  block: # empty or non-empty match
     check("abc".findall(re"|.").join(":") == ":a::b::c:")
     check("abc".findall(re".|").join(":") == "a:b:c:")
 

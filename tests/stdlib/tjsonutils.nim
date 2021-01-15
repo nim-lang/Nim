@@ -57,7 +57,7 @@ template fn() =
       """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null}]"""
 
   block:
-    # edge case when user defined `==` doesn't handle `nil` well, eg:
+    # edge case when user defined `==` doesn't handle `nil` well, e.g.:
     # https://github.com/nim-lang/nimble/blob/63695f490728e3935692c29f3d71944d83bb1e83/src/nimblepkg/version.nim#L105
     testRoundtrip(@[Foo(id: 10), nil]): """[{"id":10},null]"""
 
@@ -117,6 +117,26 @@ template fn() =
     testRoundtrip(Foo[float](t1: true, z1: 5, t2: 3, z4: 12)): """{"t1":true,"z1":5,"t2":3,"z4":12}"""
     testRoundtrip(Foo[int](t1: false, z2: 7)): """{"t1":false,"z2":7}"""
     # pending https://github.com/nim-lang/Nim/issues/14698, test with `type Foo[T] = ref object`
+
+  block: # bug: pass opt params in fromJson
+    type Foo = object
+      a: int
+      b: string
+      c: float
+    type Bar = object
+      foo: Foo
+      boo: string
+    var f: seq[Foo]
+    try:
+      fromJson(f, parseJson """[{"b": "bbb"}]""")
+      doAssert false
+    except ValueError:
+      doAssert true
+    fromJson(f, parseJson """[{"b": "bbb"}]""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert f == @[Foo(a: 0, b: "bbb", c: 0.0)]
+    var b: Bar
+    fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
 
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"

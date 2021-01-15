@@ -15,6 +15,7 @@ import
   algorithm, times, md5, sequtils, azure, intsets
 from std/sugar import dup
 import compiler/nodejs
+import lib/stdtest/testutils
 
 var useColors = true
 var backendLogging = true
@@ -41,7 +42,7 @@ Options:
   --print                   also print results to the console
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
-  --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --targets:"c cpp js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
   --colors:on|off           Turn messages coloring on|off.
@@ -81,16 +82,18 @@ let
   pegOfInterest = pegLineError / pegOtherError
 
 var gTargets = {low(TTarget)..high(TTarget)}
+var targetsSet = false
 
 proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
   input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
 
-proc normalizeMsg(s: string): string =
-  result = newStringOfCap(s.len+1)
-  for x in splitLines(s):
-    if result.len > 0: result.add '\L'
-    result.add x.strip
+when false: # deadcode
+  proc normalizeMsg(s: string): string =
+    result = newStringOfCap(s.len+1)
+    for x in splitLines(s):
+      if result.len > 0: result.add '\L'
+      result.add x.strip
 
 proc getFileDir(filename: string): string =
   result = filename.splitFile().dir
@@ -142,7 +145,7 @@ proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
   options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
-                      "filedir", filename.getFileDir()])
+                      "filedir", filename.getFileDir(), "nim", compilerPrefix])
 
 proc callCompiler(cmdTemplate, filename, options, nimcache: string,
                   target: TTarget, extraOptions = ""): TSpec =
@@ -363,7 +366,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     checkForInlineErrors(r, expected, given, test, target)
   elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -401,9 +404,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
   try:
     let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
-    let check = spec.ccodeCheck
-    if check.len > 0:
-      if check[0] == '\\':
+    for check in spec.ccodeCheck:
+      if check.len > 0 and check[0] == '\\':
         # little hack to get 'match' support:
         if not contents.match(check.peg):
           given.err = reCodegenFailure
@@ -422,17 +424,8 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     echo getCurrentExceptionMsg()
 
 proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  let giv = given.nimout.strip
-  var currentPos = 0
-  # Only check that nimout contains all expected lines in that order.
-  # There may be more output in nimout. It is ignored here.
-  for line in expectedNimout.strip.splitLines:
-    currentPos = giv.find(line.strip, currentPos)
-    if currentPos < 0:
-      given.err = reMsgsDiffer
-      break
-
-
+  if not greedyOrderedSubsetLines(expectedNimout, given.nimout):
+    given.err = reMsgsDiffer
 
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
@@ -468,6 +461,10 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
     result = true
 
 var count = 0
+
+proc equalModuloLastNewline(a, b: string): bool =
+  # allow lazy output spec that omits last newline, but really those should be fixed instead
+  result = a == b or b.endsWith("\n") and a == b[0 ..< ^1]
 
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
@@ -513,16 +510,18 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           if exitCode != 0: exitCode = 1
           let bufB =
             if expected.sortoutput:
-              var x = splitLines(strip(buf.string))
+              var buf2 = buf.string
+              buf2.stripLineEnd
+              var x = splitLines(buf2)
               sort(x, system.cmp)
-              join(x, "\n")
+              join(x, "\n") & "\n"
             else:
-              strip(buf.string)
+              buf.string
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
                               bufB, reExitcodesDiffer)
-          elif (expected.outputCheck == ocEqual and expected.output != bufB) or
+          elif (expected.outputCheck == ocEqual and not expected.output.equalModuloLastNewline(bufB)) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
             r.addResult(test, target, expected.output, bufB, reOutputsDiffer)
@@ -663,9 +662,6 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
-  os.putEnv "NIMTEST_COLOR", "never"
-  os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
-
   azure.init()
   backend.open()
   var optPrintResults = false
@@ -685,8 +681,9 @@ proc main() =
     of "targets":
       targetsStr = p.val.string
       gTargets = parseTargets(targetsStr)
+      targetsSet = true
     of "nim":
-      compilerPrefix = addFileExt(p.val.string, ExeExt)
+      compilerPrefix = addFileExt(p.val.string.absolutePath, ExeExt)
     of "directory":
       setCurrentDir(p.val.string)
     of "colors":
@@ -794,14 +791,16 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
+    # "/pathto/tests/stdlib/nre/captures.nim" -> "stdlib" + "tests/stdlib/nre/captures.nim"
     var subPath = p.key.string
-    if subPath.isAbsolute: subPath = subPath.relativePath(getCurrentDir())
+    let nimRoot = currentSourcePath / "../.."
+      # makes sure points to this regardless of cwd or which nim is used to compile this.
+    doAssert(dirExists(nimRoot/testsDir), nimRoot/testsDir & " doesn't exist!") # sanity check
+    if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
     # at least one directory is required in the path, to use as a category name
-    let pathParts = split(subPath, {DirSep, AltSep})
-    # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
+    let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})
     let cat = Category(pathParts[0])
-    subPath = joinPath(pathParts[1..^1])
-    processSingleTest(r, cat, p.cmdLineRest.string, subPath)
+    processSingleTest(r, cat, p.cmdLineRest.string, subPath, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:

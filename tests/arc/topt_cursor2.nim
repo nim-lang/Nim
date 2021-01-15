@@ -1,6 +1,8 @@
-discard """
-  output: '''emptyemptyempty'''
+discard """  
   cmd: '''nim c --gc:arc $file'''
+  output: '''emptyemptyempty
+inner destroy
+'''
 """
 
 # bug #15039
@@ -49,3 +51,26 @@ proc parse() =
     echo children
 
 parse()
+
+
+#------------------------------------------------------------------------------
+# issue #15629
+
+type inner = object
+type outer = ref inner
+
+proc `=destroy`(b: var inner) =
+  echo "inner destroy"
+
+proc newOuter(): outer =
+  new(result)
+
+type holder = object
+  contents: outer
+
+proc main() = 
+  var t: holder
+  t.contents = newOuter()
+  
+main()
+

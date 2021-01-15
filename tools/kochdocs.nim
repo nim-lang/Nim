@@ -14,8 +14,11 @@ const
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+const allowList = ["jsbigints.nim"]
 
-template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
+template isJsOnly(file: string): bool =
+  file.isRelativeTo("lib/js") or
+  file.extractFilename in allowList
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -127,7 +130,6 @@ lib/system/channels.nim
 
   withoutIndex = """
 lib/wrappers/mysql.nim
-lib/wrappers/iup.nim
 lib/wrappers/sqlite3.nim
 lib/wrappers/postgres.nim
 lib/wrappers/tinyc.nim
@@ -137,7 +139,6 @@ lib/wrappers/openssl.nim
 lib/posix/posix.nim
 lib/posix/linux.nim
 lib/posix/termios.nim
-lib/js/jscore.nim
 """.splitWhitespace()
 
   # some of these are include files so shouldn't be docgen'd
@@ -187,7 +188,8 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+    result = a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"] and
+      not a.path.isRelativeTo("lib/fusion")
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or
@@ -266,7 +268,7 @@ proc buildDoc(nimArgs, destPath: string) =
       [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
-    commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc

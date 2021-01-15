@@ -14,4 +14,4 @@ when false:
 
 proc two(dummy: int, size: int) =
   var x: array[size * 1, int] # compiles, but shouldn't?
-  #assert(x.len == size) # just for fun
+  # doAssert(x.len == size) # just for fun

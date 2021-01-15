@@ -11,6 +11,13 @@
 
 import macros, strutils, asyncfutures
 
+
+# TODO: Ref https://github.com/nim-lang/Nim/issues/5617
+# TODO: Add more line infos
+proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
+  result = newCall(theProc, args)
+  result.copyLineInfo(fromNode)
+
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
@@ -52,15 +59,13 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
     # Only complete them if they have not been completed already by the user.
-    # TODO: Once https://github.com/nim-lang/Nim/issues/5617 is fixed.
-    # TODO: Add line info to the complete() call!
     # In the meantime, this was really useful for debugging :)
     #result.add(newCall(newIdentNode("echo"), newStrLitNode(fromNode.lineinfo)))
     result.add newIfStmt(
       (
         newCall(newIdentNode("not"),
                 newDotExpr(ident, newIdentNode("finished"))),
-        newCall(newIdentNode("complete"), ident)
+        newCallWithLineInfo(fromNode, newIdentNode("complete"), ident)
       )
     )
 
@@ -118,7 +123,8 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
     if params[i][1].kind == nnkBracketExpr and
-       params[i][1][0].eqIdent("futurevar"):
+       params[i][1][0].eqIdent(FutureVar.astToStr):
+      ## eqIdent: first char is case sensitive!!!
       result.add(params[i][0])
 
 proc isInvalidReturnType(typeName: string): bool =
@@ -128,6 +134,15 @@ proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
+
+template await*(f: typed): untyped {.used.} =
+  static:
+    error "await expects Future[T], got " & $typeof(f)
+
+template await*[T](f: Future[T]): auto {.used.} =
+  var internalTmpFuture: FutureBase = f
+  yield internalTmpFuture
+  (cast[typeof(f)](internalTmpFuture)).read()
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
@@ -167,7 +182,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   elif returnType.kind == nnkEmpty:
     baseType = returnType
   else:
-    verifyReturnType(repr(returnType), returntype)
+    verifyReturnType(repr(returnType), returnType)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
@@ -262,20 +277,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       result.params[0] = parseExpr("owned(Future[void])")
 
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-  # however here the overloads are placed inside each expanded async
-  var awaitDefinition = quote:
-    template await(f: typed): untyped {.used.} =
-      static:
-        error "await expects Future[T], got " & $typeof(f)
-
-    template await[T](f: Future[T]): auto {.used.} =
-      var internalTmpFuture: FutureBase = f
-      yield internalTmpFuture
-      (cast[type(f)](internalTmpFuture)).read()
-
   if procBody.kind != nnkEmpty:
     body2.add quote do:
-      `awaitDefinition`
       `outerProcBody`
     result.body = body2
 

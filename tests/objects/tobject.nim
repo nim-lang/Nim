@@ -1,7 +1,3 @@
-discard """
-output: "[Suite] object basic methods"
-"""
-
 import unittest
 
 type Obj = object
@@ -10,12 +6,12 @@ type Obj = object
 proc makeObj(x: int): Obj =
   result.foo = x
 
-suite "object basic methods":
-  test "it should convert an object to a string":
+block: # object basic methods
+  block: # it should convert an object to a string
     var obj = makeObj(1)
     # Should be "obj: (foo: 1)" or similar.
     check($obj == "(foo: 1)")
-  test "it should test equality based on fields":
+  block: # it should test equality based on fields
     check(makeObj(1) == makeObj(1))
 
 # bug #10203

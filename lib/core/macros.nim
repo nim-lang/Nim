@@ -160,7 +160,7 @@ proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## Compares two Nim nodes' types. Return true if the types are the same,
-  ## eg. true when comparing alias with original type.
+  ## e.g. true when comparing alias with original type.
   discard
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
@@ -280,7 +280,7 @@ else: # bootstrapping substitute
 when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
     ## For a typed proc returns the AST after transformation pass; this is useful
-    ## for debugging how the compiler transforms code (eg: `defer`, `for`) but
+    ## for debugging how the compiler transforms code (e.g.: `defer`, `for`) but
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
@@ -566,34 +566,82 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
-  ## for any interpolated expression.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   macro check(ex: untyped) =
-  ##     # this is a simplified version of the check macro from the
-  ##     # unittest module.
-  ##
-  ##     # If there is a failed check, we want to make it easy for
-  ##     # the user to jump to the faulty line in the code, so we
-  ##     # get the line info here:
-  ##     var info = ex.lineinfo
-  ##
-  ##     # We will also display the code string of the failed check:
-  ##     var expString = ex.toStrLit
-  ##
-  ##     # Finally we compose the code to implement the check:
-  ##     result = quote do:
-  ##       if not `ex`:
-  ##         echo `info` & ": Check failed: " & `expString`
+  ## for any interpolated expression. The original meaning of the interpolation
+  ## operator may be obtained by escaping it (by prefixing it with itself) when used
+  ## as a unary operator:
+  ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%&%` and so on; see examples.
+  runnableExamples:
+    macro check(ex: untyped) =
+      # this is a simplified version of the check macro from the
+      # unittest module.
+
+      # If there is a failed check, we want to make it easy for
+      # the user to jump to the faulty line in the code, so we
+      # get the line info here:
+      var info = ex.lineinfo
+
+      # We will also display the code string of the failed check:
+      var expString = ex.toStrLit
+
+      # Finally we compose the code to implement the check:
+      result = quote do:
+        if not `ex`:
+          echo `info` & ": Check failed: " & `expString`
+    check 1 + 1 == 2
+
+  runnableExamples:
+    # example showing how to define a symbol that requires backtick without
+    # quoting it.
+    var destroyCalled = false
+    macro bar() =
+      let s = newTree(nnkAccQuoted, ident"=destroy")
+      # let s = ident"`=destroy`" # this would not work
+      result = quote do:
+        type Foo = object
+        # proc `=destroy`(a: var Foo) = destroyCalled = true # this would not work
+        proc `s`(a: var Foo) = destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
+
+  runnableExamples:
+    # custom `op`
+    var destroyCalled = false
+    macro bar() =
+      var x = 1.5
+      result = quote("@") do:
+        type Foo = object
+        proc `=destroy`(a: var Foo) =
+          doAssert @x == 1.5
+          doAssert compiles(@x == 1.5)
+          let b1 = @[1,2]
+          let b2 = @@[1,2]
+          doAssert $b1 == "[1, 2]"
+          doAssert $b2 == "@[1, 2]"
+          destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
+
+    proc `&%`(x: int): int = 1
+    proc `&%`(x, y: int): int = 2
+
+    macro bar2() =
+      var x = 3
+      result = quote("&%") do:
+        var y = &%x # quoting operator
+        doAssert &%&%y == 1 # unary operator => need to escape
+        doAssert y &% y == 2 # binary operator => no need to escape
+        doAssert y == 3
+    bar2()
 
 proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## Checks that `n` is of kind `k`. If this is not the case,
@@ -1389,27 +1437,9 @@ when defined(nimVmEqIdent):
     ## these nodes will be unwrapped.
 
 else:
-  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
-  proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-    proc toLower(c: char): char {.inline.} =
-      if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-      else: result = c
-    var i = 0
-    var j = 0
-    # first char is case sensitive
-    if a[0] != b[0]: return 1
-    while true:
-      while a[i] == '_': inc(i)
-      while b[j] == '_': inc(j) # BUGFIX: typo
-      var aa = toLower(a[i])
-      var bb = toLower(b[j])
-      result = ord(aa) - ord(bb)
-      if result != 0 or aa == '\0': break
-      inc(i)
-      inc(j)
+  from std/private/strimpl import cmpNimIdentifier
 
-
-  proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+  proc eqIdent*(a, b: string): bool = cmpNimIdentifier(a, b) == 0
     ## Check if two idents are equal.
 
   proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
@@ -1434,10 +1464,10 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
-  for i in 1 ..< params.len:
-    template node: untyped = params[i]
-    if name.eqIdent( $ node[0]):
-      return true
+  for i in 1..<params.len:
+    for j in 0..<params[i].len-2:
+      if name.eqIdent($params[i][j]):
+        return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
   ## Add ``ident`` to ``dest`` if it is not present. This is intended for use

@@ -8,11 +8,8 @@ Contributing
 Contributing happens via "Pull requests" (PR) on github. Every PR needs to be
 reviewed before it can be merged and the Continuous Integration should be green.
 
-The PR has to be approved (and is often merged too) by one "code owner", either
-by the code owner who is responsible for the subsystem the PR belongs to or by
-two core developers or by Araq.
+The PR has to be approved by two core developers or by Araq.
 
-See `codeowners <codeowners.html>`_ for more details.
 
 
 Writing tests
@@ -50,7 +47,7 @@ which only gets executed when the tester is building the file.
 Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
 testing by itself, don't rely on echo statements or similar; in particular, avoid
-things like `echo "done"`.
+things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 
@@ -242,7 +239,7 @@ not guaranteed to stay in sync, so ``runnableExamples`` is usually preferred:
 .. code-block:: nim
 
   proc someproc*(): string =
-    ## Return "something"
+    ## Returns "something"
     ##
     ## .. code-block::
     ##  echo someproc() # "something"
@@ -265,12 +262,12 @@ first appearance of the proc.
     echo "hello"
 
 The preferred documentation style is to begin with a capital letter and use
-the imperative (command) form. That is, between:
+the third-person singular. That is, between:
 
 .. code-block:: nim
 
   proc hello*(): string =
-    ## Return "hello"
+    ## Returns "hello"
     result = "hello"
 
 or
@@ -278,7 +275,7 @@ or
 .. code-block:: nim
 
   proc hello*(): string =
-    ## says hello
+    ## say hello
     result = "hello"
 
 the first is preferred.
@@ -381,7 +378,7 @@ General commit rules
 
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
-   branch (currently 1.2.x) and maybe also to the 1.0 branch.
+   branch (currently 1.4.x) and maybe also all the way back to the 1.0.x branch.
    The commit message should contain the tag ``[backport]`` for "backport to all
    stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
    given $VERSION.
@@ -410,7 +407,6 @@ General commit rules
 
       #!/bin/sh
       git diff --check --cached || exit $?
-
 5. Describe your commit and use your common sense.
    Example commit message:
 
@@ -420,7 +416,13 @@ General commit rules
    close it when the PR is committed), wheres issue ``#124`` is referenced
    (e.g.: partially fixed) and won't close the issue when committed.
 
-6. Commits should be always be rebased against devel (so a fast forward
+6. PR body (not just PR title) should contain references to fixed/referenced github
+   issues, e.g.: `fix #123` or `refs #123`. This is so that you get proper cross
+   referencing from linked issue to the PR (github won't make those links with just
+   PR title, and commit messages aren't always sufficient to ensure that, e.g.
+   can't be changed after a PR is merged).
+
+7. Commits should be always be rebased against devel (so a fast forward
    merge can happen)
 
    e.g.: use ``git pull --rebase origin devel``. This is to avoid messing up
@@ -429,7 +431,7 @@ General commit rules
    squash all commits using the script shown in
    https://github.com/nim-lang/Nim/pull/9356
 
-7. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
+8. Do not mix pure formatting changes (e.g. whitespace changes, nimpretty) or
    automated changes (e.g. nimfix) with other code changes: these should be in
    separate commits (and the merge on GitHub should not squash these into 1).
 

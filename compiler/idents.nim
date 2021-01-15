@@ -107,9 +107,14 @@ proc newIdentCache*(): IdentCache =
   result.idDelegator = result.getIdent":delegator"
   result.emptyIdent = result.getIdent("")
   # initialize the keywords:
-  for s in succ(low(specialWords))..high(specialWords):
-    result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
+  for s in succ(low(TSpecialWord))..high(TSpecialWord):
+    result.getIdent($s, hashIgnoreStyle($s)).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
+
+proc hash*(x: PIdent): Hash {.inline.} = x.h
+proc `==`*(a, b: PIdent): bool {.inline.} =
+  if a.isNil or b.isNil: result = system.`==`(a, b)
+  else: result = a.id == b.id

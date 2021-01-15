@@ -110,14 +110,14 @@ proc iiTablePut*(t: var TIITable, key, val: int)
 
 # implementation
 
-proc skipConvAndClosure*(n: PNode): PNode =
+proc skipConvCastAndClosure*(n: PNode): PNode =
   result = n
   while true:
     case result.kind
     of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64,
        nkClosure:
       result = result[0]
-    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkCast:
       result = result[1]
     else: break
 
@@ -222,9 +222,9 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
   ##
-  ##..code-block:: nim
+  ## .. code-block:: nim
   ##
-  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
+  ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   for i in 1..<list.len:
     let it = list[i].sym
@@ -345,7 +345,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     result.addf("$N$1\"n\": $2",     [istr, treeToYamlAux(conf, n.n, marker, indent + 2, maxRecDepth - 1)])
     if card(n.flags) > 0:
       result.addf("$N$1\"flags\": $2", [istr, flagsToStr(n.flags)])
-    result.addf("$N$1\"callconv\": $2", [istr, makeYamlString(CallingConvToStr[n.callConv])])
+    result.addf("$N$1\"callconv\": $2", [istr, makeYamlString($n.callConv)])
     result.addf("$N$1\"size\": $2", [istr, rope(n.size)])
     result.addf("$N$1\"align\": $2", [istr, rope(n.align)])
     result.addf("$N$1\"sons\": $2", [istr, sonsRope])

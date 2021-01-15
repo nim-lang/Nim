@@ -11,11 +11,11 @@
 ## and libraries, writing async procedures in Nim and converting callback-based code
 ## to promises.
 ##
-## A Nim procedure is asynchronous when it includes the ``{.async.}`` pragma. It
-## should always have a ``Future[T]`` return type or not have a return type at all.
-## A ``Future[void]`` return type is assumed by default.
+## A Nim procedure is asynchronous when it includes the `{.async.}` pragma. It
+## should always have a `Future[T]` return type or not have a return type at all.
+## A `Future[void]` return type is assumed by default.
 ##
-## This is roughly equivalent to the ``async`` keyword in JavaScript code.
+## This is roughly equivalent to the `async` keyword in JavaScript code.
 ##
 ## .. code-block:: nim
 ##  proc loadGame(name: string): Future[Game] {.async.} =
@@ -28,14 +28,14 @@
 ##     // code
 ##   }
 ##
-## A call to an asynchronous procedure usually needs ``await`` to wait for
-## the completion of the ``Future``.
+## A call to an asynchronous procedure usually needs `await` to wait for
+## the completion of the `Future`.
 ##
 ## .. code-block:: nim
 ##   var game = await loadGame(name)
 ##
 ## Often, you might work with callback-based API-s. You can wrap them with
-## asynchronous procedures using promises and ``newPromise``:
+## asynchronous procedures using promises and `newPromise`:
 ##
 ## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game] =
@@ -44,7 +44,7 @@
 ##         resolve(game)
 ##     return promise
 ##
-## Forward definitions work properly, you just need to always add the ``{.async.}`` pragma:
+## Forward definitions work properly, you just need to always add the `{.async.}` pragma:
 ##
 ## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game] {.async.}
@@ -57,10 +57,10 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
-import jsffi
-import macros
+import std/jsffi
+import std/macros
 
-when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
+when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
 
 type
@@ -69,7 +69,7 @@ type
   ## Wraps the return type of an asynchronous procedure.
 
   PromiseJs* {.importcpp: "Promise".} = ref object
-  ## A JavaScript Promise
+  ## A JavaScript Promise.
 
 
 proc replaceReturn(node: var NimNode) =
@@ -139,7 +139,7 @@ proc generateJsasync(arg: NimNode): NimNode =
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into
-  ## javascript-compatible async procedures
+  ## javascript-compatible async procedures.
   if arg.kind == nnkStmtList:
     result = newStmtList()
     for oneProc in arg:
@@ -149,8 +149,8 @@ macro async*(arg: untyped): untyped =
 
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
-  ## into promises and async procedures
+  ## into promises and async procedures.
 
 proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
-  ## into promises and async procedures
+  ## into promises and async procedures.

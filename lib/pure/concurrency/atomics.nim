@@ -11,6 +11,46 @@
 ##
 ## Unstable API.
 
+runnableExamples:
+  # Atomic
+  var loc: Atomic[int]
+  loc.store(4)
+  assert loc.load == 4
+  loc.store(2)
+  assert loc.load(moRelaxed) == 2
+  loc.store(9)
+  assert loc.load(moAcquire) == 9
+  loc.store(0, moRelease)
+  assert loc.load == 0
+
+  assert loc.exchange(7) == 0
+  assert loc.load == 7
+
+  var expected = 7
+  assert loc.compareExchange(expected, 5, moRelaxed, moRelaxed)
+  assert expected == 7
+  assert loc.load == 5
+
+  assert not loc.compareExchange(expected, 12, moRelaxed, moRelaxed)
+  assert expected == 5
+  assert loc.load == 5
+
+  assert loc.fetchAdd(1) == 5
+  assert loc.fetchAdd(2) == 6
+  assert loc.fetchSub(3) == 8
+
+  loc.atomicInc(1)
+  assert loc.load == 6
+
+  # AtomicFlag
+  var flag: AtomicFlag
+
+  assert not flag.testAndSet
+  assert flag.testAndSet
+  flag.clear(moRelaxed)
+  assert not flag.testAndSet
+
+
 import macros
 
 when defined(cpp) or defined(nimdoc):
@@ -51,10 +91,11 @@ when defined(cpp) or defined(nimdoc):
         ## with other moSequentiallyConsistent operations.
 
   type
-    Atomic* {.importcpp: "std::atomic".} [T] = object
+    Atomic*[T] {.importcpp: "std::atomic", completeStruct.} = object
       ## An atomic object with underlying type `T`.
+      raw: T
 
-    AtomicFlag* {.importcpp: "std::atomic_flag".} = object
+    AtomicFlag* {.importcpp: "std::atomic_flag", size: 1.} = object
       ## An atomic boolean state.
 
   # Access operations
@@ -249,10 +290,10 @@ else:
     type
       # Atomic* {.importcpp: "_Atomic('0)".} [T] = object
 
-      AtomicInt8 {.importc: "_Atomic NI8".} = object
-      AtomicInt16 {.importc: "_Atomic NI16".} = object
-      AtomicInt32 {.importc: "_Atomic NI32".} = object
-      AtomicInt64 {.importc: "_Atomic NI64".} = object
+      AtomicInt8 {.importc: "_Atomic NI8", size: 1.} = object
+      AtomicInt16 {.importc: "_Atomic NI16", size: 2.} = object
+      AtomicInt32 {.importc: "_Atomic NI32", size: 4.} = object
+      AtomicInt64 {.importc: "_Atomic NI64", size: 8.} = object
 
     template atomicType*(T: typedesc[Trivial]): untyped =
       # Maps the size of a trivial type to it's internal atomic type
@@ -262,7 +303,7 @@ else:
       elif sizeof(T) == 8: AtomicInt64
 
     type
-      AtomicFlag* {.importc: "atomic_flag".} = object
+      AtomicFlag* {.importc: "atomic_flag", size: 1.} = object
 
       Atomic*[T] = object
         when T is Trivial:

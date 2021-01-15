@@ -23,7 +23,7 @@ type
     preferTypeName,
     preferResolved, # fully resolved symbols
     preferMixed,
-      # most useful, shows: symbol + resolved symbols if it differs, eg:
+      # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
@@ -700,7 +700,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         if i < t.len - 1: result.add(", ")
       result.add(')')
       if t.len > 0 and t[0] != nil: result.add(": " & typeToString(t[0]))
-      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: CallingConvToStr[t.callConv]
+      var prag = if t.callConv == ccNimCall and tfExplicitCallConv notin t.flags: "" else: $t.callConv
       if tfNoSideEffect in t.flags:
         addSep(prag)
         prag.add("noSideEffect")
@@ -747,8 +747,9 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
     if t.len > 0 and t[0] != nil:
       result = firstOrd(conf, t[0])
     else:
-      assert(t.n[0].kind == nkSym)
-      result = toInt128(t.n[0].sym.position)
+      if t.n.len > 0:
+        assert(t.n[0].kind == nkSym)
+        result = toInt128(t.n[0].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = firstOrd(conf, lastSon(t))
@@ -804,8 +805,9 @@ proc lastOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyUInt64:
     result = toInt128(0xFFFFFFFFFFFFFFFF'u64)
   of tyEnum:
-    assert(t.n[^1].kind == nkSym)
-    result = toInt128(t.n[^1].sym.position)
+    if t.n.len > 0:
+      assert(t.n[^1].kind == nkSym)
+      result = toInt128(t.n[^1].sym.position)
   of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tySink,
      tyStatic, tyInferred, tyUserTypeClasses, tyLent:
     result = lastOrd(conf, lastSon(t))
@@ -1309,7 +1311,7 @@ proc baseOfDistinct*(t: PType; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
-    result = copyType(t, nextId idgen, t.owner)
+    result = copyType(t, nextTypeId idgen, t.owner)
     var parent: PType = nil
     var it = result
     while it.kind in {tyPtr, tyRef, tyOwned}:
@@ -1455,7 +1457,7 @@ proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
     result = formal
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
-    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextId(idgen), arg.owner)
+    let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextTypeId(idgen), arg.owner)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
@@ -1480,7 +1482,7 @@ proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
+proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
     let formalStr = typeToString(formal)
@@ -1489,7 +1491,10 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     let verbose = actualStr == formalStr or optDeclaredLocs in conf.globalOptions
     var msg = "type mismatch:"
     if verbose: msg.add "\n"
-    msg.add  " got <$1>" % actualStr
+    if conf.isDefined("nimLegacyTypeMismatch"):
+      msg.add  " got <$1>" % actualStr
+    else:
+      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]
     if verbose:
       msg.addDeclaredLoc(conf, actual)
       msg.add "\n"

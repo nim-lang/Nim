@@ -627,10 +627,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  case conf.backend
-  of backendInvalid: doAssert false
-  of backendJs: return false # pre-existing behavior, but not sure it's good
-  else: discard
+  if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)
@@ -851,7 +848,10 @@ proc callCCompiler*(conf: ConfigRef) =
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) =
-    if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+    if prettyCmds[idx].len > 0:
+      flushDot(conf)
+      # xxx should probably use stderr like other compiler messages, not stdout
+      echo prettyCmds[idx]
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
@@ -1022,6 +1022,12 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
+    lit ",\L\"projectIsCmd\": "
+    lit $(%* conf.projectIsCmd)
+    lit ",\L\"cmdInput\": "
+    lit $(%* conf.cmdInput)
+    lit ",\L\"currentDir\": "
+    lit $(%* getCurrentDir())
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
@@ -1042,19 +1048,35 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
-    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
+    for key in "depfiles cmdline stdinInput currentDir".split:
+      if not data.hasKey(key): return true
+    if getCurrentDir() != data["currentDir"].getStr:
+      # fixes bug #16271
+      # Note that simply comparing `expandFilename(projectFile)` would
+      # not be sufficient in case other flags depend implicitly on `getCurrentDir`,
+      # and would require much more care. Simply re-compiling is safer for now.
+      # A better strategy for future work would be to cache (with an LRU cache)
+      # the N most recent unique build instructions, as done with `rdmd`,
+      # which is both robust and avoids recompilation when switching back and forth
+      # between projects, see https://github.com/timotheecour/Nim/issues/199
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
-    if not data.hasKey("stdinInput"): return true
     let stdinInput = data["stdinInput"].getBool
+    let projectIsCmd = data["projectIsCmd"].getBool
     if conf.projectIsStdin or stdinInput:
       # could optimize by returning false if stdin input was the same,
       # but I'm not sure how to get full stding input
       return true
+
+    if conf.projectIsCmd or projectIsCmd:
+      if not (conf.projectIsCmd and projectIsCmd): return true
+      if not data.hasKey("cmdInput"): return true
+      let cmdInput = data["cmdInput"].getStr
+      if cmdInput != conf.cmdInput: return true
 
     let depfilesPairs = data["depfiles"]
     doAssert depfilesPairs.kind == JArray

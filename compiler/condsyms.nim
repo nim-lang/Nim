@@ -13,7 +13,7 @@ import
   strtabs
 
 from options import Feature
-from lineinfos import HintsToStr, WarningsToStr
+from lineinfos import hintMin, hintMax, warnMin, warnMax
 
 proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
   symbols[symbol] = value
@@ -58,7 +58,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimGenericInOutFlags")
   when false: defineSymbol("nimHasOpt")
   defineSymbol("nimNoArrayToCstringConversion")
-  defineSymbol("nimNewRoof")
   defineSymbol("nimHasRunnableExamples")
   defineSymbol("nimNewDot")
   defineSymbol("nimHasNilChecks")
@@ -89,10 +88,10 @@ proc initDefines*(symbols: StringTableRef) =
   for f in Feature:
     defineSymbol("nimHas" & $f)
 
-  for s in WarningsToStr:
-    defineSymbol("nimHasWarning" & s)
-  for s in HintsToStr:
-    defineSymbol("nimHasHint" & s)
+  for s in warnMin..warnMax:
+    defineSymbol("nimHasWarning" & $s)
+  for s in hintMin..hintMax:
+    defineSymbol("nimHasHint" & $s)
 
   defineSymbol("nimFixedOwned")
   defineSymbol("nimHasStyleChecks")
@@ -124,3 +123,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasEffectTraitsModule")
   defineSymbol("nimHasCastPragmaBlocks")
   defineSymbol("nimHasDeclaredLocs")
+  defineSymbol("nimHasJsBigIntBackend")

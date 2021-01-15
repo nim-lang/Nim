@@ -9,46 +9,43 @@
 
 ## The system module defines several common functions for working with strings,
 ## such as:
-## * ``$`` for converting other data-types to strings
-## * ``&`` for string concatenation
-## * ``add`` for adding a new character or a string to the existing one
-## * ``in`` (alias for ``contains``) and ``notin`` for checking if a character
+## * `$` for converting other data-types to strings
+## * `&` for string concatenation
+## * `add` for adding a new character or a string to the existing one
+## * `in` (alias for `contains`) and `notin` for checking if a character
 ##   is in a string
 ##
 ## This module builds upon that, providing additional functionality in form of
 ## procedures, iterators and templates for strings.
-##
-## .. code-block::
-##   import strutils
-##
-##   let
-##     numbers = @[867, 5309]
-##     multiLineString = "first line\nsecond line\nthird line"
-##
-##   let jenny = numbers.join("-")
-##   assert jenny == "867-5309"
-##
-##   assert splitLines(multiLineString) ==
-##          @["first line", "second line", "third line"]
-##   assert split(multiLineString) == @["first", "line", "second",
-##                                      "line", "third", "line"]
-##   assert indent(multiLineString, 4) ==
-##          "    first line\n    second line\n    third line"
-##   assert 'z'.repeat(5) == "zzzzz"
-##
+
+runnableExamples:
+  let
+    numbers = @[867, 5309]
+    multiLineString = "first line\nsecond line\nthird line"
+
+  let jenny = numbers.join("-")
+  assert jenny == "867-5309"
+
+  assert splitLines(multiLineString) ==
+         @["first line", "second line", "third line"]
+  assert split(multiLineString) == @["first", "line", "second",
+                                     "line", "third", "line"]
+  assert indent(multiLineString, 4) ==
+         "    first line\n    second line\n    third line"
+  assert 'z'.repeat(5) == "zzzzz"
+
 ## The chaining of functions is possible thanks to the
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
-##
-## .. code-block::
-##   import strutils
-##   from sequtils import map
-##
-##   let jenny = "867-5309"
-##   assert jenny.split('-').map(parseInt) == @[867, 5309]
-##
-##   assert "Beetlejuice".indent(1).repeat(3).strip ==
-##          "Beetlejuice Beetlejuice Beetlejuice"
-##
+
+runnableExamples:
+  from sequtils import map
+
+  let jenny = "867-5309"
+  assert jenny.split('-').map(parseInt) == @[867, 5309]
+
+  assert "Beetlejuice".indent(1).repeat(3).strip ==
+         "Beetlejuice Beetlejuice Beetlejuice"
+
 ## This module is available for the `JavaScript target
 ## <backends.html#backends-the-javascript-target>`_.
 ##
@@ -59,23 +56,24 @@
 ## * `unicode module<unicode.html>`_ for Unicode UTF-8 handling
 ## * `sequtils module<sequtils.html>`_ for operations on container
 ##   types (including strings)
+## * `parsecsv module<parsecsv.html>`_ for a high-performance CSV parser
 ## * `parseutils module<parseutils.html>`_ for lower-level parsing of tokens,
 ##   numbers, identifiers, etc.
 ## * `parseopt module<parseopt.html>`_ for command-line parsing
+## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `strtabs module<strtabs.html>`_ for efficient hash tables
 ##   (dictionaries, in some programming languages) mapping from strings to strings
-## * `pegs module<pegs.html>`_ for PEG (Parsing Expression Grammar) support
 ## * `ropes module<ropes.html>`_ for rope data type, which can represent very
 ##   long strings efficiently
 ## * `re module<re.html>`_ for regular expression (regex) support
-## * `strscans<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+## * `strscans<strscans.html>`_ for `scanf` and `scanp` macros, which offer
 ##   easier substring extraction than regular expressions
 
 
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
-import macros # for `parseEnum`
+import std/enumutils
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -83,36 +81,38 @@ when defined(nimVmExportFixed):
 
 include "system/inclrtl"
 import std/private/since
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace (space, tab, vertical tab,
-    ## carriage return, new line, form feed)
+    ## carriage return, new line, form feed).
 
   Letters* = {'A'..'Z', 'a'..'z'}
-    ## the set of letters
+    ## The set of letters.
 
   Digits* = {'0'..'9'}
-    ## the set of digits
+    ## The set of digits.
 
   HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
-    ## the set of hexadecimal digits
+    ## The set of hexadecimal digits.
 
   IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
-    ## the set of characters an identifier can consist of
+    ## The set of characters an identifier can consist of.
 
   IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
-    ## the set of characters an identifier can start with
+    ## The set of characters an identifier can start with.
 
   Newlines* = {'\13', '\10'}
-    ## the set of characters a newline terminator can start with (carriage
-    ## return, line feed)
+    ## The set of characters a newline terminator can start with (carriage
+    ## return, line feed).
 
   AllChars* = {'\x00'..'\xFF'}
     ## A set with all the possible characters.
     ##
     ## Not very useful by its own, you can use it to create *inverted* sets to
-    ## make the `find proc<#find,string,set[char],Natural,int>`_
+    ## make the `find func<#find,string,set[char],Natural,int>`_
     ## find **invalid** characters in strings. Example:
     ##
     ## .. code-block:: nim
@@ -120,8 +120,7 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-proc isAlphaAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsAlphaAsciiChar".} =
+func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -132,8 +131,7 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect,
     doAssert isAlphaAscii('8') == false
   return c in Letters
 
-proc isAlphaNumeric*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsAlphaNumericChar".} =
+func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -143,8 +141,7 @@ proc isAlphaNumeric*(c: char): bool {.noSideEffect,
     doAssert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
-proc isDigit*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsDigitChar".} =
+func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -153,8 +150,7 @@ proc isDigit*(c: char): bool {.noSideEffect,
     doAssert isDigit('8') == true
   return c in Digits
 
-proc isSpaceAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsSpaceAsciiChar".} =
+func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
     doAssert isSpaceAscii('n') == false
@@ -162,30 +158,28 @@ proc isSpaceAscii*(c: char): bool {.noSideEffect,
     doAssert isSpaceAscii('\t') == true
   return c in Whitespace
 
-proc isLowerAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsLowerAsciiChar".} =
+func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   ##
   ## See also:
-  ## * `toLowerAscii proc<#toLowerAscii,char>`_
+  ## * `toLowerAscii func<#toLowerAscii,char>`_
   runnableExamples:
     doAssert isLowerAscii('e') == true
     doAssert isLowerAscii('E') == false
     doAssert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
-proc isUpperAscii*(c: char): bool {.noSideEffect,
-  rtl, extern: "nsuIsUpperAsciiChar".} =
+func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   ##
   ## See also:
-  ## * `toUpperAscii proc<#toUpperAscii,char>`_
+  ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
     doAssert isUpperAscii('e') == false
     doAssert isUpperAscii('E') == true
@@ -193,22 +187,21 @@ proc isUpperAscii*(c: char): bool {.noSideEffect,
   return c in {'A'..'Z'}
 
 
-proc toLowerAscii*(c: char): char {.noSideEffect,
-  rtl, extern: "nsuToLowerAsciiChar".} =
-  ## Returns the lower case version of character ``c``.
+func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
+  ## Returns the lower case version of character `c`.
   ##
-  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## This works only for the letters `A-Z`. See `unicode.toLower
   ## <unicode.html#toLower,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
-  ## * `isLowerAscii proc<#isLowerAscii,char>`_
-  ## * `toLowerAscii proc<#toLowerAscii,string>`_ for converting a string
+  ## * `isLowerAscii func<#isLowerAscii,char>`_
+  ## * `toLowerAscii func<#toLowerAscii,string>`_ for converting a string
   runnableExamples:
     doAssert toLowerAscii('A') == 'a'
     doAssert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
-    result = chr(ord(c) + (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
@@ -217,70 +210,66 @@ template toImpl(call) =
   for i in 0..len(s) - 1:
     result[i] = call(s[i])
 
-proc toLowerAscii*(s: string): string {.noSideEffect,
-  rtl, extern: "nsuToLowerAsciiStr".} =
+func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
   ##
-  ## This works only for the letters ``A-Z``. See `unicode.toLower
+  ## This works only for the letters `A-Z`. See `unicode.toLower
   ## <unicode.html#toLower,string>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
-  ## * `normalize proc<#normalize,string>`_
+  ## * `normalize func<#normalize,string>`_
   runnableExamples:
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
-proc toUpperAscii*(c: char): char {.noSideEffect,
-  rtl, extern: "nsuToUpperAsciiChar".} =
+func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts character `c` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## This works only for the letters `A-Z`.  See `unicode.toUpper
   ## <unicode.html#toUpper,Rune>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
-  ## * `isLowerAscii proc<#isLowerAscii,char>`_
-  ## * `toUpperAscii proc<#toUpperAscii,string>`_ for converting a string
-  ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
+  ## * `isUpperAscii func<#isUpperAscii,char>`_
+  ## * `toUpperAscii func<#toUpperAscii,string>`_ for converting a string
+  ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
     doAssert toUpperAscii('a') == 'A'
     doAssert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
-    result = chr(ord(c) - (ord('a') - ord('A')))
+    result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
 
-proc toUpperAscii*(s: string): string {.noSideEffect,
-  rtl, extern: "nsuToUpperAsciiStr".} =
+func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts string `s` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.  See `unicode.toUpper
+  ## This works only for the letters `A-Z`.  See `unicode.toUpper
   ## <unicode.html#toUpper,string>`_ for a version that works for any Unicode
   ## character.
   ##
   ## See also:
-  ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
+  ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
-proc capitalizeAscii*(s: string): string {.noSideEffect,
-  rtl, extern: "nsuCapitalizeAscii".} =
+func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
   ##
-  ## This works only for the letters ``A-Z``.
+  ## This works only for the letters `A-Z`.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   ##
   ## See also:
-  ## * `toUpperAscii proc<#toUpperAscii,char>`_
+  ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
     doAssert capitalizeAscii("foo") == "Foo"
     doAssert capitalizeAscii("-bar") == "-bar"
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
-proc nimIdentNormalize*(s: string): string =
+func nimIdentNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
   ##
   ## That means to convert to lower case and remove any '_' on all characters
@@ -300,15 +289,14 @@ proc nimIdentNormalize*(s: string): string =
       inc j
   if j != s.len: setLen(result, j)
 
-proc normalize*(s: string): string {.noSideEffect,
-  rtl, extern: "nsuNormalize".} =
+func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
   ## That means to convert it to lower case and remove any '_'. This
   ## should NOT be used to normalize Nim identifier names.
   ##
   ## See also:
-  ## * `toLowerAscii proc<#toLowerAscii,string>`_
+  ## * `toLowerAscii func<#toLowerAscii,string>`_
   runnableExamples:
     doAssert normalize("Foo_bar") == "foobar"
     doAssert normalize("Foo Bar") == "foo bar"
@@ -323,8 +311,7 @@ proc normalize*(s: string): string {.noSideEffect,
       inc j
   if j != s.len: setLen(result, j)
 
-proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreCase".} =
+func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
   ## | 0 if a == b
@@ -334,20 +321,13 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
-  var i = 0
-  var m = min(a.len, b.len)
-  while i < m:
-    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
-    if result != 0: return
-    inc(i)
-  result = a.len - b.len
+  cmpIgnoreCaseImpl(a, b)
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
 
-proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
-  rtl, extern: "nsuCmpIgnoreStyle".} =
-  ## Semantically the same as ``cmp(normalize(a), normalize(b))``. It
+func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
+  ## Semantically the same as `cmp(normalize(a), normalize(b))`. It
   ## is just optimized to not allocate temporary strings. This should
   ## NOT be used to compare Nim identifier names.
   ## Use `macros.eqIdent<macros.html#eqIdent,string,string>`_ for that.
@@ -360,30 +340,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  var i = 0
-  var j = 0
-  while true:
-    while i < a.len and a[i] == '_': inc i
-    while j < b.len and b[j] == '_': inc j
-    var aa = if i < a.len: toLowerAscii(a[i]) else: '\0'
-    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
-    result = ord(aa) - ord(bb)
-    if result != 0: return result
-    # the characters are identical:
-    if i >= a.len:
-      # both cursors at the end:
-      if j >= b.len: return 0
-      # not yet at the end of 'b':
-      return -1
-    elif j >= b.len:
-      return 1
-    inc i
-    inc j
+  cmpIgnoreStyleImpl(a, b)
 {.pop.}
 
 # --------- Private templates for different split separators -----------
 
-proc substrEq(s: string, pos: int, substr: string): bool =
+func substrEq(s: string, pos: int, substr: string): bool =
   var i = 0
   var length = substr.len
   while i < length and pos+i < s.len and s[pos+i] == substr[i]:
@@ -461,7 +423,7 @@ iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## * `rsplit iterator<#rsplit.i,string,char,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `split proc<#split,string,char,int>`_
+  ## * `split func<#split,string,char,int>`_
   splitCommon(s, sep, maxsplit, 1)
 
 iterator split*(s: string, seps: set[char] = Whitespace,
@@ -510,7 +472,7 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   ## * `rsplit iterator<#rsplit.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `split proc<#split,string,set[char],int>`_
+  ## * `split func<#split,string,set[char],int>`_
   splitCommon(s, seps, maxsplit, 1)
 
 iterator split*(s: string, sep: string, maxsplit: int = -1): string =
@@ -534,7 +496,7 @@ iterator split*(s: string, sep: string, maxsplit: int = -1): string =
   ## * `rsplit iterator<#rsplit.i,string,string,int,bool>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `split proc<#split,string,string,int>`_
+  ## * `split func<#split,string,string,int>`_
   splitCommon(s, sep, maxsplit, sep.len)
 
 
@@ -584,7 +546,7 @@ iterator rsplit*(s: string, sep: char,
   ## * `split iterator<#split.i,string,char,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `rsplit proc<#rsplit,string,char,int>`_
+  ## * `rsplit func<#rsplit,string,char,int>`_
   rsplitCommon(s, sep, maxsplit, 1)
 
 iterator rsplit*(s: string, seps: set[char] = Whitespace,
@@ -609,7 +571,7 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
   ## * `split iterator<#split.i,string,set[char],int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `rsplit proc<#rsplit,string,set[char],int>`_
+  ## * `rsplit func<#rsplit,string,set[char],int>`_
   rsplitCommon(s, seps, maxsplit, 1)
 
 iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
@@ -634,7 +596,7 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
   ## * `split iterator<#split.i,string,string,int>`_
   ## * `splitLines iterator<#splitLines.i,string>`_
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `rsplit proc<#rsplit,string,string,int>`_
+  ## * `rsplit func<#rsplit,string,string,int>`_
   rsplitCommon(s, sep, maxsplit, sep.len)
 
 iterator splitLines*(s: string, keepEol = false): string =
@@ -642,8 +604,8 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## Every `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported. The result strings
-  ## contain no trailing end of line characters unless parameter ``keepEol``
-  ## is set to ``true``.
+  ## contain no trailing end of line characters unless parameter `keepEol`
+  ## is set to `true`.
   ##
   ## Example:
   ##
@@ -664,7 +626,7 @@ iterator splitLines*(s: string, keepEol = false): string =
   ##
   ## See also:
   ## * `splitWhitespace iterator<#splitWhitespace.i,string,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
+  ## * `splitLines func<#splitLines,string>`_
   var first = 0
   var last = 0
   var eolpos = 0
@@ -687,9 +649,9 @@ iterator splitLines*(s: string, keepEol = false): string =
     first = last
 
 iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
-  ## Splits the string ``s`` at whitespace stripping leading and trailing
-  ## whitespace if necessary. If ``maxsplit`` is specified and is positive,
-  ## no more than ``maxsplit`` splits is made.
+  ## Splits the string `s` at whitespace stripping leading and trailing
+  ## whitespace if necessary. If `maxsplit` is specified and is positive,
+  ## no more than `maxsplit` splits is made.
   ##
   ## The following code:
   ##
@@ -721,43 +683,43 @@ iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ##
   ## See also:
   ## * `splitLines iterator<#splitLines.i,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   oldSplit(s, Whitespace, maxsplit)
 
 
 
-proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
-  rtl, extern: "nsuSplitChar".} =
+func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,char,int>`_
-  ## * `rsplit proc<#rsplit,string,char,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `rsplit func<#rsplit,string,char,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
     doAssert "a,b,c".split(',') == @["a", "b", "c"]
     doAssert "".split(' ') == @[""]
   accResult(split(s, sep, maxsplit))
 
-proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
-  noSideEffect, rtl, extern: "nsuSplitCharSet".} =
+func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
+    string] {.rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `split iterator <#split.i,string,set[char],int>`_
-  ## * `rsplit proc<#rsplit,string,set[char],int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `rsplit func<#rsplit,string,set[char],int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
     doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
     doAssert "".split({' '}) == @[""]
   accResult(split(s, seps, maxsplit))
 
-proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
-  rtl, extern: "nsuSplitString".} =
+func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitString".} =
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
@@ -765,9 +727,9 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## See also:
   ## * `split iterator <#split.i,string,string,int>`_
-  ## * `rsplit proc<#rsplit,string,string,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `rsplit func<#rsplit,string,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
     doAssert "a,b,c".split(",") == @["a", "b", "c"]
     doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
@@ -779,9 +741,9 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
 
   accResult(split(s, sep, maxsplit))
 
-proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
-             {.noSideEffect, rtl, extern: "nsuRSplitChar".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a proc
+func rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuRSplitChar".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a func
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -800,17 +762,17 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,char,int>`_
-  ## * `split proc<#split,string,char,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `split func<#split,string,char,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
-proc rsplit*(s: string, seps: set[char] = Whitespace,
+func rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
-             {.noSideEffect, rtl, extern: "nsuRSplitCharSet".} =
+             {.rtl, extern: "nsuRSplitCharSet".} =
   ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
-  ## proc that returns a sequence of substrings.
+  ## func that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
   ## particularly on systems that don't use a common delimiter.
@@ -828,15 +790,15 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,set[char],int>`_
-  ## * `split proc<#split,string,set[char],int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `split func<#split,string,set[char],int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   accResult(rsplit(s, seps, maxsplit))
   result.reverse()
 
-proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
-             {.noSideEffect, rtl, extern: "nsuRSplitString".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a proc
+func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuRSplitString".} =
+  ## The same as the `rsplit iterator <#rsplit.i,string,string,int,bool>`_, but is a func
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -855,9 +817,9 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   ##
   ## See also:
   ## * `rsplit iterator <#rsplit.i,string,string,int,bool>`_
-  ## * `split proc<#split,string,string,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
+  ## * `split func<#split,string,string,int>`_
+  ## * `splitLines func<#splitLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
     doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
         "a  largely    spaced", "sentence"]
@@ -870,32 +832,31 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
-proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
-  rtl, extern: "nsuSplitLines".} =
+func splitLines*(s: string, keepEol = false): seq[string] {.rtl,
+    extern: "nsuSplitLines".} =
   ## The same as the `splitLines iterator<#splitLines.i,string>`_ (see its
-  ## documentation), but is a proc that returns a sequence of substrings.
+  ## documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `splitLines iterator<#splitLines.i,string>`_
-  ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
-  ## * `countLines proc<#countLines,string>`_
+  ## * `splitWhitespace func<#splitWhitespace,string,int>`_
+  ## * `countLines func<#countLines,string>`_
   accResult(splitLines(s, keepEol = keepEol))
 
-proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
-  rtl, extern: "nsuSplitWhitespace".} =
+func splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.rtl,
+    extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
-  ## (see its documentation), but is a proc that returns a sequence of substrings.
+  ## (see its documentation), but is a func that returns a sequence of substrings.
   ##
   ## See also:
   ## * `splitWhitespace iterator <#splitWhitespace.i,string,int>`_
-  ## * `splitLines proc<#splitLines,string>`_
+  ## * `splitLines func<#splitLines,string>`_
   accResult(splitWhitespace(s, maxsplit))
 
-proc toBin*(x: BiggestInt, len: Positive): string {.noSideEffect,
-  rtl, extern: "nsuToBin".} =
+func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
   ## Converts `x` into its binary representation.
   ##
-  ## The resulting string is always `len` characters long. No leading ``0b``
+  ## The resulting string is always `len` characters long. No leading `0b`
   ## prefix is generated.
   runnableExamples:
     let
@@ -914,14 +875,13 @@ proc toBin*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift
     mask = mask shl BiggestUInt(1)
 
-proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
-  rtl, extern: "nsuToOct".} =
+func toOct*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToOct".} =
   ## Converts `x` into its octal representation.
   ##
-  ## The resulting string is always `len` characters long. No leading ``0o``
+  ## The resulting string is always `len` characters long. No leading `0o`
   ## prefix is generated.
   ##
-  ## Do not confuse it with `toOctal proc<#toOctal,char>`_.
+  ## Do not confuse it with `toOctal func<#toOctal,char>`_.
   runnableExamples:
     let
       a = 62
@@ -939,7 +899,7 @@ proc toOct*(x: BiggestInt, len: Positive): string {.noSideEffect,
     inc shift, 3
     mask = mask shl BiggestUInt(3)
 
-proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.noSideEffect.} =
+func toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string =
   const
     HexChars = "0123456789ABCDEF"
   var n = x
@@ -950,11 +910,11 @@ proc toHexImpl(x: BiggestUInt, len: Positive, handleNegative: bool): string {.no
     # handle negative overflow
     if n == 0 and handleNegative: n = not(BiggestUInt 0)
 
-proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
+func toHex*[T: SomeInteger](x: T, len: Positive): string =
   ## Converts `x` to its hexadecimal representation.
   ##
   ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated.
+  ## `0x` is generated. `x` is treated as an unsigned value.
   runnableExamples:
     let
       a = 62'u64
@@ -962,40 +922,25 @@ proc toHex*(x: BiggestUInt, len: Positive): string {.noSideEffect.} =
     doAssert a.toHex(3) == "03E"
     doAssert b.toHex(3) == "001"
     doAssert b.toHex(4) == "1001"
-  toHexImpl(x, len, false)
-
-proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
-  rtl, extern: "nsuToHex".} =
-  ## Converts `x` to its hexadecimal representation.
-  ##
-  ## The resulting string will be exactly `len` characters long. No prefix like
-  ## ``0x`` is generated. `x` is treated as an unsigned value.
-  runnableExamples:
-    let
-      a = 62
-      b = 4097
-      c = -8
-    doAssert a.toHex(3) == "03E"
-    doAssert b.toHex(3) == "001"
-    doAssert b.toHex(4) == "1001"
-    doAssert c.toHex(6) == "FFFFF8"
+    doAssert toHex(62, 3) == "03E"
+    doAssert toHex(-8, 6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
-proc toHex*[T: SomeInteger](x: T): string {.noSideEffect.} =
-  ## Shortcut for ``toHex(x, T.sizeof * 2)``
+func toHex*[T: SomeInteger](x: T): string =
+  ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
     doAssert toHex(1984'i64) == "00000000000007C0"
     doAssert toHex(1984'i16) == "07C0"
   toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
-proc toHex*(s: string): string {.noSideEffect, rtl.} =
+func toHex*(s: string): string {.rtl.} =
   ## Converts a bytes string to its hexadecimal representation.
   ##
   ## The output is twice the input long. No prefix like
-  ## ``0x`` is generated.
+  ## `0x` is generated.
   ##
   ## See also:
-  ## * `parseHexStr proc<#parseHexStr,string>`_ for the reverse operation
+  ## * `parseHexStr func<#parseHexStr,string>`_ for the reverse operation
   runnableExamples:
     let
       a = "1"
@@ -1013,13 +958,13 @@ proc toHex*(s: string): string {.noSideEffect, rtl.} =
     n = n shr 4
     result[pos * 2] = HexChars[n]
 
-proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
+func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
   ## Converts a character `c` to its octal representation.
   ##
   ## The resulting string may not have a leading zero. Its length is always
   ## exactly 3.
   ##
-  ## Do not confuse it with `toOct proc<#toOct,BiggestInt,Positive>`_.
+  ## Do not confuse it with `toOct func<#toOct,BiggestInt,Positive>`_.
   runnableExamples:
     doAssert toOctal('1') == "061"
     doAssert toOctal('A') == "101"
@@ -1032,7 +977,7 @@ proc toOctal*(c: char): string {.noSideEffect, rtl, extern: "nsuToOctal".} =
     result[i] = chr(val mod 8 + ord('0'))
     val = val div 8
 
-proc fromBin*[T: SomeInteger](s: string): T =
+func fromBin*[T: SomeInteger](s: string): T =
   ## Parses a binary integer value from a string `s`.
   ##
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
@@ -1055,7 +1000,7 @@ proc fromBin*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
 
-proc fromOct*[T: SomeInteger](s: string): T =
+func fromOct*[T: SomeInteger](s: string): T =
   ## Parses an octal integer value from a string `s`.
   ##
   ## If `s` is not a valid octal integer, `ValueError` is raised. `s` can have
@@ -1078,7 +1023,7 @@ proc fromOct*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
-proc fromHex*[T: SomeInteger](s: string): T =
+func fromHex*[T: SomeInteger](s: string): T =
   ## Parses a hex integer value from a string `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have
@@ -1101,8 +1046,8 @@ proc fromHex*[T: SomeInteger](s: string): T =
   if p != s.len or p == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
 
-proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
-  rtl, extern: "nsuIntToStr".} =
+func intToStr*(x: int, minchars: Positive = 1): string {.rtl,
+    extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
   ##
   ## The resulting string will be minimally `minchars` characters long. This is
@@ -1116,8 +1061,7 @@ proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   if x < 0:
     result = '-' & result
 
-proc parseInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseInt".} =
+func parseInt*(s: string): int {.rtl, extern: "nsuParseInt".} =
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
@@ -1128,8 +1072,8 @@ proc parseInt*(s: string): int {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
-proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect,
-  rtl, extern: "nsuParseBiggestInt".} =
+func parseBiggestInt*(s: string): BiggestInt {.rtl,
+    extern: "nsuParseBiggestInt".} =
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
@@ -1138,8 +1082,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
-proc parseUInt*(s: string): uint {.noSideEffect,
-  rtl, extern: "nsuParseUInt".} =
+func parseUInt*(s: string): uint {.rtl, extern: "nsuParseUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
@@ -1148,8 +1091,8 @@ proc parseUInt*(s: string): uint {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect,
-  rtl, extern: "nsuParseBiggestUInt".} =
+func parseBiggestUInt*(s: string): BiggestUInt {.rtl,
+    extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
@@ -1158,12 +1101,11 @@ proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseFloat*(s: string): float {.noSideEffect,
-  rtl, extern: "nsuParseFloat".} =
+func parseFloat*(s: string): float {.rtl, extern: "nsuParseFloat".} =
   ## Parses a decimal floating point value contained in `s`.
   ##
   ## If `s` is not a valid floating point number, `ValueError` is raised.
-  ##``NAN``, ``INF``, ``-INF`` are also supported (case insensitive comparison).
+  ##`NAN`, `INF`, `-INF` are also supported (case insensitive comparison).
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
@@ -1172,12 +1114,11 @@ proc parseFloat*(s: string): float {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
 
-proc parseBinInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseBinInt".} =
+func parseBinInt*(s: string): int {.rtl, extern: "nsuParseBinInt".} =
   ## Parses a binary integer value contained in `s`.
   ##
   ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
-  ## one of the following optional prefixes: ``0b``, ``0B``. Underscores within
+  ## one of the following optional prefixes: `0b`, `0B`. Underscores within
   ## `s` are ignored.
   runnableExamples:
     let
@@ -1191,54 +1132,51 @@ proc parseBinInt*(s: string): int {.noSideEffect,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
 
-proc parseOctInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseOctInt".} =
+func parseOctInt*(s: string): int {.rtl, extern: "nsuParseOctInt".} =
   ## Parses an octal integer value contained in `s`.
   ##
   ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
+  ## of the following optional prefixes: `0o`, `0O`.  Underscores within
   ## `s` are ignored.
   result = 0
   let L = parseutils.parseOct(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
 
-proc parseHexInt*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuParseHexInt".} =
+func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   ## Parses a hexadecimal integer value contained in `s`.
   ##
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
+  ## of the following optional prefixes: `0x`, `0X`, `#`.  Underscores
   ## within `s` are ignored.
   result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)
 
-proc generateHexCharToValueMap(): string =
-  ## Generate a string to map a hex digit to uint value
+func generateHexCharToValueMap(): string =
+  ## Generates a string to map a hex digit to uint value.
   result = ""
   for inp in 0..255:
     let ch = chr(inp)
     let o =
-      case ch:
-        of '0'..'9': inp - ord('0')
-        of 'a'..'f': inp - ord('a') + 10
-        of 'A'..'F': inp - ord('A') + 10
-        else: 17 # indicates an invalid hex char
+      case ch
+      of '0'..'9': inp - ord('0')
+      of 'a'..'f': inp - ord('a') + 10
+      of 'A'..'F': inp - ord('A') + 10
+      else: 17 # indicates an invalid hex char
     result.add chr(o)
 
 const hexCharToValueMap = generateHexCharToValueMap()
 
-proc parseHexStr*(s: string): string {.noSideEffect,
-  rtl, extern: "nsuParseHexStr".} =
-  ## Convert hex-encoded string to byte string, e.g.:
+func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
+  ## Converts hex-encoded string to byte string, e.g.:
   ##
-  ## Raises ``ValueError`` for an invalid hex values. The comparison is
+  ## Raises `ValueError` for an invalid hex values. The comparison is
   ## case-insensitive.
   ##
   ## See also:
-  ## * `toHex proc<#toHex,string>`_ for the reverse operation
+  ## * `toHex func<#toHex,string>`_ for the reverse operation
   runnableExamples:
     let
       a = "41"
@@ -1262,13 +1200,13 @@ proc parseHexStr*(s: string): string {.noSideEffect,
     else:
       result[pos div 2] = chr(val + buf shl 4)
 
-proc parseBool*(s: string): bool =
+func parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
   ##
-  ## If ``s`` is one of the following values: ``y, yes, true, 1, on``, then
-  ## returns `true`. If ``s`` is one of the following values: ``n, no, false,
-  ## 0, off``, then returns `false`.  If ``s`` is something else a
-  ## ``ValueError`` exception is raised.
+  ## If `s` is one of the following values: `y, yes, true, 1, on`, then
+  ## returns `true`. If `s` is one of the following values: `n, no, false,
+  ## 0, off`, then returns `false`.  If `s` is something else a
+  ## `ValueError` exception is raised.
   runnableExamples:
     let a = "n"
     doAssert parseBool(a) == false
@@ -1278,66 +1216,11 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
-  result = nnkOfBranch.newTree(
-    newLit s,
-    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
-  )
-
-macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
-  # generates a case stmt, which assigns the correct enum field given
-  # a normalized string comparison to the `argSym` input.
-  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
-  # `of "Foo".nimIdentNormalize: Foo`.
-  # This will fail, if the enum is not defined at top level (e.g. in a block).
-  # Thus we check for the field value of the (possible holed enum) and convert
-  # the integer value to the generic argument `typ`.
-  let typ = typ.getTypeInst[1]
-  let impl = typ.getImpl[2]
-  expectKind impl, nnkEnumTy
-  result = nnkCaseStmt.newTree(newCall(bindSym"nimIdentNormalize", argSym))
-  # stores all processed field strings to give error msg for ambiguous enums
-  var foundFields: seq[string] = @[]
-  var fStr = "" # string of current field
-  var fNum = BiggestInt(0) # int value of current field
-  for f in impl:
-    case f.kind
-    of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent: fStr = f.strVal
-    of nnkEnumFieldDef:
-      case f[1].kind
-      of nnkStrLit: fStr = f[1].strVal
-      of nnkTupleConstr:
-        fStr = f[1][1].strVal
-        fNum = f[1][0].intVal
-      of nnkIntLit:
-        fStr = f[0].strVal
-        fNum = f[1].intVal
-      else: error("Invalid tuple syntax!", f[1])
-    else: error("Invalid node for enum type!", f)
-    # add field if string not already added
-    fStr = nimIdentNormalize(fStr)
-    if fStr notin foundFields:
-      result.add addOfBranch(fStr, newLit fNum, typ)
-      foundFields.add fStr
-    else:
-      error("Ambiguous enums cannot be parsed, field " & $fStr &
-        " appears multiple times!", f)
-    inc fNum
-  # finally add else branch to raise or use default
-  if default == nil:
-    let raiseStmt = quote do:
-      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
-    result.add nnkElse.newTree(raiseStmt)
-  else:
-    expectKind(default, nnkSym)
-    result.add nnkElse.newTree(default)
-
-proc parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``. This errors at compile time, if the given enum
+func parseEnum*[T: enum](s: string): T =
+  ## Parses an enum `T`. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
-  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
+  ## Raises `ValueError` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
   runnableExamples:
     type
@@ -1351,10 +1234,10 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  genEnumStmt(T, s, default = nil)
+  genEnumCaseStmt(T, s, default = nil, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
-proc parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``. This errors at compile time, if the given enum
+func parseEnum*[T: enum](s: string, default: T): T =
+  ## Parses an enum `T`. This errors at compile time, if the given enum
   ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
@@ -1370,10 +1253,9 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  genEnumStmt(T, s, default)
+  genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
-proc repeat*(c: char, count: Natural): string {.noSideEffect,
-  rtl, extern: "nsuRepeatChar".} =
+func repeat*(c: char, count: Natural): string {.rtl, extern: "nsuRepeatChar".} =
   ## Returns a string of length `count` consisting only of
   ## the character `c`.
   runnableExamples:
@@ -1382,8 +1264,7 @@ proc repeat*(c: char, count: Natural): string {.noSideEffect,
   result = newString(count)
   for i in 0..count-1: result[i] = c
 
-proc repeat*(s: string, n: Natural): string {.noSideEffect,
-  rtl, extern: "nsuRepeatStr".} =
+func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   ## Returns string `s` concatenated `n` times.
   runnableExamples:
     doAssert "+ foo +".repeat(3) == "+ foo ++ foo ++ foo +"
@@ -1391,15 +1272,15 @@ proc repeat*(s: string, n: Natural): string {.noSideEffect,
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
 
-proc spaces*(n: Natural): string {.inline.} =
-  ## Returns a string with `n` space characters. You can use this proc
+func spaces*(n: Natural): string {.inline.} =
+  ## Returns a string with `n` space characters. You can use this func
   ## to left align strings.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
-  ## * `center proc<#center,string,int,char>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `indent func<#indent,string,Natural,string>`_
+  ## * `center func<#center,string,int,char>`_
   runnableExamples:
     let
       width = 15
@@ -1411,20 +1292,20 @@ proc spaces*(n: Natural): string {.inline.} =
              "This is a very long string|"
   repeat(' ', n)
 
-proc align*(s: string, count: Natural, padding = ' '): string {.
-  noSideEffect, rtl, extern: "nsuAlignString".} =
+func align*(s: string, count: Natural, padding = ' '): string {.rtl,
+    extern: "nsuAlignString".} =
   ## Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
-  ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## right alignment. If `s.len >= count`, no spaces are added and `s` is
   ## returned unchanged. If you need to left align a string use the `alignLeft
-  ## proc <#alignLeft,string,Natural,char>`_.
+  ## func<#alignLeft,string,Natural,char>`_.
   ##
   ## See also:
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
-  ## * `center proc<#center,string,int,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
+  ## * `center func<#center,string,int,char>`_
   runnableExamples:
     assert align("abc", 4) == " abc"
     assert align("a", 0) == "a"
@@ -1438,20 +1319,19 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   else:
     result = s
 
-proc alignLeft*(s: string, count: Natural, padding = ' '): string {.
-    noSideEffect.} =
+func alignLeft*(s: string, count: Natural, padding = ' '): string =
   ## Left-Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added after `s` resulting in
-  ## left alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## left alignment. If `s.len >= count`, no spaces are added and `s` is
   ## returned unchanged. If you need to right align a string use the `align
-  ## proc <#align,string,Natural,char>`_.
+  ## func<#align,string,Natural,char>`_.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
-  ## * `center proc<#center,string,int,char>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
+  ## * `center func<#center,string,int,char>`_
   runnableExamples:
     assert alignLeft("abc", 4) == "abc "
     assert alignLeft("a", 0) == "a"
@@ -1466,8 +1346,8 @@ proc alignLeft*(s: string, count: Natural, padding = ' '): string {.
   else:
     result = s
 
-proc center*(s: string, width: int, fillChar: char = ' '): string {.
-  noSideEffect, rtl, extern: "nsuCenterString".} =
+func center*(s: string, width: int, fillChar: char = ' '): string {.rtl,
+    extern: "nsuCenterString".} =
   ## Return the contents of `s` centered in a string `width` long using
   ## `fillChar` (default: space) as padding.
   ##
@@ -1475,10 +1355,10 @@ proc center*(s: string, width: int, fillChar: char = ' '): string {.
   ## to `s.len`.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
     let a = "foo"
     doAssert a.center(2) == "foo"
@@ -1501,18 +1381,18 @@ proc center*(s: string, width: int, fillChar: char = ' '): string {.
       # the string s should go
       result[i] = fillChar
 
-proc indent*(s: string, count: Natural, padding: string = " "): string
-    {.noSideEffect, rtl, extern: "nsuIndent".} =
-  ## Indents each line in ``s`` by ``count`` amount of ``padding``.
+func indent*(s: string, count: Natural, padding: string = " "): string {.rtl,
+    extern: "nsuIndent".} =
+  ## Indents each line in `s` by `count` amount of `padding`.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `unindent proc<#unindent,string,Natural,string>`_
-  ## * `dedent proc<#dedent,string,Natural,string>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `unindent func<#unindent,string,Natural,string>`_
+  ## * `dedent func<#dedent,string,Natural>`_
   runnableExamples:
     doAssert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
@@ -1526,18 +1406,18 @@ proc indent*(s: string, count: Natural, padding: string = " "): string
     result.add(line)
     i.inc
 
-proc unindent*(s: string, count: Natural = int.high, padding: string = " "): string
-    {.noSideEffect, rtl, extern: "nsuUnindent".} =
-  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
+func unindent*(s: string, count: Natural = int.high,
+               padding: string = " "): string {.rtl, extern: "nsuUnindent".} =
+  ## Unindents each line in `s` by `count` amount of `padding`.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
-  ## * `dedent proc<#dedent,string,Natural,string>`
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
+  ## * `dedent func<#dedent,string,Natural>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
     let x = """
       Hello
@@ -1559,8 +1439,8 @@ proc unindent*(s: string, count: Natural = int.high, padding: string = " "): str
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-proc indentation*(s: string): Natural {.since: (1, 3).} =
-  ## Returns the amount of indentation all lines of ``s`` have in common,
+func indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of `s` have in common,
   ## ignoring lines that consist only of whitespace.
   result = int.high
   for line in s.splitLines:
@@ -1572,21 +1452,22 @@ proc indentation*(s: string): Natural {.since: (1, 3).} =
   if result == int.high:
     result = 0
 
-proc dedent*(s: string, count: Natural = indentation(s)): string
-    {.noSideEffect, rtl, extern: "nsuDedent", since: (1, 3).} =
-  ## Unindents each line in ``s`` by ``count`` amount of ``padding``.
-  ## The only difference between this and `unindent proc<#unindent,string,Natural,string>`
-  ## is that this by default only cuts off the amount of indentation that all
-  ## lines of ``s`` share as opposed to all indentation. It only supports spcaes as padding.
+func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
+    extern: "nsuDedent", since: (1, 3).} =
+  ## Unindents each line in `s` by `count` amount of `padding`.
+  ## The only difference between this and the
+  ## `unindent func<#unindent,string,Natural,string>`_ is that this by default
+  ## only cuts off the amount of indentation that all lines of `s` share as
+  ## opposed to all indentation. It only supports spaces as padding.
   ##
-  ## **Note:** This does not preserve the new line characters used in ``s``.
+  ## **Note:** This does not preserve the new line characters used in `s`.
   ##
   ## See also:
-  ## * `unindent proc<#unindent,string,Natural,string>`
-  ## * `align proc<#align,string,Natural,char>`_
-  ## * `alignLeft proc<#alignLeft,string,Natural,char>`_
-  ## * `spaces proc<#spaces,Natural>`_
-  ## * `indent proc<#indent,string,Natural,string>`_
+  ## * `unindent func<#unindent,string,Natural,string>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
     let x = """
       Hello
@@ -1596,10 +1477,9 @@ proc dedent*(s: string, count: Natural = indentation(s)): string
     doAssert x == "Hello\n  There\n"
   unindent(s, count, " ")
 
-proc delete*(s: var string, first, last: int) {.noSideEffect,
-  rtl, extern: "nsuDelete".} =
-  ## Deletes in `s` (must be declared as ``var``) the characters at positions
-  ## ``first ..last`` (both ends included).
+func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
+  ## Deletes in `s` (must be declared as `var`) the characters at positions
+  ## `first .. last` (both ends included).
   ##
   ## This modifies `s` itself, it does not return a copy.
   runnableExamples:
@@ -1624,82 +1504,71 @@ proc delete*(s: var string, first, last: int) {.noSideEffect,
   setLen(s, newLen)
 
 
-proc startsWith*(s: string, prefix: char): bool {.noSideEffect, inline.} =
-  ## Returns true if ``s`` starts with character ``prefix``.
+func startsWith*(s: string, prefix: char): bool {.inline.} =
+  ## Returns true if `s` starts with character `prefix`.
   ##
   ## See also:
-  ## * `endsWith proc<#endsWith,string,char>`_
-  ## * `continuesWith proc<#continuesWith,string,string,Natural>`_
-  ## * `removePrefix proc<#removePrefix,string,char>`_
+  ## * `endsWith func<#endsWith,string,char>`_
+  ## * `continuesWith func<#continuesWith,string,string,Natural>`_
+  ## * `removePrefix func<#removePrefix,string,char>`_
   runnableExamples:
     let a = "abracadabra"
     doAssert a.startsWith('a') == true
     doAssert a.startsWith('b') == false
   result = s.len > 0 and s[0] == prefix
 
-proc startsWith*(s, prefix: string): bool {.noSideEffect,
-  rtl, extern: "nsuStartsWith".} =
-  ## Returns true if ``s`` starts with string ``prefix``.
+func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
+  ## Returns true if `s` starts with string `prefix`.
   ##
-  ## If ``prefix == ""`` true is returned.
+  ## If `prefix == ""` true is returned.
   ##
   ## See also:
-  ## * `endsWith proc<#endsWith,string,string>`_
-  ## * `continuesWith proc<#continuesWith,string,string,Natural>`_
-  ## * `removePrefix proc<#removePrefix,string,string>`_
+  ## * `endsWith func<#endsWith,string,string>`_
+  ## * `continuesWith func<#continuesWith,string,string,Natural>`_
+  ## * `removePrefix func<#removePrefix,string,string>`_
   runnableExamples:
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
-  var i = 0
-  while true:
-    if i >= prefix.len: return true
-    if i >= s.len or s[i] != prefix[i]: return false
-    inc(i)
+  startsWithImpl(s, prefix)
 
-proc endsWith*(s: string, suffix: char): bool {.noSideEffect, inline.} =
-  ## Returns true if ``s`` ends with ``suffix``.
+func endsWith*(s: string, suffix: char): bool {.inline.} =
+  ## Returns true if `s` ends with `suffix`.
   ##
   ## See also:
-  ## * `startsWith proc<#startsWith,string,char>`_
-  ## * `continuesWith proc<#continuesWith,string,string,Natural>`_
-  ## * `removeSuffix proc<#removeSuffix,string,char>`_
+  ## * `startsWith func<#startsWith,string,char>`_
+  ## * `continuesWith func<#continuesWith,string,string,Natural>`_
+  ## * `removeSuffix func<#removeSuffix,string,char>`_
   runnableExamples:
     let a = "abracadabra"
     doAssert a.endsWith('a') == true
     doAssert a.endsWith('b') == false
   result = s.len > 0 and s[s.high] == suffix
 
-proc endsWith*(s, suffix: string): bool {.noSideEffect,
-  rtl, extern: "nsuEndsWith".} =
-  ## Returns true if ``s`` ends with ``suffix``.
+func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
+  ## Returns true if `s` ends with `suffix`.
   ##
-  ## If ``suffix == ""`` true is returned.
+  ## If `suffix == ""` true is returned.
   ##
   ## See also:
-  ## * `startsWith proc<#startsWith,string,string>`_
-  ## * `continuesWith proc<#continuesWith,string,string,Natural>`_
-  ## * `removeSuffix proc<#removeSuffix,string,string>`_
+  ## * `startsWith func<#startsWith,string,string>`_
+  ## * `continuesWith func<#continuesWith,string,string,Natural>`_
+  ## * `removeSuffix func<#removeSuffix,string,string>`_
   runnableExamples:
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
-  var i = 0
-  var j = len(s) - len(suffix)
-  while i+j >= 0 and i+j < s.len:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if i >= suffix.len: return true
+  endsWithImpl(s, suffix)
 
-proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
-  rtl, extern: "nsuContinuesWith".} =
-  ## Returns true if ``s`` continues with ``substr`` at position ``start``.
+func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
+    extern: "nsuContinuesWith".} =
+  ## Returns true if `s` continues with `substr` at position `start`.
   ##
-  ## If ``substr == ""`` true is returned.
+  ## If `substr == ""` true is returned.
   ##
   ## See also:
-  ## * `startsWith proc<#startsWith,string,string>`_
-  ## * `endsWith proc<#endsWith,string,string>`_
+  ## * `startsWith func<#startsWith,string,string>`_
+  ## * `endsWith func<#endsWith,string,string>`_
   runnableExamples:
     let a = "abracadabra"
     doAssert a.continuesWith("ca", 4) == true
@@ -1712,13 +1581,13 @@ proc continuesWith*(s, substr: string, start: Natural): bool {.noSideEffect,
     inc(i)
 
 
-proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
-  rtl, extern: "nsuRemovePrefixCharSet".} =
+func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
+    extern: "nsuRemovePrefixCharSet".} =
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
   ##
   ## See also:
-  ## * `removeSuffix proc<#removeSuffix,string,set[char]>`_
+  ## * `removeSuffix func<#removeSuffix,string,set[char]>`_
   runnableExamples:
     var userInput = "\r\n*~Hello World!"
     userInput.removePrefix
@@ -1734,27 +1603,27 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   while start < s.len and s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
 
-proc removePrefix*(s: var string, c: char) {.
-  rtl, extern: "nsuRemovePrefixChar".} =
+func removePrefix*(s: var string, c: char) {.rtl,
+    extern: "nsuRemovePrefixChar".} =
   ## Removes all occurrences of a single character (in-place) from the start
   ## of a string.
   ##
   ## See also:
-  ## * `removeSuffix proc<#removeSuffix,string,char>`_
-  ## * `startsWith proc<#startsWith,string,char>`_
+  ## * `removeSuffix func<#removeSuffix,string,char>`_
+  ## * `startsWith func<#startsWith,string,char>`_
   runnableExamples:
     var ident = "pControl"
     ident.removePrefix('p')
     doAssert ident == "Control"
   removePrefix(s, chars = {c})
 
-proc removePrefix*(s: var string, prefix: string) {.
-  rtl, extern: "nsuRemovePrefixString".} =
+func removePrefix*(s: var string, prefix: string) {.rtl,
+    extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
   ##
   ## See also:
-  ## * `removeSuffix proc<#removeSuffix,string,string>`_
-  ## * `startsWith proc<#startsWith,string,string>`_
+  ## * `removeSuffix func<#removeSuffix,string,string>`_
+  ## * `startsWith func<#startsWith,string,string>`_
   runnableExamples:
     var answers = "yesyes"
     answers.removePrefix("yes")
@@ -1762,13 +1631,13 @@ proc removePrefix*(s: var string, prefix: string) {.
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
-proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
-  rtl, extern: "nsuRemoveSuffixCharSet".} =
+func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
+    extern: "nsuRemoveSuffixCharSet".} =
   ## Removes all characters from `chars` from the end of the string `s`
   ## (in-place).
   ##
   ## See also:
-  ## * `removePrefix proc<#removePrefix,string,set[char]>`_
+  ## * `removePrefix func<#removePrefix,string,set[char]>`_
   runnableExamples:
     var userInput = "Hello World!*~\r\n"
     userInput.removeSuffix
@@ -1785,14 +1654,14 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   while last > -1 and s[last] in chars: last -= 1
   s.setLen(last + 1)
 
-proc removeSuffix*(s: var string, c: char) {.
-  rtl, extern: "nsuRemoveSuffixChar".} =
+func removeSuffix*(s: var string, c: char) {.rtl,
+    extern: "nsuRemoveSuffixChar".} =
   ## Removes all occurrences of a single character (in-place) from the end
   ## of a string.
   ##
   ## See also:
-  ## * `removePrefix proc<#removePrefix,string,char>`_
-  ## * `endsWith proc<#endsWith,string,char>`_
+  ## * `removePrefix func<#removePrefix,string,char>`_
+  ## * `endsWith func<#endsWith,string,char>`_
   runnableExamples:
     var table = "users"
     table.removeSuffix('s')
@@ -1804,13 +1673,13 @@ proc removeSuffix*(s: var string, c: char) {.
 
   removeSuffix(s, chars = {c})
 
-proc removeSuffix*(s: var string, suffix: string) {.
-  rtl, extern: "nsuRemoveSuffixString".} =
+func removeSuffix*(s: var string, suffix: string) {.rtl,
+    extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
   ##
   ## See also:
-  ## * `removePrefix proc<#removePrefix,string,string>`_
-  ## * `endsWith proc<#endsWith,string,string>`_
+  ## * `removePrefix func<#removePrefix,string,string>`_
+  ## * `endsWith func<#endsWith,string,string>`_
   runnableExamples:
     var answers = "yeses"
     answers.removeSuffix("es")
@@ -1821,8 +1690,7 @@ proc removeSuffix*(s: var string, suffix: string) {.
     s.setLen(newLen)
 
 
-proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
-  {.noSideEffect, inline.} =
+func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
   ## Adds a separator to `dest` only if its length is bigger than `startLen`.
   ##
   ## A shorthand for:
@@ -1844,7 +1712,7 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
 
   if dest.len > startLen: add(dest, sep)
 
-proc allCharsInSet*(s: string, theSet: set[char]): bool =
+func allCharsInSet*(s: string, theSet: set[char]): bool =
   ## Returns true if every character of `s` is in the set `theSet`.
   runnableExamples:
     doAssert allCharsInSet("aeea", {'a', 'e'}) == true
@@ -1854,9 +1722,9 @@ proc allCharsInSet*(s: string, theSet: set[char]): bool =
     if c notin theSet: return false
   return true
 
-proc abbrev*(s: string, possibilities: openArray[string]): int =
-  ## Returns the index of the first item in ``possibilities`` which starts
-  ## with ``s``, if not ambiguous.
+func abbrev*(s: string, possibilities: openArray[string]): int =
+  ## Returns the index of the first item in `possibilities` which starts
+  ## with `s`, if not ambiguous.
   ##
   ## Returns -1 if no item has been found and -2 if multiple items match.
   runnableExamples:
@@ -1876,8 +1744,8 @@ proc abbrev*(s: string, possibilities: openArray[string]): int =
 
 # ---------------------------------------------------------------------------
 
-proc join*(a: openArray[string], sep: string = ""): string {.
-  noSideEffect, rtl, extern: "nsuJoinSep".} =
+func join*(a: openArray[string], sep: string = ""): string {.rtl,
+    extern: "nsuJoinSep".} =
   ## Concatenates all strings in the container `a`, separating them with `sep`.
   runnableExamples:
     doAssert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
@@ -1893,8 +1761,7 @@ proc join*(a: openArray[string], sep: string = ""): string {.
   else:
     result = ""
 
-proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
-  noSideEffect, rtl.} =
+func join*[T: not string](a: openArray[T], sep: string = ""): string {.rtl.} =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
@@ -1909,8 +1776,8 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
 type
   SkipTable* = array[char, int]
 
-proc initSkipTable*(a: var SkipTable, sub: string)
-  {.noSideEffect, rtl, extern: "nsuInitSkipTable".} =
+func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
+    extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
   var i = 0
@@ -1928,8 +1795,8 @@ proc initSkipTable*(a: var SkipTable, sub: string)
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
 
-proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
-  {.noSideEffect, rtl, extern: "nsuFindStrA".} =
+func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
+    rtl, extern: "nsuFindStrA".} =
   ## Searches for `sub` in `s` inside range `start..last` using preprocessed
   ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
   ## element).
@@ -1958,24 +1825,24 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int
   return -1
 
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  proc c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
+  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
 
-proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindChar".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included).
+func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
+    extern: "nsuFindChar".} =
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,char,Natural,int>`_
-  ## * `replace proc<#replace,string,char,char>`_
+  ## * `rfind func<#rfind,string,char,Natural>`_
+  ## * `replace func<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
   when nimvm:
     for i in int(start)..last:
@@ -1992,90 +1859,90 @@ proc find*(s: string, sub: char, start: Natural = 0, last = 0): int {.noSideEffe
         if sub == s[i]: return i
   return -1
 
-proc find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindCharSet".} =
-  ## Searches for `chars` in `s` inside range ``start..last`` (both ends included).
+func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
+    rtl, extern: "nsuFindCharSet".} =
+  ## Searches for `chars` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,set[char],Natural,int>`_
-  ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
+  ## * `rfind func<#rfind,string,set[char],Natural>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   let last = if last == 0: s.high else: last
   for i in int(start)..last:
     if s[i] in chars: return i
   return -1
 
-proc find*(s, sub: string, start: Natural = 0, last = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included).
+func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
+    extern: "nsuFindStr".} =
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `rfind proc<#rfind,string,string,Natural,int>`_
-  ## * `replace proc<#replace,string,string,string>`_
+  ## * `rfind func<#rfind,string,string,Natural>`_
+  ## * `replace func<#replace,string,string,string>`_
   if sub.len > s.len: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
   var a {.noinit.}: SkipTable
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)
 
-proc rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl, extern: "nsuRFindChar".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
+    extern: "nsuRFindChar".} =
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included)
   ## in reverse -- starting at high indexes and moving lower to the first
-  ## character or ``start``.  If `last` is unspecified, it defaults to `s.high`
+  ## character or `start`.  If `last` is unspecified, it defaults to `s.high`
   ## (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].find` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
-  ## * `find proc<#find,string,char,Natural,int>`_
+  ## * `find func<#find,string,char,Natural,int>`_
   let last = if last == -1: s.high else: last
   for i in countdown(last, start):
     if sub == s[i]: return i
   return -1
 
-proc rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl, extern: "nsuRFindCharSet".} =
-  ## Searches for `chars` in `s` inside range ``start..last`` (both ends
+func rfind*(s: string, chars: set[char], start: Natural = 0, last = -1): int {.
+    rtl, extern: "nsuRFindCharSet".} =
+  ## Searches for `chars` in `s` inside range `start..last` (both ends
   ## included) in reverse -- starting at high indexes and moving lower to the
-  ## first character or ``start``.  If `last` is unspecified, it defaults to
+  ## first character or `start`. If `last` is unspecified, it defaults to
   ## `s.high` (the last element).
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
-  ## * `find proc<#find,string,set[char],Natural,int>`_
+  ## * `find func<#find,string,set[char],Natural,int>`_
   let last = if last == -1: s.high else: last
   for i in countdown(last, start):
     if s[i] in chars: return i
   return -1
 
-proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
-  rtl, extern: "nsuRFindStr".} =
-  ## Searches for `sub` in `s` inside range ``start..last`` (both ends included)
+func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
+    extern: "nsuRFindStr".} =
+  ## Searches for `sub` in `s` inside range `start..last` (both ends included)
   ## included) in reverse -- starting at high indexes and moving lower to the
-  ## first character or ``start``.   If `last` is unspecified, it defaults to
+  ## first character or `start`. If `last` is unspecified, it defaults to
   ## `s.high` (the last element).
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  ## Otherwise the index returned is relative to ``s[0]``, not ``start``.
-  ## Use `s[start..last].rfind` for a ``start``-origin index.
+  ## Otherwise the index returned is relative to `s[0]`, not `start`.
+  ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
-  ## * `find proc<#find,string,string,Natural,int>`_
+  ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
     return -1
   let last = if last == -1: s.high else: last
@@ -2090,35 +1957,34 @@ proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
   return -1
 
 
-proc count*(s: string, sub: char): int {.noSideEffect,
-  rtl, extern: "nsuCountChar".} =
-  ## Count the occurrences of the character `sub` in the string `s`.
+func count*(s: string, sub: char): int {.rtl, extern: "nsuCountChar".} =
+  ## Counts the occurrences of the character `sub` in the string `s`.
   ##
   ## See also:
-  ## * `countLines proc<#countLines,string>`_
+  ## * `countLines func<#countLines,string>`_
   result = 0
   for c in s:
     if c == sub: inc result
 
-proc count*(s: string, subs: set[char]): int {.noSideEffect,
-  rtl, extern: "nsuCountCharSet".} =
-  ## Count the occurrences of the group of character `subs` in the string `s`.
+func count*(s: string, subs: set[char]): int {.rtl,
+    extern: "nsuCountCharSet".} =
+  ## Counts the occurrences of the group of character `subs` in the string `s`.
   ##
   ## See also:
-  ## * `countLines proc<#countLines,string>`_
+  ## * `countLines func<#countLines,string>`_
   doAssert card(subs) > 0
   result = 0
   for c in s:
     if c in subs: inc result
 
-proc count*(s: string, sub: string, overlapping: bool = false): int {.
-  noSideEffect, rtl, extern: "nsuCountString".} =
-  ## Count the occurrences of a substring `sub` in the string `s`.
+func count*(s: string, sub: string, overlapping: bool = false): int {.rtl,
+    extern: "nsuCountString".} =
+  ## Counts the occurrences of a substring `sub` in the string `s`.
   ## Overlapping occurrences of `sub` only count when `overlapping`
   ## is set to true (default: false).
   ##
   ## See also:
-  ## * `countLines proc<#countLines,string>`_
+  ## * `countLines func<#countLines,string>`_
   doAssert sub.len > 0
   result = 0
   var i = 0
@@ -2129,11 +1995,10 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
     else: i += sub.len
     inc result
 
-proc countLines*(s: string): int {.noSideEffect,
-  rtl, extern: "nsuCountLines".} =
+func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## Returns the number of lines in the string `s`.
   ##
-  ## This is the same as ``len(splitLines(s))``, but much more efficient
+  ## This is the same as `len(splitLines(s))`, but much more efficient
   ## because it doesn't modify the string creating temporal objects. Every
   ## `character literal <manual.html#lexical-analysis-character-literals>`_
   ## newline combination (CR, LF, CR-LF) is supported.
@@ -2142,7 +2007,7 @@ proc countLines*(s: string): int {.noSideEffect,
   ## A line can be an empty string.
   ##
   ## See also:
-  ## * `splitLines proc<#splitLines,string>`_
+  ## * `splitLines func<#splitLines,string>`_
   runnableExamples:
     doAssert countLines("First line\l and second line.") == 2
   result = 1
@@ -2157,30 +2022,30 @@ proc countLines*(s: string): int {.noSideEffect,
     inc i
 
 
-proc contains*(s, sub: string): bool {.noSideEffect.} =
-  ## Same as ``find(s, sub) >= 0``.
+func contains*(s, sub: string): bool =
+  ## Same as `find(s, sub) >= 0`.
   ##
   ## See also:
-  ## * `find proc<#find,string,string,Natural,int>`_
+  ## * `find func<#find,string,string,Natural,int>`_
   return find(s, sub) >= 0
 
-proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
-  ## Same as ``find(s, chars) >= 0``.
+func contains*(s: string, chars: set[char]): bool =
+  ## Same as `find(s, chars) >= 0`.
   ##
   ## See also:
-  ## * `find proc<#find,string,set[char],Natural,int>`_
+  ## * `find func<#find,string,set[char],Natural,int>`_
   return find(s, chars) >= 0
 
-proc replace*(s, sub: string, by = ""): string {.noSideEffect,
-  rtl, extern: "nsuReplaceStr".} =
+func replace*(s, sub: string, by = ""): string {.rtl,
+    extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
   ##
   ## See also:
-  ## * `find proc<#find,string,string,Natural,int>`_
-  ## * `replace proc<#replace,string,char,char>`_ for replacing
+  ## * `find func<#find,string,string,Natural,int>`_
+  ## * `replace func<#replace,string,char,char>`_ for replacing
   ##   single characters
-  ## * `replaceWord proc<#replaceWord,string,string,string>`_
-  ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
+  ## * `replaceWord func<#replaceWord,string,string,string>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   result = ""
   let subLen = sub.len
   if subLen == 0:
@@ -2213,17 +2078,17 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
     # copy the rest:
     add result, substr(s, i)
 
-proc replace*(s: string, sub, by: char): string {.noSideEffect,
-  rtl, extern: "nsuReplaceChar".} =
+func replace*(s: string, sub, by: char): string {.rtl,
+    extern: "nsuReplaceChar".} =
   ## Replaces `sub` in `s` by the character `by`.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
   ##
   ## See also:
-  ## * `find proc<#find,string,char,Natural,int>`_
-  ## * `replaceWord proc<#replaceWord,string,string,string>`_
-  ## * `multiReplace proc<#multiReplace,string,varargs[]>`_
+  ## * `find func<#find,string,char,Natural,int>`_
+  ## * `replaceWord func<#replaceWord,string,string,string>`_
+  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   result = newString(s.len)
   var i = 0
   while i < s.len:
@@ -2231,12 +2096,12 @@ proc replace*(s: string, sub, by: char): string {.noSideEffect,
     else: result[i] = s[i]
     inc(i)
 
-proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
-  rtl, extern: "nsuReplaceWord".} =
+func replaceWord*(s, sub: string, by = ""): string {.rtl,
+    extern: "nsuReplaceWord".} =
   ## Replaces `sub` in `s` by the string `by`.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
-  ## (comparable to ``\b`` in regular expressions), otherwise it is not
+  ## (comparable to `\b` in regular expressions), otherwise it is not
   ## replaced.
   if sub.len == 0: return s
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
@@ -2262,8 +2127,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
     # copy the rest:
     add result, substr(s, i)
 
-proc multiReplace*(s: string, replacements: varargs[(string, string)]):
-    string {.noSideEffect.} =
+func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
   ## Same as replace, but specialized for doing multiple replacements in a single
   ## pass through the input string.
   ##
@@ -2298,8 +2162,8 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]):
 
 
 
-proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
-  rtl, extern: "nsuInsertSep".} =
+func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
+    extern: "nsuInsertSep".} =
   ## Inserts the separator `sep` after `digits` characters (default: 3)
   ## from right to left.
   ##
@@ -2332,8 +2196,8 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
     inc(j)
     dec(L)
 
-proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuEscape".} =
+func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
+    extern: "nsuEscape".} =
   ## Escapes a string `s`. See `system.addEscapedChar
   ## <system.html#addEscapedChar,string,char>`_ for the escaping scheme.
   ##
@@ -2341,7 +2205,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## Both may be empty strings.
   ##
   ## See also:
-  ## * `unescape proc<#unescape,string,string,string>`_ for the opposite
+  ## * `unescape func<#unescape,string,string,string>`_ for the opposite
   ## operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
@@ -2356,14 +2220,14 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     else: add(result, c)
   add(result, suffix)
 
-proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuUnescape".} =
+func unescape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
+    extern: "nsuUnescape".} =
   ## Unescapes a string `s`.
   ##
-  ## This complements `escape proc<#escape,string,string,string>`_
+  ## This complements `escape func<#escape,string,string,string>`_
   ## as it performs the opposite operations.
   ##
-  ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
+  ## If `s` does not begin with `prefix` and end with `suffix` a
   ## ValueError exception will be raised.
   result = newStringOfCap(s.len)
   var i = prefix.len
@@ -2399,8 +2263,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     raise newException(ValueError,
                        "String does not end in: " & suffix)
 
-proc validIdentifier*(s: string): bool {.noSideEffect,
-  rtl, extern: "nsuValidIdentifier".} =
+func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
   ## Returns true if `s` is a valid identifier.
   ##
   ## A valid identifier starts with a character of the set `IdentStartChars`
@@ -2416,30 +2279,29 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
 
 # floating point formatting:
 when not defined(js):
-  proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
-                                     importc: "sprintf", varargs, noSideEffect.}
+  func c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
+                                     importc: "sprintf", varargs}
 
 type
   FloatFormatMode* = enum
-    ## the different modes of floating point formatting
+    ## The different modes of floating point formatting.
     ffDefault,   ## use the shorter floating point notation
     ffDecimal,   ## use decimal floating point notation
-    ffScientific ## use scientific notation (using ``e`` character)
+    ffScientific ## use scientific notation (using `e` character)
 
-proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
+func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
                          precision: range[-1..32] = 16;
-                         decimalSep = '.'): string {.
-                         noSideEffect, rtl, extern: "nsu$1".} =
+                         decimalSep = '.'): string {.rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to
+  ## If `format == ffDecimal` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number
+  ## If `format == ffScientific` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nim's ``biggestFloat`` type.
+  ## after the decimal point for Nim's `biggestFloat` type.
   ##
-  ## If ``precision == -1``, it tries to format it nicely.
+  ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
     doAssert x.formatBiggestFloat() == "123.4560000000000"
@@ -2506,19 +2368,19 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
         result[^2] = result[^1]
         result.setLen(result.len - 1)
 
-proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
+func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[-1..32] = 16; decimalSep = '.'): string {.
-                  noSideEffect, rtl, extern: "nsu$1".} =
+                  rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
-  ## If ``format == ffDecimal`` then precision is the number of digits to
+  ## If `format == ffDecimal` then precision is the number of digits to
   ## be printed after the decimal point.
-  ## If ``format == ffScientific`` then precision is the maximum number
+  ## If `format == ffScientific` then precision is the maximum number
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
-  ## after the decimal point for Nim's ``float`` type.
+  ## after the decimal point for Nim's `float` type.
   ##
-  ## If ``precision == -1``, it tries to format it nicely.
+  ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
     doAssert x.formatFloat() == "123.4560000000000"
@@ -2527,9 +2389,9 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
 
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc trimZeros*(x: var string; decimalSep = '.') {.noSideEffect.} =
+func trimZeros*(x: var string; decimalSep = '.') =
   ## Trim trailing zeros from a formatted floating point
-  ## value `x` (must be declared as ``var``).
+  ## value `x` (must be declared as `var`).
   ##
   ## This modifies `x` itself, it does not return a copy.
   runnableExamples:
@@ -2547,14 +2409,14 @@ proc trimZeros*(x: var string; decimalSep = '.') {.noSideEffect.} =
     x.delete(pos, last)
 
 type
-  BinaryPrefixMode* = enum ## the different names for binary prefixes
+  BinaryPrefixMode* = enum ## The different names for binary prefixes.
     bpIEC,                 # use the IEC/ISO standard prefixes such as kibi
     bpColloquial           # use the colloquial kilo, mega etc
 
-proc formatSize*(bytes: int64,
+func formatSize*(bytes: int64,
                  decimalSep = '.',
                  prefix = bpIEC,
-                 includeSpace = false): string {.noSideEffect.} =
+                 includeSpace = false): string =
   ## Rounds and formats `bytes`.
   ##
   ## By default, uses the IEC/ISO standard binary prefixes, so 1024 will be
@@ -2607,13 +2469,13 @@ proc formatSize*(bytes: int64,
   result &= prefixes[matchedIndex]
   result &= "B"
 
-proc formatEng*(f: BiggestFloat,
+func formatEng*(f: BiggestFloat,
                 precision: range[0..32] = 10,
                 trim: bool = true,
                 siPrefix: bool = false,
                 unit: string = "",
                 decimalSep = '.',
-                useUnitSpace = false): string {.noSideEffect.} =
+                useUnitSpace = false): string =
   ## Converts a floating point value `f` to a string using engineering notation.
   ##
   ## Numbers in of the range -1000.0<f<1000.0 will be formatted without an
@@ -2680,7 +2542,7 @@ proc formatEng*(f: BiggestFloat,
     exponent: int
     splitResult: seq[string]
     suffix: string = ""
-  proc getPrefix(exp: int): char =
+  func getPrefix(exp: int): char =
     ## Get the SI prefix for a given exponent
     ##
     ## Assumes exponent is a multiple of 3; returns ' ' if no prefix found
@@ -2747,7 +2609,7 @@ proc formatEng*(f: BiggestFloat,
     result &= "e" & $exponent
   result &= suffix
 
-proc findNormalized(x: string, inArray: openArray[string]): int =
+func findNormalized(x: string, inArray: openArray[string]): int =
   var i = 0
   while i < high(inArray):
     if cmpIgnoreStyle(x, inArray[i]) == 0: return i
@@ -2755,12 +2617,12 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-proc invalidFormatString() {.noinline.} =
+func invalidFormatString() {.noinline.} =
   raise newException(ValueError, "invalid format string")
 
-proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
-  noSideEffect, rtl, extern: "nsuAddf".} =
-  ## The same as ``add(s, formatstr % a)``, but more efficient.
+func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
+    extern: "nsuAddf".} =
+  ## The same as `add(s, formatstr % a)`, but more efficient.
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
   var num = 0
@@ -2821,8 +2683,8 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
       add s, formatstr[i]
       inc(i)
 
-proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
-  rtl, extern: "nsuFormatOpenArray".} =
+func `%` *(formatstr: string, a: openArray[string]): string {.rtl,
+    extern: "nsuFormatOpenArray".} =
   ## Interpolates a format string with the values from `a`.
   ##
   ## The `substitution`:idx: operator performs string substitutions in
@@ -2839,17 +2701,17 @@ proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   ## .. code-block:: nim
   ##   "The cat eats fish."
   ##
-  ## The substitution variables (the thing after the ``$``) are enumerated
-  ## from 1 to ``a.len``.
-  ## To produce a verbatim ``$``, use ``$$``.
-  ## The notation ``$#`` can be used to refer to the next substitution
+  ## The substitution variables (the thing after the `$`) are enumerated
+  ## from 1 to `a.len`.
+  ## To produce a verbatim `$`, use `$$`.
+  ## The notation `$#` can be used to refer to the next substitution
   ## variable:
   ##
   ## .. code-block:: nim
   ##   "$# eats $#." % ["The cat", "fish"]
   ##
   ## Substitution variables can also be words (that is
-  ## ``[A-Za-z_]+[A-Za-z0-9_]*``) in which case the arguments in `a` with even
+  ## `[A-Za-z_]+[A-Za-z0-9_]*`) in which case the arguments in `a` with even
   ## indices are keys and with odd indices are the corresponding values.
   ## An example:
   ##
@@ -2869,17 +2731,17 @@ proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
-proc `%` *(formatstr, a: string): string {.noSideEffect,
-  rtl, extern: "nsuFormatSingleElem".} =
-  ## This is the same as ``formatstr % [a]`` (see
-  ## `% proc<#%25,string,openArray[string]>`_).
+func `%` *(formatstr, a: string): string {.rtl,
+    extern: "nsuFormatSingleElem".} =
+  ## This is the same as `formatstr % [a]` (see
+  ## `% func<#%25,string,openArray[string]>`_).
   result = newStringOfCap(formatstr.len + a.len)
   addf(result, formatstr, [a])
 
-proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
-  rtl, extern: "nsuFormatVarargs".} =
-  ## This is the same as ``formatstr % a`` (see
-  ## `% proc<#%25,string,openArray[string]>`_) except that it supports
+func format*(formatstr: string, a: varargs[string, `$`]): string {.rtl,
+    extern: "nsuFormatVarargs".} =
+  ## This is the same as `formatstr % a` (see
+  ## `% func<#%25,string,openArray[string]>`_) except that it supports
   ## auto stringification.
   ##
   ## See also:
@@ -2888,9 +2750,8 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
   addf(result, formatstr, a)
 
 
-proc strip*(s: string, leading = true, trailing = true,
-            chars: set[char] = Whitespace): string
-  {.noSideEffect, rtl, extern: "nsuStrip".} =
+func strip*(s: string, leading = true, trailing = true,
+            chars: set[char] = Whitespace): string {.rtl, extern: "nsuStrip".} =
   ## Strips leading or trailing `chars` (default: whitespace characters)
   ## from `s` and returns the resulting string.
   ##
@@ -2899,7 +2760,7 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
-  ## * `stripLineEnd proc<#stripLineEnd,string>`_
+  ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "
     let b = strip(a)
@@ -2921,13 +2782,13 @@ proc strip*(s: string, leading = true, trailing = true,
   if leading:
     while first <= last and s[first] in chars: inc(first)
   if trailing:
-    while last >= 0 and s[last] in chars: dec(last)
+    while last >= first and s[last] in chars: dec(last)
   result = substr(s, first, last)
 
-proc stripLineEnd*(s: var string) =
-  ## Returns ``s`` stripped from one of these suffixes:
-  ## ``\r, \n, \r\n, \f, \v`` (at most once instance).
-  ## For example, can be useful in conjunction with ``osproc.execCmdEx``.
+func stripLineEnd*(s: var string) =
+  ## Returns `s` stripped from one of these suffixes:
+  ## `\r, \n, \r\n, \f, \v` (at most once instance).
+  ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:
   runnableExamples:
     var s = "foo\n\n"
@@ -2984,224 +2845,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
       break
     i = j
 
-proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, rtl,
+func isEmptyOrWhitespace*(s: string): bool {.rtl,
     extern: "nsuIsEmptyOrWhitespace".} =
   ## Checks if `s` is empty or consists entirely of whitespace characters.
   result = s.allCharsInSet(Whitespace)
-
-
-when isMainModule:
-  proc nonStaticTests =
-    doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    when not defined(js):
-      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
-    doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
-    doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
-    doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
-                                                      ["1,0e-11", "1,0e-011"]
-    # bug #6589
-    when not defined(js):
-      doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
-
-    doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
-    doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
-
-    block: # formatSize tests
-      when not defined(js):
-        doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB" # <=== bug #8231
-      doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
-      doAssert formatSize(4096) == "4KiB"
-      doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
-      doAssert formatSize(4096, includeSpace = true) == "4 KiB"
-      doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
-
-    block: # formatEng tests
-      doAssert formatEng(0, 2, trim = false) == "0.00"
-      doAssert formatEng(0, 2) == "0"
-      doAssert formatEng(53, 2, trim = false) == "53.00"
-      doAssert formatEng(0.053, 2, trim = false) == "53.00e-3"
-      doAssert formatEng(0.053, 4, trim = false) == "53.0000e-3"
-      doAssert formatEng(0.053, 4, trim = true) == "53e-3"
-      doAssert formatEng(0.053, 0) == "53e-3"
-      doAssert formatEng(52731234) == "52.731234e6"
-      doAssert formatEng(-52731234) == "-52.731234e6"
-      doAssert formatEng(52731234, 1) == "52.7e6"
-      doAssert formatEng(-52731234, 1) == "-52.7e6"
-      doAssert formatEng(52731234, 1, decimalSep = ',') == "52,7e6"
-      doAssert formatEng(-52731234, 1, decimalSep = ',') == "-52,7e6"
-
-      doAssert formatEng(4100, siPrefix = true, unit = "V") == "4.1 kV"
-      doAssert formatEng(4.1, siPrefix = true, unit = "V",
-          useUnitSpace = true) == "4.1 V"
-      doAssert formatEng(4.1, siPrefix = true) == "4.1" # Note lack of space
-      doAssert formatEng(4100, siPrefix = true) == "4.1 k"
-      doAssert formatEng(4.1, siPrefix = true, unit = "",
-          useUnitSpace = true) == "4.1 " # Includes space
-      doAssert formatEng(4100, siPrefix = true, unit = "") == "4.1 k"
-      doAssert formatEng(4100) == "4.1e3"
-      doAssert formatEng(4100, unit = "V", useUnitSpace = true) == "4.1e3 V"
-      doAssert formatEng(4100, unit = "", useUnitSpace = true) == "4.1e3 "
-      # Don't use SI prefix as number is too big
-      doAssert formatEng(3.1e22, siPrefix = true, unit = "a",
-          useUnitSpace = true) == "31e21 a"
-      # Don't use SI prefix as number is too small
-      doAssert formatEng(3.1e-25, siPrefix = true, unit = "A",
-          useUnitSpace = true) == "310e-27 A"
-
-  proc staticTests =
-    doAssert align("abc", 4) == " abc"
-    doAssert align("a", 0) == "a"
-    doAssert align("1232", 6) == "  1232"
-    doAssert align("1232", 6, '#') == "##1232"
-
-    doAssert alignLeft("abc", 4) == "abc "
-    doAssert alignLeft("a", 0) == "a"
-    doAssert alignLeft("1232", 6) == "1232  "
-    doAssert alignLeft("1232", 6, '#') == "1232##"
-
-    doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
-             "The cat eats fish."
-
-    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
-    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
-
-    doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
-    doAssert "oo".replace("", "abc") == "oo"
-
-    type MyEnum = enum enA, enB, enC, enuD, enE
-    doAssert parseEnum[MyEnum]("enu_D") == enuD
-
-    doAssert parseEnum("invalid enum value", enC) == enC
-
-    doAssert center("foo", 13) == "     foo     "
-    doAssert center("foo", 0) == "foo"
-    doAssert center("foo", 3, fillChar = 'a') == "foo"
-    doAssert center("foo", 10, fillChar = '\t') == "\t\t\tfoo\t\t\t\t"
-
-    doAssert count("foofoofoo", "foofoo") == 1
-    doAssert count("foofoofoo", "foofoo", overlapping = true) == 2
-    doAssert count("foofoofoo", 'f') == 3
-    doAssert count("foofoofoobar", {'f', 'b'}) == 4
-
-    doAssert strip("  foofoofoo  ") == "foofoofoo"
-    doAssert strip("sfoofoofoos", chars = {'s'}) == "foofoofoo"
-    doAssert strip("barfoofoofoobar", chars = {'b', 'a', 'r'}) == "foofoofoo"
-    doAssert strip("stripme but don't strip this stripme",
-                   chars = {'s', 't', 'r', 'i', 'p', 'm', 'e'}) ==
-                   " but don't strip this "
-    doAssert strip("sfoofoofoos", leading = false, chars = {'s'}) == "sfoofoofoo"
-    doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
-
-    doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
-
-    doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
-    doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.",
-        "PEOPLE!")) == "HELLO PEOPLE!"
-    doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
-
-    doAssert isAlphaAscii('r')
-    doAssert isAlphaAscii('A')
-    doAssert(not isAlphaAscii('$'))
-
-    doAssert isAlphaNumeric('3')
-    doAssert isAlphaNumeric('R')
-    doAssert(not isAlphaNumeric('!'))
-
-    doAssert isDigit('3')
-    doAssert(not isDigit('a'))
-    doAssert(not isDigit('%'))
-
-    doAssert isSpaceAscii('\t')
-    doAssert isSpaceAscii('\l')
-    doAssert(not isSpaceAscii('A'))
-
-    doAssert(isEmptyOrWhitespace(""))
-    doAssert(isEmptyOrWhitespace("       "))
-    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
-    doAssert(not isEmptyOrWhitespace("ABc   \td"))
-
-    doAssert isLowerAscii('a')
-    doAssert isLowerAscii('z')
-    doAssert(not isLowerAscii('A'))
-    doAssert(not isLowerAscii('5'))
-    doAssert(not isLowerAscii('&'))
-    doAssert(not isLowerAscii(' '))
-
-    doAssert isUpperAscii('A')
-    doAssert(not isUpperAscii('b'))
-    doAssert(not isUpperAscii('5'))
-    doAssert(not isUpperAscii('%'))
-
-    doAssert rsplit("foo bar", seps = Whitespace) == @["foo", "bar"]
-    doAssert rsplit(" foo bar", seps = Whitespace, maxsplit = 1) == @[" foo", "bar"]
-    doAssert rsplit(" foo bar ", seps = Whitespace, maxsplit = 1) == @[
-        " foo bar", ""]
-    doAssert rsplit(":foo:bar", sep = ':') == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 2) == @["", "foo", "bar"]
-    doAssert rsplit(":foo:bar", sep = ':', maxsplit = 3) == @["", "foo", "bar"]
-    doAssert rsplit("foothebar", sep = "the") == @["foo", "bar"]
-
-    doAssert(unescape(r"\x013", "", "") == "\x013")
-
-    doAssert join(["foo", "bar", "baz"]) == "foobarbaz"
-    doAssert join(@["foo", "bar", "baz"], ", ") == "foo, bar, baz"
-    doAssert join([1, 2, 3]) == "123"
-    doAssert join(@[1, 2, 3], ", ") == "1, 2, 3"
-
-    doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!") == "foo\nbar\nbaz"
-
-    doAssert """~~!!foo
-~~!!bar
-~~!!baz""".unindent(2, "~~!!aa") == "~~!!foo\n~~!!bar\n~~!!baz"
-    doAssert """~~foo
-~~  bar
-~~  baz""".unindent(4, "~") == "foo\n  bar\n  baz"
-    doAssert """foo
-bar
-    baz
-  """.unindent(4) == "foo\nbar\nbaz\n"
-    doAssert """foo
-    bar
-    baz
-  """.unindent(2) == "foo\n  bar\n  baz\n"
-    doAssert """foo
-    bar
-    baz
-  """.unindent(100) == "foo\nbar\nbaz\n"
-
-    doAssert """foo
-    foo
-    bar
-  """.unindent() == "foo\nfoo\nbar\n"
-
-    let s = " this is an example  "
-    let s2 = ":this;is;an:example;;"
-
-    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
-    doAssert s2.split(seps = {':', ';'}) == @["", "this", "is", "an", "example",
-        "", ""]
-    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
-    doAssert s.split(' ', maxsplit = 1) == @["", "this is an example  "]
-    doAssert s.split(" ", maxsplit = 4) == @["", "this", "is", "an", "example  "]
-
-    doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
-    doAssert s.splitWhitespace(maxsplit = 1) == @["this", "is an example  "]
-    doAssert s.splitWhitespace(maxsplit = 2) == @["this", "is", "an example  "]
-    doAssert s.splitWhitespace(maxsplit = 3) == @["this", "is", "an", "example  "]
-    doAssert s.splitWhitespace(maxsplit = 4) == @["this", "is", "an", "example"]
-
-    block: # startsWith / endsWith char tests
-      var s = "abcdef"
-      doAssert s.startsWith('a')
-      doAssert s.startsWith('b') == false
-      doAssert s.endsWith('f')
-      doAssert s.endsWith('a') == false
-      doAssert s.endsWith('\0') == false
-
-    #echo("strutils tests passed")
-
-  nonStaticTests()
-  staticTests()
-  static: staticTests()
