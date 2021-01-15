@@ -107,7 +107,7 @@ proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModule): LitId =
     c.lastLit = result
     assert result != LitId(0)
 
-proc toFileIndex(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
+proc toFileIndex*(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
   result = msgs.fileInfoIdx(config, AbsoluteFile m.sh.strings[x])
 
 proc includesIdentical(m: var PackedModule; config: ConfigRef): bool =
