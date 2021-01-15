@@ -124,7 +124,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added a ``.noalias`` pragma. It is mapped to C's ``restrict`` keyword for the increased
   performance this keyword can enable.
-- Deprecated `TaintedString` and Taint mode.
+- Deprecated `TaintedString` and `--taintmode`.
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
