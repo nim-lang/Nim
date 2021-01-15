@@ -190,8 +190,7 @@ block: # Test bindMethod
 block:
   {.emit: "function jsProc(n) { return n; }" .}
   proc jsProc(x: int32): JsObject {.importjs: "jsProc(#)".}
-
-  proc test() =
+  block:
     var x = jsProc(1)
     var y = jsProc(2)
     console.log x + y
@@ -199,8 +198,6 @@ block:
 
     x += jsProc(10)
     console.log x
-
-  test()
 
 block:
   {.emit:
