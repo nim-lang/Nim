@@ -205,7 +205,7 @@ proc pwd*(ftp: AsyncFtpClient): Future[string] {.async.} =
   ## Returns the current working directory.
   let wd = await ftp.send("PWD")
   assertReply wd, "257"
-  return wd.string.captureBetween('"') # "
+  return wd.captureBetween('"') # "
 
 proc cd*(ftp: AsyncFtpClient, dir: string) {.async.} =
   ## Changes the current directory on the remote FTP server to ``dir``.
