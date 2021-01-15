@@ -17,85 +17,84 @@ import packed_ast, to_packed_ast, bitabs
 type
   MarkedAlive = seq[IntSet]
 
-  AliveContext = object
-    stack: seq[(int, int32)]
-    config: ConfigRef
+  AliveContext* = object
+    stack: seq[(int, NodePos)]
+    decoder: PackedDecoder
     thisModule: int
     alive: MarkedAlive
-    g: ref PackedModuleGraph
-    lastLit: LitId
-    lastModule: int
-    lastFile: FileIndex
 
-proc toFileIndexCached(c: var AliveContext; thisModule: int; f: LitId): FileIndex =
-  if c.lastLit == f and c.lastModule == thisModule:
-    result = c.lastFile
-  else:
-    result = toFileIndex(f, c.g[thisModule].fromDisk, c.config)
-    c.lastModule = thisModule
-    c.lastLit = f
-    c.lastFile = result
-
-when false:
-  proc moduleIndex*(c: var AliveContext; g: var PackedModuleGraph; thisModule: int;
-                    s: PackedItemId): int32 {.inline.} =
-    result = if s.module == LitId(0): thisModule.int32
-            else: toFileIndexCached(c, thisModule, s.module).int32
-
-proc isExportedToC(tree: PackedTree; n: NodePos): bool =
-      var prc = n[namePos].sym
-      # due to a bug/limitation in the lambda lifting, unused inner procs
-      # are not transformed correctly. We work around this issue (#411) here
-      # by ensuring it's no inner proc (owner is a module):
-      if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
-        if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
-            (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
-            (prc.kind == skMethod):
-          # Generate proc even if empty body, bugfix #11651.
-          genProc(p.module, prc)
+proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): bool =
+  let symPtr = addr g[c.thisModule].fromDisk.sh.syms[symId]
+  let flags = symPtr.flags
+  # due to a bug/limitation in the lambda lifting, unused inner procs
+  # are not transformed correctly; issue (#411). However, the whole purpose here
+  # is to eliminate unused procs. So there is no special logic required for this case.
+  if sfCompileTime notin flags:
+    if ({sfExportc, sfCompilerProc} * flags == {sfExportc}) or
+        (symPtr.kind == skMethod):
+      result = true
+      # XXX: This used to be a condition to:
+      #  (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
 
 template isNotGeneric(n: NodePos): bool = ithSon(tree, n, genericParamsPos).kind == nkEmpty
 
-proc aliveCode(tree: PackedTree; n: NodePos; c: var AliveContext) =
+proc followLater(c: var AliveContext; g: PackedModuleGraph; module: int; item: int32) =
+  if not c.alive[module].containsOrIncl(item):
+    let body = g[module].fromDisk.sh.syms[item].ast
+    if body != emptyNodeId:
+      c.stack.add((module, NodePos(body)))
+
+proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos) =
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard "ignore non-sym atoms"
   of nkSym:
-    let item = n.operand
     # This symbol is alive and everything its body references.
-    if not c.alive[c.thisModule].containsOrIncl(item):
-      c.stack.add((c.thisModule, item))
+    followLater(c, g, c.thisModule, n.operand)
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkInt32Lit
     assert n2.kind == nkInt32Lit
     let m = n1.litId
     let item = n2.operand
-
-    let otherModule = toFileIndexCached(c, thisModule, m)
-    if not c.alive[otherModule].containsOrIncl(item):
-      c.stack.add((otherModule, item))
-
+    let otherModule = toFileIndexCached(c.decoder, g, c.thisModule, m).int
+    followLater(c, g, otherModule, item)
   of nkMacroDef, nkTemplateDef, nkTypeSection, nkTypeOfExpr,
      nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt:
+     nkFromStmt, nkStaticStmt:
     discard
   of nkVarSection, nkLetSection, nkConstSection:
     discard
   of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:
     if n.firstSon.kind == nkSym and isNotGeneric(n):
-      if isExportedToC(tree, n.firstSon, alive):
+      if isExportedToC(c, g, n.firstSon.operand):
         let item = n.operand
         # This symbol is alive and everything its body references.
-        if not c.alive[c.thisModule].containsOrIncl(item):
-          c.stack.add((c.thisModule, item))
+        followLater(c, g, c.thisModule, item)
   else:
     for son in sonsReadonly(tree, n):
-      aliveCode(tree, son, alive)
+      aliveCode(c, g, tree, son)
 
-proc aliveCode*(g: PackedModuleGraph; changedModule: int; conf: ConfigRef): MarkedAlive =
-  ## Mark all symbols that are really used.
-  var stack: seq[PackedItemId] = @[]
+proc followNow(c: var AliveContext; g: PackedModuleGraph) =
+  while c.stack.len > 0:
+    let (modId, ast) = c.stack.pop()
+    c.thisModule = modId
+    aliveCode(c, g, g[modId].fromDisk.bodies, ast)
 
+proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveContext =
+  result = AliveContext(stack: @[], decoder: PackedDecoder(config: conf),
+                       thisModule: -1, alive: newSeq[IntSet](g.len))
+  for i in countdown(high(g), 0):
+    if g[i].status != undefined:
+      result.thisModule = i
+      var p = 0
+      while p < g[i].fromDisk.topLevel.len:
+        aliveCode(result, g, g[i].fromDisk.topLevel, NodePos p)
+        let s = span(g[i].fromDisk.topLevel, p)
+        inc p, s
+  followNow(result, g)
+
+proc isAlive*(a: AliveContext; module: int, item: int32): bool =
+  result = a.alive[module].contains(item)
 

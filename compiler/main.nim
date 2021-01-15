@@ -21,6 +21,7 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
+import ic / cbackend
 from ic / to_packed_ast import rodViewer
 
 when not defined(leanCompiler):

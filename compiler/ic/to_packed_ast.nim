@@ -568,11 +568,11 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
 
 type
   PackedDecoder* = object
-    lastModule*: int
-    lastLit*: LitId
-    lastFile*: FileIndex # remember the last lookup entry.
+    lastModule: int
+    lastLit: LitId
+    lastFile: FileIndex # remember the last lookup entry.
     config*: ConfigRef
-    cache: IdentCache
+    cache*: IdentCache
 
 type
   ModuleStatus* = enum
@@ -596,7 +596,7 @@ type
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym
 
-proc toFileIndexCached(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; f: LitId): FileIndex =
+proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: int; f: LitId): FileIndex =
   if c.lastLit == f and c.lastModule == thisModule:
     result = c.lastFile
   else:
