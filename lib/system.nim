@@ -1106,7 +1106,7 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-type TaintedString* {.deprecated: "Deprecated since 1.3; Use string instead.".} = string ## **Deprecated** since 1.3, do not use.
+type TaintedString* {.deprecated: "Deprecated since 1.5".} = string
 
 
 when defined(profiler) and not defined(nimscript):
