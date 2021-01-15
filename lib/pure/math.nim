@@ -67,6 +67,11 @@ when defined(c) or defined(cpp):
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
+  func c_frexp(x: cfloat, exponent: var cint): cfloat {.
+      importc: "frexpf", header: "<math.h>".}
+  func c_frexp(x: cdouble, exponent: var cint): cdouble {.
+      importc: "frexp", header: "<math.h>".}
+
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
@@ -980,27 +985,40 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
-when not defined(js):
-  func c_frexp*(x: float32, exponent: var int32): float32 {.
-      importc: "frexp", header: "<math.h>".}
-  func c_frexp*(x: float64, exponent: var int32): float64 {.
-      importc: "frexp", header: "<math.h>".}
-  func frexp*[T, U](x: T, exponent: var U): T =
-    ## Split a number into mantissa and exponent.
-    ##
-    ## ``frexp`` calculates the mantissa m (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value n such that ``x`` (the original
-    ## float value) equals ``m * 2**n``. frexp stores n in `exponent` and returns
-    ## m.
-    ##
-    runnableExamples:
-      var x: int
-      doAssert frexp(5.0, x) == 0.625
-      doAssert x == 3
-    var exp: int32
+func frexp*[T: float32|float64](x: T, exponent: var int): T =
+  ## Split a number into mantissa and exponent.
+  ##
+  ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
+  ## and less than 1) and the integer value n such that `x` (the original
+  ## float value) equals `m * 2**n`. frexp stores n in `exponent` and returns
+  ## m.
+  ##
+  runnableExamples:
+    var x: int
+    doAssert frexp(5.0, x) == 0.625
+    doAssert x == 3
+
+  when not defined(js):
+    var exp: cint
     result = c_frexp(x, exp)
     exponent = exp
+  else:
+    if x == 0.0:
+      exponent = 0
+      result = 0.0
+    elif x < 0.0:
+      result = -frexp(-x, exponent)
+    else:
+      var ex = trunc(log2(x))
+      exponent = int(ex)
+      result = x / pow(2.0, ex)
+      if abs(result) >= 1:
+        inc(exponent)
+        result = result / 2
+      if exponent == 1024 and result == 0.0:
+        result = 0.99999999999999988898
 
+when not defined(js):
   when windowsCC89:
     # taken from Go-lang Math.Log2
     const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
@@ -1033,23 +1051,6 @@ when not defined(js):
       ##  echo log2(1.0)  # 0.0
       ##  echo log2(0.0)  # -inf
       ##  echo log2(-2.0) # nan
-
-else:
-  func frexp*[T: float32|float64](x: T, exponent: var int): T =
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = trunc(log2(x))
-      exponent = int(ex)
-      result = x / pow(2.0, ex)
-      if abs(result) >= 1:
-        inc(exponent)
-        result = result / 2
-      if exponent == 1024 and result == 0.0:
-        result = 0.99999999999999988898
 
 func splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks ``x`` into an integer and a fractional part.
