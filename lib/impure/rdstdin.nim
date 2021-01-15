@@ -57,7 +57,7 @@ else:
     if isNil(buffer):
       raise newException(IOError, "Linenoise returned nil")
     result = $buffer
-    if result.string.len > 0:
+    if result.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
 
