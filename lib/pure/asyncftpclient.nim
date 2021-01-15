@@ -160,7 +160,7 @@ proc send*(ftp: AsyncFtpClient, m: string): Future[string] {.async.} =
 
 proc assertReply(received: string, expected: varargs[string]) =
   for i in items(expected):
-    if received.string.startsWith(i): return
+    if received.startsWith(i): return
   raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
                       [expected.join("' or '"), received.string])
