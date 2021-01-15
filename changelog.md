@@ -99,7 +99,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `math.signbit`.
 
-- Added `math.frexp` overload procs.
+- Added `math.frexp` overload procs. Deprecate `c_frexp`, use `frexp` instead.
 
 ## Language changes
 
