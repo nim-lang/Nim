@@ -670,6 +670,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
+  of "taintmode": discard
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":
