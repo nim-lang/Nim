@@ -169,7 +169,7 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
   ftp.dsock = newAsyncSocket()
 
-  var pasvMsg = (await ftp.send("PASV")).string.strip
+  var pasvMsg = (await ftp.send("PASV")).strip
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
