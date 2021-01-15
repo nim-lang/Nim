@@ -10,51 +10,68 @@
 ## This module implements efficient computations of hash values for diverse
 ## Nim types. All the procs are based on these two building blocks:
 ## - `!& proc <#!&,Hash,int>`_ used to start or mix a hash value, and
-## - `!$ proc <#!$,Hash>`_ used to *finish* the hash value.
+## - `!$ proc <#!$,Hash>`_ used to finish the hash value.
 ##
 ## If you want to implement hash procs for your custom types,
 ## you will end up writing the following kind of skeleton of code:
+
+runnableExamples:
+  type
+    Something = object
+      foo: int
+      bar: string
+
+  iterator items(x: Something): int =
+    yield hash(x.foo)
+    yield hash(x.bar)
+
+  proc hash(x: Something): Hash =
+    ## Computes a Hash from `x`.
+    var h: Hash = 0
+    # Iterate over parts of `x`.
+    for xAtom in x:
+      # Mix the atom with the partial hash.
+      h = h !& xAtom
+    # Finish the hash.
+    result = !$h
+
+## If your custom types contain fields for which there already is a `hash` proc,
+## you can simply hash together the hash values of the individual fields:
+
+runnableExamples:
+  type
+    Something = object
+      foo: int
+      bar: string
+
+  proc hash(x: Something): Hash =
+    ## Computes a Hash from `x`.
+    var h: Hash = 0
+    h = h !& hash(x.foo)
+    h = h !& hash(x.bar)
+    result = !$h
+
+## **Note:** If the type has a `==` operator, the following must hold:
+## If two values compare equal, their hashes must also be equal.
 ##
-## .. code-block:: Nim
-##  proc hash(x: Something): Hash =
-##    ## Computes a Hash from `x`.
-##    var h: Hash = 0
-##    # Iterate over parts of `x`.
-##    for xAtom in x:
-##      # Mix the atom with the partial hash.
-##      h = h !& xAtom
-##    # Finish the hash.
-##    result = !$h
-##
-## If your custom types contain fields for which there already is a hash proc,
-## like for example objects made up of ``strings``, you can simply hash
-## together the hash value of the individual fields:
-##
-## .. code-block:: Nim
-##  proc hash(x: Something): Hash =
-##    ## Computes a Hash from `x`.
-##    var h: Hash = 0
-##    h = h !& hash(x.foo)
-##    h = h !& hash(x.bar)
-##    result = !$h
-##
-## **See also:**
-## * `md5 module <md5.html>`_ for MD5 checksum algorithm
-## * `base64 module <base64.html>`_ for a base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
+## See also
+## ========
+## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
+## * `base64 module <base64.html>`_ for a Base64 encoder and decoder
+## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
 import std/private/since
 
 type
   Hash* = int ## A hash value. Hash tables using these values should
-               ## always have a size of a power of two and can use the ``and``
-               ## operator instead of ``mod`` for truncation of the hash value.
+              ## always have a size of a power of two so they can use the `and`
+              ## operator instead of `mod` for truncation of the hash value.
 
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
-  ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` proc for a new datatype.
   let h = cast[uint](h)
   let val = cast[uint](val)
   var res = h + val
@@ -65,7 +82,7 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
 proc `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
-  ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` proc for a new datatype.
   let h = cast[uint](h) # Hash is practically unsigned.
   var res = h + h shl 3
   res = res xor (res shr 11)
@@ -90,7 +107,7 @@ proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
   return hi xor lo
 
 proc hiXorLo(a, b: uint64): uint64 {.inline.} =
-  # Xor of high & low 8B of full 16B product
+  # XOR of the high & low 8 bytes of the full 16 byte product.
   when nimvm:
     result = hiXorLoFallback64(a, b) # `result =` is necessary here.
   else:
@@ -107,9 +124,10 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
       result = hiXorLoFallback64(a, b)
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
-  ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
-  ## details.  This passed all scrambling tests in Spring 2019 and is simple.
-  ## NOTE: It's ok to define ``proc(x: int16): Hash = hashWangYi1(Hash(x))``.
+  ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
+  ## more details). This passed all scrambling tests in Spring 2019 and is simple.
+  ##
+  ## **Note:** It's ok to define `proc(x: int16): Hash = hashWangYi1(Hash(x))`.
   const P0  = 0xa0761d6478bd642f'u64
   const P1  = 0xe7037ed1a0b428db'u64
   const P58 = 0xeb44accab455d165'u64 xor 8'u64
@@ -183,7 +201,7 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
     result = hash(pointer(x))
 
 proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
-  ## The identity hash.  I.e. ``hashIdentity(x) = x``.
+  ## The identity hash, i.e. `hashIdentity(x) = x`.
   cast[Hash](ord(x))
 
 when defined(nimIntHash1):
@@ -199,7 +217,7 @@ when defined(js):
   proc asBigInt(x: float): int64 =
     # result is a `BigInt` type in js, but we cheat the type system
     # and say it is a `int64` type.
-    # TODO refactor it using bigInt once jsBigInt is ready, pending pr #1640
+    # TODO: refactor it using bigInt once jsBigInt is ready, pending pr #1640
     asm """
     const buffer = new ArrayBuffer(8);
     const floatBuffer = new Float64Array(buffer);
@@ -312,7 +330,7 @@ proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
 proc hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
-  ## See also:
+  ## **See also:**
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
@@ -357,7 +375,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included).
   ##
-  ## ``hash(myStr, 0, myStr.high)`` is equivalent to ``hash(myStr)``.
+  ## `hash(myStr, 0, myStr.high)` is equivalent to `hash(myStr)`.
   runnableExamples:
     var a = "abracadabra"
     doAssert hash(a, 0, 3) == hash(a, 7, 10)
@@ -373,9 +391,9 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
 proc hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
   ##
-  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ## **Note:** This uses a different hashing algorithm than `hash(string)`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
     doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hashIgnoreStyle("abracadabra")
@@ -399,10 +417,10 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); style is ignored.
   ##
-  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ## **Note:** This uses a different hashing algorithm than `hash(string)`.
   ##
-  ## ``hashIgnoreStyle(myBuf, 0, myBuf.high)`` is equivalent
-  ## to ``hashIgnoreStyle(myBuf)``.
+  ## `hashIgnoreStyle(myBuf, 0, myBuf.high)` is equivalent
+  ## to `hashIgnoreStyle(myBuf)`.
   runnableExamples:
     var a = "ABracada_b_r_a"
     doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
@@ -423,9 +441,9 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
 proc hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
   ##
-  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ## **Note:** This uses a different hashing algorithm than `hash(string)`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   runnableExamples:
     doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
@@ -443,10 +461,10 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); case is ignored.
   ##
-  ## **Note:** This uses different hashing algorithm than `hash(string)`.
+  ## **Note:** This uses a different hashing algorithm than `hash(string)`.
   ##
-  ## ``hashIgnoreCase(myBuf, 0, myBuf.high)`` is equivalent
-  ## to ``hashIgnoreCase(myBuf)``.
+  ## `hashIgnoreCase(myBuf, 0, myBuf.high)` is equivalent
+  ## to `hashIgnoreCase(myBuf)`.
   runnableExamples:
     var a = "ABracadabRA"
     doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
@@ -462,6 +480,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
 
 proc hash*[T: tuple](x: T): Hash =
   ## Efficient hashing of tuples.
+  ## There must be a `hash` proc defined for each of the field types.
   for f in fields(x):
     result = result !& hash(f)
   result = !$result
@@ -469,6 +488,7 @@ proc hash*[T: tuple](x: T): Hash =
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
+  ## There must be a `hash` proc defined for the element type `A`.
   when A is byte:
     result = murmurHash(x)
   elif A is char:
@@ -484,8 +504,9 @@ proc hash*[A](x: openArray[A]): Hash =
 proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
   ## position `sPos` to ending position `ePos` (included).
+  ## There must be a `hash` proc defined for the element type `A`.
   ##
-  ## ``hash(myBuf, 0, myBuf.high)`` is equivalent to ``hash(myBuf)``.
+  ## `hash(myBuf, 0, myBuf.high)` is equivalent to `hash(myBuf)`.
   runnableExamples:
     let a = [1, 2, 5, 1, 2, 6]
     doAssert hash(a, 0, 1) == hash(a, 3, 4)
@@ -507,6 +528,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
 
 proc hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
+  ## There must be a `hash` proc defined for the element type `A`.
   for it in items(x):
     result = result !& hash(it)
   result = !$result
