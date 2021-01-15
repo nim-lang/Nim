@@ -65,7 +65,7 @@ else:
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
-      line.string.setLen(0)
+      line.setLen(0)
       return false
     line = $buffer
     if line.string.len > 0:
