@@ -1330,7 +1330,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
 proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
-  if t.kind == tyObject:
+  if t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
       localError(m.config, info, "request for RTTI generation for incomplete object: " &
                  typeToString(t))
@@ -1353,7 +1353,8 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
 
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
+  # distinct types can have their own destructors
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses - {tyDistinct})
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
