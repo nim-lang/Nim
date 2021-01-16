@@ -32,15 +32,15 @@ Automatic imports
 * `system <system.html>`_
   Basic procs and operators that every program needs. It also provides IO
   facilities for reading and writing text and binary files. It is imported
-  implicitly by the compiler. Do not import it directly. It relies on compiler 
+  implicitly by the compiler. Do not import it directly. It relies on compiler
   magic to work.
 
 * `threads <threads.html>`_
-  Basic Nim thread support. **Note**: This is part of the system module. Do not
+  Basic Nim thread support. **Note:** This is part of the system module. Do not
   import it explicitly. Enabled with ``--threads:on``.
 
 * `channels <channels.html>`_
-  Nim message passing support for threads. **Note**: This is part of the
+  Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with ``--threads:on``.
 
 
@@ -107,6 +107,7 @@ Collections
 
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
+  **Deprecated:** Use the packedsets module instead.
 
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
@@ -114,6 +115,9 @@ Collections
 
 * `options <options.html>`_
   The option type encapsulates an optional value.
+
+* `packedsets <packedsets.html>`_
+  Efficient implementation of a set of ordinals as a sparse bit set.
 
 * `sets <sets.html>`_
   Nim hash and bit set support.
@@ -154,7 +158,7 @@ String handling
 
 * `ropes <ropes.html>`_
   This module contains support for a *rope* data type.
-  Ropes can represent very long strings efficiently; 
+  Ropes can represent very long strings efficiently;
   especially concatenation is done in O(1) instead of O(n).
 
 * `strformat <strformat.html>`_
@@ -231,8 +235,8 @@ Generic Operating System Services
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the `FileStream` and the `StringStream` which implement the stream 
-  interface for Nim file objects (`File`) and strings. Other modules 
+  the `FileStream` and the `StringStream` which implement the stream
+  interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
 * `terminal <terminal.html>`_
@@ -373,12 +377,12 @@ Docutils
 --------
 
 * `packages/docutils/highlite <highlite.html>`_
-  Source highlighter for programming or markup languages.  Currently, 
+  Source highlighter for programming or markup languages. Currently,
   only a few languages are supported, other languages may be added.
   The interface supports one language nested in another.
 
 * `packages/docutils/rst <rst.html>`_
-  This module implements a reStructuredText parser. A large subset 
+  This module implements a reStructuredText parser. A large subset
   is implemented. Some features of the markdown wiki syntax are also supported.
 
 * `packages/docutils/rstast <rstast.html>`_
@@ -403,8 +407,8 @@ Generators
 ----------
 
 * `htmlgen <htmlgen.html>`_
-  This module implements a simple XML and HTML code 
-  generator. Each commonly used HTML tag has a corresponding macro 
+  This module implements a simple XML and HTML code
+  generator. Each commonly used HTML tag has a corresponding macro
   that generates a string with its HTML representation.
 
 
@@ -489,7 +493,7 @@ Regular expressions
 -------------------
 
 * `re <re.html>`_
-  This module contains procedures and operators for handling regular 
+  This module contains procedures and operators for handling regular
   expressions. The current implementation uses PCRE.
 
 
