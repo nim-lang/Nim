@@ -23,12 +23,26 @@ import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen]
 
 import packed_ast, to_packed_ast, bitabs, dce
 
+proc genDecl(m: BModule; n: PNode; a: AliveContext) =
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    for child in n: genDecl(m, n, a)
+  of nkVarSection, nkLetSection:
+    for i in 0..n.len-3:
+      if n[i].kind == nkSym:
+        discard
+      else:
+        # an assignment to an closure environment. Always "alive" code.
+        discard
+  else:
+    genTopLevelStmt(m, n)
+
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
   var decoder = initPackedDecoder(g.config, g.cache)
   result = loadNodes(decoder, g.packed, thisModule, tree, n)
 
-proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule) =
+proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: AliveContext) =
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
 
@@ -37,7 +51,7 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule) =
 
   for p in allNodes(m.fromDisk.topLevel):
     let n = unpackTree(g, m.module.position, m.fromDisk.topLevel, p)
-    genTopLevelStmt(bmod, n)
+    genDecl(bmod, n, alive)
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
@@ -52,7 +66,7 @@ proc generateCode*(g: ModuleGraph) =
     of loading:
       assert false
     of storing, outdated:
-      generateCodeForModule(g, g.packed[i])
+      generateCodeForModule(g, g.packed[i], alive)
     of loaded:
       # Even though this module didn't change, DCE might trigger a change.
       # Consider this case: Module A uses symbol S from B and B does not use
