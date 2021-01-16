@@ -454,3 +454,10 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
+
+iterator allNodes*(tree: PackedTree): NodePos =
+  var p = 0
+  while p < tree.len:
+    yield NodePos(p)
+    let s = span(tree, p)
+    inc p, s

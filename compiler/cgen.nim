@@ -1839,7 +1839,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
   if module.position >= g.modules.len:

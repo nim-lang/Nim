@@ -611,8 +611,8 @@ proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModul
   result = TLineInfo(line: x.line, col: x.col,
             fileIndex: toFileIndexCached(c, g, thisModule, x.file))
 
-proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
-               tree: PackedTree; n: NodePos): PNode =
+proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
+                tree: PackedTree; n: NodePos): PNode =
   let k = n.kind
   if k == nkNilRodNode:
     return nil
@@ -646,6 +646,14 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
   else:
     for n0 in sonsReadonly(tree, n):
       result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
+
+proc initPackedDecoder*(config: ConfigRef; cache: IdentCache): PackedDecoder =
+  result = PackedDecoder(
+    lastModule: int32(-1),
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
 
 proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                     tree: PackedTree; n: NodePos): PNode =
@@ -819,11 +827,8 @@ proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
       lastFile: FileIndex(-1),
       config: conf,
       cache: cache)
-    var p = 0
-    while p < m.fromDisk.toReplay.len:
-      m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, NodePos p)
-      let s = span(m.fromDisk.toReplay, p)
-      inc p, s
+    for p in allNodes(m.fromDisk.toReplay):
+      m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, p)
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                     fileIdx: FileIndex): bool =
@@ -978,6 +983,10 @@ proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
   setupDecoder()
   let values = g[int module].iface.getOrDefault(name)
   result = loadSym(decoder, g, int(module), values[0])
+
+proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
+  IdGenerator(module: m.module.itemId.module, symId: int32 m.fromDisk.sh.syms.len,
+              typeId: int32 m.fromDisk.sh.types.len)
 
 # ------------------------- .rod file viewer ---------------------------------
 

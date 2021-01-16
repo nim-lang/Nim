@@ -97,11 +97,8 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveContext =
   for i in countdown(high(g), 0):
     if g[i].status != undefined:
       result.thisModule = i
-      var p = 0
-      while p < g[i].fromDisk.topLevel.len:
-        aliveCode(result, g, g[i].fromDisk.topLevel, NodePos p)
-        let s = span(g[i].fromDisk.topLevel, p)
-        inc p, s
+      for p in allNodes(g[i].fromDisk.topLevel):
+        aliveCode(result, g, g[i].fromDisk.topLevel, p)
   followNow(result, g)
 
 proc isAlive*(a: AliveContext; module: int, item: int32): bool =

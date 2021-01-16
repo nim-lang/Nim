@@ -19,12 +19,25 @@
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
 import std / intsets
-import ".." / [ast, options, lineinfos, modulegraphs]
+import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen]
 
 import packed_ast, to_packed_ast, bitabs, dce
 
+proc unpackTree(g: ModuleGraph; thisModule: int;
+                tree: PackedTree; n: NodePos): PNode =
+  var decoder = initPackedDecoder(g.config, g.cache)
+  result = loadNodes(decoder, g.packed, thisModule, tree, n)
+
 proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule) =
-  discard
+  if g.backend == nil:
+    g.backend = cgendata.newModuleList(g)
+
+  var bmod = cgen.newModule(BModuleList(g.backend), m.module, g.config)
+  bmod.idgen = idgenFromLoadedModule(m)
+
+  for p in allNodes(m.fromDisk.topLevel):
+    let n = unpackTree(g, m.module.position, m.fromDisk.topLevel, p)
+    genTopLevelStmt(bmod, n)
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
@@ -41,7 +54,9 @@ proc generateCode*(g: ModuleGraph) =
     of storing, outdated:
       generateCodeForModule(g, g.packed[i])
     of loaded:
-      # Even though this module didn't change, we DCE might
-      # trigger a change...
+      # Even though this module didn't change, DCE might trigger a change.
+      # Consider this case: Module A uses symbol S from B and B does not use
+      # S itself. A is then edited not to use S either. Thus we have to
+      # recompile B in order to remove S from the final result.
       discard "XXX to implement"
 
