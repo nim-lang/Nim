@@ -1514,7 +1514,7 @@ const
     ## Contains an IEEE floating point value of *Not A Number*.
     ##
     ## Note that you cannot compare a floating point value to this value
-    ## and expect a reasonable result - use the `classify` procedure
+    ## and expect a reasonable result - use the `isNaN` or `classify` procedure
     ## in the `math module <math.html>`_ for checking for NaN.
 
 
