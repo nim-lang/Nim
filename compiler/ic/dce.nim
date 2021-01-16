@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Dead code elimination for IC.
+## Dead code elimination (=DCE) for IC.
 
 import std / intsets
 import ".." / [ast, options, lineinfos]
@@ -15,15 +15,15 @@ import ".." / [ast, options, lineinfos]
 import packed_ast, to_packed_ast, bitabs
 
 type
-  MarkedAlive = seq[IntSet]
-
-  AliveContext* = object
-    stack: seq[(int, NodePos)]
-    decoder: PackedDecoder
-    thisModule: int
-    alive: MarkedAlive
+  AliveContext* = object ## Purpose is to fill the 'alive' field.
+    stack: seq[(int, NodePos)] ## A stack for marking symbols as alive.
+    decoder: PackedDecoder ## We need a PackedDecoder for module ID address translations.
+    thisModule: int  ## The module we're currently analysing for DCE.
+    alive: seq[IntSet] ## The final result of our computation.
 
 proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): bool =
+  ## "Exported to C" procs are special (these are marked with '.exportc') because these
+  ## must not be optimized away!
   let symPtr = addr g[c.thisModule].fromDisk.sh.syms[symId]
   let flags = symPtr.flags
   # due to a bug/limitation in the lambda lifting, unused inner procs
@@ -39,12 +39,16 @@ proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): boo
 template isNotGeneric(n: NodePos): bool = ithSon(tree, n, genericParamsPos).kind == nkEmpty
 
 proc followLater(c: var AliveContext; g: PackedModuleGraph; module: int; item: int32) =
+  ## Marks a symbol 'item' as used and later in 'followNow' the symbol's body will
+  ## be analysed.
   if not c.alive[module].containsOrIncl(item):
     let body = g[module].fromDisk.sh.syms[item].ast
     if body != emptyNodeId:
       c.stack.add((module, NodePos(body)))
 
 proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos) =
+  ## Marks the symbols we encounter when we traverse the AST at `tree[n]` as alive, unless
+  ## it is purely in a declarative context (type section etc.).
   case n.kind
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard "ignore non-sym atoms"
@@ -77,12 +81,17 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
       aliveCode(c, g, tree, son)
 
 proc followNow(c: var AliveContext; g: PackedModuleGraph) =
+  ## Mark all entries in the stack. Marking can add more entries
+  ## to the stack but eventually we have looked at every alive symbol.
   while c.stack.len > 0:
     let (modId, ast) = c.stack.pop()
     c.thisModule = modId
     aliveCode(c, g, g[modId].fromDisk.bodies, ast)
 
 proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveContext =
+  ## Entry point for our DCE algorithm. Afterwards only 'result.alive' is
+  ## used, we could optimize this a little but it's not worth it, only a couple
+  ## of machine words are kept in memory for longer than required.
   result = AliveContext(stack: @[], decoder: PackedDecoder(config: conf),
                        thisModule: -1, alive: newSeq[IntSet](g.len))
   for i in countdown(high(g), 0):
@@ -96,5 +105,7 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveContext =
   followNow(result, g)
 
 proc isAlive*(a: AliveContext; module: int, item: int32): bool =
+  ## Backends use this to query if a symbol is `alive` which means
+  ## we need to produce (C/C++/etc) code for it.
   result = a.alive[module].contains(item)
 

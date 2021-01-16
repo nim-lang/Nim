@@ -1922,13 +1922,9 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
     genStmts(p, n)
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
-  result = n
-  if b == nil: return
-  var m = BModule(b)
-  if passes.skipCodegen(m.config, n) or
-      not moduleHasChanged(m.g.graph, m.module):
-    return
+proc genTopLevelStmt*(m: BModule; n: PNode) =
+  ## Also called from `ic/cbackend.nim`.
+  if passes.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -1940,6 +1936,12 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
+
+proc myProcess(b: PPassContext, n: PNode): PNode =
+  result = n
+  if b != nil:
+    var m = BModule(b)
+    genTopLevelStmt(m, n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:

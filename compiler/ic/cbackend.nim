@@ -7,6 +7,17 @@
 #    distribution, for details about the copyright.
 #
 
+## New entry point into our C/C++ code generator. Ideally
+## somebody would rewrite the old backend (which is 8000 lines of crufty Nim code)
+## to work on packed trees directly and produce the C code as an AST which can
+## then be rendered to text in a very simple manner. Unfortunately nobody wrote
+## this code. So instead we wrap the existing cgen.nim and its friends so that
+## we call directly into the existing code generation logic but avoiding the
+## naive, outdated `passes` design. Thus you will see plenty of
+## 'symbolFiles == disabledSf' checks in the old code -- the old code is
+## also doing cross-module dependency tracking and DCE that we don't need
+## anymore. DCE is now done as prepass over the entire packed module graph.
+
 import std / intsets
 import ".." / [ast, options, lineinfos, modulegraphs]
 
@@ -16,6 +27,8 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule) =
   discard
 
 proc generateCode*(g: ModuleGraph) =
+  ## The single entry point, generate C(++) code for the entire
+  ## Nim program aka `ModuleGraph`.
   let alive = computeAliveSyms(g.packed, g.config)
 
   for i in 0..high(g.packed):
