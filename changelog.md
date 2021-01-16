@@ -122,6 +122,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
 
+- Deprecated `TaintedString` and `--taintmode`.
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
