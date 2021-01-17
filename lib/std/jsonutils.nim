@@ -244,9 +244,9 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
 
-proc jsonTo*(b: JsonNode, T: typedesc): T =
+proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
-  fromJson(result, b)
+  fromJson(result, b, opt)
 
 proc toJson*[T](a: T): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
