@@ -4,13 +4,6 @@
 
 ## Standard library additions and changes
 
-- `uri` adds Data URI Base64, implements RFC-2397.
-- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
-  to the `dom` module for the JavaScript target.
-- `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
-- The default hash for `Ordinal` has changed to something more bit-scrambling.
-  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
-  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
 - Added a macros `enumLen` for returning the number of items in an enum to the
@@ -117,6 +110,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+- Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+- Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+
 
 ## Language changes
 
