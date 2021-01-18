@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
-from trees import exprStructuralEquivalent, getRoot, sameLocation
+from trees import exprStructuralEquivalent, getRoot
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -967,6 +967,21 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result = n
     else:
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
+
+proc sameLocation*(a, b: PNode): bool =
+  if a == b: true
+  elif a == nil or b == nil: false
+  elif a.kind == b.kind:
+    case a.kind:
+      of nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref,
+        nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
+        sameLocation(a[0], b[0])
+      of nkDotExpr, nkBracketExpr:
+        sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])
+      of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b[1])
+      of nkNone..nkNilLit: exprStructuralEquivalent(a, b, strictSymEquality = true)
+      else: false
+  else: false
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
   if sameLocation(dest, ri):

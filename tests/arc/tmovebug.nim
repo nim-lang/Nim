@@ -73,6 +73,19 @@ bye
 ()
 ()
 ()
+1
+destroy
+1
+destroy
+1
+destroy
+copy (self-assign)
+1
+destroy
+1
+destroy
+1
+destroy
 '''
 """
 
@@ -557,3 +570,93 @@ echo $w2[]
 
 let w3 = newWrapper2(-1)
 echo $w3[]
+
+
+#---------------------------------------------------------------------
+#self-assignments
+
+# caseDotExpr and caseBracketExpr both demonstrate
+# that we don't actually need explicit self-assign-removal
+# if we generate `=sink`(x, (tmp = y; wasMoved(y); tmp))
+# instead of `=sink`(x, y)
+# But since the cases where x == y are statically determinable
+# we should not generate this slightly worse code for all sinks.
+# We could just turn all of these self-assignments to NOOPs.
+#
+# Self-assignments that are not statically determinable will get
+# turned into `=copy` calls as caseBracketExprCopy demonstrates.
+# (`=copy` handles self-assignments at runtime)
+
+type
+  OO = object
+    f: int
+  W = object
+    o: OO
+
+proc `=destroy`(x: var OO) =
+  if x.f != 0:
+    echo "destroy"
+    x.f = 0
+
+proc `=sink`(x: var OO, y: OO) =
+  `=destroy`(x)
+  echo "sink"
+  x.f = y.f
+
+proc `=copy`(x: var OO, y: OO) =
+  if x.f != y.f:
+    `=destroy`(x)
+    echo "copy"
+    x.f = y.f
+  else:
+    echo "copy (self-assign)"
+
+proc caseSym =
+  var o = OO(f: 1)
+  o = o # NOOP
+  echo o.f # "1"
+  # "destroy"
+
+caseSym()
+
+proc caseDotExpr =
+  var w = W(o: OO(f: 1))
+  w.o = w.o # NOOP
+  echo w.o.f # "1"
+  # "destroy"
+
+caseDotExpr()
+
+proc caseBracketExpr =
+  var w = [0: OO(f: 1)]
+  w[0] = w[0] # NOOP
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExpr()
+
+proc caseBracketExprCopy =
+  var w = [0: OO(f: 1)]
+  let i = 0
+  w[i] = w[0] # "copy (self-assign)"
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExprCopy()
+
+proc caseDotExprAddr =
+  var w = W(o: OO(f: 1))
+  w.o = addr(w.o)[] # NOOP
+  echo w.o.f # "1"
+  # "destroy"
+
+caseDotExprAddr()
+
+proc caseBracketExprAddr =
+  var w = [0: OO(f: 1)]
+  addr(w[0])[] = addr(addr(w[0])[])[] # NOOP
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExprAddr()
+
