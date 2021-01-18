@@ -15,11 +15,12 @@ import ".." / [ast, options, lineinfos]
 import packed_ast, to_packed_ast, bitabs
 
 type
+  AliveSyms* = seq[IntSet]
   AliveContext* = object ## Purpose is to fill the 'alive' field.
     stack: seq[(int, NodePos)] ## A stack for marking symbols as alive.
     decoder: PackedDecoder ## We need a PackedDecoder for module ID address translations.
     thisModule: int  ## The module we're currently analysing for DCE.
-    alive: seq[IntSet] ## The final result of our computation.
+    alive: AliveSyms ## The final result of our computation.
 
 proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): bool =
   ## "Exported to C" procs are special (these are marked with '.exportc') because these
@@ -88,21 +89,20 @@ proc followNow(c: var AliveContext; g: PackedModuleGraph) =
     c.thisModule = modId
     aliveCode(c, g, g[modId].fromDisk.bodies, ast)
 
-proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveContext =
-  ## Entry point for our DCE algorithm. Afterwards only 'result.alive' is
-  ## used, we could optimize this a little but it's not worth it, only a couple
-  ## of machine words are kept in memory for longer than required.
-  result = AliveContext(stack: @[], decoder: PackedDecoder(config: conf),
+proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
+  ## Entry point for our DCE algorithm.
+  var c = AliveContext(stack: @[], decoder: PackedDecoder(config: conf),
                        thisModule: -1, alive: newSeq[IntSet](g.len))
   for i in countdown(high(g), 0):
     if g[i].status != undefined:
-      result.thisModule = i
+      c.thisModule = i
       for p in allNodes(g[i].fromDisk.topLevel):
-        aliveCode(result, g, g[i].fromDisk.topLevel, p)
-  followNow(result, g)
+        aliveCode(c, g, g[i].fromDisk.topLevel, p)
+  followNow(c, g)
+  result = move(c.alive)
 
-proc isAlive*(a: AliveContext; module: int, item: int32): bool =
+proc isAlive*(a: AliveSyms; module: int, item: int32): bool =
   ## Backends use this to query if a symbol is `alive` which means
   ## we need to produce (C/C++/etc) code for it.
-  result = a.alive[module].contains(item)
+  result = a[module].contains(item)
 

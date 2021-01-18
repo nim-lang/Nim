@@ -23,40 +23,30 @@ import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen]
 
 import packed_ast, to_packed_ast, bitabs, dce
 
-proc genDecl(m: BModule; n: PNode; a: AliveContext) =
-  case n.kind
-  of nkStmtList, nkStmtListExpr:
-    for child in n: genDecl(m, n, a)
-  of nkVarSection, nkLetSection:
-    for i in 0..n.len-3:
-      if n[i].kind == nkSym:
-        discard
-      else:
-        # an assignment to an closure environment. Always "alive" code.
-        discard
-  else:
-    genTopLevelStmt(m, n)
-
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
   var decoder = initPackedDecoder(g.config, g.cache)
   result = loadNodes(decoder, g.packed, thisModule, tree, n)
 
-proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: AliveContext) =
+proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var AliveSyms) =
   if g.backend == nil:
     g.backend = cgendata.newModuleList(g)
 
   var bmod = cgen.newModule(BModuleList(g.backend), m.module, g.config)
   bmod.idgen = idgenFromLoadedModule(m)
+  bmod.flags.incl useAliveDataFromDce
+  bmod.alive = move alive[m.module.position]
 
   for p in allNodes(m.fromDisk.topLevel):
     let n = unpackTree(g, m.module.position, m.fromDisk.topLevel, p)
-    genDecl(bmod, n, alive)
+    cgen.genTopLevelStmt(bmod, n)
+
+  finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
   ## Nim program aka `ModuleGraph`.
-  let alive = computeAliveSyms(g.packed, g.config)
+  var alive = computeAliveSyms(g.packed, g.config)
 
   for i in 0..high(g.packed):
     # case statement here to enforce exhaustive checks.
