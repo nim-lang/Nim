@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''31665
-(allocCount: 33335, deallocCount: 33335)'''
+(allocCount: 33334, deallocCount: 33334)'''
 """
 
 #  bug #11053

@@ -16,12 +16,12 @@ template dataLen(t): untyped = len(t.data)
 include hashcommon
 
 template initImpl(s: typed, size: int) =
-  assert isPowerOfTwo(size)
+  let correctSize = slotsNeeded(size)
   when s is OrderedSet:
     s.first = -1
     s.last = -1
   s.counter = 0
-  newSeq(s.data, size)
+  newSeq(s.data, correctSize)
 
 template rawInsertImpl() {.dirty.} =
   if data.len == 0:

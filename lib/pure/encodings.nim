@@ -290,11 +290,8 @@ else:
     importc: "iconv_open", importIconv.}
   proc iconvClose(c: EncodingConverter) {.
     importc: "iconv_close", importIconv.}
-  proc iconv(c: EncodingConverter, inbuf: var cstring, inbytesLeft: var int,
-             outbuf: var cstring, outbytesLeft: var int): int {.
-    importc: "iconv", importIconv.}
-  proc iconv(c: EncodingConverter, inbuf: pointer, inbytesLeft: pointer,
-             outbuf: var cstring, outbytesLeft: var int): int {.
+  proc iconv(c: EncodingConverter, inbuf: ptr cstring, inbytesLeft: ptr csize_t,
+             outbuf: ptr cstring, outbytesLeft: ptr csize_t): csize_t {.
     importc: "iconv", importIconv.}
 
 proc getCurrentEncoding*(uiApp = false): string =
@@ -428,14 +425,14 @@ when defined(windows):
 else:
   proc convert*(c: EncodingConverter, s: string): string =
     result = newString(s.len)
-    var inLen = len(s)
-    var outLen = len(result)
+    var inLen = csize_t len(s)
+    var outLen = csize_t len(result)
     var src = cstring(s)
     var dst = cstring(result)
-    var iconvres: int
+    var iconvres: csize_t
     while inLen > 0:
-      iconvres = iconv(c, src, inLen, dst, outLen)
-      if iconvres == -1:
+      iconvres = iconv(c, addr src, addr inLen, addr dst, addr outLen)
+      if iconvres == high(csize_t):
         var lerr = errno
         if lerr == EILSEQ or lerr == EINVAL:
           # unknown char, skip
@@ -446,24 +443,24 @@ else:
           dec(outLen)
         elif lerr == E2BIG:
           var offset = cast[int](dst) - cast[int](cstring(result))
-          setLen(result, len(result)+inLen*2+5)
+          setLen(result, len(result) + inLen.int * 2 + 5)
           # 5 is minimally one utf-8 char
           dst = cast[cstring](cast[int](cstring(result)) + offset)
-          outLen = len(result) - offset
+          outLen = csize_t(len(result) - offset)
         else:
           raiseOSError(lerr.OSErrorCode)
     # iconv has a buffer that needs flushing, specially if the last char is
     # not '\0'
-    discard iconv(c, nil, nil, dst, outLen)
-    if iconvres == cint(-1) and errno == E2BIG:
+    discard iconv(c, nil, nil, addr dst, addr outLen)
+    if iconvres == high(csize_t) and errno == E2BIG:
       var offset = cast[int](dst) - cast[int](cstring(result))
-      setLen(result, len(result)+inLen*2+5)
+      setLen(result, len(result) + inLen.int * 2 + 5)
       # 5 is minimally one utf-8 char
       dst = cast[cstring](cast[int](cstring(result)) + offset)
-      outLen = len(result) - offset
-      discard iconv(c, nil, nil, dst, outLen)
+      outLen = csize_t(len(result) - offset)
+      discard iconv(c, nil, nil, addr dst, addr outLen)
     # trim output buffer
-    setLen(result, len(result) - outLen)
+    setLen(result, len(result) - outLen.int)
 
 proc convert*(s: string, destEncoding = "UTF-8",
                          srcEncoding = "CP1252"): string =

@@ -78,6 +78,7 @@ type
     opcWrDeref,
     opcWrStrIdx,
     opcLdStrIdx, # a = b[c]
+    opcLdStrIdxAddr,  # a = addr(b[c])
 
     opcAddInt,
     opcAddImmInt,
@@ -85,6 +86,7 @@ type
     opcSubImmInt,
     opcLenSeq,
     opcLenStr,
+    opcLenCstring,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
     opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
@@ -261,22 +263,40 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    profiler*: Profiler
+    templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
+    vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
+
+  PStackFrame* = ref TStackFrame
+  TStackFrame* = object
+    prc*: PSym                 # current prc; proc that is evaluated
+    slots*: seq[TFullReg]      # parameters passed to the proc + locals;
+                              # parameters come first
+    next*: PStackFrame         # for stacking
+    comesFrom*: int
+    safePoints*: seq[int]      # used for exception handling
+                              # XXX 'break' should perform cleanup actions
+                              # What does the C backend do for it?
+  Profiler* = object
+    tEnter*: float
+    tos*: PStackFrame
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph; idgen: IdGenerator): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
-    cache: cache, config: g.config, graph: g)
+    cache: cache, config: g.config, graph: g, idgen: idgen)
 
-proc refresh*(c: PCtx, module: PSym) =
+proc refresh*(c: PCtx, module: PSym; idgen: IdGenerator) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
+  c.idgen = idgen
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len

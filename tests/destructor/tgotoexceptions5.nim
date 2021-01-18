@@ -5,7 +5,7 @@ swallowed
 before
 swallowed B
 '''
-  cmd: "nim c --gc:arc --exceptions:goto $file"
+  cmd: "nim c --gc:arc --exceptions:goto -d:ssl $file"
 """
 
 # bug #13599
@@ -13,7 +13,7 @@ proc main() =
   try:
     echo "before"
     raise newException(CatchableError, "foo")
-  except AssertionError:
+  except AssertionDefect:
     echo "caught"
   echo "after"
 
@@ -27,7 +27,7 @@ proc mainB() =
     echo "before"
     raise newException(CatchableError, "foo")
   # except CatchableError: # would work
-  except AssertionError:
+  except AssertionDefect:
     echo "caught"
   except:
     raise
@@ -37,3 +37,9 @@ try:
   mainB()
 except:
   echo "swallowed B"
+
+# bug #14647
+import httpclient
+
+newAsyncHttpClient().close()
+

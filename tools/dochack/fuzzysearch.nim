@@ -132,6 +132,9 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
 
     strIndex += 1
 
+  if patIndex == pattern.len and (strIndex == str.len or str[strIndex] notin Letters):
+    score += 10
+
   result = (
     score:   max(0, score),
     matched: (score > 0),

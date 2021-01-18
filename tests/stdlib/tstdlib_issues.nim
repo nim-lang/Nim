@@ -43,7 +43,7 @@ block tcount:
 
   # bubble sort
   for i in low(arr)..high(arr):
-    for j in i+1..high(arr): # Error: unhandled exception: value out of range: 5 [RangeError]
+    for j in i+1..high(arr): # Error: unhandled exception: value out of range: 5 [RangeDefect]
       if arr[i] > arr[j]:
         let tmp = arr[i]
         arr[i] = arr[j]

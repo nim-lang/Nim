@@ -9,20 +9,28 @@
 
 # Efficient set of pointers for the GC (and repr)
 
+when defined(gcOrc) or defined(gcArc):
+  type
+    PCell = Cell
+
+  include bitmasks
+
+else:
+  type
+    RefCount = int
+
+    Cell {.pure.} = object
+      refcount: RefCount  # the refcount and some flags
+      typ: PNimType
+      when trackAllocationSource:
+        filename: cstring
+        line: int
+      when useCellIds:
+        id: int
+
+    PCell = ptr Cell
+
 type
-  RefCount = int
-
-  Cell {.pure.} = object
-    refcount: RefCount  # the refcount and some flags
-    typ: PNimType
-    when trackAllocationSource:
-      filename: cstring
-      line: int
-    when useCellIds:
-      id: int
-
-  PCell = ptr Cell
-
   PPageDesc = ptr PageDesc
   BitIndex = range[0..UnitsPerPage-1]
   PageDesc {.final, pure.} = object
@@ -35,39 +43,11 @@ type
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
-  PCellArray = ptr UncheckedArray[PCell]
-  CellSeq {.final, pure.} = object
-    len, cap: int
-    d: PCellArray
 
-# ------------------- cell seq handling ---------------------------------------
-
-proc contains(s: CellSeq, c: PCell): bool {.inline.} =
-  for i in 0 .. s.len-1:
-    if s.d[i] == c: return true
-  return false
-
-proc add(s: var CellSeq, c: PCell) {.inline.} =
-  if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    var d = cast[PCellArray](alloc(s.cap * sizeof(PCell)))
-    copyMem(d, s.d, s.len * sizeof(PCell))
-    dealloc(s.d)
-    s.d = d
-    # XXX: realloc?
-  s.d[s.len] = c
-  inc(s.len)
-
-proc init(s: var CellSeq, cap: int = 1024) =
-  s.len = 0
-  s.cap = cap
-  s.d = cast[PCellArray](alloc0(cap * sizeof(PCell)))
-
-proc deinit(s: var CellSeq) =
-  dealloc(s.d)
-  s.d = nil
-  s.len = 0
-  s.cap = 0
+when defined(gcOrc) or defined(gcArc):
+  discard
+else:
+  include cellseqs_v1
 
 # ------------------- cell set handling ---------------------------------------
 

@@ -35,8 +35,6 @@ proc goMalloc(size: uint): pointer {.importc: "go_malloc", dynlib: goLib.}
 proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
 proc writebarrierptr(dest: PPointer, src: pointer) {.importc: "writebarrierptr", codegenDecl:"$1 $2$3 __asm__ (\"main.Atomic_store_pointer\");\n$1 $2$3", dynlib: goLib.}
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].}
-
 proc GC_getStatistics(): string =
   var mstats = goMemStats()
   result = "[GC] total allocated memory: " & $(mstats.total_alloc) & "\n" &
@@ -101,35 +99,39 @@ proc newObjNoInit(typ: PNimType, size: int): pointer =
   writebarrierptr(addr(result), newObj(typ, size))
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  writebarrierptr(addr(result), newObj(typ, len * typ.base.size + GenericSeqSize))
+  writebarrierptr(addr(result), newObj(typ, align(GenericSeqSize, typ.base.align) + len * typ.base.size))
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   cast[PGenericSeq](result).elemSize = typ.base.size
+  cast[PGenericSeq](result).elemAlign = typ.base.align
 
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
   writebarrierptr(addr(result), newSeq(typ, len))
 
 proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-  result = newObj(typ, cap * typ.base.size + GenericSeqSize)
+  result = newObj(typ, align(GenericSeqSize, typ.base.align) + cap * typ.base.size)
   cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = cap
   cast[PGenericSeq](result).elemSize = typ.base.size
+  cast[PGenericSeq](result).elemAlign = typ.base.align
 
 proc typedMemMove(dest: pointer, src: pointer, size: uint) {.importc: "typedmemmove", dynlib: goLib.}
 
 proc growObj(old: pointer, newsize: int): pointer =
   # the Go GC doesn't have a realloc
+  let old = cast[PGenericSeq](old)
   var metadataOld = cast[PGenericSeq](old)
   if metadataOld.elemSize == 0:
     metadataOld.elemSize = 1
-  let oldsize = cast[PGenericSeq](old).len * cast[PGenericSeq](old).elemSize + GenericSeqSize
+
+  let oldsize = align(GenericSeqSize, old.elemAlign) + old.len * old.elemSize
   writebarrierptr(addr(result), goMalloc(newsize.uint))
   typedMemMove(result, old, oldsize.uint)
 
 proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} = discard
-proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} = discard
+proc nimGCunrefNoCycle(p: pointer) {.compilerproc, inline.} = discard
+proc nimGCunrefRC1(p: pointer) {.compilerproc, inline.} = discard
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
@@ -149,4 +151,3 @@ proc alloc0(r: var MemRegion, size: int): pointer =
 proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
 proc deallocOsPages(r: var MemRegion) {.inline.} = discard
 proc deallocOsPages() {.inline.} = discard
-

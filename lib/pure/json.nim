@@ -140,6 +140,9 @@
 ##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##   j2["details"] = %* {"age":35, "pi":3.1415}
 ##   echo j2
+##
+## See also: std/jsonutils for hookable json serialization/deserialization
+## of arbitrary types.
 
 runnableExamples:
   ## Note: for JObject, key ordering is preserved, unlike in some languages,
@@ -149,8 +152,10 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, macros, parsejson,
-  options
+  hashes, tables, strutils, lexbase, streams, macros, parsejson
+
+import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/private/since
 
 export
   tables.`$`
@@ -158,7 +163,7 @@ export
 export
   parsejson.JsonEventKind, parsejson.JsonError, JsonParser, JsonKindError,
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
-  errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr
+  errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
 
 type
   JsonNodeKind* = enum ## possible JSON node types
@@ -172,6 +177,8 @@ type
 
   JsonNode* = ref JsonNodeObj ## JSON node
   JsonNodeObj* {.acyclic.} = object
+    isUnquoted: bool # the JString was a number-like token and
+                     # so shouldn't be quoted
     case kind*: JsonNodeKind
     of JString:
       str*: string
@@ -191,6 +198,13 @@ type
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
+
+proc newJRawNumber(s: string): JsonNode =
+  ## Creates a "raw JS number", that is a number that does not
+  ## fit into Nim's ``BiggestInt`` field. This is really a `JString`
+  ## with the additional information that it should be converted back
+  ## to the string representation without the quotes.
+  result = JsonNode(kind: JString, str: s, isUnquoted: true)
 
 proc newJStringMove(s: string): JsonNode =
   result = JsonNode(kind: JString)
@@ -214,7 +228,7 @@ proc newJNull*(): JsonNode =
 
 proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
-  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](4))
+  result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](2))
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
@@ -259,7 +273,7 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getFields*(n: JsonNode,
-    default = initOrderedTable[string, JsonNode](4)):
+    default = initOrderedTable[string, JsonNode](2)):
         OrderedTable[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
@@ -370,20 +384,20 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc toJson(x: NimNode): NimNode {.compileTime.} =
+proc toJsonImpl(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
-      result.add(toJson(x[i]))
+      result.add(toJsonImpl(x[i]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+      result.add newTree(nnkExprColonExpr, x[i][0], toJsonImpl(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)
@@ -391,7 +405,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
-    if x.len == 1: result = toJson(x[0])
+    if x.len == 1: result = toJsonImpl(x[0])
     else: result = newCall(bindSym("%", brOpen), x)
   else:
     result = newCall(bindSym("%", brOpen), x)
@@ -399,7 +413,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
-  result = toJson(x)
+  result = toJsonImpl(x)
 
 proc `==`*(a, b: JsonNode): bool =
   ## Check two nodes for equality
@@ -482,6 +496,19 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   assert(node.kind == JArray)
   return node.elems[index]
 
+proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
+  ## Gets the node at `array.len-i` in an array through the `^` operator.
+  ##
+  ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
+  runnableExamples:
+    let
+      j = parseJson("[1,2,3,4,5]")
+
+    doAssert j[^1].getInt == 5
+    doAssert j[^2].getInt == 4
+
+  `[]`(node, node.len - int(index))
+
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
@@ -505,9 +532,10 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## This proc can be used to create tree structures on the
   ## fly (sometimes called `autovivification`:idx:):
   ##
-  ## .. code-block:: nim
-  ##   myjson{"parent", "child", "grandchild"} = newJInt(1)
-  ##
+  runnableExamples:
+    var myjson = %* {"parent": {"child": {"grandchild": 1}}}
+    doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
+
   result = node
   for key in keys:
     if isNil(result) or result.kind != JObject:
@@ -557,6 +585,7 @@ proc copy*(p: JsonNode): JsonNode =
   case p.kind
   of JString:
     result = newJString(p.str)
+    result.isUnquoted = p.isUnquoted
   of JInt:
     result = newJInt(p.num)
   of JFloat:
@@ -647,7 +676,10 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    escapeJson(node.str, result)
+    if node.isUnquoted:
+      result.add node.str
+    else:
+      escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
     when defined(js): result.add($node.num)
@@ -729,7 +761,10 @@ proc toUgly*(result: var string, node: JsonNode) =
       result.toUgly value
     result.add "}"
   of JString:
-    node.str.escapeJson(result)
+    if node.isUnquoted:
+      result.add node.str
+    else:
+      node.str.escapeJson(result)
   of JInt:
     when defined(js): result.add($node.num)
     else: result.addInt(node.num)
@@ -778,7 +813,7 @@ iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   for key, val in mpairs(node.fields):
     yield (key, val)
 
-proc parseJson(p: var JsonParser): JsonNode =
+proc parseJson(p: var JsonParser; rawIntegers, rawFloats: bool): JsonNode =
   ## Parses JSON from a JSON Parser `p`.
   case p.tok
   of tkString:
@@ -787,10 +822,22 @@ proc parseJson(p: var JsonParser): JsonNode =
     p.a = ""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    if rawIntegers:
+      result = newJRawNumber(p.a)
+    else:
+      try:
+        result = newJInt(parseBiggestInt(p.a))
+      except ValueError:
+        result = newJRawNumber(p.a)
     discard getTok(p)
   of tkFloat:
-    result = newJFloat(parseFloat(p.a))
+    if rawFloats:
+      result = newJRawNumber(p.a)
+    else:
+      try:
+        result = newJFloat(parseFloat(p.a))
+      except ValueError:
+        result = newJRawNumber(p.a)
     discard getTok(p)
   of tkTrue:
     result = newJBool(true)
@@ -810,7 +857,7 @@ proc parseJson(p: var JsonParser): JsonNode =
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
-      var val = parseJson(p)
+      var val = parseJson(p, rawIntegers, rawFloats)
       result[key] = val
       if p.tok != tkComma: break
       discard getTok(p)
@@ -819,39 +866,47 @@ proc parseJson(p: var JsonParser): JsonNode =
     result = newJArray()
     discard getTok(p)
     while p.tok != tkBracketRi:
-      result.add(parseJson(p))
+      result.add(parseJson(p, rawIntegers, rawFloats))
       if p.tok != tkComma: break
       discard getTok(p)
     eat(p, tkBracketRi)
   of tkError, tkCurlyRi, tkBracketRi, tkColon, tkComma, tkEof:
     raiseParseErr(p, "{")
 
-iterator parseJsonFragments*(s: Stream, filename: string = ""): JsonNode =
+iterator parseJsonFragments*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats = false): JsonNode =
   ## Parses from a stream `s` into `JsonNodes`. `filename` is only needed
   ## for nice error messages.
   ## The JSON fragments are separated by whitespace. This can be substantially
   ## faster than the comparable loop
   ## ``for x in splitWhitespace(s): yield parseJson(x)``.
   ## This closes the stream `s` after it's done.
+  ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+  ## field but kept as raw numbers via `JString`.
+  ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+  ## field but kept as raw numbers via `JString`.
   var p: JsonParser
   p.open(s, filename)
   try:
     discard getTok(p) # read first token
     while p.tok != tkEof:
-      yield p.parseJson()
+      yield p.parseJson(rawIntegers, rawFloats)
   finally:
     p.close()
 
-proc parseJson*(s: Stream, filename: string = ""): JsonNode =
+proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats = false): JsonNode =
   ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
   ## for nice error messages.
   ## If `s` contains extra data, it will raise `JsonParsingError`.
   ## This closes the stream `s` after it's done.
+  ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+  ## field but kept as raw numbers via `JString`.
+  ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+  ## field but kept as raw numbers via `JString`.
   var p: JsonParser
   p.open(s, filename)
   try:
     discard getTok(p) # read first token
-    result = p.parseJson()
+    result = p.parseJson(rawIntegers, rawFloats)
     eat(p, tkEof) # check if there is no extra data
   finally:
     p.close()
@@ -919,6 +974,7 @@ when defined(js):
     of JFloat:
       result = newJFloat(cast[float](x))
     of JString:
+      # Dunno what to do with isUnquoted here
       result = newJString($cast[cstring](x))
     of JBool:
       result = newJBool(cast[bool](x))
@@ -932,10 +988,14 @@ when defined(js):
       return parseNativeJson(buffer).convertObject()
 
 else:
-  proc parseJson*(buffer: string): JsonNode =
+  proc parseJson*(buffer: string; rawIntegers = false, rawFloats = false): JsonNode =
     ## Parses JSON from `buffer`.
     ## If `buffer` contains extra data, it will raise `JsonParsingError`.
-    result = parseJson(newStringStream(buffer), "input")
+    ## If `rawIntegers` is true, integer literals will not be converted to a `JInt`
+    ## field but kept as raw numbers via `JString`.
+    ## If `rawFloats` is true, floating point literals will not be converted to a `JFloat`
+    ## field but kept as raw numbers via `JString`.
+    result = parseJson(newStringStream(buffer), "input", rawIntegers, rawFloats)
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
@@ -943,7 +1003,7 @@ else:
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
-    result = parseJson(stream, filename)
+    result = parseJson(stream, filename, rawIntegers=false, rawFloats=false)
 
 # -- Json deserialiser. --
 
@@ -961,7 +1021,8 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
 
 when defined(nimFixedForwardGeneric):
 
-  macro isRefSkipDistinct(arg: typed): untyped =
+  macro isRefSkipDistinct*(arg: typed): untyped =
+    ## internal only, do not use
     var impl = getTypeImpl(arg)
     if impl.kind == nnkBracketExpr and impl[0].eqIdent("typeDesc"):
       impl = getTypeImpl(impl[1])
@@ -980,12 +1041,12 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[S, T](dst: var array[S, T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Table[string, T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedTable[string, T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
   # initFromJson definitions
@@ -1005,6 +1066,8 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.bval
 
   proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
+    if jsonNode == nil:
+      raise newException(KeyError, "key not found: " & jsonPath)
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
@@ -1043,7 +1106,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initTable[string, T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1053,7 +1116,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initOrderedTable[string,T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1073,10 +1136,13 @@ when defined(nimFixedForwardGeneric):
 
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode != nil and jsonNode.kind != JNull:
-      dst = some(default(T))
+      when T is ref:
+        dst = some(new(T))
+      else:
+        dst = some(default(T))
       initFromJson(dst.get, jsonNode, jsonPath)
 
-  macro assignDistinctImpl[T : distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
+  macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
     let typInst = getTypeInst(dst)
     let typImpl = getTypeImpl(dst)
     let baseTyp = typImpl[0]
@@ -1090,7 +1156,7 @@ when defined(nimFixedForwardGeneric):
       else:
         initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
-  proc initFromJson[T : distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
   proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
@@ -1180,7 +1246,6 @@ when defined(nimFixedForwardGeneric):
     else:
       error("unhandled kind: " & $typeNode.kind, typeNode)
 
-
   macro assignObjectImpl[T](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     let typeSym = getTypeInst(dst)
     let originalJsonPathLen = genSym(nskLet, "originalJsonPathLen")
@@ -1195,7 +1260,7 @@ when defined(nimFixedForwardGeneric):
     else:
       foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, originalJsonPathLen)
 
-  proc initFromJson[T : object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignObjectImpl(dst, jsonNode, jsonPath)
 
   proc to*[T](node: JsonNode, t: typedesc[T]): T =
@@ -1207,32 +1272,30 @@ when defined(nimFixedForwardGeneric):
     ##   * Sets in object variants are not supported.
     ##   * Not nil annotations are not supported.
     ##
-    ## Example:
-    ##
-    ## .. code-block:: Nim
-    ##     let jsonNode = parseJson("""
-    ##        {
-    ##          "person": {
-    ##            "name": "Nimmer",
-    ##            "age": 21
-    ##          },
-    ##          "list": [1, 2, 3, 4]
-    ##        }
-    ##     """)
-    ##
-    ##     type
-    ##       Person = object
-    ##         name: string
-    ##         age: int
-    ##
-    ##       Data = object
-    ##         person: Person
-    ##         list: seq[int]
-    ##
-    ##     var data = to(jsonNode, Data)
-    ##     doAssert data.person.name == "Nimmer"
-    ##     doAssert data.person.age == 21
-    ##     doAssert data.list == @[1, 2, 3, 4]
+    runnableExamples:
+      let jsonNode = parseJson("""
+        {
+          "person": {
+            "name": "Nimmer",
+            "age": 21
+          },
+          "list": [1, 2, 3, 4]
+        }
+      """)
+
+      type
+        Person = object
+          name: string
+          age: int
+
+        Data = object
+          person: Person
+          list: seq[int]
+
+      var data = to(jsonNode, Data)
+      doAssert data.person.name == "Nimmer"
+      doAssert data.person.age == 21
+      doAssert data.list == @[1, 2, 3, 4]
 
     var jsonPath = ""
     initFromJson(result, node, jsonPath)
@@ -1263,235 +1326,3 @@ when false:
 
 # { "json": 5 }
 # To get that we shall use, obj["json"]
-
-when isMainModule:
-  # Note: Macro tests are in tests/stdlib/tjsonmacro.nim
-
-  let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
-  # nil passthrough
-  doAssert(testJson{"doesnt_exist"}{"anything"}.isNil)
-  testJson{["e", "f"]} = %true
-  doAssert(testJson["e"]["f"].bval)
-
-  # make sure UTF-16 decoding works.
-  doAssert(testJson["c"].str == "🎃")
-  doAssert(testJson["d"].str == "æ")
-
-  # make sure no memory leek when parsing invalid string
-  let startMemory = getOccupiedMem()
-  for i in 0 .. 10000:
-    try:
-      discard parseJson"""{ invalid"""
-    except:
-      discard
-  # memory diff should less than 4M
-  doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024)
-
-
-  # test `$`
-  let stringified = $testJson
-  let parsedAgain = parseJson(stringified)
-  doAssert(parsedAgain["b"].str == "asd")
-
-  parsedAgain["abc"] = %5
-  doAssert parsedAgain["abc"].num == 5
-
-  # Bounds checking
-  when compileOption("boundChecks"):
-    try:
-      let a = testJson["a"][9]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
-      discard
-    try:
-      let a = testJson["a"][-1]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
-      discard
-    try:
-      doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
-    except:
-      doAssert(false, "IndexError thrown for valid index")
-
-  doAssert(testJson{"b"}.getStr() == "asd", "Couldn't fetch a singly nested key with {}")
-  doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
-  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  doAssert(isNil(testJson{"a", "b"}), "Indexing through a list should return nil")
-  doAssert(testJson{"a"} == parseJson"[1, 2, 3, 4]", "Didn't return a non-JObject when there was one to be found")
-  doAssert(isNil(parseJson("[1, 2, 3]"){"foo"}), "Indexing directly into a list should return nil")
-
-  # Generator:
-  var j = %* [{"name": "John", "age": 30}, {"name": "Susan", "age": 31}]
-  doAssert j == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
-  var j2 = %*
-    [
-      {
-        "name": "John",
-        "age": 30
-      },
-      {
-        "name": "Susan",
-        "age": 31
-      }
-    ]
-  doAssert j2 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
-  var name = "John"
-  let herAge = 30
-  const hisAge = 31
-
-  var j3 = %*
-    [ {"name": "John"
-      , "age": herAge
-      }
-    , {"name": "Susan"
-      , "age": hisAge
-      }
-    ]
-  doAssert j3 == %[%{"name": %"John", "age": %30}, %{"name": %"Susan", "age": %31}]
-
-  var j4 = %*{"test": nil}
-  doAssert j4 == %{"test": newJNull()}
-
-  let seqOfNodes = @[%1, %2]
-  let jSeqOfNodes = %seqOfNodes
-  doAssert(jSeqOfNodes[1].num == 2)
-
-  type MyObj = object
-    a, b: int
-    s: string
-    f32: float32
-    f64: float64
-    next: ref MyObj
-  var m: MyObj
-  m.s = "hi"
-  m.a = 5
-  let jMyObj = %m
-  doAssert(jMyObj["a"].num == 5)
-  doAssert(jMyObj["s"].str == "hi")
-
-  # Test loading of file.
-  when not defined(js):
-    var parsed = parseFile("tests/testdata/jsontest.json")
-
-    try:
-      discard parsed["key2"][12123]
-      doAssert(false)
-    except IndexError: doAssert(true)
-
-    var parsed2 = parseFile("tests/testdata/jsontest2.json")
-    doAssert(parsed2{"repository", "description"}.str ==
-        "IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
-
-  doAssert escapeJsonUnquoted("\10Foo🎃barÄ") == "\\nFoo🎃barÄ"
-  doAssert escapeJsonUnquoted("\0\7\20") == "\\u0000\\u0007\\u0014" # for #7887
-  doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
-  doAssert escapeJson("\0\7\20") == "\"\\u0000\\u0007\\u0014\"" # for #7887
-
-  # Test with extra data
-  when not defined(js):
-    try:
-      discard parseJson("123 456")
-      doAssert(false)
-    except JsonParsingError:
-      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
-
-    try:
-      discard parseFile("tests/testdata/jsonwithextradata.json")
-      doAssert(false)
-    except JsonParsingError:
-      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
-
-  # bug #6438
-  doAssert($ %*[] == "[]")
-  doAssert($ %*{} == "{}")
-
-  doAssert(not compiles(%{"error": "No messages"}))
-
-  # bug #9111
-  block:
-    type
-      Bar = string
-      Foo = object
-        a: int
-        b: Bar
-
-    let
-      js = """{"a": 123, "b": "abc"}""".parseJson
-      foo = js.to Foo
-
-    doAssert(foo.b == "abc")
-
-  # Generate constructors for range[T] types
-  block:
-    type
-      Q1 = range[0'u8 .. 50'u8]
-      Q2 = range[0'u16 .. 50'u16]
-      Q3 = range[0'u32 .. 50'u32]
-      Q4 = range[0'i8 .. 50'i8]
-      Q5 = range[0'i16 .. 50'i16]
-      Q6 = range[0'i32 .. 50'i32]
-      Q7 = range[0'f32 .. 50'f32]
-      Q8 = range[0'f64 .. 50'f64]
-      Q9 = range[0 .. 50]
-
-      X = object
-        m1: Q1
-        m2: Q2
-        m3: Q3
-        m4: Q4
-        m5: Q5
-        m6: Q6
-        m7: Q7
-        m8: Q8
-        m9: Q9
-
-    let obj = X(
-      m1: Q1(42),
-      m2: Q2(42),
-      m3: Q3(42),
-      m4: Q4(42),
-      m5: Q5(42),
-      m6: Q6(42),
-      m7: Q7(42),
-      m8: Q8(42),
-      m9: Q9(42)
-    )
-
-    doAssert(obj == to(%obj, type(obj)))
-
-    when not defined(js):
-      const fragments = """[1,2,3] {"hi":3} 12 [] """
-      var res = ""
-      for x in parseJsonFragments(newStringStream(fragments)):
-        res.add($x)
-        res.add " "
-      doAssert res == fragments
-
-
-  # test isRefSkipDistinct
-  type
-    MyRef = ref object
-    MyObject = object
-    MyDistinct = distinct MyRef
-    MyOtherDistinct = distinct MyRef
-
-  var x0: ref int
-  var x1: MyRef
-  var x2: MyObject
-  var x3: MyDistinct
-  var x4: MyOtherDistinct
-
-  doAssert isRefSkipDistinct(x0)
-  doAssert isRefSkipDistinct(x1)
-  doAssert not isRefSkipDistinct(x2)
-  doAssert isRefSkipDistinct(x3)
-  doAssert isRefSkipDistinct(x4)
-
-
-  doAssert isRefSkipDistinct(ref int)
-  doAssert isRefSkipDistinct(MyRef)
-  doAssert not isRefSkipDistinct(MyObject)
-  doAssert isRefSkipDistinct(MyDistinct)
-  doAssert isRefSkipDistinct(MyOtherDistinct)

@@ -15,7 +15,7 @@ type
 proc parsePattern*(pattern: string): Pattern =
   result = @[]
   template addNode(result: var Pattern, theT: NodeType, theText: string,
-                   isOptional: bool): typed =
+                   isOptional: bool) =
     block:
       var newNode: Node
       newNode.typ = theT
@@ -120,7 +120,7 @@ proc match*(pattern: Pattern, s: string):
   if s.len != i:
     result.matched = false
 
-when true:
+when isMainModule:
   let f = parsePattern("/show/@id/test/@show?/?")
   doAssert match(f, "/show/12/test/hallo/").matched
   doAssert match(f, "/show/2131726/test/jjjuuwąąss").matched

@@ -199,8 +199,8 @@ proc parseLine(p: var TTmplParser) =
           inc(j)
     llStreamWrite(p.outp, "\\n\"")
 
-proc filterTmpl*(stdin: PLLStream, filename: AbsoluteFile,
-                 call: PNode; conf: ConfigRef): PLLStream =
+proc filterTmpl*(conf: ConfigRef, stdin: PLLStream, filename: AbsoluteFile,
+                 call: PNode): PLLStream =
   var p: TTmplParser
   p.config = conf
   p.info = newLineInfo(conf, filename, 0, 0)
@@ -214,9 +214,9 @@ proc filterTmpl*(stdin: PLLStream, filename: AbsoluteFile,
   p.x = newStringOfCap(120)
   # do not process the first line which contains the directive:
   if llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + 1'u16
+    inc p.info.line
   while llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + 1'u16
+    inc p.info.line
     parseLine(p)
   newLine(p)
   result = p.outp

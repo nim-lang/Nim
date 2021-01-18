@@ -8,6 +8,9 @@
 
 # "Stack GC" for embedded devices or ultra performance requirements.
 
+when defined(memProfiler):
+  proc nimProfile(requestedSize: int) {.benign.}
+
 when defined(useMalloc):
   proc roundup(x, v: int): int {.inline.} =
     result = (x + (v-1)) and not (v-1)
@@ -84,16 +87,16 @@ type
     region: ptr MemRegion
 
 var
-  tlRegion {.threadVar.}: MemRegion
-#  tempStrRegion {.threadVar.}: MemRegion  # not yet used
+  tlRegion {.threadvar.}: MemRegion
+#  tempStrRegion {.threadvar.}: MemRegion  # not yet used
 
-template withRegion*(r: MemRegion; body: untyped) =
+template withRegion*(r: var MemRegion; body: untyped) =
   let oldRegion = tlRegion
   tlRegion = r
   try:
     body
   finally:
-    #r = tlRegion
+    r = tlRegion
     tlRegion = oldRegion
 
 template inc(p: pointer, s: int) =
@@ -262,14 +265,13 @@ when false:
     setObstackPtr(obs)
 
 template withScratchRegion*(body: untyped) =
-  var scratch: MemRegion
   let oldRegion = tlRegion
-  tlRegion = scratch
+  tlRegion = MemRegion()
   try:
     body
   finally:
+    deallocAll()
     tlRegion = oldRegion
-    deallocAll(scratch)
 
 when false:
   proc joinRegion*(dest: var MemRegion; src: MemRegion) =
@@ -321,7 +323,7 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
 
 {.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = roundup(len * typ.base.size + GenericSeqSize, MemAlign)
+  let size = roundup(align(GenericSeqSize, typ.base.align) + len * typ.base.size, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   zeroMem(result, size)
   cast[PGenericSeq](result).len = len
@@ -348,7 +350,8 @@ proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
   result = rawNewSeq(sh.region[], typ,
                      roundup(newsize, MemAlign))
   let elemSize = if typ.kind == tyString: 1 else: typ.base.size
-  let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  let elemAlign = if typ.kind == tyString: 1 else: typ.base.align
+  let oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len*elemSize
   zeroMem(result +! oldsize, newsize-oldsize)
   copyMem(result, old, oldsize)
   dealloc(sh.region[], old, roundup(oldsize, MemAlign))
@@ -434,5 +437,5 @@ proc getTotalMem*(r: MemRegion): int =
 
 proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
-proc nimGCref(x: pointer) {.compilerProc.} = discard
-proc nimGCunref(x: pointer) {.compilerProc.} = discard
+proc nimGCref(x: pointer) {.compilerproc.} = discard
+proc nimGCunref(x: pointer) {.compilerproc.} = discard

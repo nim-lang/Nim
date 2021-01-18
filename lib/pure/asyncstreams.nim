@@ -21,6 +21,7 @@ type
     queue: Deque[T]
     finished: bool
     cb: proc () {.closure, gcsafe.}
+    error*: ref Exception
 
 proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
   ## Create a new ``FutureStream``. This future's callback is activated when
@@ -40,7 +41,16 @@ proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
 
 proc complete*[T](future: FutureStream[T]) =
   ## Completes a ``FutureStream`` signalling the end of data.
+  assert(future.error == nil, "Trying to complete failed stream")
   future.finished = true
+  if not future.cb.isNil:
+    future.cb()
+
+proc fail*[T](future: FutureStream[T], error: ref Exception) =
+  ## Completes ``future`` with ``error``.
+  assert(not future.finished)
+  future.finished = true
+  future.error = error
   if not future.cb.isNil:
     future.cb()
 
@@ -54,7 +64,8 @@ proc `callback=`*[T](future: FutureStream[T],
   ##
   ## If the future stream already has data or is finished then ``cb`` will be
   ## called immediately.
-  future.cb = proc () = cb(future)
+  proc named() = cb(future)
+  future.cb = named
   if future.queue.len > 0 or future.finished:
     callSoon(future.cb)
 
@@ -63,6 +74,10 @@ proc finished*[T](future: FutureStream[T]): bool =
   ## no more data will be placed inside the stream *and* that there is
   ## no data waiting to be retrieved.
   result = future.finished and future.queue.len == 0
+
+proc failed*[T](future: FutureStream[T]): bool =
+  ## Determines whether ``future`` completed with an error.
+  return future.error != nil
 
 proc write*[T](future: FutureStream[T], value: T): Future[void] =
   ## Writes the specified value inside the specified future stream.
@@ -90,27 +105,29 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
   ## ``FutureStream``.
   var resFut = newFuture[(bool, T)]("FutureStream.take")
   let savedCb = future.cb
-  var newCb =
-    proc (fs: FutureStream[T]) =
-      # Exit early if `resFut` is already complete. (See #8994).
-      if resFut.finished: return
+  proc newCb(fs: FutureStream[T]) =
+    # Exit early if `resFut` is already complete. (See #8994).
+    if resFut.finished: return
 
-      # We don't want this callback called again.
-      future.cb = nil
+    # We don't want this callback called again.
+    #future.cb = nil
 
-      # The return value depends on whether the FutureStream has finished.
-      var res: (bool, T)
-      if finished(fs):
-        # Remember, this callback is called when the FutureStream is completed.
-        res[0] = false
-      else:
-        res[0] = true
-        res[1] = fs.queue.popFirst()
+    # The return value depends on whether the FutureStream has finished.
+    var res: (bool, T)
+    if finished(fs):
+      # Remember, this callback is called when the FutureStream is completed.
+      res[0] = false
+    else:
+      res[0] = true
+      res[1] = fs.queue.popFirst()
 
+    if fs.failed:
+      resFut.fail(fs.error)
+    else:
       resFut.complete(res)
 
-      # If the saved callback isn't nil then let's call it.
-      if not savedCb.isNil: savedCb()
+    # If the saved callback isn't nil then let's call it.
+    if not savedCb.isNil: savedCb()
 
   if future.queue.len > 0 or future.finished:
     newCb(future)

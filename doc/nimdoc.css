@@ -14,6 +14,9 @@ Modified by Boyd Greenfield and narimiran
   --primary-background: #fff;
   --secondary-background: ghostwhite;
   --third-background: #e8e8e8;
+  --info-background: #50c050;
+  --warning-background: #c0a000;
+  --error-background: #e04040;
   --border: #dde;
   --text: #222;
   --anchor: #07b;
@@ -39,6 +42,9 @@ Modified by Boyd Greenfield and narimiran
   --primary-background: #171921;
   --secondary-background: #1e202a;
   --third-background: #2b2e3b;
+  --info-background: #008000;
+  --warning-background: #807000;
+  --error-background: #c03000;
   --border: #0e1014;
   --text: #fff;
   --anchor: #8be9fd;
@@ -63,12 +69,13 @@ Modified by Boyd Greenfield and narimiran
 .theme-switch-wrapper {
   display: flex;
   align-items: center;
-
-  em {
-    margin-left: 10px;
-    font-size: 1rem;
-  }
 }
+
+.theme-switch-wrapper em {
+  margin-left: 10px;
+  font-size: 1rem;
+}
+
 .theme-switch {
   display: inline-block;
   height: 22px;
@@ -153,10 +160,11 @@ body {
   margin-left: 0; }
 
 .three.columns {
-  width: 19%; }
+  width: 22%;
+}
 
 .nine.columns {
-  width: 80.0%; }
+  width: 77.0%; }
 
 .twelve.columns {
   width: 100%;
@@ -408,7 +416,7 @@ ol ul {
   margin-bottom: 0;
   margin-left: 1.25em; }
 
-li {
+ul.simple > li {
     list-style-type: circle;
 }
 
@@ -419,7 +427,7 @@ ul.simple-boot li {
 }
 
 ol.simple > li, ul.simple > li {
-  margin-bottom: 0.25em;
+  margin-bottom: 0.2em;
   margin-left: 0.4em }
 
 ul.simple.simple-toc > li {
@@ -438,8 +446,18 @@ ul.simple-toc > li {
 
 ul.simple-toc-section {
   list-style-type: circle;
-  margin-left: 1em;
+  margin-left: 0.8em;
   color: #6c9aae; }
+
+ul.nested-toc-section {
+  list-style-type: circle;
+  margin-left: -0.75em;
+  color: var(--text);
+}
+
+ul.nested-toc-section > li {
+  margin-left: 1.25em;
+}
 
 
 ol.arabic {
@@ -581,6 +599,7 @@ table th {
 
 table th.docinfo-name {
     background-color: transparent;
+    text-align: right;
 }
 
 table tr:hover {
@@ -595,6 +614,34 @@ table.borderless td, table.borderless th {
   /* Override padding for "table.docutils td" with "! important".
      The right padding separates the table cells. */
   padding: 0 0.5em 0 0 !important; }
+
+.admonition {
+    padding: 0.3em;
+    background-color: var(--secondary-background);
+    border-left: 0.4em solid #7f7f84;
+    margin-bottom: 0.5em;
+    -webkit-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+       -moz-box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+            box-shadow: 0 5px 8px -6px rgba(0,0,0,.2);
+}
+.admonition-info {
+    border-color: var(--info-background);
+}
+.admonition-info-text {
+    color: var(--info-background);
+}
+.admonition-warning {
+    border-color: var(--warning-background);
+}
+.admonition-warning-text {
+    color: var(--warning-background);
+}
+.admonition-error {
+    border-color: var(--error-background);
+}
+.admonition-error-text {
+    color: var(--error-background);
+}
 
 .first {
   /* Override more specific margin styles with "! important". */
@@ -644,7 +691,7 @@ div.topic {
   margin: 2em; }
 
 div.search_results {
-  background-color: antiquewhite;
+  background-color: var(--third-background);
   margin: 3em;
   padding: 1em;
   border: 1px solid #4d4d4d;

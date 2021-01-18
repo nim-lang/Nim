@@ -1,7 +1,7 @@
 discard """
-  errormsg: "unreachable statement after 'return' statement or '{.noReturn.}' proc"
-  file: "tstatret.nim"
-  line: 9
+  nimout: '''
+tstatret.nim(9, 7) Warning: unreachable code after 'return' statement or '{.noReturn.}' proc [UnreachableCode]
+'''
 """
 # no statement after return
 proc main() =

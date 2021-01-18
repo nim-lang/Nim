@@ -31,6 +31,8 @@ type
   ULONG* = int32
   PULONG* = ptr int
   WINBOOL* = int32
+    ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
+    # xxx this should be distinct int32, distinct would make code less error prone
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
@@ -94,6 +96,12 @@ type
     dwPlatformId*: DWORD
     szCSDVersion*: array[0..127, WinChar]
 
+  Protoent* = object
+    p_name*: cstring
+    p_aliases*: cstringArray
+    p_proto*: cshort
+
+
 const
   STARTF_USESHOWWINDOW* = 1'i32
   STARTF_USESTDHANDLES* = 256'i32
@@ -125,6 +133,8 @@ const
   SYNCHRONIZE* = 0x00100000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
+
+  HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
@@ -569,6 +579,14 @@ proc gethostbyname*(name: cstring): ptr Hostent {.
 proc gethostname*(hostname: cstring, len: cint): cint {.
   stdcall, importc: "gethostname", dynlib: ws2dll, sideEffect.}
 
+proc getprotobyname*(
+  name: cstring
+): ptr Protoent {.stdcall, importc: "getprotobyname", dynlib: ws2dll, sideEffect.}
+
+proc getprotobynumber*(
+  proto: cint
+): ptr Protoent {.stdcall, importc: "getprotobynumber", dynlib: ws2dll, sideEffect.}
+
 proc socket*(af, typ, protocol: cint): SocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}
 
@@ -708,6 +726,9 @@ proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
 
+proc getHandleInformation*(hObject: Handle, lpdwFlags: ptr DWORD): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetHandleInformation".}
+
 proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "SetHandleInformation".}
@@ -715,22 +736,20 @@ proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
 proc getCurrentProcess*(): Handle{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
-when useWinUnicode:
-  proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
-                    lpSecurityAttributes: pointer,
-                    dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: Handle): Handle {.
-      stdcall, dynlib: "kernel32", importc: "CreateFileW".}
-  proc deleteFileW*(pathName: WideCString): int32 {.
-    importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
-else:
-  proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
-                    lpSecurityAttributes: pointer,
-                    dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: Handle): Handle {.
-      stdcall, dynlib: "kernel32", importc: "CreateFileA".}
-  proc deleteFileA*(pathName: cstring): int32 {.
-    importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
+proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
+                  lpSecurityAttributes: pointer,
+                  dwCreationDisposition, dwFlagsAndAttributes: DWORD,
+                  hTemplateFile: Handle): Handle {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileW".}
+proc deleteFileW*(pathName: WideCString): int32 {.
+  importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
+proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
+                  lpSecurityAttributes: pointer,
+                  dwCreationDisposition, dwFlagsAndAttributes: DWORD,
+                  hTemplateFile: Handle): Handle {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileA".}
+proc deleteFileA*(pathName: cstring): int32 {.
+  importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
 
 proc setEndOfFile*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "SetEndOfFile".}
@@ -808,6 +827,7 @@ const
   WSAEINPROGRESS* = 10036
   WSAEINTR* = 10004
   WSAEWOULDBLOCK* = 10035
+  WSAESHUTDOWN* = 10058
   ERROR_NETNAME_DELETED* = 64
   STATUS_PENDING* = 0x103
 

@@ -52,8 +52,6 @@ NimScript is subject to some limitations caused by the implementation of the VM
 
 * ``random.randomize()`` requires an ``int64`` explicitly passed as argument, you *must* pass a Seed integer.
 
-* ``unicode`` can be imported, but not ``unidecode``.
-
 
 Standard library modules
 ========================
@@ -89,10 +87,23 @@ At least the following standard library modules are available:
 * `std/editdistance <editdistance.html>`_
 * `std/wordwrap <wordwrap.html>`_
 * `std/sums <sums.html>`_
+* `parsecsv <parsecsv.html>`_
+* `parsecfg <parsecfg.html>`_
+* `parsesql <parsesql.html>`_
+* `xmlparser <xmlparser.html>`_
+* `htmlparser <htmlparser.html>`_
+* `ropes <ropes.html>`_
+* `json <json.html>`_
+* `parsejson <parsejson.html>`_
+* `strtabs <strtabs.html>`_
+* `unidecode <unidecode.html>`_
 
 In addition to the standard Nim syntax (`system <system.html>`_ module),
 NimScripts support the procs and templates defined in the
 `nimscript <nimscript.html>`_ module too.
+
+See also:
+* `Check the tests for more information about modules compatible with NimScript. <https://github.com/nim-lang/Nim/blob/devel/tests/test_nimscript.nims>`_
 
 
 NimScript as a configuration file

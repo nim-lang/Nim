@@ -1,22 +1,22 @@
 discard """
-errormsg: "expression '123' is of type 'int literal(123)' and has to be discarded"
+errormsg: "expression '123' is of type 'int literal(123)' and has to be used (or discarded)"
 line: 71
 """
 
 import macros
 
-proc foo(a,b,c: int): int =
+proc foo(a, b, c: int): int =
   result += a
   result += b
   result += c
 
-macro bar(a,b,c: int): int =
+macro bar(a, b, c: int): int =
   result = newCall(ident"echo")
   result.add a
   result.add b
   result.add c
 
-macro baz(a,b,c: int): int =
+macro baz(a, b, c: int): int =
   let stmt = nnkStmtListExpr.newTree()
   stmt.add newCall(ident"echo", a)
   stmt.add newCall(ident"echo", b)
@@ -26,7 +26,7 @@ macro baz(a,b,c: int): int =
 
 # test no result type with explicit return
 
-macro baz2(a,b,c: int) =
+macro baz2(a, b, c: int) =
   let stmt = nnkStmtListExpr.newTree()
   stmt.add newCall(ident"echo", a)
   stmt.add newCall(ident"echo", b)
@@ -35,7 +35,7 @@ macro baz2(a,b,c: int) =
 
 # test explicit void type with explicit return
 
-macro baz3(a,b,c: int): void =
+macro baz3(a, b, c: int): void =
   let stmt = nnkStmtListExpr.newTree()
   stmt.add newCall(ident"echo", a)
   stmt.add newCall(ident"echo", b)
@@ -44,7 +44,7 @@ macro baz3(a,b,c: int): void =
 
 # test no result type with result variable
 
-macro baz4(a,b,c: int) =
+macro baz4(a, b, c: int) =
   result = nnkStmtListExpr.newTree()
   result.add newCall(ident"echo", a)
   result.add newCall(ident"echo", b)
@@ -52,7 +52,7 @@ macro baz4(a,b,c: int) =
 
 # test explicit void type with result variable
 
-macro baz5(a,b,c: int): void =
+macro baz5(a, b, c: int): void =
   let result = nnkStmtListExpr.newTree()
   result.add newCall(ident"echo", a)
   result.add newCall(ident"echo", b)

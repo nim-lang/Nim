@@ -11,7 +11,7 @@
 ## SSL_CERT_DIR environment variables.
 
 import os, strutils
-from ospaths import existsEnv, getEnv
+from os import existsEnv, getEnv
 import strutils
 
 # SECURITY: this unnecessarily scans through dirs/files regardless of the
@@ -20,7 +20,7 @@ import strutils
 
 # FWIW look for files before scanning entire dirs.
 
-const certificate_paths = [
+const certificatePaths = [
     # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
     # NetBSD (security/mozilla-rootcerts)
     # SLES10/SLES11, https://golang.org/issue/12139
@@ -77,11 +77,11 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 
   else:
     when not defined(haiku):
-      for p in certificate_paths:
+      for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
-          if existsFile(p):
+          if fileExists(p):
             yield p
-        elif existsDir(p):
+        elif dirExists(p):
           for fn in joinPath(p, "*").walkFiles():
             yield fn
     else:

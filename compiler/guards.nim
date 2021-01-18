@@ -46,7 +46,7 @@ proc isLet(n: PNode): bool =
     if n.sym.kind in {skLet, skTemp, skForVar}:
       result = true
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
-                                             abstractInst).kind != tyVar:
+                                             abstractInst).kind notin {tyVar}:
       result = true
 
 proc isVar(n: PNode): bool =
@@ -993,8 +993,9 @@ proc addFactLt*(m: var TModel; a, b: PNode) =
   addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
-  result = newType(tySet, n.typ.owner)
-  addSonSkipIntLit(result, n.typ)
+  result = newType(tySet, ItemId(module: -1, item: -1), n.typ.owner)
+  var idgen: IdGenerator
+  addSonSkipIntLit(result, n.typ, idgen)
 
 proc buildOf(it, loc: PNode; o: Operators): PNode =
   var s = newNodeI(nkCurly, it.info, it.len-1)

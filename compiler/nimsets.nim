@@ -58,18 +58,18 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
         return true
   result = false
 
-proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
+proc toBitSet*(conf: ConfigRef; s: PNode): TBitSet =
   var first, j: Int128
   first = firstOrd(conf, s.typ[0])
-  bitSetInit(b, int(getSize(conf, s.typ)))
+  bitSetInit(result, int(getSize(conf, s.typ)))
   for i in 0..<s.len:
     if s[i].kind == nkRange:
       j = getOrdValue(s[i][0], first)
       while j <= getOrdValue(s[i][1], first):
-        bitSetIncl(b, toInt64(j - first))
+        bitSetIncl(result, toInt64(j - first))
         inc(j)
     else:
-      bitSetIncl(b, toInt64(getOrdValue(s[i]) - first))
+      bitSetIncl(result, toInt64(getOrdValue(s[i]) - first))
 
 proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
@@ -106,9 +106,8 @@ proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): P
     inc(e)
 
 template nodeSetOp(a, b: PNode, op: untyped) {.dirty.} =
-  var x, y: TBitSet
-  toBitSet(conf, a, x)
-  toBitSet(conf, b, y)
+  var x = toBitSet(conf, a)
+  let y = toBitSet(conf, b)
   op(x, y)
   result = toTreeSet(conf, x, a.typ, a.info)
 
@@ -118,31 +117,26 @@ proc intersectSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSe
 proc symdiffSets*(conf: ConfigRef; a, b: PNode): PNode = nodeSetOp(a, b, bitSetSymDiff)
 
 proc containsSets*(conf: ConfigRef; a, b: PNode): bool =
-  var x, y: TBitSet
-  toBitSet(conf, a, x)
-  toBitSet(conf, b, y)
+  let x = toBitSet(conf, a)
+  let y = toBitSet(conf, b)
   result = bitSetContains(x, y)
 
 proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
-  var x, y: TBitSet
-  toBitSet(conf, a, x)
-  toBitSet(conf, b, y)
+  let x = toBitSet(conf, a)
+  let y = toBitSet(conf, b)
   result = bitSetEquals(x, y)
 
 proc complement*(conf: ConfigRef; a: PNode): PNode =
-  var x: TBitSet
-  toBitSet(conf, a, x)
+  var x = toBitSet(conf, a)
   for i in 0..high(x): x[i] = not x[i]
   result = toTreeSet(conf, x, a.typ, a.info)
 
 proc deduplicate*(conf: ConfigRef; a: PNode): PNode =
-  var x: TBitSet
-  toBitSet(conf, a, x)
+  let x = toBitSet(conf, a)
   result = toTreeSet(conf, x, a.typ, a.info)
 
 proc cardSet*(conf: ConfigRef; a: PNode): BiggestInt =
-  var x: TBitSet
-  toBitSet(conf, a, x)
+  let x = toBitSet(conf, a)
   result = bitSetCard(x)
 
 proc setHasRange*(s: PNode): bool =

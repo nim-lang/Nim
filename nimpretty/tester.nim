@@ -1,9 +1,10 @@
 # Small program that runs the test cases
 
-import strutils, os
+import strutils, os, sequtils
 
 const
   dir = "nimpretty/tests/"
+  outputdir = dir / "outputdir"
 
 var
   failures = 0
@@ -30,7 +31,25 @@ proc test(infile, ext: string) =
   else:
     echo "SUCCESS: files identical: ", nimFile
 
-for t in walkFiles(dir / "*.nim"):
+proc testTogether(infiles: seq[string]) =
+  if execShellCmd("$# --outDir:$# --backup:off $#" % [nimp, outputdir, infiles.join(" ")]) != 0:
+    echo "FAILURE: nimpretty cannot prettify files: ", $infiles
+    failures += 1
+    return
+
+  for infile in infiles:
+    let nimFile = splitFile(infile).name
+    let expected = dir / "expected" / nimFile & ".nim"
+    let produced = dir / "outputdir" / infile
+    if readFile(expected) != readFile(produced):
+      echo "FAILURE: files differ: ", nimFile
+      discard execShellCmd("diff -uNdr " & expected & " " & produced)
+      failures += 1
+    else:
+      echo "SUCCESS: files identical: ", nimFile
+
+let allFiles = toSeq(walkFiles(dir / "*.nim"))
+for t in allFiles:
   test(t, "pretty")
   # also test that pretty(pretty(x)) == pretty(x)
   test(t.changeFileExt("pretty"), "pretty2")
@@ -38,5 +57,7 @@ for t in walkFiles(dir / "*.nim"):
   removeFile(t.changeFileExt("pretty"))
   removeFile(t.changeFileExt("pretty2"))
 
+testTogether(allFiles)
+removeDir(outputdir)
 
 if failures > 0: quit($failures & " failures occurred.")

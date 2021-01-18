@@ -21,7 +21,7 @@ when hasThreadSupport:
       pollcnt: int
       fds: ptr SharedArray[SelectorKey[T]]
       pollfds: ptr SharedArray[TPollFd]
-      count: int
+      count*: int
       lock: Lock
     Selector*[T] = ptr SelectorImpl[T]
 else:
@@ -31,7 +31,7 @@ else:
       pollcnt: int
       fds: seq[SelectorKey[T]]
       pollfds: seq[TPollFd]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 
 type
@@ -209,7 +209,7 @@ proc close*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var maxres = MAX_POLL_EVENTS
   if maxres > len(results):
     maxres = len(results)
