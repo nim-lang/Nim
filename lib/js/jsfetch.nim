@@ -94,19 +94,18 @@ func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fe
 
 
 runnableExamples:
-  when defined(nimJsFetchTests):
-    block:
-      let options = unsafeNewFetchOptions(
-        metod =  "POST".cstring,
-        body = """{"key": "value"}""".cstring,
-        mode = "no-cors".cstring,
-        credentials = "omit".cstring,
-        cache = "no-cache".cstring,
-        referrerPolicy = "no-referrer".cstring,
-        keepalive = false,
-        redirect = "follow".cstring,
-        referrer = "client".cstring,
-        integrity = "".cstring
-      )
-      doAssert options is FetchOptions
-      echo fetchToCstring(r"http://httpbin.org/post", options)
+  if defined(nimJsFetchTests):
+    let options = unsafeNewFetchOptions(
+      metod =  "POST".cstring,
+      body = """{"key": "value"}""".cstring,
+      mode = "no-cors".cstring,
+      credentials = "omit".cstring,
+      cache = "no-cache".cstring,
+      referrerPolicy = "no-referrer".cstring,
+      keepalive = false,
+      redirect = "follow".cstring,
+      referrer = "client".cstring,
+      integrity = "".cstring
+    )
+    doAssert options is FetchOptions
+    echo fetchToCstring(r"http://httpbin.org/post", options)
