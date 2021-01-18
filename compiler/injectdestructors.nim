@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
-from trees import exprStructuralEquivalent, sameTree, getRoot
+from trees import exprStructuralEquivalent, getRoot
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -970,7 +970,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
 
 proc sameLocation*(a, b: PNode): bool =
   proc sameConstant(a, b: PNode): bool =
-    a.kind in nkLiterals and sameTree(a, b)
+    a.kind in nkLiterals and exprStructuralEquivalent(a, b)
 
   const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
   if a.kind in nkEndPoint and b.kind in nkEndPoint:
