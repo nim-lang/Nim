@@ -3,6 +3,7 @@ when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
 import jsheaders
+import asyncjs
 from httpcore import HttpMethod
 
 type
@@ -74,20 +75,20 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
     keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
   ## Constructor for `FetchOptions`.
-  result = FetchOptions(metod: fetchMethodTocstring(metod), body: body, mode: $mode,
+  result = FetchOptions(metod: fetchMethodToCstring(metod), body: body, mode: $mode,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
-func fetchToCstring*(url: cstring): cstring {.importjs: "(await fetch(#).then(response => response.text()).then(text => text))".}
+func fetchToCstring*(url: cstring): Future[cstring] {.importjs: "fetch(#).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importjs: "(await fetch(#, #).then(response => response.text()).then(text => text))".}
+func fetchToCstring*(url: cstring, options: FetchOptions): Future[cstring] {.importjs: "fetch(#, #).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetch*(url: cstring): Response {.importjs: "(await fetch(#).then(response => response))".}
+func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#).then(response => response)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
-func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "(await fetch(#, #).then(response => response))".}
+func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "(await fetch(#, #).then(response => response))".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
 
