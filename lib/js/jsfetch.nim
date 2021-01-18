@@ -92,7 +92,6 @@ func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fe
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
 
-
 runnableExamples:
   if defined(nimJsFetchTests):
     proc example() =
@@ -109,6 +108,6 @@ runnableExamples:
         integrity = "".cstring
       )
       doAssert options is FetchOptions
-      echo fetchToCstring(r"http://httpbin.org/post", options)
+      echo fetchToCstring("http://httpbin.org/post".cstring, options)
 
     example()
