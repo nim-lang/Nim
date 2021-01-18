@@ -3,7 +3,7 @@ import jsheaders
 from httpcore import HttpMethod
 export HttpMethod
 
-when not defined(js) and not defined(nimdoc):
+when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
 type
