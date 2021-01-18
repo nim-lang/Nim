@@ -19,7 +19,7 @@ import
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
-from trees import exprStructuralEquivalent, getRoot
+from trees import exprStructuralEquivalent, sameTree, getRoot
 
 type
   Scope = object  # well we do scope-based memory management. \
@@ -968,11 +968,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     else:
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
-proc sameLocation*(a, b: PNode, addrLevelAminusAddrLevelB: int = 0): bool =
+proc sameLocation*(a, b: PNode): bool =
   proc sameConstant(a, b: PNode): bool =
-    case a.kind
-    of nkLiterals: exprStructuralEquivalent(a, b, strictSymEquality = true)
-    else: false
+    a.kind in nkLiterals and sameTree(a, b)
 
   const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
   if a.kind in nkEndPoint and b.kind in nkEndPoint:
@@ -992,11 +990,9 @@ proc sameLocation*(a, b: PNode, addrLevelAminusAddrLevelB: int = 0): bool =
       # We don't need to check addr/deref levels or differentiate between the two,
       # since pointers don't have hooks :) (e.g: var p: ptr pointer; p[] = addr p)
       sameLocation(a[0], b)
-    of nkObjDownConv, nkObjUpConv:       sameLocation(a[0], b)
+    of nkObjDownConv, nkObjUpConv: sameLocation(a[0], b)
     of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b)
     else: false
-
-
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
   if sameLocation(dest, ri):

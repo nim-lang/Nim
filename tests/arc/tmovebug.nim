@@ -575,14 +575,6 @@ echo $w3[]
 #---------------------------------------------------------------------
 #self-assignments
 
-# caseDotExpr and caseBracketExpr both demonstrate
-# that we don't actually need explicit self-assign-removal
-# if we generate `=sink`(x, (tmp = y; wasMoved(y); tmp))
-# instead of `=sink`(x, y)
-# But since the cases where x == y are statically determinable
-# we should not generate this slightly worse code for all sinks.
-# We could just turn all of these self-assignments to NOOPs.
-#
 # Self-assignments that are not statically determinable will get
 # turned into `=copy` calls as caseBracketExprCopy demonstrates.
 # (`=copy` handles self-assignments at runtime)
