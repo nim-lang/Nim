@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread var support for crappy architectures that lack native support for
-## thread local storage. (**Thank you Mac OS X!**)
+## Thread var support for architectures that lack native support for
+## thread local storage.
 
 # included from cgen.nim
 
