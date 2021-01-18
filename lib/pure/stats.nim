@@ -31,25 +31,27 @@
 ## - intercept
 ## - correlation
 ##
-## Procs are provided to calculate statistics on `openArray`s (arrays and sequences).
+## Procs are provided to calculate statistics on `openArray`s.
 ##
 ## However, if more than a single statistical calculation is required, it is more
 ## efficient to push the data once to a `RunningStat` object and then
 ## call the numerous statistical procs for the `RunningStat` object:
 
 runnableExamples:
-  template `===`(a, b: float): bool = abs(a - b) < 1e-9
+  from std/math import almostEqual
+
+  template `~=`(a, b: float): bool = almostEqual(a, b)
 
   var statistics: RunningStat  ## Must be var
   statistics.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
   doAssert statistics.n == 8
-  doAssert statistics.mean() === 2.0
-  doAssert statistics.variance() === 1.5
-  doAssert statistics.varianceS() === 1.714285714285715
-  doAssert statistics.skewness() === 0.8164965809277261
-  doAssert statistics.skewnessS() === 1.018350154434631
-  doAssert statistics.kurtosis() === -1.0
-  doAssert statistics.kurtosisS() === -0.7000000000000008
+  doAssert statistics.mean() ~= 2.0
+  doAssert statistics.variance() ~= 1.5
+  doAssert statistics.varianceS() ~= 1.714285714285715
+  doAssert statistics.skewness() ~= 0.8164965809277261
+  doAssert statistics.skewnessS() ~= 1.018350154434631
+  doAssert statistics.kurtosis() ~= -1.0
+  doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
 from std/math import FloatClass, sqrt, pow, round
 
