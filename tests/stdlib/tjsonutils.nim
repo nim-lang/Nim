@@ -137,6 +137,9 @@ template fn() =
     var b: Bar
     fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
     doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
+    block: # jsonTo with `opt`
+      let b2 = """{"foo": {"b": "bbb"}}""".parseJson.jsonTo(Bar,  Joptions(allowExtraKeys: true, allowMissingKeys: true))
+      doAssert b2 == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
 
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"
