@@ -968,20 +968,35 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     else:
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
-proc sameLocation*(a, b: PNode): bool =
-  if a == b: true
-  elif a == nil or b == nil: false
-  elif a.kind == b.kind:
-    case a.kind:
-      of nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref,
-        nkAddr, nkHiddenAddr, nkObjDownConv, nkObjUpConv:
-        sameLocation(a[0], b[0])
-      of nkDotExpr, nkBracketExpr:
-        sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])
-      of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b[1])
-      of nkNone..nkNilLit: exprStructuralEquivalent(a, b, strictSymEquality = true)
+proc sameLocation*(a, b: PNode, addrLevelAminusAddrLevelB: int = 0): bool =
+  proc sameConstant(a, b: PNode): bool =
+    case a.kind
+    of nkLiterals: exprStructuralEquivalent(a, b, strictSymEquality = true)
+    else: false
+
+  const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
+  if a.kind in nkEndPoint and b.kind in nkEndPoint:
+    if a.kind == b.kind:
+      case a.kind
+      of nkSym: a.sym == b.sym
+      of nkDotExpr, nkCheckedFieldExpr: sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])
+      of nkBracketExpr: sameLocation(a[0], b[0]) and sameConstant(a[1], b[1])
       else: false
-  else: false
+    else: false
+  else:
+    case a.kind
+    of nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      # Reached an endpoint, flip to recurse the other side.
+      sameLocation(b, a)
+    of nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref:
+      # We don't need to check addr/deref levels or differentiate between the two,
+      # since pointers don't have hooks :) (e.g: var p: ptr pointer; p[] = addr p)
+      sameLocation(a[0], b)
+    of nkObjDownConv, nkObjUpConv:       sameLocation(a[0], b)
+    of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b)
+    else: false
+
+
 
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
   if sameLocation(dest, ri):
