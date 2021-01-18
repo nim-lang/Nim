@@ -1,16 +1,15 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
-import jsheaders
-from httpcore import HttpMethod
-export HttpMethod
-
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
+import jsheaders
+from httpcore import HttpMethod
+
 type
   FetchOptions* = ref object  ## Options for Fetch API.
-    keepalive: bool
-    metod {.importjs: "method".}: cstring
-    body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
+    keepalive*: bool
+    metod* {.importjs: "method".}: cstring
+    body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
 
   FetchModes* = enum  ## JavaScript Fetch API mode options.
     fmCors = "cors".cstring
@@ -79,24 +78,25 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
-func fetchToCstring*(url: cstring): cstring {.importjs: "await fetch(#).then(response => response.text()).then(text => text)".}
+func fetchToCstring*(url: cstring): cstring {.importjs: "(await fetch(#).then(response => response.text()).then(text => text))".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importjs: "await fetch(#, #).then(response => response.text()).then(text => text)".}
+func fetchToCstring*(url: cstring, options: FetchOptions): cstring {.importjs: "(await fetch(#, #).then(response => response.text()).then(text => text))".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetch*(url: cstring): Response {.importjs: "await fetch(#).then(response => response)".}
+func fetch*(url: cstring): Response {.importjs: "(await fetch(#).then(response => response))".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
-func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "await fetch(#, #).then(response => response)".}
+func fetch*(url: cstring, options: FetchOptions): Response {.importjs: "(await fetch(#, #).then(response => response))".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
 
 runnableExamples:
+  import httpcore
   if defined(nimJsFetchTests):
-    proc example() =
-      let options = unsafeNewFetchOptions(
-        metod =  "POST".cstring,
+    block:
+      let options0: FetchOptions = unsafeNewFetchOptions(
+        metod = "POST".cstring,
         body = """{"key": "value"}""".cstring,
         mode = "no-cors".cstring,
         credentials = "omit".cstring,
@@ -107,7 +107,36 @@ runnableExamples:
         referrer = "client".cstring,
         integrity = "".cstring
       )
-      doAssert options is FetchOptions
-      echo fetchToCstring("http://httpbin.org/post".cstring, options)
-
-    example()
+      doAssert options0.keepalive == false
+      doAssert options0.metod == "POST".cstring
+      doAssert options0.body == """{"key": "value"}""".cstring
+      doAssert options0.mode == "no-cors".cstring
+      doAssert options0.credentials == "omit".cstring
+      doAssert options0.cache == "no-cache".cstring
+      doAssert options0.referrerPolicy == "no-referrer".cstring
+      doAssert options0.redirect == "follow".cstring
+      doAssert options0.referrer == "client".cstring
+      doAssert options0.integrity == "".cstring
+    block:
+      let options1: FetchOptions = newFetchOptions(
+        metod =  HttpPost,
+        body = """{"key": "value"}""".cstring,
+        mode = fmNoCors,
+        credentials = fcOmit,
+        cache = fchNoCache,
+        referrerPolicy = frpNoReferrer,
+        keepalive = false,
+        redirect = frFollow,
+        referrer = "client".cstring,
+        integrity = "".cstring
+      )
+      doAssert options1.keepalive == false
+      doAssert options1.metod == $HttpPost
+      doAssert options1.body == """{"key": "value"}""".cstring
+      doAssert options1.mode == $fmNoCors
+      doAssert options1.credentials == $fcOmit
+      doAssert options1.cache == $fchNoCache
+      doAssert options1.referrerPolicy == $frpNoReferrer
+      doAssert options1.redirect == $frFollow
+      doAssert options1.referrer == "client".cstring
+      doAssert options1.integrity == "".cstring
