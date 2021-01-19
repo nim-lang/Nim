@@ -776,6 +776,7 @@ when useBuiltinsRotate:
     func builtin_rotr32(value: cuint, shift: cuint): cuint
                        {.importc: "__builtin_rotateright32", nodecl.}
     when defined(amd64):
+      # shift is unsigned, refs https://github.com/llvm-mirror/clang/commit/892de415b7fde609dafc4e6c1643b7eaa0150a4d
       func builtin_rotr64(value: culonglong, shift: culonglong): culonglong
                          {.importc: "__builtin_rotateright64", nodecl.}
   elif defined(vcc):
