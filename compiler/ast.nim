@@ -265,6 +265,10 @@ type
     sfShadowed,       # a symbol that was shadowed in some inner scope
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
+    sfCppNonPod,      # tells compiler to treat such types as non-pod's, so that
+                      # `thread_local` is used instead of `__thread` for
+                      # {.threadvar.} + `--threads`. Only makes sense for importcpp types.
+                      # This has a performance impact so isn't set by default.
     sfCompileTime,    # proc can be evaluated at compile time
     sfConstructor,    # proc is a C++ constructor
     sfDispatcher,     # copied method symbol is the dispatcher
