@@ -760,24 +760,24 @@ when useBuiltinsRotate:
     # https://releases.llvm.org/8.0.0/tools/clang/docs/ReleaseNotes.html#non-comprehensive-list-of-changes-in-this-release
     # https://releases.llvm.org/8.0.0/tools/clang/docs/LanguageExtensions.html#builtin-rotateleft
     func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
-                      {.importc: "__builtin_rotateleft8", noDecl.}
+                      {.importc: "__builtin_rotateleft8", nodecl.}
     func builtin_rotl16(value: cushort, shift: cushort): cushort
-                       {.importc: "__builtin_rotateleft16", noDecl.}
+                       {.importc: "__builtin_rotateleft16", nodecl.}
     func builtin_rotl32(value: cuint, shift: cuint): cuint
-                       {.importc: "__builtin_rotateleft32", noDecl.}
+                       {.importc: "__builtin_rotateleft32", nodecl.}
     when defined(amd64):
       func builtin_rotl64(value: culonglong, shift: culonglong): culonglong
-                         {.importc: "__builtin_rotateleft64", noDecl.}
+                         {.importc: "__builtin_rotateleft64", nodecl.}
     
     func builtin_rotr8(value: cuchar, shift: cuchar): cuchar
-                      {.importc: "__builtin_rotateright8", noDecl.}
+                      {.importc: "__builtin_rotateright8", nodecl.}
     func builtin_rotr16(value: cushort, shift: cushort): cushort
-                       {.importc: "__builtin_rotateright16", noDecl.}
+                       {.importc: "__builtin_rotateright16", nodecl.}
     func builtin_rotr32(value: cuint, shift: cuint): cuint
-                       {.importc: "__builtin_rotateright32", noDecl.}
+                       {.importc: "__builtin_rotateright32", nodecl.}
     when defined(amd64):
       func builtin_rotr64(value: culonglong, shift: culonglong): culonglong
-                         {.importc: "__builtin_rotateright64", noDecl.}
+                         {.importc: "__builtin_rotateright64", nodecl.}
   elif defined(vcc):
     # Tested on Microsoft (R) C/C++ Optimizing Compiler 19.28.29335 x64 and x86.
     # Not tested in previous versions.
