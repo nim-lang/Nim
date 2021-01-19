@@ -159,14 +159,15 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
     else: result = c_isnan(x)
 
 when defined(js):
+  import std/private/jsutils
+
   proc toBitsImpl(x: float): array[2, uint32] =
-    asm """
-    const buffer = new ArrayBuffer(8);
-    const floatBuffer = new Float64Array(buffer);
-    const uintBuffer = new Uint32Array(buffer);
-    floatBuffer[0] = `x`;
-    `result` = uintBuffer
-    """
+    let buffer = newArrayBuffer(8)
+    let floatBuffer = newFloat64Array(buffer)
+    let uintBuffer = newUint32Array(buffer)
+    floatBuffer[0] = x
+    {.emit: "`result` = `uintBuffer`;".}
+    # result = cast[array[2, uint32]](uintBuffer)
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
