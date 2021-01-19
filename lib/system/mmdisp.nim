@@ -79,7 +79,10 @@ elif defined(nogc):
 
 else:
   when not defined(gcRegions):
-    include "system/alloc"
+    when defined(useMalloc):
+      include "system/gcmalloc"
+    else:
+      include "system/alloc"
 
     when not usesDestructors:
       include "system/cellsets"

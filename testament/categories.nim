@@ -172,6 +172,8 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat)
     testSpec r, makeTest("tests/gc" / filename, options &
+                  " -d:release -d:useMalloc", cat)
+    testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
