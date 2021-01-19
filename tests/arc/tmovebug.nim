@@ -86,6 +86,12 @@ destroy
 destroy
 1
 destroy
+destroy
+copy
+@[(f: 2), (f: 2), (f: 3)]
+destroy
+destroy
+destroy
 '''
 """
 
@@ -652,3 +658,13 @@ proc caseBracketExprAddr =
 
 caseBracketExprAddr()
 
+proc caseNotAConstant =
+  var i = 0
+  proc rand: int =
+    result = i
+    inc i
+  var s = @[OO(f: 1), OO(f: 2), OO(f: 3)]
+  s[rand()] = s[rand()] # "destroy" "copy"
+  echo s # @[(f: 2), (f: 2), (f: 3)]
+
+caseNotAConstant()
