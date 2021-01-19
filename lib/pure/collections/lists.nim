@@ -361,34 +361,6 @@ proc contains*[T](L: SomeLinkedCollection[T], value: T): bool {.inline.} =
 
   result = find(L, value) != nil
 
-proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
-                b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T) =
-  ## Deprecated alias for `a.add(b)`.
-  ##
-  ## See also:
-  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_
-  ## * `add proc <#add,T,T>`_
-  a.add b
-
-proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
-                b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T) =
-  ## Deprecated alias for `a.add(b)`.
-  ##
-  ## See also:
-  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
-  ## * `add proc <#add,DoublyLinkedList[T],T>`_
-  ## * `add proc <#add,T,T>`_
-  a.add b
-
-proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
-  ## Deprecated alias for `a.addMoved(b)`.
-  ##
-  ## See also:
-  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
-  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
-  a.addMoved b
-
 proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Prepends a shallow copy of `b` to the beginning of `a`.
   ##
@@ -980,3 +952,31 @@ proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
       L.head = nil
     else:
       L.head = L.head.prev
+
+proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
+                b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T) =
+  ## Deprecated alias for `a.add(b)`.
+  ##
+  ## See also:
+  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add proc <#add,SinglyLinkedList[T],T>`_
+  ## * `add proc <#add,T,T>`_
+  a.add b
+
+proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
+                b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T) =
+  ## Deprecated alias for `a.add(b)`.
+  ##
+  ## See also:
+  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add proc <#add,DoublyLinkedList[T],T>`_
+  ## * `add proc <#add,T,T>`_
+  a.add b
+
+proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
+  ## Deprecated alias for `a.addMoved(b)`.
+  ##
+  ## See also:
+  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
+  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
+  a.addMoved b
