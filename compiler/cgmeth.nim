@@ -10,7 +10,7 @@
 ## This module implements code generation for methods.
 
 import
-  intsets, options, ast, msgs, idents, renderer, types, magicsys,
+  std/packedsets, options, ast, msgs, idents, renderer, types, magicsys,
   sempass2, strutils, modulegraphs, lineinfos
 
 proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
@@ -196,7 +196,7 @@ proc relevantCol(methods: seq[PSym], col: int): bool =
       if not sameType(t2, t):
         return true
 
-proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
+proc cmpSignatures(a, b: PSym, relevantCols: PackedSet[int]): int =
   for col in 1..<a.typ.len:
     if contains(relevantCols, col):
       var aa = skipTypes(a.typ[col], skipPtrs)
@@ -205,7 +205,7 @@ proc cmpSignatures(a, b: PSym, relevantCols: IntSet): int =
       if (d != high(int)) and d != 0:
         return d
 
-proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
+proc sortBucket(a: var seq[PSym], relevantCols: PackedSet[int]) =
   # we use shellsort here; fast and simple
   var n = a.len
   var h = 1
@@ -224,7 +224,7 @@ proc sortBucket(a: var seq[PSym], relevantCols: IntSet) =
       a[j] = v
     if h == 1: break
 
-proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PSym =
+proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: PackedSet[int]): PSym =
   var base = methods[0].ast[dispatcherPos].sym
   result = base
   var paramLen = base.typ.len
@@ -286,7 +286,7 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
   for bucket in 0..<g.methods.len:
-    var relevantCols = initIntSet()
+    var relevantCols = initPackedSet[int]()
     for col in 1..<g.methods[bucket].methods[0].typ.len:
       if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
       if optMultiMethods notin g.config.globalOptions:

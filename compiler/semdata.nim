@@ -10,7 +10,7 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  intsets, options, ast, astalgo, msgs, idents, renderer,
+  std/packedsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
 import ic / to_packed_ast
@@ -79,9 +79,9 @@ type
     case mode*: ImportMode
     of importAll: discard
     of importSet:
-      imported*: IntSet          # of PIdent.id
+      imported*: PackedSet[int]          # of PIdent.id
     of importExcept:
-      exceptSet*: IntSet         # of PIdent.id
+      exceptSet*: PackedSet[int]         # of PIdent.id
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -129,12 +129,12 @@ type
     semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
-    includedFiles*: IntSet    # used to detect recursive include files
+    includedFiles*: PackedSet[int]    # used to detect recursive include files
     pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
     evalContext*: PEvalContext
-    unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
-                               # naming it multiple times
+    unknownIdents*: PackedSet[int]     # ids of all unknown identifiers to prevent
+                                       # naming it multiple times
     generics*: seq[TInstantiationPair] # pending list of instantiated generics to compile
     topStmts*: int # counts the number of encountered top level statements
     lastGenericIdx*: int      # used for the generics stack
@@ -298,11 +298,11 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.friendModules = @[module]
   result.converters = @[]
   result.patterns = @[]
-  result.includedFiles = initIntSet()
+  result.includedFiles = initPackedSet[int]()
   initStrTable(result.pureEnumFields)
   initStrTable(result.userPragmas)
   result.generics = @[]
-  result.unknownIdents = initIntSet()
+  result.unknownIdents = initPackedSet[int]()
   result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)

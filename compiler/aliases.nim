@@ -10,15 +10,15 @@
 ## Simple alias analysis for the HLO and the code generators.
 
 import
-  ast, astalgo, types, trees, intsets
+  ast, astalgo, types, trees, std/packedsets
 
 type
   TAnalysisResult* = enum
     arNo, arMaybe, arYes
 
-proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult
+proc isPartOfAux(a, b: PType, marker: var PackedSet[int]): TAnalysisResult
 
-proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
+proc isPartOfAux(n: PNode, b: PType, marker: var PackedSet[int]): TAnalysisResult =
   result = arNo
   case n.kind
   of nkRecList:
@@ -39,7 +39,7 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
     result = isPartOfAux(n.sym.typ, b, marker)
   else: discard
 
-proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
+proc isPartOfAux(a, b: PType, marker: var PackedSet[int]): TAnalysisResult =
   result = arNo
   if a == nil or b == nil: return
   if containsOrIncl(marker, a.id): return
@@ -59,7 +59,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
 
 proc isPartOf(a, b: PType): TAnalysisResult =
   ## checks iff 'a' can be part of 'b'. Iterates over VALUE types!
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   # watch out: parameters reversed because I'm too lazy to change the code...
   result = isPartOfAux(b, a, marker)
 

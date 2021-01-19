@@ -28,7 +28,7 @@ proc getIdentNode(c: PContext; n: PNode): PNode =
 
 type
   GenericCtx = object
-    toMixin, toBind: IntSet
+    toMixin, toBind: PackedSet[int]
     cursorInBody: bool # only for nimsuggest
     bracketExpr: PNode
 
@@ -498,15 +498,15 @@ proc semGenericStmt(c: PContext, n: PNode,
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  ctx.toMixin = initPackedSet[int]()
+  ctx.toBind = initPackedSet[int]()
   result = semGenericStmt(c, n, {}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 
 proc semConceptBody(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
+  ctx.toMixin = initPackedSet[int]()
+  ctx.toBind = initPackedSet[int]()
   result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
 

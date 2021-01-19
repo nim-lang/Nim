@@ -14,7 +14,7 @@
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
 import
-  intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
+  std/packedsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
@@ -38,7 +38,7 @@ type
     graph: ModuleGraph
     otherRead: PNode
     inLoop, inSpawn, inLoopCond: int
-    uninit: IntSet # set of uninit'ed vars
+    uninit: PackedSet[int] # set of uninit'ed vars
     uninitComputed: bool
     idgen: IdGenerator
 
@@ -192,7 +192,7 @@ proc isFirstWrite(n: PNode; c: var Con): bool =
   result = isFirstWrite(n, c.g, 0, instr) >= 0
 
 proc initialized(code: ControlFlowGraph; pc: int,
-                 init, uninit: var IntSet; until: int): int =
+                 init, uninit: var PackedSet[int]; until: int): int =
   ## Computes the set of definitely initialized variables across all code paths
   ## as an IntSet of IDs.
   var pc = pc
@@ -201,8 +201,8 @@ proc initialized(code: ControlFlowGraph; pc: int,
     of goto:
       pc += code[pc].dest
     of fork:
-      var initA = initIntSet()
-      var initB = initIntSet()
+      var initA = initPackedSet[int]()
+      var initB = initPackedSet[int]()
       var variantA = pc + 1
       var variantB = pc + code[pc].dest
       while variantA != variantB:
@@ -1034,8 +1034,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
     c.uninitComputed = true
-    c.uninit = initIntSet()
-    var init = initIntSet()
+    c.uninit = initPackedSet[int]()
+    var init = initPackedSet[int]()
     discard initialized(c.g, pc = 0, init, c.uninit, int.high)
 
 proc injectDefaultCalls(n: PNode, c: var Con) =

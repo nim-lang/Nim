@@ -9,10 +9,12 @@
 
 ## This program verifies Nim against the testcases.
 
-import
+import backend, specs, htmlgen, azure
+import std/[
   strutils, pegs, os, osproc, streams, json,
-  backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, sequtils, azure, intsets
+  parseopt, browsers, terminal,
+  algorithm, times, md5, sequtils, packedsets
+]
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
@@ -323,7 +325,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
 
 proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   let pegLine = peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' {[^:]*} ':' \s* {.*}"
-  var covered = initIntSet()
+  var covered = initPackedSet[int]()
   for line in splitLines(given.nimout):
 
     if line =~ pegLine:

@@ -12,7 +12,7 @@
 
 import
   ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
-  intsets, llstream, tables, modulegraphs, pathutils
+  std/packedsets, llstream, tables, modulegraphs, pathutils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -87,7 +87,7 @@ proc writeTypeCache(a: TypeCache, s: var string) =
     inc i
   s.add('}')
 
-proc writeIntSet(a: IntSet, s: var string) =
+proc writeIntSet(a: PackedSet[int], s: var string) =
   var i = 0
   for x in items(a):
     if i == 10:
@@ -191,7 +191,7 @@ proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
     discard decodeStr(L.buf, L.bufpos)
   inc L.bufpos
 
-proc readIntSet(L: var TBaseLexer, result: var IntSet) =
+proc readIntSet(L: var TBaseLexer, result: var PackedSet[int]) =
   if ^L.bufpos != '{': doAssert(false, "ccgmerge: '{' expected")
   inc L.bufpos
   while ^L.bufpos != '}':

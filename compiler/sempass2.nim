@@ -8,7 +8,7 @@
 #
 
 import
-  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
+  std/packedsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
   modulegraphs, varpartitions, typeallowed, nilcheck
 
@@ -230,7 +230,7 @@ else:
     if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
     markGcUnsafe(a, reason)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var PackedSet[int]; conf: ConfigRef) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
@@ -255,7 +255,7 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: Co
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 
 proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
-  var cycleCheck = initIntSet()
+  var cycleCheck = initPackedSet[int]()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
@@ -1149,7 +1149,7 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
                      hintsArg: PNode = nil) =
   # check that any real exception is listed in 'spec'; mark those as used;
   # report any unused exception
-  var used = initIntSet()
+  var used = initPackedSet[int]()
   for r in items(real):
     block search:
       for s in 0..<spec.len:
@@ -1344,7 +1344,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
-                                                                                                                   
+
       when false: trackWrites(s, body)
   if strictNotNil in c.features and s.kind == skProc:
     checkNil(s, body, g.config, c.idgen)

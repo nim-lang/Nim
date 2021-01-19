@@ -85,7 +85,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
 
-proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
+proc semBindStmt(c: PContext, n: PNode, toBind: var PackedSet[int]): PNode =
   for i in 0..<n.len:
     var a = n[i]
     # If 'a' is an overloaded symbol, we used to use the first symbol
@@ -105,7 +105,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
       illFormedAst(a, c.config)
   result = newNodeI(nkEmpty, n.info)
 
-proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
+proc semMixinStmt(c: PContext, n: PNode, toMixin: var PackedSet[int]): PNode =
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
   result = newNodeI(nkEmpty, n.info)
@@ -120,7 +120,7 @@ proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
 type
   TemplCtx = object
     c: PContext
-    toBind, toMixin, toInject: IntSet
+    toBind, toMixin, toInject: PackedSet[int]
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
@@ -642,9 +642,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos])
   var ctx: TemplCtx
-  ctx.toBind = initIntSet()
-  ctx.toMixin = initIntSet()
-  ctx.toInject = initIntSet()
+  ctx.toBind = initPackedSet[int]()
+  ctx.toMixin = initPackedSet[int]()
+  ctx.toInject = initPackedSet[int]()
   ctx.c = c
   ctx.owner = s
   if sfDirty in s.flags:
@@ -791,9 +791,9 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
 proc semPattern(c: PContext, n: PNode): PNode =
   openScope(c)
   var ctx: TemplCtx
-  ctx.toBind = initIntSet()
-  ctx.toMixin = initIntSet()
-  ctx.toInject = initIntSet()
+  ctx.toBind = initPackedSet[int]()
+  ctx.toMixin = initPackedSet[int]()
+  ctx.toInject = initPackedSet[int]()
   ctx.c = c
   ctx.owner = getCurrOwner(c)
   result = flattenStmts(semPatternBody(ctx, n))

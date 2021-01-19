@@ -2,7 +2,7 @@ discard """
   output: "true"
 """
 
-import intsets
+import std/packedsets
 
 type
   TMyObject = object
@@ -14,7 +14,7 @@ type
 
 var
   gid: int # for id generation
-  valid = initIntSet()
+  valid = initPackedSet[int]()
 
 proc finalizer(x: StrongObject) =
   valid.excl(x.id)

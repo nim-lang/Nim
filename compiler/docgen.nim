@@ -15,7 +15,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
-  typesrenderer, astalgo, lineinfos, intsets,
+  typesrenderer, astalgo, lineinfos, std/packedsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
 from uri import encodeUrl
@@ -49,8 +49,8 @@ type
     conf*: ConfigRef
     cache*: IdentCache
     exampleCounter: int
-    emitted: IntSet # we need to track which symbols have been emitted
-                    # already. See bug #3655
+    emitted: PackedSet[int] # we need to track which symbols have been emitted
+                            # already. See bug #3655
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
@@ -236,7 +236,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       let (output, gotten) = execCmdEx(cmd)
       if gotten != status:
         rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
-  result.emitted = initIntSet()
+  result.emitted = initPackedSet[int]()
   result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false).string
   result.thisDir = result.destFile.AbsoluteFile.splitFile.dir
 

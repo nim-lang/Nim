@@ -10,7 +10,7 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, msgs,
+  std/packedsets, strutils, options, ast, astalgo, msgs,
   idents, renderer, types, magicsys, lowerings, tables, modulegraphs, lineinfos,
   transf, liftdestructors
 
@@ -302,15 +302,15 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
 
 type
   DetectionPass = object
-    processed, capturedVars: IntSet
+    processed, capturedVars: PackedSet[int]
     ownerToType: Table[int, PType]
     somethingToDo: bool
     graph: ModuleGraph
     idgen: IdGenerator
 
 proc initDetectionPass(g: ModuleGraph; fn: PSym; idgen: IdGenerator): DetectionPass =
-  result.processed = initIntSet()
-  result.capturedVars = initIntSet()
+  result.processed = initPackedSet[int]()
+  result.capturedVars = initPackedSet[int]()
   result.ownerToType = initTable[int, PType]()
   result.processed.incl(fn.id)
   result.graph = g
@@ -510,13 +510,13 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
 
 type
   LiftingPass = object
-    processed: IntSet
+    processed: PackedSet[int]
     envVars: Table[int, PNode]
     inContainer: int
     unownedEnvVars: Table[int, PNode] # only required for --newruntime
 
 proc initLiftingPass(fn: PSym): LiftingPass =
-  result.processed = initIntSet()
+  result.processed = initPackedSet[int]()
   result.processed.incl(fn.id)
   result.envVars = initTable[int, PNode]()
 

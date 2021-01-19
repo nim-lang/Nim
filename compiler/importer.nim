@@ -10,13 +10,13 @@
 ## This module implements the symbol importing mechanism.
 
 import
-  intsets, ast, astalgo, msgs, options, idents, lookups,
+  std/packedsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
   modulegraphs
 
-proc readExceptSet*(c: PContext, n: PNode): IntSet =
+proc readExceptSet*(c: PContext, n: PNode): PackedSet[int] =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
-  result = initIntSet()
+  result = initPackedSet[int]()
   for i in 1..<n.len:
     let ident = lookups.considerQuotedIdent(c, n[i])
     result.incl(ident.id)
@@ -64,7 +64,7 @@ proc importPureEnumFields(c: PContext; s: PSym; etyp: PType) =
     if e != nil:
       importPureEnumField(c, e)
 
-proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
+proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var PackedSet[int]) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
@@ -107,7 +107,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
-proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
+proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var PackedSet[int]) =
   let ident = lookups.considerQuotedIdent(c, n)
   let s = someSym(c.graph, fromMod, ident)
   if s == nil:
@@ -153,7 +153,7 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           discard
         of importExcept:
-          var cut = initIntSet()
+          var cut = initPackedSet[int]()
           # only exclude what is consistent between the two sets:
           for j in im.exceptSet:
             if j in c.imports[i].exceptSet:
@@ -173,7 +173,7 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
     if filter:
       importPureEnumFields(c, it, it.typ)
 
-proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
+proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: PackedSet[int]) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
   addUnnamedIt(c, fromMod, it.id notin exceptSet)
 
@@ -181,10 +181,10 @@ proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)
   addUnnamedIt(c, fromMod, true)
   when false:
-    var exceptSet: IntSet
+    var exceptSet: PackedSet[int]
     importAllSymbolsExcept(c, fromMod, exceptSet)
 
-proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; importSet: var IntSet) =
+proc importForwarded(c: PContext, n: PNode, exceptSet: PackedSet[int]; fromMod: PSym; importSet: var PackedSet[int]) =
   if n.isNil: return
   case n.kind
   of nkExportStmt:
@@ -299,7 +299,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
 
-    var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
+    var im = ImportedModule(m: m, mode: importSet, imported: initPackedSet[int]())
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)

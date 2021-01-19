@@ -29,7 +29,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, types, intsets, lineinfos, renderer
+import ast, types, std/packedsets, lineinfos, renderer
 import std/private/asciitables
 
 from patterns import sameTrees
@@ -65,7 +65,7 @@ type
 proc codeListing(c: ControlFlowGraph, start = 0; last = -1): string =
   # for debugging purposes
   # first iteration: compute all necessary labels:
-  var jumpTargets = initIntSet()
+  var jumpTargets = initPackedSet[int]()
   let last = if last < 0: c.len-1 else: min(last, c.len-1)
   for i in start..last:
     if c[i].kind in {goto, fork}:

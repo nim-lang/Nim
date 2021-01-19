@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
+import ast, renderer, std / packedsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
 import sequtils, strutils, std / sets
 
 # IMPORTANT: notes not up to date, i'll update this comment again
@@ -135,7 +135,7 @@ type
     # symbolGraphs: Table[Symbol, ]
     symbolIndices: Table[Symbol, ExprIndex] ## index for each symbol
     expressions: SeqOfDistinct[ExprIndex, PNode] ## a sequence of pre-indexed expressions
-    dependants: SeqOfDistinct[ExprIndex, IntSet] ## expr indices for expressions which are compound and based on others
+    dependants: SeqOfDistinct[ExprIndex, PackedSet[int]] ## expr indices for expressions which are compound and based on others
     warningLocations: HashSet[TLineInfo] ## warning locations to check we don't warn twice for stuff like warnings in for loops
     idgen: IdGenerator ## id generator
     config: ConfigRef ## the config of the compiler
@@ -147,7 +147,7 @@ type
     history:  SeqOfDistinct[ExprIndex, seq[History]] ## history for each of them
     # what about gc and refs?
     setIndices: SeqOfDistinct[ExprIndex, SetIndex] ## set indices for each expression
-    sets:     SeqOfDistinct[SetIndex, IntSet] ## disjoint sets with the aliased expressions
+    sets:     SeqOfDistinct[SetIndex, PackedSet[int]] ## disjoint sets with the aliased expressions
     parent:   NilMap ## the parent map
 
   ## Nilability : if a value is nilable.
@@ -231,7 +231,7 @@ proc newNilMap(parent: NilMap = nil, count: int = -1): NilMap =
   if parent.isNil:
     for i, expr in result.expressions:
       result.setIndices[i] = i.SetIndex
-      var newSet = initIntSet()
+      var newSet = initPackedSet[int]()
       newSet.incl(i.int)
       result.sets.add(newSet)
   else:
@@ -377,10 +377,10 @@ proc index(ctx: NilCheckerContext, n: PNode): ExprIndex =
   #ctx.symbolIndices[symbol(n)]
 
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): IntSet =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, n: PNode): PackedSet[int] =
   result = map.sets[map.setIndices[ctx.index(n)]]
 
-proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): IntSet =
+proc aliasSet(ctx: NilCheckerContext, map: NilMap, index: ExprIndex): PackedSet[int] =
   result = map.sets[map.setIndices[index]]
 
 
@@ -421,7 +421,7 @@ proc moveOut(ctx: NilCheckerContext, map: NilMap, target: PNode) =
           break
           # map.sets[element].excl(targetIndex)
       map.sets[map.setIndices[other]].excl(targetIndex.int)
-      var newSet = initIntSet()
+      var newSet = initPackedSet[int]()
       newSet.incl(targetIndex.int)
       map.sets.add(newSet)
       map.setIndices[targetIndex] = map.sets.len - 1.SetIndex
@@ -1329,8 +1329,8 @@ proc preVisit(ctx: NilCheckerContext, s: PSym, body: PNode, conf: ConfigRef) =
   ctx.symbolIndices = {resultId: resultExprIndex}.toTable()
   var cache = newIdentCache()
   ctx.expressions = SeqOfDistinct[ExprIndex, PNode](@[newIdentNode(cache.getIdent("result"), s.ast.info)])
-  var emptySet: IntSet # set[ExprIndex]
-  ctx.dependants = SeqOfDistinct[ExprIndex, IntSet](@[emptySet])
+  var emptySet: PackedSet[int] # set[ExprIndex]
+  ctx.dependants = SeqOfDistinct[ExprIndex, PackedSet[int]](@[emptySet])
   for i, arg in s.typ.n.sons:
     if i > 0:
       if arg.kind != nkSym:

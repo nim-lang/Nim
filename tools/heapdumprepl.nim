@@ -1,6 +1,6 @@
 
 include prelude
-import intsets
+import std/packedsets
 
 type
   NodeKind = enum
@@ -17,7 +17,6 @@ type
     roots: Table[int, NodeKind]
 
 proc add(father: Node; son: int) =
-  if father.kids.isNil: father.kids = @[]
   father.kids.add(son)
 
 proc renderNode(g: Graph; id: int) =
@@ -36,7 +35,7 @@ proc parseHex(s: string): int =
   discard parseutils.parseHex(s, result, 0)
 
 proc reachable(g: Graph; stack: var seq[int]; goal: int): bool =
-  var t = initIntSet()
+  var t = initPackedSet[int]()
   while stack.len > 0:
     let it = stack.pop
     if not t.containsOrIncl(it):
@@ -59,7 +58,7 @@ reachable,r  l|g|node  dest   -- outputs TRUE or FALSE depending on whether
 """
 
 proc repl(g: Graph) =
-  var aliases = initTable[string,int]()
+  var aliases = initTable[string, int]()
   while true:
     let line = stdin.readLine()
     let data = line.split()

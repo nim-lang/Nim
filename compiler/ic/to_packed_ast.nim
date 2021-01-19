@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables, intsets, sha1]
+import std / [hashes, tables, packedsets, sha1]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms]
@@ -46,8 +46,8 @@ type
     filenames*: Table[FileIndex, LitId]
     pendingTypes*: seq[PType]
     pendingSyms*: seq[PSym]
-    typeMarker*: IntSet #Table[ItemId, TypeId]  # ItemId.item -> TypeId
-    symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
+    typeMarker*: PackedSet[int] #Table[ItemId, TypeId]  # ItemId.item -> TypeId
+    symMarker*: PackedSet[int] #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
 
 template primConfigFields(fn: untyped) {.dirty.} =

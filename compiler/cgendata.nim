@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
+  ast, ropes, options, std/packedsets,
   tables, ndi, lineinfos, pathutils, modulegraphs, sets
 
 type
@@ -129,14 +129,14 @@ type
 
     nimtv*: Rope            # Nim thread vars; the struct body
     nimtvDeps*: seq[PType]  # type deps: every module needs whole struct
-    nimtvDeclared*: IntSet  # so that every var/field exists only once
-                            # in the struct
-                            # 'nimtv' is incredibly hard to modularize! Best
-                            # effort is to store all thread vars in a ROD
-                            # section and with their type deps and load them
-                            # unconditionally...
-                            # nimtvDeps is VERY hard to cache because it's
-                            # not a list of IDs nor can it be made to be one.
+    nimtvDeclared*: PackedSet[int]  # so that every var/field exists only once
+                                    # in the struct
+                                    # 'nimtv' is incredibly hard to modularize! Best
+                                    # effort is to store all thread vars in a ROD
+                                    # section and with their type deps and load them
+                                    # unconditionally...
+                                    # nimtvDeps is VERY hard to cache because it's
+                                    # not a list of IDs nor can it be made to be one.
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
@@ -152,8 +152,8 @@ type
                               # don't seem to get cached so it'd generate
                               # 1 ABI check per occurence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
-    declaredThings*: IntSet   # things we have declared in this .c file
-    declaredProtos*: IntSet   # prototypes we have declared in this .c file
+    declaredThings*: PackedSet[int]   # things we have declared in this .c file
+    declaredProtos*: PackedSet[int]   # prototypes we have declared in this .c file
     headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
     typeInfoMarkerV2*: TypeCache
@@ -201,7 +201,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
-    config: g.config, graph: g, nimtvDeclared: initIntSet())
+    config: g.config, graph: g, nimtvDeclared: initPackedSet[int]())
 
 iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:

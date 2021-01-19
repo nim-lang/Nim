@@ -32,7 +32,7 @@ import
   ast, strutils, trees, magicsys, options,
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  std/packedsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   transf, injectdestructors, sourcemap, json, sets
 
 
@@ -83,8 +83,8 @@ type
   PGlobals = ref object of RootObj
     typeInfo, constants, code: Rope
     forwarded: seq[PSym]
-    generatedSyms: IntSet
-    typeInfoGenerated: IntSet
+    generatedSyms: PackedSet[int]
+    typeInfoGenerated: PackedSet[int]
     unique: int    # for temp identifier generation
     inSystem: bool
 
@@ -96,13 +96,13 @@ type
     options: TOptions
     module: BModule
     g: PGlobals
-    generatedParamCopies: IntSet
+    generatedParamCopies: PackedSet[int]
     beforeRetNeeded: bool
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
     extraIndent: int
     up: PProc     # up the call chain; required for closure support
-    declaredGlobals: IntSet
+    declaredGlobals: PackedSet[int]
 
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -133,8 +133,8 @@ template nested(p, body) =
 proc newGlobals(): PGlobals =
   new(result)
   result.forwarded = @[]
-  result.generatedSyms = initIntSet()
-  result.typeInfoGenerated = initIntSet()
+  result.generatedSyms = initPackedSet[int]()
+  result.typeInfoGenerated = initPackedSet[int]()
 
 proc initCompRes(r: var TCompRes) =
   r.address = nil
@@ -1632,7 +1632,7 @@ proc putToSeq(s: string, indirect: bool): Rope =
   if indirect: result = "[$1]" % [result]
 
 proc createVar(p: PProc, typ: PType, indirect: bool): Rope
-proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: var Rope) =
+proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: PackedSet[int], output: var Rope) =
   case rec.kind
   of nkRecList:
     for i in 0..<rec.len:
@@ -1650,7 +1650,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(p.config, rec.info, "createRecordVarAux")
 
-proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: var Rope) =
+proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: PackedSet[int], output: var Rope) =
   var t = typ
   if objHasTypeField(t):
     if output.len > 0: output.add(", ")
@@ -1722,7 +1722,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     if indirect: result = "[$1]" % [result]
   of tyObject:
     var initList: Rope
-    createObjInitList(p, t, initIntSet(), initList)
+    createObjInitList(p, t, initPackedSet[int](), initList)
     result = ("({$1})") % [initList]
     if indirect: result = "[$1]" % [result]
   of tyVar, tyPtr, tyLent, tyRef, tyPointer:
@@ -2186,7 +2186,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.kind = resExpr
   var initList : Rope
-  var fieldIDs = initIntSet()
+  var fieldIDs = initPackedSet[int]()
   for i in 1..<n.len:
     if i > 1: initList.add(", ")
     var it = n[i]

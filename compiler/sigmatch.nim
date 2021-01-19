@@ -11,7 +11,7 @@
 ## the call to overloaded procs, generic procs and operators.
 
 import
-  intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
+  std/packedsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
   linter, lineinfos, lowerings, modulegraphs
 
@@ -2311,10 +2311,10 @@ proc incrIndexType(t: PType) =
 template isVarargsUntyped(x): untyped =
   x.kind == tyVarargs and x[0].kind == tyUntyped
 
-proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var IntSet) =
+proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var PackedSet[int]) =
 
   template noMatch() =
-    c.mergeShadowScope #merge so that we don't have to resem for later overloads
+    c.mergeShadowScope # merge so that we don't have to resem for later overloads
     m.state = csNoMatch
     m.firstMismatch.arg = a
     m.firstMismatch.formal = formal
@@ -2518,7 +2518,7 @@ proc semFinishOperands*(c: PContext, n: PNode) =
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
   # for 'suggest' support:
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   matchesAux(c, n, nOrig, m, marker)
 
 proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
@@ -2531,7 +2531,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
       inc m.genericMatches
       inc m.exactMatches
     return
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   matchesAux(c, n, nOrig, m, marker)
   if m.state == csNoMatch: return
   # check that every formal parameter got a value:

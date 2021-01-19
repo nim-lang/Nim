@@ -182,7 +182,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = typ
 
 proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   template semExceptBranchType(typeNode: PNode): bool =
     # returns true if exception type is imported type
     let typ = semTypeNode(c, typeNode, nil).toObject()

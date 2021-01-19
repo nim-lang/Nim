@@ -10,7 +10,7 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
+  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, std/packedsets,
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
@@ -984,7 +984,7 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
   result = getTypeDesc(m, prc.loc.t)
   if prc.typ.callConv == ccClosure:
     var rettype, params: Rope
-    var check = initIntSet()
+    var check = initPackedSet[int]()
     genProcParams(m, prc.typ, rettype, params, check)
     result = "$1(*)$2" % [rettype, params]
 
@@ -1809,8 +1809,8 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.g = g
   result.tmpBase = rope("TM" & $hashOwner(module) & "_")
   result.headerFiles = @[]
-  result.declaredThings = initIntSet()
-  result.declaredProtos = initIntSet()
+  result.declaredThings = initPackedSet[int]()
+  result.declaredProtos = initPackedSet[int]()
   result.cfilename = filename
   result.filename = filename
   result.typeCache = initTable[SigHash, Rope]()

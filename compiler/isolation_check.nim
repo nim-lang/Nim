@@ -11,11 +11,11 @@
 ## https://github.com/nim-lang/RFCs/issues/244 for more details.
 
 import
-  ast, types, renderer, intsets
+  ast, types, renderer, std/packedsets
 
-proc canAlias(arg, ret: PType; marker: var IntSet): bool
+proc canAlias(arg, ret: PType; marker: var PackedSet[int]): bool
 
-proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
+proc canAliasN(arg: PType; n: PNode; marker: var PackedSet[int]): bool =
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
@@ -35,7 +35,7 @@ proc canAliasN(arg: PType; n: PNode; marker: var IntSet): bool =
     result = canAlias(arg, n.sym.typ, marker)
   else: discard
 
-proc canAlias(arg, ret: PType; marker: var IntSet): bool =
+proc canAlias(arg, ret: PType; marker: var PackedSet[int]): bool =
   if containsOrIncl(marker, ret.id):
     return false
 
@@ -64,7 +64,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   else:
     result = false
 
-proc isValueOnlyType(t: PType): bool = 
+proc isValueOnlyType(t: PType): bool =
   # t doesn't contain pointers and references
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
   result = not types.searchTypeFor(t, wrap)
@@ -74,7 +74,7 @@ proc canAlias*(arg, ret: PType): bool =
     # can alias only with unsafeAddr(arg.x) and we don't care if it is not safe
     result = false
   else:
-    var marker = initIntSet()
+    var marker = initPackedSet[int]()
     result = canAlias(arg, ret, marker)
 
 proc checkIsolate*(n: PNode): bool =

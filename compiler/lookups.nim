@@ -10,7 +10,7 @@
 # This module implements lookup helpers.
 
 import
-  intsets, ast, astalgo, idents, semdata, types, msgs, options,
+  std/packedsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, strutils,
   modulegraphs
 
@@ -108,7 +108,7 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
+proc initIdentIter(ti: var ModuleIter; marked: var PackedSet[int]; im: ImportedModule; name: PIdent;
                    g: ModuleGraph): PSym =
   result = initModuleIter(ti, g, im.m, name)
   while result != nil:
@@ -121,7 +121,7 @@ proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; n
       return result
     result = nextModuleIter(ti, g)
 
-proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
+proc nextIdentIter(ti: var ModuleIter; marked: var PackedSet[int]; im: ImportedModule;
                    g: ModuleGraph): PSym =
   while true:
     result = nextModuleIter(ti, g)
@@ -137,7 +137,7 @@ proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
       if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):
         return result
 
-iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent; g: ModuleGraph): PSym =
+iterator symbols(im: ImportedModule; marked: var PackedSet[int]; name: PIdent; g: ModuleGraph): PSym =
   var ti: ModuleIter
   var candidate = initIdentIter(ti, marked, im, name, g)
   while candidate != nil:
@@ -145,7 +145,7 @@ iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent; g: Module
     candidate = nextIdentIter(ti, marked, im, g)
 
 iterator importedItems*(c: PContext; name: PIdent): PSym =
-  var marked = initIntSet()
+  var marked = initPackedSet[int]()
   for im in c.imports.mitems:
     for s in symbols(im, marked, name, c.graph):
       yield s
@@ -177,7 +177,7 @@ iterator allSyms*(c: PContext): (PSym, int, bool) =
       yield (s, scopeN, isLocal)
 
 proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
-  var marked = initIntSet()
+  var marked = initPackedSet[int]()
   result = nil
   for im in c.imports.mitems:
     for s in symbols(im, marked, name, c.graph):
@@ -215,7 +215,7 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
       candidate = nextIdentIter(ti, scope.symbols)
 
   if result.len == 0:
-    var marked = initIntSet()
+    var marked = initPackedSet[int]()
     for im in c.imports.mitems:
       for s in symbols(im, marked, s, c.graph):
         if s.kind in filter:
@@ -249,7 +249,7 @@ type
     symChoiceIndex*: int
     currentScope: PScope
     importIdx: int
-    marked: IntSet
+    marked: PackedSet[int]
 
 proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
   case s.kind
@@ -498,7 +498,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   o.importIdx = -1
-  o.marked = initIntSet()
+  o.marked = initPackedSet[int]()
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
@@ -551,7 +551,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       o.mode = oimDone
       return nil
     o.symChoiceIndex = 1
-    o.marked = initIntSet()
+    o.marked = initPackedSet[int]()
     incl(o.marked, result.id)
   else: discard
   when false:

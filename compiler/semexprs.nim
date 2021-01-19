@@ -2458,7 +2458,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeI(nkTupleConstr, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
-  var ids = initIntSet()
+  var ids = initPackedSet[int]()
   for i in 0..<n.len:
     if n[i].kind != nkExprColonExpr:
       illFormedAst(n[i], c.config)

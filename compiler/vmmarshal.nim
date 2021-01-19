@@ -9,7 +9,7 @@
 
 ## Implements marshaling for the VM.
 
-import streams, json, intsets, tables, ast, astalgo, idents, types, msgs,
+import streams, json, std/packedsets, tables, ast, astalgo, idents, types, msgs,
   options, lineinfos
 
 proc ptrToInt(x: PNode): int {.inline.} =
@@ -34,9 +34,9 @@ proc getField(n: PNode; position: int): PSym =
     if n.sym.position == position: result = n.sym
   else: discard
 
-proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet; conf: ConfigRef)
+proc storeAny(s: var string; t: PType; a: PNode; stored: var PackedSet[int]; conf: ConfigRef)
 
-proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: ConfigRef) =
+proc storeObj(s: var string; typ: PType; x: PNode; stored: var PackedSet[int]; conf: ConfigRef) =
   assert x.kind == nkObjConstr
   let start = 1
   for i in start..<x.len:
@@ -54,7 +54,7 @@ proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet; conf: Con
       s.add(": ")
       storeAny(s, field.typ, it, stored, conf)
 
-proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
+proc storeAny(s: var string; t: PType; a: PNode; stored: var PackedSet[int];
               conf: ConfigRef) =
   case t.kind
   of tyNone: assert false
@@ -130,7 +130,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
     internalError conf, a.info, "cannot marshal at compile-time " & t.typeToString
 
 proc storeAny*(s: var string; t: PType; a: PNode; conf: ConfigRef) =
-  var stored = initIntSet()
+  var stored = initPackedSet[int]()
   storeAny(s, t, a, stored, conf)
 
 proc loadAny(p: var JsonParser, t: PType,

@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
+import ast, astalgo, std/packedsets, tables, options, lineinfos, hashes, idents,
   btrees, md5
 
 import ic / to_packed_ast
@@ -32,7 +32,7 @@ type
     packed*: PackedModuleGraph
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
-    deps*: IntSet # the dependency graph or potentially its transitive closure.
+    deps*: PackedSet[int] # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
@@ -247,7 +247,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   # but to the module graph:
   result.idgen = IdGenerator(module: -1'i32, symId: 0'i32, typeId: 0'i32)
   initStrTable(result.packageSyms)
-  result.deps = initIntSet()
+  result.deps = initPackedSet[int]()
   result.importDeps = initTable[FileIndex, seq[FileIndex]]()
   result.ifaces = @[]
   result.importStack = @[]
@@ -268,7 +268,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
-  g.deps = initIntSet()
+  g.deps = initPackedSet[int]()
   g.ifaces = @[]
   g.importStack = @[]
   g.inclToMod = initTable[FileIndex, FileIndex]()
@@ -307,7 +307,7 @@ proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   else:
     result = g.inclToMod.getOrDefault(fileIdx)
 
-proc transitiveClosure(g: var IntSet; n: int) =
+proc transitiveClosure(g: var PackedSet[int]; n: int) =
   # warshall's algorithm
   for k in 0..<n:
     for i in 0..<n:

@@ -10,7 +10,7 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
+  std/packedsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
   lineinfos, int128
 
 type
@@ -186,9 +186,9 @@ proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
   result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
     (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
 
-proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
+proc iterOverTypeAux(marker: var PackedSet[int], t: PType, iter: TTypeIter,
                      closure: RootRef): bool
-proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
+proc iterOverNode(marker: var PackedSet[int], n: PNode, iter: TTypeIter,
                   closure: RootRef): bool =
   if n != nil:
     case n.kind
@@ -200,7 +200,7 @@ proc iterOverNode(marker: var IntSet, n: PNode, iter: TTypeIter,
         result = iterOverNode(marker, n[i], iter, closure)
         if result: return
 
-proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
+proc iterOverTypeAux(marker: var PackedSet[int], t: PType, iter: TTypeIter,
                      closure: RootRef): bool =
   result = false
   if t == nil: return
@@ -217,14 +217,14 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
       if t.n != nil and t.kind != tyProc: result = iterOverNode(marker, t.n, iter, closure)
 
 proc iterOverType(t: PType, iter: TTypeIter, closure: RootRef): bool =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = iterOverTypeAux(marker, t, iter, closure)
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate,
-                      marker: var IntSet): bool
+                      marker: var PackedSet[int]): bool
 
 proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
-                          marker: var IntSet): bool =
+                          marker: var PackedSet[int]): bool =
   result = false
   case n.kind
   of nkRecList:
@@ -246,7 +246,7 @@ proc searchTypeNodeForAux(n: PNode, p: TTypePredicate,
   else: discard
 
 proc searchTypeForAux(t: PType, predicate: TTypePredicate,
-                      marker: var IntSet): bool =
+                      marker: var PackedSet[int]): bool =
   # iterates over VALUE types!
   result = false
   if t == nil: return
@@ -268,7 +268,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
     discard
 
 proc searchTypeFor*(t: PType, predicate: TTypePredicate): bool =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = searchTypeForAux(t, predicate, marker)
 
 proc isObjectPredicate(t: PType): bool =
@@ -289,7 +289,7 @@ type
     frEmbedded                # type has an object type field somewhere embedded
 
 proc analyseObjectWithTypeFieldAux(t: PType,
-                                   marker: var IntSet): TTypeFieldResult =
+                                   marker: var PackedSet[int]): TTypeFieldResult =
   var res: TTypeFieldResult
   result = frNone
   if t == nil: return
@@ -321,7 +321,7 @@ proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult =
   # this does a complex analysis whether a call to ``objectInit`` needs to be
   # made or initializing of the type field suffices or if there is no type field
   # at all in this type.
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = analyseObjectWithTypeFieldAux(t, marker)
 
 proc isGCRef(t: PType): bool =
@@ -357,8 +357,8 @@ proc containsHiddenPointer*(typ: PType): bool =
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool
-proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
+proc canFormAcycleAux(marker: var PackedSet[int], typ: PType, startId: int): bool
+proc canFormAcycleNode(marker: var PackedSet[int], n: PNode, startId: int): bool =
   result = false
   if n != nil:
     result = canFormAcycleAux(marker, n.typ, startId)
@@ -371,7 +371,7 @@ proc canFormAcycleNode(marker: var IntSet, n: PNode, startId: int): bool =
           result = canFormAcycleNode(marker, n[i], startId)
           if result: return
 
-proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
+proc canFormAcycleAux(marker: var PackedSet[int], typ: PType, startId: int): bool =
   result = false
   if typ == nil: return
   if tfAcyclic in typ.flags: return
@@ -400,12 +400,12 @@ proc isFinal*(t: PType): bool =
   result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc canFormAcycle*(typ: PType): bool =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = canFormAcycleAux(marker, typ, typ.id)
 
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
+proc mutateTypeAux(marker: var PackedSet[int], t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
-proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
+proc mutateNode(marker: var PackedSet[int], n: PNode, iter: TTypeMutator,
                 closure: RootRef): PNode =
   result = nil
   if n != nil:
@@ -419,7 +419,7 @@ proc mutateNode(marker: var IntSet, n: PNode, iter: TTypeMutator,
       for i in 0..<n.len:
         result.add mutateNode(marker, n[i], iter, closure)
 
-proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
+proc mutateTypeAux(marker: var PackedSet[int], t: PType, iter: TTypeMutator,
                    closure: RootRef): PType =
   result = nil
   if t == nil: return
@@ -431,7 +431,7 @@ proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
   assert(result != nil)
 
 proc mutateType(t: PType, iter: TTypeMutator, closure: RootRef): PType =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = mutateTypeAux(marker, t, iter, closure)
 
 proc valueToString(a: PNode): string =
@@ -1248,7 +1248,7 @@ proc commonSuperclass*(a, b: PType): PType =
   assert a.kind == tyObject
   assert b.kind == tyObject
   var x = a
-  var ancestors = initIntSet()
+  var ancestors = initPackedSet[int]()
   while x != nil:
     x = skipTypes(x, skipPtrs)
     ancestors.incl(x.id)
@@ -1392,7 +1392,7 @@ proc containsCompileTimeOnly*(t: PType): bool =
 proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## same as 'skipTypes' but with a simple cycle detector.
   result = t
-  var seen = initIntSet()
+  var seen = initPackedSet[int]()
   while result.kind in kinds and not containsOrIncl(seen, result.id):
     result = lastSon(result)
 
@@ -1516,14 +1516,14 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\nlock levels differ"
     localError(conf, info, msg)
 
-proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
+proc isTupleRecursive(t: PType, cycleDetector: var PackedSet[int]): bool =
   if t == nil:
     return false
   if cycleDetector.containsOrIncl(t.id):
     return true
   case t.kind
   of tyTuple:
-    var cycleDetectorCopy: IntSet
+    var cycleDetectorCopy: PackedSet[int]
     for i in 0..<t.len:
       assign(cycleDetectorCopy, cycleDetector)
       if isTupleRecursive(t[i], cycleDetectorCopy):
@@ -1535,7 +1535,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return false
 
 proc isTupleRecursive*(t: PType): bool =
-  var cycleDetector = initIntSet()
+  var cycleDetector = initPackedSet[int]()
   isTupleRecursive(t, cycleDetector)
 
 proc isException*(t: PType): bool =

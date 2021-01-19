@@ -18,7 +18,7 @@
 ]#
 
 import std / [
-  parseopt, strutils, os, tables, times, intsets, hashes
+  parseopt, strutils, os, tables, times, packedsets, hashes
 ]
 
 import ".." / compiler / [
@@ -987,7 +987,7 @@ proc traverseIf(c: DrnimContext; n: PNode) =
   for f in newFacts: c.facts.add((f, condVersion))
   # build the 'Phi' information:
   let varsWithoutFinals = c.varVersions.len
-  var mutatedVars = initIntSet()
+  var mutatedVars = initPackedSet[int]()
   for i in oldVars ..< varsWithoutFinals:
     let vv = c.varVersions[i]
     if not mutatedVars.containsOrIncl(vv):

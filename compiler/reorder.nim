@@ -1,6 +1,6 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, strutils,
+  std/packedsets, ast, idents, algorithm, renderer, strutils,
   msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
@@ -43,7 +43,7 @@ proc accQuoted(cache: IdentCache; n: PNode): PIdent =
     else: discard
   result = getIdent(cache, id)
 
-proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
+proc addDecl(cache: IdentCache; n: PNode; declares: var PackedSet[int]) =
   case n.kind
   of nkPostfix: addDecl(cache, n[1], declares)
   of nkPragmaExpr: addDecl(cache, n[0], declares)
@@ -64,7 +64,7 @@ proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
     addDecl(cache, n[0], declares)
   else: discard
 
-proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLevel: bool) =
+proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var PackedSet[int]; topLevel: bool) =
   template deps(n) = computeDeps(cache, n, declares, uses, false)
   template decl(n) =
     if topLevel: addDecl(cache, n, declares)
@@ -119,7 +119,7 @@ proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   graph.addIncludeDep(FileIndex s.position, fileIdx)
 
 proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
-                    modulePath: string, includedFiles: var IntSet): PNode =
+                    modulePath: string, includedFiles: var PackedSet[int]): PNode =
   # Parses includes and injects them in the current tree
   if not n.hasIncludes:
     return n
@@ -308,12 +308,12 @@ proc hasBody(n: DepN): bool =
     n.hB = ord(n.pnode.hasBody)
   result = bool(n.hB)
 
-proc intersects(s1, s2: IntSet): bool =
+proc intersects(s1, s2: PackedSet[int]): bool =
   for a in s1:
     if s2.contains(a):
       return true
 
-proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
+proc buildGraph(n: PNode, deps: seq[(PackedSet[int], PackedSet[int])]): DepG =
   # Build a dependency graph
   result = newSeqOfCap[DepN](deps.len)
   for i in 0..<deps.len:
@@ -404,15 +404,15 @@ proc hasForbiddenPragma(n: PNode): bool =
 proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   if n.hasForbiddenPragma:
     return n
-  var includedFiles = initIntSet()
+  var includedFiles = initPackedSet[int]()
   let mpath = toFullPath(graph.config, module.fileIdx)
   let n = expandIncludes(graph, module, n, mpath,
                           includedFiles).splitSections
   result = newNodeI(nkStmtList, n.info)
-  var deps = newSeq[(IntSet, IntSet)](n.len)
+  var deps = newSeq[(PackedSet[int], PackedSet[int])](n.len)
   for i in 0..<n.len:
-    deps[i][0] = initIntSet()
-    deps[i][1] = initIntSet()
+    deps[i][0] = initPackedSet[int]()
+    deps[i][1] = initPackedSet[int]()
     computeDeps(graph.cache, n[i], deps[i][0], deps[i][1], true)
 
   var g = buildGraph(n, deps)

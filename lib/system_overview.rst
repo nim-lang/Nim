@@ -62,7 +62,7 @@ Proc                                               Usage
 `pop<#pop,seq[T]>`_                                Remove and return last item of a sequence
 `x & y<#&,seq[T],seq[T]>`_                         Concatenate two sequences
 `x[a .. b]<#[],openArray[T],HSlice[U,V]>`_         Slice of a sequence (both ends included)
-`x[a .. ^b]<#[],openArray[T],HSlice[U,V]>`_        Slice of a sequence but `b` is a 
+`x[a .. ^b]<#[],openArray[T],HSlice[U,V]>`_        Slice of a sequence but `b` is a
                                                    reversed index (both ends included)
 `x[a ..\< b]<#[],openArray[T],HSlice[U,V]>`_       Slice of a sequence (excluded upper bound)
 ==============================================     ==========================================
@@ -96,7 +96,7 @@ Proc                                Usage
 
 **See also:**
 * `sets module <sets.html>`_ for hash sets
-* `intsets module <intsets.html>`_ for efficient int sets
+* `packedsets module <packedsets.html>`_ for efficient `Ordinal` sets
 
 
 

@@ -93,9 +93,9 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
   return false
 
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
-                isStmtBranch: bool): IntSet =
+                isStmtBranch: bool): PackedSet[int] =
   if caseNode[caseIdx].kind == nkOfBranch:
-    result = initIntSet()
+    result = initPackedSet[int]()
     for val in processBranchVals(caseNode[caseIdx]):
       result.incl(val)
   else:

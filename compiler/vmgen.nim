@@ -29,7 +29,7 @@
 
 import
   strutils, ast, types, msgs, renderer, vmdef,
-  intsets, magicsys, options, lowerings, lineinfos, transf
+  std/packedsets, magicsys, options, lowerings, lineinfos, transf
 
 from modulegraphs import getBody
 
@@ -51,10 +51,10 @@ type
 proc debugInfo(c: PCtx; info: TLineInfo): string =
   result = toFileLineCol(c.config, info)
 
-proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
+proc codeListing(c: PCtx, result: var string, start = 0; last = -1) =
   ## for debugging purposes
   # first iteration: compute all necessary labels:
-  var jumpTargets = initIntSet()
+  var jumpTargets = initPackedSet[int]()
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
   for i in start..last:
     let x = c.code[i]

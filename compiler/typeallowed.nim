@@ -11,7 +11,7 @@
 ## for invalid types like 'openArray[var int]'.
 
 import
-  intsets, ast, renderer, options, semdata, types
+  std/packedsets, ast, renderer, options, semdata, types
 
 type
   TTypeAllowedFlag* = enum
@@ -25,10 +25,10 @@ type
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
-proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind;
+proc typeAllowedAux(marker: var PackedSet[int], typ: PType, kind: TSymKind;
                     c: PContext; flags: TTypeAllowedFlags = {}): PType
 
-proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
+proc typeAllowedNode(marker: var PackedSet[int], n: PNode, kind: TSymKind,
                      c: PContext; flags: TTypeAllowedFlags = {}): PType =
   if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, c, flags)
@@ -44,7 +44,7 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
           result = typeAllowedNode(marker, it, kind, c, flags)
           if result != nil: break
 
-proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
+proc typeAllowedAux(marker: var PackedSet[int], typ: PType, kind: TSymKind,
                     c: PContext; flags: TTypeAllowedFlags = {}): PType =
   assert(kind in {skVar, skLet, skConst, skProc, skFunc, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
@@ -192,7 +192,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
 proc typeAllowed*(t: PType, kind: TSymKind; c: PContext; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
   # wrong!
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = typeAllowedAux(marker, t, kind, c, flags)
 
 type
@@ -206,9 +206,9 @@ proc combine(dest: var ViewTypeKind, b: ViewTypeKind) {.inline.} =
   of immutableView:
     if b == mutableView: dest = b
 
-proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind
+proc classifyViewTypeAux(marker: var PackedSet[int], t: PType): ViewTypeKind
 
-proc classifyViewTypeNode(marker: var IntSet, n: PNode): ViewTypeKind =
+proc classifyViewTypeNode(marker: var PackedSet[int], n: PNode): ViewTypeKind =
   case n.kind
   of nkSym:
     result = classifyViewTypeAux(marker, n.typ)
@@ -220,7 +220,7 @@ proc classifyViewTypeNode(marker: var IntSet, n: PNode): ViewTypeKind =
       result.combine classifyViewTypeNode(marker, child)
       if result == mutableView: break
 
-proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
+proc classifyViewTypeAux(marker: var PackedSet[int], t: PType): ViewTypeKind =
   if containsOrIncl(marker, t.id): return noView
   case t.kind
   of tyVar:
@@ -252,7 +252,7 @@ proc classifyViewTypeAux(marker: var IntSet, t: PType): ViewTypeKind =
     result = noView
 
 proc classifyViewType*(t: PType): ViewTypeKind =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = classifyViewTypeAux(marker, t)
 
 proc directViewType*(t: PType): ViewTypeKind =

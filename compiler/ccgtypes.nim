@@ -204,7 +204,7 @@ proc isImportedCppType(t: PType): bool =
   result = (t.sym != nil and sfInfixCall in t.sym.flags) or
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
-proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope
+proc getTypeDescAux(m: BModule, origTyp: PType, check: var PackedSet[int]; kind: TSymKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
@@ -375,7 +375,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     doAssert m.forwTypeCache[sig] == result
   else: internalError(m.config, "getTypeForward(" & $typ.kind & ')')
 
-proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): Rope =
+proc getTypeDescWeak(m: BModule; t: PType; check: var PackedSet[int]; kind: TSymKind): Rope =
   ## like getTypeDescAux but creates only a *weak* dependency. In other words
   ## we know we only need a pointer to it so we only generate a struct forward
   ## declaration:
@@ -416,11 +416,11 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
     result = getTypeDescAux(m, t, check, kind)
 
 proc getSeqPayloadType(m: BModule; t: PType): Rope =
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   result = getTypeDescWeak(m, t, check, skParam) & "_Content"
   #result = getTypeForward(m, t, hashType(t)) & "_Content"
 
-proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
+proc seqV2ContentType(m: BModule; t: PType; check: var PackedSet[int]) =
   let sig = hashType(t)
   let result = cacheGetType(m.typeCache, sig)
   if result == nil:
@@ -443,7 +443,7 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
     result = OnUnknown
 
 proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
-                   check: var IntSet, declareEnvironment=true;
+                   check: var PackedSet[int], declareEnvironment=true;
                    weakDep=false) =
   params = nil
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
@@ -509,7 +509,7 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
-                        check: var IntSet, unionPrefix = ""): Rope =
+                        check: var PackedSet[int], unionPrefix = ""): Rope =
   result = nil
   case n.kind
   of nkRecList:
@@ -574,19 +574,19 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
         result.addf("$1$3 $2;$n", [getTypeDescAux(m, field.loc.t, check, skField), sname, noAlias])
   else: internalError(m.config, n.info, "genRecordFieldsAux()")
 
-proc getRecordFields(m: BModule, typ: PType, check: var IntSet): Rope =
+proc getRecordFields(m: BModule, typ: PType, check: var PackedSet[int]): Rope =
   result = genRecordFieldsAux(m, typ.n, typ, check)
 
 proc fillObjectFields*(m: BModule; typ: PType) =
   # sometimes generic objects are not consistently merged. We patch over
   # this fact here.
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   discard getRecordFields(m, typ, check)
 
 proc mangleDynLibProc(sym: PSym): Rope
 
 proc getRecordDesc(m: BModule, typ: PType, name: Rope,
-                   check: var IntSet): Rope =
+                   check: var PackedSet[int]): Rope =
   # declare the record:
   var hasField = false
 
@@ -641,7 +641,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     result.add "#pragma pack(pop)\L"
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
-                  check: var IntSet): Rope =
+                  check: var PackedSet[int]): Rope =
   result = "$1 $2 {$n" % [structOrUnion(typ), name]
   var desc: Rope = nil
   for i in 0..<typ.len:
@@ -680,7 +680,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
       result = if result.kind == tyGenericInst: result[1]
                else: result.elemType
 
-proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): Rope =
+proc getOpenArrayDesc(m: BModule, t: PType, check: var PackedSet[int]; kind: TSymKind): Rope =
   let sig = hashType(t)
   if kind == skParam:
     result = getTypeDescWeak(m, t[0], check, kind) & "*"
@@ -693,7 +693,7 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
-proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
+proc getTypeDescAux(m: BModule, origTyp: PType, check: var PackedSet[int]; kind: TSymKind): Rope =
   # returns only the type's name
 
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
@@ -924,7 +924,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
   excl(check, t.id)
 
 proc getTypeDesc(m: BModule, typ: PType; kind = skParam): Rope =
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   result = getTypeDescAux(m, typ, check, kind)
 
 type
@@ -935,7 +935,7 @@ type
 
 proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
   assert t.kind == tyProc
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   result = getTempName(m)
   var rettype, desc: Rope
   genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
@@ -951,7 +951,7 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
 
 proc finishTypeDescriptions(m: BModule) =
   var i = 0
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   while i < m.typeStack.len:
     let t = m.typeStack[i]
     if optSeqDestructors in m.config.globalOptions and t.skipTypes(abstractInst).kind == tySequence:
@@ -983,7 +983,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
     result.add "static "
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer

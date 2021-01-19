@@ -438,7 +438,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
   result = newOrPrevType(tyTuple, prev, c)
   result.n = newNodeI(nkRecList, n.info)
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   var counter = 0
   for i in ord(n.kind == nkBracketExpr)..<n.len:
     var a = n[i]
@@ -601,11 +601,11 @@ proc toCover(c: PContext, t: PType): Int128 =
     else:
       result = lengthOrd(c.config, t)
 
-proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
+proc semRecordNodeAux(c: PContext, n: PNode, check: var PackedSet[int], pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
 
-proc getIntSetOfType(c: PContext, t: PType): IntSet =
-  result = initIntSet()
+proc getIntSetOfType(c: PContext, t: PType): PackedSet[int] =
+  result = initPackedSet[int]()
   if t.enumHasHoles:
     let t = t.skipTypes(abstractRange)
     for field in t.n.sons:
@@ -625,7 +625,7 @@ iterator processBranchVals(b: PNode): int =
         for i in b[i][0].intVal..b[i][1].intVal:
           yield i.int
 
-proc renderAsType(vals: IntSet, t: PType): string =
+proc renderAsType(vals: PackedSet[int], t: PType): string =
   result = "{"
   let t = t.skipTypes(abstractRange)
   var enumSymOffset = 0
@@ -649,13 +649,13 @@ proc renderAsType(vals: IntSet, t: PType): string =
   result &= "}"
 
 proc formatMissingEnums(c: PContext, n: PNode): string =
-  var coveredCases = initIntSet()
+  var coveredCases = initPackedSet[int]()
   for i in 1..<n.len:
     for val in processBranchVals(n[i]):
       coveredCases.incl val
   result = (c.getIntSetOfType(n[0].typ) - coveredCases).renderAsType(n[0].typ)
 
-proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
+proc semRecordCase(c: PContext, n: PNode, check: var PackedSet[int], pos: var int,
                    father: PNode, rectype: PType) =
   var a = copyNode(n)
   checkMinSonsLen(n, 2, c.config)
@@ -709,7 +709,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
       localError(c.config, a.info, "not all cases are covered")
   father.add a
 
-proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
+proc semRecordNodeAux(c: PContext, n: PNode, check: var PackedSet[int], pos: var int,
                       father: PNode, rectype: PType, hasCaseFields: bool) =
   if n == nil: return
   case n.kind
@@ -735,7 +735,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       else: illFormedAst(n, c.config)
       if c.inGenericContext > 0:
         # use a new check intset here for each branch:
-        var newCheck: IntSet
+        var newCheck: PackedSet[int]
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
@@ -808,7 +808,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       father.add n
   else: illFormedAst(n, c.config)
 
-proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
+proc addInheritedFieldsAux(c: PContext, check: var PackedSet[int], pos: var int,
                            n: PNode) =
   case n.kind
   of nkRecCase:
@@ -834,7 +834,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias, tySink, tyOwned}:
     result = lastSon(result)
 
-proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
+proc addInheritedFields(c: PContext, check: var PackedSet[int], pos: var int,
                         obj: PType) =
   assert obj.kind == tyObject
   if (obj.len > 0) and (obj[0] != nil):
@@ -844,7 +844,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
 proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
   if n.len == 0:
     return newConstraint(c, tyObject)
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   var pos = 0
   var base, realBase: PType = nil
   # n[0] contains the pragmas (if any). We process these later...
@@ -1197,7 +1197,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   # lists too and then 'isType' is false.
   checkMinSonsLen(n, 1, c.config)
   result = newProcType(c, n.info, prev)
-  var check = initIntSet()
+  var check = initPackedSet[int]()
   var counter = 0
 
   for i in 1..<n.len:
@@ -1394,7 +1394,7 @@ proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
 
 proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   var
-    check = initIntSet()
+    check = initPackedSet[int]()
     pos = 0
   let
     realBase = t[0]

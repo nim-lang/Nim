@@ -12,7 +12,7 @@
 ## - recognize "all paths lead to 'wasMoved(x)'"
 
 import
-  ast, renderer, idents, intsets
+  ast, renderer, idents, std/packedsets
 
 from trees import exprStructuralEquivalent
 
@@ -61,7 +61,7 @@ proc mergeBasicBlockInfo(parent: var BasicBlock; this: BasicBlock) {.inline.} =
     parent.wasMovedLocs.setLen 0
     parent.hasReturn = true
 
-proc wasMovedTarget(matches: var IntSet; branch: seq[PNode]; moveTarget: PNode): bool =
+proc wasMovedTarget(matches: var PackedSet[int]; branch: seq[PNode]; moveTarget: PNode): bool =
   result = false
   for i in 0..<branch.len:
     if exprStructuralEquivalent(branch[i][1].skipAddr, moveTarget,
@@ -72,7 +72,7 @@ proc wasMovedTarget(matches: var IntSet; branch: seq[PNode]; moveTarget: PNode):
 proc intersect(summary: var seq[PNode]; branch: seq[PNode]) =
   # keep all 'wasMoved(x)' calls in summary that are also in 'branch':
   var i = 0
-  var matches = initIntSet()
+  var matches = initPackedSet[int]()
   while i < summary.len:
     if wasMovedTarget(matches, branch, summary[i][1].skipAddr):
       inc i

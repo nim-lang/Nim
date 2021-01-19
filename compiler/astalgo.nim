@@ -12,7 +12,7 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
+  ast, hashes, std/packedsets, strutils, options, lineinfos, ropes, idents, rodutils,
   msgs
 
 proc hashNode*(p: RootRef): Hash
@@ -280,14 +280,14 @@ proc lineInfoToStr(conf: ConfigRef; info: TLineInfo): Rope =
                              rope(toLinenumber(info)),
                              rope(toColumn(info))]
 
-proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var PackedSet[int],
                    indent, maxRecDepth: int): Rope
-proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var PackedSet[int],
                   indent, maxRecDepth: int): Rope
-proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var PackedSet[int],
                    indent, maxRecDepth: int): Rope
 
-proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var PackedSet[int], indent: int,
                   maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -319,7 +319,7 @@ proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
     result.addf("$N$1\"lode\": $2", [istr, treeToYamlAux(conf, n.loc.lode, marker, indent + 2, maxRecDepth - 1)])
     result.addf("$N$1}", [rspaces(indent)])
 
-proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var PackedSet[int], indent: int,
                    maxRecDepth: int): Rope =
   var sonsRope: Rope
   if n == nil:
@@ -350,7 +350,7 @@ proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
     result.addf("$N$1\"align\": $2", [istr, rope(n.align)])
     result.addf("$N$1\"sons\": $2", [istr, sonsRope])
 
-proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var PackedSet[int], indent: int,
                    maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -389,15 +389,15 @@ proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
     result.addf("$N$1}", [rspaces(indent)])
 
 proc treeToYaml(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = treeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
 proc typeToYaml(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = typeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
 proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope =
-  var marker = initIntSet()
+  var marker = initPackedSet[int]()
   result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
 import tables
@@ -827,7 +827,7 @@ proc initIdentIter*(ti: var TIdentIter, tab: TStrTable, s: PIdent): PSym =
   else: result = nextIdentIter(ti, tab)
 
 proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
-                         excluding: IntSet): PSym =
+                         excluding: PackedSet[int]): PSym =
   var h: Hash = ti.h and high(tab.data)
   var start = h
   result = tab.data[h]
@@ -843,7 +843,7 @@ proc nextIdentExcluding*(ti: var TIdentIter, tab: TStrTable,
   if result != nil and contains(excluding, result.id): result = nil
 
 proc firstIdentExcluding*(ti: var TIdentIter, tab: TStrTable, s: PIdent,
-                          excluding: IntSet): PSym =
+                          excluding: PackedSet[int]): PSym =
   ti.h = s.h
   ti.name = s
   if tab.counter == 0: result = nil
