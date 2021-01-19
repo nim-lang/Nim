@@ -36,3 +36,9 @@ for i in big"0" ..< big"5":
   doAssert i is JsBigInt
   list.add i
 doAssert list == @[big"0", big"1", big"2", big"3", big"4"]
+
+block:
+  let b = big"2"
+  doAssert -b ** big"3" == big"-8"
+  doAssert -b ** big"2" == big"4" # not -4 because of precedence
+  doAssert -big"3" == big"-3"

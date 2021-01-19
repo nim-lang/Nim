@@ -22,6 +22,10 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added `BackwardsIndex` overload for `JsonNode`.
+
+- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
@@ -89,8 +93,6 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
-- Added `BackwardsIndex` overload for `JsonNode`.
-
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
@@ -121,6 +123,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
+
+- Deprecated `TaintedString` and `--taintmode`.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.

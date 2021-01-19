@@ -126,3 +126,45 @@ proc main =
   echo avals.len, " ", rankdef.len
 
 main()
+
+
+#------------------------------------------------------------------------------
+# Issue #16722, ref on distinct type, wrong destructors called
+#------------------------------------------------------------------------------
+
+type
+  Obj = object of RootObj
+  ObjFinal = object
+  ObjRef = ref Obj
+  ObjFinalRef = ref ObjFinal
+  D = distinct Obj
+  DFinal = distinct ObjFinal
+  DRef = ref D
+  DFinalRef = ref DFinal
+
+proc `=destroy`(o: var Obj) =
+  doAssert false, "no Obj is constructed in this sample"
+
+proc `=destroy`(o: var ObjFinal) =
+  doAssert false, "no ObjFinal is constructed in this sample"
+
+var dDestroyed: int
+proc `=destroy`(d: var D) =
+  dDestroyed.inc
+
+proc `=destroy`(d: var DFinal) =
+  dDestroyed.inc
+
+func newD(): DRef =
+  DRef ObjRef()
+
+func newDFinal(): DFinalRef =
+  DFinalRef ObjFinalRef()
+
+proc testRefs() =
+  discard newD()
+  discard newDFinal()
+
+testRefs()
+
+doAssert(dDestroyed == 2)

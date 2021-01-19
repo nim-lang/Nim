@@ -886,8 +886,8 @@ else: # JS
   func trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   func trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 
-  func `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
-  func `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
+  func `mod`*(x, y: float32): float32 {.importjs: "(# % #)".}
+  func `mod`*(x, y: float64): float64 {.importjs: "(# % #)".}
     ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
     ##
     ## .. code-block:: nim

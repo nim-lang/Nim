@@ -5,7 +5,7 @@ proc exec(cmd: string) =
   let status = execShellCmd(cmd)
   doAssert status == 0, cmd
 
-proc execEx(cmd: string): tuple[output: TaintedString, exitCode: int] =
+proc execEx(cmd: string): tuple[output: string, exitCode: int] =
   echo "deps.cmd: " & cmd
   execCmdEx(cmd, {poStdErrToStdOut, poUsePath, poEvalCommand})
 

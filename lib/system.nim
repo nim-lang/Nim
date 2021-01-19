@@ -1084,7 +1084,6 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  taintMode = compileOption("taintmode")
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
@@ -1107,22 +1106,8 @@ when defined(boehmgc):
     const boehmLib = "libgc.so.1"
   {.pragma: boehmGC, noconv, dynlib: boehmLib.}
 
-when taintMode:
-  type TaintedString* = distinct string ## A distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual_experimental.html#taint-mode>`_
-                                        ## for details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
+type TaintedString* {.deprecated: "Deprecated since 1.5".} = string
 
-  proc len*(s: TaintedString): int {.borrow.}
-else:
-  type TaintedString* = string          ## A distinct string type that
-                                        ## is `tainted`:idx:, see `taint mode
-                                        ## <manual_experimental.html#taint-mode>`_
-                                        ## for details. It is an alias for
-                                        ## ``string`` if the taint mode is not
-                                        ## turned on.
 
 when defined(profiler) and not defined(nimscript):
   proc nimProfile() {.compilerproc, noinline.}
@@ -1514,7 +1499,7 @@ const
     ## Contains an IEEE floating point value of *Not A Number*.
     ##
     ## Note that you cannot compare a floating point value to this value
-    ## and expect a reasonable result - use the `classify` procedure
+    ## and expect a reasonable result - use the `isNaN` or `classify` procedure
     ## in the `math module <math.html>`_ for checking for NaN.
 
 
