@@ -7,10 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Deprecated in favor of the generic `packedsets module <packedsets.html>`_
+## Specialization of the generic `packedsets module <packedsets.html>`_
 ## for ordinal sparse sets.
-
-{.deprecated: "Use the 'packedsets' module instead".}
 
 import std/private/since
 import std/packedsets
