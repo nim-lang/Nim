@@ -13,13 +13,14 @@
 ## then be rendered to text in a very simple manner. Unfortunately nobody wrote
 ## this code. So instead we wrap the existing cgen.nim and its friends so that
 ## we call directly into the existing code generation logic but avoiding the
-## naive, outdated `passes` design. Thus you will see plenty of
-## 'symbolFiles == disabledSf' checks in the old code -- the old code is
+## naive, outdated `passes` design. Thus you will see some
+## `useAliveDataFromDce in flags` checks in the old code -- the old code is
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
 import std / intsets
-import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen]
+import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen,
+  pathutils, extccomp, msgs]
 
 import packed_ast, to_packed_ast, bitabs, dce
 
@@ -43,6 +44,22 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
 
+proc addFileToLink(config: ConfigRef; m: PSym) =
+  let filename = AbsoluteFile toFullPath(config, m.position.FileIndex)
+  let ext =
+      if config.backend == backendCpp: ".nim.cpp"
+      elif config.backend == backendObjc: ".nim.m"
+      else: ".nim.c"
+  let cfile = changeFileExt(completeCfilePath(config, withPackageName(config, filename)), ext)
+  var cf = Cfile(nimname: m.name.s, cname: cfile,
+                 obj: completeCfilePath(config, toObjFile(config, cfile)),
+                 flags: {CfileFlag.Cached})
+  addFileToCompile(config, cf)
+
+proc aliveSymsChanged(m: LoadedModule; alive: AliveSyms): bool =
+  # XXX Todo.
+  result = true
+
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
   ## Nim program aka `ModuleGraph`.
@@ -62,5 +79,8 @@ proc generateCode*(g: ModuleGraph) =
       # Consider this case: Module A uses symbol S from B and B does not use
       # S itself. A is then edited not to use S either. Thus we have to
       # recompile B in order to remove S from the final result.
-      discard "XXX to implement"
+      if aliveSymsChanged(g.packed[i], alive):
+        generateCodeForModule(g, g.packed[i], alive)
+      else:
+        addFileToLink(g.config, g.packed[i].module)
 

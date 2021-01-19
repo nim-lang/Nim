@@ -1983,7 +1983,7 @@ proc writeModule(m: BModule, pending: bool) =
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
+    if fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   onExit()
 
