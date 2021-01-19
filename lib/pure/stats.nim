@@ -10,7 +10,7 @@
 ## Statistical analysis framework for performing
 ## basic statistical analysis of data.
 ## The data is analysed in a single pass, when it
-## is pushed to a `RunningStat` or `RunningRegress` objects.
+## is pushed to a `RunningStat` or `RunningRegress` object.
 ##
 ## `RunningStat` calculates for a single data set
 ## - n (data count)
