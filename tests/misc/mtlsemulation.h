@@ -21,3 +21,17 @@ struct Foo2 {
   ~Foo2() { }
   int x;
 };
+
+static int ctorCalls = 0;
+static int dtorCalls = 0;
+
+struct Foo3 {
+  Foo3() noexcept {
+    ctorCalls = ctorCalls + 1;
+    x = 10;
+  }
+  ~Foo3() {
+    dtorCalls = dtorCalls + 1;
+  }
+  int x;
+};
