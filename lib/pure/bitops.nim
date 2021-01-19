@@ -760,24 +760,24 @@ when useBuiltinsRotate:
     # https://releases.llvm.org/8.0.0/tools/clang/docs/ReleaseNotes.html#non-comprehensive-list-of-changes-in-this-release
     # https://releases.llvm.org/8.0.0/tools/clang/docs/LanguageExtensions.html#builtin-rotateleft
     func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
-                      {.importc: "__builtin_rotateleft8".}
+                      {.importc: "__builtin_rotateleft8", noDecl.}
     func builtin_rotl16(value: cushort, shift: cushort): cushort
-                       {.importc: "__builtin_rotateleft16".}
+                       {.importc: "__builtin_rotateleft16", noDecl.}
     func builtin_rotl32(value: cuint, shift: cuint): cuint
-                       {.importc: "__builtin_rotateleft32".}
+                       {.importc: "__builtin_rotateleft32", noDecl.}
     when defined(amd64):
       func builtin_rotl64(value: culonglong, shift: culonglong): culonglong
-                         {.importc: "__builtin_rotateleft64".}
+                         {.importc: "__builtin_rotateleft64", noDecl.}
     
     func builtin_rotr8(value: cuchar, shift: cuchar): cuchar
-                      {.importc: "__builtin_rotateright8".}
+                      {.importc: "__builtin_rotateright8", noDecl.}
     func builtin_rotr16(value: cushort, shift: cushort): cushort
-                       {.importc: "__builtin_rotateright16".}
+                       {.importc: "__builtin_rotateright16", noDecl.}
     func builtin_rotr32(value: cuint, shift: cuint): cuint
-                       {.importc: "__builtin_rotateright32".}
+                       {.importc: "__builtin_rotateright32", noDecl.}
     when defined(amd64):
       func builtin_rotr64(value: culonglong, shift: culonglong): culonglong
-                         {.importc: "__builtin_rotateright64".}
+                         {.importc: "__builtin_rotateright64", noDecl.}
   elif defined(vcc):
     # Tested on Microsoft (R) C/C++ Optimizing Compiler 19.28.29335 x64 and x86.
     # Not tested in previous versions.
