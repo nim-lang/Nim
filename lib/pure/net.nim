@@ -88,7 +88,6 @@
 import std/private/since
 
 import nativesockets, os, strutils, times, sets, options, std/monotimes
-from ssl_certs import scanSSLCertificates
 import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
@@ -101,6 +100,8 @@ when useWinVersion:
 
 when defineSsl:
   import openssl
+  when not defined(nimDisableCertificateValidation) and not defined(windows):
+    from ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
 
