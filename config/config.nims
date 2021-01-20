@@ -6,11 +6,9 @@ cppDefine "unix"
 when defined(nimStrictMode):
   # xxx add more flags here, and use `-d:nimStrictMode` in more contexts in CI.
   when defined(nimHasWarningAsError):
-    # switch("warningAsError", "UnusedImport")
-    discard
+    switch("warningAsError", "UnusedImport")
 
   when defined(nimHasHintAsError):
-    switch("hint", "ConvFromXtoItselfNotNeeded")
-    # switch("hintAsError", "ConvFromXtoItselfNotNeeded")
+    # switch("hint", "ConvFromXtoItselfNotNeeded")
+    switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
-    discard
