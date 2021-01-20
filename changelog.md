@@ -135,6 +135,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
+- Added `--hintAsError` with similar semantics as `--warningAsError`.
 
 ## Tool changes
 
