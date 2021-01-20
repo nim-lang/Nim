@@ -835,7 +835,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   when client is HttpClient:
     result.bodyStream = newStringStream()
   else:
-      result.bodyStream = newFutureStream[string]("parseResponse")
+    result.bodyStream = newFutureStream[string]("parseResponse")
 
   if getBody and result.code != Http204:
     client.bodyStream = result.bodyStream
