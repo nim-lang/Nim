@@ -74,7 +74,7 @@ when defined(js):
     system.`+`(a, b)
   {.pop.}
 
-elif defined(posix):
+elif defined(posix) and not defined(osx):
   import posix
 
 elif defined(windows):
