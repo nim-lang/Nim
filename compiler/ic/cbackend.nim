@@ -18,11 +18,11 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std / intsets
+import std / [intsets, algorithm]
 import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, to_packed_ast, bitabs, dce
+import packed_ast, to_packed_ast, bitabs, dce, rodfiles
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
@@ -56,9 +56,26 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
                  flags: {CfileFlag.Cached})
   addFileToCompile(config, cf)
 
-proc aliveSymsChanged(m: LoadedModule; alive: AliveSyms): bool =
-  # XXX Todo.
-  result = true
+proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
+  let asymFile = toRodFile(config, AbsoluteFile toFullPath(config, position.FileIndex), ".alivesyms")
+  var s = newSeqOfCap[int32](alive[position].len)
+  for a in items(alive[position]): s.add int32(a)
+  sort(s)
+  var f2 = rodfiles.open(asymFile.string)
+  f2.loadHeader()
+  f2.loadSection aliveSymsSection
+  var oldData: seq[int32]
+  f2.loadSeq(oldData)
+  f2.close
+  if f2.err == ok and oldData == s:
+    result = false
+  else:
+    result = true
+    var f = rodfiles.create(asymFile.string)
+    f.storeHeader()
+    f.storeSection aliveSymsSection
+    f.storeSeq(s)
+    close f
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
@@ -79,8 +96,7 @@ proc generateCode*(g: ModuleGraph) =
       # Consider this case: Module A uses symbol S from B and B does not use
       # S itself. A is then edited not to use S either. Thus we have to
       # recompile B in order to remove S from the final result.
-      if aliveSymsChanged(g.packed[i], alive):
+      if aliveSymsChanged(g.config, g.packed[i].module.position, alive):
         generateCodeForModule(g, g.packed[i], alive)
       else:
         addFileToLink(g.config, g.packed[i].module)
-

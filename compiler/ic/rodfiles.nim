@@ -31,6 +31,7 @@ type
     bodiesSection
     symsSection
     typesSection
+    aliveSymsSection # beware, this is stored in a `.alivesyms` file.
 
   RodFileError* = enum
     ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
@@ -134,7 +135,7 @@ proc loadHeader*(f: var RodFile) =
 
 proc storeSection*(f: var RodFile; s: RodSection) =
   if f.err != ok: return
-  assert f.currentSection == pred s
+  assert f.currentSection < s
   f.currentSection = s
   storePrim(f, s)
 
