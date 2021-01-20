@@ -21,6 +21,8 @@ when defined(windows):
   from os import absolutePath
 else:
   import os
+  when not defined(osx):
+    import osproc
 
 const osOpenCmd* =
   when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \
