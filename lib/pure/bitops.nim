@@ -842,11 +842,9 @@ func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
   (value shr rot) or (value shl ((-rot) and mask))
 
 func shiftTypeToImpl(size: static int, shift: int): auto {.inline.} =
-  when (defined(vcc) and (size == 4 or size == 8)) or defined(gcc) or
-       defined(icl):
+  when (defined(vcc) and (size in [4, 8])) or defined(gcc) or defined(icl):
     cint(shift)
-  elif (defined(vcc) and (size == 1 or size == 2)) or
-       (defined(clang) and size == 1):
+  elif (defined(vcc) and (size in [1, 2])) or (defined(clang) and size == 1):
     cuchar(shift)
   elif defined(clang):
     when size == 2:
