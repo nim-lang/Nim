@@ -35,7 +35,7 @@ const
 proc splitTestFile*(file: string): tuple[cat: string, path: string] =
   ## At least one directory is required in the path, to use as a category name
   runnableExamples:
-    doAssert splitTestFile("tests/fakedir/tfakename.nim") == ("fakedir", "tests/fakedir/tfakename.nim")
+    doAssert splitTestFile("tests/fakedir/tfakename.nim") == ("fakedir", "tests/fakedir/tfakename.nim".unixToNativePath)
   for p in file.parentDirs(inclusive = false):
     let parent = p.parentDir
     if parent.lastPathPart == testsFname:
