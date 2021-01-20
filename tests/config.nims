@@ -22,4 +22,4 @@ hint("Processing", off)
 # (works through process calls, e.g. tests that invoke nim).
 # switch("define", "nimTestsEnableFlaky")
 
-switch("hint", "ConvFromXtoItselfNotNeeded")
+# switch("hint", "ConvFromXtoItselfNotNeeded")
