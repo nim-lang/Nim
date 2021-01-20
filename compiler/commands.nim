@@ -191,7 +191,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i == arg.len: discard
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  if state == wHint:
+  # unfortunately, hintUser and warningUser clash
+  if state in {wHint, wHintAsError}:
     let x = findStr(hintMin, hintMax, id, errUnknown)
     if x != errUnknown: n = TNoteKind(x)
     else: localError(conf, info, "unknown hint: " & id)
@@ -209,13 +210,13 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.modifiedyNotes, n)
     case val
     of "on":
-      if state == wWarningAsError:
-        incl(conf.warningAsErrors, n)
+      if state in {wWarningAsError, wHintAsError}:
+        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
       else:
         incl(conf.notes, n)
         incl(conf.mainPackageNotes, n)
     of "off":
-      if state == wWarningAsError:
+      if state in {wWarningAsError, wHintAsError}:
         excl(conf.warningAsErrors, n)
       else:
         excl(conf.notes, n)
@@ -607,6 +608,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
   of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
+  of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)

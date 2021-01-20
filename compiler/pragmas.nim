@@ -352,6 +352,7 @@ proc processNote(c: PContext, n: PNode) =
     of wHint: handleNote(hintMin .. hintMax, c.config.notes)
     of wWarning: handleNote(warnMin .. warnMax, c.config.notes)
     of wWarningAsError: handleNote(warnMin .. warnMax, c.config.warningAsErrors)
+    of wHintAsError: handleNote(hintMin .. hintMax, c.config.warningAsErrors)
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
