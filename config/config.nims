@@ -9,3 +9,4 @@ when defined(nimStrictMode):
     switch("warningAsError", "UnusedImport")
   when defined(nimHasHintAsError):
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
+    # future work: XDeclaredButNotUsed
