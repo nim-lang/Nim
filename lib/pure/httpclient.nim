@@ -833,7 +833,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
     httpError("Connection was closed before full request has been made")
 
   when client is HttpClient:
-      result.bodyStream = newStringStream()
+    result.bodyStream = newStringStream()
   else:
       result.bodyStream = newFutureStream[string]("parseResponse")
 
