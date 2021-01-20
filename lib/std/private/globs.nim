@@ -5,6 +5,8 @@ to avoid duplication
 ]##
 
 import std/[os]
+when defined(windows):
+  from strutils import replace
 
 type
   PathEntry* = object

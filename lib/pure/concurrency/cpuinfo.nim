@@ -15,6 +15,9 @@ runnableExamples:
 
 include "system/inclrtl"
 
+when defined(linux):
+  import posix
+
 when defined(freebsd) or defined(macosx):
   {.emit: "#include <sys/types.h>".}
 
