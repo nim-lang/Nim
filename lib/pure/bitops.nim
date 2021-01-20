@@ -840,10 +840,7 @@ func rotr[T: SomeUnsignedInt](value: T, rot: int32): T {.inline.} =
   let rot = rot and mask
   (value shr rot) or (value shl ((-rot) and mask))
 
-func shiftTypeTo[T](value: T, shift: int): auto {.inline.} =
-  ## Returns the `shift` for the rotation according to the compiler and the size
-  ## of the` value`.
-  const size = sizeof(value)
+func shiftTypeToImpl(size: static int, shift: int): auto {.inline.} =
   when (defined(vcc) and (size == 4 or size == 8)) or defined(gcc) or
        defined(icl):
     cint(shift)
@@ -857,6 +854,11 @@ func shiftTypeTo[T](value: T, shift: int): auto {.inline.} =
       cuint(shift)
     elif size == 8:
       culonglong(shift)
+
+template shiftTypeTo[T](value: T, shift: int): auto =
+  ## Returns the `shift` for the rotation according to the compiler and the size
+  ## of the` value`.
+  shiftTypeToImpl(sizeof(value), shift)
 
 func rotateLeftBits*(value: uint8, shift: range[0..8]): uint8 {.inline.} =
   ## Left-rotate bits in a 8-bits value.
