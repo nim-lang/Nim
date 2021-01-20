@@ -22,16 +22,6 @@ import
 from trees import exprStructuralEquivalent, getRoot
 
 type
-  Scope = object  # well we do scope-based memory management. \
-    # a scope is comparable to an nkStmtListExpr like
-    # (try: statements; dest = y(); finally: destructors(); dest)
-    vars: seq[PSym]
-    wasMoved: seq[PNode]
-    final: seq[PNode] # finally section
-    needsTry: bool
-    parent: ptr Scope
-
-type
   Con = object
     owner: PSym
     g: ControlFlowGraph
@@ -41,6 +31,15 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
     idgen: IdGenerator
+
+  Scope = object # we do scope-based memory management.
+    # a scope is comparable to an nkStmtListExpr like
+    # (try: statements; dest = y(); finally: destructors(); dest)
+    vars: seq[PSym]
+    wasMoved: seq[PNode]
+    final: seq[PNode] # finally section
+    needsTry: bool
+    parent: ptr Scope
 
   ProcessMode = enum
     normal
@@ -1006,11 +1005,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
       if isUnpackedTuple(ri[0]):
         # unpacking of tuple: take over the elements
         result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-          not aliases(dest, ri):
-        # Rule 3: `=sink`(x, z); wasMoved(z)
-        var snk = c.genSink(dest, ri, isDecl)
-        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+        if not aliases(dest, ri):
+          # Rule 3: `=sink`(x, z); wasMoved(z)
+          var snk = c.genSink(dest, ri, isDecl)
+          result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+        else:
+          result = c.genSink(dest, destructiveMoveVar(ri, c, s), isDecl)
       else:
         result = c.genCopy(dest, ri)
         result.add p(ri, c, s, consumed)

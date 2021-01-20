@@ -92,6 +92,12 @@ copy
 destroy
 destroy
 destroy
+part-to-whole assigment:
+sink
+(children: @[])
+destroy
+copy
+destroy
 '''
 """
 
@@ -578,7 +584,7 @@ let w3 = newWrapper2(-1)
 echo $w3[]
 
 
-#---------------------------------------------------------------------
+#--------------------------------------------------------------------
 #self-assignments
 
 # Self-assignments that are not statically determinable will get
@@ -668,3 +674,42 @@ proc caseNotAConstant =
   echo s # @[(f: 2), (f: 2), (f: 3)]
 
 caseNotAConstant()
+
+
+#--------------------------------------------------------------------
+echo "part-to-whole assigment:"
+
+type
+  Tree = object
+    children: seq[Tree]
+
+  TreeDefaultHooks = object
+    children: seq[TreeDefaultHooks]
+
+proc `=destroy`(x: var Tree) = echo "destroy"
+proc `=sink`(x: var Tree, y: Tree) = echo "sink"
+proc `=copy`(x: var Tree, y: Tree) = echo "copy"
+
+proc partToWholeSeq =
+  var t = Tree(children: @[Tree()])
+  t = t.children[0] # This should be sunk, but with the special transform (tmp = t.children[0]; wasMoved(0); `=sink`(t, tmp))
+
+  var tc = TreeDefaultHooks(children: @[TreeDefaultHooks()])
+  tc = tc.children[0] # Ditto; if this were sunk with the normal transform (`=sink`(t, t.children[0]); wasMoved(t.children[0]))
+  echo tc             #        then it would crash because t.children[0] does not exist after the call to `=sink`
+
+partToWholeSeq()
+
+type List = object
+  next: ref List
+
+proc `=destroy`(x: var List) = echo "destroy"
+proc `=sink`(x: var List, y: List) = echo "sink"
+proc `=copy`(x: var List, y: List) = echo "copy"
+
+proc partToWholeUnownedRef =
+  var t = List(next: new List)
+  t = t.next[] # Copy because t.next is not an owned ref, and thus t.next[] cannot be moved
+
+partToWholeUnownedRef()
+
