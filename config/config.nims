@@ -10,5 +10,7 @@ when defined(nimStrictMode):
     discard
 
   when defined(nimHasHintAsError):
-    switch("hintAsError", "ConvFromXtoItselfNotNeeded")
+    switch("hint", "ConvFromXtoItselfNotNeeded")
+    # switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+    discard
