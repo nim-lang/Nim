@@ -6692,7 +6692,7 @@ in C/C++).
 **Note**: This pragma will not exist for the LLVM backend.
 
 
-`nodecl` pragma
+nodecl pragma
 -------------
 The `nodecl` pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
