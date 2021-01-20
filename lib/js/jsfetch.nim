@@ -2,8 +2,7 @@
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
-import jsheaders
-import asyncjs
+import asyncjs, jsheaders
 from httpcore import HttpMethod
 
 type
