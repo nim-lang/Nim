@@ -19,7 +19,7 @@ pkg1 "BipBuffer"
 # pkg1 "blscurve" # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg1 "bncurve"
 pkg1 "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg1 "bump", "nim c --gc:arc -r tests/tbump.nim", "https://github.com/disruptek/bump"
+pkg1 "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
 pkg1 "c2nim", "nim c testsuite/tester.nim"
 pkg1 "cascade"
 pkg1 "cello"
