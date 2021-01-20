@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'yield' only allowed in an iterator"
+  errormsg: "undeclared identifier: 'internalRetFuture'"
   cmd: "nim c $file"
   file: "asyncmacro.nim"
 """

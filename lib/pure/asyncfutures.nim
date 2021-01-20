@@ -23,6 +23,9 @@ type
     callbacks: CallbackList
 
     finished: bool
+    cancelled: bool
+    firstCancelled: bool
+    recursiveFuture*: FutureBase        ## Stored future for recursive cancellation
     error*: ref Exception              ## Stored exception
     errorStackTrace*: string
     when not defined(release):
@@ -37,6 +40,8 @@ type
 
   FutureError* = object of Defect
     cause*: FutureBase
+  
+  FutureCancelledError* = object of FutureError
 
 when not defined(release):
   var currentID = 0
@@ -108,6 +113,9 @@ proc callSoon*(cbproc: proc ()) =
 template setupFutureBase(fromProc: string) =
   new(result)
   result.finished = false
+  result.cancelled = false
+  result.firstCancelled = false
+  result.recursiveFuture = nil
   when not defined(release):
     result.stackTrace = getStackTraceEntries()
     result.id = currentID
@@ -132,16 +140,19 @@ proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   result = typeof(result)(fo)
   when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
-proc clean*[T](future: FutureVar[T]) =
+proc clean*[T](futureVar: FutureVar[T]) =
   ## Resets the `finished` status of `future`.
-  Future[T](future).finished = false
-  Future[T](future).error = nil
+  template future: untyped = Future[T](futureVar)
+  future.finished = false
+  future.cancelled = false
+  future.firstCancelled = false
+  future.error = nil
 
 proc checkFinished[T](future: Future[T]) =
   ## Checks whether `future` is finished. If it is then raises a
   ## `FutureError`.
   when not defined(release):
-    if future.finished:
+    if future.finished and not future.cancelled:
       var msg = ""
       msg.add("An attempt was made to complete a Future more than once. ")
       msg.add("Details:")
@@ -189,15 +200,24 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
         last = last.next
       last.next = newCallback
 
+proc cancel(future: FutureBase): bool {.gcsafe.}
+
+template completeFuture() =
+  if not future.cancelled:
+    future.firstCancelled = true
+  if not future.cancel():
+    future.finished = true
+    future.callbacks.call()
+
 proc completeImpl[T, U](future: Future[T], val: U, isVoid: static bool) =
   #assert(not future.finished, "Future already finished, cannot finish twice.")
-  checkFinished(future)
-  assert(future.error == nil)
-  when not isVoid:
-    future.value = val
-  future.finished = true
-  future.callbacks.call()
-  when isFutureLoggingEnabled: logFutureFinish(future)
+  if not future.cancelled:
+    checkFinished(future)
+    assert(future.error == nil)
+    when not isVoid:
+      future.value = val
+    completeFuture()
+    when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes `future` with value `val`.
@@ -206,37 +226,61 @@ proc complete*[T](future: Future[T], val: T) =
 proc complete*(future: Future[void], val = Future[void].default) =
   completeImpl(future, (), true)
 
-proc complete*[T](future: FutureVar[T]) =
+proc complete*[T](futureVar: FutureVar[T]) =
   ## Completes a `FutureVar`.
-  template fut: untyped = Future[T](future)
-  checkFinished(fut)
-  assert(fut.error == nil)
-  fut.finished = true
-  fut.callbacks.call()
-  when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
+  if not futureVar.cancelled:
+    template future: untyped = Future[T](futureVar)
+    checkFinished(future)
+    assert(future.error == nil)
+    completeFuture()
+    when isFutureLoggingEnabled: logFutureFinish(Future[T](futureVar))
 
-proc complete*[T](future: FutureVar[T], val: T) =
+proc complete*[T](futureVar: FutureVar[T], val: T) =
   ## Completes a `FutureVar` with value `val`.
   ##
   ## Any previously stored value will be overwritten.
-  template fut: untyped = Future[T](future)
-  checkFinished(fut)
-  assert(fut.error.isNil())
-  fut.finished = true
-  fut.value = val
-  fut.callbacks.call()
-  when isFutureLoggingEnabled: logFutureFinish(future)
+  ## Will cancel the `future` and all it's nested futures if they're not finished yet.
+  if not futureVar.cancelled:
+    template future: untyped = Future[T](futureVar)
+    checkFinished(future)
+    assert(future.error.isNil())
+    future.value = val
+    completeFuture()
+    when isFutureLoggingEnabled: logFutureFinish(futureVar)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes `future` with `error`.
+  ## 
+  ## Will cancel the `future` and all it's nested futures if they're not finished yet.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
-  checkFinished(future)
-  future.finished = true
-  future.error = error
-  future.errorStackTrace =
-    if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
-  future.callbacks.call()
-  when isFutureLoggingEnabled: logFutureFinish(future)
+  if not future.cancelled:
+    checkFinished(future)
+    future.error = error
+    future.errorStackTrace =
+      if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
+    completeFuture()
+    when isFutureLoggingEnabled: logFutureFinish(future)
+
+proc internalContinueCancel*(future: FutureBase) =
+  if not future.finished:
+    future.cancelled = true
+    future.finished = true
+    if not future.firstCancelled:
+      future.error = newException(FutureCancelledError, "Future is cancelled")
+    future.callbacks.call()
+
+proc cancel(future: FutureBase): bool {.gcsafe.} =
+  ## Cancels `future` without setting any value
+  ## 
+  ## Works like complete(Future[void]) but only for base type. Needed to recursively cancel the futures of any type.
+  if future.finished:
+    return false
+
+  if future.recursiveFuture != nil:
+    if future.recursiveFuture.cancel():
+      return true
+  future.internalContinueCancel()
+  return false
 
 proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
@@ -331,7 +375,7 @@ proc `$`*(stackTraceEntries: seq[StackTraceEntry]): string =
     if hint.len > 0:
       result.add(spaces(indent+2) & "## " & hint & "\n")
 
-proc injectStacktrace[T](future: Future[T]) =
+proc injectStacktrace(future: FutureBase) =
   when not defined(release):
     const header = "\nAsync traceback:\n"
 
@@ -356,6 +400,16 @@ proc injectStacktrace[T](future: Future[T]) =
     #   newMsg.add "\n" & $entry
     future.error.msg = newMsg
 
+proc internalCheckExcept*(future: FutureBase) =
+  if future.error != nil:
+    injectStacktrace(future)
+    raise future.error
+
+proc internalRead*[T](fut: Future[T] | FutureVar[T]): T {.inline.} =
+  # For internal use only. Used in asyncmacro
+  when T isnot void:
+    return fut.value
+
 proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of `future`. Future must be finished otherwise
   ## this function will fail with a `ValueError` exception.
@@ -366,11 +420,8 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
   else:
     let fut {.cursor.} = Future[T](future)
   if fut.finished:
-    if fut.error != nil:
-      injectStacktrace(fut)
-      raise fut.error
-    when T isnot void:
-      result = fut.value
+    fut.internalCheckExcept()
+    fut.internalRead()
   else:
     # TODO: Make a custom exception type for this?
     raise newException(ValueError, "Future still in progress.")
@@ -403,6 +454,13 @@ proc finished*(future: FutureBase | FutureVar): bool =
 proc failed*(future: FutureBase): bool =
   ## Determines whether `future` completed with an error.
   return future.error != nil
+
+proc cancelled*(future: FutureBase | FutureVar): bool =
+  ## Determines whether `future` has been cancelled.
+  when future is FutureVar:
+    result = (FutureBase(future)).cancelled
+  else:
+    result = future.cancelled
 
 proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on `future` which raises an exception if the future

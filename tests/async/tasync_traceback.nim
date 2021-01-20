@@ -83,7 +83,7 @@ Async traceback:
     asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
       ## Resumes an async procedure
     asyncmacro\.nim\(\d+?\)\s+?aIter
-    asyncfutures\.nim\(\d+?\)\s+?read
+    asyncfutures\.nim\(\d+?\)\s+?internalCheckExcept
   \]#
 Exception message: b failure
 Exception type:
@@ -111,7 +111,7 @@ Async traceback:
     asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
       ## Resumes an async procedure
     asyncmacro\.nim\(\d+?\)\s+?fooIter
-    asyncfutures\.nim\(\d+?\)\s+?read
+    asyncfutures\.nim\(\d+?\)\s+?internalCheckExcept
   \]#
 Exception message: bar failure
 Exception type:

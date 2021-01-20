@@ -308,6 +308,9 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Changed the behaviour of `future.complete` and `future.fail`. Now they are cancelling the
+  the future which they are called on in cancellation points and cancel all recursive running futures.
+  The callbacks connected to all those futures are triggered upon cancellation.
 
 ## Language changes
 

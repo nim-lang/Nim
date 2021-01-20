@@ -31,7 +31,6 @@ template createCb(retFutureSym, iteratorNameSym,
           next = nameIterVar()
           if nameIterVar.finished:
             break
-
         if next == nil:
           if not retFutureSym.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a `nil` Future?"
@@ -39,6 +38,8 @@ template createCb(retFutureSym, iteratorNameSym,
         else:
           {.gcsafe.}:
             next.addCallback cast[proc() {.closure, gcsafe.}](identName)
+    except FutureCancelledError:
+      retFutureSym.internalContinueCancel()
     except:
       futureVarCompletions
       if retFutureSym.finished:
@@ -126,9 +127,15 @@ template await*(f: typed): untyped {.used.} =
     error "await expects Future[T], got " & $typeof(f)
 
 template await*[T](f: Future[T]): auto {.used.} =
-  var internalTmpFuture: FutureBase = f
+  when not declaredInScope(internalTmpFuture):
+    var internalTmpFuture {.inject.}: FutureBase
+  internalTmpFuture = f
+  internalRetFuture.recursiveFuture = internalTmpFuture
   yield internalTmpFuture
-  (cast[typeof(f)](internalTmpFuture)).read()
+  if internalRetFuture.cancelled:
+    raise newException(FutureCancelledError, "Future is cancelled")
+  internalTmpFuture.internalCheckExcept()
+  (cast[typeof(f)](internalTmpFuture)).internalRead()
 
 proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
@@ -179,7 +186,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   let body2 = extractDocCommentsAndRunnables(prc.body)
 
   # -> var retFuture = newFuture[T]()
-  var retFutureSym = genSym(nskVar, "retFuture")
+  var retFutureSym = ident "internalRetFuture" #genSym(nskVar, "retFuture")
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
     else: baseType
