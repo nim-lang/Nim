@@ -1,6 +1,7 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
   disabled: "openbsd"
+  disabled: "freebsd"
   disabled: "windows"
 """
 
