@@ -759,6 +759,7 @@ when useBuiltinsRotate:
     # been around for longer.
     # https://releases.llvm.org/8.0.0/tools/clang/docs/ReleaseNotes.html#non-comprehensive-list-of-changes-in-this-release
     # https://releases.llvm.org/8.0.0/tools/clang/docs/LanguageExtensions.html#builtin-rotateleft
+    # source for correct declarations: https://github.com/llvm/llvm-project/blob/main/clang/include/clang/Basic/Builtins.def
     func builtin_rotl8(value: cuchar, shift: cuchar): cuchar
                       {.importc: "__builtin_rotateleft8", nodecl.}
     func builtin_rotl16(value: cushort, shift: cushort): cushort
