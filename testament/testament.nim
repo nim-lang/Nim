@@ -16,6 +16,7 @@ import
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
+from lib/stdtest/specialpaths import splitTestFile
 
 var useColors = true
 var backendLogging = true
@@ -791,16 +792,9 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
-    # "/pathto/tests/stdlib/nre/captures.nim" -> "stdlib" + "tests/stdlib/nre/captures.nim"
-    var subPath = p.key.string
-    let nimRoot = currentSourcePath / "../.."
-      # makes sure points to this regardless of cwd or which nim is used to compile this.
-    doAssert(dirExists(nimRoot/testsDir), nimRoot/testsDir & " doesn't exist!") # sanity check
-    if subPath.isAbsolute: subPath = subPath.relativePath(nimRoot)
-    # at least one directory is required in the path, to use as a category name
-    let pathParts = subPath.relativePath(testsDir).split({DirSep, AltSep})
-    let cat = Category(pathParts[0])
-    processSingleTest(r, cat, p.cmdLineRest.string, subPath, gTargets, targetsSet)
+    var subPath = p.key
+    let (cat, path) = splitTestFile(subPath)
+    processSingleTest(r, cat.Category, p.cmdLineRest, path, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)
   else:
