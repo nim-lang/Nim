@@ -670,7 +670,7 @@ when defineSsl:
     # That means we can assume that the next internal index is the length of
     # extra data indexes.
     for i in ctx.referencedData:
-      GC_unref(getExtraData(ctx, i).RootRef)
+      GC_unref(getExtraData(ctx, i))
     ctx.context.SSL_CTX_free()
 
   proc `pskIdentityHint=`*(ctx: SslContext, hint: string) =
