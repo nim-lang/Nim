@@ -63,9 +63,6 @@ template fetchMethodToCstring(metod: HttpMethod): cstring =
   of HttpPatch:  "PATCH".cstring
   else:          "GET".cstring
 
-func hasFetch*(): bool {.importjs: "(() => { return !!window.fetch })()".}
-  ## Convenience func to detect Fetch API support, returns `true` if Fetch is supported.
-
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
