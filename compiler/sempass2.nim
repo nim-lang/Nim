@@ -818,9 +818,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
-      if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+      if a.sym != getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind)):
         createTypeBoundOps(tracked, t, n.info)
-        let op = t.attachedOps[TTypeAttachedOp(opKind)]
+        let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
         if op != nil:
           n[0].sym = op
 
@@ -1310,7 +1310,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var goals: set[Goal] = {}
     if strictFuncs in c.features: goals.incl constParameters
     if views in c.features: goals.incl borrowChecking
-    var partitions = computeGraphPartitions(s, body, g.config, goals)
+    var partitions = computeGraphPartitions(s, body, g, goals)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
     if views in c.features:

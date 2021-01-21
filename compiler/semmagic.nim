@@ -541,7 +541,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
 
         # check if we converted this finalizer into a destructor already:
         let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
-        if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == fin:
+        if t != nil and getAttachedOp(c.graph, t, attachedDestructor) != nil and
+            getAttachedOp(c.graph, t, attachedDestructor) == fin:
           discard "already turned this one into a finalizer"
         else:
           bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)
@@ -549,8 +550,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDestroy:
     result = n
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil:
-      result[0] = newSymNode(t.destructor)
+    let op = getAttachedOp(c.graph, t, attachedDestructor)
+    if op != nil:
+      result[0] = newSymNode(op)
   of mUnown:
     result = semUnown(c, n)
   of mExists, mForall:

@@ -1292,16 +1292,17 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfoV1(p.module, typ, a.lode.info)
-    if bt.destructor != nil and not isTrivialProc(p.module.g.graph, bt.destructor):
+    let op = getAttachedOp(p.module.g.graph, bt, attachedDestructor)
+    if op != nil and not isTrivialProc(p.module.g.graph, op):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
-      if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccNimCall:
+      if op.typ == nil or op.typ.callConv != ccNimCall:
         localError(p.module.config, a.lode.info,
           "the destructor that is turned into a finalizer needs " &
           "to have the 'nimcall' calling convention")
       var f: TLoc
-      initLocExpr(p, newSymNode(bt.destructor), f)
+      initLocExpr(p, newSymNode(op), f)
       p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
 
     if a.storage == OnHeap and usesWriteBarrier(p.config):
@@ -2204,7 +2205,8 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and getBody(p.module.g.graph, t.destructor).len != 0:
+    let op = getAttachedOp(p.module.g.graph, t, attachedDestructor)
+    if op != nil and getBody(p.module.g.graph, op).len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
@@ -2237,13 +2239,16 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
   var toStrProc: PSym = nil
-  for idx, p in items(t.methods):
-    if idx == ToStringProcSlot:
-      toStrProc = p
-      break
+  # XXX Move this to the frontend, cleaner solution.
+  when false:
+    for idx, p in items(t.methods):
+      if idx == ToStringProcSlot:
+        toStrProc = p
+        break
   if toStrProc == nil:
     toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph, p.module.idgen)
-    t.methods.add((ToStringProcSlot, toStrProc))
+    when false:
+      t.methods.add((ToStringProcSlot, toStrProc))
   var n = copyTree(e)
   n[0] = newSymNode(toStrProc)
   expr(p, n, d)

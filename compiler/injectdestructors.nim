@@ -260,13 +260,13 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
-  var op = t.attachedOps[kind]
+  var op = getAttachedOp(c.graph, t, kind)
   if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
-      op = canon.attachedOps[kind]
+      op = getAttachedOp(c.graph, canon, kind)
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
@@ -287,9 +287,9 @@ proc genDestroy(c: var Con; dest: PNode): PNode =
 proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   if optOwnedRefs in c.graph.config.globalOptions:
-    result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+    result = t.kind != tyRef and getAttachedOp(c.graph, t, attachedSink) != nil
   else:
-    result = t.attachedOps[attachedSink] != nil
+    result = getAttachedOp(c.graph, t, attachedSink) != nil
 
 proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
@@ -302,7 +302,7 @@ proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    if t.attachedOps[attachedSink] != nil:
+    if getAttachedOp(c.graph, t, attachedSink) != nil:
       result = c.genOp(t, attachedSink, dest, ri)
       result.add ri
     else:
@@ -375,8 +375,8 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   let objType = leDotExpr[0].typ
 
   if hasDestructor(c, objType):
-    if objType.attachedOps[attachedDestructor] != nil and
-        sfOverriden in objType.attachedOps[attachedDestructor].flags:
+    if getAttachedOp(c.graph, objType, attachedDestructor) != nil and
+        sfOverriden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
       localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
@@ -1095,7 +1095,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     echo n
 
   if optCursorInference in g.config.options:
-    computeCursors(owner, n, g.config)
+    computeCursors(owner, n, g)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

@@ -17,10 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed
-
-from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward,
-  systemModuleSym, semtab, getBody, someSym, allSyms
+  isolation_check, typeallowed, modulegraphs
 
 when defined(nimfix):
   import nimfix/prettybase

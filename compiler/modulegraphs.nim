@@ -34,6 +34,12 @@ type
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
+
+    typeInstCache*: Table[ItemId, seq[PType]] # A symbol's ItemId.
+    procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
+    attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
+    methodsPerType*: Table[ItemId, seq[(int, PSym)]] # Type ID, attached methods
+
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -90,6 +96,54 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
+  if g.typeInstCache.contains(s.itemId):
+    let x = addr(g.typeInstCache[s.itemId])
+    for t in x[]:
+      yield t
+
+proc addToGenericCache*(g: ModuleGraph; module: int; s: PSym; inst: PType) =
+  g.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
+  # XXX Also add to the packed module!
+
+iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
+  if g.procInstCache.contains(s.itemId):
+    let x = addr(g.procInstCache[s.itemId])
+    for t in x[]:
+      yield t
+
+proc addToGenericProcCache*(g: ModuleGraph; module: int; s: PSym; inst: PInstantiation) =
+  g.procInstCache.mgetOrPut(s.itemId, @[]).add inst
+  # XXX Also add to the packed module!
+
+proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
+  ## returns the requested attached operation for type `t`. Can return nil
+  ## if no such operation exists.
+  result = g.attachedOps[op].getOrDefault(t.itemId)
+
+proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  ## we also need to record this to the packed module.
+  g.attachedOps[op][t.itemId] = value
+  # XXX Also add to the packed module!
+
+proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  ## we also need to record this to the packed module.
+  g.attachedOps[op][t.itemId] = value
+  # XXX Also add to the packed module!
+
+proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  discard "To implement"
+
+iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
+  for a, b in items g.methodsPerType.getOrDefault(t.itemId):
+    yield (a, b)
+
+proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
+  g.methodsPerType.mgetOrPut(t.itemId, @[]).add (col, m)
+
+proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
+  let op = getAttachedOp(g, t, attachedAsgn)
+  result = op != nil and sfError in op.flags
 
 const
   cb64 = [
