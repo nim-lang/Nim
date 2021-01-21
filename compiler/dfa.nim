@@ -577,8 +577,6 @@ proc skipConvDfa*(n: PNode): PNode =
 type AliasKind* = enum
   yes, no, maybe
 
-from trees import exprStructuralEquivalent
-
 proc aliases*(obj, field: PNode): AliasKind =
   # obj -> field:
   # x -> x: true
@@ -592,8 +590,8 @@ proc aliases*(obj, field: PNode): AliasKind =
   # x[0] -> x[1]: false
   # x -> x[i]: true
   # x[i] -> x: false
-  # x[i] -> x[i]: MAYBE Further analysis could make this return true when i is a runtime-constant
-  # x[i] -> x[j]: MAYBE also returns MAYBE if only one of i or j is a compiletime-constant
+  # x[i] -> x[i]: maybe; Further analysis could make this return true when i is a runtime-constant
+  # x[i] -> x[j]: maybe; also returns maybe if only one of i or j is a compiletime-constant
   template collectImportantNodes(result, n) =
     var result: seq[PNode]
     var n = n
@@ -630,7 +628,7 @@ proc aliases*(obj, field: PNode): AliasKind =
       if currFieldPath[1].sym != currObjPath[1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
-        if not exprStructuralEquivalent(currFieldPath[1], currObjPath[1]):
+        if currFieldPath[1].intVal != currObjPath[1].intVal:
           return no
       else:
         result = maybe
