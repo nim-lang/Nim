@@ -15,6 +15,7 @@
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
+  hasLchmod* = false
 
 # On Linux:
 # timer_{create,delete,settime,gettime},

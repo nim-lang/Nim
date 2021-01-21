@@ -154,6 +154,114 @@ block fileOperations:
   doAssert fileExists("../dest/a/file.txt")
   removeDir("../dest")
 
+  # Symlink handling in `copyFile`, `copyFileWithPermissions`, `copyFileToDir`,
+  # `copyDir`, `copyDirWithPermissions`, `moveFile`, and `moveDir`.
+  block:
+    when not defined(windows):
+      const checkExpandSymlink = true
+    else:
+      const checkExpandSymlink = false
+
+    const buildDir = currentSourcePath.parentDir.parentDir/"build"
+    const dname = buildDir/"D20210116T140629"
+    const subDir = dname/"sub"
+    const subDir2 = dname/"sub2"
+    const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
+    const brokenSymlink = dname/brokenSymlinkName
+    const brokenSymlinkSrc = "D20210101T191320_I_DO_NOT_EXIST"
+    const brokenSymlinkCopy = brokenSymlink & "_COPY"
+    const brokenSymlinkInSubDir = subDir/brokenSymlinkName
+    const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName
+
+    createDir(subDir)
+    createSymlink(brokenSymlinkSrc, brokenSymlink)
+
+    # Test copyFile
+    doAssertRaises(OSError):
+      copyFile(brokenSymlink, brokenSymlinkCopy)
+    doAssertRaises(OSError):
+      copyFile(brokenSymlink, brokenSymlinkCopy, {cfSymlinkFollow})
+    copyFile(brokenSymlink, brokenSymlinkCopy, {cfSymlinkIgnore})
+    doAssert not fileExists(brokenSymlinkCopy)
+    copyFile(brokenSymlink, brokenSymlinkCopy, {cfSymlinkAsIs})
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkCopy) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkCopy)
+    removeFile(brokenSymlinkCopy)
+    doAssertRaises(AssertionDefect):
+      copyFile(brokenSymlink, brokenSymlinkCopy,
+                {cfSymlinkAsIs, cfSymlinkFollow})
+
+    # Test copyFileWithPermissions
+    doAssertRaises(OSError):
+      copyFileWithPermissions(brokenSymlink, brokenSymlinkCopy)
+    doAssertRaises(OSError):
+      copyFileWithPermissions(brokenSymlink, brokenSymlinkCopy,
+                              options = {cfSymlinkFollow})
+    copyFileWithPermissions(brokenSymlink, brokenSymlinkCopy,
+                            options = {cfSymlinkIgnore})
+    doAssert not fileExists(brokenSymlinkCopy)
+    copyFileWithPermissions(brokenSymlink, brokenSymlinkCopy,
+                            options = {cfSymlinkAsIs})
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkCopy) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkCopy)
+    removeFile(brokenSymlinkCopy)
+    doAssertRaises(AssertionDefect):
+      copyFileWithPermissions(brokenSymlink, brokenSymlinkCopy,
+                              options = {cfSymlinkAsIs, cfSymlinkFollow})
+
+    # Test copyFileToDir
+    doAssertRaises(OSError):
+      copyFileToDir(brokenSymlink, subDir)
+    doAssertRaises(OSError):
+      copyFileToDir(brokenSymlink, subDir, {cfSymlinkFollow})
+    copyFileToDir(brokenSymlink, subDir, {cfSymlinkIgnore})
+    doAssert not fileExists(brokenSymlinkInSubDir)
+    copyFileToDir(brokenSymlink, subDir, {cfSymlinkAsIs})
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkInSubDir) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkInSubDir)
+    removeFile(brokenSymlinkInSubDir)
+
+    createSymlink(brokenSymlinkSrc, brokenSymlinkInSubDir)
+
+    # Test copyDir
+    copyDir(subDir, subDir2)
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkInSubDir2) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkInSubDir2)
+    removeDir(subDir2)
+
+    # Test copyDirWithPermissions
+    copyDirWithPermissions(subDir, subDir2)
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkInSubDir2) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkInSubDir2)
+    removeDir(subDir2)
+
+    # Test moveFile
+    moveFile(brokenSymlink, brokenSymlinkCopy)
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkCopy) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkCopy)
+    removeFile(brokenSymlinkCopy)
+
+    # Test moveDir
+    moveDir(subDir, subDir2)
+    when checkExpandSymlink:
+      doAssert expandSymlink(brokenSymlinkInSubDir2) == brokenSymlinkSrc
+    else:
+      doAssert symlinkExists(brokenSymlinkInSubDir2)
+
+    removeDir(dname)
+
 import times
 block modificationTime:
   # Test get/set modification times

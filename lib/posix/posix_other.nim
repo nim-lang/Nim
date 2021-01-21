@@ -14,10 +14,12 @@ when defined(freertos):
   const
     hasSpawnH = false # should exist for every Posix system nowadays
     hasAioH = false
+    hasLchmod* = false
 else:
   const
     hasSpawnH = true # should exist for every Posix system nowadays
     hasAioH = defined(linux)
+    hasLchmod* = false
 
 when defined(linux) and not defined(android):
   # On Linux:

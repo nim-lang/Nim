@@ -350,6 +350,13 @@ else:
 proc findClose*(hFindFile: Handle) {.stdcall, dynlib: "kernel32",
   importc: "FindClose".}
 
+type LPPROGRESS_ROUTINE* = proc(TotalFileSize, TotalBytesTransferred, 
+  StreamSize, StreamBytesTransferred: int64, dwStreamNumber, 
+  dwCallbackReason: DWORD, hSourceFile, hDestinationFile: Handle,
+  lpData: pointer): void {.stdcall.}
+
+const COPY_FILE_COPY_SYMLINK* = 0x00000800'i32
+
 when useWinUnicode:
   proc getFullPathNameW*(lpFileName: WideCString, nBufferLength: int32,
                         lpBuffer: WideCString,
@@ -366,6 +373,10 @@ when useWinUnicode:
   proc copyFileW*(lpExistingFileName, lpNewFileName: WideCString,
                  bFailIfExists: WINBOOL): WINBOOL {.
     importc: "CopyFileW", stdcall, dynlib: "kernel32", sideEffect.}
+  proc copyFileExW*(lpExistingFileName, lpNewFileName: WideCString,
+                    lpProgressRoutine: LPPROGRESS_ROUTINE, lpData: pointer,
+                    pbCancel: ptr WINBOOL, dwCopyFlags: DWORD): WINBOOL {.
+    importc: "CopyFileExW", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString): WINBOOL {.
     importc: "MoveFileW", stdcall, dynlib: "kernel32", sideEffect.}
@@ -396,6 +407,10 @@ else:
   proc copyFileA*(lpExistingFileName, lpNewFileName: cstring,
                  bFailIfExists: cint): cint {.
     importc: "CopyFileA", stdcall, dynlib: "kernel32", sideEffect.}
+  proc copyFileExA*(lpExistingFileName, lpNewFileName: cstring,
+                    lpProgressRoutine: LPPROGRESS_ROUTINE, lpData: pointer,
+                    pbCancel: ptr WINBOOL, dwCopyFlags: DWORD): WINBOOL {.
+    importc: "CopyFileExA", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32", sideEffect.}

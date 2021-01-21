@@ -87,3 +87,29 @@ block:
   try: doAssert false
   except Exception as e:
     discard
+
+block:  # #16709
+  const buildDir = currentSourcePath.parentDir.parentDir/"build"
+  const dname = buildDir/"D20210121T175016"
+  const subDir = dname/"sub"
+  const subDir2 = dname/"sub2"
+  const fpath = subDir/"f"
+  const fpath2 = subDir/"f2"
+  const fpath3 = subDir2/"f"
+  mkDir(subDir)
+  writeFile(fpath, "some text")
+  cpFile(fpath, fpath2)
+  doAssert fileExists(fpath2)
+  rmFile(fpath2)
+  cpDir(subDir, subDir2)
+  doAssert fileExists(fpath3)
+  rmDir(subDir2)
+  mvFile(fpath, fpath2)
+  doAssert not fileExists(fpath)
+  doAssert fileExists(fpath2)
+  mvFile(fpath2, fpath)
+  mvDir(subDir, subDir2)
+  doAssert not dirExists(subDir)
+  doAssert dirExists(subDir2)
+  mvDir(subDir2, subDir)
+  rmDir(dname)

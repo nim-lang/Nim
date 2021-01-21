@@ -13,6 +13,7 @@ when defined(nimHasStyleChecks):
 const
   hasSpawnH = true # should exist for every Posix system nowadays
   hasAioH = false
+  hasLchmod* = false
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
