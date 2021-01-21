@@ -6692,16 +6692,16 @@ in C/C++).
 **Note**: This pragma will not exist for the LLVM backend.
 
 
-NoDecl pragma
+nodecl pragma
 -------------
-The ``noDecl`` pragma can be applied to almost any symbol (variable, proc,
+The `nodecl` pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nim that it should not generate a declaration for the symbol in
 the C code. For example:
 
 .. code-block:: Nim
   var
-    EACCES {.importc, noDecl.}: cint # pretend EACCES was a variable, as
+    EACCES {.importc, nodecl.}: cint # pretend EACCES was a variable, as
                                      # Nim does not know its value
 
 However, the ``header`` pragma is often the better alternative.
@@ -6711,7 +6711,7 @@ However, the ``header`` pragma is often the better alternative.
 
 Header pragma
 -------------
-The ``header`` pragma is very similar to the ``noDecl`` pragma: It can be
+The `header` pragma is very similar to the `nodecl` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared
 and instead, the generated code should contain an ``#include``:
 

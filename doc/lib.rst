@@ -107,7 +107,6 @@ Collections
 
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
-  **Deprecated:** Use the packedsets module instead.
 
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
