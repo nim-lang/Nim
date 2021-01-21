@@ -617,8 +617,8 @@ proc aliases*(obj, field: PNode): AliasKind =
 
   result = yes
   for i in 1..objImportantNodes.len:
-    template currFieldPath: untyped = fieldImportantNodes[^i]
-    template currObjPath: untyped = objImportantNodes[^i]
+    let currFieldPath = fieldImportantNodes[^i]
+    let currObjPath = objImportantNodes[^i]
 
     if currFieldPath.kind != currObjPath.kind:
       return no
