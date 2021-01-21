@@ -366,10 +366,8 @@
 - `nimscript` now handles `except Exception as e`.
 
 - The `cstring` doesn't support `[]=` operator in JS backend.
-- `nimscript` now handles `except Exception as e`
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-- The `cstring` doesn't support `[]=` operator in JS backend.
 
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
