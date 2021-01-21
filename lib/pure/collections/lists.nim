@@ -405,7 +405,9 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
         ci
     assert s == [0, 1, 0, 1, 0, 1]
   b.addMoved a
-  swap a, b
+  when defined(js): # XXX: swap broken in js; bug #16771
+    (b, a) = (a, b)
+  else: swap a, b
 
 proc add*[T](L: var SinglyLinkedList[T],
              n: SinglyLinkedNode[T]) {.inline.} =

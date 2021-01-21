@@ -1,7 +1,6 @@
 discard """
-  targets: "c"
+  targets: "c js"
 """
-#XXX: js target currently disabled for this test because `swap a, b` call at lists.nim:408 has no effect
 import lists, sequtils
 
 const
