@@ -1221,30 +1221,30 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
+proc downloadFileEx(client: AsyncHttpClient,
+                    url: Uri | string, filename: string): Future[void] {.async.} =
+  ## Downloads ``url`` and saves it to ``filename``.
+  client.getBody = false
+  let resp = await client.get(url)
+
+  client.bodyStream = newFutureStream[string]("downloadFile")
+  var file = openAsync(filename, fmWrite)
+  defer: file.close()
+  # Let `parseBody` write response data into client.bodyStream in the
+  # background.
+  let parseBodyFut = parseBody(client, resp.headers, resp.version)
+  parseBodyFut.addCallback do():
+    if parseBodyFut.failed:
+      client.bodyStream.fail(parseBodyFut.error)
+  # The `writeFromStream` proc will complete once all the data in the
+  # `bodyStream` has been written to the file.
+  await file.writeFromStream(client.bodyStream)
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+
 proc downloadFile*(client: AsyncHttpClient, url: Uri | string,
                    filename: string): Future[void] =
-  proc downloadFileEx(client: AsyncHttpClient,
-                      url: Uri | string, filename: string): Future[void] {.async.} =
-    ## Downloads ``url`` and saves it to ``filename``.
-    client.getBody = false
-    let resp = await client.get(url)
-
-    client.bodyStream = newFutureStream[string]("downloadFile")
-    var file = openAsync(filename, fmWrite)
-    defer: file.close()
-    # Let `parseBody` write response data into client.bodyStream in the
-    # background.
-    let parseBodyFut = parseBody(client, resp.headers, resp.version)
-    parseBodyFut.addCallback do():
-      if parseBodyFut.failed:
-        client.bodyStream.fail(parseBodyFut.error)
-    # The `writeFromStream` proc will complete once all the data in the
-    # `bodyStream` has been written to the file.
-    await file.writeFromStream(client.bodyStream)
-
-    if resp.code.is4xx or resp.code.is5xx:
-      raise newException(HttpRequestError, resp.status)
-
   result = newFuture[void]("downloadFile")
   try:
     result = downloadFileEx(client, url, filename)
