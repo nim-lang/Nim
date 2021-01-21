@@ -957,7 +957,7 @@ proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
 
 proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
                 b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T) =
-  ## Deprecated alias for `a.add(b)`.
+  ## Alias for `a.add(b)`.
   ##
   ## See also:
   ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
@@ -967,7 +967,7 @@ proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
 
 proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
                 b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T) =
-  ## Deprecated alias for `a.add(b)`.
+  ## Alias for `a.add(b)`.
   ##
   ## See also:
   ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
@@ -976,7 +976,7 @@ proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
   a.add b
 
 proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
-  ## Deprecated alias for `a.addMoved(b)`.
+  ## Alias for `a.addMoved(b)`.
   ##
   ## See also:
   ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
