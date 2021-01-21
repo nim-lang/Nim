@@ -574,32 +574,87 @@ proc skipConvDfa*(n: PNode): PNode =
       result = result[1]
     else: break
 
-proc aliases*(obj, field: PNode): bool =
+type AliasKind* = enum
+  yes, no, maybe
+
+from trees import exprStructuralEquivalent
+
+proc aliases*(obj, field: PNode): AliasKind =
+  # obj -> field:
+  # x -> x: true
+  # x -> x.f: true
+  # x.f -> x: false
+  # x.f -> x.f: true
+  # x.f -> x.v: false
+  # x -> x[0]: true
+  # x[0] -> x: false
+  # x[0] -> x[0]: true
+  # x[0] -> x[1]: false
+  # x -> x[i]: true
+  # x[i] -> x: false
+  # x[i] -> x[i]: MAYBE Further analysis could make this return true when i is a runtime-constant
+  # x[i] -> x[j]: MAYBE also returns MAYBE if only one of i or j is a compiletime-constant
   var n = field
   var obj = obj
+  var objImportantNodeStack: seq[PNode]
   while true:
     case obj.kind
-    of {nkObjDownConv, nkObjUpConv, nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
+    of PathKinds0 - {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
       obj = obj[0]
     of PathKinds1:
       obj = obj[1]
-    else: break
+    of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      objImportantNodeStack.add obj# [1]
+      obj = obj[0]
+    of nkSym:
+      objImportantNodeStack.add obj; break
+    else: return no
+  var fieldImportantNodeStack: seq[PNode]
   while true:
-    if sameTrees(obj, n): return true
     case n.kind
-    of PathKinds0:
+    of PathKinds0 - {nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}:
+      n = n[0]
+    of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      fieldImportantNodeStack.add n# [1]
       n = n[0]
     of PathKinds1:
       n = n[1]
-    else: break
+    of nkSym:
+      fieldImportantNodeStack.add n; break
+    else: return no
+
+  if fieldImportantNodeStack.len < objImportantNodeStack.len: return no
+
+  result = yes
+  for i in 1..objImportantNodeStack.len:
+    template currFieldPath: untyped = fieldImportantNodeStack[^i]
+    template currObjPath: untyped = objImportantNodeStack[^i]
+
+    if currFieldPath.kind != currObjPath.kind:
+      return no
+
+    case currFieldPath.kind
+    of nkSym:
+      if currFieldPath.sym != currObjPath.sym: return no
+    of nkDotExpr, nkCheckedFieldExpr:
+      if currFieldPath[1].sym != currObjPath[1].sym: return no
+    of nkBracketExpr:
+      if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
+        if not exprStructuralEquivalent(currFieldPath[1], currObjPath[1]):
+          return no
+      else:
+        result = maybe
+    else: assert false, "unreachable"
 
 type InstrTargetKind* = enum
   None, Full, Partial
 
 proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
-  if sameTrees(insloc, loc) or insloc.aliases(loc):
+  if insloc.aliases(loc) == yes:
     Full    # x -> x; x -> x.f
-  elif loc.aliases(insloc):
+  elif insloc.aliases(loc) == maybe:
+    Partial # XXX?
+  elif loc.aliases(insloc) != no:
     Partial # x.f -> x
   else: None
 
@@ -613,10 +668,8 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       n = n[1]
     of nkBracketExpr:
       # in a[i] the 'i' must be known
-      if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
-        n = n[0]
-      else:
-        return false
+      assert n.len > 1
+      n = n[0]
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
