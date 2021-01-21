@@ -27,6 +27,10 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
 
+  Operators* = object
+    opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
+    opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
+
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
@@ -71,6 +75,7 @@ type
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
+    operators*: Operators
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -241,6 +246,22 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
   initStrTable(g.ifaces[m.position].interf)
 
+proc initOperators(g: ModuleGraph): Operators =
+  # These are safe for IC.
+  result.opLe = createMagic(g, "<=", mLeI)
+  result.opLt = createMagic(g, "<", mLtI)
+  result.opAnd = createMagic(g, "and", mAnd)
+  result.opOr = createMagic(g, "or", mOr)
+  result.opIsNil = createMagic(g, "isnil", mIsNil)
+  result.opEq = createMagic(g, "==", mEqI)
+  result.opAdd = createMagic(g, "+", mAddI)
+  result.opSub = createMagic(g, "-", mSubI)
+  result.opMul = createMagic(g, "*", mMulI)
+  result.opDiv = createMagic(g, "div", mDivI)
+  result.opLen = createMagic(g, "len", mLengthSeq)
+  result.opNot = createMagic(g, "not", mNot)
+  result.opContains = createMagic(g, "contains", mInSet)
+
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   # A module ID of -1 means that the symbol is not attached to a module at all,
@@ -265,6 +286,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheTables = initTable[string, BTree[string, PNode]]()
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
+  result.operators = initOperators(result)
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

@@ -1069,6 +1069,7 @@ type
     module*: int32
     symId*: int32
     typeId*: int32
+    sealed*: bool
 
 proc hash*(x: ItemId): Hash =
   var h: Hash = hash(x.module)
@@ -1083,10 +1084,12 @@ proc idGeneratorFromModule*(m: PSym): IdGenerator =
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
 
 proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+  assert(not x.sealed)
   inc x.symId
   result = ItemId(module: x.module, item: x.symId)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
+  assert(not x.sealed)
   inc x.typeId
   result = ItemId(module: x.module, item: x.typeId)
 
@@ -1210,11 +1213,32 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
 template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
+when false:
+  import tables, strutils
+  var x: CountTable[string]
+
+  addQuitProc proc () {.noconv.} =
+    for k, v in pairs(x):
+      echo k
+      echo v
+
 proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
                 options: options, owner: owner, offset: defaultOffset)
+  when false:
+    if id.item > 2141:
+      let s = getStackTrace()
+      const words = ["createTypeBoundOps",
+        "initOperators",
+        "generateInstance",
+        "semIdentDef", "addLocalDecl"]
+      for w in words:
+        if w in s:
+          x.inc w
+          return
+      x.inc "<no category>"
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
