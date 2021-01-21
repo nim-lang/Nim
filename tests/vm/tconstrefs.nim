@@ -97,13 +97,12 @@ block: # case ref objects
   const j = parseJson(""" {"x1":12,"x2":"asdf","x3":[1,2]} """)
   const x1 = j["x1"].getInt
   const x2 = j["x3"].to(seq[int])
-  when false:
-    # pending https://github.com/nim-lang/Nim/issues/13081
-    echo j["x1"].getInt
-  doAssert j["x1"].getInt.static == 12
-
   doAssert x1 == 12
   doAssert x2 == @[1, 2]
+  doAssert j["x1"].getInt.static == 12
+  when false:
+    # xxx still an issue, related to closed bugs: bug #13081, bug #8015
+    echo j["x1"].getInt
 
 block: # regression test with closures
   type MyProc = proc (x: int): int
@@ -112,6 +111,6 @@ block: # regression test with closures
     result.add even
     result.setLen 2 # intentionally leaving 1 unassigned
   const a = bar()
-  when not defined(js):
+  when not defined(js): # xxx
     doAssert a == bar()
   doAssert a[0](2) == 2*3
