@@ -1,5 +1,7 @@
 import std/marshal
 
+# TODO: add static tests
+
 proc testit[T](x: T): string = $$to[T]($$x)
 
 let test1: array[0..1, array[0..4, string]] = [
@@ -38,9 +40,7 @@ proc buildList(): PNode =
   result.prev.next = result
   result.prev.prev = result.next
 
-var test3: TestObj
-test3.test = 42
-test3.test2 = blah
+let test3 = TestObj(test: 42, test2: blah)
 doAssert testit(test3) ==
   """{"test": 42, "asd": 0, "test2": "blah", "help": ""}"""
 
@@ -109,7 +109,7 @@ block:
   doAssert $$foo == """{"a1": "", "a2": "", "a3": [], "a4": [], "a5": [], "a6": []}"""
   doAssert testit(foo) == """{"a1": "", "a2": "", "a3": [], "a4": [], "a5": [], "a6": []}"""
 
-import options, json
+import std/[options, json]
 
 # bug #15934
 block:
@@ -118,6 +118,8 @@ block:
     a2 = none(JsonNode)
   doAssert $($$a1).to[:Option[JsonNode]] == "Some(null)"
   doAssert $($$a2).to[:Option[JsonNode]] == "None[JsonNode]"
+  doAssert ($$a1).to[:Option[JsonNode]] == some(newJNull())
+  doAssert ($$a2).to[:Option[JsonNode]] == none(JsonNode)
 
 # bug #15620
 block:
@@ -133,5 +135,14 @@ block:
 # bug #16022
 block:
   let p: proc (): string = proc (): string = "hello world"
-  let poc = (to[typeof(p)]($$p))
+  let poc = to[typeof(p)]($$p)
   doAssert poc() == "hello world"
+
+block:
+  type
+    A {.inheritable.} = object
+    B = object of A
+      f: int
+
+  let a: ref A = new(B)
+  doAssert $$a[] == "{}" # not "{f: 0}"

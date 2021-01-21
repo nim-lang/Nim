@@ -33,8 +33,7 @@ runnableExamples:
   assert c.f == 2
 
   # marshal
-  let s = $$c
-  assert s == """{"f": 2}"""
+  assert $$c == """{"f": 2}"""
 
 ## **Note**: The `to` and `$$` operations are available at compile-time!
 ##
@@ -302,7 +301,8 @@ proc store*[T](s: Stream, data: T) =
 proc `$$`*[T](x: T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
-  ## **Note:** to serialize `x` to JSON use `$(%x)` from the `json` module.
+  ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
+  ## or `jsonutils.toJson(x)`.
   runnableExamples:
     type
       Foo = object
