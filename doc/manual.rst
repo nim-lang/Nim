@@ -6141,13 +6141,13 @@ This pragma can also take in an optional warning string to relay to developers.
 noSideEffect pragma
 -------------------
 
-The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
-effects. This means that the proc/iterator only changes locations that are
+The ``noSideEffect`` pragma is used to mark a proc/iterator that can have only
+side effects through parameters. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
-arguments. If none of its parameters have the type ``var T`` or ``ref T``
-or ``ptr T`` this means no locations are modified. It is a static error to
-mark a proc/iterator to have no side effect if the compiler cannot verify
-this.
+parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
+then no locations are modified.
+
+It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
 
 As a special semantic rule, the built-in `debugEcho
 <system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
@@ -6167,6 +6167,25 @@ To override the compiler's side effect analysis a ``{.noSideEffect.}``
   func f() =
     {.cast(noSideEffect).}:
       echo "test"
+
+When a `noSideEffect` proc has proc params `bar`, whether it can be used inside a `noSideEffect` context
+depends on what the compiler knows about `bar`:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  func foo(bar: proc(): int): int = bar()
+  var count = 0
+  proc fn1(): int = 1
+  proc fn2(): int = (count.inc; count)
+  func fun1() = discard foo(fn1) # ok because fn1 is inferred as `func`
+  # func fun2() = discard foo(fn2) # would give: Error: 'fun2' can have side effects
+
+  # with callbacks, the compiler is conservative, ie that bar will have side effects
+  var foo2: type(foo) = foo
+  func main() =
+    discard foo(fn1) # ok
+    # discard foo2(fn1) # now this errors
 
 
 compileTime pragma
