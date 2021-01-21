@@ -2,9 +2,17 @@ discard """
   targets: "c cpp js"
 """
 
-#[
-xxx test VM by wrapping in the usual pattern: main(); static main()
-]#
+# xxx simplify pending https://github.com/nim-lang/RFCs/issues/283
+# for testing against template double evaluation bugs
+var witnessRT = 0
+var witnessCT {.compileTime.} = 0
+proc witness(): int =
+  when nimvm: witnessCT
+  else: witnessRT
+proc identity[T](a: var T): var T =
+  when nimvm: witnessCT.inc
+  else: witnessRT.inc
+  a
 
 block:
   const a2 = $(int)
@@ -203,3 +211,35 @@ when false:
     doAssert not compiles(echo p.rawProc.repr)
     doAssert not compiles(echo p.rawEnv.repr)
     doAssert not compiles(echo p.finished)
+
+template main() =
+  #[
+  xxx test VM by wrapping in the usual pattern: main(); static main()
+      improve test organization further using `block: # funName`
+  ]#
+  block: # swap
+    block: # bug #16771
+      type A = object
+        n: int
+      var a = A(n: 1)
+      var b = A(n: 2)
+      a.swap b
+      doAssert (a.n, b.n) == (2, 1)
+      proc foo(a, b: var A) = swap a, b
+      a.foo b
+      doAssert (a.n, b.n) == (1, 2)
+
+    block: # template double evaluation bug
+      var
+        c1 = 1
+        c2 = 2
+      doAssert witness() == 0
+      swap(identity(c1), identity(c2))
+      doAssert (c1, c2) == (2, 1)
+      when nimvm: # xxx bug
+        discard
+      else:
+        doAssert witness() == 2, $witness()
+
+main()
+static: main()

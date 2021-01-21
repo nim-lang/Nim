@@ -1467,21 +1467,29 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
-proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
-  ## Swaps the values `a` and `b`.
-  ##
-  ## This is often more efficient than ``tmp = a; a = b; b = tmp``.
-  ## Particularly useful for sorting algorithms.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = 5
-  ##     b = 9
-  ##
-  ##   swap(a, b)
-  ##
-  ##   assert a == 9
-  ##   assert b == 5
+proc swapImpl[T](a, b: var T) {.magic: "Swap", noSideEffect.}
+
+when defined(js) and not defined(nimdoc):
+  func swapImpl2[T](a, b: var T) =
+    (a, b) = (b, a)
+  template swap*[T](a, b: var T) =
+    when nimvm:
+      swapImpl(a, b)
+    else:
+      swapImpl2(a, b)
+else:
+  template swap*[T](a, b: var T) =
+    ## Swaps the values `a` and `b`.
+    ##
+    ## This is often more efficient than `tmp = a; a = b; b = tmp`.
+    ## Particularly useful for sorting algorithms.
+    runnableExamples:
+      var
+        a = 5
+        b = 9
+      swap(a, b)
+      assert (a, b) == (9, 5)
+    swapImpl(a, b)
 
 when not defined(js) and not defined(booting) and defined(nimTrMacros):
   template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
