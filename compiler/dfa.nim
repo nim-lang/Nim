@@ -640,10 +640,10 @@ type InstrTargetKind* = enum
   None, Full, Partial
 
 proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
-  let inslocAliasesLoc = insloc.aliases(loc)
-  if inslocAliasesLoc == yes:
+  case insloc.aliases(loc)
+  of yes:
     Full    # x -> x; x -> x.f
-  elif inslocAliasesLoc == maybe:
+  of maybe:
     Partial # We treat this like a partial write/read
   elif loc.aliases(insloc) != no:
     Partial # x.f -> x
@@ -653,14 +653,10 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
   while true:
     case n.kind
-    of PathKinds0 - {nkBracketExpr, nkHiddenDeref, nkDerefExpr}:
+    of PathKinds0 - {nkHiddenDeref, nkDerefExpr}:
       n = n[0]
     of PathKinds1:
       n = n[1]
-    of nkBracketExpr:
-      # in a[i] the 'i' must be known
-      assert n.len > 1
-      n = n[0]
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.

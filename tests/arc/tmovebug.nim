@@ -723,11 +723,11 @@ partToWholeSeq()
 proc partToWholeSeqRTIndex =
   var i = 0
   var t = Tree(children: @[Tree()])
-  t = t.children[i] # This should be sunk, but with the special transform (tmp = t.children[0]; wasMoved(0); `=sink`(t, tmp))
+  t = t.children[i] # See comment in partToWholeSeq
 
   var tc = TreeDefaultHooks(children: @[TreeDefaultHooks()])
-  tc = tc.children[i] # Ditto; if this were sunk with the normal transform (`=sink`(t, t.children[0]); wasMoved(t.children[0]))
-  echo tc             #        then it would crash because t.children[0] does not exist after the call to `=sink`
+  tc = tc.children[i] # See comment in partToWholeSeq
+  echo tc
 
 partToWholeSeqRTIndex()
 
