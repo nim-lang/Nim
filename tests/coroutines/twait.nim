@@ -2,6 +2,7 @@ discard """
   output: "Exit 1\nExit 2"
   matrix: "--gc:refc; --gc:arc; --gc:orc"
   target: "c"
+  disabled: "openbsd"
 """
 import coro
 
