@@ -229,14 +229,14 @@ template main() =
       a.foo b
       doAssert (a.n, b.n) == (1, 2)
 
-    block: # template double evaluation bug
+    block: # bug #16779
       var
         c1 = 1
         c2 = 2
       doAssert witness() == 0
       swap(identity(c1), identity(c2))
       doAssert (c1, c2) == (2, 1)
-      when nimvm: # xxx bug
+      when nimvm: # xxx bug still present in vm
         discard
       else:
         doAssert witness() == 2, $witness()
