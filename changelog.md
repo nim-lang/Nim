@@ -109,7 +109,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
-- In `lists`: renamed `append` to `add` and retained `append` (and added `appendMoved`) as an alias;
+- In `lists`: renamed `append` to `add` and retained `append` as an alias;
   added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
   added `remove` for `SinglyLinkedList`s.
 

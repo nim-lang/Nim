@@ -974,11 +974,3 @@ proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
   ## * `add proc <#add,DoublyLinkedList[T],T>`_
   ## * `add proc <#add,T,T>`_
   a.add b
-
-proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
-  ## Alias for `a.addMoved(b)`.
-  ##
-  ## See also:
-  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
-  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
-  a.addMoved b
