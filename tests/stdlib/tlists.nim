@@ -1,6 +1,7 @@
 discard """
   targets: "c js"
 """
+
 import lists, sequtils
 
 const
