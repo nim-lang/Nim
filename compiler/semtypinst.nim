@@ -301,6 +301,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
     result = t.exactReplica
   else:
     result = copyType(t, nextTypeId(cl.c.idgen), t.owner)
+    copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)
     #cl.typeMap.topLayer.idTablePut(result, t)
 
   if cl.allowMetaTypes: return

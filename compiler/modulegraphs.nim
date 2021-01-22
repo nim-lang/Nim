@@ -145,6 +145,12 @@ proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
   let op = getAttachedOp(g, t, attachedAsgn)
   result = op != nil and sfError in op.flags
 
+proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
+  for k in low(TTypeAttachedOp)..high(TTypeAttachedOp):
+    let op = getAttachedOp(g, src, k)
+    if op != nil:
+      setAttachedOp(g, module, dest, k, op)
+
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
