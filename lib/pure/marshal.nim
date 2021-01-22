@@ -10,14 +10,14 @@
 ## This module contains procs for `serialization`:idx: and `deserialization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
 ##
-## **Restriction**: For objects, their type is **not** serialized. This means
+## **Restriction:** For objects, their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
 ## type than its compiletime type.
 ##
 ##
 ## Basic usage
 ## ===========
-
+##
 runnableExamples:
   type
     A = object of RootObj
@@ -35,7 +35,7 @@ runnableExamples:
   # marshal
   assert $$c == """{"f": 2}"""
 
-## **Note**: The `to` and `$$` operations are available at compile-time!
+## **Note:** The `to` and `$$` operations are available at compile-time!
 ##
 ##
 ## See also
