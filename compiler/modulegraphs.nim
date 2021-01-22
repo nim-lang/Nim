@@ -39,6 +39,7 @@ type
     procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, PSym)]] # Type ID, attached methods
+    enumToStringProcs*: Table[ItemId, PSym]
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
@@ -133,6 +134,13 @@ proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttac
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   discard "To implement"
+
+proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
+  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  assert result != nil
+
+proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
+  g.enumToStringProcs[t.itemId] = value
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   for a, b in items g.methodsPerType.getOrDefault(t.itemId):

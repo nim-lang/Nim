@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors
 
 when not defined(leanCompiler):

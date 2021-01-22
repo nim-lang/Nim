@@ -107,12 +107,13 @@ proc attachDispatcher(s: PSym, dispatcher: PNode) =
       s.ast[resultPos] = newNodeI(nkEmpty, s.info)
     s.ast[dispatcherPos] = dispatcher
 
-proc createDispatcher(s: PSym; idgen: IdGenerator): PSym =
+proc createDispatcher(s: PSym; g: ModuleGraph; idgen: IdGenerator): PSym =
   var disp = copySym(s, nextSymId(idgen))
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
+  let old = disp.typ
   disp.typ = copyType(disp.typ, nextTypeId(idgen), disp.typ.owner)
-  # XXX     copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)
+  copyTypeProps(g, idgen.module, disp.typ, old)
 
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
@@ -179,7 +180,7 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym, fromCache: bool) =
     of Invalid:
       if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
-  g.methods.add((methods: @[s], dispatcher: createDispatcher(s, idgen)))
+  g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
   #if fromCache:
   #  internalError(s.info, "no method dispatcher found")

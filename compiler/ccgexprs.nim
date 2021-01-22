@@ -2238,17 +2238,8 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
-  var toStrProc: PSym = nil
-  # XXX Move this to the frontend, cleaner solution.
-  when false:
-    for idx, p in items(t.methods):
-      if idx == ToStringProcSlot:
-        toStrProc = p
-        break
-  if toStrProc == nil:
-    toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph, p.module.idgen)
-    when false:
-      t.methods.add((ToStringProcSlot, toStrProc))
+  let toStrProc = getToStringProc(p.module.g.graph, t)
+  # XXX need to modify this logic for IC.
   var n = copyTree(e)
   n[0] = newSymNode(toStrProc)
   expr(p, n, d)

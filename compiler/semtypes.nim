@@ -154,6 +154,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     addPureEnum(c, result.sym)
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
+  setToStringProc(c.graph, result, genEnumToStrProc(result, n.info, c.graph, c.idgen))
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
