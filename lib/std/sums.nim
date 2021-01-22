@@ -6,12 +6,16 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 
-## Fast sumation functions.
+## Fast summation functions.
 
+runnableExamples:
+  let data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  doAssert sumKbn(data) == 45
+  doAssert sumPairs(data) == 45
 
 func sumKbn*[T](x: openArray[T]): T =
   ## Kahan-Babuška-Neumaier summation: O(1) error growth, at the expense
-  ## of a considerable increase in computational expense.
+  ## of a considerable increase in computational cost.
   if len(x) == 0: return
   var sum = x[0]
   var c = T(0)
@@ -41,7 +45,7 @@ func sumPairs*[T](x: openArray[T]): T =
   ##
   ## See, e.g.:
   ## * http://en.wikipedia.org/wiki/Pairwise_summation
-  ##   Higham, Nicholas J. (1993), "The accuracy of floating point
+  ## * Higham, Nicholas J. (1993), "The accuracy of floating point
   ##   summation", SIAM Journal on Scientific Computing 14 (4): 783–799.
   ##
   ## In fact, the root-mean-square error growth, assuming random roundoff
@@ -52,11 +56,3 @@ func sumPairs*[T](x: openArray[T]): T =
   ##
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
-
-
-runnableExamples:
-  static:
-    block:
-      const data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert sumKbn(data) == 45
-      doAssert sumPairs(data) == 45
