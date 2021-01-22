@@ -28,8 +28,8 @@ else:
 type
   Handle* = int
   LONG* = int32
-  ULONG* = int32
-  PULONG* = ptr int
+  ULONG* = culong
+  PULONG* = ptr ULONG
   WINBOOL* = int32
     ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
     # xxx this should be distinct int32, distinct would make code less error prone
