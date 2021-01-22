@@ -47,50 +47,6 @@ proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
 
-# ---------------- IC tests ---------------------------------------------
-
-# xxx deadcode
-proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
-  const
-    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
-    writeOnly = " --incremental:writeonly "
-    readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on "
-
-  template test(x: untyped) =
-    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
-
-  template editedTest(x: untyped) =
-    var test = makeTest(file, x & options, cat)
-    test.spec.targets = {getTestSpecTarget()}
-    testSpecWithNimcache(r, test, nimcache)
-
-  const tempExt = "_temp.nim"
-  for it in walkDirRec(testsDir / "ic"):
-    if isTestFile(it) and not it.endsWith(tempExt):
-      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
-      removeDir(nimcache)
-
-      let content = readFile(it)
-      for fragment in content.split("#!EDIT!#"):
-        let file = it.replace(".nim", tempExt)
-        writeFile(file, fragment)
-        let oldPassed = r.passed
-        editedTest incrementalOn
-        if r.passed != oldPassed+1: break
-
-  for file in tooltests:
-    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-    removeDir(nimcache)
-
-    let oldPassed = r.passed
-    test writeOnly
-
-    if r.passed == oldPassed+1:
-      test readOnly
-      if r.passed == oldPassed+2:
-        test readOnly & "-d:nimBackendAssumesChange "
-
 # --------------------- flags tests -------------------------------------------
 
 proc flagTests(r: var TResults, cat: Category, options: string) =
@@ -137,7 +93,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     const libpathenv = when defined(haiku): "LIBRARY_PATH"
                        else: "LD_LIBRARY_PATH"
-    var libpath = getEnv(libpathenv).string
+    var libpath = getEnv(libpathenv)
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
@@ -265,7 +221,7 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
     t.spec.action = actionCompile
     # force target to C because of MacOS 10.15 SDK headers bug
     # https://github.com/nim-lang/Nim/pull/15612#issuecomment-712471879
-    t.spec.targets = { targetC }
+    t.spec.targets = {targetC}
     testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
@@ -384,7 +340,7 @@ proc findMainFile(dir: string): string =
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
     if kind == pcFile:
-      if file.endsWith(cfgExt): return file[.. ^(cfgExt.len+1)] & ".nim"
+      if file.endsWith(cfgExt): return file[ .. ^(cfgExt.len+1)] & ".nim"
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
@@ -429,7 +385,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
   files.sort # reproducible order
   for testFile in files:
-    let contents = readFile(testFile).string
+    let contents = readFile(testFile)
     var testObj = makeTest(testFile, options, cat)
     #[
     todo:
@@ -445,7 +401,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
 # ----------------------------- nimble ----------------------------------------
 
-var nimbleDir = getEnv("NIMBLE_DIR").string
+var nimbleDir = getEnv("NIMBLE_DIR")
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
@@ -606,15 +562,6 @@ proc isJoinableSpec(spec: TSpec): bool =
     if spec.file.readFile.contains "when isMainModule":
       result = false
 
-when false:
-  proc norm(s: var string) =
-    ## strip empty newlines
-    while true:
-      let tmp = s.replace("\n\n", "\n")
-      if tmp == s: break
-      s = tmp
-    s = s.strip
-
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
@@ -632,8 +579,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
           if isJoinableSpec(spec):
             specs.add spec
 
-  proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
-  sort(specs, cmp=cmp) # reproducible order
+  proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
+  sort(specs, cmp = cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
@@ -663,17 +610,17 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo "$ " & cmdLine & "\n" & buf.string
+    echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")
 
   (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
-    echo buf.string
+    echo buf
     quit(failString & "megatest execution failed")
 
   const outputExceptedFile = "outputExpected.txt"
   const outputGottenFile = "outputGotten.txt"
-  writeFile(outputGottenFile, buf.string)
+  writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -682,7 +629,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
       if not runSpec.output.endsWith "\n":
         outputExpected.add '\n'
 
-  if buf.string != outputExpected:
+  if buf != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
     discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
     echo failString & "megatest output different!"
@@ -690,10 +637,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     quit 1
   else:
     echo "megatest output OK"
-    when false: # no point removing those, always good for debugging
-      removeFile(outputGottenFile)
-      removeFile(megatestFile) # keep it around
-  #testSpec r, makeTest("megatest", options, cat)
+
 
 # ---------------------------------------------------------------------------
 
@@ -701,9 +645,6 @@ proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
-  of "ic":
-    when false:
-      icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:
