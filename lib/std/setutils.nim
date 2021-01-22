@@ -33,5 +33,5 @@ template toSet*(iter: untyped): untyped =
 
   var result: set[elementType(iter)]
   for x in iter:
-    result.incl(x)
+    incl(result, x)
   result
