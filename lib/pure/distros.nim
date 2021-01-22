@@ -222,7 +222,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
   ## and whether it requires root/admin rights.
   let p = foreignPackageName
   when defined(windows):
-    result = ("Chocolatey install " & p, false)
+    result = ("pacman -S " & p, false)
   elif defined(bsd):
     result = ("ports install " & p, true)
   elif defined(linux):
