@@ -544,7 +544,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
         # check if we converted this finalizer into a destructor already:
         let t = whereToBindTypeHook(c, fin.typ[1].skipTypes(abstractInst+{tyRef}))
         if t != nil and getAttachedOp(c.graph, t, attachedDestructor) != nil and
-            getAttachedOp(c.graph, t, attachedDestructor) == fin:
+            getAttachedOp(c.graph, t, attachedDestructor).owner == fin:
           discard "already turned this one into a finalizer"
         else:
           bindTypeHook(c, turnFinalizerIntoDestructor(c, fin, n.info), n, attachedDestructor)

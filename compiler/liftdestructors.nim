@@ -1043,6 +1043,7 @@ proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: I
       let opInst = instantiateGeneric(a, op, t, t.typeInst)
       if opInst.ast != nil:
         patchBody(g, c, opInst.ast, info, a.idgen)
+      setAttachedOp(g, idgen.module, t, kind, opInst)
     else:
       localError(g.config, info, "unresolved generic parameter")
 
@@ -1079,7 +1080,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
                      else: attachedSink
 
   # bug #15122: We need to produce all prototypes before entering the
-  # mind boggling recursion. Hacks like these imply we shoule rewrite
+  # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
   var generics: array[attachedDestructor..attachedDispose, bool]
   for k in attachedDestructor..lastAttached:
