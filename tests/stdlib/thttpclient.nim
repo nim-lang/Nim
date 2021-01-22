@@ -148,6 +148,12 @@ proc syncTest() =
 
   client.close()
 
+  # SIGSEGV on HEAD body read: issue #16743
+  block:
+    let client = newHttpClient()
+    let resp = client.head("http://httpbin.org/head")
+    doAssert(resp.body == "")
+
   when false:
     # Disabled for now because it causes troubles with AppVeyor
     # Timeout test.

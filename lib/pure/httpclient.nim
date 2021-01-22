@@ -832,14 +832,16 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
 
+  when client is HttpClient:
+    result.bodyStream = newStringStream()
+  else:
+    result.bodyStream = newFutureStream[string]("parseResponse")
+
   if getBody and result.code != Http204:
+    client.bodyStream = result.bodyStream
     when client is HttpClient:
-      client.bodyStream = newStringStream()
-      result.bodyStream = client.bodyStream
       parseBody(client, result.headers, result.version)
     else:
-      client.bodyStream = newFutureStream[string]("parseResponse")
-      result.bodyStream = client.bodyStream
       assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
       # do not wait here for the body request to complete
       client.parseBodyFut = parseBody(client, result.headers, result.version)
