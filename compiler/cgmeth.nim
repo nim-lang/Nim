@@ -112,6 +112,8 @@ proc createDispatcher(s: PSym; idgen: IdGenerator): PSym =
   incl(disp.flags, sfDispatcher)
   excl(disp.flags, sfExported)
   disp.typ = copyType(disp.typ, nextTypeId(idgen), disp.typ.owner)
+  # XXX     copyTypeProps(cl.c.graph, cl.c.idgen.module, result, t)
+
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccNimCall
   disp.ast = copyTree(s.ast)

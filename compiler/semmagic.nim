@@ -382,6 +382,8 @@ proc semUnown(c: PContext; n: PNode): PNode =
       let b = unownedType(c, t[^1])
       if b != t[^1]:
         result = copyType(t, nextTypeId c.idgen, t.owner)
+        copyTypeProps(c.graph, c.idgen.module, result, t)
+
         result[^1] = b
         result.flags.excl tfHasOwned
       else:
