@@ -611,10 +611,18 @@ proc aliases*(obj, field: PNode): AliasKind =
   collectImportantNodes(objImportantNodes, obj)
   collectImportantNodes(fieldImportantNodes, field)
 
+  # If field is less nested than obj, then it cannot be part of/aliased by obj
   if fieldImportantNodes.len < objImportantNodes.len: return no
 
   result = yes
   for i in 1..objImportantNodes.len:
+    # We compare the nodes leading to the location of obj and field
+    # with each other.
+    # We continue until they diverge, in which case we return no, or
+    # until we reach the location of obj, in which case we do not need
+    # to look further, since field must be part of/aliased by obj now.
+    # If we encounter an element access using an index which is a runtime value,
+    # we simply return maybe instead of yes; should further nodes not diverge.
     let currFieldPath = fieldImportantNodes[^i]
     let currObjPath = objImportantNodes[^i]
 
