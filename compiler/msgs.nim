@@ -460,7 +460,7 @@ proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
   if result == 0:
     try:
       for line in lines(toFullPathConsiderDirty(conf, fileIdx).string):
-        addSourceLine conf, fileIdx, line.string
+        addSourceLine conf, fileIdx, line
     except IOError:
       discard
     result = conf.m.fileInfos[fileIdx.int32].lines.len
