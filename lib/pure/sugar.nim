@@ -388,4 +388,4 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
       for i, d in data.pairs: {i: d}
     doAssert m == {0: "bird", 1: "word"}.toTable
 
-  collectImpl(nil, body)
+  result = collectImpl(nil, body)
