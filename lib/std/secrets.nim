@@ -1,4 +1,4 @@
-import os
+import std/os
 
 runnableExamples:
   doAssert urandom(0).len == 0
@@ -8,7 +8,7 @@ runnableExamples:
 
 
 when defined(posix):
-  import posix
+  import std/posix
 
   template processReadBytes(readBytes: int, p: pointer) =
     if readBytes == 0:
@@ -36,7 +36,7 @@ when defined(posix):
       discard posix.close(fd)
 
 when defined(windows):
-  import winlean
+  import std/winlean
 
   type
     PVOID = pointer
@@ -56,16 +56,18 @@ when defined(windows):
   ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
 
 
-  proc randomBytes(pbBuffer: pointer, cbBuffer: ULONG): int =
-    bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), cbBuffer,
+  proc randomBytes(pbBuffer: pointer, cbBuffer: int): int =
+    bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
-  proc urandom*(p: pointer, size: int): int =
-    result = randomBytes(p, ULONG(size))
+  proc urandom*[T: byte | char](p: var openArray[T]): int =
+    let size = p.len
+    if size > 0:
+      result = randomBytes(addr p[0], size)
 
-  proc urandom*(size: int): string =
+  proc urandom*(size: Natural): string =
     result = newString(size)
-    if urandom(result.cstring, ULONG(size)) != STATUS_SUCCESS:
+    if urandom(result) != STATUS_SUCCESS:
       raiseOsError(osLastError())
 
 elif defined(linux):
@@ -78,21 +80,25 @@ elif defined(linux):
       let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
       processReadBytes(readBytes, p)
 
-  proc urandom*(p: pointer, size: int): int =
-    result = randomBytes(p, size)
-    if result < 0:
-      result = getDevUrandom(p, size)
+  proc urandom*[T: byte | char](p: var openArray[T]): int =
+    let size = p.len
+    if size > 0:
+      result = randomBytes(p, size)
+      if result < 0:
+        result = getDevUrandom(p, size)
 
-  proc urandom*(size: int): string =
+  proc urandom*(size: Natural): string =
     result = newString(size)
-    if urandom(result.cstring, size) < 0:
+    if urandom(result) < 0:
       raiseOsError(osLastError())
 
 else:
-  proc urandom*(p: pointer, size: int): int =
-    result = getDevUrandom(p, size)
+  proc urandom*[T: byte | char](p: var openArray[T]): int =
+    let size = p.len
+    if size > 0:
+      result = getDevUrandom(addr p[0], size)
 
-  proc urandom*(size: int): string =
+  proc urandom*(size: Natural): string =
     result = newString(size)
-    if urandom(result.cstring, size) < 0:
+    if urandom(result) < 0:
       raiseOsError(osLastError())
