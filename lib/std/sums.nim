@@ -6,16 +6,37 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 
-## Fast summation functions.
+## Accurate summation functions.
 
 runnableExamples:
-  let data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-  doAssert sumKbn(data) == 45
-  doAssert sumPairs(data) == 45
+  import std/math
+
+  template `~=`(x, y: float): bool = abs(x - y) < 1e-4
+
+  let
+    n = 1_000_000
+    first = 1e10
+    small = 0.1
+  var data = @[first]
+  for _ in 1 .. n:
+    data.add(small)
+
+  let result = first + small * n.float
+
+  doAssert not (sum(data) ~= result)
+  doAssert sumKbn(data) ~= result
+  doAssert sumPairs(data) ~= result
+
+## See also
+## ========
+## * `math module <math.html>`_ for a standard `sum proc <math.html#sum,openArray[T]>`_
 
 func sumKbn*[T](x: openArray[T]): T =
   ## Kahan-Babuška-Neumaier summation: O(1) error growth, at the expense
   ## of a considerable increase in computational cost.
+  ##
+  ## See:
+  ## * https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
   if len(x) == 0: return
   var sum = x[0]
   var c = T(0)
@@ -44,7 +65,7 @@ func sumPairs*[T](x: openArray[T]): T =
   ## the base case is large enough.
   ##
   ## See, e.g.:
-  ## * http://en.wikipedia.org/wiki/Pairwise_summation
+  ## * https://en.wikipedia.org/wiki/Pairwise_summation
   ## * Higham, Nicholas J. (1993), "The accuracy of floating point
   ##   summation", SIAM Journal on Scientific Computing 14 (4): 783–799.
   ##
@@ -53,6 +74,5 @@ func sumPairs*[T](x: openArray[T]): T =
   ## in practice. See:
   ## * Manfred Tasche and Hansmartin Zeuner, Handbook of
   ##   Analytic-Computational Methods in Applied Mathematics (2000).
-  ##
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
