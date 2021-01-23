@@ -35,6 +35,13 @@ type
     compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
     methods*: seq[(LitId, PackedItemId, int32)]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
+
+    typeInstCache*: seq[(PackedItemId, PackedItemId)]
+    procInstCache*: seq[PackedInstantiation]
+    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+
     sh*: Shared
     cfg: PackedConfig
 
@@ -436,20 +443,6 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedMo
   toPackedNodeIgnoreProcDefs(n, encoder, m)
   flush encoder, m
 
-proc storePrim*(f: var RodFile; x: PackedType) =
-  for y in fields(x):
-    when y is seq:
-      storeSeq(f, y)
-    else:
-      storePrim(f, y)
-
-proc loadPrim*(f: var RodFile; x: var PackedType) =
-  for y in fields(x):
-    when y is seq:
-      loadSeq(f, y)
-    else:
-      loadPrim(f, y)
-
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "\nloading file: ", filename.string
 
@@ -502,6 +495,12 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection bodiesSection, m.bodies.nodes
   loadSeqSection symsSection, m.sh.syms
   loadSeqSection typesSection, m.sh.types
+
+  loadSeqSection typeInstCacheSection, m.typeInstCache
+  loadSeqSection procInstCacheSection, m.procInstCache
+  loadSeqSection attachedOpsSection, m.attachedOps
+  loadSeqSection methodsPerTypeSection, m.methodsPerType
+  loadSeqSection enumToStringProcsSection, m.enumToStringProcs
 
   close(f)
   result = f.err
@@ -557,6 +556,13 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection symsSection, m.sh.syms
 
   storeSeqSection typesSection, m.sh.types
+
+  storeSeqSection typeInstCacheSection, m.typeInstCache
+  storeSeqSection procInstCacheSection, m.procInstCache
+  storeSeqSection attachedOpsSection, m.attachedOps
+  storeSeqSection methodsPerTypeSection, m.methodsPerType
+  storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+
   close(f)
   if f.err != ok:
     storeError(f.err, filename)
