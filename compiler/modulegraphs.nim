@@ -103,19 +103,11 @@ iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
     for t in x[]:
       yield t
 
-proc addToGenericCache*(g: ModuleGraph; module: int; s: PSym; inst: PType) =
-  g.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
-  # XXX Also add to the packed module!
-
 iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
   if g.procInstCache.contains(s.itemId):
     let x = addr(g.procInstCache[s.itemId])
     for t in x[]:
       yield t
-
-proc addToGenericProcCache*(g: ModuleGraph; module: int; s: PSym; inst: PInstantiation) =
-  g.procInstCache.mgetOrPut(s.itemId, @[]).add inst
-  # XXX Also add to the packed module!
 
 proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil

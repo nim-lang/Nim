@@ -422,6 +422,17 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       toPackedNode(n[i], ir, c, m)
     ir.patch patchPos
 
+proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
+  var t = newSeq[PackedItemId](i.concreteTypes.len)
+  for j in 0..high(i.concreteTypes):
+    t[j] = storeTypeLater(i.concreteTypes[j], c, m)
+  m.procInstCache.add PackedInstantiation(key: storeSymLater(s, c, m),
+                                          sym: storeSymLater(i.sym, c, m),
+                                          concreteTypes: t)
+
+proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PType) =
+  m.typeInstCache.add (storeSymLater(s, c, m), storeTypeLater(inst, c, m))
+
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 

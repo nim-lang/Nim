@@ -378,7 +378,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    addToGenericProcCache(c.graph, c.module.position, fn, entry)
+    addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
