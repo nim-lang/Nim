@@ -67,11 +67,6 @@ when defined(windows):
     if size > 0:
       result = randomBytes(addr p[0], size)
 
-  proc urandom*(size: Natural): string =
-    result = newString(size)
-    if urandom(result) != STATUS_SUCCESS:
-      raiseOsError(osLastError())
-
 elif defined(linux):
   let SYS_getrandom {.importc: "SYS_getrandom", header: "<syscall.h>".}: clong
 
@@ -89,11 +84,6 @@ elif defined(linux):
       if result < 0:
         result = getDevUrandom(addr p[0], size)
 
-  proc urandom*(size: Natural): string =
-    result = newString(size)
-    if urandom(result) < 0:
-      raiseOsError(osLastError())
-
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
 
@@ -108,11 +98,6 @@ elif defined(openbsd):
       result = randomBytes(addr p[0], size)
       if result < 0:
         result = getDevUrandom(addr p[0], size)
-
-  proc urandom*(size: Natural): string =
-    result = newString(size)
-    if urandom(result) < 0:
-      raiseOsError(osLastError())
 
 elif defined(macosx):
   const errSecSuccess = 0
@@ -130,13 +115,8 @@ elif defined(macosx):
     let size = p.len
     if size > 0:
       result = secRandomCopyBytes(nil, size, addr p[0])
-      if result < 0:
+      if result != errSecSuccess:
         result = getDevUrandom(addr p[0], size)
-
-  proc urandom*(size: Natural): string =
-    result = newString(size)
-    if urandom(result) != errSecSuccess:
-      raiseOsError(osLastError())
 
 else:
   proc urandom*[T: byte | char](p: var openArray[T]): int =
@@ -144,6 +124,13 @@ else:
     if size > 0:
       result = getDevUrandom(addr p[0], size)
 
+
+when defined(windows):
+  proc urandom*(size: Natural): string =
+    result = newString(size)
+    if urandom(result) != STATUS_SUCCESS:
+      raiseOsError(osLastError())
+else:
   proc urandom*(size: Natural): string =
     result = newString(size)
     if urandom(result) < 0:
