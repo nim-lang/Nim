@@ -1,4 +1,21 @@
 ## Cryptographically secure pseudorandom number generator.
+## 
+## | Targets    | Implementation|
+## | :---         | ----:       |
+## | Windows| `BCryptGenRandom`_ |
+## | Linux| `getrandom`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | Macosx| `SecRandomCopyBytes`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | OpenBSD| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | JS(Web Browser)| `getRandomValues`_|
+## | Other platforms| `/dev/urandom`_|
+##
+## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
+## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
+## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
+## .. _SecRandomCopyBytes: https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc
+## .. _getentropy: https://man.openbsd.org/getentropy.2
+## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
+##
 
 import std/os
 
