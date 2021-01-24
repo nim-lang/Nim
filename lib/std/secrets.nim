@@ -37,7 +37,34 @@ when defined(posix):
 
       discard posix.close(fd)
 
-when defined(windows):
+when defined(js):
+  import std/private/jsutils
+
+  proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+
+  const
+    maxBrowserCryptoBufferSize = 256
+
+  proc urandom*(p: var openArray[byte]): int =
+    let size = p.len
+    if size > 0:
+      let chunks = (size - 1) div maxBrowserCryptoBufferSize
+      var base = 0
+      for i in 0 ..< chunks:
+        for j in 0 ..< maxBrowserCryptoBufferSize:
+          var src = newUint8Array(maxBrowserCryptoBufferSize)
+          getRandomValues(src)
+          p[base + j] = src[j]
+
+        inc(base, maxBrowserCryptoBufferSize)
+
+      let left = size - chunks * maxBrowserCryptoBufferSize
+      var src = newUint8Array(left)
+      getRandomValues(src)
+      for i in 0 ..< left:
+        p[base + i] = src[i]
+
+elif defined(windows):
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
@@ -126,7 +153,11 @@ else:
       result = getDevUrandom(addr p[0], size)
 
 
-when defined(windows):
+when defined(js):
+  proc urandom*(size: Natural): seq[byte] =
+    result = newSeq[byte](size)
+    discard urandom(result)
+elif defined(windows):
   proc urandom*(size: Natural): seq[byte] =
     result = newSeq[byte](size)
     if urandom(result) != STATUS_SUCCESS:
