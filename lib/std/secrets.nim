@@ -99,6 +99,8 @@ elif defined(openbsd):
         result = getDevUrandom(addr p[0], size)
 
 elif defined(macosx):
+  {.passL: "-framework Security".}
+
   const errSecSuccess = 0
   type
     SecRandom {.importc: "struct __SecRandom".} = object
