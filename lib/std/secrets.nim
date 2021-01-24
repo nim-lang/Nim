@@ -114,6 +114,30 @@ elif defined(openbsd):
     if urandom(result) < 0:
       raiseOsError(osLastError())
 
+elif defined(macosx):
+  const errSecSuccess = 0
+  type
+    SecRandom {.importc: "struct __SecRandom".} = object
+
+    SecRandomRef = ptr SecRandom
+      ## An abstract Core Foundation-type object containing information about a random number generator.
+
+  proc secRandomCopyBytes(
+    rnd: SecRandomRef, count: csize_t, bytes: pointer
+    ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
+
+  proc urandom*[T: byte | char](p: var openArray[T]): int =
+    let size = p.len
+    if size > 0:
+      result = secRandomCopyBytes(nil, size, addr p[0])
+      if result < 0:
+        result = getDevUrandom(addr p[0], size)
+
+  proc urandom*(size: Natural): string =
+    result = newString(size)
+    if urandom(result) != errSecSuccess:
+      raiseOsError(osLastError())
+
 else:
   proc urandom*[T: byte | char](p: var openArray[T]): int =
     let size = p.len
