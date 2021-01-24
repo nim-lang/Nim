@@ -32,29 +32,40 @@ runnableExamples:
 when defined(posix):
   import std/posix
 
-  template processReadBytes(readBytes: int, p: pointer, result: var int) =
+  const batchSize = 256
+
+  template processReadBytes(readBytes: int, p: pointer, res: var int) =
     if readBytes == 0:
       break
     elif readBytes > 0:
-      inc(result, readBytes)
+      inc(res, readBytes)
       cast[ptr pointer](p)[] = cast[pointer](cast[ByteAddress](p) + readBytes)
     else:
       if osLastError().int in {EINTR, EAGAIN}:
         discard
       else:
-        result = -1
+        res = -1
         break
 
-  proc getDevUrandom(p: pointer, size: int): int =
+  proc getDevUrandom(p: var openArray[byte], size: int): int =
     let fd = posix.open("/dev/urandom", O_RDONLY)
 
     if fd > 0:
       var stat: Stat
       if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
-        while result < size:
-          let readBytes = posix.read(fd, p, size - result)
-          processReadBytes(readBytes, p, result)
+        let
+          size = p.len
+          chunks = (size - 1) div batchSize
+          left = size - chunk * batchSize
 
+        var base = 0
+        for i in 0 ..< chunks:
+          let readBytes = posix.read(fd, addr p[base], batchSize)
+          if readBytes < 0:
+            return readBytes
+          inc(base, batchSize)
+
+        result = posix.read(fd, addr p[base], left)
       discard posix.close(fd)
 
 when defined(js):
@@ -128,7 +139,7 @@ elif defined(linux):
     if size > 0:
       result = randomBytes(addr p[0], size)
       if result < 0:
-        result = getDevUrandom(addr p[0], size)
+        result = getDevUrandom(p, size)
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
@@ -143,7 +154,7 @@ elif defined(openbsd):
     if size > 0:
       result = randomBytes(addr p[0], size)
       if result < 0:
-        result = getDevUrandom(addr p[0], size)
+        result = getDevUrandom(p, size)
 
 elif defined(freebsd):
   proc getrandom(p: pointer, size: csize_t, flags: cuint): int {.importc: "getrandom", header: "<unistd.h>".}
@@ -152,12 +163,13 @@ elif defined(freebsd):
     while result < size:
       let readBytes = getrandom(p, csize_t(size - result), 0)
       processReadBytes(readBytes, p, result)
+
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
       if result < 0:
-        result = getDevUrandom(addr p[0], size)
+        result = getDevUrandom(p, size)
 
 elif defined(macosx):
   {.passL: "-framework Security".}
@@ -178,13 +190,13 @@ elif defined(macosx):
     if size > 0:
       result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
       if result != errSecSuccess:
-        result = getDevUrandom(addr p[0], size)
+        result = getDevUrandom(p, size)
 
 else:
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
-      result = getDevUrandom(addr p[0], size)
+      result = getDevUrandom(p, size)
 
 
 when defined(js):
