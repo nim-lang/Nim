@@ -38,13 +38,12 @@ when defined(posix):
       discard posix.close(fd)
 
 when defined(windows):
-  import std/winlean
-
   type
     PVOID = pointer
     BCRYPT_ALG_HANDLE = PVOID
     PUCHAR = ptr cuchar
     NTSTATUS = clong
+    ULONG = culong
 
   const
     STATUS_SUCCESS = 0x00000000
