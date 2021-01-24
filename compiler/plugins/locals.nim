@@ -26,7 +26,7 @@ proc semLocals*(c: PContext, n: PNode): PNode =
             {tyVarargs, tyOpenArray, tyTypeDesc, tyStatic, tyUntyped, tyTyped, tyEmpty}:
 
         if it.owner == owner:
-          var field = newSym(skField, it.name, nextId c.idgen, owner, n.info)
+          var field = newSym(skField, it.name, nextSymId c.idgen, owner, n.info)
           field.typ = it.typ.skipTypes({tyVar})
           field.position = counter
           inc(counter)

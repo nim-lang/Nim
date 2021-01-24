@@ -408,8 +408,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     of "closure":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
-            t.callConv == ccClosure and
-            tfIterator notin t.flags
+            t.callConv == ccClosure
     of "iterator":
       let t = skipTypes(t1, abstractRange)
       res = t.kind == tyProc and
@@ -1015,7 +1014,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:
   result = newNodeI(nkCall, n.info)
-  var e = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "echo"))
+  let e = systemModuleSym(c.graph, getIdent(c.cache, "echo"))
   if e != nil:
     result.add(newSymNode(e))
   else:
@@ -1073,7 +1072,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in 0..<it.len - 1: s.add copyTree(it[j])
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           check.add inExpr
@@ -1086,11 +1085,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             check.add c.graph.emptyNode # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           var notExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          notExpr.add newSymNode(c.graph.opNot, n.info)
+          notExpr.add newSymNode(getSysMagic(c.graph, n.info, "not", mNot), n.info)
           notExpr.add inExpr
           check.add notExpr
           return
@@ -1119,7 +1118,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             # This seems semantically correct and then we'll be able
             # to return the section symbol directly here
             let foundType = makeTypeDesc(c, def[2].typ)
-            return newSymNode(copySym(def[0].sym, nextId c.idgen).linkTo(foundType), info)
+            return newSymNode(copySym(def[0].sym, nextSymId c.idgen).linkTo(foundType), info)
 
       of nkConstSection:
         for def in statement:
@@ -1144,7 +1143,7 @@ proc readTypeParameter(c: PContext, typ: PType,
             return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
-          return newSymNode(copySym(tParam.sym, nextId c.idgen).linkTo(foundTyp), info)
+          return newSymNode(copySym(tParam.sym, nextSymId c.idgen).linkTo(foundTyp), info)
 
   return nil
 
@@ -1898,7 +1897,7 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
-        result = strTableGet(m.tab, ident)
+        result = someSym(c.graph, m, ident)
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
@@ -1941,7 +1940,7 @@ proc expectString(c: PContext, n: PNode): string =
     localError(c.config, n.info, errStringLiteralExpected)
 
 proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
-  result = newSym(kind, c.cache.idAnon, nextId c.idgen, getCurrOwner(c), info)
+  result = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), info)
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
@@ -2156,7 +2155,7 @@ proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
 
 proc createFlowVar(c: PContext; t: PType; info: TLineInfo): PType =
-  result = newType(tyGenericInvocation, nextId c.idgen, c.module)
+  result = newType(tyGenericInvocation, nextTypeId c.idgen, c.module)
   addSonSkipIntLit(result, magicsys.getCompilerProc(c.graph, "FlowVar").typ, c.idgen)
   addSonSkipIntLit(result, t, c.idgen)
   result = instGenericContainer(c, info, result, allowMetaTypes = false)
@@ -2505,7 +2504,7 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     elif labl.owner == nil:
       labl.owner = c.p.owner
     n[0] = newSymNode(labl, n[0].info)
-    suggestSym(c.config, n[0].info, labl, c.graph.usageSym)
+    suggestSym(c.graph, n[0].info, labl, c.graph.usageSym)
     styleCheckDef(c.config, labl)
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)
@@ -2523,15 +2522,12 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
   let exceptSet = readExceptSet(c, n)
   let exported = moduleName.sym
   result = newNodeI(nkExportStmt, n.info)
-  strTableAdd(c.module.tab, exported)
-  var i: TTabIter
-  var s = initTabIter(i, exported.tab)
-  while s != nil:
+  reexportSym(c, exported)
+  for s in allSyms(c.graph, exported):
     if s.kind in ExportableSymKinds+{skModule} and
        s.name.id notin exceptSet and sfError notin s.flags:
-      strTableAdd(c.module.tab, s)
+      reexportSym(c, s)
       result.add newSymNode(s, n.info)
-    s = nextIter(i, exported.tab)
   markUsed(c, n.info, exported)
 
 proc semExport(c: PContext, n: PNode): PNode =
@@ -2549,15 +2545,12 @@ proc semExport(c: PContext, n: PNode): PNode =
       localError(c.config, a.info, errGenerated, "cannot export: " & renderTree(a))
     elif s.kind == skModule:
       # forward everything from that module:
-      strTableAdd(c.module.tab, s)
-      var ti: TTabIter
-      var it = initTabIter(ti, s.tab)
-      while it != nil:
+      reexportSym(c, s)
+      for it in allSyms(c.graph, s):
         if it.kind in ExportableSymKinds+{skModule}:
-          strTableAdd(c.module.tab, it)
+          reexportSym(c, it)
           result.add newSymNode(it, a.info)
           specialSyms(c, it)
-        it = nextIter(ti, s.tab)
       markUsed(c, n.info, s)
     else:
       while s != nil:
@@ -2566,7 +2559,7 @@ proc semExport(c: PContext, n: PNode): PNode =
             "; enum field cannot be exported individually")
         if s.kind in ExportableSymKinds+{skModule} and sfError notin s.flags:
           result.add(newSymNode(s, a.info))
-          strTableAdd(c.module.tab, s)
+          reexportSym(c, s)
           markUsed(c, n.info, s)
           specialSyms(c, s)
           if s.kind == skType and sfPure notin s.flags:
@@ -2576,7 +2569,7 @@ proc semExport(c: PContext, n: PNode): PNode =
                 var e = etyp.n[j].sym
                 if e.kind != skEnumField:
                   internalError(c.config, s.info, "rawImportSymbol")
-                strTableAdd(c.module.tab, e)
+                reexportSym(c, e)
 
         s = nextOverloadIter(o, c, a)
 
@@ -2631,7 +2624,7 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
     let paramPos = defExpr.sym.position + 1
 
     if call[paramPos].kind != nkSym:
-      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), nextId c.idgen,
+      let hoistedVarSym = newSym(skLet, getIdent(c.graph.cache, genPrefix), nextSymId c.idgen,
                                  c.p.owner, letSection.info, c.p.owner.options)
       hoistedVarSym.typ = call[paramPos].typ
 
@@ -2647,6 +2640,14 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
   else:
     for i in 0..<defExpr.safeLen:
       hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
+
+proc getNilType(c: PContext): PType =
+  result = c.nilTypeCache
+  if result == nil:
+    result = newTypeS(tyNil, c)
+    result.size = c.config.target.ptrSize
+    result.align = c.config.target.ptrSize.int16
+    c.nilTypeCache = result
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
@@ -2683,9 +2684,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyNil)
+    if result.typ == nil: result.typ = getNilType(c)
   of nkIntLit:
-    if result.typ == nil: setIntLitType(c.graph, result)
+    if result.typ == nil: setIntLitType(c, result)
   of nkInt8Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt8)
   of nkInt16Lit:

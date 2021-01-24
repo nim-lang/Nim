@@ -653,12 +653,19 @@ proc genParForStmt(p: BProc, t: PNode) =
     initLocExpr(p, call[2], rangeB)
 
     # $n at the beginning because of #9710
-    if call.len == 4: # `||`(a, b, annotation)
-      lineF(p, cpsStmts, "$n#pragma omp $4$n" &
-                          "for ($1 = $2; $1 <= $3; ++$1)",
-                          [forLoopVar.loc.rdLoc,
-                          rangeA.rdLoc, rangeB.rdLoc,
-                          call[3].getStr.rope])
+    if call.len == 4: # procName(a, b, annotation)
+      if call[0].sym.name.s == "||":  # `||`(a, b, annotation)
+        lineF(p, cpsStmts, "$n#pragma omp $4$n" &
+                            "for ($1 = $2; $1 <= $3; ++$1)",
+                            [forLoopVar.loc.rdLoc,
+                            rangeA.rdLoc, rangeB.rdLoc,
+                            call[3].getStr.rope])
+      else:
+        lineF(p, cpsStmts, "$n#pragma $4$n" &
+                    "for ($1 = $2; $1 <= $3; ++$1)",
+                    [forLoopVar.loc.rdLoc,
+                    rangeA.rdLoc, rangeB.rdLoc,
+                    call[3].getStr.rope])
     else: # `||`(a, b, step, annotation)
       var step: TLoc
       initLocExpr(p, call[3], step)
@@ -1523,20 +1530,21 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
          intLiteral(toInt64(lengthOrd(p.config, field.typ))+1)])
 
-proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
-  const ObjDiscMappingProcSlot = -5
-  var theProc: PSym = nil
-  for idx, p in items(t.methods):
-    if idx == ObjDiscMappingProcSlot:
-      theProc = p
-      break
-  if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
-    t.methods.add((ObjDiscMappingProcSlot, theProc))
-  var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
-  call.add newSymNode(theProc)
-  call.add e
-  expr(p, call, d)
+when false:
+  proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
+    const ObjDiscMappingProcSlot = -5
+    var theProc: PSym = nil
+    for idx, p in items(t.methods):
+      if idx == ObjDiscMappingProcSlot:
+        theProc = p
+        break
+    if theProc == nil:
+      theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
+      t.methods.add((ObjDiscMappingProcSlot, theProc))
+    var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
+    call.add newSymNode(theProc)
+    call.add e
+    expr(p, call, d)
 
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var a, tmp: TLoc

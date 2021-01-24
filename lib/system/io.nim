@@ -358,7 +358,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
+proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
   ## reads a line of text from the file `f` into `line`. May throw an IO
   ## exception.
@@ -420,15 +420,15 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
         if buffer[i].uint16 == 26:  #Ctrl+Z
           close(f)  #has the same effect as setting EOF
           if i == 0:
-            line = TaintedString("")
+            line = ""
             return false
           numberOfCharsRead = i
           break
       buffer[numberOfCharsRead] = 0.Utf16Char
       when defined(nimv2):
-        line = TaintedString($toWideCString(buffer))
+        line = $toWideCString(buffer)
       else:
-        line = TaintedString($buffer)
+        line = $buffer
       return(true)
 
   var pos = 0
@@ -479,11 +479,11 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     sp = 128 # read in 128 bytes at a time
     line.string.setLen(pos+sp)
 
-proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.} =
+proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.} =
   ## reads a line of text from the file `f`. May throw an IO exception.
   ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
   ## character(s) are not part of the returned string.
-  result = TaintedString(newStringOfCap(80))
+  result = newStringOfCap(80)
   if not readLine(f, result): raiseEOF()
 
 proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.} =
@@ -563,7 +563,7 @@ proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
 
-proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
+proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.} =
   ## Reads all data from the stream `file`.
   ##
   ## Raises an IO exception in case of an error. It is an error if the
@@ -576,9 +576,9 @@ proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
   else:
     let len = rawFileSize(file)
   if len > 0:
-    result = readAllFile(file, len).TaintedString
+    result = readAllFile(file, len)
   else:
-    result = readAllBuffer(file).TaintedString
+    result = readAllBuffer(file)
 
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
@@ -783,7 +783,7 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
-  const echoDoRaise = not defined(nimLegacyEchoNoRaise) # see PR #16366
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) and not defined(guiapp) # see PR #16366
 
   template checkErrMaybe(succeeded: bool): untyped =
     if not succeeded:
@@ -841,7 +841,7 @@ when defined(windows) and appType == "console" and
   discard setConsoleOutputCP(Utf8codepage)
   discard setConsoleCP(Utf8codepage)
 
-proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
+proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
   ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
   ## Raises an IO exception in case of an error. If you need to call
@@ -882,7 +882,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc readLines*(filename: string, n: Natural): seq[TaintedString] =
+proc readLines*(filename: string, n: Natural): seq[string] =
   ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
@@ -890,7 +890,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   var f: File = nil
   if open(f, filename):
     try:
-      result = newSeq[TaintedString](n)
+      result = newSeq[string](n)
       for i in 0 .. n - 1:
         if not readLine(f, result[i]):
           raiseEOF()
@@ -899,10 +899,10 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-template readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+template readLines*(filename: string): seq[string] {.deprecated: "use readLines with two arguments".} =
   readLines(filename, 1)
 
-iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
+iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
   ##
   ## If the file does not exist `IOError` is raised. The trailing newline
@@ -918,12 +918,12 @@ iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:
-    var res = TaintedString(newStringOfCap(80))
+    var res = newStringOfCap(80)
     while f.readLine(res): yield res
   finally:
     close(f)
 
-iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
+iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.
   ##
   ## The trailing newline character(s) are removed from the iterated lines.
@@ -936,5 +936,5 @@ iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
   ##         if letter == '0':
   ##           result.zeros += 1
   ##       result.lines += 1
-  var res = TaintedString(newStringOfCap(80))
+  var res = newStringOfCap(80)
   while f.readLine(res): yield res

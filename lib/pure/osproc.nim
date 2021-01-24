@@ -75,7 +75,7 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
-  TaintedString {.rtl, extern: "nosp$1",
+  string {.rtl, extern: "nosp$1",
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
@@ -187,6 +187,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `kill proc <#kill,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`.
@@ -198,6 +199,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `terminate proc <#terminate,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true if the process `p` is still running. Returns immediately.
@@ -502,13 +504,13 @@ when not defined(useNimRtl):
       args: openArray[string] = [], env: StringTableRef = nil,
       options: set[ProcessOption] = {poStdErrToStdOut, poUsePath,
           poEvalCommand}):
-    TaintedString =
+    string =
 
     var p = startProcess(command, workingDir = workingDir, args = args,
         env = env, options = options)
     var outp = outputStream(p)
-    result = TaintedString""
-    var line = newStringOfCap(120).TaintedString
+    result = ""
+    var line = newStringOfCap(120)
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
@@ -979,7 +981,7 @@ elif not defined(useNimRtl):
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
       data.sysCommand = useShPath
-      sysArgsRaw = @[data.sysCommand, "-c", command]
+      sysArgsRaw = @[useShPath, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       data.sysCommand = command
@@ -1570,7 +1572,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
                 workingDir = "", input = ""): tuple[
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
@@ -1617,8 +1619,8 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
-  result = (TaintedString"", -1)
-  var line = newStringOfCap(120).TaintedString
+  result = ("", -1)
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
       result[0].string.add(line.string)

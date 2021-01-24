@@ -282,7 +282,12 @@ block genericHead:
   doAssert not compiles(genericHead(Foo))
   type Bar = object
   doAssert not compiles(genericHead(Bar))
-  # doAssert seq[int].genericHead is seq
+
+  when false: # xxx not supported yet
+    doAssert seq[int].genericHead is seq
+  when false: # xxx not supported yet, gives: Error: identifier expected
+    type Hoo[T] = object
+    doAssert genericHead(Hoo[int])[float] is Hoo[float]
 
 block: # elementType
   iterator myiter(n: int): auto =

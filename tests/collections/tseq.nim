@@ -24,7 +24,7 @@ block tseq2:
     # multiply two int sequences:
     for i in 0..len(a)-1: result[i] = a[i] * b[i]
 
-  assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
+  doAssert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
 
 
 

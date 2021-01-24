@@ -91,6 +91,8 @@ when not defined(gcDestructors):
 else:
   include system/seqs_v2_reimpl
 
+from std/private/strimpl import cmpNimIdentifier
+
 when not defined(js):
   template rawType(x: Any): PNimType =
     cast[PNimType](x.rawTypePtr)
@@ -366,36 +368,19 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
   for name, any in items(ret):
     yield ($name, any)
 
-proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-  proc toLower(c: char): char {.inline.} =
-    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-    else: result = c
-  var i = 0
-  var j = 0
-  if a[0] != b[0]: return 1
-  while true:
-    while a[i] == '_': inc(i)
-    while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
-    result = ord(aa) - ord(bb)
-    if result != 0 or aa == '\0': break
-    inc(i)
-    inc(j)
-
 proc getFieldNode(p: pointer, n: ptr TNimNode,
                   name: cstring): ptr TNimNode =
   case n.kind
   of nkNone: assert(false)
   of nkSlot:
-    if cmpIgnoreStyle(n.name, name) == 0:
+    if cmpNimIdentifier(n.name, name) == 0:
       result = n
   of nkList:
     for i in 0..n.len-1:
       result = getFieldNode(p, n.sons[i], name)
       if result != nil: break
   of nkCase:
-    if cmpIgnoreStyle(n.name, name) == 0:
+    if cmpNimIdentifier(n.name, name) == 0:
       result = n
     else:
       var m = selectBranch(p, n)
@@ -599,7 +584,7 @@ proc getEnumOrdinal*(x: Any, name: string): int =
   var n = typ.node
   var s = n.sons
   for i in 0 .. n.len-1:
-    if cmpIgnoreStyle($s[i].name, name) == 0:
+    if cmpNimIdentifier($s[i].name, name) == 0:
       if ntfEnumHole notin typ.flags:
         return i
       else:

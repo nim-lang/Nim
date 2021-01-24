@@ -56,11 +56,16 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import bitops, fenv
+import std/[bitops, fenv]
 
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
+
+  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+
+  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
 func binom*(n, k: int): int =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
@@ -152,6 +157,64 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
   else:
     when defined(js): fn()
     else: result = c_isnan(x)
+
+when defined(js):
+  import std/private/jsutils
+
+  proc toBitsImpl(x: float): array[2, uint32] =
+    let buffer = newArrayBuffer(8)
+    let floatBuffer = newFloat64Array(buffer)
+    let uintBuffer = newUint32Array(buffer)
+    floatBuffer[0] = x
+    {.emit: "`result` = `uintBuffer`;".}
+    # result = cast[array[2, uint32]](uintBuffer)
+
+proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
+  ## Returns true if `x` is negative, false otherwise.
+  runnableExamples:
+    doAssert not signbit(0.0)
+    doAssert signbit(-0.0)
+    doAssert signbit(-0.1)
+    doAssert not signbit(0.1)
+  when defined(js):
+    let uintBuffer = toBitsImpl(x)
+    result = (uintBuffer[1] shr 31) != 0
+  else:
+    result = c_signbit(x) != 0
+
+func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
+  ## Returns a value with the magnitude of `x` and the sign of `y`;
+  ## this works even if x or y are NaN or zero, both of which can carry a sign.
+  runnableExamples:
+    doAssert copySign(1.0, -0.0) == -1.0
+    doAssert copySign(0.0, -0.0) == -0.0
+    doAssert copySign(-1.0, 0.0) == 1.0
+    doAssert copySign(10.0, 0.0) == 10.0
+
+    doAssert copySign(Inf, -1.0) == -Inf
+    doAssert copySign(-Inf, 1.0) == Inf
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(10.0, NaN) == 10.0
+
+    doAssert copySign(NaN, 0.0).isNaN
+    doAssert copySign(NaN, -0.0).isNaN
+
+    # fails in VM and JS backend
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
+  # TODO use signbit for examples
+  template impl() =
+    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+      result = abs(x)
+    elif y <= 0.0:
+      result = -abs(x)
+    else: # must be NaN
+      result = abs(x)
+
+  when defined(js): impl()
+  else:
+    when nimvm: impl()
+    else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
@@ -810,12 +873,22 @@ else: # JS
   func floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   func ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
   func ceil*(x: float64): float64 {.importc: "Math.ceil", nodecl.}
-  func round*(x: float): float {.importc: "Math.round", nodecl.}
+
+  when (NimMajor, NimMinor) < (1, 5) or defined(nimLegacyJsRound):
+    func round*(x: float): float {.importc: "Math.round", nodecl.}
+  else:
+    func jsRound(x: float): float {.importc: "Math.round", nodecl.}
+    func round*[T: float64 | float32](x: T): T =
+      if x >= 0: result = jsRound(x)
+      else:
+        result = ceil(x)
+        if result - x >= T(0.5):
+          result -= T(1.0)
   func trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
   func trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
 
-  func `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
-  func `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
+  func `mod`*(x, y: float32): float32 {.importjs: "(# % #)".}
+  func `mod`*(x, y: float64): float64 {.importjs: "(# % #)".}
     ## Computes the modulo operation for float values (the remainder of ``x`` divided by ``y``).
     ##
     ## .. code-block:: nim
@@ -1159,3 +1232,4 @@ func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   while i < x.len:
     result = lcm(result, x[i])
     inc(i)
+

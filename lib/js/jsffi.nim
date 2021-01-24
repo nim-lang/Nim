@@ -8,8 +8,8 @@
 #
 
 ## This Module implements types and macros to facilitate the wrapping of, and
-## interaction with JavaScript libraries. Using the provided types ``JsObject``
-## and ``JsAssoc`` together with the provided macros allows for smoother
+## interaction with JavaScript libraries. Using the provided types `JsObject`
+## and `JsAssoc` together with the provided macros allows for smoother
 ## interfacing with JavaScript, allowing for example quick and easy imports of
 ## JavaScript variables:
 
@@ -24,18 +24,18 @@ runnableExamples:
   proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
 
   # Use jQuery to make the following code run, after the document is ready.
-  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
-  # JavaScript calls, when no corresponding proc exists for ``JsObject``.
+  # This uses an experimental `.()` operator for `JsObject`, to emit
+  # JavaScript calls, when no corresponding proc exists for `JsObject`.
   proc main =
     jq(document).ready(proc() =
       console.log("Hello JavaScript!")
     )
 
 
-when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
+when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
 
-import macros, tables
+import std/[macros, tables]
 
 const
   setImpl = "#[#] = #"
@@ -93,21 +93,21 @@ type
 
 var
   jsArguments* {.importc: "arguments", nodecl}: JsObject
-    ## JavaScript's arguments pseudo-variable
+    ## JavaScript's arguments pseudo-variable.
   jsNull* {.importc: "null", nodecl.}: JsObject
-    ## JavaScript's null literal
+    ## JavaScript's null literal.
   jsUndefined* {.importc: "undefined", nodecl.}: JsObject
-    ## JavaScript's undefined literal
+    ## JavaScript's undefined literal.
   jsDirname* {.importc: "__dirname", nodecl.}: cstring
-    ## JavaScript's __dirname pseudo-variable
+    ## JavaScript's __dirname pseudo-variable.
   jsFilename* {.importc: "__filename", nodecl.}: cstring
-    ## JavaScript's __filename pseudo-variable
+    ## JavaScript's __filename pseudo-variable.
 
 proc isNull*[T](x: T): bool {.noSideEffect, importcpp: "(# === null)".}
-  ## check if a value is exactly null
+  ## Checks if a value is exactly null.
 
 proc isUndefined*[T](x: T): bool {.noSideEffect, importcpp: "(# === undefined)".}
-  ## check if a value is exactly undefined
+  ## Checks if a value is exactly undefined.
 
 # Exceptions
 type
@@ -122,7 +122,7 @@ type
 
 # New
 proc newJsObject*: JsObject {.importcpp: "{@}".}
-  ## Creates a new empty JsObject
+  ## Creates a new empty JsObject.
 
 proc newJsAssoc*[K: JsKey, V]: JsAssoc[K, V] {.importcpp: "{@}".}
   ## Creates a new empty JsAssoc with key type `K` and value type `V`.
@@ -137,20 +137,20 @@ proc jsTypeOf*(x: JsObject): cstring {.importcpp: "typeof(#)".}
 
 proc jsNew*(x: auto): JsObject {.importcpp: "(new #)".}
   ## Turns a regular function call into an invocation of the
-  ## JavaScript's `new` operator
+  ## JavaScript's `new` operator.
 
 proc jsDelete*(x: auto): JsObject {.importcpp: "(delete #)".}
-  ## JavaScript's `delete` operator
+  ## JavaScript's `delete` operator.
 
 proc require*(module: cstring): JsObject {.importc.}
-  ## JavaScript's `require` function
+  ## JavaScript's `require` function.
 
 # Conversion to and from JsObject
 proc to*(x: JsObject, T: typedesc): T {.importcpp: "(#)".}
   ## Converts a JsObject `x` to type `T`.
 
 proc toJs*[T](val: T): JsObject {.importcpp: "(#)".}
-  ## Converts a value of any type to type JsObject
+  ## Converts a value of any type to type JsObject.
 
 template toJs*(s: string): JsObject = cstring(s).toJs
 
@@ -161,7 +161,7 @@ macro jsFromAst*(n: untyped): untyped =
   return quote: toJs(`result`)
 
 proc `&`*(a, b: cstring): cstring {.importcpp: "(# + #)".}
-  ## Concatenation operator for JavaScript strings
+  ## Concatenation operator for JavaScript strings.
 
 proc `+`  *(x, y: JsObject): JsObject {.importcpp: "(# + #)".}
 proc `-`  *(x, y: JsObject): JsObject {.importcpp: "(# - #)".}
@@ -180,30 +180,31 @@ proc `<`  *(x, y: JsObject): JsObject {.importcpp: "(# < #)".}
 proc `>=` *(x, y: JsObject): JsObject {.importcpp: "(# >= #)".}
 proc `<=` *(x, y: JsObject): JsObject {.importcpp: "(# <= #)".}
 proc `**` *(x, y: JsObject): JsObject {.importcpp: "((#) ** #)".}
+  # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
 proc `and`*(x, y: JsObject): JsObject {.importcpp: "(# && #)".}
 proc `or` *(x, y: JsObject): JsObject {.importcpp: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importcpp: "(!#)".}
 proc `in` *(x, y: JsObject): JsObject {.importcpp: "(# in #)".}
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject {.importcpp: getImpl.}
-  ## Return the value of a property of name `field` from a JsObject `obj`.
+  ## Returns the value of a property of name `field` from a JsObject `obj`.
 
 proc `[]`*(obj: JsObject, field: int): JsObject {.importcpp: getImpl.}
-  ## Return the value of a property of name `field` from a JsObject `obj`.
+  ## Returns the value of a property of name `field` from a JsObject `obj`.
 
 proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {.importcpp: setImpl.}
-  ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
+  ## Sets the value of a property of name `field` in a JsObject `obj` to `v`.
 
 proc `[]=`*[T](obj: JsObject, field: int, val: T) {.importcpp: setImpl.}
-  ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
+  ## Sets the value of a property of name `field` in a JsObject `obj` to `v`.
 
 proc `[]`*[K: JsKey, V](obj: JsAssoc[K, V], field: K): V
   {.importcpp: getImpl.}
-  ## Return the value of a property of name `field` from a JsAssoc `obj`.
+  ## Returns the value of a property of name `field` from a JsAssoc `obj`.
 
 proc `[]=`*[K: JsKey, V](obj: JsAssoc[K, V], field: K, val: V)
   {.importcpp: setImpl.}
-  ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
+  ## Sets the value of a property of name `field` in a JsAssoc `obj` to `v`.
 
 proc `[]`*[V](obj: JsAssoc[cstring, V], field: string): V =
   obj[cstring(field)]
@@ -212,7 +213,7 @@ proc `[]=`*[V](obj: JsAssoc[cstring, V], field: string, val: V) =
   obj[cstring(field)] = val
 
 proc `==`*(x, y: JsRoot): bool {.importcpp: "(# === #)".}
-  ## Compare two JsObjects or JsAssocs. Be careful though, as this is comparison
+  ## Compares two JsObjects or JsAssocs. Be careful though, as this is comparison
   ## like in JavaScript, so if your JsObjects are in fact JavaScript Objects,
   ## and not strings or numbers, this is a *comparison of references*.
 
@@ -341,7 +342,7 @@ macro `.()`*[K: cstring, V: proc](obj: JsAssoc[K, V],
 # Iterators:
 
 iterator pairs*(obj: JsObject): (cstring, JsObject) =
-  ## Yields tuples of type ``(cstring, JsObject)``, with the first entry
+  ## Yields tuples of type `(cstring, JsObject)`, with the first entry
   ## being the `name` of a fields in the JsObject and the second being its
   ## value wrapped into a JsObject.
   var k: cstring
@@ -370,7 +371,7 @@ iterator keys*(obj: JsObject): cstring =
   {.emit: "}".}
 
 iterator pairs*[K: JsKey, V](assoc: JsAssoc[K, V]): (K,V) =
-  ## Yields tuples of type ``(K, V)``, with the first entry
+  ## Yields tuples of type `(K, V)`, with the first entry
   ## being a `key` in the JsAssoc and the second being its corresponding value.
   var k: cstring
   var v: V
@@ -400,16 +401,16 @@ iterator keys*[K: JsKey, V](assoc: JsAssoc[K, V]): K =
 # Literal generation
 
 macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
-  ## Takes a ``typedesc`` as its first argument, and a series of expressions of
-  ## type ``key: value``, and returns a value of the specified type with each
-  ## field ``key`` set to ``value``, as specified in the arguments of ``{}``.
+  ## Takes a `typedesc` as its first argument, and a series of expressions of
+  ## type `key: value`, and returns a value of the specified type with each
+  ## field `key` set to `value`, as specified in the arguments of `{}`.
   ##
   ## Example:
   ##
   ## .. code-block:: nim
   ##
   ##  # Let's say we have a type with a ton of fields, where some fields do not
-  ##  # need to be set, and we do not want those fields to be set to ``nil``:
+  ##  # need to be set, and we do not want those fields to be set to `nil`:
   ##  type
   ##    ExtremelyHugeType = ref object
   ##      a, b, c, d, e, f, g: int
@@ -455,16 +456,16 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
 # from a proc, `this` being the first argument.
 
 proc replaceSyms(n: NimNode): NimNode =
-  if n.kind == nnkSym: 
+  if n.kind == nnkSym:
     result = newIdentNode($n)
-  else: 
+  else:
     result = n
     for i in 0..<n.len:
       result[i] = replaceSyms(n[i])
 
 macro bindMethod*(procedure: typed): auto =
   ## Takes the name of a procedure and wraps it into a lambda missing the first
-  ## argument, which passes the JavaScript builtin ``this`` as the first
+  ## argument, which passes the JavaScript builtin `this` as the first
   ## argument to the procedure. Returns the resulting lambda.
   ##
   ## Example:
@@ -477,7 +478,7 @@ macro bindMethod*(procedure: typed): auto =
   ##    return this.a + 42;
   ##  };
   ##
-  ## We can achieve this using the ``bindMethod`` macro:
+  ## We can achieve this using the `bindMethod` macro:
   ##
   ## .. code-block:: nim
   ##  let obj = JsObject{ a: 10 }

@@ -34,27 +34,27 @@ type
 
   TOutputCheck* = enum
     ocIgnore = "ignore"
-    ocEqual  = "equal"
+    ocEqual = "equal"
     ocSubstr = "substr"
 
   TResultEnum* = enum
-    reNimcCrash,     # nim compiler seems to have crashed
-    reMsgsDiffer,       # error messages differ
-    reFilesDiffer,      # expected and given filenames differ
-    reLinesDiffer,      # expected and given line numbers differ
+    reNimcCrash,       # nim compiler seems to have crashed
+    reMsgsDiffer,      # error messages differ
+    reFilesDiffer,     # expected and given filenames differ
+    reLinesDiffer,     # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,  # exit codes of program or of valgrind differ
+    reExitcodesDiffer, # exit codes of program or of valgrind differ
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
-    reInstallFailed     # package installation failed
-    reBuildFailed       # package building failed
-    reDisabled,         # test is disabled
-    reJoined,           # test is disabled because it was joined into the megatest
-    reSuccess           # test was successful
-    reInvalidSpec       # test had problems to parse the spec
+    reInstallFailed    # package installation failed
+    reBuildFailed      # package building failed
+    reDisabled,        # test is disabled
+    reJoined,          # test is disabled because it was joined into the megatest
+    reSuccess          # test was successful
+    reInvalidSpec      # test had problems to parse the spec
 
   TTarget* = enum
     targetC = "c"
@@ -69,8 +69,9 @@ type
 
   ValgrindSpec* = enum
     disabled, enabled, leaking
-  
+
   TSpec* = object
+    # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
     file*, cmd*: string
     input*: string
@@ -89,7 +90,7 @@ type
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
-    parseErrors*: string # when the spec definition is invalid, this is not empty.
+    parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
       # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
@@ -97,7 +98,7 @@ type
       # by making the dependencies explicit
     useValgrind*: ValgrindSpec
     timeout*: float # in seconds, fractions possible,
-                    # but don't rely on much precision
+                      # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
 
 proc getCmd*(s: TSpec): string =
@@ -179,7 +180,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-  var s = readFile(filename).string
+  var s = readFile(filename)
 
   var i = 0
   var a = -1
@@ -224,7 +225,7 @@ proc addLine*(self: var string; a: string) =
   self.add a
   self.add "\n"
 
-proc addLine*(self: var string; a,b: string) =
+proc addLine*(self: var string; a, b: string) =
   self.add a
   self.add b
   self.add "\n"
@@ -232,7 +233,7 @@ proc addLine*(self: var string; a,b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
+proc isCurrentBatch(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:
@@ -296,16 +297,12 @@ proc parseSpec*(filename: string): TSpec =
         result.output = strip(e.value)
       of "sortoutput":
         try:
-          result.sortoutput  = parseCfgBool(e.value)
+          result.sortoutput = parseCfgBool(e.value)
         except:
           result.parseErrors.addLine getCurrentExceptionMsg()
       of "exitcode":
         discard parseInt(e.value, result.exitCode)
         result.action = actionRun
-      of "msg":
-        result.msg = e.value
-        if result.action != actionRun:
-          result.action = actionCompile
       of "errormsg":
         result.msg = e.value
         result.action = actionReject

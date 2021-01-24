@@ -247,7 +247,7 @@ Multiline documentation comments also exist and support nesting too:
 .. code-block:: nim
   proc foo =
     ##[Long documentation comment
-    here.
+       here.
     ]##
 
 
@@ -6141,13 +6141,13 @@ This pragma can also take in an optional warning string to relay to developers.
 noSideEffect pragma
 -------------------
 
-The ``noSideEffect`` pragma is used to mark a proc/iterator to have no side
-effects. This means that the proc/iterator only changes locations that are
+The ``noSideEffect`` pragma is used to mark a proc/iterator that can have only
+side effects through parameters. This means that the proc/iterator only changes locations that are
 reachable from its parameters and the return value only depends on the
-arguments. If none of its parameters have the type ``var T`` or ``ref T``
-or ``ptr T`` this means no locations are modified. It is a static error to
-mark a proc/iterator to have no side effect if the compiler cannot verify
-this.
+parameters. If none of its parameters have the type `var`, `ref`, `ptr`, `cstring`, or `proc`,
+then no locations are modified.
+
+It is a static error to mark a proc/iterator to have no side effect if the compiler cannot verify this.
 
 As a special semantic rule, the built-in `debugEcho
 <system.html#debugEcho,varargs[typed,]>`_ pretends to be free of side effects,
@@ -6167,6 +6167,25 @@ To override the compiler's side effect analysis a ``{.noSideEffect.}``
   func f() =
     {.cast(noSideEffect).}:
       echo "test"
+
+When a `noSideEffect` proc has proc params `bar`, whether it can be used inside a `noSideEffect` context
+depends on what the compiler knows about `bar`:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  func foo(bar: proc(): int): int = bar()
+  var count = 0
+  proc fn1(): int = 1
+  proc fn2(): int = (count.inc; count)
+  func fun1() = discard foo(fn1) # ok because fn1 is inferred as `func`
+  # func fun2() = discard foo(fn2) # would give: Error: 'fun2' can have side effects
+
+  # with callbacks, the compiler is conservative, ie that bar will have side effects
+  var foo2: type(foo) = foo
+  func main() =
+    discard foo(fn1) # ok
+    # discard foo2(fn1) # now this errors
 
 
 compileTime pragma
@@ -6692,16 +6711,16 @@ in C/C++).
 **Note**: This pragma will not exist for the LLVM backend.
 
 
-NoDecl pragma
+nodecl pragma
 -------------
-The ``noDecl`` pragma can be applied to almost any symbol (variable, proc,
+The `nodecl` pragma can be applied to almost any symbol (variable, proc,
 type, etc.) and is sometimes useful for interoperability with C:
 It tells Nim that it should not generate a declaration for the symbol in
 the C code. For example:
 
 .. code-block:: Nim
   var
-    EACCES {.importc, noDecl.}: cint # pretend EACCES was a variable, as
+    EACCES {.importc, nodecl.}: cint # pretend EACCES was a variable, as
                                      # Nim does not know its value
 
 However, the ``header`` pragma is often the better alternative.
@@ -6711,7 +6730,7 @@ However, the ``header`` pragma is often the better alternative.
 
 Header pragma
 -------------
-The ``header`` pragma is very similar to the ``noDecl`` pragma: It can be
+The `header` pragma is very similar to the `nodecl` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared
 and instead, the generated code should contain an ``#include``:
 
@@ -7062,8 +7081,10 @@ one can import C++'s templates rather easily without the need for a pattern
 language for object types:
 
 .. code-block:: nim
+    :test: "nim cpp $1"
+
   type
-    StdMap {.importcpp: "std::map", header: "<map>".} [K, V] = object
+    StdMap[K, V] {.importcpp: "std::map", header: "<map>".} = object
   proc `[]=`[K, V](this: var StdMap[K, V]; key: K; val: V) {.
     importcpp: "#[#] = #", header: "<map>".}
 

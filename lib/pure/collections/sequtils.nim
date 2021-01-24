@@ -8,13 +8,13 @@
 #
 
 ## Although this module has `seq` in its name, it implements operations
-## not only for `seq`:idx: type, but for three built-in container types under
-## the `openArray` umbrella:
+## not only for the `seq`:idx: type, but for three built-in container types
+## under the `openArray` umbrella:
 ## * sequences
 ## * strings
 ## * array
 ##
-## The system module defines several common functions, such as:
+## The `system` module defines several common functions, such as:
 ## * `newSeq[T]` for creating new sequences of type `T`
 ## * `@` for converting arrays and strings to sequences
 ## * `add` for adding new elements to strings and sequences
@@ -27,15 +27,15 @@
 ## languages.
 ##
 ## For functional style programming you have different options at your disposal:
-## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-## * pass `anonymous proc<manual.html#procedures-anonymous-procs>`_
-## * import `sugar module<sugar.html>`_  and use
-##   `=> macro<sugar.html#%3D>.m,untyped,untyped>`_
+## * the `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
+## * pass an `anonymous proc<manual.html#procedures-anonymous-procs>`_
+## * import the `sugar module<sugar.html>`_  and use
+##   the `=> macro<sugar.html#%3D>.m,untyped,untyped>`_
 ## * use `...It templates<#18>`_
 ##   (`mapIt<#mapIt.t,typed,untyped>`_,
 ##   `filterIt<#filterIt.t,untyped,untyped>`_, etc.)
 ##
-## The chaining of functions is possible thanks to the
+## Chaining of functions is possible thanks to the
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 
 runnableExamples:
@@ -44,11 +44,11 @@ runnableExamples:
   # Creating a sequence from 1 to 10, multiplying each member by 2,
   # keeping only the members which are not divisible by 6.
   let
-    foo = toSeq(1..10).map(x => x*2).filter(x => x mod 6 != 0)
-    bar = toSeq(1..10).mapIt(it*2).filterIt(it mod 6 != 0)
+    foo = toSeq(1..10).map(x => x * 2).filter(x => x mod 6 != 0)
+    bar = toSeq(1..10).mapIt(it * 2).filterIt(it mod 6 != 0)
     baz = collect:
       for i in 1..10:
-        let j = 2*i
+        let j = 2 * i
         if j mod 6 != 0:
           j
 
@@ -71,7 +71,8 @@ runnableExamples:
   doAssert (vowels is seq[char]) and (vowels == @['a', 'e', 'i', 'o', 'u'])
   doAssert foo.filterIt(it notin vowels).join == "sqtls s n wsm mdl"
 
-## **See also**:
+## See also
+## ========
 ## * `strutils module<strutils.html>`_ for common string functions
 ## * `sugar module<sugar.html>`_ for syntactic sugar macros
 ## * `algorithm module<algorithm.html>`_ for common generic algorithms
@@ -90,11 +91,11 @@ when not defined(nimhygiene):
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
   ## Injects `expAlias` in caller scope, to avoid bugs involving multiple
-  ##  substitution in macro arguments such as
-  ## https://github.com/nim-lang/Nim/issues/7187
+  ## substitution in macro arguments such as
+  ## https://github.com/nim-lang/Nim/issues/7187.
   ## `evalOnceAs(myAlias, myExp)` will behave as `let myAlias = myExp`
   ## except when `letAssigneable` is false (e.g. to handle openArray) where
-  ## it just forwards `exp` unchanged
+  ## it just forwards `exp` unchanged.
   expectKind(expAlias, nnkIdent)
   var val = exp
 
@@ -113,7 +114,7 @@ func concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
   ##
-  ## See also:
+  ## **See also:**
   ## * `distribute func<#distribute,seq[T],Positive>`_ for a reverse
   ##   operation
   ##
@@ -183,7 +184,7 @@ func repeat*[T](x: T, n: Natural): seq[T] =
 func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
-  ## Setting the optional argument ``isSorted`` to ``true`` (default: false)
+  ## Setting the optional argument `isSorted` to true (default: false)
   ## uses a faster algorithm for deduplication.
   ##
   runnableExamples:
@@ -210,7 +211,7 @@ func deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
 
 func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the minimum value of `s`.
-  ## ``T`` needs to have a ``<`` operator.
+  ## `T` needs to have a `<` operator.
   runnableExamples:
     let
       a = @[1, 2, 3, 4]
@@ -227,7 +228,7 @@ func minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
 
 func maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   ## Returns the index of the maximum value of `s`.
-  ## ``T`` needs to have a ``<`` operator.
+  ## `T` needs to have a `<` operator.
   runnableExamples:
     let
       a = @[1, 2, 3, 4]
@@ -251,9 +252,9 @@ template zipImpl(s1, s2, retType: untyped): untyped =
     ## If one container is shorter, the remaining items in the longer container
     ## are discarded.
     ##
-    ## **Note**: For Nim 1.0.x and older version, ``zip`` returned a seq of
-    ## named tuple with fields ``a`` and ``b``. For Nim versions 1.1.x and newer,
-    ## ``zip`` returns a seq of unnamed tuples.
+    ## **Note**: For Nim 1.0.x and older version, `zip` returned a seq of
+    ## named tuples with fields `a` and `b`. For Nim versions 1.1.x and newer,
+    ## `zip` returns a seq of unnamed tuples.
     runnableExamples:
       let
         short = @[1, 2, 3]
@@ -311,7 +312,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## `num` empty sequences.
   ##
   ## If `spread` is false and the length of `s` is not a multiple of `num`, the
-  ## func will max out the first sub-sequence with ``1 + len(s) div num``
+  ## func will max out the first sub-sequence with `1 + len(s) div num`
   ## entries, leaving the remainder of elements to the last sequence.
   ##
   ## On the other hand, if `spread` is true, the func will distribute evenly
@@ -361,16 +362,16 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
 
 proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
-  ## Returns a new sequence with the results of `op` proc applied to every
+  ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
   ##
-  ## Since the input is not modified you can use it to
+  ## Since the input is not modified, you can use it to
   ## transform the type of the elements in the input container.
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
   ## from the `sugar` module.
   ##
-  ## See also:
+  ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ## * `apply proc<#apply,openArray[T],proc(T)_2>`_ for the in-place version
@@ -387,14 +388,13 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
-  ## Applies `op` to every item in `s` modifying it directly.
+  ## Applies `op` to every item in `s`, modifying it directly.
   ##
-  ## Note that container `s` must be declared as a ``var``
-  ## and it is required for your input and output types to
-  ## be the same, since `s` is modified in-place.
-  ## The parameter function takes a ``var T`` type parameter.
+  ## Note that the container `s` must be declared as a `var`,
+  ## since `s` is modified in-place.
+  ## The parameter function takes a `var T` type parameter.
   ##
-  ## See also:
+  ## **See also:**
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ##
@@ -409,12 +409,12 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
-  ## Note that container `s` must be declared as a ``var``
+  ## Note that the container `s` must be declared as a `var`
   ## and it is required for your input and output types to
   ## be the same, since `s` is modified in-place.
-  ## The parameter function takes and returns a ``T`` type variable.
+  ## The parameter function takes and returns a `T` type variable.
   ##
-  ## See also:
+  ## **See also:**
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ##
@@ -426,7 +426,8 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   for i in 0 ..< s.len: s[i] = op(s[i])
 
 proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
-  ## Same as `apply` but for proc that do not return and do not mutate `s` directly.
+  ## Same as `apply` but for a proc that does not return anything
+  ## and does not mutate `s` directly.
   runnableExamples:
     var message: string
     apply([0, 1, 2, 3, 4], proc(item: int) = message.addInt item)
@@ -435,12 +436,12 @@ proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1
 
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
-  ## predicate `pred` (function that returns a `bool`).
+  ## predicate `pred` (a function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
   ## from the `sugar` module.
   ##
-  ## See also:
+  ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `fliter proc<#filter,openArray[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
@@ -458,13 +459,13 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
 
 proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
-  ## Returns a new sequence with all the items of `s` that fulfilled the
-  ## predicate `pred` (function that returns a `bool`).
+  ## Returns a new sequence with all the items of `s` that fulfill the
+  ## predicate `pred` (a function that returns a `bool`).
   ##
   ## Instead of using `map` and `filter`, consider using the `collect` macro
   ## from the `sugar` module.
   ##
-  ## See also:
+  ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
@@ -485,15 +486,15 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
-  ## Keeps the items in the passed sequence `s` if they fulfilled the
-  ## predicate `pred` (function that returns a `bool`).
+  ## Keeps the items in the passed sequence `s` if they fulfill the
+  ## predicate `pred` (a function that returns a `bool`).
   ##
-  ## Note that `s` must be declared as a ``var``.
+  ## Note that `s` must be declared as a `var`.
   ##
   ## Similar to the `filter proc<#filter,openArray[T],proc(T)>`_,
   ## but modifies the sequence directly.
   ##
-  ## See also:
+  ## **See also:**
   ## * `keepItIf template<#keepItIf.t,seq,untyped>`_
   ## * `filter proc<#filter,openArray[T],proc(T)>`_
   ##
@@ -514,8 +515,8 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   setLen(s, pos)
 
 func delete*[T](s: var seq[T]; first, last: Natural) =
-  ## Deletes in the items of a sequence `s` at positions ``first..last``
-  ## (including both ends of a range).
+  ## Deletes the items of a sequence `s` at positions `first..last`
+  ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
   ##
   runnableExamples:
@@ -527,8 +528,8 @@ func delete*[T](s: var seq[T]; first, last: Natural) =
   if first >= s.len:
     return
   var i = first
-  var j = min(len(s), last+1)
-  var newLen = len(s)-j+i
+  var j = min(len(s), last + 1)
+  var newLen = len(s) - j + i
   while i < newLen:
     when defined(gcDestructors):
       s[i] = move(s[j])
@@ -542,7 +543,7 @@ func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
   ## `dest` itself, it does not return a copy.
   ##
-  ## Notice that `src` and `dest` must be of the same type.
+  ## Note that the elements of `src` and `dest` must be of the same type.
   ##
   runnableExamples:
     var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
@@ -573,7 +574,7 @@ func insert*[T](dest: var seq[T], src: openArray[T], pos = 0) =
 
 
 template filterIt*(s, pred: untyped): untyped =
-  ## Returns a new sequence with all the items of `s` that fulfilled the
+  ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred`.
   ##
   ## Unlike the `filter proc<#filter,openArray[T],proc(T)>`_ and
@@ -584,7 +585,7 @@ template filterIt*(s, pred: untyped): untyped =
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
   ## from the `sugar` module.
   ##
-  ## See also:
+  ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `fliter proc<#filter,openArray[T],proc(T)>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
@@ -604,13 +605,13 @@ template filterIt*(s, pred: untyped): untyped =
 
 template keepItIf*(varSeq: seq, pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a `var`)
-  ## if they fulfilled the predicate.
+  ## if they fulfill the predicate.
   ##
   ## Unlike the `keepIf proc<#keepIf,seq[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the `it` variable for testing, like: `keepItIf("abcxyz", it == 'x')`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `keepIf proc<#keepIf,seq[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
@@ -633,7 +634,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
 
 since (1, 1):
   template countIt*(s, pred: untyped): int =
-    ## Returns a count of all the items that fulfilled the predicate.
+    ## Returns a count of all the items that fulfill the predicate.
     ##
     ## The predicate needs to be an expression using
     ## the `it` variable for testing, like: `countIt(@[1, 2, 3], it > 2)`.
@@ -654,19 +655,19 @@ proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
-  ## See also:
+  ## **See also:**
   ## * `allIt template<#allIt.t,untyped,untyped>`_
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-    assert all(numbers, proc (x: int): bool = return x < 10) == true
-    assert all(numbers, proc (x: int): bool = return x < 9) == false
+    assert all(numbers, proc (x: int): bool = x < 10) == true
+    assert all(numbers, proc (x: int): bool = x < 9) == false
 
   for i in s:
     if not pred(i):
       return false
-  return true
+  true
 
 template allIt*(s, pred: untyped): bool =
   ## Iterates through a container and checks if every item fulfills the
@@ -676,7 +677,7 @@ template allIt*(s, pred: untyped): bool =
   ## the predicate needs to be an expression using
   ## the `it` variable for testing, like: `allIt("abba", it == 'a')`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `all proc<#all,openArray[T],proc(T)>`_
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
   ##
@@ -693,32 +694,32 @@ template allIt*(s, pred: untyped): bool =
   result
 
 proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
-  ## Iterates through a container and checks if some item fulfills the
-  ## predicate.
+  ## Iterates through a container and checks if at least one item
+  ## fulfills the predicate.
   ##
-  ## See also:
+  ## **See also:**
   ## * `anyIt template<#anyIt.t,untyped,untyped>`_
   ## * `all proc<#all,openArray[T],proc(T)>`_
   ##
   runnableExamples:
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
-    assert any(numbers, proc (x: int): bool = return x > 8) == true
-    assert any(numbers, proc (x: int): bool = return x > 9) == false
+    assert any(numbers, proc (x: int): bool = x > 8) == true
+    assert any(numbers, proc (x: int): bool = x > 9) == false
 
   for i in s:
     if pred(i):
       return true
-  return false
+  false
 
 template anyIt*(s, pred: untyped): bool =
-  ## Iterates through a container and checks if some item fulfills the
-  ## predicate.
+  ## Iterates through a container and checks if at least one item
+  ## fulfills the predicate.
   ##
   ## Unlike the `any proc<#any,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the `it` variable for testing, like: `anyIt("abba", it == 'a')`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `any proc<#any,openArray[T],proc(T)>`_
   ## * `allIt template<#allIt.t,untyped,untyped>`_
   ##
@@ -827,7 +828,7 @@ template foldl*(sequence, operation: untyped): untyped =
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
   ## 3).
   ##
-  ## See also:
+  ## **See also:**
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
@@ -872,7 +873,7 @@ template foldl*(sequence, operation, first): untyped =
   ## `a` and `b` for each step of the fold. The `first` parameter is the
   ## start value (the first `a`) and therefor defines the type of the result.
   ##
-  ## See also:
+  ## **See also:**
   ## * `foldr template<#foldr.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -903,7 +904,7 @@ template foldr*(sequence, operation: untyped): untyped =
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
   ## (3))).
   ##
-  ## See also:
+  ## **See also:**
   ## * `foldl template<#foldl.t,untyped,untyped>`_
   ## * `foldl template<#foldl.t,,,>`_ with a starting parameter
   ##
@@ -932,7 +933,7 @@ template foldr*(sequence, operation: untyped): untyped =
   result
 
 template mapIt*(s: typed, op: untyped): untyped =
-  ## Returns a new sequence with the results of `op` proc applied to every
+  ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
   ##
   ## Since the input is not modified you can use it to
@@ -944,7 +945,7 @@ template mapIt*(s: typed, op: untyped): untyped =
   ## Instead of using `mapIt` and `filterIt`, consider using the `collect` macro
   ## from the `sugar` module.
   ##
-  ## See also:
+  ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
   ## * `map proc<#map,openArray[T],proc(T)>`_
   ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
@@ -1010,10 +1011,10 @@ template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable `apply` proc to reduce typing.
   ##
   ## The template injects the `it` variable which you can use directly in an
-  ## expression. The expression has to return the same type as the sequence you
-  ## are mutating.
+  ## expression. The expression has to return the same type as the elements
+  ## of the sequence you are mutating.
   ##
-  ## See also:
+  ## **See also:**
   ## * `apply proc<#apply,openArray[T],proc(T)_2>`_
   ## * `mapIt template<#mapIt.t,typed,untyped>`_
   ##
@@ -1081,7 +1082,7 @@ macro mapLiterals*(constructor, op: untyped;
     let b = mapLiterals((1.2, (2.3, 3.4), 4.8), int, nested=false)
     assert a == (1, (2, 3), 4)
     assert b == (1, (2.3, 3.4), 4)
-  
+
     let c = mapLiterals((1, (2, 3), 4, (5, 6)), `$`)
     let d = mapLiterals((1, (2, 3), 4, (5, 6)), `$`, nested=false)
     assert c == ("1", ("2", "3"), "4", ("5", "6"))

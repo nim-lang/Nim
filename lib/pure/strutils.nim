@@ -81,6 +81,8 @@ when defined(nimVmExportFixed):
 
 include "system/inclrtl"
 import std/private/since
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -319,13 +321,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
-  var i = 0
-  var m = min(a.len, b.len)
-  while i < m:
-    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
-    if result != 0: return
-    inc(i)
-  result = a.len - b.len
+  cmpIgnoreCaseImpl(a, b)
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
@@ -344,25 +340,7 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  var i = 0
-  var j = 0
-  while true:
-    while i < a.len and a[i] == '_': inc i
-    while j < b.len and b[j] == '_': inc j
-    var aa = if i < a.len: toLowerAscii(a[i]) else: '\0'
-    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
-    result = ord(aa) - ord(bb)
-    if result != 0: return result
-    # the characters are identical:
-    if i >= a.len:
-      # both cursors at the end:
-      if j >= b.len: return 0
-      # not yet at the end of 'b':
-      return -1
-    elif j >= b.len:
-      return 1
-    inc i
-    inc j
+  cmpIgnoreStyleImpl(a, b)
 {.pop.}
 
 # --------- Private templates for different split separators -----------
@@ -1552,11 +1530,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
-  var i = 0
-  while true:
-    if i >= prefix.len: return true
-    if i >= s.len or s[i] != prefix[i]: return false
-    inc(i)
+  startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
   ## Returns true if `s` ends with `suffix`.
@@ -1584,12 +1558,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
-  var i = 0
-  var j = len(s) - len(suffix)
-  while i+j >= 0 and i+j < s.len:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if i >= suffix.len: return true
+  endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     extern: "nsuContinuesWith".} =
