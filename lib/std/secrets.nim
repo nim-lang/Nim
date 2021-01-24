@@ -94,6 +94,17 @@ elif defined(linux):
     if urandom(result) < 0:
       raiseOsError(osLastError())
 
+elif defined(openbsd):
+  proc arc4random_buf(p: pointer, size: cint) {.importc: "arc4random_buf", header: "<stdlib.h>".}
+
+  proc urandom*[T: byte | char](p: var openArray[T]): int =
+    result = p.len
+    arc4random_buf(addr p[0], result)
+
+  proc urandom*(size: Natural): string =
+    result = newString(size)
+    discard urandom(result)
+
 else:
   proc urandom*[T: byte | char](p: var openArray[T]): int =
     let size = p.len
