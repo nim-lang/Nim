@@ -85,7 +85,7 @@ elif defined(linux):
   proc urandom*[T: byte | char](p: var openArray[T]): int =
     let size = p.len
     if size > 0:
-      result = randomBytes(p, size)
+      result = randomBytes(addr p[0], size)
       if result < 0:
         result = getDevUrandom(addr p[0], size)
 
