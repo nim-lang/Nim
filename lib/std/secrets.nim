@@ -61,7 +61,7 @@ when defined(windows):
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
-  proc urandom*[T: byte | char](p: var openArray[T]): int =
+  proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
@@ -76,7 +76,7 @@ elif defined(linux):
       let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
       processReadBytes(readBytes, p)
 
-  proc urandom*[T: byte | char](p: var openArray[T]): int =
+  proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
@@ -91,7 +91,7 @@ elif defined(openbsd):
       let readBytes = getentropy(p, cint(size - result))
       processReadBytes(readBytes, p)
 
-  proc urandom*[T: byte | char](p: var openArray[T]): int =
+  proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
@@ -110,7 +110,7 @@ elif defined(macosx):
     rnd: SecRandomRef, count: csize_t, bytes: pointer
     ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
 
-  proc urandom*[T: byte | char](p: var openArray[T]): int =
+  proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
@@ -118,19 +118,19 @@ elif defined(macosx):
         result = getDevUrandom(addr p[0], size)
 
 else:
-  proc urandom*[T: byte | char](p: var openArray[T]): int =
+  proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
       result = getDevUrandom(addr p[0], size)
 
 
 when defined(windows):
-  proc urandom*(size: Natural): string =
-    result = newString(size)
+  proc urandom*(size: Natural): seq[byte] =
+    result = newSeq[byte](size)
     if urandom(result) != STATUS_SUCCESS:
       raiseOsError(osLastError())
 else:
-  proc urandom*(size: Natural): string =
-    result = newString(size)
+  proc urandom*(size: Natural): seq[byte] =
+    result = newSeq[byte](size)
     if urandom(result) < 0:
       raiseOsError(osLastError())
