@@ -95,15 +95,24 @@ elif defined(linux):
       raiseOsError(osLastError())
 
 elif defined(openbsd):
-  proc arc4random_buf(p: pointer, size: cint) {.importc: "arc4random_buf", header: "<stdlib.h>".}
+  proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
+
+  proc randomBytes(p: pointer, size: int): int =
+    while result < size:
+      let readBytes = getentropy(p, cint(size - result))
+      processReadBytes(readBytes, p)
 
   proc urandom*[T: byte | char](p: var openArray[T]): int =
-    result = p.len
-    arc4random_buf(addr p[0], result)
+    let size = p.len
+    if size > 0:
+      result = randomBytes(addr p[0], size)
+      if result < 0:
+        result = getDevUrandom(addr p[0], size)
 
   proc urandom*(size: Natural): string =
     result = newString(size)
-    discard urandom(result)
+    if urandom(result) < 0:
+      raiseOsError(osLastError())
 
 else:
   proc urandom*[T: byte | char](p: var openArray[T]): int =
