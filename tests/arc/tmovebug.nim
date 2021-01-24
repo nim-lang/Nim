@@ -92,7 +92,17 @@ copy
 destroy
 destroy
 destroy
+sink
+sink
+destroy
+copy
+(f: 1)
+destroy
+destroy
 part-to-whole assigment:
+sink
+(children: @[])
+destroy
 sink
 (children: @[])
 destroy
@@ -675,6 +685,16 @@ proc caseNotAConstant =
 
 caseNotAConstant()
 
+proc potentialSelfAssign(i: var int) =
+  var a: array[2, OO]
+  a[i] = OO(f: 1)
+  a[1] = OO(f: 2)
+  a[i+1] = a[i] # This must not =sink, but =copy
+  inc i
+  echo a[i-1] # (f: 1)
+
+potentialSelfAssign (var xi = 0; xi)
+
 
 #--------------------------------------------------------------------
 echo "part-to-whole assigment:"
@@ -699,6 +719,17 @@ proc partToWholeSeq =
   echo tc             #        then it would crash because t.children[0] does not exist after the call to `=sink`
 
 partToWholeSeq()
+
+proc partToWholeSeqRTIndex =
+  var i = 0
+  var t = Tree(children: @[Tree()])
+  t = t.children[i] # See comment in partToWholeSeq
+
+  var tc = TreeDefaultHooks(children: @[TreeDefaultHooks()])
+  tc = tc.children[i] # See comment in partToWholeSeq
+  echo tc
+
+partToWholeSeqRTIndex()
 
 type List = object
   next: ref List
