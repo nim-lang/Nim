@@ -277,8 +277,8 @@ proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
 
 iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
   if g.methodsPerType.contains(t.itemId):
-    for a, b in mitems g.methodsPerType[t.itemId]:
-      yield (a, resolveSym(g, b))
+    for it in mitems g.methodsPerType[t.itemId]:
+      yield (it[0], resolveSym(g, it[1]))
 
 proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
   g.methodsPerType.mgetOrPut(t.itemId, @[]).add (col, LazySym(sym: m))
