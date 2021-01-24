@@ -23,7 +23,7 @@ runnableExamples:
 
   let result = first + small * n.float
 
-  doAssert not (sum(data) ~= result)
+  doAssert abs(sum(data) - result) > 0.3
   doAssert sumKbn(data) ~= result
   doAssert sumPairs(data) ~= result
 
