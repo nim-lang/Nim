@@ -919,6 +919,30 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, mId, g[mId].fromDisk.bodies, NodePos pos)
 
+proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
+                     g: var PackedModuleGraph; module: int; id: PackedItemId): PType =
+  result = g[module].types[id.item]
+  if result == nil:
+    var decoder = PackedDecoder(
+      lastModule: int32(-1),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: config,
+      cache: cache)
+    result = loadType(decoder, g, module, id)
+
+proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
+                    g: var PackedModuleGraph; module: int; id: PackedItemId): PSym =
+  result = g[module].syms[id.item]
+  if result == nil:
+    var decoder = PackedDecoder(
+      lastModule: int32(-1),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: config,
+      cache: cache)
+    result = loadSym(decoder, g, module, id)
+
 proc checkForHoles(m: PackedModule; config: ConfigRef; moduleId: int) =
   var bugs = 0
   for i in 1 .. high(m.sh.syms):

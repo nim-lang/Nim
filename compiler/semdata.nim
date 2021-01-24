@@ -554,12 +554,12 @@ proc storeRodNode*(c: PContext, n: PNode) =
     toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
 
 proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
-  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add inst
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
   if c.config.symbolFiles != disabledSf:
     storeInstantiation(c.encoder, c.packedRepr, s, inst)
 
 proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
-  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
   if c.config.symbolFiles != disabledSf:
     storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
