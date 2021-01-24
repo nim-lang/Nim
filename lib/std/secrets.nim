@@ -56,7 +56,7 @@ when defined(posix):
         let
           size = p.len
           chunks = (size - 1) div batchSize
-          left = size - chunk * batchSize
+          left = size - chunks * batchSize
 
         var base = 0
         for i in 0 ..< chunks:
