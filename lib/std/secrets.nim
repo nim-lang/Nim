@@ -1,3 +1,5 @@
+## Cryptographically secure pseudorandom number generator.
+
 import std/os
 
 runnableExamples:
@@ -85,7 +87,7 @@ elif defined(linux):
     if size > 0:
       result = randomBytes(p, size)
       if result < 0:
-        result = getDevUrandom(p, size)
+        result = getDevUrandom(addr p[0], size)
 
   proc urandom*(size: Natural): string =
     result = newString(size)
