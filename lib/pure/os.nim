@@ -1151,25 +1151,12 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     else:
       var a = getFileAttributesA(link)
     if a != -1'i32:
+      # xxx see: bug #16784 (bug9); checking `IO_REPARSE_TAG_SYMLINK`
+      # may also be needed.
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
     var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
-
-
-when not defined(nimscript):
-  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
-    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-      fileExists(args)
-    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
-      dirExists(args)
-  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
-
-when not defined(windows) and not weirdTarget:
-  proc checkSymlink(path: string): bool =
-    var rawInfo: Stat
-    if lstat(path, rawInfo) < 0'i32: result = false
-    else: result = S_ISLNK(rawInfo.st_mode)
 
 const
   maxSymlinkLen = 1024
@@ -1213,7 +1200,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
       if fileExists(x):
         when not defined(windows):
           while followSymlinks: # doubles as if here
-            if x.checkSymlink:
+            if x.symlinkExists:
               var r = newString(maxSymlinkLen)
               var len = readlink(x, r, maxSymlinkLen)
               if len < 0:
@@ -3310,3 +3297,12 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
+
+# deprecated declarations
+when not defined(nimscript):
+  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
+    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+      fileExists(args)
+    template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+      dirExists(args)
+  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue

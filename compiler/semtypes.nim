@@ -154,6 +154,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     addPureEnum(c, result.sym)
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
+  setToStringProc(c.graph, result, genEnumToStrProc(result, n.info, c.graph, c.idgen))
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -1117,6 +1118,8 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
       var cp = copyType(paramType, nextTypeId c.idgen, getCurrOwner(c))
+      copyTypeProps(c.graph, c.idgen.module, cp, paramType)
+
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(c, cp, paramTypId, info, genericParams, paramName)
 
@@ -1530,6 +1533,7 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
 proc freshType(c: PContext; res, prev: PType): PType {.inline.} =
   if prev.isNil:
     result = copyType(res, nextTypeId c.idgen, res.owner)
+    copyTypeProps(c.graph, c.idgen.module, result, res)
   else:
     result = res
 
@@ -1843,7 +1847,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mExpr:
       result = semTypeNode(c, n[0], nil)
       if result != nil:
+        let old = result
         result = copyType(result, nextTypeId c.idgen, getCurrOwner(c))
+        copyTypeProps(c.graph, c.idgen.module, result, old)
         for i in 1..<n.len:
           result.rawAddSon(semTypeNode(c, n[i], nil))
     of mDistinct:
@@ -2117,12 +2123,16 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       typ.flags.incl tfGenericTypeParam
 
       for j in 0..<a.len-2:
-        let finalType = if j == 0: typ
-                        else: copyType(typ, nextTypeId c.idgen, typ.owner)
-                        # it's important the we create an unique
-                        # type for each generic param. the index
-                        # of the parameter will be stored in the
-                        # attached symbol.
+        var finalType: PType
+        if j == 0:
+          finalType = typ
+        else:
+          finalType = copyType(typ, nextTypeId c.idgen, typ.owner)
+          copyTypeProps(c.graph, c.idgen.module, finalType, typ)
+        # it's important the we create an unique
+        # type for each generic param. the index
+        # of the parameter will be stored in the
+        # attached symbol.
         var paramName = a[j]
         var covarianceFlag = tfUnresolved
 

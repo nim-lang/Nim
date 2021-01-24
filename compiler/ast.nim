@@ -720,6 +720,16 @@ type
     module*: int32
     item*: int32
 
+proc `==`*(a, b: ItemId): bool {.inline.} =
+  a.item == b.item and a.module == b.module
+
+proc hash*(x: ItemId): Hash =
+  var h: Hash = hash(x.module)
+  h = h !& hash(x.item)
+  result = !$h
+
+
+type
   TIdObj* = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
@@ -830,10 +840,8 @@ type
   TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
-    of skType, skGenericParam:
-      typeInstCache*: seq[PType]
     of routineKinds:
-      procInstCache*: seq[PInstantiation]
+      #procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
@@ -913,8 +921,6 @@ type
     owner*: PSym              # the 'owner' of the type
     sym*: PSym                # types have the sym associated with them
                               # it is used for converting types to strings
-    attachedOps*: array[TTypeAttachedOp, PSym] # destructors, etc.
-    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
@@ -1069,11 +1075,7 @@ type
     module*: int32
     symId*: int32
     typeId*: int32
-
-proc hash*(x: ItemId): Hash =
-  var h: Hash = hash(x.module)
-  h = h !& hash(x.item)
-  result = !$h
+    sealed*: bool
 
 const
   PackageModuleId* = -3'i32
@@ -1083,10 +1085,12 @@ proc idGeneratorFromModule*(m: PSym): IdGenerator =
   result = IdGenerator(module: m.itemId.module, symId: m.itemId.item, typeId: 0)
 
 proc nextSymId*(x: IdGenerator): ItemId {.inline.} =
+  assert(not x.sealed)
   inc x.symId
   result = ItemId(module: x.module, item: x.symId)
 
 proc nextTypeId*(x: IdGenerator): ItemId {.inline.} =
+  assert(not x.sealed)
   inc x.typeId
   result = ItemId(module: x.module, item: x.typeId)
 
@@ -1210,11 +1214,32 @@ proc newTreeIT*(kind: TNodeKind; info: TLineInfo; typ: PType; children: varargs[
 template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
+when false:
+  import tables, strutils
+  var x: CountTable[string]
+
+  addQuitProc proc () {.noconv.} =
+    for k, v in pairs(x):
+      echo k
+      echo v
+
 proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
                 options: options, owner: owner, offset: defaultOffset)
+  when false:
+    if id.item > 2141:
+      let s = getStackTrace()
+      const words = ["createTypeBoundOps",
+        "initOperators",
+        "generateInstance",
+        "semIdentDef", "addLocalDecl"]
+      for w in words:
+        if w in s:
+          x.inc w
+          return
+      x.inc "<no category>"
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
@@ -1422,7 +1447,6 @@ proc assignType*(dest, src: PType) =
   dest.n = src.n
   dest.size = src.size
   dest.align = src.align
-  dest.attachedOps = src.attachedOps
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
@@ -1622,11 +1646,9 @@ template transitionSymKindCommon*(k: TSymKind) =
 
 proc transitionGenericParamToType*(s: PSym) =
   transitionSymKindCommon(skType)
-  s.typeInstCache = obj.typeInstCache
 
 proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
   transitionSymKindCommon(kind)
-  s.procInstCache = obj.procInstCache
   s.gcUnsafetyReason = obj.gcUnsafetyReason
   s.transformedBody = obj.transformedBody
 
@@ -1893,10 +1915,8 @@ when false:
     for i in 0..<n.safeLen:
       if n[i].containsNil: return true
 
-template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 
-proc hasDisabledAsgn*(t: PType): bool =
-  t.attachedOps[attachedAsgn] != nil and sfError in t.attachedOps[attachedAsgn].flags
+template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
 
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
@@ -1935,10 +1955,6 @@ proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
   procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
-
-template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
-template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
-template asink*(t: PType): PSym = t.attachedOps[attachedSink]
 
 const magicsThatCanRaise = {
   mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}

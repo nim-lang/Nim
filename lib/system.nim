@@ -1462,10 +1462,9 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   ## basis (that is, the last function registered is the first to be executed).
   ## ``addQuitProc`` raises an EOutOfIndex exception if ``quitProc`` cannot be
   ## registered.
-
-# Support for addQuitProc() is done by Ansi C's facilities here.
-# In case of an unhandled exception the exit handlers should
-# not be called explicitly! The user may decide to do this manually though.
+  # Support for addQuitProc() is done by Ansi C's facilities here.
+  # In case of an unhandled exception the exit handlers should
+  # not be called explicitly! The user may decide to do this manually though.
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.

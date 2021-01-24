@@ -12,7 +12,7 @@
 ## sequences and does not depend on any other module, on Windows it uses the
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
-## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
+## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## ``showCursor`` before quitting.
 
@@ -843,7 +843,7 @@ template setBackgroundColor*(color: Color) =
 proc resetAttributes*() {.noconv.} =
   ## Resets all attributes on stdout.
   ## It is advisable to register this as a quit proc with
-  ## ``system.addQuitProc(resetAttributes)``.
+  ## `exitprocs.addExitProc(resetAttributes)`.
   resetAttributes(stdout)
 
 proc isTrueColorSupported*(): bool =
@@ -908,7 +908,7 @@ proc newTerminal(): owned(PTerminal) =
 when not defined(testing) and isMainModule:
   assert ansiStyleCode(styleBright) == "\e[1m"
   assert ansiStyleCode(styleStrikethrough) == "\e[9m"
-  #system.addQuitProc(resetAttributes)
+  # exitprocs.addExitProc(resetAttributes)
   write(stdout, "never mind")
   stdout.eraseLine()
   stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")

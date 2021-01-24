@@ -27,9 +27,20 @@ type
     pureEnums*: seq[PSym]
     interf: TStrTable
 
+  Operators* = object
+    opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
+    opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
+
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
+
+    typeInstCache*: Table[ItemId, seq[PType]] # A symbol's ItemId.
+    procInstCache*: Table[ItemId, seq[PInstantiation]] # A symbol's ItemId.
+    attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
+    methodsPerType*: Table[ItemId, seq[(int, PSym)]] # Type ID, attached methods
+    enumToStringProcs*: Table[ItemId, PSym]
+
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
@@ -71,6 +82,7 @@ type
     strongSemCheck*: proc (graph: ModuleGraph; owner: PSym; body: PNode) {.nimcall.}
     compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
     idgen*: IdGenerator
+    operators*: Operators
 
   TPassContext* = object of RootObj # the pass's context
     idgen*: IdGenerator
@@ -85,6 +97,67 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+iterator typeInstCacheItems*(g: ModuleGraph; s: PSym): PType =
+  if g.typeInstCache.contains(s.itemId):
+    let x = addr(g.typeInstCache[s.itemId])
+    for t in x[]:
+      yield t
+
+proc addToGenericCache*(g: ModuleGraph; module: int; s: PSym; inst: PType) =
+  g.typeInstCache.mgetOrPut(s.itemId, @[]).add inst
+  # XXX Also add to the packed module!
+
+iterator procInstCacheItems*(g: ModuleGraph; s: PSym): PInstantiation =
+  if g.procInstCache.contains(s.itemId):
+    let x = addr(g.procInstCache[s.itemId])
+    for t in x[]:
+      yield t
+
+proc addToGenericProcCache*(g: ModuleGraph; module: int; s: PSym; inst: PInstantiation) =
+  g.procInstCache.mgetOrPut(s.itemId, @[]).add inst
+  # XXX Also add to the packed module!
+
+proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
+  ## returns the requested attached operation for type `t`. Can return nil
+  ## if no such operation exists.
+  result = g.attachedOps[op].getOrDefault(t.itemId)
+
+proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  ## we also need to record this to the packed module.
+  g.attachedOps[op][t.itemId] = value
+  # XXX Also add to the packed module!
+
+proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  ## we also need to record this to the packed module.
+  g.attachedOps[op][t.itemId] = value
+  # XXX Also add to the packed module!
+
+proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
+  discard "To implement"
+
+proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
+  result = g.enumToStringProcs.getOrDefault(t.itemId)
+  assert result != nil
+
+proc setToStringProc*(g: ModuleGraph; t: PType; value: PSym) =
+  g.enumToStringProcs[t.itemId] = value
+
+iterator methodsForGeneric*(g: ModuleGraph; t: PType): (int, PSym) =
+  for a, b in items g.methodsPerType.getOrDefault(t.itemId):
+    yield (a, b)
+
+proc addMethodToGeneric*(g: ModuleGraph; module: int; t: PType; col: int; m: PSym) =
+  g.methodsPerType.mgetOrPut(t.itemId, @[]).add (col, m)
+
+proc hasDisabledAsgn*(g: ModuleGraph; t: PType): bool =
+  let op = getAttachedOp(g, t, attachedAsgn)
+  result = op != nil and sfError in op.flags
+
+proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
+  for k in low(TTypeAttachedOp)..high(TTypeAttachedOp):
+    let op = getAttachedOp(g, src, k)
+    if op != nil:
+      setAttachedOp(g, module, dest, k, op)
 
 const
   cb64 = [
@@ -241,6 +314,22 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
   initStrTable(g.ifaces[m.position].interf)
 
+proc initOperators(g: ModuleGraph): Operators =
+  # These are safe for IC.
+  result.opLe = createMagic(g, "<=", mLeI)
+  result.opLt = createMagic(g, "<", mLtI)
+  result.opAnd = createMagic(g, "and", mAnd)
+  result.opOr = createMagic(g, "or", mOr)
+  result.opIsNil = createMagic(g, "isnil", mIsNil)
+  result.opEq = createMagic(g, "==", mEqI)
+  result.opAdd = createMagic(g, "+", mAddI)
+  result.opSub = createMagic(g, "-", mSubI)
+  result.opMul = createMagic(g, "*", mMulI)
+  result.opDiv = createMagic(g, "div", mDivI)
+  result.opLen = createMagic(g, "len", mLengthSeq)
+  result.opNot = createMagic(g, "not", mNot)
+  result.opContains = createMagic(g, "contains", mInSet)
+
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()
   # A module ID of -1 means that the symbol is not attached to a module at all,
@@ -265,6 +354,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.cacheTables = initTable[string, BTree[string, PNode]]()
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
+  result.operators = initOperators(result)
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)

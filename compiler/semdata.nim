@@ -558,6 +558,7 @@ proc saveRodFile*(c: PContext) =
         addPragmaComputation(c, n)
     if sfSystemModule in c.module.flags:
       c.graph.systemModuleComplete = true
+    c.idgen.sealed = true # no further additions are allowed
     if c.config.symbolFiles != stressTest:
       # For stress testing we seek to reload the symbols from memory. This
       # way much of the logic is tested but the test is reproducible as it does
