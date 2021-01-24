@@ -1103,7 +1103,10 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add '['
       jsonPath.addInt i
       jsonPath.add ']'
-      initFromJson(dst[i], jsonNode[i], jsonPath)
+      when S is enum: # To support serializing enum indexed arrays
+        initFromJson(dst[i.S], jsonNode[i], jsonPath)
+      else:
+        initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
