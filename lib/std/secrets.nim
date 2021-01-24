@@ -114,7 +114,7 @@ elif defined(macosx):
   proc urandom*[T: byte | char](p: var openArray[T]): int =
     let size = p.len
     if size > 0:
-      result = secRandomCopyBytes(nil, size, addr p[0])
+      result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
       if result != errSecSuccess:
         result = getDevUrandom(addr p[0], size)
 
