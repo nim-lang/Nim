@@ -28,10 +28,11 @@ runnableExamples:
   doAssert urandom(120).len == 120
 
 
+
 when defined(posix):
   import std/posix
 
-  template processReadBytes(readBytes: int, p: pointer) =
+  template processReadBytes(readBytes: int, p: pointer, result: var int) =
     if readBytes == 0:
       break
     elif readBytes > 0:
@@ -52,7 +53,7 @@ when defined(posix):
       if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
         while result < size:
           let readBytes = posix.read(fd, p, size - result)
-          processReadBytes(readBytes, p)
+          processReadBytes(readBytes, p, result)
 
       discard posix.close(fd)
 
@@ -120,7 +121,7 @@ elif defined(linux):
   proc randomBytes(p: pointer, size: int): int =
     while result < size:
       let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
-      processReadBytes(readBytes, p)
+      processReadBytes(readBytes, p, result)
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
@@ -135,7 +136,7 @@ elif defined(openbsd):
   proc randomBytes(p: pointer, size: int): int =
     while result < size:
       let readBytes = getentropy(p, cint(size - result))
-      processReadBytes(readBytes, p)
+      processReadBytes(readBytes, p, result)
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
@@ -150,7 +151,7 @@ elif defined(freebsd):
   proc randomBytes(p: pointer, size: int): int =
     while result < size:
       let readBytes = getrandom(p, csize_t(size - result), 0)
-      processReadBytes(readBytes, p)
+      processReadBytes(readBytes, p, result)
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
