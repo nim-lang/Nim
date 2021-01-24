@@ -4,8 +4,9 @@
 ## | :---         | ----:       |
 ## | Windows| `BCryptGenRandom`_ |
 ## | Linux| `getrandom`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | Macosx| `SecRandomCopyBytes`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | MacOS| `SecRandomCopyBytes`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | OpenBSD| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | FreeBSD| `getrandom freebsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | JS(Web Browser)| `getRandomValues`_|
 ## | Other platforms| `/dev/urandom`_|
 ##
@@ -14,8 +15,9 @@
 ## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
 ## .. _SecRandomCopyBytes: https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc
 ## .. _getentropy: https://man.openbsd.org/getentropy.2
+## .. _getrandom freebsd: https://www.freebsd.org/cgi/man.cgi?query=getrandom&manpath=FreeBSD+12.0-stable
 ## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
-##
+## 
 
 import std/os
 
@@ -135,6 +137,20 @@ elif defined(openbsd):
       let readBytes = getentropy(p, cint(size - result))
       processReadBytes(readBytes, p)
 
+  proc urandom*(p: var openArray[byte]): int =
+    let size = p.len
+    if size > 0:
+      result = randomBytes(addr p[0], size)
+      if result < 0:
+        result = getDevUrandom(addr p[0], size)
+
+elif defined(freebsd):
+  proc getrandom(p: pointer, size: csize_t, flags: cuint): int {.importc: "getrandom", header: "<unistd.h>".}
+
+  proc randomBytes(p: pointer, size: int): int =
+    while result < size:
+      let readBytes = getrandom(p, csize_t(size - result), 0)
+      processReadBytes(readBytes, p)
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
