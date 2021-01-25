@@ -44,7 +44,7 @@ type
     myBodyUsed, ok, redirected: bool
     typ {.importjs: "type".}: cstring
     url, statusText: cstring
-    status: cushort
+    status: cint
     headers: Headers
 
 
