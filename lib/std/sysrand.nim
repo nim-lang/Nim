@@ -181,7 +181,7 @@ elif defined(openbsd):
       result = getentropy(addr p[base], cint(left))
 
 elif defined(freebsd):
-  type cssize_t {.importc, header: "<sys/types.h>".} = int
+  type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
   proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
 
