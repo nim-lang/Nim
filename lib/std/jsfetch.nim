@@ -12,7 +12,7 @@ type
     body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
 
   FetchModes* = enum  ## JavaScript Fetch API mode options.
-    fmCors = "cors".
+    fmCors = "cors"
     fmNoCors = "no-cors"
     fmSameOrigin = "same-origin"
 
