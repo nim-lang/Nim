@@ -271,7 +271,7 @@ Math libraries
   Statistical analysis
 
 * `std/sums <sums.html>`_
-  Fast summation functions.
+  Accurate summation functions.
 
 
 Internet Protocols and Support
