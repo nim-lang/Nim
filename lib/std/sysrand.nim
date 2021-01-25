@@ -186,17 +186,19 @@ elif defined(freebsd):
   proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
 
   proc urandom*(p: var openArray[byte]): int =
-    let
-      chunks = (size - 1) div batchSize
-      left = size - chunks * batchSize
-    var base = 0
-    for i in 0 ..< chunks:
-      let readBytes = getrandom(addr p[base], csize_t(batchSize), 0)
-      if readBytes < 0:
-        return readBytes
-      inc(base, batchSize)
+    let size = p.len
+    if size > 0:
+      let
+        chunks = (size - 1) div batchSize
+        left = size - chunks * batchSize
+      var base = 0
+      for i in 0 ..< chunks:
+        let readBytes = getrandom(addr p[base], csize_t(batchSize), 0)
+        if readBytes < 0:
+          return readBytes
+        inc(base, batchSize)
 
-    result = getrandom(addr p[base], csize_t(left), 0)
+      result = getrandom(addr p[base], csize_t(left), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
