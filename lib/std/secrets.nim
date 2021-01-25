@@ -47,14 +47,17 @@ when defined(posix):
         res = -1
         break
 
-  proc getDevUrandom(p: var openArray[byte], size: int): int =
+  proc getDevUrandom(p: var openArray[byte], size: Natural): int =
+    let size = p.len
+    if size == 0:
+      return
+
     let fd = posix.open("/dev/urandom", O_RDONLY)
 
     if fd > 0:
       var stat: Stat
       if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
         let
-          size = p.len
           chunks = (size - 1) div batchSize
           left = size - chunks * batchSize
 
@@ -153,7 +156,8 @@ elif defined(openbsd):
       result = randomBytes(addr p[0], size)
 
 elif defined(freebsd):
-  proc getrandom(p: pointer, size: csize_t, flags: cuint): int {.importc: "getrandom", header: "<unistd.h>".}
+  type ssize_t = int
+  proc getrandom(p: pointer, size: csize_t, flags: cuint): ssize_t {.importc: "getrandom", header: "<sys/random.h>".}
 
   proc randomBytes(p: pointer, size: int): int =
     while result < size:
@@ -186,7 +190,17 @@ elif defined(ios):
       result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
 
 elif defined(macosx):
-  discard
+  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: "<sys/random.h>".}
+
+  proc randomBytes(p: pointer, size: int): int =
+    while result < size:
+      let readBytes = getentropy(p, csize_t(size - result))
+      processReadBytes(readBytes, p, result)
+
+  proc urandom*(p: var openArray[byte]): int =
+    let size = p.len
+    if size > 0:
+      result = randomBytes(addr p[0], size)
 else:
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
