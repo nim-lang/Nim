@@ -943,6 +943,12 @@ proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
       cache: cache)
     result = loadSym(decoder, g, module, id)
 
+proc translateId*(id: PackedItemId; g: PackedModuleGraph; thisModule: int; config: ConfigRef): ItemId =
+  if id.module == LitId(0):
+    ItemId(module: thisModule.int32, item: id.item)
+  else:
+    ItemId(module: toFileIndex(id.module, g[thisModule].fromDisk, config).int32, item: id.item)
+
 proc checkForHoles(m: PackedModule; config: ConfigRef; moduleId: int) =
   var bugs = 0
   for i in 1 .. high(m.sh.syms):

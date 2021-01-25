@@ -323,7 +323,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var body = t[0]
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
-  var header: PType = t
+  var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
     result = PType(idTableGet(cl.localCache, t))

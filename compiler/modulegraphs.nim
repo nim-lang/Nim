@@ -36,17 +36,17 @@ type
     packed*: PackedItemId
 
   LazySym* = object
-    id: FullId
+    id*: FullId
     sym*: PSym
 
   LazyType* = object
-    id: FullId
+    id*: FullId
     typ*: PType
 
   LazyInstantiation* = object
     module*: int
-    sym: FullId
-    concreteTypes: seq[FullId]
+    sym*: FullId
+    concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
   ModuleGraph* = ref object
