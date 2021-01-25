@@ -12,33 +12,33 @@ type
     body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
 
   FetchModes* = enum  ## JavaScript Fetch API mode options.
-    fmCors = "cors".cstring
-    fmNoCors = "no-cors".cstring
-    fmSameOrigin = "same-origin".cstring
+    fmCors = "cors".
+    fmNoCors = "no-cors"
+    fmSameOrigin = "same-origin"
 
   FetchCredentials* = enum  ## JavaScript Fetch API Credential options.
-    fcInclude = "include".cstring
-    fcSameOrigin = "same-origin".cstring
-    fcOmit = "omit".cstring
+    fcInclude = "include"
+    fcSameOrigin = "same-origin"
+    fcOmit = "omit"
 
   FetchCaches* = enum  ## https://developer.mozilla.org/docs/Web/API/Request/cache
-    fchDefault = "default".cstring
-    fchNoStore = "no-store".cstring
-    fchReload = "reload".cstring
-    fchNoCache = "no-cache".cstring
-    fchForceCache = "force-cache".cstring
+    fchDefault = "default"
+    fchNoStore = "no-store"
+    fchReload = "reload"
+    fchNoCache = "no-cache"
+    fchForceCache = "force-cache"
 
   FetchRedirects* = enum  ## JavaScript Fetch API Redirects options.
-    frFollow = "follow".cstring
-    frError = "error".cstring
-    frManual = "manual".cstring
+    frFollow = "follow"
+    frError = "error"
+    frManual = "manual"
 
   FetchReferrerPolicies* = enum  ## JavaScript Fetch API Referrer Policy options.
-    frpNoReferrer = "no-referrer".cstring
-    frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade".cstring
-    frpOrigin = "origin".cstring
-    frpOriginWhenCrossOrigin = "origin-when-cross-origin".cstring
-    frpUnsafeUrl = "unsafe-url".cstring
+    frpNoReferrer = "no-referrer"
+    frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade"
+    frpOrigin = "origin"
+    frpOriginWhenCrossOrigin = "origin-when-cross-origin"
+    frpUnsafeUrl = "unsafe-url"
 
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     myBodyUsed, ok, redirected: bool
