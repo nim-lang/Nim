@@ -221,7 +221,11 @@ elif defined(ios):
       result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
 
 elif defined(macosx):
-  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: "<sys/random.h>".}
+  const sysrandomHeader = """#include <Availability.h>
+#include <sys/random.h>
+"""
+
+  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
