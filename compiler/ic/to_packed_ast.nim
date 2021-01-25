@@ -107,7 +107,7 @@ proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModule): LitId =
     c.lastLit = result
     assert result != LitId(0)
 
-proc toFileIndex(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
+proc toFileIndex*(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
   result = msgs.fileInfoIdx(config, AbsoluteFile m.sh.strings[x])
 
 proc includesIdentical(m: var PackedModule; config: ConfigRef): bool =
@@ -280,16 +280,19 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
     storeNode(p, t, n)
 
-    for op, s in pairs t.attachedOps:
-      c.addMissing s
-      p.attachedOps[op] = s.safeItemId(c, m)
+    when false:
+      for op, s in pairs t.attachedOps:
+        c.addMissing s
+        p.attachedOps[op] = s.safeItemId(c, m)
 
     p.typeInst = t.typeInst.storeType(c, m)
     for kid in items t.sons:
       p.types.add kid.storeType(c, m)
-    for i, s in items t.methods:
-      c.addMissing s
-      p.methods.add (i, s.safeItemId(c, m))
+
+    when false:
+      for i, s in items t.methods:
+        c.addMissing s
+        p.methods.add (i, s.safeItemId(c, m))
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
     c.addMissing t.owner
@@ -568,11 +571,11 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
 
 type
   PackedDecoder* = object
-    lastModule*: int
-    lastLit*: LitId
-    lastFile*: FileIndex # remember the last lookup entry.
+    lastModule: int
+    lastLit: LitId
+    lastFile: FileIndex # remember the last lookup entry.
     config*: ConfigRef
-    cache: IdentCache
+    cache*: IdentCache
 
 type
   ModuleStatus* = enum
@@ -596,7 +599,7 @@ type
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym
 
-proc toFileIndexCached(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; f: LitId): FileIndex =
+proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: int; f: LitId): FileIndex =
   if c.lastLit == f and c.lastModule == thisModule:
     result = c.lastFile
   else:
@@ -611,8 +614,8 @@ proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModul
   result = TLineInfo(line: x.line, col: x.col,
             fileIndex: toFileIndexCached(c, g, thisModule, x.file))
 
-proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
-               tree: PackedTree; n: NodePos): PNode =
+proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
+                tree: PackedTree; n: NodePos): PNode =
   let k = n.kind
   if k == nkNilRodNode:
     return nil
@@ -646,6 +649,14 @@ proc loadNodes(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
   else:
     for n0 in sonsReadonly(tree, n):
       result.addAllowNil loadNodes(c, g, thisModule, tree, n0)
+
+proc initPackedDecoder*(config: ConfigRef; cache: IdentCache): PackedDecoder =
+  result = PackedDecoder(
+    lastModule: int32(-1),
+    lastLit: LitId(0),
+    lastFile: FileIndex(-1),
+    config: config,
+    cache: cache)
 
 proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                     tree: PackedTree; n: NodePos): PNode =
@@ -761,14 +772,16 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =
   result.sym = loadSym(c, g, si, t.sym)
   result.owner = loadSym(c, g, si, t.owner)
-  for op, item in pairs t.attachedOps:
-    result.attachedOps[op] = loadSym(c, g, si, item)
+  when false:
+    for op, item in pairs t.attachedOps:
+      result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
     result.sons.add loadType(c, g, si, son)
   loadAstBody(t, n)
-  for gen, id in items t.methods:
-    result.methods.add((gen, loadSym(c, g, si, id)))
+  when false:
+    for gen, id in items t.methods:
+      result.methods.add((gen, loadSym(c, g, si, id)))
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType =
   if t == nilItemId:
@@ -819,11 +832,8 @@ proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
       lastFile: FileIndex(-1),
       config: conf,
       cache: cache)
-    var p = 0
-    while p < m.fromDisk.toReplay.len:
-      m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, NodePos p)
-      let s = span(m.fromDisk.toReplay, p)
-      inc p, s
+    for p in allNodes(m.fromDisk.toReplay):
+      m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, p)
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                     fileIdx: FileIndex): bool =
@@ -978,6 +988,10 @@ proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
   setupDecoder()
   let values = g[int module].iface.getOrDefault(name)
   result = loadSym(decoder, g, int(module), values[0])
+
+proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
+  IdGenerator(module: m.module.itemId.module, symId: int32 m.fromDisk.sh.syms.len,
+              typeId: int32 m.fromDisk.sh.types.len)
 
 # ------------------------- .rod file viewer ---------------------------------
 

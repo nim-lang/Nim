@@ -290,6 +290,9 @@ template typ*(n: NodePos): PackedItemId =
 template flags*(n: NodePos): TNodeFlags =
   tree.nodes[n.int].flags
 
+template operand*(n: NodePos): int32 =
+  tree.nodes[n.int].operand
+
 proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
@@ -451,3 +454,10 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
+
+iterator allNodes*(tree: PackedTree): NodePos =
+  var p = 0
+  while p < tree.len:
+    yield NodePos(p)
+    let s = span(tree, p)
+    inc p, s

@@ -28,29 +28,32 @@ proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
     assert arity(array[3, int]) == 2
     assert arity((int, int, float, string)) == 4
 
-proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
+proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   ## Accepts an instantiated generic type and returns its
   ## uninstantiated form.
-  ##
-  ## For example:
-  ## * `seq[int].genericHead` will be just `seq`
-  ## * `seq[int].genericHead[float]` will be `seq[float]`
-  ##
   ## A compile-time error will be produced if the supplied type
   ## is not generic.
   ##
   ## See also:
   ## * `stripGenericParams <#stripGenericParams,typedesc>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   type
-  ##     Functor[A] = concept f
-  ##       type MatchedGenericType = genericHead(typeof(f))
-  ##         # `f` will be a value of a type such as `Option[T]`
-  ##         # `MatchedGenericType` will become the `Option` type
+  runnableExamples:
+    type
+      Foo[T] = object
+      FooInst = Foo[int]
+      Foo2 = genericHead(FooInst)
+    doAssert Foo2 is Foo and Foo is Foo2
+    doAssert genericHead(Foo[seq[string]]) is Foo
+    doAssert not compiles(genericHead(int))
 
+    type Generic = concept f
+      type _ = genericHead(typeof(f))
+    proc bar(a: Generic): typeof(a) = a
+    doAssert bar(Foo[string].default) == Foo[string]()
+    doAssert not compiles bar(string.default)
+
+    when false: # these don't work yet
+      doAssert genericHead(Foo[int])[float] is Foo[float]
+      doAssert seq[int].genericHead is seq
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## This trait is similar to `genericHead <#genericHead,typedesc>`_, but
@@ -168,7 +171,6 @@ macro genericParamsImpl(T: typedesc): untyped =
             ret = newTree(nnkBracketExpr, @[bindSym"range", ai])
           else:
             since (1, 1):
-              echo ai.typeKind
               ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
         result.add ret
       break

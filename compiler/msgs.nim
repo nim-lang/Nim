@@ -413,7 +413,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
-      (msg in warnMin..warnMax and msg in conf.warningAsErrors):
+      (msg in warnMin..hintMax and msg in conf.warningAsErrors):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -460,7 +460,7 @@ proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
   if result == 0:
     try:
       for line in lines(toFullPathConsiderDirty(conf, fileIdx).string):
-        addSourceLine conf, fileIdx, line.string
+        addSourceLine conf, fileIdx, line
     except IOError:
       discard
     result = conf.m.fileInfos[fileIdx.int32].lines.len
@@ -522,7 +522,11 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
-    title = HintTitle
+    if msg in conf.warningAsErrors:
+      ignoreMsg = false
+      title = ErrorTitle
+    else:
+      title = HintTitle
     color = HintColor
     inc(conf.hintCounter)
 

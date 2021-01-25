@@ -832,14 +832,16 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
 
+  when client is HttpClient:
+    result.bodyStream = newStringStream()
+  else:
+    result.bodyStream = newFutureStream[string]("parseResponse")
+
   if getBody and result.code != Http204:
+    client.bodyStream = result.bodyStream
     when client is HttpClient:
-      client.bodyStream = newStringStream()
-      result.bodyStream = client.bodyStream
       parseBody(client, result.headers, result.version)
     else:
-      client.bodyStream = newFutureStream[string]("parseResponse")
-      result.bodyStream = client.bodyStream
       assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
       # do not wait here for the body request to complete
       client.parseBodyFut = parseBody(client, result.headers, result.version)
@@ -1221,30 +1223,30 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
+proc downloadFileEx(client: AsyncHttpClient,
+                    url: Uri | string, filename: string): Future[void] {.async.} =
+  ## Downloads ``url`` and saves it to ``filename``.
+  client.getBody = false
+  let resp = await client.get(url)
+
+  client.bodyStream = newFutureStream[string]("downloadFile")
+  var file = openAsync(filename, fmWrite)
+  defer: file.close()
+  # Let `parseBody` write response data into client.bodyStream in the
+  # background.
+  let parseBodyFut = parseBody(client, resp.headers, resp.version)
+  parseBodyFut.addCallback do():
+    if parseBodyFut.failed:
+      client.bodyStream.fail(parseBodyFut.error)
+  # The `writeFromStream` proc will complete once all the data in the
+  # `bodyStream` has been written to the file.
+  await file.writeFromStream(client.bodyStream)
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+
 proc downloadFile*(client: AsyncHttpClient, url: Uri | string,
                    filename: string): Future[void] =
-  proc downloadFileEx(client: AsyncHttpClient,
-                      url: Uri | string, filename: string): Future[void] {.async.} =
-    ## Downloads ``url`` and saves it to ``filename``.
-    client.getBody = false
-    let resp = await client.get(url)
-
-    client.bodyStream = newFutureStream[string]("downloadFile")
-    var file = openAsync(filename, fmWrite)
-    defer: file.close()
-    # Let `parseBody` write response data into client.bodyStream in the
-    # background.
-    let parseBodyFut = parseBody(client, resp.headers, resp.version)
-    parseBodyFut.addCallback do():
-      if parseBodyFut.failed:
-        client.bodyStream.fail(parseBodyFut.error)
-    # The `writeFromStream` proc will complete once all the data in the
-    # `bodyStream` has been written to the file.
-    await file.writeFromStream(client.bodyStream)
-
-    if resp.code.is4xx or resp.code.is5xx:
-      raise newException(HttpRequestError, resp.status)
-
   result = newFuture[void]("downloadFile")
   try:
     result = downloadFileEx(client, url, filename)
