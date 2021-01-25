@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2021 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 ## Cryptographically secure pseudorandom number generator.
 ## 
 ## | Targets    | Implementation|
@@ -19,14 +28,20 @@
 ## .. _getentropy openbsd: https://man.openbsd.org/getentropy.2
 ## .. _getrandom freebsd: https://www.freebsd.org/cgi/man.cgi?query=getrandom&manpath=FreeBSD+12.0-stable
 ## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
-## 
-
-import std/os
+##
 
 runnableExamples:
   doAssert urandom(0).len == 0
   doAssert urandom(113).len == 113
   doAssert urandom(1234) != urandom(1234) # unlikely to fail in practice
+
+##
+## See also
+## ========
+## * `random module <random.html>`_
+## 
+
+import std/os
 
 
 

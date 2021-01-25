@@ -2,7 +2,7 @@ discard """
   targets: "c cpp"
 """
 
-import std/secrets
+import std/sysrand
 
 
 doAssert urandom(0).len == 0
