@@ -2236,7 +2236,6 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
       "'toOpenArray' is only valid within a call expression")
 
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
-  const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
   let toStrProc = getToStringProc(p.module.g.graph, t)
   # XXX need to modify this logic for IC.

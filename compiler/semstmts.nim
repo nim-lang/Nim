@@ -1814,7 +1814,7 @@ proc hasObjParam(s: PSym): bool =
 
 proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
-    methodDef(c.graph, c.idgen, s, false)
+    methodDef(c.graph, c.idgen, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if isGenericRoutine(s):
@@ -1839,7 +1839,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     # no sense either.
     # and result[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
-      methodDef(c.graph, c.idgen, s, fromCache=false)
+      methodDef(c.graph, c.idgen, s)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
