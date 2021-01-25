@@ -12,11 +12,11 @@
 ## support.
 
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
-  msgs, lineinfos, pathutils, options]
+  msgs, lineinfos, pathutils, options, cgmeth]
 
 import tables
 
-import packed_ast, to_packed_ast
+import packed_ast, to_packed_ast, bitabs
 
 proc replayStateChanges*(module: PSym; g: ModuleGraph) =
   let list = module.ast
@@ -86,9 +86,6 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
       else:
         internalAssert g.config, false
 
-#  of nkMethodDef:
-#    methodDef(g, n[namePos].sym, fromCache=true)
-
 proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
   ## We remember the generic instantiations a module performed
   ## in order to to avoid the code bloat that generic code tends
@@ -125,3 +122,8 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
     let tmp = translateId(it[1], g.packed, module, g.config)
     let symId = FullId(module: tmp.module, packed: it[1])
     g.enumToStringProcs[key] = LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.methods):
+    let sym = loadSymFromId(g.config, g.cache, g.packed, module,
+                            PackedItemId(module: LitId(0), item: it))
+    methodDef(g, g.idgen, sym)

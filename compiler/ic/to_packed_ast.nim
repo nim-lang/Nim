@@ -33,7 +33,7 @@ type
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
-    methods*: seq[(LitId, PackedItemId, int32)]
+    methods*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
@@ -167,9 +167,7 @@ proc addPureEnum*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.pureEnums.add((nameId, s.itemId.item))
 
 proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  discard "to do"
-  # c.m.methods.add((nameId, s.itemId.item))
+  m.methods.add s.itemId.item
 
 proc addReexport*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   let nameId = getOrIncl(m.sh.strings, s.name.s)
