@@ -197,12 +197,6 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
             myClosure = () => fmt"{i} * {j} = 42"
     doAssert myClosure() == "6 * 7 = 42"
 
-    let m = @[(s: string) => "to " & s,
-              (s: string) => "not to " & s]
-    let l = m.mapIt(capture(it, (s: string) => it(s)))
-    let r = l.mapIt(it("be"))
-    doAssert fmt"{r[0]}, or {r[1]}" == "to be, or not to be"
-
   var params = @[newIdentNode("auto")]
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
