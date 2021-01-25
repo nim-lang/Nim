@@ -4,7 +4,7 @@
 ## | :---         | ----:       |
 ## | Windows| `BCryptGenRandom`_ |
 ## | Linux| `getrandom`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | MacOS| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | MacOSX| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | IOS  | `SecRandomCopyBytes`_|
 ## | OpenBSD| `getentropy openbsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | FreeBSD| `getrandom freebsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
@@ -25,9 +25,8 @@ import std/os
 
 runnableExamples:
   doAssert urandom(0).len == 0
-  doAssert urandom(10).len == 10
-  doAssert urandom(20).len == 20
-  doAssert urandom(120).len == 120
+  doAssert urandom(113).len == 113
+  doAssert urandom(1234) != urandom(1234) # unlikely to fail in practice
 
 
 
@@ -120,7 +119,7 @@ elif defined(windows):
   ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
 
 
-  proc randomBytes(pbBuffer: pointer, cbBuffer: int): int =
+  proc randomBytes(pbBuffer: pointer, cbBuffer: Natural): int =
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
@@ -130,11 +129,11 @@ elif defined(windows):
       result = randomBytes(addr p[0], size)
 
 elif defined(linux):
-  let SYS_getrandom {.importc: "SYS_getrandom", header: "<syscall.h>".}: clong
+  let SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
 
-  proc syscall(n: clong, buf: pointer, bufLen: cint, flags: cuint): int {.importc: "syscall", header: "syscall.h".}
+  proc syscall(n: clong, buf: pointer, bufLen: cint, flags: cuint): int {.importc: "syscall", header: "<sys/syscall.h>".}
 
-  proc randomBytes(p: pointer, size: int): int =
+  proc randomBytes(p: pointer, size: Natural): int =
     while result < size:
       let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
       processReadBytes(readBytes, p, result)
@@ -147,7 +146,7 @@ elif defined(linux):
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
 
-  proc randomBytes(p: pointer, size: int): int =
+  proc randomBytes(p: pointer, size: Natural): int =
     while result < size:
       let readBytes = getentropy(p, cint(size - result))
       processReadBytes(readBytes, p, result)
@@ -194,7 +193,7 @@ elif defined(ios):
 elif defined(macosx):
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: "<sys/random.h>".}
 
-  proc randomBytes(p: pointer, size: int): int =
+  proc randomBytes(p: pointer, size: Natural): int =
     while result < size:
       let readBytes = getentropy(p, csize_t(size - result))
       processReadBytes(readBytes, p, result)
@@ -209,18 +208,13 @@ else:
     if size > 0:
       result = getDevUrandom(p, size)
 
-
-when defined(js):
-  proc urandom*(size: Natural): seq[byte] =
-    result = newSeq[byte](size)
-    discard urandom(result)
-elif defined(windows):
-  proc urandom*(size: Natural): seq[byte] =
-    result = newSeq[byte](size)
-    if urandom(result) != STATUS_SUCCESS:
+proc urandom*(size: Natural): seq[byte] =
+  result = newSeq[byte](size)
+  let ret = urandom(result)
+  when defined(js): discard ret
+  elif defined(windows):
+    if ret != STATUS_SUCCESS:
       raiseOsError(osLastError())
-else:
-  proc urandom*(size: Natural): seq[byte] =
-    result = newSeq[byte](size)
-    if urandom(result) < 0:
+  else:
+    if ret < 0:
       raiseOsError(osLastError())
