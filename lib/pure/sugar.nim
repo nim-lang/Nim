@@ -160,7 +160,7 @@ macro dump*(x: untyped): untyped =
     let
       x = 10
       y = 20
-    dump(x + y) # would print `x + y = 30`
+    dump(x + y) # will print `x + y = 30`
 
   let s = x.toStrLit
   let r = quote do:
