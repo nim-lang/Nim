@@ -4,8 +4,9 @@
 ## | :---         | ----:       |
 ## | Windows| `BCryptGenRandom`_ |
 ## | Linux| `getrandom`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | MacOS| `SecRandomCopyBytes`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | OpenBSD| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | MacOS| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | IOS  | `SecRandomCopyBytes`_|
+## | OpenBSD| `getentropy openbsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | FreeBSD| `getrandom freebsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | JS(Web Browser)| `getRandomValues`_|
 ## | Other platforms| `/dev/urandom`_|
@@ -13,8 +14,9 @@
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
 ## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
+## .. _getentropy: https://www.unix.com/man-page/mojave/2/getentropy
 ## .. _SecRandomCopyBytes: https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc
-## .. _getentropy: https://man.openbsd.org/getentropy.2
+## .. _getentropy openbsd: https://man.openbsd.org/getentropy.2
 ## .. _getrandom freebsd: https://www.freebsd.org/cgi/man.cgi?query=getrandom&manpath=FreeBSD+12.0-stable
 ## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
 ## 
