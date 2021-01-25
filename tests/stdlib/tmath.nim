@@ -392,7 +392,7 @@ template main =
       doAssert round(2.5) == 3.0
       doAssert round(2.5'f32) == 3.0'f32
       doAssert round(2.5'f64) == 3.0'f64
-      doAssert round(54.346, 2) == 54.35
+      doAssert round(54.346, 2) == 54.35, $round(54.346, 2)
 
     when nimvm:
       discard
