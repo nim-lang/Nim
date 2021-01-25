@@ -48,7 +48,7 @@ type
     headers: Headers
 
 
-template fetchMethodToCstring(metod: HttpMethod): cstring =
+proc fetchMethodToCstring(metod: HttpMethod): cstring =
   ## Template that takes an `HttpMethod` and returns an *Uppercase* `cstring`,
   ## but *only* for the HTTP Methods that are supported by the fetch API.
   ## High performance and minimal code compared to just `$(HttpMethod)`.
