@@ -37,7 +37,7 @@ pkg1 "delaunay"
 pkg1 "docopt"
 pkg1 "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg1 "elvis"
-# pkg1 "fidget" # pending https://github.com/nim-lang/Nim/issues/16810
+pkg1 "fidget"
 pkg1 "fragments", "nim c -r fragments/dsl.nim"
 pkg1 "gara"
 pkg1 "glob"
