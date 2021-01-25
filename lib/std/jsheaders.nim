@@ -56,7 +56,7 @@ runnableExamples:
       doAssert header["key"] == "value".cstring
       header["other"] = "another".cstring
       doAssert header["other"] == "another".cstring
-      doAssert header.entries() == @[["key".cstring, "value"], ["other".cstring, "another"]]
+      doAssert header.entries() == @[("key".cstring, "value".cstring), ("other".cstring, "another".cstring)]
       doAssert header.toCstring() == """[["key","value"],["other","another"]]""".cstring
       header.delete("other")
       header.clear()
@@ -75,3 +75,4 @@ runnableExamples:
       header["key"] = "b"  ## Duplicated.
       header["key"] = "c"  ## Duplicated.
       doAssert header["key"] == "c".cstring
+
