@@ -187,7 +187,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values.
   runnableExamples:
-    import std/[strformat, sequtils]
+    import std/strformat
 
     var myClosure: () -> string
     for i in 5..7:
