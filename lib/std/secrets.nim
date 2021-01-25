@@ -146,29 +146,37 @@ elif defined(linux):
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
 
-  proc randomBytes(p: pointer, size: Natural): int =
-    while result < size:
-      let readBytes = getentropy(p, cint(size - result))
-      processReadBytes(readBytes, p, result)
-
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
-      result = randomBytes(addr p[0], size)
+      let
+        chunks = (size - 1) div batchSize
+        left = size - chunks * batchSize
+      var base = 0
+      for i in 0 ..< chunks:
+        let readBytes = getentropy(addr p[base], cint(batchSize))
+        if readBytes < 0:
+          return readBytes
+        inc(base, batchSize)
+
+      result = getentropy(addr p[base], cint(left))
 
 elif defined(freebsd):
   type ssize_t = int
   proc getrandom(p: pointer, size: csize_t, flags: cuint): ssize_t {.importc: "getrandom", header: "<sys/random.h>".}
 
-  proc randomBytes(p: pointer, size: int): int =
-    while result < size:
-      let readBytes = getrandom(p, csize_t(size - result), 0)
-      processReadBytes(readBytes, p, result)
-
   proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      result = randomBytes(addr p[0], size)
+    let
+      chunks = (size - 1) div batchSize
+      left = size - chunks * batchSize
+    var base = 0
+    for i in 0 ..< chunks:
+      let readBytes = getrandom(addr p[base], csize_t(batchSize), 0)
+      if readBytes < 0:
+        return readBytes
+      inc(base, batchSize)
+
+    result = getrandom(addr p[base], csize_t(left), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
@@ -193,20 +201,23 @@ elif defined(ios):
 elif defined(macosx):
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: "<sys/random.h>".}
 
-  proc randomBytes(p: pointer, size: Natural): int =
-    while result < size:
-      let readBytes = getentropy(p, csize_t(size - result))
-      processReadBytes(readBytes, p, result)
-
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
-      result = randomBytes(addr p[0], size)
+      let
+        chunks = (size - 1) div batchSize
+        left = size - chunks * batchSize
+      var base = 0
+      for i in 0 ..< chunks:
+        let readBytes = getentropy(addr p[base], csize_t(batchSize))
+        if readBytes < 0:
+          return readBytes
+        inc(base, batchSize)
+
+      result = getentropy(addr p[base], csize_t(left))
 else:
   proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      result = getDevUrandom(p, size)
+    result = getDevUrandom(p, size)
 
 proc urandom*(size: Natural): seq[byte] =
   result = newSeq[byte](size)
