@@ -42,7 +42,7 @@ type
 
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     myBodyUsed, ok, redirected: bool
-    tipe {.importjs: "type".}: cstring
+    typ {.importjs: "type".}: cstring
     url, statusText: cstring
     status: cushort
     headers: Headers
