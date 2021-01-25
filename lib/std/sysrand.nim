@@ -145,8 +145,12 @@ elif defined(windows):
 
 elif defined(linux):
   let SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
+  const syscallHeader = """#include <unistd.h>
+#include <sys/syscall.h>"""
 
-  proc syscall(n: clong, buf: pointer, bufLen: cint, flags: cuint): int {.importc: "syscall", header: "<sys/syscall.h>".}
+  proc syscall(
+    n: clong, buf: pointer, bufLen: cint, flags: cuint
+  ): int {.importc: "syscall", header: syscallHeader.}
 
   proc randomBytes(p: pointer, size: Natural): int =
     while result < size:
