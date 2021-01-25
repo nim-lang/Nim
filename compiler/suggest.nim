@@ -70,11 +70,11 @@ proc cmpSuggestions(a, b: Suggest): int =
     result = b.field.int - a.field.int
     if result != 0: return result
 
-  cf scope
   cf prefix
+  cf contextFits
+  cf scope
   # when the first type matches, it's better when it's a generic match:
   cf quality
-  cf contextFits
   cf localUsages
   cf globalUsages
   # if all is equal, sort alphabetically for deterministic output,
@@ -600,6 +600,11 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     #if optIdeDebug in gGlobalOptions:
     #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
     #writeStackTrace()
+  elif n.kind == nkIdent:
+    let
+      prefix = if c.config.m.trackPosAttached: nil else: n
+      info = n.info
+    wholeSymTab(filterSym(it, prefix, pm), ideSug)
   else:
     let prefix = if c.config.m.trackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
