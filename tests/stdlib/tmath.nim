@@ -168,14 +168,6 @@ block:
       let x: seq[float] = @[]
       doAssert prod(x) == 1.0
 
-    block: # round() tests
-      # Round to 0 decimal places
-      doAssert round(54.652) == 55.0
-      doAssert round(54.352) == 54.0
-      doAssert round(-54.652) == -55.0
-      doAssert round(-54.352) == -54.0
-      doAssert round(0.0) == 0.0
-
     block: # splitDecimal() tests
       doAssert splitDecimal(54.674).intpart == 54.0
       doAssert splitDecimal(54.674).floatpart ==~ 0.674
@@ -372,26 +364,30 @@ template main =
     doAssert copySign(-NaN, -0.0).isNaN
 
     block: # round() tests
-      # Round to 0 decimal places
-      doAssert round(54.652) == 55.0
-      doAssert round(54.352) == 54.0
-      doAssert round(-54.652) == -55.0
-      doAssert round(-54.352) == -54.0
-      doAssert round(0.0) == 0.0
-      doAssert 1 / round(0.0) == Inf
-      doAssert 1 / round(-0.0) == -Inf
-      doAssert round(Inf) == Inf
-      doAssert round(-Inf) == -Inf
-      doAssert round(NaN).isNaN
-      doAssert round(-NaN).isNaN
-      doAssert round(-0.5) == -1.0
-      doAssert round(0.5) == 1.0
-      doAssert round(-1.5) == -2.0
-      doAssert round(1.5) == 2.0
-      doAssert round(-2.5) == -3.0
-      doAssert round(2.5) == 3.0
-      doAssert round(2.5'f32) == 3.0'f32
-      doAssert round(2.5'f64) == 3.0'f64
+      block: # Round to 0 decimal places
+        doAssert round(54.652) == 55.0
+        doAssert round(54.352) == 54.0
+        doAssert round(-54.652) == -55.0
+        doAssert round(-54.352) == -54.0
+        doAssert round(0.0) == 0.0
+        doAssert 1 / round(0.0) == Inf
+        doAssert 1 / round(-0.0) == -Inf
+        doAssert round(Inf) == Inf
+        doAssert round(-Inf) == -Inf
+        doAssert round(NaN).isNaN
+        doAssert round(-NaN).isNaN
+        doAssert round(-0.5) == -1.0
+        doAssert round(0.5) == 1.0
+        doAssert round(-1.5) == -2.0
+        doAssert round(1.5) == 2.0
+        doAssert round(-2.5) == -3.0
+        doAssert round(2.5) == 3.0
+        doAssert round(2.5'f32) == 3.0'f32
+        doAssert round(2.5'f64) == 3.0'f64
+      block: # func round*[T: float32|float64](x: T, places: int): T
+        doAssert round(54.346, 2) == 54.35
+        doAssert round(54.345, 2) == 54.35
+        doAssert round(54.345, 0) == 54.0
 
     when nimvm:
       discard
