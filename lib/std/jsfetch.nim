@@ -87,6 +87,10 @@ func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#).then(response 
 func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "(await fetch(#, #).then(response => response))".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
+func toCstring*(this: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
+
+func `$`*(this: FetchOptions or Response): string = $this.toCstring
+
 
 runnableExamples:
   import httpcore
