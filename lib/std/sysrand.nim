@@ -18,7 +18,7 @@
 ## | OpenBSD| `getentropy openbsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | FreeBSD| `getrandom freebsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
 ## | JS(Web Browser)| `getRandomValues`_|
-## | Other platforms| `/dev/urandom`_|
+## | Other Unix platforms| `/dev/urandom`_|
 ##
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
@@ -236,6 +236,7 @@ else:
     result = getDevUrandom(p, size)
 
 proc urandom*(size: Natural): seq[byte] =
+  ## Returns random bytes suitable for cryptographic use.
   result = newSeq[byte](size)
   let ret = urandom(result)
   when defined(js): discard ret
