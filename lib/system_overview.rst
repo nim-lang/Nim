@@ -12,8 +12,9 @@ Here is a short overview of the most commonly used functions from the
 `system` module. Function names in the tables below are clickable and
 will take you to the full documentation of the function.
 
-The amount of available functions is much larger. Use the table of contents
-on the left-hand side and/or `Ctrl+F` to navigate through this module.
+There are many more functions available than the ones listed in this overview.
+Use the table of contents on the left-hand side and/or `Ctrl+F` to navigate
+through this module.
 
 
 Strings and characters
