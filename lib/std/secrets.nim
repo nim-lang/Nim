@@ -138,8 +138,6 @@ elif defined(linux):
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
-      if result < 0:
-        result = getDevUrandom(p, size)
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
@@ -153,8 +151,6 @@ elif defined(openbsd):
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
-      if result < 0:
-        result = getDevUrandom(p, size)
 
 elif defined(freebsd):
   proc getrandom(p: pointer, size: csize_t, flags: cuint): int {.importc: "getrandom", header: "<unistd.h>".}
@@ -168,10 +164,8 @@ elif defined(freebsd):
     let size = p.len
     if size > 0:
       result = randomBytes(addr p[0], size)
-      if result < 0:
-        result = getDevUrandom(p, size)
 
-elif defined(macosx):
+elif defined(ios):
   {.passL: "-framework Security".}
 
   const errSecSuccess = 0
@@ -188,10 +182,11 @@ elif defined(macosx):
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
+      # `kSecRandomDefault` is a synonym for NULL.
       result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
-      if result != errSecSuccess:
-        result = getDevUrandom(p, size)
 
+elif defined(macosx):
+  discard
 else:
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
