@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import macros
+import std/macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -160,7 +160,7 @@ macro dump*(x: untyped): untyped =
     let
       x = 10
       y = 20
-    dump(x + y) # will print `x + y = 30`
+    if false: dump(x + y) # would print `x + y = 30`
 
   let s = x.toStrLit
   let r = quote do:
