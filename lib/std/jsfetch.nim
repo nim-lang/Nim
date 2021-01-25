@@ -89,7 +89,7 @@ func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "
 
 func toCstring*(this: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
 
-func `$`*(this: FetchOptions or Response): string = $this.toCstring
+func `$`*(this: FetchOptions or Response): string = $toCstring(this)
 
 
 runnableExamples:
