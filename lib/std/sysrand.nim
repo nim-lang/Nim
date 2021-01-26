@@ -138,25 +138,23 @@ elif defined(linux):
     n: clong, buf: pointer, bufLen: cint, flags: cuint
   ): int {.importc: "syscall", header: syscallHeader.}
 
-  proc randomBytes(p: pointer, size: Natural): int =
+  proc urandom*(p: var openArray[byte]): int =
+    let size = p.len
+    if size == 0:
+      return
+
     while result < size:
-      let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
+      let readBytes = syscall(SYS_getrandom, addr p[result], cint(size - result), 0)
       if readBytes == 0:
         break
       elif readBytes > 0:
         inc(result, readBytes)
-        cast[ptr pointer](p)[] = cast[pointer](cast[ByteAddress](p) + readBytes)
       else:
         if osLastError().int in {EINTR, EAGAIN}:
           discard
         else:
           result = -1
           break
-
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      result = randomBytes(addr p[0], size)
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
