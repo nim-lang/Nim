@@ -163,9 +163,13 @@ macro dump*(x: untyped): untyped =
     dump(x + y) # will print `x + y = 30`
 
   let s = x.toStrLit
-  let r = quote do:
+  result = quote do:
     debugEcho `s`, " = ", `x`
-  return r
+
+macro dumpToString*(x: untyped): string =
+  let s = x.toStrLit
+  result = quote do:
+    `s` & " = " & $`x`
 
 # TODO: consider exporting this in macros.nim
 proc freshIdentNodes(ast: NimNode): NimNode =
