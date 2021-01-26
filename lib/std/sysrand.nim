@@ -11,23 +11,25 @@
 ## 
 ## | Targets    | Implementation|
 ## | :---         | ----:       |
-## | Windows| `BCryptGenRandom`_ |
-## | Linux| `getrandom`_ |
-## | MacOSX| `getentropy`_ |
-## | IOS  | `SecRandomCopyBytes`_ |
-## | OpenBSD| `getentropy openbsd`_ |
-## | FreeBSD| `getrandom freebsd`_ |
-## | JS(Web Browser)| `getRandomValues`_|
-## | Other Unix platforms| `/dev/urandom`_|
+## | Windows | `BCryptGenRandom`_ |
+## | Linux | `getrandom`_ |
+## | MacOSX | `getentropy`_ |
+## | IOS | `SecRandomCopyBytes`_ |
+## | OpenBSD | `getentropy openbsd`_ |
+## | FreeBSD | `getrandom freebsd`_ |
+## | JS(Web Browser) | `getRandomValues`_ |
+## | Nodejs | `randomFillSync`_ |
+## | Other Unix platforms | `/dev/urandom`_ |
 ##
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
-## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
 ## .. _getentropy: https://www.unix.com/man-page/mojave/2/getentropy
 ## .. _SecRandomCopyBytes: https://developer.apple.com/documentation/security/1399291-secrandomcopybytes?language=objc
 ## .. _getentropy openbsd: https://man.openbsd.org/getentropy.2
 ## .. _getrandom freebsd: https://www.freebsd.org/cgi/man.cgi?query=getrandom&manpath=FreeBSD+12.0-stable
 ## .. _getRandomValues: https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues
+## .. _randomFillSync: https://nodejs.org/api/crypto.html#crypto_crypto_randomfillsync_buffer_offset_size
+## .. _/dev/urandom: https://en.wikipedia.org/wiki//dev/random
 ##
 
 runnableExamples:
@@ -39,7 +41,7 @@ runnableExamples:
 ## See also
 ## ========
 ## * `random module <random.html>`_
-## 
+##
 
 import std/os
 
@@ -53,27 +55,41 @@ when defined(posix):
 when defined(js):
   import std/private/jsutils
 
-  const batchSize = 256
+  when defined(nodejs):
+    {.emit: "const _nim_nodejs_crypto = require('crypto');".}
 
-  proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+    proc randomFillSync(x: Uint8Array) {.importjs: "_nim_nodejs_crypto.randomFillSync(#)".}
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      let chunks = (size - 1) div batchSize
-      for i in 0 ..< chunks:
-        for j in 0 ..< batchSize:
-          var src = newUint8Array(batchSize)
-          getRandomValues(src)
-          p[result + j] = src[j]
+    proc urandom(x: var openArray[byte]): int =
+      let size = x.len
+      if size > 0:
+        var t = newUint8Array(size)
+        randomFillSync(t)
+        for i in 0 ..< size:
+          x[i] = t[i]
 
-        inc(result, batchSize)
+  else:
+    const batchSize = 256
 
-      let left = size - chunks * batchSize
-      var src = newUint8Array(left)
-      getRandomValues(src)
-      for i in 0 ..< left:
-        p[result + i] = src[i]
+    proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+
+    proc urandom*(p: var openArray[byte]): int =
+      let size = p.len
+      if size > 0:
+        let chunks = (size - 1) div batchSize
+        for i in 0 ..< chunks:
+          for j in 0 ..< batchSize:
+            var src = newUint8Array(batchSize)
+            getRandomValues(src)
+            p[result + j] = src[j]
+
+          inc(result, batchSize)
+
+        let left = size - chunks * batchSize
+        var src = newUint8Array(left)
+        getRandomValues(src)
+        for i in 0 ..< left:
+          p[result + i] = src[i]
 
 elif defined(windows):
   type
@@ -133,6 +149,9 @@ elif defined(linux):
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
+    # fills a buffer with high-quality entropy,
+    # which can be used as input for process-context pseudorandom generators like `arc4random`.
+    # The maximum buffer size permitted is 256 bytes.
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
