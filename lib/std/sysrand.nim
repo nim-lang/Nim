@@ -8,7 +8,7 @@
 #
 
 ## Cryptographically secure pseudorandom number generator.
-## 
+##
 ## | Targets    | Implementation|
 ## | :---         | ----:       |
 ## | Windows | `BCryptGenRandom`_ |
@@ -159,7 +159,7 @@ elif defined(linux):
     #  transferred from kernel memory to buf.
 
   template urandomImpl(dest: var openArray[byte]) =
-    let size = dests.len
+    let size = dest.len
     if size == 0:
       return
 
