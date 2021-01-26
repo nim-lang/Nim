@@ -697,14 +697,18 @@ proc processCategory(r: var TResults, cat: Category,
     of "megatest":
       runJoinedTest(r, cat, testsDir)
     else:
+      echo "D20210126T094721"
+      echo testsDir &.? cat.string
       var testsRun = 0
       var files: seq[string]
       for file in walkDirRec(testsDir &.? cat.string):
         if isTestFile(file): files.add file
       files.sort # give reproducible order
+      echo (files,)
 
       for i, name in files:
         var test = makeTest(name, options, cat)
+        echo (test,)
         if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
           discard "run the test"
         else:
