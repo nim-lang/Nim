@@ -153,7 +153,7 @@ template semtab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
-  module < g.packed.len and g.packed[module].status == loaded
+  result = module < g.packed.len and g.packed[module].status == loaded
 
 proc isCachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
@@ -173,7 +173,7 @@ type
 proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
   assert m.kind == skModule
   mi.modIndex = m.position
-  mi.fromRod = mi.modIndex < g.packed.len and g.packed[mi.modIndex].status == loaded
+  mi.fromRod = isCachedModule(g, mi.modIndex)
   if mi.fromRod:
     result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
@@ -410,7 +410,7 @@ proc resetAllModules*(g: ModuleGraph) =
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   if fileIdx.int32 >= 0:
-    if fileIdx.int32 < g.packed.len and g.packed[fileIdx.int32].status == loaded:
+    if isCachedModule(g, fileIdx.int32):
       result = g.packed[fileIdx.int32].module
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module

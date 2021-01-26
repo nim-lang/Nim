@@ -453,7 +453,7 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedMo
   flush encoder, m
 
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
-  echo "Error: ", $err, "\nloading file: ", filename.string
+  echo "Error: ", $err, " loading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef): RodFileError =
   m.sh = Shared()
@@ -894,6 +894,7 @@ proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentC
   else:
     result = g[int fileIdx].module
     assert result != nil
+    assert result.position == int(fileIdx)
     loadToReplayNodes(g, conf, cache, fileIdx, g[int fileIdx])
 
 template setupDecoder() {.dirty.} =

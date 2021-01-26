@@ -421,7 +421,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
-  return newSymNode(sym, info)
+  result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
@@ -581,4 +581,4 @@ proc saveRodFile*(c: PContext) =
       # debug code, but maybe a good idea for production? Could reduce the compiler's
       # memory consumption considerably at the cost of more loads from disk.
       simulateCachedModule(c.graph, c.module, c.packedRepr)
-    c.graph.packed[c.module.position].status = loaded
+      c.graph.packed[c.module.position].status = loaded
