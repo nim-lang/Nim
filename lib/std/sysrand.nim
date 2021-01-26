@@ -12,11 +12,11 @@
 ## | Targets    | Implementation|
 ## | :---         | ----:       |
 ## | Windows| `BCryptGenRandom`_ |
-## | Linux| `getrandom`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | MacOSX| `getentropy`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | IOS  | `SecRandomCopyBytes`_|
-## | OpenBSD| `getentropy openbsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
-## | FreeBSD| `getrandom freebsd`_ system call when available, otherwise `/dev/urandom`_ will be used|
+## | Linux| `getrandom`_ |
+## | MacOSX| `getentropy`_ |
+## | IOS  | `SecRandomCopyBytes`_ |
+## | OpenBSD| `getentropy openbsd`_ |
+## | FreeBSD| `getrandom freebsd`_ |
 ## | JS(Web Browser)| `getRandomValues`_|
 ## | Other Unix platforms| `/dev/urandom`_|
 ##
@@ -47,31 +47,8 @@ import std/os
 when defined(posix):
   import std/posix
 
-  const batchSize = 256
-
-  template getDevUrandom(p: var openArray[byte]): int =
-    let size = p.len
-    if size == 0:
-      return
-
-    let fd = posix.open("/dev/urandom", O_RDONLY)
-
-    if fd > 0:
-      var stat: Stat
-      if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
-        let
-          chunks = (size - 1) div batchSize
-          left = size - chunks * batchSize
-
-        var base = 0
-        for i in 0 ..< chunks:
-          let readBytes = posix.read(fd, addr p[base], batchSize)
-          if readBytes < 0:
-            return readBytes
-          inc(base, batchSize)
-
-        result = posix.read(fd, addr p[base], left)
-      discard posix.close(fd)
+  when not defined(linux):
+    const batchSize = 256
 
 when defined(js):
   import std/private/jsutils
@@ -84,20 +61,19 @@ when defined(js):
     let size = p.len
     if size > 0:
       let chunks = (size - 1) div batchSize
-      var base = 0
       for i in 0 ..< chunks:
         for j in 0 ..< batchSize:
           var src = newUint8Array(batchSize)
           getRandomValues(src)
-          p[base + j] = src[j]
+          p[result + j] = src[j]
 
-        inc(base, batchSize)
+        inc(result, batchSize)
 
       let left = size - chunks * batchSize
       var src = newUint8Array(left)
       getRandomValues(src)
       for i in 0 ..< left:
-        p[base + i] = src[i]
+        p[result + i] = src[i]
 
 elif defined(windows):
   type
@@ -236,7 +212,28 @@ elif defined(macosx):
       result = getentropy(addr p[base], csize_t(left))
 else:
   proc urandom*(p: var openArray[byte]): int =
-    result = getDevUrandom(p)
+    let size = p.len
+    if size == 0:
+      return
+
+    let fd = posix.open("/dev/urandom", O_RDONLY)
+
+    if fd > 0:
+      var stat: Stat
+      if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
+        let
+          chunks = (size - 1) div batchSize
+          left = size - chunks * batchSize
+
+        var base = 0
+        for i in 0 ..< chunks:
+          let readBytes = posix.read(fd, addr p[base], batchSize)
+          if readBytes < 0:
+            return readBytes
+          inc(base, batchSize)
+
+        result = posix.read(fd, addr p[base], left)
+      discard posix.close(fd)
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
