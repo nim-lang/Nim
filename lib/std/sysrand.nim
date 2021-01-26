@@ -76,25 +76,24 @@ when defined(posix):
 when defined(js):
   import std/private/jsutils
 
-  proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+  const batchSize = 256
 
-  const
-    maxBrowserCryptoBufferSize = 256
+  proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
     if size > 0:
-      let chunks = (size - 1) div maxBrowserCryptoBufferSize
+      let chunks = (size - 1) div batchSize
       var base = 0
       for i in 0 ..< chunks:
-        for j in 0 ..< maxBrowserCryptoBufferSize:
-          var src = newUint8Array(maxBrowserCryptoBufferSize)
+        for j in 0 ..< batchSize:
+          var src = newUint8Array(batchSize)
           getRandomValues(src)
           p[base + j] = src[j]
 
-        inc(base, maxBrowserCryptoBufferSize)
+        inc(base, batchSize)
 
-      let left = size - chunks * maxBrowserCryptoBufferSize
+      let left = size - chunks * batchSize
       var src = newUint8Array(left)
       getRandomValues(src)
       for i in 0 ..< left:
@@ -239,7 +238,7 @@ else:
   proc urandom*(p: var openArray[byte]): int =
     result = getDevUrandom(p)
 
-proc urandom*(size: Natural): seq[byte] =
+proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
   result = newSeq[byte](size)
   let ret = urandom(result)
