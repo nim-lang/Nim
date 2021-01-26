@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## The Mersenne Twister random number generator.
+## The [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister)
+## random number generator.
 ##
 ## **Note:** The procs in this module work at compile-time.
 
