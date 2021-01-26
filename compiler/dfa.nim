@@ -32,8 +32,6 @@
 import ast, types, intsets, lineinfos, renderer
 import std/private/asciitables
 
-from patterns import sameTrees
-
 type
   InstrKind* = enum
     goto, fork, def, use
