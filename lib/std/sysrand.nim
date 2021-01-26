@@ -50,19 +50,6 @@ when defined(posix):
 
   const batchSize = 256
 
-  template processReadBytes(readBytes: int, p: pointer, res: var int) =
-    if readBytes == 0:
-      break
-    elif readBytes > 0:
-      inc(res, readBytes)
-      cast[ptr pointer](p)[] = cast[pointer](cast[ByteAddress](p) + readBytes)
-    else:
-      if osLastError().int in {EINTR, EAGAIN}:
-        discard
-      else:
-        res = -1
-        break
-
   proc getDevUrandom(p: var openArray[byte], size: Natural): int =
     let size = p.len
     if size == 0:
@@ -155,7 +142,17 @@ elif defined(linux):
   proc randomBytes(p: pointer, size: Natural): int =
     while result < size:
       let readBytes = syscall(SYS_getrandom, p, cint(size - result), 0)
-      processReadBytes(readBytes, p, result)
+      if readBytes == 0:
+        break
+      elif readBytes > 0:
+        inc(res, readBytes)
+        cast[ptr pointer](p)[] = cast[pointer](cast[ByteAddress](p) + readBytes)
+      else:
+        if osLastError().int in {EINTR, EAGAIN}:
+          discard
+        else:
+          res = -1
+          break
 
   proc urandom*(p: var openArray[byte]): int =
     let size = p.len
