@@ -72,7 +72,5 @@ runnableExamples:
     block:
       let header = newHeaders()
       header["key"] = "a"
-      header["key"] = "b"  ## Duplicated.
-      header["key"] = "c"  ## Duplicated.
-      doAssert header["key"] == "c".cstring
-
+      header["key"] = "b"  ## Overwrites.
+      doAssert header["key"] == "b".cstring
