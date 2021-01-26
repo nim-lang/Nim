@@ -182,16 +182,16 @@ when defined(js):
     # result = cast[array[2, uint32]](b)
 
   proc jsSetSign(x: float, sgn: bool): float =
+    let buffer = newArrayBuffer(8)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
     asm """
     function updateBit(num, bitPos, bitVal) {
       return (num & ~(1 << bitPos)) | (bitVal << bitPos);
     }
-    const buffer = new ArrayBuffer(8);
-    const a = new Float64Array(buffer);
-    const b = new Uint32Array(buffer);
-    a[0] = `x`;
-    b[1] = updateBit(b[1], 31, `sgn`);
-    `result` = a[0]
+    `b`[1] = updateBit(`b`[1], 31, `sgn`);
+    `result` = `a`[0]
     """
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
