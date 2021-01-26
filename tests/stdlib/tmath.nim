@@ -386,11 +386,14 @@ template main =
         doAssert round(2.5'f64) == 3.0'f64
       block: # func round*[T: float32|float64](x: T, places: int): T
         doAssert round(54.345, 0) == 54.0
-        doAssert round(54.346, 2).almostEqual 54.35
-        doAssert round(54.345, 2).almostEqual 54.35
-        doAssert round(54.346'f32, -1) == 50.0
-        doAssert round(54.346'f32, -2) == 100.0
-        doAssert round(54.346'f32, -3) == 0.0
+        template fn(x) =
+          doAssert round(x, 2).almostEqual 54.35
+          doAssert round(x, 2).almostEqual 54.35
+          doAssert round(x, -1).almostEqual 50.0
+          doAssert round(x, -2).almostEqual 100.0
+          doAssert round(x, -3).almostEqual 0.0
+        fn(54.346)
+        fn(54.346'f32)
 
     when nimvm:
       discard
