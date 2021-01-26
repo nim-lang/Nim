@@ -145,13 +145,13 @@ elif defined(linux):
       if readBytes == 0:
         break
       elif readBytes > 0:
-        inc(res, readBytes)
+        inc(result, readBytes)
         cast[ptr pointer](p)[] = cast[pointer](cast[ByteAddress](p) + readBytes)
       else:
         if osLastError().int in {EINTR, EAGAIN}:
           discard
         else:
-          res = -1
+          result = -1
           break
 
   proc urandom*(p: var openArray[byte]): int =
