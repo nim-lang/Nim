@@ -151,6 +151,12 @@ elif defined(linux):
   proc syscall(
     n: clong, buf: pointer, bufLen: cint, flags: cuint
   ): int {.importc: "syscall", header: syscallHeader.}
+    #  When reading from the urandom source (GRND_RANDOM is not set),
+    #  getrandom() will block until the entropy pool has been
+    #  initialized (unless the GRND_NONBLOCK flag was specified).  If a
+    #  request is made to read a large number of bytes (more than 256),
+    #  getrandom() will block until those bytes have been generated and
+    #  transferred from kernel memory to buf.
 
   template urandomImpl(dest: var openArray[byte]) =
     let size = dests.len
@@ -186,6 +192,10 @@ elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
   proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
+    # Upon successful completion, the number of bytes which were	actually read
+    # is returned. For requests larger than 256	bytes, this can	be fewer bytes
+    # than were requested. Otherwise, -1 is returned and the global variable
+    # errno is set to indicate the error.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getrandom(p, csize_t(batchSize), 0)
@@ -196,7 +206,8 @@ elif defined(freebsd):
 elif defined(ios):
   {.passL: "-framework Security".}
 
-  const errSecSuccess = 0
+  const errSecSuccess = 0 ## No error.
+
   type
     SecRandom {.importc: "struct __SecRandom".} = object
 
@@ -206,6 +217,7 @@ elif defined(ios):
   proc secRandomCopyBytes(
     rnd: SecRandomRef, count: csize_t, bytes: pointer
     ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
+    ## Generates an array of cryptographically secure random bytes.
 
   template urandomImpl(dest: var openArray[byte]) =
     let size = dest.len
@@ -221,6 +233,9 @@ elif defined(macosx):
 """
 
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
+    # getentropy() fills a buffer with random data, which can be used as input 
+    # for process-context pseudorandom generators like arc4random(3).
+    # The maximum buffer size permitted is 256 bytes.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, csize_t(size)).int
@@ -254,6 +269,9 @@ else:
 
 proc urandom*(dest: var openArray[byte]): int =
   ## Fills `dest` with random bytes suitable for cryptographic use.
+  ## 
+  ## If `dest` is empty, `urandom` immediately returns success,
+  ## without calling underlying operating system api.
   urandomImpl(dest)
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
