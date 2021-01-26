@@ -763,7 +763,7 @@ proc processCategory(r: var TResults, cat: Category,
       testSpec r, test
       inc testsRun
     if testsRun == 0:
-      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+      const whiteListedDirs = ["deps", "htmldocs", "pkgs", "ic"]
         # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
         # that try an old version of choosenim.
       doAssert cat.string in whiteListedDirs,
