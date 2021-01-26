@@ -156,6 +156,9 @@ macro dump*(x: untyped): untyped =
   ## It accepts any expression and prints a textual representation
   ## of the tree representing the expression - as it would appear in
   ## source code - together with the value of the expression.
+  ##
+  ## Deprecated: use `dumpToString` which is more convenient and useful since
+  ## it expands intermediate templates/macros.
   runnableExamples:
     let
       x = 10
@@ -166,10 +169,29 @@ macro dump*(x: untyped): untyped =
   result = quote do:
     debugEcho `s`, " = ", `x`
 
+macro dumpToStringImpl(s: static string, x: typed): string =
+  let s2 = x.toStrLit
+  if x.typeKind == ntyVoid:
+    result = quote do:
+      `s` & ": " & `s2`
+  else:
+    result = quote do:
+      `s` & ": " & `s2` & " = " & $`x`
+
 macro dumpToString*(x: untyped): string =
-  let s = x.toStrLit
-  result = quote do:
-    `s` & " = " & $`x`
+  ## Returns the content of a statement or expression `x` after semantic analysis,
+  ## useful for debugging.
+  runnableExamples:
+    const a = 1
+    let x = 10
+    doAssert dumpToString(a + 2) == "a + 2: 3 = 3"
+    echo dumpToString(a + x)
+    template square(x): untyped = x * x
+    doAssert dumpToString(square(x)) == "square(x): x * x = 100"
+    doAssert not compiles dumpToString(1 + nonexistant)
+  result = newCall(bindSym"dumpToStringImpl")
+  result.add newLit repr(x)
+  result.add x
 
 # TODO: consider exporting this in macros.nim
 proc freshIdentNodes(ast: NimNode): NimNode =
