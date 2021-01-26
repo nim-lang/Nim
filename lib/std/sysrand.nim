@@ -58,38 +58,42 @@ when defined(js):
   when defined(nodejs):
     {.emit: "const _nim_nodejs_crypto = require('crypto');".}
 
-    proc randomFillSync(x: Uint8Array) {.importjs: "_nim_nodejs_crypto.randomFillSync(#)".}
+    proc randomFillSync(p: Uint8Array) {.importjs: "_nim_nodejs_crypto.randomFillSync(#)".}
 
-    proc urandom(x: var openArray[byte]): int =
-      let size = x.len
-      if size > 0:
-        var t = newUint8Array(size)
-        randomFillSync(t)
-        for i in 0 ..< size:
-          x[i] = t[i]
+    proc urandom(dest: var openArray[byte]): int =
+      let size = dest.len
+      if size == 0:
+        return
+
+      var src = newUint8Array(size)
+      randomFillSync(src)
+      for i in 0 ..< size:
+        dest[i] = src[i]
 
   else:
     const batchSize = 256
 
-    proc getRandomValues(arr: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+    proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
 
-    proc urandom*(p: var openArray[byte]): int =
-      let size = p.len
-      if size > 0:
-        let chunks = (size - 1) div batchSize
-        for i in 0 ..< chunks:
-          for j in 0 ..< batchSize:
-            var src = newUint8Array(batchSize)
-            getRandomValues(src)
-            p[result + j] = src[j]
+    proc urandom*(dest: var openArray[byte]): int =
+      let size = dest.len
+      if size == 0:
+        return
 
-          inc(result, batchSize)
+      let chunks = (size - 1) div batchSize
+      for i in 0 ..< chunks:
+        for j in 0 ..< batchSize:
+          var src = newUint8Array(batchSize)
+          getRandomValues(src)
+          dest[result + j] = src[j]
 
-        let left = size - chunks * batchSize
-        var src = newUint8Array(left)
-        getRandomValues(src)
-        for i in 0 ..< left:
-          p[result + i] = src[i]
+        inc(result, batchSize)
+
+      let left = size - chunks * batchSize
+      var src = newUint8Array(left)
+      getRandomValues(src)
+      for i in 0 ..< left:
+        dest[result + i] = src[i]
 
 elif defined(windows):
   type
@@ -115,10 +119,12 @@ elif defined(windows):
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      result = randomBytes(addr p[0], size)
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
+    if size == 0:
+      return
+
+    result = randomBytes(addr dest[0], size)
 
 elif defined(linux):
   let SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
@@ -129,13 +135,13 @@ elif defined(linux):
     n: clong, buf: pointer, bufLen: cint, flags: cuint
   ): int {.importc: "syscall", header: syscallHeader.}
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dests.len
     if size == 0:
       return
 
     while result < size:
-      let readBytes = syscall(SYS_getrandom, addr p[result], cint(size - result), 0)
+      let readBytes = syscall(SYS_getrandom, addr dest[result], cint(size - result), 0)
       if readBytes == 0:
         break
       elif readBytes > 0:
@@ -153,40 +159,44 @@ elif defined(openbsd):
     # which can be used as input for process-context pseudorandom generators like `arc4random`.
     # The maximum buffer size permitted is 256 bytes.
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      let
-        chunks = (size - 1) div batchSize
-        left = size - chunks * batchSize
-      var base = 0
-      for i in 0 ..< chunks:
-        let readBytes = getentropy(addr p[base], cint(batchSize))
-        if readBytes < 0:
-          return readBytes
-        inc(base, batchSize)
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
+    if size == 0:
+      return
 
-      result = getentropy(addr p[base], cint(left))
+    let
+      chunks = (size - 1) div batchSize
+      left = size - chunks * batchSize
+    var base = 0
+    for i in 0 ..< chunks:
+      let readBytes = getentropy(addr dest[base], cint(batchSize))
+      if readBytes < 0:
+        return readBytes
+      inc(base, batchSize)
+
+    result = getentropy(addr dest[base], cint(left))
 
 elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
   proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      let
-        chunks = (size - 1) div batchSize
-        left = size - chunks * batchSize
-      var base = 0
-      for i in 0 ..< chunks:
-        let readBytes = getrandom(addr p[base], csize_t(batchSize), 0)
-        if readBytes < 0:
-          return readBytes
-        inc(base, batchSize)
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
+    if size == 0:
+      return
 
-      result = getrandom(addr p[base], csize_t(left), 0)
+    let
+      chunks = (size - 1) div batchSize
+      left = size - chunks * batchSize
+    var base = 0
+    for i in 0 ..< chunks:
+      let readBytes = getrandom(addr dest[base], csize_t(batchSize), 0)
+      if readBytes < 0:
+        return readBytes
+      inc(base, batchSize)
+
+    result = getrandom(addr dest[base], csize_t(left), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
@@ -202,11 +212,13 @@ elif defined(ios):
     rnd: SecRandomRef, count: csize_t, bytes: pointer
     ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      # `kSecRandomDefault` is a synonym for NULL.
-      result = secRandomCopyBytes(nil, csize_t(size), addr p[0])
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
+    if size == 0:
+      return
+
+    # `kSecRandomDefault` is a synonym for NULL.
+    result = secRandomCopyBytes(nil, csize_t(size), addr dest[0])
 
 elif defined(macosx):
   const sysrandomHeader = """#include <Availability.h>
@@ -215,23 +227,25 @@ elif defined(macosx):
 
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
 
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
-    if size > 0:
-      let
-        chunks = (size - 1) div batchSize
-        left = size - chunks * batchSize
-      var base = 0
-      for i in 0 ..< chunks:
-        let readBytes = getentropy(addr p[base], csize_t(batchSize))
-        if readBytes < 0:
-          return readBytes
-        inc(base, batchSize)
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
+    if size == 0:
+      return
 
-      result = getentropy(addr p[base], csize_t(left))
+    let
+      chunks = (size - 1) div batchSize
+      left = size - chunks * batchSize
+    var base = 0
+    for i in 0 ..< chunks:
+      let readBytes = getentropy(addr dest[base], csize_t(batchSize))
+      if readBytes < 0:
+        return readBytes
+      inc(base, batchSize)
+
+    result = getentropy(addr dest[base], csize_t(left))
 else:
-  proc urandom*(p: var openArray[byte]): int =
-    let size = p.len
+  proc urandom*(dest: var openArray[byte]): int =
+    let size = dest.len
     if size == 0:
       return
 
@@ -246,12 +260,12 @@ else:
 
         var base = 0
         for i in 0 ..< chunks:
-          let readBytes = posix.read(fd, addr p[base], batchSize)
+          let readBytes = posix.read(fd, addr dest[base], batchSize)
           if readBytes < 0:
             return readBytes
           inc(base, batchSize)
 
-        result = posix.read(fd, addr p[base], left)
+        result = posix.read(fd, addr dest[base], left)
       discard posix.close(fd)
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
