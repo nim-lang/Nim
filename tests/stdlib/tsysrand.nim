@@ -1,5 +1,5 @@
 discard """
-  targets: "c cpp"
+  targets: "c cpp js"
 """
 
 import std/sysrand
