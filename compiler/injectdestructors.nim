@@ -143,21 +143,15 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
             lastReads.add lra
           elif lrb notin potLastReads:
             lastReads.add lrb
-      when false:
-        potLastReads = potLastReadsA
-        let leen = potLastReads.len
-        for i, plb in potLastReadsB:
-          if not(i < leen and plb == potLastReads[i]):
-            potLastReads.add plb
-      else:
-        let oldPotLastReads = potLastReads
-        potLastReads = @[]
-        for pla in potLastReadsA:
-          if pla notin oldPotLastReads:
-            potLastReads.add pla
-        for plb in potLastReadsB:
-          if plb notin oldPotLastReads:
-            potLastReads.add plb
+      
+      let oldPotLastReads = potLastReads
+      potLastReads = @[]
+      for pla in potLastReadsA:
+        if pla notin oldPotLastReads:
+          potLastReads.add pla
+      for plb in potLastReadsB:
+        if plb notin oldPotLastReads:
+          potLastReads.add plb
 
       pc = min(variantA, variantB)
 
@@ -1089,10 +1083,11 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
 
-  var alreadySeen, lastReads, potLastReads: seq[PNode]
-  discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
-  lastReads.add potLastReads
-  for r in lastReads: r.flags.incl nfLastRead
+  block:
+    var alreadySeen, lastReads, potLastReads: seq[PNode]
+    discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
+    lastReads.add potLastReads
+    for r in lastReads: r.flags.incl nfLastRead
 
   var scope: Scope
   let body = p(n, c, scope, normal)
