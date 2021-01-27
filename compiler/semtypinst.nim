@@ -229,6 +229,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
+    if not cl.allowMetaTypes:
+      assert result.kind notin nkCallKinds
   else:
     if n.len > 0:
       newSons(result, n.len)

@@ -2184,7 +2184,7 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
-  if g.config.errorCounter > 0: return n
+  #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
@@ -2262,7 +2262,7 @@ proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =
-  if g.config.errorCounter > 0: return errorNode(idgen, module, n)
+  #if g.config.errorCounter > 0: return errorNode(idgen, module, n)
 
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(g.config.evalMacroCounter)
