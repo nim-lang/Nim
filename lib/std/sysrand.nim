@@ -98,21 +98,29 @@ when defined(js):
       if size == 0:
         return
 
+      if size <= 256:
+        var src = newUint8Array(size)
+        getRandomValues(src)
+        for i in 0 ..< size:
+          dest[i] = src[i]
+        return
+
       let
         chunks = (size - 1) div batchSize
         left = size - chunks * batchSize
 
-      var src = newUint8Array(batchSize)
+      var srcArray = newUint8Array(batchSize)
       for i in 0 ..< chunks:
-        getRandomValues(src)
+        getRandomValues(srcArray)
         for j in 0 ..< batchSize:
-          dest[result + j] = src[j]
+          dest[result + j] = srcArray[j]
 
         inc(result, batchSize)
 
-      getRandomValues(src)
+      var leftArray = newUint8Array(left)
+      getRandomValues(leftArray)
       for i in 0 ..< left:
-        dest[result + i] = src[i]
+        dest[result + i] = leftArray[i]
 
 elif defined(windows):
   type
