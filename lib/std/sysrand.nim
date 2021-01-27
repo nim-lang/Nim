@@ -101,10 +101,11 @@ when defined(js):
       let
         chunks = (size - 1) div batchSize
         left = size - chunks * batchSize
+
+      var src = newUint8Array(batchSize)
       for i in 0 ..< chunks:
+        getRandomValues(src)
         for j in 0 ..< batchSize:
-          var src = newUint8Array(batchSize)
-          getRandomValues(src)
           dest[result + j] = src[j]
 
         inc(result, batchSize)
