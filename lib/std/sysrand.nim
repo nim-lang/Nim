@@ -93,6 +93,11 @@ when defined(js):
     proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
       # The requested length of `p` must not be more than 65536.
 
+    proc assign(dest: var openArray[byte], src: Uint8Array, base: int, size: int) =
+      getRandomValues(src)
+      for j in 0 ..< size:
+        dest[base + j] = src[j]
+
     template urandomImpl(dest: var openArray[byte]) =
       let size = dest.len
       if size == 0:
@@ -100,9 +105,7 @@ when defined(js):
 
       if size <= 256:
         var src = newUint8Array(size)
-        getRandomValues(src)
-        for i in 0 ..< size:
-          dest[i] = src[i]
+        assign(dest, src, 0, size)
         return
 
       let
@@ -111,16 +114,11 @@ when defined(js):
 
       var srcArray = newUint8Array(batchSize)
       for i in 0 ..< chunks:
-        getRandomValues(srcArray)
-        for j in 0 ..< batchSize:
-          dest[result + j] = srcArray[j]
-
+        assign(dest, srcArray, result, batchSize)
         inc(result, batchSize)
 
       var leftArray = newUint8Array(left)
-      getRandomValues(leftArray)
-      for i in 0 ..< left:
-        dest[result + i] = leftArray[i]
+      assign(dest, leftArray, result, left)
 
 elif defined(windows):
   type
