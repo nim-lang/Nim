@@ -190,6 +190,8 @@ macro dumpToString*(x: untyped): string =
     template square(x): untyped = x * x
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     doAssert not compiles dumpToString(1 + nonexistant)
+    import std/strutils
+    doAssert "failedAssertImpl" in dumpToString(doAssert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")
   result.add newLit repr(x)
   result.add x
