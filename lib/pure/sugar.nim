@@ -158,12 +158,13 @@ macro dump*(x: untyped): untyped =
   ## source code - together with the value of the expression.
   ##
   ## Deprecated: use `dumpToString` which is more convenient and useful since
-  ## it expands intermediate templates/macros.
+  ## it expands intermediate templates/macros, returns a string instead of
+  ## calling `echo`, and works with statements and expressions.
   runnableExamples:
     let
       x = 10
       y = 20
-    dump(x + y) # will print `x + y = 30`
+    if false: dump(x + y) # if true would print `x + y = 30`
 
   let s = x.toStrLit
   result = quote do:

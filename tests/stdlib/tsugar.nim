@@ -113,3 +113,8 @@ block: # dumpToString
   template square(x): untyped = x * x
   let x = 10
   doAssert dumpToString(square(x)) == "square(x): x * x = 100"
+  let s = dumpToString(doAssert 1+1 == 2)
+  doAssert "failedAssertImpl" in s
+  let s2 = dumpToString:
+    doAssertRaises(AssertionDefect): doAssert false
+  doAssert "except AssertionDefect" in s2
