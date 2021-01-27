@@ -131,3 +131,13 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
   for it in mitems(g.packed[module].fromDisk.compilerProcs):
     let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
     g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
+
+  when false:
+    for it in mitems(g.packed[module].fromDisk.converters):
+      let key = translateId(it[0], g.packed, module, g.config)
+      let col = it[1]
+      let tmp = translateId(it[2], g.packed, module, g.config)
+      let symId = FullId(module: tmp.module, packed: it[2])
+      g.ifaces[module].converters.add LazySym(id: symId, sym: nil)
+
+

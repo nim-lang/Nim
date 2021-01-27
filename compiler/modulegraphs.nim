@@ -19,12 +19,16 @@ import ic / [packed_ast, to_packed_ast]
 type
   SigHash* = distinct MD5Digest
 
+  LazySym* = object
+    id*: FullId
+    sym*: PSym
+
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
-    converters*: seq[PSym]
-    patterns*: seq[PSym]
-    pureEnums*: seq[PSym]
+    converters*: seq[LazySym]
+    patterns*: seq[LazySym]
+    pureEnums*: seq[LazySym]
     interf: TStrTable
 
   Operators* = object
@@ -34,10 +38,6 @@ type
   FullId* = object
     module*: int
     packed*: PackedItemId
-
-  LazySym* = object
-    id*: FullId
-    sym*: PSym
 
   LazyType* = object
     id*: FullId
