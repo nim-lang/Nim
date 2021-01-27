@@ -969,7 +969,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
 
 proc sameLocation*(a, b: PNode): bool =
   proc sameConstant(a, b: PNode): bool =
-    a.kind in nkLiterals and exprStructuralEquivalent(a, b)
+    a.kind in nkLiterals and a.intVal == b.intVal
 
   const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
   if a.kind in nkEndPoint and b.kind in nkEndPoint:
@@ -1006,7 +1006,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
         # unpacking of tuple: take over the elements
         result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
       elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
-        if not aliases(dest, ri):
+        if aliases(dest, ri) == no:
           # Rule 3: `=sink`(x, z); wasMoved(z)
           var snk = c.genSink(dest, ri, isDecl)
           result = newTree(nkStmtList, snk, c.genWasMoved(ri))
