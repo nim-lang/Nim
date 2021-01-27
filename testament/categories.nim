@@ -644,71 +644,78 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
-  case cat.string.normalize
-  of "js":
-    # only run the JS tests on Windows or Linux because Travis is bad
-    # and other OSes like Haiku might lack nodejs:
-    if not defined(linux) and isTravis:
-      discard
-    else:
-      jsTests(r, cat, options)
-  of "dll":
-    dllTests(r, cat, options)
-  of "flags":
-    flagTests(r, cat, options)
-  of "gc":
-    gcTests(r, cat, options)
-  of "longgc":
-    longGCTests(r, cat, options)
-  of "debugger":
-    debuggerTests(r, cat, options)
-  of "manyloc":
-    manyLoc r, cat, options
-  of "threads":
-    threadTests r, cat, options & " --threads:on"
-  of "io":
-    ioTests r, cat, options
-  of "async":
-    asyncTests r, cat, options
-  of "lib":
-    testStdlib(r, "lib/pure/", options, cat)
-    testStdlib(r, "lib/packages/docutils/", options, cat)
-  of "examples":
-    compileExample(r, "examples/*.nim", options, cat)
-    compileExample(r, "examples/gtk/*.nim", options, cat)
-    compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages-1":
-    testNimblePackages(r, cat, options, ppOne)
-  of "nimble-packages-2":
-    testNimblePackages(r, cat, options, ppTwo)
-  of "niminaction":
-    testNimInAction(r, cat, options)
-  of "untestable":
-    # We can't test it because it depends on a third party.
-    discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
-  of "megatest":
-    runJoinedTest(r, cat, testsDir)
-  else:
-    var testsRun = 0
-    var files: seq[string]
-    for file in walkDirRec(testsDir &.? cat.string):
-      if isTestFile(file): files.add file
-    files.sort # give reproducible order
-
-    for i, name in files:
-      var test = makeTest(name, options, cat)
-      if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
-        discard "run the test"
+  let cat2 = cat.string.normalize
+  var handled = false
+  if isNimRepoTests():
+    handled = true
+    case cat2
+    of "js":
+      # only run the JS tests on Windows or Linux because Travis is bad
+      # and other OSes like Haiku might lack nodejs:
+      if not defined(linux) and isTravis:
+        discard
       else:
-        test.spec.err = reJoined
-      testSpec r, test
-      inc testsRun
-    if testsRun == 0:
-      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
-        # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
-        # that try an old version of choosenim.
-      doAssert cat.string in whiteListedDirs,
-        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
+        jsTests(r, cat, options)
+    of "dll":
+      dllTests(r, cat, options)
+    of "flags":
+      flagTests(r, cat, options)
+    of "gc":
+      gcTests(r, cat, options)
+    of "longgc":
+      longGCTests(r, cat, options)
+    of "debugger":
+      debuggerTests(r, cat, options)
+    of "manyloc":
+      manyLoc r, cat, options
+    of "threads":
+      threadTests r, cat, options & " --threads:on"
+    of "io":
+      ioTests r, cat, options
+    of "async":
+      asyncTests r, cat, options
+    of "lib":
+      testStdlib(r, "lib/pure/", options, cat)
+      testStdlib(r, "lib/packages/docutils/", options, cat)
+    of "examples":
+      compileExample(r, "examples/*.nim", options, cat)
+      compileExample(r, "examples/gtk/*.nim", options, cat)
+      compileExample(r, "examples/talk/*.nim", options, cat)
+    of "nimble-packages-1":
+      testNimblePackages(r, cat, options, ppOne)
+    of "nimble-packages-2":
+      testNimblePackages(r, cat, options, ppTwo)
+    of "niminaction":
+      testNimInAction(r, cat, options)
+    of "untestable":
+      # We can't test it because it depends on a third party.
+      discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
+    else:
+      handled = false
+  if not handled:
+    case cat2
+    of "megatest":
+      runJoinedTest(r, cat, testsDir)
+    else:
+      var testsRun = 0
+      var files: seq[string]
+      for file in walkDirRec(testsDir &.? cat.string):
+        if isTestFile(file): files.add file
+      files.sort # give reproducible order
+      for i, name in files:
+        var test = makeTest(name, options, cat)
+        if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
+          discard "run the test"
+        else:
+          test.spec.err = reJoined
+        testSpec r, test
+        inc testsRun
+      if testsRun == 0:
+        const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+          # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
+          # that try an old version of choosenim.
+        doAssert cat.string in whiteListedDirs,
+          "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0
