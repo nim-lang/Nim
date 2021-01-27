@@ -91,6 +91,7 @@ when defined(js):
     const batchSize = 256
 
     proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+      # The requested length of `p` must not be more than 65536.
 
     template urandomImpl(dest: var openArray[byte]) =
       let size = dest.len
@@ -133,7 +134,7 @@ elif defined(windows):
   ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
 
 
-  proc randomBytes(pbBuffer: pointer, cbBuffer: Natural): int =
+  proc randomBytes(pbBuffer: pointer, cbBuffer: Natural): int {.inline.} =
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
@@ -274,7 +275,8 @@ proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
-  ## 
+  ## If succeed, returns `true`.
+  ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
   result = true
