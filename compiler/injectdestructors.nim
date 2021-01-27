@@ -72,23 +72,33 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc, until: int): int =
+proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PNode]; pc, until: int): int =
   var pc = pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
     of def:
-      if instrTargets(cfg[pc].n, location) == Full:
-        # the path leads to a redefinition of 's' --> abandon it.
-        return high(int)
-      elif instrTargets(cfg[pc].n, location) == Partial:
-        # only partially writes to 's' --> can't sink 's', so this def reads 's'
-        otherRead = cfg[pc].n
-        return -1
+      var newPotLastReads: seq[PNode]
+      for r in potLastReads:
+        if cfg[pc].n.aliases(r) == yes:
+          # the path leads to a redefinition of 's' --> sink 's'.
+          lastReads.add r
+        elif r.aliases(cfg[pc].n) != no:
+          # only partially writes to 's' --> can't sink 's', so this def reads 's'
+          # or maybe writes to 's' --> can't sink 's'
+          discard
+        else:
+          newPotLastReads.add r
+      potLastReads = newPotLastReads
       inc pc
     of use:
-      if instrTargets(cfg[pc].n, location) != None:
-        otherRead = cfg[pc].n
-        return -1
+      var newPotLastReads: seq[PNode]
+      for r in potLastReads:
+        if cfg[pc].n.aliases(r) != no or r.aliases(cfg[pc].n) != no:
+          discard
+        else:
+          newPotLastReads.add r
+      potLastReads = newPotLastReads
+      potLastReads.add cfg[pc].n
       inc pc
     of goto:
       pc += cfg[pc].dest
@@ -96,51 +106,42 @@ proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc
       # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
-      while variantA != variantB:
-        if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) >= cfg.len or min(variantA, variantB) >= until:
-          break
+      var potLastReadsA, potLastReadsB = potLastReads
+      var lastReadsA, lastReadsB: seq[PNode]
+      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = isLastRead(location, cfg, otherRead, variantA, min(variantB, until))
+          variantA = collectLastReads(cfg, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
+          variantB = collectLastReads(cfg, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+      for lra in lastReadsA:
+        for lrb in lastReadsB:
+          if lra == lrb:
+            lastReads.add lra
+          elif lra notin potLastReads:
+            lastReads.add lra
+          elif lrb notin potLastReads:
+            lastReads.add lrb
+      when false:
+        potLastReads = potLastReadsA
+        let leen = potLastReads.len
+        for i, plb in potLastReadsB:
+          if not(i < leen and plb == potLastReads[i]):
+            potLastReads.add plb
+      else:
+        let oldPotLastReads = potLastReads
+        potLastReads = @[]
+        for pla in potLastReadsA:
+          if pla notin oldPotLastReads:
+            potLastReads.add pla
+        for plb in potLastReadsB:
+          if plb notin oldPotLastReads:
+            potLastReads.add plb
       pc = min(variantA, variantB)
   return pc
 
-proc isCursor(n: PNode; c: Con): bool =
-  case n.kind
-  of nkSym:
-    sfCursor in n.sym.flags
-  of nkDotExpr:
-    isCursor(n[1], c)
-  of nkCheckedFieldExpr:
-    isCursor(n[0], c)
-  else:
-    false
-
 proc isLastRead(n: PNode; c: var Con): bool =
-  # first we need to search for the instruction that belongs to 'n':
-  var instr = -1
   let m = dfa.skipConvDfa(n)
-  if m.kind == nkSym and sfSingleUsedTemp in m.sym.flags: return true
-
-  for i in 0..<c.g.len:
-    # This comparison is correct and MUST not be ``instrTargets``:
-    if c.g[i].kind == use and c.g[i].n == m:
-      if instr < 0:
-        instr = i
-        break
-
-  dbg: echo "starting point for ", n, " is ", instr, " ", n.kind
-
-  if instr < 0: return false
-  # we go through all paths beginning from 'instr+1' and need to
-  # ensure that we don't find another 'use X' instruction.
-  if instr+1 >= c.g.len: return true
-
-  c.otherRead = nil
-  result = isLastRead(n, c.g, c.otherRead, instr+1, int.high) >= 0
-  dbg: echo "ugh ", c.otherRead.isNil, " ", result
+  (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
 
 proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
   var pc = pc
@@ -227,6 +228,17 @@ proc initialized(code: ControlFlowGraph; pc: int,
       init.incl v.id
       inc pc
   return pc
+
+proc isCursor(n: PNode; c: Con): bool =
+  case n.kind
+  of nkSym:
+    sfCursor in n.sym.flags
+  of nkDotExpr:
+    isCursor(n[1], c)
+  of nkCheckedFieldExpr:
+    isCursor(n[0], c)
+  else:
+    false
 
 template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
@@ -1096,6 +1108,11 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
+
+  var lastReads, potLastReads: seq[PNode]
+  discard collectLastReads(c.g, lastReads, potLastReads, 0, c.g.len)
+  lastReads.add potLastReads
+  for r in lastReads: r.flags.incl nfLastRead
 
   var scope: Scope
   let body = p(n, c, scope, normal)
