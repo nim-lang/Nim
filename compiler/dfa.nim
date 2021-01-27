@@ -644,19 +644,6 @@ proc aliases*(obj, field: PNode): AliasKind =
         result = maybe
     else: assert false # unreachable
 
-type InstrTargetKind* = enum
-  None, Full, Partial
-
-proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
-  case insloc.aliases(loc)
-  of yes:
-    Full    # x -> x; x -> x.f
-  of maybe:
-    Partial # We treat this like a partial write/read
-  elif loc.aliases(insloc) != no:
-    Partial # x.f -> x
-  else: None
-
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
   while true:
