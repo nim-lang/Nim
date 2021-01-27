@@ -43,8 +43,9 @@ runnableExamples:
 ## * `random module <random.html>`_
 ##
 
-import std/os
 
+when not defined(js):
+  import std/os
 
 when defined(posix):
   import std/posix
@@ -105,7 +106,7 @@ when defined(js):
       if size == 0:
         return
 
-      if size <= 256:
+      if size <= batchSize:
         var src = newUint8Array(size)
         assign(dest, src, 0, size)
         return
