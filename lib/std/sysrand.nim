@@ -60,14 +60,14 @@ when defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(io
     let
       chunks = (size - 1) div batchSize
       left = size - chunks * batchSize
-    var base = 0
+
     for i in 0 ..< chunks:
-      let readBytes = getRandomImpl(addr dest[base], batchSize)
+      let readBytes = getRandomImpl(addr dest[result], batchSize)
       if readBytes < 0:
         return readBytes
-      inc(base, batchSize)
+      inc(result, batchSize)
 
-    result = getRandomImpl(addr dest[base], left)
+    result = getRandomImpl(addr dest[result], left)
 
 when defined(js):
   import std/private/jsutils
@@ -267,14 +267,13 @@ else:
           chunks = (size - 1) div batchSize
           left = size - chunks * batchSize
 
-        var base = 0
         for i in 0 ..< chunks:
-          let readBytes = posix.read(fd, addr dest[base], batchSize)
+          let readBytes = posix.read(fd, addr dest[result], batchSize)
           if readBytes < 0:
             return readBytes
-          inc(base, batchSize)
+          inc(result, batchSize)
 
-        result = posix.read(fd, addr dest[base], left)
+        result = posix.read(fd, addr dest[result], left)
 
 proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
   urandomImpl(dest)
