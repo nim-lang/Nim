@@ -72,7 +72,7 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PNode]; pc, until: int): int =
+proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var seq[PNode]; pc, until: int): int =
   var pc = pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
@@ -89,6 +89,16 @@ proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PN
         else:
           newPotLastReads.add r
       potLastReads = newPotLastReads
+
+      var alreadySeenThisNode = false
+      for s in alreadySeen:
+        if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
+          alreadySeenThisNode = true; break
+      if not alreadySeenThisNode: cfg[pc].n.flags.incl nfFirstWrite
+      else: cfg[pc].n.flags.excl nfFirstWrite
+
+      alreadySeen.add cfg[pc].n
+
       inc pc
     of use:
       var newPotLastReads: seq[PNode]
@@ -99,6 +109,9 @@ proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PN
           newPotLastReads.add r
       potLastReads = newPotLastReads
       potLastReads.add cfg[pc].n
+
+      alreadySeen.add cfg[pc].n
+
       inc pc
     of goto:
       pc += cfg[pc].dest
@@ -108,11 +121,20 @@ proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PN
       var variantB = pc + cfg[pc].dest
       var potLastReadsA, potLastReadsB = potLastReads
       var lastReadsA, lastReadsB: seq[PNode]
+      var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = collectLastReads(cfg, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          variantA = collectLastReads(cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = collectLastReads(cfg, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          variantB = collectLastReads(cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+
+      for sa in alreadySeenA:
+        if sa notin alreadySeen:
+          alreadySeen.add sa
+      for sb in alreadySeenB:
+        if sb notin alreadySeen:
+          alreadySeen.add sb
+
       for lra in lastReadsA:
         for lrb in lastReadsB:
           if lra == lrb:
@@ -136,60 +158,18 @@ proc collectLastReads(cfg: ControlFlowGraph; lastReads, potLastReads: var seq[PN
         for plb in potLastReadsB:
           if plb notin oldPotLastReads:
             potLastReads.add plb
+
       pc = min(variantA, variantB)
+
   return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
   (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
 
-proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
-  var pc = pc
-  while pc < until:
-    case cfg[pc].kind
-    of def:
-      if instrTargets(cfg[pc].n, location) != None:
-        # a definition of 's' before ours makes ours not the first write
-        return -1
-      inc pc
-    of use:
-      if instrTargets(cfg[pc].n, location) != None:
-        return -1
-      inc pc
-    of goto:
-      pc += cfg[pc].dest
-    of fork:
-      # every branch must not contain a def/use of our location:
-      var variantA = pc + 1
-      var variantB = pc + cfg[pc].dest
-      while variantA != variantB:
-        if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) > until:
-          break
-        if variantA < variantB:
-          variantA = isFirstWrite(location, cfg, variantA, min(variantB, until))
-        else:
-          variantB = isFirstWrite(location, cfg, variantB, min(variantA, until))
-      pc = min(variantA, variantB)
-  return pc
-
 proc isFirstWrite(n: PNode; c: var Con): bool =
-  # first we need to search for the instruction that belongs to 'n':
-  var instr = -1
   let m = dfa.skipConvDfa(n)
-
-  for i in countdown(c.g.len-1, 0): # We search backwards here to treat loops correctly
-    if c.g[i].kind == def and c.g[i].n == m:
-      if instr < 0:
-        instr = i
-        break
-
-  if instr < 0: return false
-  # we go through all paths going to 'instr' and need to
-  # ensure that we don't find another 'def/use X' instruction.
-  if instr == 0: return true
-
-  result = isFirstWrite(n, c.g, 0, instr) >= 0
+  nfFirstWrite in m.flags
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; until: int): int =
@@ -1109,8 +1089,8 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
 
-  var lastReads, potLastReads: seq[PNode]
-  discard collectLastReads(c.g, lastReads, potLastReads, 0, c.g.len)
+  var alreadySeen, lastReads, potLastReads: seq[PNode]
+  discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
   lastReads.add potLastReads
   for r in lastReads: r.flags.incl nfLastRead
 
