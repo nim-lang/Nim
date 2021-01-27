@@ -283,20 +283,20 @@ proc urandom*(dest: var openArray[byte]): bool =
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
   result = true
-  let ret = urandomInternalImpl(dest)
-  when defined(js): discard
-  elif defined(windows):
-    if ret != STATUS_SUCCESS:
-      result = false
+  when defined(js): discard urandomInternalImpl(dest)
   else:
-    if ret < 0:
-      result = false
+    let ret = urandomInternalImpl(dest)
+    when defined(windows):
+      if ret != STATUS_SUCCESS:
+        result = false
+    else:
+      if ret < 0:
+        result = false
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
   result = newSeq[byte](size)
-  let ret = urandom(result)
-  when defined(js): discard
+  when defined(js): discard urandomInternalImpl(result)
   else:
-    if not ret:
+    if not urandom(result):
       raiseOsError(osLastError())
