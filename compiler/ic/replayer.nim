@@ -127,3 +127,7 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
     let sym = loadSymFromId(g.config, g.cache, g.packed, module,
                             PackedItemId(module: LitId(0), item: it))
     methodDef(g, g.idgen, sym)
+
+  for it in mitems(g.packed[module].fromDisk.compilerProcs):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
+    g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
