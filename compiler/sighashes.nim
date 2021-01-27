@@ -293,7 +293,7 @@ proc hashOwner*(s: PSym): SigHash =
   var m = s
   while m.kind != skModule: m = m.owner
   let p = m.owner
-  assert p.kind == skPackage
+  assert p != nil and p.kind == skPackage
   c &= p.name.s
   c &= "."
   c &= m.name.s

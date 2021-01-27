@@ -32,8 +32,8 @@ type
     #producedGenerics*: Table[GenericKey, SymId]
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
-    compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
-    methods*: seq[int32]
+    compilerProcs*: seq[(LitId, int32)]
+    converters*, methods*, trmacros*, pureEnums*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
@@ -154,17 +154,14 @@ proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.exports.add((nameId, s.itemId.item))
 
 proc addConverter*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  m.converters.add((nameId, s.itemId.item))
+  m.converters.add(s.itemId.item)
 
 proc addTrmacro*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  m.trmacros.add((nameId, s.itemId.item))
+  m.trmacros.add(s.itemId.item)
 
 proc addPureEnum*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
   assert s.kind == skType
-  m.pureEnums.add((nameId, s.itemId.item))
+  m.pureEnums.add(s.itemId.item)
 
 proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.methods.add s.itemId.item
