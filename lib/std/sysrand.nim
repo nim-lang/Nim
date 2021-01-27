@@ -269,21 +269,29 @@ else:
 
         result = posix.read(fd, addr dest[base], left)
 
-proc urandom*(dest: var openArray[byte]): int =
+proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
+  urandomImpl(dest)
+
+proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
   ## 
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
-  urandomImpl(dest)
+  result = true
+  let ret = urandomInternalImpl(dest)
+  when defined(js): discard
+  elif defined(windows):
+    if ret != STATUS_SUCCESS:
+      result = false
+  else:
+    if ret < 0:
+      result = false
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
   result = newSeq[byte](size)
   let ret = urandom(result)
-  when defined(js): discard ret
-  elif defined(windows):
-    if ret != STATUS_SUCCESS:
-      raiseOsError(osLastError())
+  when defined(js): discard
   else:
-    if ret < 0:
+    if not ret:
       raiseOsError(osLastError())
