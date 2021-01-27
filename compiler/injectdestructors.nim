@@ -72,45 +72,51 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var seq[PNode]; pc, until: int): int =
+import sets, hashes
+
+type PNodeSet = HashSet[PNode]
+
+proc hash(n: PNode): Hash = hash(cast[pointer](n))
+
+proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var PNodeSet; pc, until: int): int =
   var pc = pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
     of def:
-      var newPotLastReads: seq[PNode]
+      var newPotLastReads: PNodeSet
       for r in potLastReads:
         if cfg[pc].n.aliases(r) == yes:
           # the path leads to a redefinition of 's' --> sink 's'.
-          lastReads.add r
+          lastReads.incl r
         elif r.aliases(cfg[pc].n) != no:
           # only partially writes to 's' --> can't sink 's', so this def reads 's'
           # or maybe writes to 's' --> can't sink 's'
           discard
         else:
-          newPotLastReads.add r
+          newPotLastReads.incl r
       potLastReads = newPotLastReads
 
       var alreadySeenThisNode = false
       for s in alreadySeen:
         if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
           alreadySeenThisNode = true; break
-      if not alreadySeenThisNode: cfg[pc].n.flags.incl nfFirstWrite
-      else: cfg[pc].n.flags.excl nfFirstWrite
+      if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
+      else: cfg[pc].n.flags.incl nfFirstWrite
 
-      alreadySeen.add cfg[pc].n
+      alreadySeen.incl cfg[pc].n
 
       inc pc
     of use:
-      var newPotLastReads: seq[PNode]
+      var newPotLastReads: PNodeSet
       for r in potLastReads:
         if cfg[pc].n.aliases(r) != no or r.aliases(cfg[pc].n) != no:
           discard
         else:
-          newPotLastReads.add r
+          newPotLastReads.incl r
       potLastReads = newPotLastReads
-      potLastReads.add cfg[pc].n
+      potLastReads.incl cfg[pc].n
 
-      alreadySeen.add cfg[pc].n
+      alreadySeen.incl cfg[pc].n
 
       inc pc
     of goto:
@@ -120,7 +126,7 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
       var potLastReadsA, potLastReadsB = potLastReads
-      var lastReadsA, lastReadsB: seq[PNode]
+      var lastReadsA, lastReadsB: PNodeSet
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
@@ -128,30 +134,17 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
         else:
           variantB = collectLastReads(cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
-      for sa in alreadySeenA:
-        if sa notin alreadySeen:
-          alreadySeen.add sa
-      for sb in alreadySeenB:
-        if sb notin alreadySeen:
-          alreadySeen.add sb
+      alreadySeen.incl alreadySeenA
+      alreadySeen.incl alreadySeenB
 
-      for lra in lastReadsA:
-        for lrb in lastReadsB:
-          if lra == lrb:
-            lastReads.add lra
-          elif lra notin potLastReads:
-            lastReads.add lra
-          elif lrb notin potLastReads:
-            lastReads.add lrb
-      
+      lastReads.incl lastReadsA * lastReadsB
+      lastReads.incl lastReadsA - potLastReads
+      lastReads.incl lastReadsB - potLastReads
+
       let oldPotLastReads = potLastReads
-      potLastReads = @[]
-      for pla in potLastReadsA:
-        if pla notin oldPotLastReads:
-          potLastReads.add pla
-      for plb in potLastReadsB:
-        if plb notin oldPotLastReads:
-          potLastReads.add plb
+      potLastReads = initHashSet[PNode]()
+      potLastReads.incl potLastReadsA - oldPotLastReads
+      potLastReads.incl potLastReadsB - oldPotLastReads
 
       pc = min(variantA, variantB)
 
@@ -1084,9 +1077,9 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     computeCursors(owner, n, g)
 
   block:
-    var alreadySeen, lastReads, potLastReads: seq[PNode]
+    var alreadySeen, lastReads, potLastReads: PNodeSet
     discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
-    lastReads.add potLastReads
+    lastReads.incl potLastReads
     for r in lastReads: r.flags.incl nfLastRead
 
   var scope: Scope
