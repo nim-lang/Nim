@@ -185,7 +185,7 @@ macro dumpToString*(x: untyped): string =
     const a = 1
     let x = 10
     doAssert dumpToString(a + 2) == "a + 2: 3 = 3"
-    echo dumpToString(a + x)
+    doAssert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     doAssert not compiles dumpToString(1 + nonexistant)
