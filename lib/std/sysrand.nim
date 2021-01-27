@@ -110,7 +110,6 @@ when defined(js):
 
         inc(result, batchSize)
 
-      var src = newUint8Array(left)
       getRandomValues(src)
       for i in 0 ..< left:
         dest[result + i] = src[i]
