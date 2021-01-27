@@ -49,7 +49,9 @@ import std/os
 when defined(posix):
   import std/posix
 
-when defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios)):
+const batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+
+when batchImplOS:
   const batchSize = 256
 
   template batchImpl(result: var int, dest: var openArray[byte], getRandomImpl) =
@@ -77,7 +79,7 @@ when defined(js):
 
     proc randomFillSync(p: Uint8Array) {.importjs: "_nim_nodejs_crypto.randomFillSync(#)".}
 
-    template urandomImpl(dest: var openArray[byte]) =
+    template urandomImpl(result: var int, dest: var openArray[byte]) =
       let size = dest.len
       if size == 0:
         return
@@ -98,7 +100,7 @@ when defined(js):
       for j in 0 ..< size:
         dest[base + j] = src[j]
 
-    template urandomImpl(dest: var openArray[byte]) =
+    template urandomImpl(result: var int, dest: var openArray[byte]) =
       let size = dest.len
       if size == 0:
         return
@@ -144,7 +146,7 @@ elif defined(windows):
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
-  template urandomImpl(dest: var openArray[byte]) =
+  template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
     if size == 0:
       return
@@ -166,7 +168,7 @@ elif defined(linux):
     #  getrandom() will block until those bytes have been generated and
     #  transferred from kernel memory to buf.
 
-  template urandomImpl(dest: var openArray[byte]) =
+  template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
     if size == 0:
       return
@@ -193,9 +195,6 @@ elif defined(openbsd):
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, cint(size)).int
 
-  template urandomImpl(dest: var openArray[byte]) =
-    batchImpl(result, dest, getRandomImpl)
-
 elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
@@ -207,9 +206,6 @@ elif defined(freebsd):
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getrandom(p, csize_t(batchSize), 0)
-
-  template urandomImpl(dest: var openArray[byte]) =
-    batchImpl(result, dest, getRandomImpl)
 
 elif defined(ios):
   {.passL: "-framework Security".}
@@ -227,7 +223,7 @@ elif defined(ios):
     ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
     ## Generates an array of cryptographically secure random bytes.
 
-  template urandomImpl(dest: var openArray[byte]) =
+  template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
     if size == 0:
       return
@@ -248,10 +244,8 @@ elif defined(macosx):
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, csize_t(size)).int
 
-  template urandomImpl(dest: var openArray[byte]) =
-    batchImpl(result, dest, getRandomImpl)
 else:
-  template urandomImpl(dest: var openArray[byte]) =
+  template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
     if size == 0:
       return
@@ -276,7 +270,10 @@ else:
         result = posix.read(fd, addr dest[result], left)
 
 proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
-  urandomImpl(dest)
+  when batchImplOS:
+    batchImpl(result, dest, getRandomImpl)
+  else:
+    urandomImpl(result, dest)
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
