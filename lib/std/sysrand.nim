@@ -49,25 +49,25 @@ import std/os
 when defined(posix):
   import std/posix
 
-  when not defined(linux):
-    const batchSize = 256
+when defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios)):
+  const batchSize = 256
 
-    template batchImpl(result: var int, dest: var openArray[byte], getRandomImpl) =
-      let size = dest.len
-      if size == 0:
-        return
+  template batchImpl(result: var int, dest: var openArray[byte], getRandomImpl) =
+    let size = dest.len
+    if size == 0:
+      return
 
-      let
-        chunks = (size - 1) div batchSize
-        left = size - chunks * batchSize
-      var base = 0
-      for i in 0 ..< chunks:
-        let readBytes = getRandomImpl(addr dest[base], batchSize)
-        if readBytes < 0:
-          return readBytes
-        inc(base, batchSize)
+    let
+      chunks = (size - 1) div batchSize
+      left = size - chunks * batchSize
+    var base = 0
+    for i in 0 ..< chunks:
+      let readBytes = getRandomImpl(addr dest[base], batchSize)
+      if readBytes < 0:
+        return readBytes
+      inc(base, batchSize)
 
-      result = getRandomImpl(addr dest[base], left)
+    result = getRandomImpl(addr dest[base], left)
 
 when defined(js):
   import std/private/jsutils
@@ -97,7 +97,9 @@ when defined(js):
       if size == 0:
         return
 
-      let chunks = (size - 1) div batchSize
+      let
+        chunks = (size - 1) div batchSize
+        left = size - chunks * batchSize
       for i in 0 ..< chunks:
         for j in 0 ..< batchSize:
           var src = newUint8Array(batchSize)
@@ -106,7 +108,6 @@ when defined(js):
 
         inc(result, batchSize)
 
-      let left = size - chunks * batchSize
       var src = newUint8Array(left)
       getRandomValues(src)
       for i in 0 ..< left:
@@ -150,7 +151,7 @@ elif defined(linux):
 
   proc syscall(
     n: clong, buf: pointer, bufLen: cint, flags: cuint
-  ): int {.importc: "syscall", header: syscallHeader.}
+  ): clong {.importc: "syscall", header: syscallHeader.}
     #  When reading from the urandom source (GRND_RANDOM is not set),
     #  getrandom() will block until the entropy pool has been
     #  initialized (unless the GRND_NONBLOCK flag was specified).  If a
@@ -164,7 +165,7 @@ elif defined(linux):
       return
 
     while result < size:
-      let readBytes = syscall(SYS_getrandom, addr dest[result], cint(size - result), 0)
+      let readBytes = syscall(SYS_getrandom, addr dest[result], cint(size - result), 0).int
       if readBytes == 0:
         break
       elif readBytes > 0:
@@ -192,8 +193,8 @@ elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
   proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
-    # Upon successful completion, the number of bytes which were	actually read
-    # is returned. For requests larger than 256	bytes, this can	be fewer bytes
+    # Upon successful completion, the number of bytes which were actually read
+    # is returned. For requests larger than 256 bytes, this can be fewer bytes
     # than were requested. Otherwise, -1 is returned and the global variable
     # errno is set to indicate the error.
 
@@ -248,7 +249,9 @@ else:
     if size == 0:
       return
 
+    # see: https://www.2uo.de/myths-about-urandom/ which justifies using urandom instead of random
     let fd = posix.open("/dev/urandom", O_RDONLY)
+    defer: discard posix.close(fd)
 
     if fd > 0:
       var stat: Stat
@@ -265,7 +268,6 @@ else:
           inc(base, batchSize)
 
         result = posix.read(fd, addr dest[base], left)
-      discard posix.close(fd)
 
 proc urandom*(dest: var openArray[byte]): int =
   ## Fills `dest` with random bytes suitable for cryptographic use.
