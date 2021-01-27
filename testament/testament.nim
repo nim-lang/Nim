@@ -96,7 +96,8 @@ proc isSuccess(input: string): bool =
   # note: this doesn't handle colors, eg: `\e[1m\e[0m\e[32mHint:`; while we
   # could handle colors, there would be other issues such as handling other flags
   # that may appear in user config (eg: `--listFullPaths`).
-  # Passing`XDG_CONFIG_HOME= ` is one way to avoid interefence from user config.
+  # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
+  # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
   input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
 
 proc getFileDir(filename: string): string =
