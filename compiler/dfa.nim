@@ -632,8 +632,10 @@ proc aliases*(obj, field: PNode): AliasKind =
     case currFieldPath.kind
     of nkSym:
       if currFieldPath.sym != currObjPath.sym: return no
-    of nkDotExpr, nkCheckedFieldExpr:
+    of nkDotExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
+    of nkCheckedFieldExpr:
+      if currFieldPath[0][1].sym != currObjPath[0][1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:
