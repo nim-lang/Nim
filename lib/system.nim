@@ -2467,7 +2467,6 @@ type
   BackwardsIndex* = distinct int ## Type that is constructed by ``^`` for
                                  ## reversed array accesses.
                                  ## (See `^ template <#^.t,int>`_)
-  SliceInteger* = SomeInteger | BackwardsIndex | enum
 
 template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
   ## Builtin `roof`:idx: operator that can be used for convenient array access.
@@ -2515,7 +2514,7 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-proc `[]`*[T: SliceInteger, U: SliceInteger](s: string, x: HSlice[T, U]): string {.inline.} =
+proc `[]`*[T: Ordinal, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2527,7 +2526,7 @@ proc `[]`*[T: SliceInteger, U: SliceInteger](s: string, x: HSlice[T, U]): string
   result = newString(L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T: SliceInteger, U: SliceInteger](s: var string, x: HSlice[T, U], b: string) =
+proc `[]=`*[T: Ordinal, U: Ordinal](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2545,7 +2544,7 @@ proc `[]=`*[T: SliceInteger, U: SliceInteger](s: var string, x: HSlice[T, U], b:
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T; U: SliceInteger, V: SliceInteger](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[Idx, T; U: Ordinal, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
@@ -2557,7 +2556,7 @@ proc `[]`*[Idx, T; U: SliceInteger, V: SliceInteger](a: array[Idx, T], x: HSlice
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T; U: SliceInteger, V: SliceInteger](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T; U: Ordinal, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2571,7 +2570,7 @@ proc `[]=`*[Idx, T; U: SliceInteger, V: SliceInteger](a: var array[Idx, T], x: H
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
-proc `[]`*[T; U: SliceInteger, V: SliceInteger](s: openArray[T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[T; U: Ordinal, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2583,7 +2582,7 @@ proc `[]`*[T; U: SliceInteger, V: SliceInteger](s: openArray[T], x: HSlice[U, V]
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T; U: SliceInteger, V: SliceInteger](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[T; U: Ordinal, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
