@@ -2515,7 +2515,7 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-proc `[]`*[T: SomeInteger, U: SomeInteger](s: string, x: HSlice[T, U]): string {.inline.} =
+proc `[]`*[T: SliceInteger, U: SliceInteger](s: string, x: HSlice[T, U]): string {.inline.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2527,7 +2527,7 @@ proc `[]`*[T: SomeInteger, U: SomeInteger](s: string, x: HSlice[T, U]): string {
   result = newString(L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T: SomeInteger, U: SomeInteger](s: var string, x: HSlice[T, U], b: string) =
+proc `[]=`*[T: SliceInteger, U: SliceInteger](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
