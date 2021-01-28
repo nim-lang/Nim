@@ -2557,7 +2557,7 @@ proc `[]`*[Idx, T; U: SliceInteger, V: SliceInteger](a: array[Idx, T], x: HSlice
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T; U: SomeSliceIntegerInteger, V: SliceInteger](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T; U: SliceInteger, V: SliceInteger](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
