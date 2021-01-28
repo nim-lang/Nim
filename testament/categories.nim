@@ -476,25 +476,23 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       inc r.total
       var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
+
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string
-        let ok = retryCall(call = proc(): bool =
-            var status: int
-            (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-            status == QuitSuccess)
-        if not ok:
-        # if not (retryCall(call = proc(): bool =
+        proc call0(): bool =
+          var status: int
+          (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
+          result = status == QuitSuccess
+        let ok = retryCall(call = call0)
+        # let ok = retryCall(call = proc(): bool =
         #     var status: int
         #     (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-        #     status == QuitSuccess)):
-          # r.addResult(test, targetC, "", cmd & "\n" & outp, reInstallFailed)
+        #     status == QuitSuccess)
+        if not ok:
           addResult(r, test, targetC, "", cmd & "\n" & outp, reInstallFailed)
           continue
-        # let (outp, status) = retryCommand(maxRetries, execCmdEx(cmd, workingDir = workingDir2))
-        # if status != QuitSuccess:
-        #   r.addResult(test, targetC, "", cmd & "\n" & outp, reInstallFailed)
-        #   continue
         outp
+
       if not dirExists(buildPath):
         discard tryCommand("git clone $# $#" % [url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
         if not useHead:
