@@ -2043,7 +2043,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n[1], r)
   of mArrToSeq:
+    # initializing typed arrays doesn't need copy
     if needsNoCopy(p, n[1]):
+      # we change the kind from tyArray to tySequence because 
+      # `genArrayConstr` needs it.
       skipTypes(n[1].typ, abstractVarRange).kind = tySequence
       gen(p, n[1], r)
     else:
@@ -2148,9 +2151,14 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
+  ## Constructs array or sequence.
+  ## Nim array(except array of `int64`, `bool`, `emum` etc. kind) maps to JS typed arrays.
+  ## Nim sequence maps to JS array.
   var t = skipTypes(n.typ, abstractInst)
   let e = elemType(t)
   let jsTyp = arrayTypeForElemType(e)
+  # we need to check whether the kind of type is tySequence,
+  # we doesn't generate typed array for sequence type.
   if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
     # gen typed array
     var a: TCompRes
@@ -2165,7 +2173,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
     var a: TCompRes
     r.res = rope("[")
     r.kind = resExpr
-    for i in 0..<n.len:
+    for i in 0 ..< n.len:
       if i > 0: r.res.add(", ")
       gen(p, n[i], a)
       if a.typ == etyBaseIndex:
