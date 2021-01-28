@@ -1,11 +1,11 @@
-import std/private/since
-
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
 
 when defined(js):
+  import std/private/since
+
   since (1, 3):
     proc `$`*(x: uint): string =
       ## Caveat: currently implemented as $(cast[int](x)), tied to current

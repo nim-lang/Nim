@@ -17,10 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed
-
-from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward,
-  systemModuleSym, semtab, getBody, someSym, allSyms
+  isolation_check, typeallowed, modulegraphs, enumtostr
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -84,7 +81,7 @@ proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
   if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
   result = arg
-  result = skipHiddenSubConv(result, c.idgen)
+  result = skipHiddenSubConv(result, c.graph, c.idgen)
 
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
@@ -138,7 +135,10 @@ proc commonType*(c: PContext; x, y: PType): PType =
       let aEmpty = isEmptyContainer(a[i])
       let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
-        if nt.isNil: nt = copyType(a, nextTypeId(c.idgen), a.owner)
+        if nt.isNil:
+          nt = copyType(a, nextTypeId(c.idgen), a.owner)
+          copyTypeProps(c.graph, c.idgen.module, nt, a)
+
         nt[i] = if aEmpty: b[i] else: a[i]
     if not nt.isNil: result = nt
     #elif b[idx].kind == tyEmpty: return x

@@ -9,6 +9,8 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
+import std / tables
+
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
@@ -551,6 +553,16 @@ proc storeRodNode*(c: PContext, n: PNode) =
   if c.config.symbolFiles != disabledSf:
     toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
 
+proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeInstantiation(c.encoder, c.packedRepr, s, inst)
+
+proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeTypeInst(c.encoder, c.packedRepr, s, inst)
+
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
     for (m, n) in PCtx(c.graph.vm).vmstateDiff:
@@ -558,6 +570,7 @@ proc saveRodFile*(c: PContext) =
         addPragmaComputation(c, n)
     if sfSystemModule in c.module.flags:
       c.graph.systemModuleComplete = true
+    c.idgen.sealed = true # no further additions are allowed
     if c.config.symbolFiles != stressTest:
       # For stress testing we seek to reload the symbols from memory. This
       # way much of the logic is tested but the test is reproducible as it does
