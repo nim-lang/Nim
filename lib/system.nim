@@ -2467,7 +2467,7 @@ type
   BackwardsIndex* = distinct int ## Type that is constructed by ``^`` for
                                  ## reversed array accesses.
                                  ## (See `^ template <#^.t,int>`_)
-  SliceInteger = SomeInteger | BackwardsIndex
+  SliceInteger* = SomeInteger | BackwardsIndex
 
 template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
   ## Builtin `roof`:idx: operator that can be used for convenient array access.
