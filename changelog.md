@@ -104,7 +104,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
 
-- Added `sugar.dumpToString` which improves on `suugar.dump`.
+- Added `sugar.dumpToString` which improves on `sugar.dump`.
 
 
 
