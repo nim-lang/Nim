@@ -2044,6 +2044,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mChr: gen(p, n[1], r)
   of mArrToSeq:
     if needsNoCopy(p, n[1]):
+      skipTypes(n[1].typ, abstractVarRange).kind = tySequence
       gen(p, n[1], r)
     else:
       var x: TCompRes
@@ -2150,7 +2151,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var t = skipTypes(n.typ, abstractInst)
   let e = elemType(t)
   let jsTyp = arrayTypeForElemType(e)
-  if jsTyp.len > 0:
+  if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
     # gen typed array
     var a: TCompRes
     r.res = "new $1([" % [rope(jsTyp)]
