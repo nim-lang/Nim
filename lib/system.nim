@@ -2467,6 +2467,7 @@ type
   BackwardsIndex* = distinct int ## Type that is constructed by ``^`` for
                                  ## reversed array accesses.
                                  ## (See `^ template <#^.t,int>`_)
+  SliceInteger = SomeInteger | BackwardsIndex
 
 template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
   ## Builtin `roof`:idx: operator that can be used for convenient array access.
@@ -2544,7 +2545,7 @@ proc `[]=`*[T: SomeInteger, U: SomeInteger](s: var string, x: HSlice[T, U], b: s
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T; U: SomeInteger, V: SomeInteger](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[Idx, T; U: SliceInteger, V: SliceInteger](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
@@ -2556,7 +2557,7 @@ proc `[]`*[Idx, T; U: SomeInteger, V: SomeInteger](a: array[Idx, T], x: HSlice[U
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T; U: SomeInteger, V: SomeInteger](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T; U: SomeSliceIntegerInteger, V: SliceInteger](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2570,7 +2571,7 @@ proc `[]=`*[Idx, T; U: SomeInteger, V: SomeInteger](a: var array[Idx, T], x: HSl
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
-proc `[]`*[T; U: SomeInteger, V: SomeInteger](s: openArray[T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[T; U: SliceInteger, V: SliceInteger](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2582,7 +2583,7 @@ proc `[]`*[T; U: SomeInteger, V: SomeInteger](s: openArray[T], x: HSlice[U, V]):
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T; U: SomeInteger, V: SomeInteger](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[T; U: SliceInteger, V: SliceInteger](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
