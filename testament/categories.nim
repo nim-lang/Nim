@@ -13,6 +13,7 @@
 # included from testament.nim
 
 import important_packages
+import std/strformat
 
 const
   specialCategories = [
@@ -439,15 +440,22 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-template retryCommand(maxRetries, call): untyped =
-  var res: typeof(call)
-  var backoff = 1
-  for i in 0..<maxRetries:
-    res = call
-    if res.exitCode == QuitSuccess or i == maxRetries-1: break
-    sleep(backoff * 1000)
-    backoff *= 2
-  res
+# template retryCommand(maxRetries, call): untyped =
+#   var res: typeof(call)
+#   var backoff = 1
+#   for i in 0..<maxRetries:
+#     res = call
+#     if res.exitCode == QuitSuccess or i == maxRetries-1: break
+#     sleep(backoff * 1000)
+#     backoff *= 2
+#   res
+        # if not (retryCall(call = proc(): bool =
+        #     (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
+        #     status == QuitSuccess)):
+
+# proc execCmdExOK(cmd: string, workingDir = ""): bool =
+
+import std/private/gitutils
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
@@ -468,22 +476,33 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       inc r.total
       var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
-
-      template tryCommand(exe, args: untyped, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1) =
-        let (cmd, outp, status) = retryCommand(maxRetries, execCmdEx2(exe, args, workingDir = workingDir2))
-        if status != QuitSuccess:
-          r.addResult(test, targetC, "", cmd & "\n" & outp, reInstallFailed)
+      template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
+        var outp: string
+        let ok = retryCall(call = proc(): bool =
+            var status: int
+            (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
+            status == QuitSuccess)
+        if not ok:
+        # if not (retryCall(call = proc(): bool =
+        #     var status: int
+        #     (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
+        #     status == QuitSuccess)):
+          # r.addResult(test, targetC, "", cmd & "\n" & outp, reInstallFailed)
+          addResult(r, test, targetC, "", cmd & "\n" & outp, reInstallFailed)
           continue
-
+        # let (outp, status) = retryCommand(maxRetries, execCmdEx(cmd, workingDir = workingDir2))
+        # if status != QuitSuccess:
+        #   r.addResult(test, targetC, "", cmd & "\n" & outp, reInstallFailed)
+        #   continue
+        outp
       if not dirExists(buildPath):
-        tryCommand("git", ["clone", url, buildPath], workingDir2 = ".", maxRetries = 3)
+        discard tryCommand("git clone $# $#" % [url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
         if not useHead:
-          tryCommand("git", ["fetch", "--tags"], maxRetries = 3)
-          tryCommand("git", ["describe", "--tags", "--abbrev=0"])
-          # tryCommand("git", ["checkout", describeOutput.strip])
-        tryCommand("nimble", ["install", "--depsOnly", "-y"], maxRetries = 3)
-      let cmdArgs = parseCmdLine(cmd)
-      tryCommand(cmdArgs[0], cmdArgs[1..^1], reFailed = reBuildFailed)
+          discard tryCommand("git fetch --tags", maxRetries = 3)
+          let describeOutput = tryCommand("git describe --tags --abbrev=0")
+          discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
+        discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
+      discard tryCommand(cmd, reFailed = reBuildFailed)
       inc r.passed
       r.addResult(test, targetC, "", "", reSuccess)
 
