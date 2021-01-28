@@ -5,6 +5,16 @@ proc exec(cmd: string) =
   let status = execShellCmd(cmd)
   doAssert status == 0, cmd
 
+proc execOK(cmd: string): bool =
+  let status = execShellCmd(cmd)
+  result = status == 0
+  if not result:
+    echo fmt"failed command: '{cmd}'"
+
+proc execRetry(cmd: string) =
+  ## for network commands that can fail
+  doAssert retryCall(proc(): bool = execOK(cmd)), cmd
+
 proc execEx(cmd: string): tuple[output: string, exitCode: int] =
   echo "deps.cmd: " & cmd
   execCmdEx(cmd, {poStdErrToStdOut, poUsePath, poEvalCommand})
@@ -33,9 +43,9 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
   if not dirExists(destDir):
     # note: old code used `destDir / .git` but that wouldn't prevent git clone
     # from failing
-    exec fmt"git clone -q {url} {destDir2}"
+    execRetry fmt"git clone -q {url} {destDir2}"
   if isGitRepo(destDir):
-    exec fmt"git -C {destDir2} fetch -q"
+    execRetry fmt"git -C {destDir2} fetch -q"
     exec fmt"git -C {destDir2} checkout -q {commit}"
   elif allowBundled:
     discard "this dependency was bundled with Nim, don't do anything"
