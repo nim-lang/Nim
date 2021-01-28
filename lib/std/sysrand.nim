@@ -7,7 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## Cryptographically secure pseudorandom number generator.
+## `std/sysrand` generates random numbers from a secure source provided by the operating system.
+## It should be unpredictable enough for cryptographic applications,
+## though its exact quality depends on the OS implementation.
 ##
 ## | Targets    | Implementation|
 ## | :---         | ----:       |

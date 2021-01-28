@@ -111,6 +111,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+- Added `std/sysrand` module to get random numbers from a secure source 
+provided by the operating system.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
