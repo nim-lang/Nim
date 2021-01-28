@@ -1016,7 +1016,7 @@ const
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload}
+                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
