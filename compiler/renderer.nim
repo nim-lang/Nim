@@ -822,12 +822,21 @@ proc gTypeClassTy(g: var TSrcGen, n: PNode) =
 proc gblock(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
+
+  if n.len < 1:
+    return
+
   if n[0].kind != nkEmpty:
     putWithSpace(g, tkBlock, "block")
     gsub(g, n[0])
   else:
     put(g, tkBlock, "block")
   putWithSpace(g, tkColon, ":")
+
+  # block stmt should have two children
+  if n.len < 2:
+    return
+
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
