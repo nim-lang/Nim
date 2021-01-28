@@ -2147,21 +2147,35 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
-  var a: TCompRes
-  r.res = rope("[")
-  r.kind = resExpr
-  for i in 0..<n.len:
-    if i > 0: r.res.add(", ")
-    gen(p, n[i], a)
-    if a.typ == etyBaseIndex:
-      r.res.addf("[$1, $2]", [a.address, a.res])
-    else:
-      if not needsNoCopy(p, n[i]):
-        let typ = n[i].typ.skipTypes(abstractInst)
-        useMagic(p, "nimCopy")
-        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+  var t = skipTypes(n.typ, abstractInst)
+  let e = elemType(t)
+  let jsTyp = arrayTypeForElemType(e)
+  if jsTyp.len > 0:
+    # gen typed array
+    var a: TCompRes
+    r.res = "new $1([" % [rope(jsTyp)]
+    r.kind = resExpr
+    for i in 0 ..< n.len:
+      if i > 0: r.res.add(", ")
+      gen(p, n[i], a)
       r.res.add(a.res)
-  r.res.add("]")
+    r.res.add("])")
+  else:
+    var a: TCompRes
+    r.res = rope("[")
+    r.kind = resExpr
+    for i in 0..<n.len:
+      if i > 0: r.res.add(", ")
+      gen(p, n[i], a)
+      if a.typ == etyBaseIndex:
+        r.res.addf("[$1, $2]", [a.address, a.res])
+      else:
+        if not needsNoCopy(p, n[i]):
+          let typ = n[i].typ.skipTypes(abstractInst)
+          useMagic(p, "nimCopy")
+          a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+        r.res.add(a.res)
+    r.res.add("]")
 
 proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
