@@ -440,21 +440,6 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-# template retryCommand(maxRetries, call): untyped =
-#   var res: typeof(call)
-#   var backoff = 1
-#   for i in 0..<maxRetries:
-#     res = call
-#     if res.exitCode == QuitSuccess or i == maxRetries-1: break
-#     sleep(backoff * 1000)
-#     backoff *= 2
-#   res
-        # if not (retryCall(call = proc(): bool =
-        #     (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-        #     status == QuitSuccess)):
-
-# proc execCmdExOK(cmd: string, workingDir = ""): bool =
-
 import std/private/gitutils
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
@@ -479,17 +464,12 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
 
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string
-        proc call0(): bool =
+        let ok = retryCall(maxRetry = maxRetries, backoffDuration = 1.0):
           var status: int
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-          result = status == QuitSuccess
-        let ok = retryCall(call = call0)
-        # let ok = retryCall(call = proc(): bool =
-        #     var status: int
-        #     (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
-        #     status == QuitSuccess)
+          status == QuitSuccess
         if not ok:
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reInstallFailed)
+          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed)
           continue
         outp
 
