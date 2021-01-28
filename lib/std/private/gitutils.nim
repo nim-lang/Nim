@@ -4,7 +4,9 @@ internal API for now, API subject to change
 
 # xxx move other git utilities here; candidate for stdlib.
 
-import std/[os]
+import std/[os, osproc, strutils]
+
+const commitHead* = "HEAD"
 
 template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =
   ## Retry `call` up to `maxRetry` times with exponential backoff and initial

@@ -1,4 +1,4 @@
-import os, uri, strformat, osproc, strutils
+import os, uri, strformat, strutils
 import std/private/gitutils
 
 proc exec(cmd: string) =
@@ -14,8 +14,6 @@ proc execRetry(cmd: string) =
       echo fmt"failed command: '{cmd}', status: {status}"
     result)
   doAssert ok, cmd
-
-const commitHead* = "HEAD"
 
 proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
                       appendRepoName = true, allowBundled = false) =
