@@ -978,15 +978,6 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
-  var data: seq[string]
-  if multipart != nil and multipart.content.len > 0:
-    data = await client.format(multipart)
-  else:
-    if body.len != 0:
-      client.headers["Content-Length"] = $body.len
-    elif httpMethod notin [HttpGet, HttpHead] and not client.headers.hasKey("Content-Length"):
-      client.headers["Content-Length"] = "0"
-
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:
       # let the current operation finish before making another request
@@ -996,6 +987,18 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   await newConnection(client, url)
 
   let newHeaders = client.headers.override(headers)
+
+  var data: seq[string]
+  if multipart != nil and multipart.content.len > 0:
+    data = await client.format(multipart)
+  else:
+    # Only change headers if they have not been specified already
+    if not newHeaders.hasKey("Content-Length"):
+      if body.len != 0:
+        newHeaders["Content-Length"] = $body.len
+      elif httpMethod notin {HttpGet, HttpHead}:
+        newHeaders["Content-Length"] = "0"
+
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
     newHeaders["User-Agent"] = client.userAgent
 
@@ -1042,6 +1045,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ##
   ## You need to make sure that the ``url`` doesn't contain any newline
   ## characters. Failing to do so will raise ``AssertionDefect``.
+  ##
+  ## `headers` are HTTP headers that override the `client.headers` for
+  ## this specific request only and will not be persisted.
   ##
   ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
   when url is string:
