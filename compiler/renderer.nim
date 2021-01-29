@@ -820,6 +820,10 @@ proc gTypeClassTy(g: var TSrcGen, n: PNode) =
   dedent(g)
 
 proc gblock(g: var TSrcGen, n: PNode) =
+  # you shouldn't simplify it to `n.len < 2`
+  # because the following codes should be executed
+  # even block stmt only one child for getting
+  # better error messages.
   if n.len == 0:
     return
 
