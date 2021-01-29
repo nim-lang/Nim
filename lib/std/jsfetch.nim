@@ -149,4 +149,4 @@ runnableExamples:
         doAssert response.ok
         doAssert response.status == 200.cint
 
-      example()
+      discard example()
