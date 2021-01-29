@@ -74,11 +74,9 @@ type
     flags*: TTypeFlags
     types*: seq[PackedItemId]
     n*: NodeId
-    methods*: seq[(int, PackedItemId)]
     #nodeflags*: TNodeFlags
     sym*: PackedItemId
     owner*: PackedItemId
-    attachedOps*: array[TTypeAttachedOp, PackedItemId]
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
@@ -110,6 +108,10 @@ type
     integers*: BiTable[BiggestInt]
     floats*: BiTable[BiggestFloat]
     #config*: ConfigRef
+
+  PackedInstantiation* = object
+    key*, sym*: PackedItemId
+    concreteTypes*: seq[PackedItemId]
 
 proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}

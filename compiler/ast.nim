@@ -265,6 +265,10 @@ type
     sfShadowed,       # a symbol that was shadowed in some inner scope
     sfThread,         # proc will run as a thread
                       # variable is a thread variable
+    sfCppNonPod,      # tells compiler to treat such types as non-pod's, so that
+                      # `thread_local` is used instead of `__thread` for
+                      # {.threadvar.} + `--threads`. Only makes sense for importcpp types.
+                      # This has a performance impact so isn't set by default.
     sfCompileTime,    # proc can be evaluated at compile time
     sfConstructor,    # proc is a C++ constructor
     sfDispatcher,     # copied method symbol is the dispatcher
@@ -1123,11 +1127,7 @@ proc discardSons*(father: PNode)
 type Indexable = PNode | PType
 
 proc len*(n: Indexable): int {.inline.} =
-  when defined(nimNoNilSeqs):
-    result = n.sons.len
-  else:
-    if isNil(n.sons): result = 0
-    else: result = n.sons.len
+  result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
@@ -1142,8 +1142,6 @@ proc safeArrLen*(n: PNode): int {.inline.} =
 
 proc add*(father, son: Indexable) =
   assert son != nil
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
 
 proc addAllowNil*(father, son: Indexable) {.inline.} =
@@ -1304,10 +1302,7 @@ proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
-  when defined(nimNoNilSeqs):
-    father.sons = @[]
-  else:
-    father.sons = nil
+  father.sons = @[]
 
 proc withInfo*(n: PNode, info: TLineInfo): PNode =
   n.info = info
@@ -1432,13 +1427,7 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.r == nil: a.r = b.r
 
 proc newSons*(father: Indexable, length: int) =
-  when defined(nimNoNilSeqs):
-    setLen(father.sons, length)
-  else:
-    if isNil(father.sons):
-      newSeq(father.sons, length)
-    else:
-      setLen(father.sons, length)
+  setLen(father.sons, length)
 
 proc assignType*(dest, src: PType) =
   dest.kind = src.kind
@@ -1572,26 +1561,17 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
       owner.flags.incl tfHasGCedMem
 
 proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
   if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   father.sons.add(son)
 
 proc delSon*(father: PNode, idx: int) =
-  when defined(nimNoNilSeqs):
-    if father.len == 0: return
-  else:
-    if isNil(father.sons): return
+  if father.len == 0: return
   for i in idx..<father.len - 1: father[i] = father[i + 1]
   father.sons.setLen(father.len - 1)
 
@@ -1762,10 +1742,7 @@ proc getStr*(a: PNode): string =
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkNilLit:
     # let's hope this fixes more problems than it creates:
-    when defined(nimNoNilSeqs):
-      result = ""
-    else:
-      result = nil
+    result = ""
   else:
     raiseRecoverableError("cannot extract string from invalid AST node")
     #doAssert false, "getStr"

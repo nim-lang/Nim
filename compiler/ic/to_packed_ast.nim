@@ -33,8 +33,15 @@ type
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
-    methods*: seq[(LitId, PackedItemId, int32)]
+    methods*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
+
+    typeInstCache*: seq[(PackedItemId, PackedItemId)]
+    procInstCache*: seq[PackedInstantiation]
+    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+
     sh*: Shared
     cfg: PackedConfig
 
@@ -160,9 +167,7 @@ proc addPureEnum*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.pureEnums.add((nameId, s.itemId.item))
 
 proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  discard "to do"
-  # c.m.methods.add((nameId, s.itemId.item))
+  m.methods.add s.itemId.item
 
 proc addReexport*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   let nameId = getOrIncl(m.sh.strings, s.name.s)
@@ -415,6 +420,17 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       toPackedNode(n[i], ir, c, m)
     ir.patch patchPos
 
+proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
+  var t = newSeq[PackedItemId](i.concreteTypes.len)
+  for j in 0..high(i.concreteTypes):
+    t[j] = storeTypeLater(i.concreteTypes[j], c, m)
+  m.procInstCache.add PackedInstantiation(key: storeSymLater(s, c, m),
+                                          sym: storeSymLater(i.sym, c, m),
+                                          concreteTypes: t)
+
+proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PType) =
+  m.typeInstCache.add (storeSymLater(s, c, m), storeTypeLater(inst, c, m))
+
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
@@ -435,20 +451,6 @@ proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var Pac
 proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
   toPackedNodeIgnoreProcDefs(n, encoder, m)
   flush encoder, m
-
-proc storePrim*(f: var RodFile; x: PackedType) =
-  for y in fields(x):
-    when y is seq:
-      storeSeq(f, y)
-    else:
-      storePrim(f, y)
-
-proc loadPrim*(f: var RodFile; x: var PackedType) =
-  for y in fields(x):
-    when y is seq:
-      loadSeq(f, y)
-    else:
-      loadPrim(f, y)
 
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, "\nloading file: ", filename.string
@@ -502,6 +504,12 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection bodiesSection, m.bodies.nodes
   loadSeqSection symsSection, m.sh.syms
   loadSeqSection typesSection, m.sh.types
+
+  loadSeqSection typeInstCacheSection, m.typeInstCache
+  loadSeqSection procInstCacheSection, m.procInstCache
+  loadSeqSection attachedOpsSection, m.attachedOps
+  loadSeqSection methodsPerTypeSection, m.methodsPerType
+  loadSeqSection enumToStringProcsSection, m.enumToStringProcs
 
   close(f)
   result = f.err
@@ -557,6 +565,13 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection symsSection, m.sh.syms
 
   storeSeqSection typesSection, m.sh.types
+
+  storeSeqSection typeInstCacheSection, m.typeInstCache
+  storeSeqSection procInstCacheSection, m.procInstCache
+  storeSeqSection attachedOpsSection, m.attachedOps
+  storeSeqSection methodsPerTypeSection, m.methodsPerType
+  storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+
   close(f)
   if f.err != ok:
     storeError(f.err, filename)
@@ -901,6 +916,36 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
   let pos = g[mId].fromDisk.sh.syms[s.itemId.item].ast
   assert pos != emptyNodeId
   result = loadProcBody(decoder, g, mId, g[mId].fromDisk.bodies, NodePos pos)
+
+proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
+                     g: var PackedModuleGraph; module: int; id: PackedItemId): PType =
+  result = g[module].types[id.item]
+  if result == nil:
+    var decoder = PackedDecoder(
+      lastModule: int32(-1),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: config,
+      cache: cache)
+    result = loadType(decoder, g, module, id)
+
+proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
+                    g: var PackedModuleGraph; module: int; id: PackedItemId): PSym =
+  result = g[module].syms[id.item]
+  if result == nil:
+    var decoder = PackedDecoder(
+      lastModule: int32(-1),
+      lastLit: LitId(0),
+      lastFile: FileIndex(-1),
+      config: config,
+      cache: cache)
+    result = loadSym(decoder, g, module, id)
+
+proc translateId*(id: PackedItemId; g: PackedModuleGraph; thisModule: int; config: ConfigRef): ItemId =
+  if id.module == LitId(0):
+    ItemId(module: thisModule.int32, item: id.item)
+  else:
+    ItemId(module: toFileIndex(id.module, g[thisModule].fromDisk, config).int32, item: id.item)
 
 proc checkForHoles(m: PackedModule; config: ConfigRef; moduleId: int) =
   var bugs = 0

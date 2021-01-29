@@ -54,12 +54,12 @@ proc searchInstTypes*(g: ModuleGraph; key: PType): PType =
 
       return inst
 
-proc cacheTypeInst(g: ModuleGraph; moduleId: int; inst: PType) =
+proc cacheTypeInst(c: PContext; inst: PType) =
   let gt = inst[0]
   let t = if gt.kind == tyGenericBody: gt.lastSon else: gt
   if t.kind in {tyStatic, tyError, tyGenericParam} + tyTypeClasses:
     return
-  addToGenericCache(g, moduleId, gt.sym, inst)
+  addToGenericCache(c, gt.sym, inst)
 
 type
   LayeredIdTable* = ref object
@@ -323,7 +323,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   var body = t[0]
   if body.kind != tyGenericBody:
     internalError(cl.c.config, cl.info, "no generic body")
-  var header: PType = t
+  var header = t
   # search for some instantiation here:
   if cl.allowMetaTypes:
     result = PType(idTableGet(cl.localCache, t))
@@ -364,7 +364,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # we need to add the candidate here, before it's fully instantiated for
   # recursive instantions:
   if not cl.allowMetaTypes:
-    cacheTypeInst(cl.c.graph, cl.c.module.position, result)
+    cacheTypeInst(cl.c, result)
   else:
     idTablePut(cl.localCache, t, result)
 

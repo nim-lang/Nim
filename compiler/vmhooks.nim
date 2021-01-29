@@ -41,6 +41,9 @@ template getX(k, field) {.dirty.} =
   doAssert a.slots[i+a.rb+1].kind == k
   result = a.slots[i+a.rb+1].field
 
+proc numArgs*(a: VmArgs): int =
+  result = a.rc-1
+
 proc getInt*(a: VmArgs; i: Natural): BiggestInt = getX(rkInt, intVal)
 proc getBool*(a: VmArgs; i: Natural): bool = getInt(a, i) != 0
 proc getFloat*(a: VmArgs; i: Natural): BiggestFloat = getX(rkFloat, floatVal)

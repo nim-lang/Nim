@@ -11,6 +11,8 @@ var big3: JsBigInt = big"2"
 
 doAssert big3 == big"2"
 doAssert (big3 xor big2) == big"664"
+doAssert (big"555" and big"2") == big"2"
+doAssert (big"555" or big"2") == big"555"
 doAssert (big1 mod big2) == big"613"
 doAssert -big1 == big"-2147483647"
 doAssert big1 div big2 == big"3224449"

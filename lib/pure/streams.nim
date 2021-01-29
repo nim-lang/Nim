@@ -1150,10 +1150,7 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
 
   proc ssClose(s: Stream) {.compileTime.} =
     var s = StringStream(s)
-    when defined(nimNoNilSeqs):
-      s.data = ""
-    else:
-      s.data = nil
+    s.data = ""
 
   proc newStringStream*(s: string = ""): owned StringStream {.compileTime.} =
     new(result)
@@ -1253,10 +1250,7 @@ else: # after 1.3 or JS not defined
 
   proc ssClose(s: Stream) =
     var s = StringStream(s)
-    when defined(nimNoNilSeqs):
-      s.data = ""
-    else:
-      s.data = nil
+    s.data = ""
 
   proc newStringStream*(s: string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.

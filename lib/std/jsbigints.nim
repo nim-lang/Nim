@@ -105,6 +105,14 @@ func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
   # pending https://github.com/nim-lang/Nim/pull/15940, simplify to:
   # doAssertRaises: discard big"2" ** big"-1" # raises foreign `RangeError`
 
+func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# & #)".} =
+  runnableExamples:
+    doAssert (big"555" and big"2") == big"2"
+
+func `or`*(x, y: JsBigInt): JsBigInt {.importjs: "(# | #)".} =
+  runnableExamples:
+    doAssert (big"555" or big"2") == big"555"
+
 func `xor`*(x, y: JsBigInt): JsBigInt {.importjs: "(# ^ #)".} =
   runnableExamples:
     doAssert (big"555" xor big"2") == big"553"

@@ -38,7 +38,8 @@ type
     wCursor = "cursor", wNoalias = "noalias",
 
     wImmediate = "immediate", wConstructor = "constructor", wDestructor = "destructor", 
-    wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp", 
+    wDelegator = "delegator", wOverride = "override", wImportCpp = "importcpp",
+    wCppNonPod = "cppNonPod", 
     wImportObjC = "importobjc", wImportCompilerProc = "importcompilerproc",
     wImportc = "importc", wImportJs = "importjs", wExportc = "exportc", wExportCpp = "exportcpp", 
     wExportNims = "exportnims",
