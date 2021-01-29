@@ -2943,7 +2943,7 @@ when not compileOption("nilseqs"):
   # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.
-  proc `==`*(x: string; y: type(nil)): bool {.
+  proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
       error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
     discard
   proc `==`*(x: type(nil) | type(nil); y: string): bool {.
