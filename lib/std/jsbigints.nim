@@ -10,11 +10,13 @@ func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
+    doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
+    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
   ## Converts from `JsBigInt` to `cstring` representation.
@@ -210,6 +212,3 @@ runnableExamples:
     var b: JsBigInt
     doAssert b == big"0"
     doAssert b == JsBigInt.default
-  block `octal binary hexadecimal`:
-    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
-    doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
