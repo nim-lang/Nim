@@ -587,6 +587,6 @@ use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
 
 2. New module names should prefer plural form whenever possible, e.g.:
 `std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
-between module name and the symbols it defines. Furthermore, is should use `snake_case`
-and not use capital letters, which cause issues when going from an OS without case
-sensitivity to an OS without it.
+between module name and the symbols it defines. Furthermore, module names should
+use `snake_case` and not use capital letters, which cause issues when going
+from an OS without case sensitivity to an OS with it.

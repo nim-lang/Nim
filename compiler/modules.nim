@@ -111,6 +111,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     else:
       partialInitModule(result, graph, fileIdx, filename)
       replayStateChanges(result, graph)
+      replayGenericCacheInformation(graph, fileIdx.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

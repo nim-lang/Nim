@@ -9,6 +9,8 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
+import std / tables
+
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
@@ -550,6 +552,16 @@ template addExport*(c: PContext; s: PSym) =
 proc storeRodNode*(c: PContext, n: PNode) =
   if c.config.symbolFiles != disabledSf:
     toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
+
+proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeInstantiation(c.encoder, c.packedRepr, s, inst)
+
+proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:

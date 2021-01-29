@@ -135,10 +135,13 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
+
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
+- TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
+  such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
 ## Tool changes
 

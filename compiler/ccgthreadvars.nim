@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## Thread var support for crappy architectures that lack native support for
-## thread local storage. (**Thank you Mac OS X!**)
+## Thread var support for architectures that lack native support for
+## thread local storage.
 
 # included from cgen.nim
 
@@ -35,7 +35,11 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
     if isExtern: m.s[cfsVars].add("extern ")
     elif lfExportLib in s.loc.flags: m.s[cfsVars].add("N_LIB_EXPORT_VAR ")
     else: m.s[cfsVars].add("N_LIB_PRIVATE ")
-    if optThreads in m.config.globalOptions: m.s[cfsVars].add("NIM_THREADVAR ")
+    if optThreads in m.config.globalOptions:
+      let sym = s.typ.sym
+      if sym != nil and sfCppNonPod in sym.flags:
+        m.s[cfsVars].add("NIM_THREAD_LOCAL ")
+      else: m.s[cfsVars].add("NIM_THREADVAR ")
     m.s[cfsVars].add(getTypeDesc(m, s.loc.t))
     m.s[cfsVars].addf(" $1;$n", [s.loc.r])
 

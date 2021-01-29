@@ -160,7 +160,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
       if disp.typ.lockLevel < meth.typ.lockLevel:
         disp.typ.lockLevel = meth.typ.lockLevel
 
-proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym, fromCache: bool) =
+proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym) =
   var witness: PSym
   for i in 0..<g.methods.len:
     let disp = g.methods[i].dispatcher
@@ -182,8 +182,6 @@ proc methodDef*(g: ModuleGraph; idgen: IdGenerator; s: PSym, fromCache: bool) =
   # create a new dispatcher:
   g.methods.add((methods: @[s], dispatcher: createDispatcher(s, g, idgen)))
   #echo "adding ", s.info
-  #if fromCache:
-  #  internalError(s.info, "no method dispatcher found")
   if witness != nil:
     localError(g.config, s.info, "invalid declaration order; cannot attach '" & s.name.s &
                        "' to method defined here: " & g.config$witness.info)

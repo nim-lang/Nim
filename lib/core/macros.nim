@@ -175,7 +175,7 @@ proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
 template `^^`(n: NimNode, i: untyped): untyped =
   (when i is BackwardsIndex: n.len - int(i) else: int(i))
 
-proc `[]`*[T, U](n: NimNode, x: HSlice[T, U]): seq[NimNode] =
+proc `[]`*[T, U: Ordinal](n: NimNode, x: HSlice[T, U]): seq[NimNode] =
   ## Slice operation for NimNode.
   ## Returns a seq of child of `n` who inclusive range [n[x.a], n[x.b]].
   let xa = n ^^ x.a

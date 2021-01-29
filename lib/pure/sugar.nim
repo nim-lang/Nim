@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import macros, typetraits
+import std/macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -56,8 +56,7 @@ macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
   ## It also supports pragmas.
   runnableExamples:
-    proc passTwoAndTwo(f: (int, int) -> int): int =
-      f(2, 2)
+    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
     doAssert passTwoAndTwo((x, y) => x + y) == 4
 
@@ -142,16 +141,13 @@ macro `=>`*(p, b: untyped): untyped =
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc pass2(f: (float, float) -> float): float =
-  ##     f(2, 2)
-  ##
-  ##   # is the same as:
-  ##
-  ##   proc pass2(f: proc (x, y: float): float): float =
-  ##     f(2, 2)
+  runnableExamples:
+    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
+
+    # is the same as:
+    # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
+
+    doAssert passTwoAndTwo((x, y) => x + y) == 4
 
   result = createProcType(p, b)
 
@@ -160,16 +156,12 @@ macro dump*(x: untyped): untyped =
   ## It accepts any expression and prints a textual representation
   ## of the tree representing the expression - as it would appear in
   ## source code - together with the value of the expression.
-  ##
-  ## As an example,
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     x = 10
-  ##     y = 20
-  ##   dump(x + y)
-  ##
-  ## will print ``x + y = 30``.
+  runnableExamples:
+    let
+      x = 10
+      y = 20
+    dump(x + y) # will print `x + y = 30`
+
   let s = x.toStrLit
   let r = quote do:
     debugEcho `s`, " = ", `x`
@@ -193,21 +185,24 @@ proc freshIdentNodes(ast: NimNode): NimNode =
 
 macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
-  ## by their current iteration values. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   import strformat, sequtils, sugar
-  ##   var myClosure : proc()
-  ##   for i in 5..7:
-  ##     for j in 7..9:
-  ##       if i * j == 42:
-  ##         capture i, j:
-  ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
-  ##   myClosure() # output: 6 * 7 == 42
-  ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
-  ##   var l = m.mapIt(capture(it, proc (s: string): string = it(s)))
-  ##   let r = l.mapIt(it("be"))
-  ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
+  ## by their current iteration values.
+  runnableExamples:
+    import std/[strformat, sequtils]
+
+    var myClosure: () -> string
+    for i in 5..7:
+      for j in 7..9:
+        if i * j == 42:
+          capture i, j:
+            myClosure = () => fmt"{i} * {j} = 42"
+    doAssert myClosure() == "6 * 7 = 42"
+
+    let m = @[(s: string) => "to " & s,
+              (s: string) => "not to " & s]
+    let l = m.mapIt(capture(it, (s: string) => it(s)))
+    let r = l.mapIt(it("be"))
+    doAssert fmt"{r[0]}, or {r[1]}" == "to be, or not to be"
+
   var params = @[newIdentNode("auto")]
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
@@ -220,7 +215,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   for arg in locals: result.add(arg)
 
 since (1, 1):
-  import std / private / underscored_calls
+  import std/private/underscored_calls
 
   macro dup*[T](arg: T, calls: varargs[untyped]): T =
     ## Turns an `in-place`:idx: algorithm into one that works on
@@ -228,40 +223,38 @@ since (1, 1):
     ##
     ## This macro also allows for (otherwise in-place) function chaining.
     ##
-    ## **Since**: Version 1.2.
+    ## **Since:** Version 1.2.
     runnableExamples:
-      import algorithm
+      import std/algorithm
 
-      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      let a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
       doAssert a.dup(sort) == sorted(a)
+
       # Chaining:
       var aCopy = a
       aCopy.insert(10)
-
       doAssert a.dup(insert(10), sort) == sorted(aCopy)
 
-      var s1 = "abc"
-      var s2 = "xyz"
+      let s1 = "abc"
+      let s2 = "xyz"
       doAssert s1 & s2 == s1.dup(&= s2)
-
-      proc makePalindrome(s: var string) =
-        for i in countdown(s.len-2, 0):
-          s.add(s[i])
-
-      var c = "xyz"
 
       # An underscore (_) can be used to denote the place of the argument you're passing:
       doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
       # but `_` is optional here since the substitution is in 1st position:
       doAssert "".dup(addQuoted("foo")) == "\"foo\""
 
+      proc makePalindrome(s: var string) =
+        for i in countdown(s.len-2, 0):
+          s.add(s[i])
+
+      let c = "xyz"
+
       # chaining:
-      # b = "xyz"
-      var d = dup c:
+      let d = dup c:
         makePalindrome # xyzyx
         sort(_, SortOrder.Descending) # zyyxx
         makePalindrome # zyyxxxyyz
-
       doAssert d == "zyyxxxyyz"
 
     result = newNimNode(nnkStmtListExpr, arg)
@@ -344,51 +337,55 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   # analyse the body, find the deepest expression 'it' and replace it via
   # 'result.add it'
   runnableExamples:
-    import sets, tables
+    import std/[sets, tables]
+
     let data = @["bird", "word"]
+
     ## seq:
     let k = collect(newSeq):
       for i, d in data.pairs:
         if i mod 2 == 0: d
+    doAssert k == @["bird"]
 
-    assert k == @["bird"]
     ## seq with initialSize:
     let x = collect(newSeqOfCap(4)):
       for i, d in data.pairs:
         if i mod 2 == 0: d
+    doAssert x == @["bird"]
 
-    assert x == @["bird"]
     ## HashSet:
-    let y = initHashSet.collect:
+    let y = collect(initHashSet()):
       for d in data.items: {d}
+    doAssert y == data.toHashSet
 
-    assert y == data.toHashSet
     ## Table:
     let z = collect(initTable(2)):
       for i, d in data.pairs: {i: d}
+    doAssert z == {0: "bird", 1: "word"}.toTable
 
-    assert z == {0: "bird", 1: "word"}.toTable
   result = collectImpl(init, body)
 
 macro collect*(body: untyped): untyped {.since: (1, 5).} =
   ## Same as `collect` but without an `init` parameter.
   runnableExamples:
-    import sets, tables
-    # Seq:
+    import std/[sets, tables]
+
     let data = @["bird", "word"]
+
+    # seq:
     let k = collect:
       for i, d in data.pairs:
         if i mod 2 == 0: d
+    doAssert k == @["bird"]
 
-    assert k == @["bird"]
     ## HashSet:
     let n = collect:
       for d in data.items: {d}
+    doAssert n == data.toHashSet
 
-    assert n == data.toHashSet
     ## Table:
     let m = collect:
       for i, d in data.pairs: {i: d}
+    doAssert m == {0: "bird", 1: "word"}.toTable
 
-    assert m == {0: "bird", 1: "word"}.toTable
   result = collectImpl(nil, body)

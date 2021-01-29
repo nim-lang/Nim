@@ -98,8 +98,6 @@ proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
     result = t
 
 proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit(id)
   father.sons.add(s)
   propagateToOwner(father, s)

@@ -31,6 +31,11 @@ type
     bodiesSection
     symsSection
     typesSection
+    typeInstCacheSection
+    procInstCacheSection
+    attachedOpsSection
+    methodsPerTypeSection
+    enumToStringProcsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
 
   RodFileError* = enum
@@ -73,6 +78,12 @@ proc storePrim*[T](f: var RodFile; x: T) =
   elif T is tuple:
     for y in fields(x):
       storePrim(f, y)
+  elif T is object:
+    for y in fields(x):
+      when y is seq:
+        storeSeq(f, y)
+      else:
+        storePrim(f, y)
   else:
     {.error: "unsupported type for 'storePrim'".}
 
@@ -107,6 +118,12 @@ proc loadPrim*[T](f: var RodFile; x: var T) =
   elif T is tuple:
     for y in fields(x):
       loadPrim(f, y)
+  elif T is object:
+    for y in fields(x):
+      when y is seq:
+        loadSeq(f, y)
+      else:
+        loadPrim(f, y)
   else:
     {.error: "unsupported type for 'loadPrim'".}
 

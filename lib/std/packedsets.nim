@@ -180,7 +180,7 @@ proc initPackedSet*[A]: PackedSet[A] =
     counter: 0,
     max: 0,
     head: nil,
-    data: when defined(nimNoNilSeqs): @[] else: nil)
+    data: @[])
   #  a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc contains*[A](s: PackedSet[A], key: A): bool =
@@ -392,10 +392,7 @@ proc clear*[A](result: var PackedSet[A]) =
   # setLen(result.data, InitIntSetSize)
   # for i in 0..InitIntSetSize - 1: result.data[i] = nil
   # result.max = InitIntSetSize - 1
-  when defined(nimNoNilSeqs):
-    result.data = @[]
-  else:
-    result.data = nil
+  result.data = @[]
   result.max = 0
   result.counter = 0
   result.head = nil
@@ -426,10 +423,7 @@ proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
     assert len(a) == 2
 
   if src.elems <= src.a.len:
-    when defined(nimNoNilSeqs):
-      dest.data = @[]
-    else:
-      dest.data = nil
+    dest.data = @[]
     dest.max = 0
     dest.counter = src.counter
     dest.head = nil
