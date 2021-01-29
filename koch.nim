@@ -524,6 +524,17 @@ proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
+  echo "D20210128T184304"
+  let file = "D20210128T184325.txt"
+  let file2 = "D20210128T184325b.txt"
+  let file3 = "D20210128T184325c.txt"
+  writeFile(file, "foo")
+  let cmd = fmt"mklink {file2} {file}"
+  let status = execShellCmd(cmd)
+  echo ("D20210128T184304.after", status)
+  createSymlink(file, file3)
+  echo ("D20210128T184304.after2", )
+  doAssert false
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
