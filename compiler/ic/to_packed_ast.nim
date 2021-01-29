@@ -931,7 +931,10 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
 
 proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
                      g: var PackedModuleGraph; module: int; id: PackedItemId): PType =
-  result = g[module].types[id.item]
+  if id.item < g[module].types.len:
+    result = g[module].types[id.item]
+  else:
+    result = nil
   if result == nil:
     var decoder = PackedDecoder(
       lastModule: int32(-1),
@@ -943,7 +946,10 @@ proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
 
 proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
                     g: var PackedModuleGraph; module: int; id: PackedItemId): PSym =
-  result = g[module].syms[id.item]
+  if id.item < g[module].syms.len:
+    result = g[module].syms[id.item]
+  else:
+    result = nil
   if result == nil:
     var decoder = PackedDecoder(
       lastModule: int32(-1),
