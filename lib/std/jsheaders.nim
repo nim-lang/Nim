@@ -59,6 +59,7 @@ runnableExamples:
       doAssert header.entries() == @[("key".cstring, "value".cstring), ("other".cstring, "another".cstring)]
       doAssert header.toCstring() == """[["key","value"],["other","another"]]""".cstring
       header.delete("other")
+      doAssert header.entries() == @[("key".cstring, "value".cstring)]
       header.clear()
       doAssert header.entries() == @[]
     block:
