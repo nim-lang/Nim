@@ -560,6 +560,7 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
+    tfArrayToSequence
 
   TTypeFlags* = set[TTypeFlag]
 

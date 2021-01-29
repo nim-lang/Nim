@@ -2045,9 +2045,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mArrToSeq:
     # initializing typed arrays doesn't need copy
     if needsNoCopy(p, n[1]):
-      # we change the kind from tyArray to tySequence because 
-      # `genArrayConstr` needs it.
-      skipTypes(n[1].typ, abstractVarRange).kind = tySequence
+      let arrayNode = skipTypes(n[1].typ, abstractVarRange)
+      arrayNode.flags.incl tfArrayToSequence
       gen(p, n[1], r)
     else:
       var x: TCompRes
@@ -2158,7 +2157,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   let e = elemType(t)
   let jsTyp = arrayTypeForElemType(e)
   # we need to check whether the kind of type is tySequence.
-  if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
+  if tfArrayToSequence notin skipTypes(n.typ, abstractVarRange).flags and jsTyp.len > 0:
     # generate typed array
     # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
     var a: TCompRes
