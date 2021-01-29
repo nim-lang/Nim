@@ -10,3 +10,11 @@ when defined(js):
 
   func `[]`*(arr: Uint32Array, i: int): uint32 {.importjs: "#[#]".}
   func `[]=`*(arr: Float64Array, i: int, v: float) {.importjs: "#[#] = #".}
+
+
+  proc jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".}
+  ## Returns the name of the JsObject's JavaScript type as a cstring.
+  # xxx replace jsffi.jsTypeOf with this definition and add tests
+
+  proc jsConstructorName*[T](a: T): cstring =
+    asm """`result` = `a`.constructor.name"""
