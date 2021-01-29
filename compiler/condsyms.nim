@@ -73,7 +73,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimAshr")
   defineSymbol("nimNoNilSeqs")
   defineSymbol("nimNoNilSeqs2")
-  defineSymbol("nimHasUserErrors")
+  defineSymbol("nimHasUserErrors") # deadcode
   defineSymbol("nimUncheckedArrayTyp")
   defineSymbol("nimHasTypeof")
   defineSymbol("nimErrorProcCanHaveBody")

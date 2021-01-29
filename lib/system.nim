@@ -2943,18 +2943,15 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   else: result = strcmp(x, y) == 0
 
 when defined(nimNoNilSeqs2) and not compileOption("nilseqs"):
-  when defined(nimHasUserErrors):
-    # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)'.
-    # Eventually (in 0.20?) we will be able to remove this hack completely.
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
-        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-      discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.
-        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-      discard
-  else:
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
+  # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)',
+  # especially for converters, see tests/overload/tconverter_to_string.nim
+  # Eventually we will be able to remove this hack completely.
+  proc `==`*(x: string; y: type(nil)): bool {.
+      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+    discard
+  proc `==`*(x: type(nil) | type(nil); y: string): bool {.
+      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+    discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
