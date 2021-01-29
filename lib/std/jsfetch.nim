@@ -89,7 +89,7 @@ func `$`*(this: FetchOptions or Response): string = $toCstring(this)
 
 
 runnableExamples:
-  import httpcore
+  import httpcore, asyncjs
   if defined(nimJsFetchTests):
 
     block:
@@ -141,8 +141,6 @@ runnableExamples:
       doAssert options1.integrity == "".cstring
 
     when not defined(nodejs):
-      import asyncjs
-
       proc doFetch(): Future[Response] {.async.} =
         fetch "http:httpbin.org/get"
 
