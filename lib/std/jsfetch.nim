@@ -141,6 +141,8 @@ runnableExamples:
       doAssert options1.integrity == "".cstring
 
     when not defined(nodejs):
+      import asyncjs
+
       proc doFetch(): Future[Response] {.async.} =
         fetch "http:httpbin.org/get"
 
