@@ -41,11 +41,11 @@ type
     frpUnsafeUrl = "unsafe-url"
 
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
-    myBodyUsed, ok, redirected: bool
-    typ {.importjs: "type".}: cstring
-    url, statusText: cstring
-    status: cint
-    headers: Headers
+    myBodyUsed*, ok*, redirected*: bool
+    typ* {.importjs: "type".}: cstring
+    url*, statusText*: cstring
+    status*: cint
+    headers*: Headers
 
 
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
@@ -134,7 +134,9 @@ runnableExamples:
       doAssert options1.body == """{"key": "value"}""".cstring
       doAssert options1.mode == $fmNoCors
       doAssert options1.credentials == $fcOmit
-      doAssert options1.cache == $fchNoCache
+      doAssert options1.cache == $fchNoCimport r"/home/runner/work/Nim/Nim/lib/std/nimcache/runnableExamples/jsfetch_examples1.nim"
+6321
+ache
       doAssert options1.referrerPolicy == $frpNoReferrer
       doAssert options1.redirect == $frFollow
       doAssert options1.referrer == "client".cstring
