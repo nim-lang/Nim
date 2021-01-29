@@ -529,7 +529,8 @@ proc runCI(cmd: string) =
   let file2 = "D20210128T184325b.txt"
   let file3 = "D20210128T184325c.txt"
   writeFile(file, "foo")
-  let cmd = fmt"mklink {file2} {file}"
+  let cmd = "mklink $# $#" % [file2, file]
+  echo (cmd, "D20210128T185605")
   let status = execShellCmd(cmd)
   echo ("D20210128T184304.after", status)
   createSymlink(file, file3)
