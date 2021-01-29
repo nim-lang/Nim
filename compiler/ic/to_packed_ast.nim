@@ -860,7 +860,7 @@ proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
       m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, p)
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                    fileIdx: FileIndex): bool =
+                    fileIdx: FileIndex; cachedModules: var seq[FileIndex]): bool =
   # Does the file belong to the fileIdx need to be recompiled?
   let m = int(fileIdx)
   if m >= g.len:
@@ -879,11 +879,12 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
         let fid = toFileIndex(dep, g[m].fromDisk, conf)
         # Warning: we need to traverse the full graph, so
         # do **not use break here**!
-        if needsRecompile(g, conf, cache, fid):
+        if needsRecompile(g, conf, cache, fid, cachedModules):
           result = true
 
       if not result:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
+        cachedModules.add fileIdx
       g[m].status = if result: outdated else: loaded
     else:
       loadError(err, rod)
@@ -896,15 +897,16 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     result = true
 
 proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                        fileIdx: FileIndex): PSym =
+                        fileIdx: FileIndex; cachedModules: var seq[FileIndex]): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
-  if needsRecompile(g, conf, cache, fileIdx):
+  if needsRecompile(g, conf, cache, fileIdx, cachedModules):
     result = nil
   else:
     result = g[int fileIdx].module
     assert result != nil
     assert result.position == int(fileIdx)
-    loadToReplayNodes(g, conf, cache, fileIdx, g[int fileIdx])
+    for m in cachedModules:
+      loadToReplayNodes(g, conf, cache, m, g[int m])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(

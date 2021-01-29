@@ -483,10 +483,11 @@ proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
     s.ast[bodyPos] = result
   assert result != nil
 
-proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
+                        cachedModules: var seq[FileIndex]): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
-    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)
+    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
